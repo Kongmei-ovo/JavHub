@@ -99,6 +99,23 @@ def get_download_tasks(limit: int = 100) -> List[dict]:
     conn.close()
     return [dict(row) for row in rows]
 
+def update_task_status(task_id: int, status: str, error_msg: Optional[str] = None):
+    """更新下载任务状态"""
+    conn = get_db()
+    cursor = conn.cursor()
+    if error_msg:
+        cursor.execute(
+            "UPDATE download_tasks SET status = ?, error_msg = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (status, error_msg, task_id)
+        )
+    else:
+        cursor.execute(
+            "UPDATE download_tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (status, task_id)
+        )
+    conn.commit()
+    conn.close()
+
 def delete_download_task(task_id: int):
     """删除下载任务"""
     conn = get_db()

@@ -49,12 +49,52 @@ class DownloaderService:
         """获取所有下载任务"""
         return get_download_tasks()
 
-    def poll_task_status(self, task_id: str) -> dict:
+    def poll_task_status(self, task_id: int) -> dict:
         """
         轮询OpenList获取任务状态
+        OpenList state: 0=pending, 1=running, 2=succeeded, 7=failed
         """
-        tasks = openlist_client.get_offline_tasks()
-        return {"task_id": task_id, "status": "unknown"}
+        from database import get_download_tasks, update_task_status
+
+        db_tasks = get_download_tasks(limit=500)
+        db_task = next((t for t in db_tasks if t['id'] == task_id), None)
+        if not db_task:
+            return {"task_id": task_id, "status": "unknown"}
+
+        magnet = db_task.get('magnet', '')
+        if not magnet:
+            return {"task_id": task_id, "status": "unknown"}
+
+        # Extract info hash from magnet URI (magnet:?xt=urn:btih:HASH&...)
+        import re
+        hash_match = re.search(r'btih:([a-fA-F0-9]{40}|[a-zA-Z0-9]{32})', magnet)
+        info_hash = hash_match.group(1).lower() if hash_match else None
+
+        openlist_tasks = openlist_client.get_offline_tasks()
+
+        matched = None
+        if info_hash:
+            matched = next(
+                (t for t in openlist_tasks if t.get('hash', '').lower() == info_hash),
+                None
+            )
+
+        if not matched:
+            return {"task_id": task_id, "status": db_task.get('status', 'unknown')}
+
+        # Map OpenList state to local status
+        state = matched.get('state', -1)
+        if state == 2:
+            status = 'completed'
+        elif state == 7:
+            status = 'failed'
+        elif state in (0, 1):
+            status = 'downloading'
+        else:
+            status = 'unknown'
+
+        update_task_status(task_id, status)
+        return {"task_id": task_id, "status": status}
 
     def update_all_task_statuses(self):
         """
