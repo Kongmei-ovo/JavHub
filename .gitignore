@@ -22,6 +22,13 @@ dist/
 *.swp
 *.swo
 
+# Claude
+.claude/
+
+# Misc
+*.png
+截屏*
+
 # Logs
 *.log
 logs/
