@@ -287,6 +287,8 @@ export default {
   },
   watch: {
     'bubbleCfg.palette'(newVal) {
+      // __all__ 和 __custom__ 是独立于 palettes 数组的特殊值，直接放行
+      if (newVal === '__all__' || newVal === '__custom__') return
       // 防止旧数据中已删除的 palette 值导致白屏
       if (!this.palettes.find(p => p.key === newVal)) {
         this.bubbleCfg.palette = 'monet'
