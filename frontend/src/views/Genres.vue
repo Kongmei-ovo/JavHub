@@ -13,7 +13,6 @@
           @click="switchTab(tab.key)"
         >
           {{ tab.label }}
-          <span v-if="tab.key === 'actress' && displayedActresses.length" class="tab-count">{{ displayedActresses.length }}</span>
           <span v-if="tab.key === 'series' && displayedSeries.length" class="tab-count">{{ displayedSeries.length }}</span>
         </button>
       </div>
@@ -659,13 +658,16 @@ export default {
       this.activeTab = tab
     },
     actressAvatar(actress) {
-      // 演员头像：优先用 thumbnail_url，否则用名字生成代理头像
-      if (actress.thumbnail_url) return actress.thumbnail_url
+      if (actress.image_url) {
+        const url = actress.image_url
+        if (url.startsWith('http')) return url
+        return `https://awsimgsrc.dmm.com/dig/mono/actjpgs/${url.replace(/^\//, '')}`
+      }
       const name = encodeURIComponent(actress.name_romaji || actress.name_kanji || '')
       return `/api/actors/avatar/${name}`
     },
     handleActressImgError(e) {
-      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="%231a1a2e" width="120" height="120"/><circle cx="60" cy="48" r="24" fill="%23333"/><ellipse cx="60" cy="100" rx="36" ry="28" fill="%23333"/></svg>'
+      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="60" fill="%231a1a2e"/><circle cx="60" cy="48" r="20" fill="%23333"/><ellipse cx="60" cy="95" rx="30" ry="22" fill="%23333"/></svg>'
     },
     async loadActresses() {
       this.actressesLoading = true
@@ -699,7 +701,8 @@ export default {
       this.displayedSeries = shuffle(this.seriesList).slice(0, 60)
     },
     goActress(actress) {
-      this.$router.push({ name: 'Actress', params: { actressId: actress.id } })
+      const name = actress.name_kanji || actress.name_romaji || actress.name || ''
+      this.$router.push({ name: 'Actor', query: { name } })
     },
     goSeries(item) {
       // 系列点击 → 搜索结果页，带 series 参数
@@ -752,7 +755,8 @@ export default {
 .actress-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
 .actress-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; transition: var(--transition); text-align: center; }
 .actress-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); border-color: var(--accent); }
-.actress-avatar { width: 100%; aspect-ratio: 1; overflow: hidden; background: var(--bg-secondary); }
+.actress-avatar { width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: var(--bg-secondary); border: 2px solid var(--border); transition: border-color 0.2s; box-sizing: border-box; }
+.actress-card:hover .actress-avatar { border-color: var(--accent); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
 .actress-card:hover .actress-avatar img { transform: scale(1.05); }
 .actress-name { font-size: 13px; font-weight: 600; color: var(--text-primary); padding: 8px 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
