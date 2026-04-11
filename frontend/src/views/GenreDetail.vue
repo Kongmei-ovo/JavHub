@@ -249,9 +249,6 @@ export default {
         fontSize: `${size}px`,
         padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
       }
-      if (isLegendary) {
-        style['--shimmer-pos'] = '-100%'
-      }
       return style
     },
     loadCfg() {
@@ -403,37 +400,36 @@ export default {
         const isOverlapped = overlapped.has(bubble)
         const isHovered = hoveredBubbles.includes(bubble)
         const isActive = bubble.classList.contains('active')
-        const rarity = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
-          ? (this.rarityMap[bubble.dataset.id] || 'common')
-          : null
+        const isLegendary = bubble.classList.contains('legendary')
+        const isRare = bubble.classList.contains('rarity-rare')
+        const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
 
         if (isHovered && scale > 1) {
-          let extraGlow = ''
-          if (rarity === 'legendary') {
-            extraGlow = ', 0 0 24px 8px rgba(255, 185, 0, 0.88), 0 0 60px 18px rgba(255, 140, 0, 0.55)'
-          } else if (rarity === 'rare') {
-            extraGlow = ', 0 0 14px 4px rgba(170, 100, 255, 0.8), 0 0 35px 10px rgba(140, 70, 220, 0.5)'
+          // Proximity scale + hover outer glow (GSAP overrides CSS breathing)
+          let outerGlow = ''
+          if (isLegendary && inLegendaryMode) {
+            outerGlow = '0 0 20px 6px rgba(255, 200, 0, 0.95), 0 0 50px 16px rgba(255, 160, 0, 0.7), 0 0 100px 30px rgba(255, 120, 0, 0.45)'
+          } else if (isRare && inLegendaryMode) {
+            outerGlow = '0 0 16px 5px rgba(180, 110, 255, 0.9), 0 0 40px 12px rgba(155, 80, 240, 0.6)'
+          } else {
+            outerGlow = '0 6px 24px rgba(0,0,0,0.35)'
           }
           gsap.to(bubble, {
             scale,
-            opacity: 1,
+            opacity: isActive ? 1 : 1,
             zIndex: isOverlapped ? ++maxZ : 50,
-            boxShadow: `0 4px 20px rgba(0,0,0,0.3)${extraGlow}`,
+            boxShadow: outerGlow,
             duration: 0.12,
             ease: 'back.out(1.2)',
             overwrite: 'auto',
           })
         } else {
-          const baseShadow = rarity === 'legendary'
-            ? '0 0 8px 3px rgba(255, 185, 0, 0.92), 0 0 22px 6px rgba(255, 150, 0, 0.68), 0 0 50px 14px rgba(255, 110, 0, 0.38)'
-            : rarity === 'rare'
-            ? '0 0 6px 2px rgba(170, 100, 255, 0.82), 0 0 16px 4px rgba(148, 76, 220, 0.55)'
-            : '0 4px 20px rgba(0,0,0,0.3)'
+          // Clear GSAP boxShadow → CSS breathing animation resumes
           gsap.to(bubble, {
             scale: 1,
             opacity: isActive ? 1 : 0.88,
             zIndex: 1,
-            boxShadow: baseShadow,
+            boxShadow: '',
             duration: 0.18,
             ease: 'power3.out',
             overwrite: 'auto',
@@ -447,13 +443,16 @@ export default {
       const cloud = this.$refs.tagCloudRef
       if (!cloud) return
       const bubbles = cloud.querySelectorAll('.bubble')
-      gsap.to(bubbles, {
-        scale: 1,
-        opacity: 0.88,
-        zIndex: 1,
-        duration: 0.3,
-        ease: 'back.out(1.2)',
-        stagger: 0.004,
+      bubbles.forEach(bubble => {
+        const isActive = bubble.classList.contains('active')
+        gsap.to(bubble, {
+          scale: 1,
+          opacity: isActive ? 1 : 0.88,
+          zIndex: 1,
+          boxShadow: '',  // clear → CSS breathing animation auto-resumes
+          duration: 0.3,
+          ease: 'back.out(1.2)',
+        })
       })
     },
     switchCategory(tag) {
@@ -468,7 +467,9 @@ export default {
     },
     legendaryBubbleClass(tag) {
       if (this.cfg.colorMode !== 'legendary' || !this.cfg.goldLegend) return ''
-      return 'rarity-' + (this.rarityMap[tag.id] || 'common')
+      // Always return 'legendary' as base class so glow shows even before stats load
+      const rarity = this.rarityMap[tag.id] || 'legendary'
+      return rarity === 'legendary' ? 'legendary' : `legendary rarity-${rarity}`
     },
     reshuffle() {
       if (!this.allMovies.length) return
@@ -686,54 +687,96 @@ export default {
   transition: box-shadow 0.3s ease, filter 0.3s ease;
 }
 
-/* Shimmer sweep for legendary */
-.bubble.legendary,
-.bubble.rarity-legendary {
-  overflow: hidden;
-}
-.bubble.legendary::before,
-.bubble.rarity-legendary::before {
+/* ================================================
+   LEGENDARY MODE — 炉石传说橙卡质感
+   GSAP manages: proximity scale + z-index + hover glow
+   CSS manages: shimmer sweep + breathing glow (always on)
+   ================================================ */
+
+/* Shimmer sweep — CSS keyframe, always running in legendary mode */
+.bubble.legendary::before {
   content: '';
   position: absolute;
-  top: 0; left: var(--shimmer-pos, -100%);
-  width: 30%;
+  top: 0; left: -30%;
+  width: 28%;
   height: 100%;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 200, 0.45) 45%,
-    rgba(255, 255, 255, 0.75) 50%,
-    rgba(255, 255, 200, 0.45) 55%,
+    rgba(255, 245, 180, 0.5) 40%,
+    rgba(255, 255, 220, 0.9) 50%,
+    rgba(255, 245, 180, 0.5) 60%,
     transparent 100%
   );
-  transform: skewX(-15deg);
+  transform: skewX(-18deg);
   pointer-events: none;
   border-radius: inherit;
   z-index: 1;
+  animation: legendary-shimmer 2.4s linear infinite;
 }
 
-/* Legendary: 3-layer gold glow */
-.bubble.legendary,
-.bubble.rarity-legendary {
-  box-shadow:
-    0 0 8px 3px rgba(255, 185, 0, 0.92),
-    0 0 22px 6px rgba(255, 150, 0, 0.68),
-    0 0 50px 14px rgba(255, 110, 0, 0.38);
-  filter: brightness(1.08);
+@keyframes legendary-shimmer {
+  0%   { left: -30%; }
+  100% { left: 130%; }
 }
 
-/* Rare: 2-layer purple glow */
+/* Legendary breathing glow — 3-layer gold, CSS keyframe */
+.bubble.legendary {
+  overflow: hidden;  /* clip shimmer ::before */
+  animation: legendary-breathe 2.2s ease-in-out infinite;
+}
+
+@keyframes legendary-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 8px  3px rgba(255, 185, 0, 0.88),
+      0 0 22px 6px rgba(255, 150, 0, 0.62),
+      0 0 50px 14px rgba(255, 110, 0, 0.32);
+    filter: brightness(1.05) saturate(1.1);
+  }
+  50% {
+    box-shadow:
+      0 0 14px 5px rgba(255, 210, 0, 1),
+      0 0 36px 10px rgba(255, 170, 0, 0.78),
+      0 0 80px 22px rgba(255, 130, 0, 0.48);
+    filter: brightness(1.14) saturate(1.3);
+  }
+}
+
+/* Hover: GSAP takes over glow + scale; pause CSS animations */
+.bubble.legendary:hover {
+  animation-play-state: paused;
+}
+.bubble.legendary:hover::before {
+  animation-play-state: paused;
+}
+
+/* Rare: 2-layer purple glow with subtle breathing */
 .bubble.rarity-rare {
-  box-shadow:
-    0 0 6px 2px rgba(170, 100, 255, 0.82),
-    0 0 16px 4px rgba(148, 76, 220, 0.55);
-  filter: brightness(1.04);
+  animation: rare-breathe 3s ease-in-out infinite;
+}
+@keyframes rare-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 6px  2px rgba(170, 100, 255, 0.78),
+      0 0 16px 4px rgba(148, 76, 220, 0.50);
+    filter: brightness(1.03) saturate(1.08);
+  }
+  50% {
+    box-shadow:
+      0 0 10px 3px rgba(185, 115, 255, 0.92),
+      0 0 26px 7px rgba(165, 90, 240, 0.65);
+    filter: brightness(1.08) saturate(1.18);
+  }
+}
+.bubble.rarity-rare:hover {
+  animation-play-state: paused;
 }
 
-/* Common: subtle blue-gray glow */
+/* Common: subtle blue-gray shimmer (no breathing) */
 .bubble.rarity-common {
-  box-shadow:
-    0 0 4px 1px rgba(100, 160, 200, 0.38);
+  box-shadow: 0 0 5px 1.5px rgba(100, 160, 200, 0.42);
+  filter: brightness(1.02);
 }
 
 /* Popular: no glow */
