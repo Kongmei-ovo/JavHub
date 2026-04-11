@@ -7,7 +7,7 @@
           <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span v-if="!sidebarCollapsed" class="logo-text">AV Downloader</span>
+          <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
         </div>
         <button class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -32,7 +32,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div v-if="!sidebarCollapsed" class="version">v1.0.0</div>
+        <div v-if="!sidebarCollapsed" class="version">v0.1.0</div>
       </div>
     </aside>
 

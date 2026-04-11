@@ -1,6 +1,6 @@
-# AV Downloader
+# JavHub
 
-🎬 支持多源搜索、自动订阅、离线下载的 AV 影片管理工具
+🎬 基于 JavInfoApi 的媒体库管理工具，支持多源搜索、自动订阅与离线下载
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)

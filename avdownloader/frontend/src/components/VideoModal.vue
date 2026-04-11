@@ -28,6 +28,14 @@
 
           <!-- 基本数据 -->
           <div class="modal-meta">
+            <div v-if="video.content_id" class="meta-row">
+              <span class="meta-label">内容ID</span>
+              <span class="meta-value">{{ video.content_id }}</span>
+            </div>
+            <div v-if="video.dvd_id" class="meta-row">
+              <span class="meta-label">DVD编号</span>
+              <span class="meta-value">{{ video.dvd_id }}</span>
+            </div>
             <div v-if="video.release_date" class="meta-row">
               <span class="meta-label">发行日期</span>
               <span class="meta-value">{{ video.release_date }}</span>
@@ -38,7 +46,7 @@
             </div>
             <div v-if="video.maker" class="meta-row">
               <span class="meta-label">厂商</span>
-              <span class="meta-value clickable" @click="$emit('search-by-maker', video.maker.id)">
+              <span class="meta-value clickable" @click="$emit('search-by-maker', video.maker.name_en || video.maker.name_ja)">
                 {{ video.maker.name_en || video.maker.name_ja }}
               </span>
             </div>
@@ -48,7 +56,7 @@
             </div>
             <div v-if="video.series" class="meta-row">
               <span class="meta-label">系列</span>
-              <span class="meta-value clickable" @click="$emit('search-by-series', video.series.id)">
+              <span class="meta-value clickable" @click="$emit('search-by-series', video.series.name_en || video.series.name_ja)">
                 {{ video.series.name_en || video.series.name_ja }}
               </span>
             </div>
@@ -58,14 +66,23 @@
           <div v-if="video.actresses && video.actresses.length" class="modal-section">
             <h4 class="section-title">演员</h4>
             <div class="actress-list">
-              <span
+              <div
                 v-for="actress in video.actresses"
                 :key="actress.id"
-                class="actress-tag clickable"
-                @click="$emit('search-by-actress', actress.id)"
+                class="actress-avatar-item clickable"
+                @click="$emit('search-by-actress', actress.name_kanji || actress.name_romaji)"
               >
-                {{ actress.name_kanji || actress.name_romaji }}
-              </span>
+                <div class="actress-avatar">
+                  <img
+                    v-if="actress.image_url"
+                    :src="formatAvatarUrl(actress.image_url)"
+                    :alt="actress.name_kanji || actress.name_romaji"
+                    @error="onAvatarError($event)"
+                  />
+                  <span v-else class="avatar-placeholder">{{ (actress.name_kanji || actress.name_romaji || '?')[0] }}</span>
+                </div>
+                <span class="actress-name">{{ actress.name_kanji || actress.name_romaji }}</span>
+              </div>
             </div>
           </div>
 
@@ -76,10 +93,21 @@
               <span
                 v-for="cat in video.categories"
                 :key="cat.id"
-                class="actress-tag"
+                class="actress-tag clickable"
+                @click="$emit('search-by-category', cat.name_en || cat.name_ja)"
               >
                 {{ cat.name_en || cat.name_ja }}
               </span>
+            </div>
+          </div>
+
+          <!-- 剧照画廊 -->
+          <div v-if="galleryThumbs.length" class="modal-section">
+            <h4 class="section-title">剧照</h4>
+            <div class="gallery-grid">
+              <div v-for="(thumb, idx) in galleryThumbs" :key="idx" class="gallery-item">
+                <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" @error="onGalleryError" />
+              </div>
             </div>
           </div>
 
@@ -131,11 +159,46 @@ export default {
         return this.video.magnets
       }
       return []
+    },
+    galleryThumbs() {
+      if (!this.video) return []
+      const first = this.video.gallery_thumb_first
+      const last = this.video.gallery_thumb_last
+      if (!first || !last) return []
+      const firstNum = parseInt(first.match(/(\d+)$/)?.[1] || '0')
+      const lastNum = parseInt(last.match(/(\d+)$/)?.[1] || '0')
+      if (isNaN(firstNum) || isNaN(lastNum) || firstNum > lastNum) return []
+      const prefix = first.replace(/\d+$/, '')
+      const thumbs = []
+      for (let i = firstNum; i <= lastNum; i++) {
+        thumbs.push(`${prefix}${i}`)
+      }
+      return thumbs
     }
   },
   methods: {
     handleImgError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect fill="%231a1a2e" width="400" height="600"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'
+    },
+    onAvatarError(e) {
+      const span = document.createElement('span')
+      span.className = 'avatar-placeholder'
+      const name = e.target.alt || '?'
+      span.textContent = name[0]
+      e.target.parentNode.replaceChild(span, e.target)
+    },
+    onGalleryError(e) {
+      e.target.style.display = 'none'
+    },
+    formatAvatarUrl(url) {
+      if (!url) return null
+      if (url.startsWith('http')) return url
+      return `https://awsimgsrc.dmm.com/dig/mono/actjpgs/${url.replace(/^\//, '')}`
+    },
+    formatGalleryUrl(path) {
+      if (!path) return null
+      if (path.startsWith('http')) return path
+      return `https://pics.dmm.co.jp/${path}.jpg`
     },
     async copyMagnet(mag) {
       try {
@@ -249,16 +312,35 @@ export default {
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.modal-meta::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--border);
+  transform: translateX(-50%);
 }
 
 .meta-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border);
 }
 
 .meta-row:last-child {
+  border-bottom: none;
+}
+
+.modal-meta > div:nth-last-child(-n+2) {
   border-bottom: none;
 }
 
@@ -295,25 +377,74 @@ export default {
 .actress-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 12px;
 }
 
+.actress-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.actress-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.actress-avatar-item:hover .actress-avatar {
+  border-color: var(--accent);
+}
+
+.actress-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-muted);
+  border: 2px solid var(--border);
+}
+
+.actress-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actress-avatar-item:hover .actress-name {
+  color: var(--accent);
+}
+
+/* 题材标签（恢复被误删的样式） */
 .actress-tag {
   padding: 4px 10px;
   background: var(--bg-secondary);
   border-radius: 12px;
   font-size: 12px;
   color: var(--text-secondary);
-}
-
-.actress-tag.clickable {
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.actress-tag.clickable:hover {
-  background: var(--accent);
-  color: white;
 }
 
 .magnets-list {
@@ -401,5 +532,31 @@ export default {
   padding: 16px;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+/* 剧照画廊 */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.gallery-item {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
 }
 </style>

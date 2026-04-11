@@ -1,59 +1,73 @@
 <template>
   <div class="search-page">
-    <!-- Hero搜索区 -->
+    <!-- 搜索区域 3×2 Grid -->
     <div class="search-hero">
       <h1 class="hero-title">影片搜索</h1>
       <p class="hero-subtitle">支持番号、演员、厂商、系列、题材多维度检索</p>
-      <div class="search-container">
-        <!-- 番号精确搜索 -->
-        <div class="search-box-wrapper code-search">
-          <div class="search-box">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input
-              v-model="contentId"
-              placeholder="精确番号，如 ABC-123"
-              @keyup.enter="doSearch"
-              class="search-input"
-            />
+      <div class="search-section">
+        <div class="search-grid">
+          <!-- Row 1: 番号 + 关键词 + 厂商 -->
+          <div class="search-box-wrapper code-search">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="contentId" placeholder="精确番号，如 ABC-123" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
+            </div>
           </div>
-          <span class="search-hint">精确搜索</span>
-        </div>
-
-        <!-- 关键词搜索 -->
-        <div class="search-box-wrapper">
-          <div class="search-box">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input
-              v-model="keyword"
-              placeholder="关键词搜索"
-              @keyup.enter="doSearch"
-              class="search-input"
-            />
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="keyword" placeholder="关键词搜索" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="makerName" placeholder="厂商" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
+          <!-- Row 2: 系列 + 演员 + 题材 -->
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="seriesName" placeholder="系列" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="actressName" placeholder="演员" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="categoryName" placeholder="题材" @keyup.enter="doSearch" class="search-input" />
+            </div>
           </div>
         </div>
-
-        <button @click="doSearch" :disabled="loading" class="btn btn-primary search-btn">
+        <button @click="doSearch" :disabled="loading" class="main-search-btn">
           <span v-if="loading" class="spinner"></span>
           <span v-else>搜索</span>
         </button>
       </div>
-
-    </div>
-
-    <!-- 题材筛选 -->
-    <div class="filter-bar">
-      <select v-model="selectedCategory" @change="doSearch" class="filter-select">
-        <option value="">全部题材</option>
-        <option v-for="c in categories" :key="c.id" :value="c.id">
-          {{ c.name_en || c.name_ja }}
-        </option>
-      </select>
     </div>
 
     <!-- 结果信息 -->
@@ -99,11 +113,11 @@
           />
         </div>
         <div class="card-info">
-          <div class="card-header">
+          <div class="card-code-row">
             <span class="card-code">{{ item.dvd_id || item.content_id }}</span>
             <span v-if="item.service_code" class="card-type" :class="'type-' + item.service_code">{{ formatServiceCode(item.service_code) }}</span>
           </div>
-          <div class="card-title" :title="item.title_en">{{ item.title_en }}</div>
+          <div class="card-title" :title="item.title_en || item.title_ja">{{ item.title_en || item.title_ja }}</div>
           <div class="card-meta">
             <span v-if="item.release_date" class="meta-date">{{ item.release_date }}</span>
             <span v-if="item.runtime_mins" class="meta-time">{{ item.runtime_mins }}分钟</span>
@@ -134,6 +148,9 @@
       @close="closeModal"
       @download="handleDownload"
       @search-by-category="searchByCategory"
+      @search-by-maker="searchByMaker"
+      @search-by-series="searchBySeries"
+      @search-by-actress="searchByActress"
     />
   </div>
 </template>
@@ -155,8 +172,10 @@ export default {
       selectedVideo: null,
 
       // 筛选
-      categories: [],
-      selectedCategory: '',
+      categoryName: '',
+      makerName: '',
+      seriesName: '',
+      actressName: '',
 
       sortBy: '',
 
@@ -167,30 +186,45 @@ export default {
       totalPages: 1
     }
   },
-  mounted() {
-    this.loadFilters()
-  },
   computed: {
     hasFilters() {
-      return this.selectedCategory || this.keyword || this.contentId
+      return this.categoryName || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName
     }
   },
   methods: {
     async loadFilters() {
-      try {
-        const catsRes = await api.listCategories()
-        this.categories = catsRes.data || []
-      } catch (e) {
-        console.error('Load filters failed:', e)
-      }
+      // categories now use category_name text input
     },
     clearFilters() {
       this.keyword = ''
       this.contentId = ''
-      this.selectedCategory = ''
+      this.makerName = ''
+      this.seriesName = ''
+      this.actressName = ''
+      this.categoryName = ''
       this.sortBy = ''
       this.results = []
       this.searched = false
+    },
+    searchByCategory(categoryName) {
+      this.closeModal()
+      this.categoryName = categoryName
+      this.doSearch()
+    },
+    searchByMaker(makerName) {
+      this.closeModal()
+      this.makerName = makerName
+      this.doSearch()
+    },
+    searchBySeries(seriesName) {
+      this.closeModal()
+      this.seriesName = seriesName
+      this.doSearch()
+    },
+    searchByActress(actressName) {
+      this.closeModal()
+      this.actressName = actressName
+      this.doSearch()
     },
     async doSearch() {
       this.loading = true
@@ -203,7 +237,10 @@ export default {
         }
         if (this.contentId) params.content_id = this.contentId.trim()
         if (this.keyword) params.q = this.keyword.trim()
-        if (this.selectedCategory) params.category_id = this.selectedCategory
+        if (this.makerName) params.maker_name = this.makerName.trim()
+        if (this.seriesName) params.series_name = this.seriesName.trim()
+        if (this.actressName) params.actress_name = this.actressName.trim()
+        if (this.categoryName) params.category_name = this.categoryName.trim()
 
         const resp = await api.searchVideos(params)
         const data = resp.data
@@ -228,7 +265,10 @@ export default {
         }
         if (this.contentId) params.content_id = this.contentId.trim()
         if (this.keyword) params.q = this.keyword.trim()
-        if (this.selectedCategory) params.category_id = this.selectedCategory
+        if (this.makerName) params.maker_name = this.makerName.trim()
+        if (this.seriesName) params.series_name = this.seriesName.trim()
+        if (this.actressName) params.actress_name = this.actressName.trim()
+        if (this.categoryName) params.category_name = this.categoryName.trim()
 
         const resp = await api.searchVideos(params)
         const data = resp.data
@@ -281,11 +321,6 @@ export default {
         img.classList.add('wide')
       }
     },
-    searchByCategory(categoryId) {
-      this.closeModal()
-      this.selectedCategory = categoryId
-      this.doSearch()
-    },
     formatServiceCode(code) {
       const map = {
         'mono': 'DVD',
@@ -309,7 +344,7 @@ export default {
 
 .search-hero {
   text-align: center;
-  padding: 40px 20px;
+  padding: 40px 20px 20px;
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
@@ -324,29 +359,29 @@ export default {
   margin-bottom: 24px;
 }
 
-.search-container {
+.search-section {
   display: flex;
   gap: 12px;
-  max-width: 800px;
-  margin: 0 auto 16px;
-  flex-wrap: wrap;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+  align-items: stretch;
 }
 
-.code-search {
-  position: relative;
-}
-
-.search-hint {
-  position: absolute;
-  bottom: -18px;
-  left: 12px;
-  font-size: 10px;
-  color: var(--text-muted);
+.search-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .search-box-wrapper {
-  flex: 1;
   position: relative;
+  min-width: 0;
+}
+
+.search-box-wrapper.code-search {
+  grid-column: span 1;
 }
 
 .search-box {
@@ -379,64 +414,23 @@ export default {
   color: var(--text-primary);
 }
 
-.filter-row {
-  display: flex;
-  gap: 12px;
-  max-width: 900px;
-  margin: 0 auto;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.filter-item {
-  position: relative;
-  min-width: 150px;
-}
-
-.filter-item label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.filter-input,
-.filter-select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
-.dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-top: 4px;
-  z-index: 100;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.dropdown-item {
-  padding: 8px 12px;
+.main-search-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0 28px;
+  font-size: 15px;
   cursor: pointer;
-  font-size: 13px;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
-.dropdown-item:hover {
-  background: var(--bg-secondary);
-}
-
-.clear-btn {
-  align-self: flex-end;
+.main-search-btn:hover {
+  opacity: 0.9;
 }
 
 .result-bar {
@@ -552,6 +546,14 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4px;
+}
+
+.card-code-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
 }
 

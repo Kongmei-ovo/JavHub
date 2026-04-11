@@ -69,9 +69,13 @@ class InfoClient:
         q: str | None = None,
         content_id: str | None = None,
         maker_id: int | None = None,
+        maker_name: str | None = None,
         series_id: int | None = None,
+        series_name: str | None = None,
         actress_id: int | None = None,
+        actress_name: str | None = None,
         category_id: int | None = None,
+        category_name: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
@@ -84,12 +88,20 @@ class InfoClient:
             params["dvd_id"] = content_id
         if maker_id:
             params["maker_id"] = maker_id
+        if maker_name:
+            params["maker_name"] = maker_name
         if series_id:
             params["series_id"] = series_id
+        if series_name:
+            params["series_name"] = series_name
         if actress_id:
             params["actress_id"] = actress_id
+        if actress_name:
+            params["actress_name"] = actress_name
         if category_id:
             params["category_id"] = category_id
+        if category_name:
+            params["category_name"] = category_name
         result = await self._get("/api/v1/videos/search", params)
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
