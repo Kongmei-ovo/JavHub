@@ -134,7 +134,64 @@
           </svg>
           <h2>气泡云设置</h2>
         </div>
-        <div class="form-row">
+
+        <!-- 颜色模式 -->
+        <div class="form-group">
+          <label>颜色模式</label>
+          <div class="color-mode-tabs">
+            <button
+              class="mode-tab"
+              :class="{ active: bubbleCfg.colorMode === 'random' }"
+              @click="bubbleCfg.colorMode = 'random'"
+            >随机颜色</button>
+            <button
+              class="mode-tab"
+              :class="{ active: bubbleCfg.colorMode === 'legendary' }"
+              @click="bubbleCfg.colorMode = 'legendary'"
+            >金色传说</button>
+          </div>
+        </div>
+
+        <!-- 随机颜色：色系选择 -->
+        <template v-if="bubbleCfg.colorMode === 'random'">
+          <div class="form-group">
+            <label>色系</label>
+            <div class="palette-grid">
+              <button
+                v-for="p in palettes"
+                :key="p.key"
+                class="palette-btn"
+                :class="{ active: bubbleCfg.palette === p.key }"
+                @click="bubbleCfg.palette = p.key"
+              >
+                <span class="palette-preview" :style="{ background: p.preview }"></span>
+                {{ p.label }}
+              </button>
+            </div>
+          </div>
+          <div v-if="bubbleCfg.palette === 'custom'" class="form-group">
+            <label>自定义颜色（逗号分隔，CSS渐变）</label>
+            <textarea
+              class="input custom-gradients-input"
+              v-model="bubbleCfg.customGradientsText"
+              placeholder="linear-gradient(#ff0000, #0000ff),linear-gradient(#00ff00, #ffff00)"
+              rows="3"
+            ></textarea>
+          </div>
+        </template>
+
+        <!-- 金色传说说明 -->
+        <div v-if="bubbleCfg.colorMode === 'legendary'" class="legendary-hint">
+          <span class="legendary-dot legendary"></span> 传奇词条 — 影片库中出现极少，金色渐变
+          <br/>
+          <span class="legendary-dot rare"></span> 稀有词条 — 影片库中出现较少，紫色渐变
+          <br/>
+          <span class="legendary-dot common"></span> 普通词条 — 影片库中出现一般，蓝色渐变
+          <br/>
+          <span class="legendary-dot popular"></span> 热门词条 — 影片库中出现频繁，灰色渐变
+        </div>
+
+        <div class="form-row" style="margin-top: 16px;">
           <div class="form-group">
             <label>气泡大小（px）</label>
             <div class="range-wrap">
@@ -189,7 +246,20 @@ export default {
       },
       telegramUsers: '',
       saving: false,
-      bubbleCfg: { baseSize: 16, fillPercent: 50, spacing: 16 },
+      bubbleCfg: {
+        baseSize: 16, fillPercent: 50, spacing: 16,
+        colorMode: 'random', palette: 'monet',
+        customGradients: [], customGradientsText: '',
+        goldLegend: true,
+      },
+      palettes: [
+        { key: 'monet',   label: '莫奈',   preview: 'linear-gradient(135deg, #e0c3fc, #8ec5fc)' },
+        { key: 'sunset',  label: '夕阳',   preview: 'linear-gradient(135deg, #ff9a9e, #fecfef)' },
+        { key: 'ocean',   label: '海洋',   preview: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
+        { key: 'forest',  label: '森林',   preview: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
+        { key: 'gold',    label: '金色',   preview: 'linear-gradient(135deg, #f79711, #ffd700)' },
+        { key: 'custom',  label: '自定义', preview: 'linear-gradient(135deg, #888, #fff)' },
+      ],
     }
   },
   async mounted() {
@@ -229,15 +299,30 @@ export default {
       try {
         const saved = localStorage.getItem('genres_bubble_cfg')
         if (saved) {
-          this.bubbleCfg = JSON.parse(saved)
+          const parsed = JSON.parse(saved)
+          this.bubbleCfg = {
+            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'random', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true },
+            ...parsed,
+          }
+          if (parsed.customGradients) {
+            this.bubbleCfg.customGradients = parsed.customGradients
+            this.bubbleCfg.customGradientsText = parsed.customGradients.join(',')
+          }
         }
       } catch {}
     },
     saveBubbleCfg() {
+      // Parse custom gradients text into array before saving
+      if (this.bubbleCfg.customGradientsText) {
+        this.bubbleCfg.customGradients = this.bubbleCfg.customGradientsText
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s.startsWith('linear-gradient') || s.startsWith('#'))
+      }
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
-      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16 }
+      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'random', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true }
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
     }
@@ -305,6 +390,104 @@ export default {
   color: var(--accent);
   font-weight: 600;
   text-align: right;
+}
+
+.color-mode-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.mode-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.mode-tab:hover:not(.active) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.palette-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.palette-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,255,255,0.05);
+}
+
+.palette-btn:hover:not(.active) {
+  border-color: var(--accent);
+}
+
+.palette-preview {
+  width: 24px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legendary-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.legendary-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.legendary-dot.legendary { background: linear-gradient(135deg, #f79711, #ffd700); }
+.legendary-dot.rare { background: linear-gradient(135deg, #e040fb, #7c4dff); }
+.legendary-dot.common { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.legendary-dot.popular { background: linear-gradient(135deg, #cfd9df, #e2ebf0); }
+
+.custom-gradients-input {
+  resize: vertical;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  min-height: 60px;
 }
 
 .settings-actions { padding-top: 8px; }

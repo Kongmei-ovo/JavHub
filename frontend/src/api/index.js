@@ -84,6 +84,13 @@ export default {
   },
 
   /**
+   * 获取题材统计（含影片数量，用于金色传说稀有度）
+   */
+  categoryStats() {
+    return api.get('/v1/categories/stats')
+  },
+
+  /**
    * 获取所有品牌
    */
   listLabels() {

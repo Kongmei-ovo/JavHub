@@ -137,20 +137,20 @@ import gsap from 'gsap'
 import api from '../api'
 import VideoModal from '../components/VideoModal.vue'
 
-const BUBBLE_COLORS = [
-  'linear-gradient(135deg, #667eea, #764ba2)',
-  'linear-gradient(135deg, #f093fb, #f5576c)',
-  'linear-gradient(135deg, #4facfe, #00f2fe)',
-  'linear-gradient(135deg, #43e97b, #38f9d7)',
-  'linear-gradient(135deg, #fa709a, #fee140)',
-  'linear-gradient(135deg, #a18cd1, #fbc2eb)',
-  'linear-gradient(135deg, #ff9a9e, #fecfef)',
-  'linear-gradient(135deg, #ffecd2, #fcb69f)',
-  'linear-gradient(135deg, #84fab0, #8fd3f4)',
-  'linear-gradient(135deg, #cfd9df, #e2ebf0)',
-  'linear-gradient(135deg, #a1c4fd, #c2e9fb)',
-  'linear-gradient(135deg, #d4fc79, #96e6a1)',
-]
+const PALETTES = {
+  monet: ['linear-gradient(135deg, #e0c3fc, #8ec5fc)', 'linear-gradient(135deg, #fbc2eb, #a6c1ee)', 'linear-gradient(135deg, #d4fc79, #96e6a1)', 'linear-gradient(135deg, #a18cd1, #fbc2eb)', 'linear-gradient(135deg, #f093fb, #f5576c)', 'linear-gradient(135deg, #c2e9fb, #a1c4fd)', 'linear-gradient(135deg, #e0c3fc, #8ec5fc)', 'linear-gradient(135deg, #f5f7fa, #c3cfe2)'],
+  sunset: ['linear-gradient(135deg, #ff9a9e, #fecfef)', 'linear-gradient(135deg, #fa709a, #fee140)', 'linear-gradient(135deg, #ffecd2, #fcb69f)', 'linear-gradient(135deg, #ff7eb3, #fecfef)', 'linear-gradient(135deg, #fa709a, #fee140)', 'linear-gradient(135deg, #f97316, #fbbf24)', 'linear-gradient(135deg, #ff9a9e, #fecfef)', 'linear-gradient(135deg, #f97316, #fb923c)'],
+  ocean: ['linear-gradient(135deg, #4facfe, #00f2fe)', 'linear-gradient(135deg, #43e97b, #38f9d7)', 'linear-gradient(135deg, #84fab0, #8fd3f4)', 'linear-gradient(135deg, #0fd850, #00f2fe)', 'linear-gradient(135deg, #4facfe, #00f2fe)', 'linear-gradient(135deg, #89f7fe, #66a6ff)', 'linear-gradient(135deg, #4facfe, #00f2fe)', 'linear-gradient(135deg, #43e97b, #38f9d7)'],
+  forest: ['linear-gradient(135deg, #43e97b, #38f9d7)', 'linear-gradient(135deg, #56ab2f, #a8e063)', 'linear-gradient(135deg, #11998e, #38ef7d)', 'linear-gradient(135deg, #84fab0, #8fd3f4)', 'linear-gradient(135deg, #56ab2f, #a8e063)', 'linear-gradient(135deg, #11998e, #38ef7d)', 'linear-gradient(135deg, #43e97b, #38f9d7)', 'linear-gradient(135deg, #0ba360, #3cba92)'],
+  gold: ['linear-gradient(135deg, #f79711, #ffd200)', 'linear-gradient(135deg, #f5af19, #f12711)', 'linear-gradient(135deg, #f12711, #f5af19)', 'linear-gradient(135deg, #f79711, #ffd700)', 'linear-gradient(135deg, #f5af19, #f12711)', 'linear-gradient(135deg, #fcff00, #f79711)', 'linear-gradient(135deg, #ffd700, #f79711)', 'linear-gradient(135deg, #f5af19, #ffd700)'],
+}
+
+const RARITY_GRADIENTS = {
+  legendary: ['linear-gradient(135deg, #f79711, #ffd700)', 'linear-gradient(135deg, #f5af19, #f12711)', 'linear-gradient(135deg, #fcff00, #f79711)', 'linear-gradient(135deg, #ffd700, #f79711)'],
+  rare: ['linear-gradient(135deg, #e040fb, #7c4dff)', 'linear-gradient(135deg, #7c4dff, #e040fb)', 'linear-gradient(135deg, #f48fb1, #e040fb)'],
+  common: ['linear-gradient(135deg, #4facfe, #00f2fe)', 'linear-gradient(135deg, #43e97b, #38f9d7)', 'linear-gradient(135deg, #4facfe, #00f2fe)'],
+  popular: ['linear-gradient(135deg, #cfd9df, #e2ebf0)', 'linear-gradient(135deg, #bdc3c7, #2c3e50)', 'linear-gradient(135deg, #bdc3c7, #2c3e50)'],
+}
 
 function hashCode(str) {
   let hash = 0
@@ -185,8 +185,10 @@ export default {
       loadingMovies: false,
       selectedVideo: null,
       activeTab: 'movies',
-      cfg: { baseSize: 16, fillPercent: 50, spacing: 16 },
+      cfg: { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'random', palette: 'monet', customGradients: [], goldLegend: true },
       bubbleRects: new Map(),
+      categoryStats: {},
+      rarityMap: {},
     }
   },
   computed: {
@@ -205,6 +207,7 @@ export default {
     this.loadCfg()
     await this.loadCategories()
     await this.loadMovies()
+    if (this.cfg.goldLegend) await this.loadCategoryStats()
   },
   watch: {
     activeTab(newTab) {
@@ -220,12 +223,27 @@ export default {
     }
   },
   methods: {
+    getGradient(tag, palette) {
+      const gradients = palette === 'custom' && this.cfg.customGradients.length
+        ? this.cfg.customGradients
+        : PALETTES[palette] || PALETTES.monet
+      const idx = hashCode(tag.name_en || tag.name_ja || tag.name) % gradients.length
+      return gradients[idx]
+    },
+    getRarityGradient(tag) {
+      const rarity = this.rarityMap[tag.id] || 'common'
+      const grads = RARITY_GRADIENTS[rarity]
+      const idx = hashCode((tag.name_en || tag.name_ja || tag.name) + 'rarity') % grads.length
+      return grads[idx]
+    },
     bubbleStyle(tag) {
-      const idx = hashCode(tag.name_en || tag.name_ja || tag.name) % BUBBLE_COLORS.length
       const size = this.cfg.baseSize
       const fill = this.cfg.fillPercent / 100
+      const gradient = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
+        ? this.getRarityGradient(tag)
+        : this.getGradient(tag, this.cfg.palette)
       return {
-        background: BUBBLE_COLORS[idx],
+        background: gradient,
         fontSize: `${size}px`,
         padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
       }
@@ -235,6 +253,29 @@ export default {
         const saved = localStorage.getItem('genres_bubble_cfg')
         if (saved) this.cfg = JSON.parse(saved)
       } catch {}
+    },
+    async loadCategoryStats() {
+      try {
+        const resp = await api.categoryStats()
+        const stats = Array.isArray(resp.data) ? resp.data : (resp.data || [])
+        const statsMap = {}
+        stats.forEach(s => { statsMap[s.id] = s.video_count || 0 })
+        this.categoryStats = statsMap
+        this.computeRarity(stats)
+      } catch (e) { console.error('Load category stats failed:', e) }
+    },
+    computeRarity(stats) {
+      const sorted = [...stats].sort((a, b) => (a.video_count || 0) - (b.video_count || 0))
+      const n = sorted.length
+      const rarityMap = {}
+      sorted.forEach((cat, i) => {
+        const pct = i / Math.max(n - 1, 1)
+        if (pct < 0.2) rarityMap[cat.id] = 'legendary'
+        else if (pct < 0.5) rarityMap[cat.id] = 'rare'
+        else if (pct < 0.8) rarityMap[cat.id] = 'common'
+        else rarityMap[cat.id] = 'popular'
+      })
+      this.rarityMap = rarityMap
     },
     async loadCategories() {
       this.loading = true
