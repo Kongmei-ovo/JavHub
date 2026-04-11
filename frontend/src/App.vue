@@ -126,13 +126,13 @@ export default {
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background: rgba(22, 33, 62, 0.95);
+  background: var(--bg-secondary);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease, min-width 0.3s ease;
+  transition: width 0.3s ease, min-width 0.3s ease, background 0.3s ease;
   z-index: 100;
   flex-shrink: 0;
 }
@@ -178,7 +178,7 @@ export default {
   transition: var(--transition);
   flex-shrink: 0;
 }
-.collapse-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.collapse-btn:hover { color: var(--text-primary); background: var(--white-06); }
 
 .sidebar-nav {
   flex: 1;
@@ -204,8 +204,8 @@ export default {
   overflow: hidden;
   position: relative;
 }
-.nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-.nav-item.active { background: rgba(76, 175, 80, 0.12); color: var(--accent); }
+.nav-item:hover { background: var(--white-06); color: var(--text-primary); }
+.nav-item.active { background: var(--nav-active-bg); color: var(--accent); }
 .nav-item.active::before {
   content: '';
   position: absolute;
@@ -250,7 +250,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(22, 33, 62, 0.95);
+  background: var(--bg-secondary);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
