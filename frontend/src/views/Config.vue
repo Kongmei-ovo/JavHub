@@ -136,17 +136,17 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>基准字号（px）</label>
+            <label>气泡大小（px）</label>
             <div class="range-wrap">
-              <input class="input range-input" v-model.number="bubbleCfg.baseSize" type="range" min="10" max="28" step="1" />
+              <input class="input range-input" v-model.number="bubbleCfg.baseSize" type="range" min="10" max="32" step="1" />
               <span class="range-val">{{ bubbleCfg.baseSize }}px</span>
             </div>
           </div>
           <div class="form-group">
-            <label>字号随机范围（px）</label>
+            <label>气体填充（%）</label>
             <div class="range-wrap">
-              <input class="input range-input" v-model.number="bubbleCfg.sizeVariance" type="range" min="0" max="20" step="1" />
-              <span class="range-val">{{ bubbleCfg.sizeVariance }}px</span>
+              <input class="input range-input" v-model.number="bubbleCfg.fillPercent" type="range" min="40" max="160" step="5" />
+              <span class="range-val">{{ bubbleCfg.fillPercent }}%</span>
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default {
       },
       telegramUsers: '',
       saving: false,
-      bubbleCfg: { baseSize: 16, sizeVariance: 14, spacing: 16 },
+      bubbleCfg: { baseSize: 16, fillPercent: 50, spacing: 16 },
     }
   },
   async mounted() {
@@ -237,7 +237,7 @@ export default {
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
-      this.bubbleCfg = { baseSize: 16, sizeVariance: 14, spacing: 16 }
+      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16 }
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
     }

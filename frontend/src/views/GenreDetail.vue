@@ -185,7 +185,7 @@ export default {
       loadingMovies: false,
       selectedVideo: null,
       activeTab: 'movies',
-      cfg: { baseSize: 16, sizeVariance: 14, spacing: 16 },
+      cfg: { baseSize: 16, fillPercent: 50, spacing: 16 },
       bubbleRects: new Map(),
     }
   },
@@ -222,11 +222,12 @@ export default {
   methods: {
     bubbleStyle(tag) {
       const idx = hashCode(tag.name_en || tag.name_ja || tag.name) % BUBBLE_COLORS.length
-      const size = this.cfg.baseSize + (hashCode((tag.name_en || tag.name_ja || tag.name) + 'size') % this.cfg.sizeVariance)
+      const size = this.cfg.baseSize
+      const fill = this.cfg.fillPercent / 100
       return {
         background: BUBBLE_COLORS[idx],
         fontSize: `${size}px`,
-        padding: `${Math.round(size * 0.5)}px ${Math.round(size * 1.25)}px`,
+        padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
       }
     },
     loadCfg() {

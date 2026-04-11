@@ -81,9 +81,9 @@ function shuffle(arr) {
 const LS_KEY = 'genres_bubble_cfg'
 
 const DEFAULT_CFG = {
-  baseSize: 16,   // px
-  sizeVariance: 14, // px random range
-  spacing: 16,     // gap px
+  baseSize: 16,       // px, uniform font size
+  fillPercent: 50,     // padding = fontSize * fillPercent/100
+  spacing: 16,         // gap px
 }
 
 export default {
@@ -118,11 +118,12 @@ export default {
     },
     bubbleStyle(tag) {
       const idx = hashCode(tag.name_en || tag.name_ja || tag.name) % BUBBLE_COLORS.length
-      const size = this.cfg.baseSize + (hashCode((tag.name_en || tag.name_ja || tag.name) + 'size') % this.cfg.sizeVariance)
+      const size = this.cfg.baseSize
+      const fill = this.cfg.fillPercent / 100
       return {
         background: BUBBLE_COLORS[idx],
         fontSize: `${size}px`,
-        padding: `${Math.round(size * 0.5)}px ${Math.round(size * 1.25)}px`,
+        padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
       }
     },
     async loadCategories() {
