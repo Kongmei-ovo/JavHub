@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!requirements.txt
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+npm-debug.log
+dist/
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker/
+
+# Misc
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+crawler:
+  javbus_api_url: http://127.0.0.1:3002
+  proxy: http://10.0.0.20:7890
+  request_interval: 3
+  user_agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+    like Gecko) Chrome/120.0.0.0 Safari/537.36
+emby:
+  api_key: 36c382ab98254251b420a56c13dcd24a
+  api_url: http://10.0.0.6:8096
+notification:
+  auto_download_notify: true
+  download_complete_notify: true
+  enabled: true
+  new_movie_notify: true
+  telegram: true
+openlist:
+  api_url: http://154.23.255.204:5244
+  default_path: /115/AV
+  password: X8A22uG6SZgeGRE
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImtvbmdtZWkiLCJwd2RfdHMiOjAsImV4cCI6MTc3NTU4NTE0OCwibmJmIjoxNzc1NDEyMzQ4LCJpYXQiOjE3NzU0MTIzNDh9.aDR01ei915D7Uq8Kk-KRtihVlAZCudVWwYySnz-_fQo
+  username: kongmei
+scheduler:
+  subscription_check_hour: 2
+telegram:
+  allowed_user_ids: []
+  bot_token: ''

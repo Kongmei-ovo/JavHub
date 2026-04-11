@@ -1,0 +1,202 @@
+from __future__ import annotations
+import httpx
+import re
+from typing import Any
+from difflib import SequenceMatcher
+
+
+class EmbyClient:
+    """Emby API 客户端"""
+
+    def __init__(self, api_url: str, api_key: str):
+        self.api_url = api_url.rstrip("/")
+        self.api_key = api_key
+        self._client: httpx.AsyncClient | None = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                headers={"X-Emby-Token": self.api_key},
+                timeout=30,
+            )
+        return self._client
+
+    async def close(self):
+        if self._client:
+            await self._client.aclose()
+            self._client = None
+
+    async def _get(self, path: str, params: dict | None = None) -> Any:
+        client = await self._get_client()
+        response = await client.get(f"{self.api_url}{path}", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    # === 库检测 ===
+
+    async def check_exists(self, content_id: str) -> bool:
+        """检查影片是否在库中"""
+        items = await self.get_all_movies()
+        for item in items:
+            name = item.get("Name", "") or item.get("FileName", "")
+            if content_id.upper() in name.upper():
+                return True
+        return False
+
+    async def get_all_movies(self) -> list[dict]:
+        """获取所有影片库项"""
+        try:
+            result = await self._get("/Library/MediaCounts")
+            return result.get("Items", [])
+        except Exception:
+            return []
+
+    async def get_items(self, limit: int = 200) -> list[dict]:
+        """获取媒体库中的所有项目"""
+        try:
+            return await self._get(
+                "/Items",
+                params={
+                    "limit": limit,
+                    "includeItemTypes": "Movie",
+                    "recursive": "true",
+                }
+            )
+        except Exception:
+            return []
+
+    # === 去重相关 ===
+
+    def _extract_code_from_name(self, name: str) -> str | None:
+        """从 Emby 影片名称中提取番号"""
+        # 匹配格式如 ABC-123, ABC-001, etc.
+        match = re.search(r'([A-Z]+-\d+)', name.upper())
+        return match.group(1) if match else None
+
+    def _calculate_similarity(self, str1: str, str2: str) -> float:
+        """计算两个字符串的相似度"""
+        return SequenceMatcher(None, str1.upper(), str2.upper()).ratio()
+
+    async def find_duplicates(self, info_client) -> list[dict]:
+        """查找可疑重复（Emby名称 ↔ JavInfoApi匹配）"""
+        from database import is_duplicate_ignored
+
+        duplicates = []
+        embys = await self.get_items()
+
+        for emby_item in embys:
+            emby_id = emby_item.get("Id")
+            emby_name = emby_item.get("Name", "")
+
+            # 跳过已忽略的
+            if is_duplicate_ignored(emby_id):
+                continue
+
+            # 提取番号
+            code = self._extract_code_from_name(emby_name)
+            if not code:
+                continue
+
+            # 查询 JavInfoApi
+            try:
+                result = await info_client.search_videos(content_id=code, page_size=1)
+                items = result.get("data", [])
+                if items:
+                    javinfo = items[0]
+                    similarity = self._calculate_similarity(emby_name, javinfo.get("title_en", ""))
+                    if similarity > 0.5:  # 相似度阈值
+                        duplicates.append({
+                            "emby_item_id": emby_id,
+                            "emby_name": emby_name,
+                            "content_id": code,
+                            "javinfo_title": javinfo.get("title_en"),
+                            "similarity": round(similarity, 2),
+                            "reason": f"Emby名称与JavInfoApi番号匹配 (相似度 {similarity:.0%})",
+                        })
+            except Exception:
+                continue
+
+        return duplicates
+
+    async def delete_item(self, item_id: str) -> bool:
+        """删除 Emby 媒体库条目"""
+        try:
+            client = await self._get_client()
+            await client.delete(f"{self.api_url}/Items/{item_id}")
+            return True
+        except Exception:
+            return False
+
+    # === 缺失检测 ===
+
+    async def get_missing_actresses_summary(self, info_client) -> list[dict]:
+        """获取缺失演员统计"""
+        from database import save_missing_summary, get_all_missing_summaries
+        from services.subscription import get_all_subscriptions
+
+        summaries = []
+        subscriptions = get_all_subscriptions()
+
+        for sub in subscriptions:
+            actress_id = sub.get("actress_id")
+            actress_name = sub.get("actress_name")
+
+            if not actress_id or not actress_name:
+                continue
+
+            try:
+                # 获取 JavInfoApi 中该演员的所有作品
+                javinfo_result = await info_client.get_actress_videos(actress_id, page_size=100)
+                javinfo_videos = javinfo_result.get("data", [])
+                total = len(javinfo_videos)
+
+                if total == 0:
+                    continue
+
+                # 检查哪些在 Emby 中不存在
+                missing = []
+                for video in javinfo_videos:
+                    code = video.get("dvd_id") or video.get("content_id")
+                    if code:
+                        exists = await self.check_exists(code)
+                        if not exists:
+                            missing.append({
+                                "content_id": code,
+                                "title": video.get("title_en"),
+                                "release_date": video.get("release_date"),
+                                "jacket_thumb_url": video.get("jacket_thumb_url"),
+                            })
+
+                missing_count = len(missing)
+
+                # 缓存到数据库
+                import json
+                videos_json = json.dumps(missing, ensure_ascii=False)
+                save_missing_summary(actress_id, actress_name, total, missing_count, videos_json)
+
+                summaries.append({
+                    "actress_id": actress_id,
+                    "actress_name": actress_name,
+                    "total_in_javinfo": total,
+                    "missing_count": missing_count,
+                })
+            except Exception:
+                continue
+
+        return sorted(summaries, key=lambda x: x["missing_count"], reverse=True)
+
+
+# 全局单例
+_emby_client: EmbyClient | None = None
+
+
+def get_emby_client() -> EmbyClient:
+    global _emby_client
+    if _emby_client is None:
+        from config import config
+        emby_config = getattr(config, "emby", {})
+        _emby_client = EmbyClient(
+            api_url=emby_config.get("api_url", ""),
+            api_key=emby_config.get("api_key", ""),
+        )
+    return _emby_client

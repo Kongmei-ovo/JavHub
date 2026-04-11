@@ -1,0 +1,27 @@
+openlist:
+  api_url: "https://fox.oplist.org"
+  username: ""
+  password: ""
+  default_path: "/115/AV"
+
+emby:
+  api_url: ""
+  api_key: ""
+
+telegram:
+  bot_token: ""
+  allowed_user_ids: []
+
+crawler:
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  request_interval: 3
+
+scheduler:
+  subscription_check_hour: 2
+
+notification:
+  enabled: false
+  telegram: true
+  auto_download_notify: true
+  download_complete_notify: true
+  new_movie_notify: true
