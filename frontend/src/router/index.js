@@ -14,6 +14,7 @@ const routes = [
   { path: '/', component: Home },
   { path: '/search', component: Search },
   { path: '/genres', component: Genres },
+  { path: '/genres/:categoryId', name: 'GenreDetail', component: () => import('../views/GenreDetail.vue') },
   { path: '/parse', component: MagnetParse },
   { path: '/subscription', component: Subscription },
   { path: '/library', component: Library },
