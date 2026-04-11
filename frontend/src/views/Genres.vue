@@ -562,4 +562,10 @@ export default {
   box-shadow: 0 4px 14px rgba(0,0,0,0.22);
 }
 
+/* Common: subtle blue glow (no breathing in legendary mode) */
+.bubble.rarity-common {
+  box-shadow: 0 0 6px 2px rgba(100, 160, 200, 0.45);
+  filter: brightness(1.03);
+}
+
 </style>
