@@ -125,6 +125,30 @@
         </div>
       </div>
 
+      <!-- 主题 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a10 10 0 010 20z" fill="currentColor" opacity="0.3"/>
+          </svg>
+          <h2>主题</h2>
+        </div>
+        <div class="theme-grid">
+          <button
+            v-for="(theme, key) in themes"
+            :key="key"
+            class="theme-btn"
+            :class="{ active: currentTheme === key }"
+            @click="switchTheme(key)"
+          >
+            <span class="theme-icon">{{ theme.icon }}</span>
+            <span class="theme-label">{{ theme.label }}</span>
+            <span class="theme-dot" :style="{ background: theme.vars['--accent'] }"></span>
+          </button>
+        </div>
+      </div>
+
       <!-- 气泡云设置 -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -255,6 +279,7 @@
 
 <script>
 import api from '../api'
+import { THEMES, applyTheme } from '../assets/themes.js'
 
 export default {
   name: 'Config',
@@ -270,6 +295,8 @@ export default {
       },
       telegramUsers: '',
       saving: false,
+      themes: THEMES,
+      currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
       bubbleCfg: {
         baseSize: 16, fillPercent: 50, spacing: 16,
         colorMode: 'legendary', palette: 'monet',
@@ -388,6 +415,10 @@ export default {
       this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' } }
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
+    },
+    switchTheme(key) {
+      applyTheme(key)
+      this.currentTheme = key
     }
   }
 }
@@ -574,4 +605,62 @@ export default {
 
 .settings-actions { padding-top: 8px; }
 .settings-actions .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+
+/* 主题网格 */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  font-size: 12px;
+  position: relative;
+}
+
+.theme-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.theme-btn.active {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.theme-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.theme-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.theme-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
 </style>
