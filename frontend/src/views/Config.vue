@@ -125,6 +125,43 @@
         </div>
       </div>
 
+      <!-- 气泡云设置 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <h2>气泡云设置</h2>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>基准字号（px）</label>
+            <div class="range-wrap">
+              <input class="input range-input" v-model.number="bubbleCfg.baseSize" type="range" min="10" max="28" step="1" />
+              <span class="range-val">{{ bubbleCfg.baseSize }}px</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>字号随机范围（px）</label>
+            <div class="range-wrap">
+              <input class="input range-input" v-model.number="bubbleCfg.sizeVariance" type="range" min="0" max="20" step="1" />
+              <span class="range-val">{{ bubbleCfg.sizeVariance }}px</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>气泡间距（px）</label>
+          <div class="range-wrap">
+            <input class="input range-input" v-model.number="bubbleCfg.spacing" type="range" min="4" max="32" step="2" />
+            <span class="range-val">{{ bubbleCfg.spacing }}px</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
+        </div>
+      </div>
+
       <div class="settings-actions">
         <button class="btn btn-primary" @click="save" :disabled="saving">
           <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
@@ -151,7 +188,8 @@ export default {
         notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true }
       },
       telegramUsers: '',
-      saving: false
+      saving: false,
+      bubbleCfg: { baseSize: 16, sizeVariance: 14, spacing: 16 },
     }
   },
   async mounted() {
@@ -170,6 +208,7 @@ export default {
     } catch (e) {
       console.error('Failed to load config:', e)
     }
+    this.loadBubbleCfg()
   },
   methods: {
     async save() {
@@ -177,6 +216,7 @@ export default {
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
         await api.updateConfig(this.config)
+        this.saveBubbleCfg()
         this.$message.success('配置已保存')
       } catch (e) {
         console.error('Failed to save config:', e)
@@ -184,6 +224,22 @@ export default {
       } finally {
         this.saving = false
       }
+    },
+    loadBubbleCfg() {
+      try {
+        const saved = localStorage.getItem('genres_bubble_cfg')
+        if (saved) {
+          this.bubbleCfg = JSON.parse(saved)
+        }
+      } catch {}
+    },
+    saveBubbleCfg() {
+      localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
+    },
+    resetBubbleCfg() {
+      this.bubbleCfg = { baseSize: 16, sizeVariance: 14, spacing: 16 }
+      localStorage.removeItem('genres_bubble_cfg')
+      this.$message.info('已恢复默认')
     }
   }
 }
@@ -226,6 +282,30 @@ export default {
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 .form-group.checkbox label { margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+
+.range-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-input {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.range-val {
+  min-width: 40px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: right;
+}
 
 .settings-actions { padding-top: 8px; }
 .settings-actions .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }

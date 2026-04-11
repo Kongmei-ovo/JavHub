@@ -25,7 +25,7 @@
         <p>加载题材中...</p>
       </div>
 
-      <div v-else ref="tagCloudRef" class="tag-cloud">
+      <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
         <div
           v-for="tag in shuffledTags"
           :key="tag.id"
@@ -78,25 +78,51 @@ function shuffle(arr) {
   return a
 }
 
+const LS_KEY = 'genres_bubble_cfg'
+
+const DEFAULT_CFG = {
+  baseSize: 16,   // px
+  sizeVariance: 14, // px random range
+  spacing: 16,     // gap px
+}
+
 export default {
   name: 'Genres',
   data() {
     return {
       categories: [],
       shuffledTags: [],
-      loading: false
+      loading: false,
+      cfg: { ...DEFAULT_CFG },
+      // Track visible bounding rects for collision detection
+      bubbleRects: new Map(),
     }
   },
+  computed: {
+    cloudStyle() {
+      return { gap: `${this.cfg.spacing}px` }
+    },
+  },
   async mounted() {
+    this.loadCfg()
     await this.loadCategories()
   },
   methods: {
+    loadCfg() {
+      try {
+        const saved = localStorage.getItem(LS_KEY)
+        if (saved) {
+          this.cfg = { ...DEFAULT_CFG, ...JSON.parse(saved) }
+        }
+      } catch {}
+    },
     bubbleStyle(tag) {
       const idx = hashCode(tag.name_en || tag.name_ja || tag.name) % BUBBLE_COLORS.length
-      const baseSize = 16 + (hashCode((tag.name_en || tag.name_ja || tag.name) + 'size') % 14)
+      const size = this.cfg.baseSize + (hashCode((tag.name_en || tag.name_ja || tag.name) + 'size') % this.cfg.sizeVariance)
       return {
         background: BUBBLE_COLORS[idx],
-        fontSize: `${baseSize}px`,
+        fontSize: `${size}px`,
+        padding: `${Math.round(size * 0.5)}px ${Math.round(size * 1.25)}px`,
       }
     },
     async loadCategories() {
@@ -113,32 +139,50 @@ export default {
         this.$nextTick(() => this.initGsap())
       }
     },
+    rectsEqual(a, b, tolerance = 1) {
+      return (
+        Math.abs(a.left - b.left) <= tolerance &&
+        Math.abs(a.top - b.top) <= tolerance &&
+        Math.abs(a.width - b.width) <= tolerance &&
+        Math.abs(a.height - b.height) <= tolerance
+      )
+    },
+    updateBubbleRects(bubbles) {
+      const newRects = new Map()
+      bubbles.forEach(b => {
+        const r = b.getBoundingClientRect()
+        newRects.set(b, r)
+      })
+      this.bubbleRects = newRects
+    },
     initGsap() {
       const cloud = this.$refs.tagCloudRef
       if (!cloud) return
       const bubbles = cloud.querySelectorAll('.bubble')
 
-      // entrance: fast staggered pop-in
+      this.updateBubbleRects(bubbles)
+
+      // entrance: simultaneous pop-in
       gsap.fromTo(bubbles,
         { scale: 0, opacity: 0 },
         {
           scale: 1,
           opacity: 1,
-          duration: 0.35,
-          stagger: { each: 0.008, grid: 'auto', from: 'random' },
+          duration: 0.25,
+          stagger: 0.005,
           ease: 'back.out(1.7)',
         }
       )
 
-      // subtle float
+      // subtle float (y-axis only)
       bubbles.forEach((bubble, i) => {
         gsap.to(bubble, {
-          y: -6,
-          duration: 1.4 + (i % 4) * 0.25,
+          y: -5,
+          duration: 1.4 + (i % 4) * 0.2,
           repeat: -1,
           yoyo: true,
           ease: 'sine.inOut',
-          delay: i * 0.04,
+          delay: i * 0.03,
         })
       })
 
@@ -152,17 +196,79 @@ export default {
       const mouseY = e.clientY
       const bubbles = cloud.querySelectorAll('.bubble')
 
+      // Build current rects and detect collision pairs
+      const hoveredRects = new Map()
+      const hoveredBubbles = []
+
+      // Phase 1: determine scales for all bubbles
+      const scales = new Map()
       bubbles.forEach(bubble => {
         const r = bubble.getBoundingClientRect()
-        const dist = Math.hypot(mouseX - (r.left + r.width / 2), mouseY - (r.top + r.height / 2))
-        const maxDist = 180
+        const cx = r.left + r.width / 2
+        const cy = r.top + r.height / 2
+        const dist = Math.hypot(mouseX - cx, mouseY - cy)
+        const maxDist = 160
 
         if (dist < maxDist) {
-          const scale = 1 + (1 - dist / maxDist) * 0.55
+          const scale = 1 + (1 - dist / maxDist) * 0.5
+          scales.set(bubble, scale)
+          hoveredBubbles.push(bubble)
+        } else {
+          scales.set(bubble, 1)
+        }
+        hoveredRects.set(bubble, { ...r, scale: scales.get(bubble) })
+      })
+
+      // Phase 2: collision detection — when hovered bubbles scale up,
+      // do they overlap each other? Collect all bubbles that are overlapped.
+      const overlapped = new Set()
+      for (let i = 0; i < hoveredBubbles.length; i++) {
+        for (let j = i + 1; j < hoveredBubbles.length; j++) {
+          const a = hoveredBubbles[i]
+          const b = hoveredBubbles[j]
+          const ra = hoveredRects.get(a)
+          const rb = hoveredRects.get(b)
+          const sa = ra.scale
+          const sb = rb.scale
+
+          // Scaled bounding rect of a
+          const raScaled = {
+            left: ra.left - (sa - 1) * ra.width / 2,
+            right: ra.right + (sa - 1) * ra.width / 2,
+            top: ra.top - (sa - 1) * ra.height / 2,
+            bottom: ra.bottom + (sa - 1) * ra.height / 2,
+          }
+          const rbScaled = {
+            left: rb.left - (sb - 1) * rb.width / 2,
+            right: rb.right + (sb - 1) * rb.width / 2,
+            top: rb.top - (sb - 1) * rb.height / 2,
+            bottom: rb.bottom + (sb - 1) * rb.height / 2,
+          }
+
+          const intersects = !(raScaled.right < rbScaled.left ||
+                               raScaled.left > rbScaled.right ||
+                               raScaled.bottom < rbScaled.top ||
+                               raScaled.top > rbScaled.bottom)
+          if (intersects) {
+            overlapped.add(a)
+            overlapped.add(b)
+          }
+        }
+      }
+
+      // Phase 3: assign z-index — overlapped bubbles get high z, others get low
+      let maxZ = 100
+      bubbles.forEach(bubble => {
+        const scale = scales.get(bubble)
+        const isOverlapped = overlapped.has(bubble)
+
+        if (scale > 1) {
+          // Near mouse: scale up, raise z if overlapped
           gsap.to(bubble, {
             scale,
             opacity: 1,
-            duration: 0.18,
+            zIndex: isOverlapped ? ++maxZ : 50,
+            duration: 0.15,
             ease: 'back.out(1.2)',
             overwrite: 'auto',
           })
@@ -170,12 +276,15 @@ export default {
           gsap.to(bubble, {
             scale: 1,
             opacity: 0.88,
-            duration: 0.22,
+            zIndex: 1,
+            duration: 0.2,
             ease: 'power3.out',
             overwrite: 'auto',
           })
         }
       })
+
+      this.updateBubbleRects(bubbles)
     },
     handleMouseLeave() {
       const cloud = this.$refs.tagCloudRef
@@ -184,45 +293,50 @@ export default {
       gsap.to(bubbles, {
         scale: 1,
         opacity: 0.88,
-        duration: 0.35,
+        zIndex: 1,
+        duration: 0.3,
         ease: 'back.out(1.2)',
-        stagger: 0.005,
+        stagger: 0.004,
       })
     },
     reshuffle() {
       const cloud = this.$refs.tagCloudRef
-      if (!cloud) {
-        this.shuffledTags = shuffle(this.categories)
-        return
-      }
-      const bubbles = cloud.querySelectorAll('.bubble')
-      // fast simultaneous shrink
-      gsap.to(bubbles, {
-        scale: 0,
-        opacity: 0,
-        duration: 0.12,
-        ease: 'power2.in',
-      })
-      setTimeout(() => {
-        this.shuffledTags = shuffle(this.categories)
-        this.$nextTick(() => {
-          const newBubbles = cloud.querySelectorAll('.bubble')
-          gsap.fromTo(newBubbles,
-            { scale: 0.5, opacity: 0 },
-            {
-              scale: 1,
-              opacity: 0.88,
-              duration: 0.3,
-              stagger: { each: 0.006, grid: 'auto', from: 'random' },
-              ease: 'back.out(2)',
-            }
-          )
+      // Simultaneous shrink — no stagger, all bubbles vanish at once
+      if (cloud) {
+        const bubbles = cloud.querySelectorAll('.bubble')
+        gsap.to(bubbles, {
+          scale: 0,
+          opacity: 0,
+          duration: 0.08,
+          stagger: 0,
+          ease: 'power2.in',
         })
-      }, 140)
+      }
+      // Immediately shuffle data — Vue reuses DOM nodes with same keys
+      // Old bubble elements (with new shuffled content) stay in DOM
+      this.shuffledTags = shuffle(this.categories)
+      this.$nextTick(() => {
+        const newBubbles = this.$refs.tagCloudRef?.querySelectorAll('.bubble')
+        if (!newBubbles?.length) return
+        // All bubbles start at scale 0 and stagger in simultaneously
+        gsap.fromTo(newBubbles,
+          { scale: 0, opacity: 0 },
+          {
+            scale: 1,
+            opacity: 0.88,
+            duration: 0.3,
+            stagger: 0.006,
+            ease: 'back.out(1.7)',
+          }
+        )
+      })
     },
     goGenre(tag) {
       this.$router.push({ name: 'GenreDetail', params: { categoryId: tag.id } })
-    }
+    },
+    saveCfg() {
+      localStorage.setItem(LS_KEY, JSON.stringify(this.cfg))
+    },
   },
   beforeUnmount() {
     const cloud = this.$refs.tagCloudRef
@@ -319,15 +433,16 @@ export default {
 .tag-cloud {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
   justify-content: center;
   align-items: center;
   padding: 10px 4px;
   cursor: default;
+  /* Opaque background eliminates "white frame" during shuffle */
+  background: var(--bg-primary);
+  border-radius: 16px;
 }
 
 .bubble {
-  padding: 10px 20px;
   border-radius: 50px;
   color: white;
   font-weight: 600;
@@ -339,7 +454,7 @@ export default {
   flex-shrink: 0;
   opacity: 0.88;
   transform-origin: center center;
-  will-change: transform, opacity;
+  position: relative;
 }
 
 @keyframes spin {
