@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional, Dict
-from database import create_download_task, get_download_tasks, delete_download_task
+from database import get_download_tasks, delete_download_task
+from services.downloader import downloader_service
 
 router = APIRouter(prefix="/api/downloads", tags=["downloads"])
 
@@ -13,14 +14,14 @@ class CreateDownloadRequest(BaseModel):
 
 @router.post("")
 async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
-    """创建下载任务"""
-    task_id = create_download_task(
-        content_id=req.content_id,
+    """创建下载任务并发送到OpenList"""
+    task_id = downloader_service.create_download_task(
+        code=req.content_id,
         title=req.title,
         magnet=req.magnet,
-        path=req.path,
+        path=req.path or "",
     )
-    return {"id": task_id, "status": "pending"}
+    return {"id": task_id, "status": "downloading"}
 
 @router.get("")
 async def list_downloads() -> Dict[str, Any]:
