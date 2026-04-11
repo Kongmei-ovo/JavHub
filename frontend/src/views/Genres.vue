@@ -92,7 +92,7 @@ export default {
       this.loading = true
       try {
         const resp = await api.listCategories()
-        this.categories = resp.data.data || []
+        this.categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
         this.shuffledTags = shuffle(this.categories)
       } catch (e) {
         console.error('Load categories failed:', e)
@@ -172,11 +172,16 @@ export default {
   user-select: none;
   white-space: nowrap;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, filter 0.3s ease;
   animation: floatBubble 3s ease-in-out infinite;
   animation-delay: var(--bubble-delay, 0s);
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   flex-shrink: 0;
+  opacity: 0.65;
+  filter: brightness(0.85);
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.3s ease,
+              filter 0.25s ease,
+              opacity 0.25s ease;
 }
 
 @keyframes floatBubble {
@@ -185,10 +190,15 @@ export default {
 }
 
 .bubble:hover {
-  transform: scale(1.12) translateY(-4px) !important;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-  filter: brightness(1.1);
+  transform: scale(1.18) translateY(-6px) !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  filter: brightness(1.15);
+  opacity: 1;
   z-index: 10;
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.3s ease,
+              filter 0.25s ease,
+              opacity 0.25s ease;
 }
 
 @keyframes spin {
