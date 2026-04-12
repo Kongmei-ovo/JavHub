@@ -838,20 +838,14 @@ export default {
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.35);
 }
 
-/* ---------- 蓝卡 Rare：蓝色微光，无呼吸无扫光 ---------- */
+/* ---------- 蓝卡 Rare：纯平板，蓝天白云无特效 ---------- */
 .bubble.rarity-rare {
   border-radius: 50px;
-  box-shadow:
-    0 0 8px 3px color-mix(in srgb, var(--rarity-rare) 60%, transparent),
-    0 0 20px 8px color-mix(in srgb, var(--rarity-rare) 35%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   background: linear-gradient(135deg, var(--rarity-rare), color-mix(in srgb, var(--rarity-rare) 75%, #000)) !important;
-  filter: brightness(1.04);
 }
 .bubble.rarity-rare:hover {
-  box-shadow:
-    0 0 14px 5px color-mix(in srgb, var(--rarity-rare) 75%, transparent),
-    0 0 35px 12px color-mix(in srgb, var(--rarity-rare) 45%, transparent);
-  filter: brightness(1.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* ---------- 紫卡 Epic：紫色呼吸光晕 + 扫光 ---------- */
@@ -908,110 +902,100 @@ export default {
   animation-play-state: paused;
 }
 
-/* ---------- 橙卡 Legendary：金色全特效 ---------- */
+/* ---------- 金卡 Legendary：Polished Gold Bar 全特效 ---------- */
 .bubble.rarity-legendary {
-  border-radius: 12px;
+  border-radius: 14px;
+  overflow: visible;
+  /* 琥珀色内敛呼吸 glow */
   box-shadow:
-    0 0 30px 8px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
-    0 0 80px 20px color-mix(in srgb, var(--rarity-legendary) 35%, transparent),
-    0 0 140px 40px color-mix(in srgb, var(--rarity-legendary) 18%, transparent),
-    0 0 12px 4px color-mix(in srgb, var(--rarity-legendary) 85%, transparent),
-    inset 0 2px 3px rgba(255, 255, 220, 0.9),
-    inset 0 -2px 3px rgba(180, 100, 0, 0.6),
-    inset 2px 0 3px rgba(255, 255, 220, 0.7),
-    inset -2px 0 3px rgba(180, 100, 0, 0.5),
-    0 6px 24px rgba(0, 0, 0, 0.5);
+    0 0 16px 5px color-mix(in srgb, var(--rarity-legendary) 50%, transparent),
+    0 0 45px 12px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
+    0 0 90px 28px color-mix(in srgb, var(--rarity-legendary) 14%, transparent),
+    0 3px 12px rgba(0, 0, 0, 0.4);
+  /* 真实金条渐变：深金→亮金→白金高光→深金 */
   background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--rarity-legendary) 100%, #fff 30%) 0%,
-    var(--rarity-legendary) 20%,
-    color-mix(in srgb, var(--rarity-legendary) 100%, #fff 20%) 40%,
-    var(--rarity-legendary) 60%,
-    color-mix(in srgb, var(--rarity-legendary) 100%, #000 20%) 80%,
-    var(--rarity-legendary) 100%
+    100deg,
+    #7a5c08 0%,
+    #b8860b 15%,
+    #daa520 28%,
+    #ffd700 40%,
+    #fff8dc 46%,
+    #ffd700 54%,
+    #daa520 66%,
+    #b8860b 80%,
+    #7a5c08 100%
   ) !important;
-  filter: brightness(1.08) saturate(1.25);
-  animation: legendary-breathe 2.6s ease-in-out infinite;
+  animation: legendary-breathe 3s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
 }
+/* 横向扫光条 — 金属镜面反射光 */
 .bubble.rarity-legendary::before {
   content: '';
   position: absolute;
-  top: 0; left: -35%;
-  width: 32%;
-  height: 100%;
+  top: 2px; left: -40%;
+  width: 35%;
+  height: calc(100% - 4px);
   background: linear-gradient(
-    105deg,
+    90deg,
     transparent 0%,
-    rgba(255, 245, 180, 0.12) 20%,
-    rgba(255, 255, 220, 0.55) 42%,
-    rgba(255, 255, 240, 0.92) 48%,
-    rgba(255, 255, 220, 0.6) 54%,
-    rgba(255, 245, 180, 0.2) 65%,
+    rgba(255, 255, 255, 0.0) 15%,
+    rgba(255, 255, 255, 0.6) 42%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.65) 58%,
+    rgba(255, 255, 255, 0.0) 80%,
     transparent 100%
   );
-  transform: skewX(-16deg);
+  transform: skewX(-20deg);
+  z-index: 2;
+  animation: legendary-shimmer 2.2s ease-in-out infinite;
   pointer-events: none;
   border-radius: inherit;
-  z-index: 1;
-  animation: legendary-shimmer 1.8s linear infinite;
 }
+/* 底部金砖反光 */
 .bubble.rarity-legendary::after {
   content: '';
   position: absolute;
-  bottom: 0; left: -10%;
-  width: 20%;
-  height: 40%;
-  background: radial-gradient(
-    ellipse at bottom,
-    rgba(255, 230, 150, 0.35) 0%,
-    transparent 70%
-  );
+  bottom: -5px; left: 10%;
+  width: 80%;
+  height: 12px;
+  background: radial-gradient(ellipse, rgba(255, 210, 60, 0.55) 0%, transparent 70%);
+  z-index: 0;
   pointer-events: none;
-  border-radius: inherit;
-  z-index: 1;
-  animation: legendary-bottom-glow 3s ease-in-out infinite;
-}
-@keyframes legendary-shimmer {
-  0%   { left: -35%; }
-  100% { left: 135%; }
-}
-@keyframes legendary-bottom-glow {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.9; }
 }
 @keyframes legendary-breathe {
   0%, 100% {
     box-shadow:
-      0 0 24px 6px color-mix(in srgb, var(--rarity-legendary) 60%, transparent),
-      0 0 70px 18px color-mix(in srgb, var(--rarity-legendary) 40%, transparent),
-      0 0 130px 36px color-mix(in srgb, var(--rarity-legendary) 20%, transparent),
-      0 0 10px 3px color-mix(in srgb, var(--rarity-legendary) 90%, transparent),
-      inset 0 2px 3px rgba(255, 255, 220, 0.9),
-      inset 0 -2px 3px rgba(180, 100, 0, 0.6),
-      inset 2px 0 3px rgba(255, 255, 220, 0.7),
-      inset -2px 0 3px rgba(180, 100, 0, 0.5),
-      0 6px 24px rgba(0, 0, 0, 0.5);
-    filter: brightness(1.06) saturate(1.2);
+      0 0 14px 4px color-mix(in srgb, var(--rarity-legendary) 50%, transparent),
+      0 0 40px 10px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
+      0 0 80px 24px color-mix(in srgb, var(--rarity-legendary) 14%, transparent),
+      0 3px 12px rgba(0, 0, 0, 0.4);
+    filter: brightness(1.05) saturate(1.15);
   }
   50% {
     box-shadow:
-      0 0 36px 10px color-mix(in srgb, var(--rarity-legendary) 90%, transparent),
-      0 0 100px 28px color-mix(in srgb, var(--rarity-legendary) 60%, transparent),
-      0 0 180px 55px color-mix(in srgb, var(--rarity-legendary) 35%, transparent),
-      0 0 14px 5px color-mix(in srgb, var(--rarity-legendary) 100%, transparent),
-      inset 0 3px 5px rgba(255, 255, 240, 1),
-      inset 0 -3px 5px rgba(160, 85, 0, 0.7),
-      inset 3px 0 5px rgba(255, 255, 240, 0.85),
-      inset -3px 0 5px rgba(160, 85, 0, 0.6),
-      0 8px 32px rgba(0, 0, 0, 0.55);
-    filter: brightness(1.18) saturate(1.45);
+      0 0 22px 7px color-mix(in srgb, var(--rarity-legendary) 70%, transparent),
+      0 0 60px 18px color-mix(in srgb, var(--rarity-legendary) 42%, transparent),
+      0 0 110px 38px color-mix(in srgb, var(--rarity-legendary) 20%, transparent),
+      0 4px 16px rgba(0, 0, 0, 0.45);
+    filter: brightness(1.12) saturate(1.35);
   }
+}
+@keyframes legendary-shimmer {
+  0%   { left: -40%; opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { left: 140%; opacity: 0.7; }
 }
 .bubble.rarity-legendary:hover {
   animation-play-state: paused;
+  filter: brightness(1.15) saturate(1.4);
+  box-shadow:
+    0 0 28px 8px color-mix(in srgb, var(--rarity-legendary) 75%, transparent),
+    0 0 80px 24px color-mix(in srgb, var(--rarity-legendary) 48%, transparent),
+    0 0 140px 50px color-mix(in srgb, var(--rarity-legendary) 24%, transparent),
+    0 6px 20px rgba(0, 0, 0, 0.5);
 }
-.bubble.rarity-legendary:hover::before,
-.bubble.rarity-legendary:hover::after {
+.bubble.rarity-legendary:hover::before {
   animation-play-state: paused;
 }
 
@@ -1020,6 +1004,5 @@ export default {
   opacity: 1;
   filter: brightness(1.1) saturate(1.2);
 }
-
 
 </style>
