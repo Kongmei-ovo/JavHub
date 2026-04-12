@@ -902,101 +902,107 @@ export default {
   animation-play-state: paused;
 }
 
-/* ---------- 金卡 Legendary：Polished Gold Bar 全特效 ---------- */
+/* ---------- 金卡 Legendary：皇家琥珀光晕全特效 ---------- */
 .bubble.rarity-legendary {
   border-radius: 14px;
   overflow: visible;
-  /* 琥珀色内敛呼吸 glow */
+  /* 琥珀金内敛呼吸 glow — 三层环形 */
   box-shadow:
-    0 0 16px 5px color-mix(in srgb, var(--rarity-legendary) 50%, transparent),
-    0 0 45px 12px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
-    0 0 90px 28px color-mix(in srgb, var(--rarity-legendary) 14%, transparent),
-    0 3px 12px rgba(0, 0, 0, 0.4);
-  /* 真实金条渐变：深金→亮金→白金高光→深金 */
+    0 0 14px 4px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
+    0 0 38px 10px color-mix(in srgb, var(--rarity-legendary) 30%, transparent),
+    0 0 75px 22px color-mix(in srgb, var(--rarity-legendary) 16%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.45);
+  /* 皇家金渐变：深金→中金→琥珀金→亮金→中金→深金 */
   background: linear-gradient(
-    100deg,
-    #7a5c08 0%,
-    #b8860b 15%,
-    #daa520 28%,
-    #ffd700 40%,
-    #fff8dc 46%,
-    #ffd700 54%,
-    #daa520 66%,
-    #b8860b 80%,
-    #7a5c08 100%
+    145deg,
+    #8B6914 0%,
+    #C9960C 20%,
+    #E5B819 35%,
+    #F5D033 45%,
+    #E5B819 55%,
+    #C9960C 70%,
+    #8B6914 100%
   ) !important;
-  animation: legendary-breathe 3s ease-in-out infinite;
+  animation: legendary-breathe 2.8s ease-in-out infinite;
   position: relative;
   z-index: 1;
 }
-/* 横向扫光条 — 金属镜面反射光 */
+/* 环绕金晕 — 旋转光晕层 */
 .bubble.rarity-legendary::before {
   content: '';
   position: absolute;
-  top: 2px; left: -40%;
-  width: 35%;
-  height: calc(100% - 4px);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.0) 15%,
-    rgba(255, 255, 255, 0.6) 42%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0.65) 58%,
-    rgba(255, 255, 255, 0.0) 80%,
-    transparent 100%
+  inset: -6px;
+  border-radius: 18px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 215, 0, 0.18) 30deg,
+    rgba(255, 200, 50, 0.35) 60deg,
+    rgba(255, 215, 0, 0.18) 90deg,
+    transparent 120deg,
+    rgba(255, 215, 0, 0.12) 180deg,
+    transparent 210deg,
+    rgba(255, 215, 0, 0.22) 250deg,
+    rgba(255, 200, 50, 0.35) 290deg,
+    rgba(255, 215, 0, 0.18) 330deg,
+    transparent 360deg
   );
-  transform: skewX(-20deg);
-  z-index: 2;
-  animation: legendary-shimmer 2.2s ease-in-out infinite;
+  z-index: -1;
+  animation: legendary-aura 4s linear infinite;
   pointer-events: none;
-  border-radius: inherit;
+  opacity: 0.85;
 }
-/* 底部金砖反光 */
+/* 内部金色高光边缘 */
 .bubble.rarity-legendary::after {
   content: '';
   position: absolute;
-  bottom: -5px; left: 10%;
-  width: 80%;
-  height: 12px;
-  background: radial-gradient(ellipse, rgba(255, 210, 60, 0.55) 0%, transparent 70%);
-  z-index: 0;
+  inset: 2px;
+  border-radius: 11px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 210, 0.35) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(139, 105, 20, 0.25) 100%
+  );
   pointer-events: none;
+  z-index: 1;
 }
 @keyframes legendary-breathe {
   0%, 100% {
     box-shadow:
-      0 0 14px 4px color-mix(in srgb, var(--rarity-legendary) 50%, transparent),
-      0 0 40px 10px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
-      0 0 80px 24px color-mix(in srgb, var(--rarity-legendary) 14%, transparent),
-      0 3px 12px rgba(0, 0, 0, 0.4);
+      0 0 12px 4px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
+      0 0 35px 9px color-mix(in srgb, var(--rarity-legendary) 30%, transparent),
+      0 0 70px 20px color-mix(in srgb, var(--rarity-legendary) 16%, transparent),
+      0 4px 14px rgba(0, 0, 0, 0.4);
     filter: brightness(1.05) saturate(1.15);
   }
   50% {
     box-shadow:
-      0 0 22px 7px color-mix(in srgb, var(--rarity-legendary) 70%, transparent),
-      0 0 60px 18px color-mix(in srgb, var(--rarity-legendary) 42%, transparent),
-      0 0 110px 38px color-mix(in srgb, var(--rarity-legendary) 20%, transparent),
-      0 4px 16px rgba(0, 0, 0, 0.45);
-    filter: brightness(1.12) saturate(1.35);
+      0 0 22px 7px color-mix(in srgb, var(--rarity-legendary) 80%, transparent),
+      0 0 55px 16px color-mix(in srgb, var(--rarity-legendary) 48%, transparent),
+      0 0 100px 35px color-mix(in srgb, var(--rarity-legendary) 25%, transparent),
+      0 4px 18px rgba(0, 0, 0, 0.45);
+    filter: brightness(1.15) saturate(1.4);
   }
 }
-@keyframes legendary-shimmer {
-  0%   { left: -40%; opacity: 0.7; }
-  50%  { opacity: 1; }
-  100% { left: 140%; opacity: 0.7; }
+/* 环绕光晕旋转动画 */
+@keyframes legendary-aura {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 .bubble.rarity-legendary:hover {
   animation-play-state: paused;
-  filter: brightness(1.15) saturate(1.4);
+  filter: brightness(1.18) saturate(1.45);
   box-shadow:
-    0 0 28px 8px color-mix(in srgb, var(--rarity-legendary) 75%, transparent),
-    0 0 80px 24px color-mix(in srgb, var(--rarity-legendary) 48%, transparent),
-    0 0 140px 50px color-mix(in srgb, var(--rarity-legendary) 24%, transparent),
-    0 6px 20px rgba(0, 0, 0, 0.5);
+    0 0 28px 8px color-mix(in srgb, var(--rarity-legendary) 85%, transparent),
+    0 0 75px 22px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
+    0 0 130px 48px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
+    0 6px 22px rgba(0, 0, 0, 0.5);
 }
 .bubble.rarity-legendary:hover::before {
   animation-play-state: paused;
+  opacity: 1;
 }
 
 /* ---------- Active状态 ---------- */
