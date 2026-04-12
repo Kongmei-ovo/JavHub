@@ -28,10 +28,6 @@
 
           <!-- 基本数据 -->
           <div class="modal-meta">
-            <div v-if="video.content_id" class="meta-row">
-              <span class="meta-label">内容ID</span>
-              <span class="meta-value">{{ video.content_id }}</span>
-            </div>
             <div v-if="video.dvd_id" class="meta-row">
               <span class="meta-label">DVD编号</span>
               <span class="meta-value">{{ video.dvd_id }}</span>
@@ -44,15 +40,15 @@
               <span class="meta-label">时长</span>
               <span class="meta-value">{{ video.runtime_mins }} 分钟</span>
             </div>
-            <div v-if="video.maker || video.label" class="meta-row">
-              <span class="meta-label">厂牌</span>
-              <span class="meta-value clickable" @click="$emit('search-by-maker', (video.maker || video.label).name_en || (video.maker || video.label).name_ja)">
-                {{ displayName(video.maker || video.label) }}
+            <div v-if="video.maker" class="meta-row">
+              <span class="meta-label">工作室</span>
+              <span class="meta-value clickable" @click="$emit('search-by-maker', video.maker.name_en || video.maker.name_ja)">
+                {{ displayName(video.maker) }}
               </span>
-              <template v-if="!makerLabelSame && video.label && video.maker">
-                <span class="meta-sep">/</span>
-                <span class="meta-value">{{ displayName(video.label) }}</span>
-              </template>
+            </div>
+            <div v-if="video.label" class="meta-row">
+              <span class="meta-label">厂牌</span>
+              <span class="meta-value">{{ displayName(video.label) }}</span>
             </div>
             <div v-if="video.series" class="meta-row">
               <span class="meta-label">系列</span>
@@ -155,14 +151,6 @@ export default {
     video: { type: Object, default: () => ({}) }
   },
   computed: {
-    makerLabelSame() {
-      if (!this.video) return false
-      const m = this.video.maker
-      const l = this.video.label
-      if (!m || !l) return false
-      // 同 id 或同显示名则视为同源
-      return (m.id && l.id && m.id === l.id) || (this.displayName(m) === this.displayName(l))
-    },
     magnets() {
       if (!this.video) return []
       if (this.video.magnets && Array.isArray(this.video.magnets)) {
@@ -362,12 +350,6 @@ export default {
 
 .meta-value {
   color: var(--text-primary);
-  font-size: 13px;
-}
-
-.meta-sep {
-  color: var(--text-muted);
-  margin: 0 6px;
   font-size: 13px;
 }
 
