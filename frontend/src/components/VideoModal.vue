@@ -211,14 +211,27 @@ export default {
     },
     coverImageUrl() {
       if (!this.video) return '/placeholder.png'
-      const url = this.video.jacket_thumb_url
-      if (!url) return '/placeholder.png'
-      // 如果是外部DMM图片URL，通过后端代理
-      if (url.startsWith('http')) {
-        return `/api/proxy/image?url=${encodeURIComponent(url)}`
+      // 优先用 jacket_full_url 构建高清
+      const fullUrl = this.video.jacket_full_url
+      let hiResUrl = null
+      if (fullUrl) {
+        hiResUrl = fullUrl.startsWith('http')
+          ? jacketFullUrl(fullUrl) || fullUrl
+          : jacketFullUrl(fullUrl)
       }
-      const hiRes = jacketFullUrl(url)
-      return hiRes || url || '/placeholder.png'
+      // 退而求次：从 jacket_thumb_url 构建高清
+      const thumbUrl = this.video.jacket_thumb_url
+      if (!hiResUrl && thumbUrl) {
+        hiResUrl = thumbUrl.startsWith('http')
+          ? jacketFullUrl(thumbUrl) || thumbUrl
+          : jacketFullUrl(thumbUrl)
+      }
+      if (!hiResUrl) return '/placeholder.png'
+      // 高清 URL 如果是 awsimgsrc 或 pics.dmm 域名，走代理避免 CORS
+      if (hiResUrl.startsWith('https://awsimgsrc.') || hiResUrl.startsWith('https://pics.')) {
+        return `/api/proxy/image?url=${encodeURIComponent(hiResUrl)}`
+      }
+      return hiResUrl
     },
     galleryThumbs() {
       if (!this.video) return []
