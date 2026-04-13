@@ -1,59 +1,91 @@
-import time
-import asyncio
-from typing import Dict, Optional, Any
-from threading import Lock
+from __future__ import annotations
+import hashlib
+import json
+from pathlib import Path
+from diskcache import Cache
+from typing import Any, Optional
 
-class CacheItem:
-    def __init__(self, value: Any, ttl: int = 300):
-        self.value = value
-        self.expires_at = time.time() + ttl
+# Default TTLs in seconds
+DEFAULT_VIDEO_TTL = 86400       # 24h
+DEFAULT_STATS_TTL = 3600        # 1h
+DEFAULT_ENUM_TTL = 86400         # 24h
+DEFAULT_SEARCH_TTL = 600         # 10min
 
-    def is_expired(self) -> bool:
-        return time.time() > self.expires_at
+_cache: Optional[Cache] = None
 
-class MemoryCache:
-    """简单的内存缓存"""
 
-    def __init__(self):
-        self._cache: Dict[str, CacheItem] = {}
-        self._lock = Lock()
+def _get_cache() -> Cache:
+    global _cache
+    if _cache is None:
+        cache_dir = Path(__file__).parent.parent.parent / "data" / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _cache = Cache(str(cache_dir), size_limit=5 * 1024 * 1024 * 1024)  # 5GB
+    return _cache
 
-    def get(self, key: str) -> Optional[Any]:
-        with self._lock:
-            item = self._cache.get(key)
-            if item is None:
-                return None
-            if item.is_expired():
-                del self._cache[key]
-                return None
-            return item.value
 
-    def set(self, key: str, value: Any, ttl: int = 300):
-        with self._lock:
-            self._cache[key] = CacheItem(value, ttl)
+# === Video ===
 
-    def delete(self, key: str):
-        with self._lock:
-            if key in self._cache:
-                del self._cache[key]
+def get_video(content_id: str) -> Optional[dict]:
+    return _get_cache().get(f"video:{content_id}")
 
-    def clear(self):
-        with self._lock:
-            self._cache.clear()
 
-    def cleanup_expired(self):
-        """清理过期缓存"""
-        with self._lock:
-            expired_keys = [k for k, v in self._cache.items() if v.is_expired()]
-            for key in expired_keys:
-                del self._cache[key]
+def set_video(content_id: str, data: dict, ttl: int = DEFAULT_VIDEO_TTL) -> None:
+    _get_cache().set(f"video:{content_id}", data, expire=ttl)
 
-# 全局缓存实例
-cache = MemoryCache()
 
-# 缓存键名常量
-CACHE_KEYS = {
-    'search': 'search:{}',  # search:{keyword}
-    'actor_movies': 'actor:{}',  # actor:{actor_name}
-    'emby_check': 'emby:{}',  # emby:{code}
-}
+# === Search ===
+
+def get_search(params: dict, page: int) -> Optional[dict]:
+    key = _search_key(params, page)
+    return _get_cache().get(key)
+
+
+def set_search(params: dict, page: int, data: dict, ttl: int = DEFAULT_SEARCH_TTL) -> None:
+    key = _search_key(params, page)
+    _get_cache().set(key, data, expire=ttl)
+
+
+def _search_key(params: dict, page: int) -> str:
+    stable = json.dumps(params, sort_keys=True, default=str)
+    h = hashlib.md5(stable.encode()).hexdigest()
+    return f"search:{h}:{page}"
+
+
+# === Category Stats ===
+
+def get_category_stats() -> Optional[list]:
+    return _get_cache().get("category:stats")
+
+
+def set_category_stats(data: list, ttl: int = DEFAULT_STATS_TTL) -> None:
+    _get_cache().set("category:stats", data, expire=ttl)
+
+
+# === Enums ===
+
+def get_enum_list(enum_type: str) -> Optional[list]:
+    return _get_cache().get(f"enum:{enum_type}")
+
+
+def set_enum_list(enum_type: str, data: list, ttl: int = DEFAULT_ENUM_TTL) -> None:
+    _get_cache().set(f"enum:{enum_type}", data, expire=ttl)
+
+
+# === Purge ===
+
+def purge_video_cache() -> int:
+    """清除所有 video 和 search 缓存，返回清除数量"""
+    cache = _get_cache()
+    count = 0
+    for key in list(cache.iterkeys()):
+        if key.startswith("video:") or key.startswith("search:"):
+            del cache[key]
+            count += 1
+    return count
+
+
+def purge_all() -> int:
+    """清除所有缓存"""
+    count = len(_get_cache())
+    _get_cache().clear()
+    return count

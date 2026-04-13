@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from modules.info_client import get_info_client
+from services import cache
 
 router = APIRouter(prefix="/api/v1/categories", tags=["categories"])
 
@@ -12,9 +13,12 @@ async def list_categories():
 @router.get("/stats")
 async def category_stats():
     """
-    返回每个 category 的影片数量统计，用于金色传说稀有度计算。
-    对每个 category 调用 searchVideos(category_id, page_size=1) 获取 total。
+    返回每个 category 的影片数量统计，用于金色传说稀有度计算（缓存1小时）。
     """
+    cached = cache.get_category_stats()
+    if cached is not None:
+        return cached
+
     client = get_info_client()
     categories = await client.list_categories()
 
@@ -36,4 +40,5 @@ async def category_stats():
             continue
         stats.append(r)
 
+    cache.set_category_stats(stats)
     return stats

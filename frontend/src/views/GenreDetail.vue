@@ -93,7 +93,7 @@
         >
           <div class="card-cover">
             <img
-              :src="item.jacket_full_url || item.jacket_thumb_url || '/placeholder.png'"
+              :src="cardImageUrl(item)"
               :alt="item.dvd_id || item.content_id"
               @error="handleImgError"
               loading="lazy"
@@ -138,6 +138,7 @@ import gsap from 'gsap'
 import api from '../api'
 import VideoModal from '../components/VideoModal.vue'
 import { displayName } from '../utils/displayLang.js'
+import { jacketHdUrl } from '../utils/imageUrl.js'
 
 const PALETTES = {
   monet: ['linear-gradient(135deg, #c4b5d8, #a5b4c8)', 'linear-gradient(135deg, #d4c4e0, #b8c5d6)', 'linear-gradient(135deg, #c8d4c0, #a8b8a0)', 'linear-gradient(135deg, #d0c0dc, #b0a8c8)', 'linear-gradient(135deg, #e0d0d8, #c8b8c0)', 'linear-gradient(135deg, #c0cce0, #a8b8cc)', 'linear-gradient(135deg, #d8c8dc, #c0b0cc)', 'linear-gradient(135deg, #ccd4d8, #b8c4c8)'],
@@ -591,6 +592,9 @@ export default {
     },
     handleImgError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'
+    },
+    cardImageUrl(item) {
+      return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'
     }
   },
   beforeUnmount() {

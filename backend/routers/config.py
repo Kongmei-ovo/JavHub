@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from config import config
+from services import cache
 
 router = APIRouter(prefix="/api", tags=["config"])
 
@@ -10,4 +11,17 @@ async def get_config():
 @router.put("/config")
 async def update_config(new_config: dict):
     config.update(new_config)
+    # JavInfoApi URL 变更后立即生效
+    if "javinfo" in new_config:
+        from modules.info_client import reset_info_client
+        reset_info_client()
     return {"success": True}
+
+@router.post("/cache/purge")
+async def purge_cache(scope: str = "video"):
+    """清除缓存，scope=all 清除全部，scope=video 只清除视频和搜索缓存"""
+    if scope == "all":
+        count = cache.purge_all()
+    else:
+        count = cache.purge_video_cache()
+    return {"purged": count, "scope": scope}

@@ -1,9 +1,12 @@
 from __future__ import annotations
 import httpx
 from typing import Any
+from services import cache
 
 # DMM/FANZA 图片基础URL
 DMM_IMAGE_BASE_URL = "https://pics.dmm.co.jp"
+# DMM 预览视频基础URL
+DMM_SAMPLE_BASE_URL = "https://cc3001.dmm.co.jp"
 
 
 def _transform_jacket_url(jacket_path: str | None) -> str | None:
@@ -12,13 +15,22 @@ def _transform_jacket_url(jacket_path: str | None) -> str | None:
         return None
     if jacket_path.startswith("http"):
         return jacket_path
-    # 移除开头的斜杠（如果有）
     jacket_path = jacket_path.lstrip("/")
     return f"{DMM_IMAGE_BASE_URL}/{jacket_path}.jpg"
 
 
+def _transform_sample_url(sample_path: str | None) -> str | None:
+    """将相对路径转换为完整的DMM预览视频URL"""
+    if not sample_path:
+        return None
+    if sample_path.startswith("http"):
+        return sample_path
+    sample_path = sample_path.lstrip("/")
+    return f"{DMM_SAMPLE_BASE_URL}/{sample_path}"
+
+
 def _transform_video_item(item: dict) -> dict:
-    """转换视频项的图片URL为完整路径"""
+    """转换视频项的图片URL和预览视频URL为完整路径"""
     if not item:
         return item
     item = dict(item)
@@ -26,6 +38,8 @@ def _transform_video_item(item: dict) -> dict:
         item["jacket_thumb_url"] = _transform_jacket_url(item.get("jacket_thumb_url"))
     if "jacket_full_url" in item:
         item["jacket_full_url"] = _transform_jacket_url(item.get("jacket_full_url"))
+    if "sample_url" in item:
+        item["sample_url"] = _transform_sample_url(item.get("sample_url"))
     return item
 
 
@@ -79,33 +93,24 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
-        """搜索视频"""
-        params = {"page": page, "page_size": page_size}
-        if q:
-            params["q"] = q
+        """搜索视频（结果缓存10分钟，有结果才缓存）"""
+        params = {"q": q, "maker_id": maker_id, "maker_name": maker_name,
+                  "series_id": series_id, "series_name": series_name, "actress_id": actress_id,
+                  "actress_name": actress_name, "category_id": category_id, "category_name": category_name,
+                  "page": page, "page_size": page_size}
+        # content_id 映射到 JavInfoApi 的 dvd_id 字段（JavInfoApi 的 dvd_id = 小写 content_id）
         if content_id:
-            # JavInfoApi 用 dvd_id 来匹配番号
-            params["dvd_id"] = content_id
-        if maker_id:
-            params["maker_id"] = maker_id
-        if maker_name:
-            params["maker_name"] = maker_name
-        if series_id:
-            params["series_id"] = series_id
-        if series_name:
-            params["series_name"] = series_name
-        if actress_id:
-            params["actress_id"] = actress_id
-        if actress_name:
-            params["actress_name"] = actress_name
-        if category_id:
-            params["category_id"] = category_id
-        if category_name:
-            params["category_name"] = category_name
-        result = await self._get("/api/v1/videos/search", params)
+            params["dvd_id"] = content_id.lower()
+        cached = cache.get_search({k: v for k, v in params.items() if v is not None}, page)
+        if cached is not None:
+            return cached
+        result = await self._get("/api/v1/videos/search", {k: v for k, v in params.items() if v is not None})
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
+        # 只缓存有结果的搜索，空结果不缓存（避免"搜过=永远没有"）
+        if result.get("total_count", 0) > 0:
+            cache.set_search({k: v for k, v in params.items() if v is not None}, page, result)
         return result
 
     async def list_videos(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
@@ -117,13 +122,18 @@ class InfoClient:
         return result
 
     async def get_video(self, content_id: str, service_code: str | None = None) -> dict[str, Any]:
-        """获取视频详情"""
+        """获取视频详情（缓存24小时）"""
+        cached = cache.get_video(content_id)
+        if cached is not None:
+            return cached
         params = {}
         if service_code:
             params["service_code"] = service_code
         result = await self._get(f"/api/v1/videos/{content_id}", params=params or None)
         # 转换图片URL
-        return _transform_video_item(result)
+        data = _transform_video_item(result)
+        cache.set_video(content_id, data)
+        return data
 
     # === 演员相关 ===
 
@@ -149,20 +159,40 @@ class InfoClient:
     # === 枚举数据 ===
 
     async def list_makers(self) -> list[dict]:
-        """获取所有厂商"""
-        return await self._get_list("/api/v1/makers")
+        """获取所有厂商（缓存24小时）"""
+        cached = cache.get_enum_list("makers")
+        if cached is not None:
+            return cached
+        data = await self._get_list("/api/v1/makers")
+        cache.set_enum_list("makers", data)
+        return data
 
     async def list_series(self) -> list[dict]:
-        """获取所有系列"""
-        return await self._get_list("/api/v1/series")
+        """获取所有系列（缓存24小时）"""
+        cached = cache.get_enum_list("series")
+        if cached is not None:
+            return cached
+        data = await self._get_list("/api/v1/series")
+        cache.set_enum_list("series", data)
+        return data
 
     async def list_categories(self) -> list[dict]:
-        """获取所有题材"""
-        return await self._get_list("/api/v1/categories")
+        """获取所有题材（缓存24小时）"""
+        cached = cache.get_enum_list("categories")
+        if cached is not None:
+            return cached
+        data = await self._get_list("/api/v1/categories")
+        cache.set_enum_list("categories", data)
+        return data
 
     async def list_labels(self) -> list[dict]:
-        """获取所有品牌"""
-        return await self._get_list("/api/v1/labels")
+        """获取所有品牌（缓存24小时）"""
+        cached = cache.get_enum_list("labels")
+        if cached is not None:
+            return cached
+        data = await self._get_list("/api/v1/labels")
+        cache.set_enum_list("labels", data)
+        return data
 
     # === 统计 ===
 
@@ -171,7 +201,7 @@ class InfoClient:
         return await self._get("/api/v1/stats")
 
 
-# 全局单例
+# 全局单例（复用 httpx client，只把 api_url 做成动态读配置）
 _info_client: InfoClient | None = None
 
 
@@ -185,3 +215,13 @@ def get_info_client() -> InfoClient:
             timeout=javinfo_config.get("timeout", 30),
         )
     return _info_client
+
+
+def reset_info_client() -> None:
+    """config 更新后调用，重置 client 的 api_url（下次请求生效）"""
+    global _info_client
+    if _info_client is not None:
+        from config import config
+        javinfo_config = getattr(config, "javinfo", {})
+        _info_client.api_url = javinfo_config.get("api_url", "http://localhost:8080")
+        _info_client.timeout = javinfo_config.get("timeout", 30)

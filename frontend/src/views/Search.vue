@@ -13,7 +13,7 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
-              <input v-model="contentId" placeholder="精确番号，如 ABC-123" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
+              <input v-model="contentId" placeholder="精确番号" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
             </div>
           </div>
           <div class="search-box-wrapper">
@@ -22,7 +22,7 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
-              <input v-model="keyword" placeholder="关键词搜索" @keyup.enter="doSearch" class="search-input" />
+              <input v-model="keyword" placeholder="标题" @keyup.enter="doSearch" class="search-input" />
             </div>
           </div>
           <div class="search-box-wrapper">
@@ -104,7 +104,7 @@
       >
         <div class="card-cover">
           <img
-            :src="item.jacket_full_url || item.jacket_thumb_url || '/placeholder.png'"
+            :src="cardImageUrl(item)"
             :alt="item.dvd_id || item.content_id"
             @error="handleImgError"
             @load="onImgLoad($event)"
@@ -147,10 +147,7 @@
       :video="selectedVideo"
       @close="closeModal"
       @download="handleDownload"
-      @search-by-category="searchByCategory"
-      @search-by-maker="searchByMaker"
-      @search-by-series="searchBySeries"
-      @search-by-actress="searchByActress"
+      @navigate="handleNavigate"
     />
   </div>
 </template>
@@ -158,6 +155,8 @@
 <script>
 import api from '../api'
 import VideoModal from '../components/VideoModal.vue'
+import { jacketHdUrl } from '../utils/imageUrl.js'
+import { useRoute } from 'vue-router'
 
 export default {
   name: 'Search',
@@ -189,6 +188,25 @@ export default {
   computed: {
     hasFilters() {
       return this.categoryName || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName
+    }
+  },
+  mounted() {
+    const route = useRoute()
+    const q = route.query
+    if (q.actress) {
+      this.actressName = q.actress
+    }
+    if (q.maker) {
+      this.makerName = q.maker
+    }
+    if (q.series) {
+      this.seriesName = q.series
+    }
+    if (q.keyword || q.q) {
+      this.keyword = q.keyword || q.q
+    }
+    if (this.hasFilters) {
+      this.doSearch()
     }
   },
   methods: {
@@ -312,8 +330,29 @@ export default {
         this.$message.error('添加下载失败')
       }
     },
+    handleNavigate({ type, item }) {
+      // 关闭弹窗，跳转到搜索页并自动搜索
+      this.selectedVideo = null
+      const q = {}
+      if (type === 'actress') {
+        q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
+        this.$router.push({ path: '/search', query: q })
+      } else if (type === 'maker') {
+        q.maker = item.name_en || item.name_ja || ''
+        this.$router.push({ path: '/search', query: q })
+      } else if (type === 'series') {
+        q.series = item.name_en || item.name_ja || ''
+        this.$router.push({ path: '/search', query: q })
+      } else if (type === 'category') {
+        q.keyword = item.name_en || item.name_ja || ''
+        this.$router.push({ path: '/search', query: q })
+      }
+    },
     handleImgError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'
+    },
+    cardImageUrl(item) {
+      return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'
     },
     onImgLoad(e) {
       const img = e.target

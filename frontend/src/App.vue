@@ -83,22 +83,22 @@ export default {
     const route = useRoute()
 
     const navItems = [
-      { path: '/', label: '下载管理', icon: IconHome },
-      { path: '/search', label: '磁链搜索', icon: IconSearch },
       { path: '/genres', label: '个性推荐', icon: IconGenres },
+      { path: '/search', label: '磁链搜索', icon: IconSearch },
       { path: '/parse', label: '磁链解析', icon: IconParse },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
+      { path: '/', label: '下载管理', icon: IconHome },
       { path: '/settings', label: '设置', icon: IconSettings },
     ]
 
     const bottomNavItems = [
-      { path: '/', label: '首页', icon: IconHome },
-      { path: '/search', label: '搜索', icon: IconSearch },
       { path: '/genres', label: '推荐', icon: IconGenres },
+      { path: '/search', label: '搜索', icon: IconSearch },
       { path: '/favorites', label: '收藏', icon: IconHeart },
       { path: '/parse', label: '解析', icon: IconParse },
       { path: '/subscription', label: '订阅', icon: IconStar },
+      { path: '/', label: '下载', icon: IconHome },
       { path: '/settings', label: '我的', icon: IconSettings },
     ]
 

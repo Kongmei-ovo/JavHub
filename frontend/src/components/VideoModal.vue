@@ -7,7 +7,7 @@
         <!-- 顶部大图 -->
         <div class="modal-gallery">
           <img
-            :src="video.jacket_full_url || video.jacket_thumb_url || '/placeholder.png'"
+            :src="coverImageUrl"
             :alt="video.dvd_id || video.content_id"
             @error="handleImgError"
             class="gallery-img"
@@ -19,6 +19,19 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
+            <a
+              v-if="video.sample_url"
+              :href="video.sample_url"
+              target="_blank"
+              rel="noopener"
+              class="preview-btn"
+              title="观看预览"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              预览
+            </a>
           </div>
 
           <!-- 标题 -->
@@ -42,7 +55,7 @@
             </div>
             <div v-if="video.maker" class="meta-row">
               <span class="meta-label">工作室</span>
-              <span class="meta-value clickable" @click="$emit('search-by-maker', video.maker.name_en || video.maker.name_ja)">
+              <span class="meta-value clickable" @click="$emit('navigate', { type: 'maker', item: video.maker })">
                 {{ displayName(video.maker) }}
               </span>
             </div>
@@ -50,11 +63,12 @@
               <span class="meta-label">厂牌</span>
               <span class="meta-value">{{ displayName(video.label) }}</span>
             </div>
-            <div v-if="video.series" class="meta-row">
+            <div class="meta-row">
               <span class="meta-label">系列</span>
-              <span class="meta-value clickable" @click="$emit('search-by-series', video.series.name_en || video.series.name_ja)">
+              <span v-if="video.series" class="meta-value clickable" @click="$emit('navigate', { type: 'series', item: video.series })">
                 {{ displayName(video.series) }}
               </span>
+              <span v-else class="meta-value meta-value--empty">无</span>
             </div>
           </div>
 
@@ -66,7 +80,7 @@
                 v-for="actress in video.actresses"
                 :key="actress.id"
                 class="actress-avatar-item clickable"
-                @click="$emit('search-by-actress', actress.name_kanji || actress.name_romaji)"
+                @click="$emit('navigate', { type: 'actress', item: actress })"
               >
                 <div class="actress-avatar">
                   <img
@@ -90,7 +104,7 @@
                 v-for="cat in video.categories"
                 :key="cat.id"
                 class="actress-tag clickable"
-                @click="$emit('search-by-category', cat.name_en || cat.name_ja)"
+                @click="$emit('navigate', { type: 'category', item: cat })"
               >
                 {{ displayName(cat) }}
               </span>
@@ -101,7 +115,7 @@
           <div v-if="galleryThumbs.length" class="modal-section">
             <h4 class="section-title">剧照</h4>
             <div class="gallery-grid">
-              <div v-for="(thumb, idx) in galleryThumbs" :key="idx" class="gallery-item">
+              <div v-for="(thumb, idx) in galleryThumbs" :key="idx" class="gallery-item" @click="openGalleryViewer(idx)">
                 <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" @error="onGalleryError" />
               </div>
             </div>
@@ -137,18 +151,41 @@
           </div>
         </div>
       </div>
+
+      <!-- 剧照 Lightbox -->
+      <div v-if="galleryViewerVisible" class="gallery-lightbox" @click.self="closeGalleryViewer">
+        <button class="lightbox-close" @click="closeGalleryViewer">×</button>
+        <button class="lightbox-prev" @click="prevGallery" :disabled="galleryThumbs.length <= 1">‹</button>
+        <div class="lightbox-img-wrap">
+          <img
+            :src="formatGalleryUrl(galleryThumbs[currentGalleryIndex])"
+            :alt="'剧照 ' + (currentGalleryIndex + 1)"
+            class="lightbox-img"
+            @error="$event.target.src = galleryThumbUrl(galleryThumbs[currentGalleryIndex])"
+          />
+        </div>
+        <button class="lightbox-next" @click="nextGallery" :disabled="galleryThumbs.length <= 1">›</button>
+        <div class="lightbox-counter">{{ currentGalleryIndex + 1 }} / {{ galleryThumbs.length }}</div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { displayName } from '../utils/displayLang.js'
+import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
 
 export default {
   name: 'VideoModal',
   props: {
     visible: { type: Boolean, default: false },
     video: { type: Object, default: () => ({}) }
+  },
+  data() {
+    return {
+      galleryViewerVisible: false,
+      currentGalleryIndex: 0,
+    }
   },
   computed: {
     magnets() {
@@ -157,6 +194,11 @@ export default {
         return this.video.magnets
       }
       return []
+    },
+    coverImageUrl() {
+      if (!this.video) return '/placeholder.png'
+      const hiRes = jacketFullUrl(this.video.jacket_thumb_url)
+      return hiRes || this.video.jacket_thumb_url || '/placeholder.png'
     },
     galleryThumbs() {
       if (!this.video) return []
@@ -172,7 +214,7 @@ export default {
         thumbs.push(`${prefix}${i}`)
       }
       return thumbs
-    }
+    },
   },
   methods: {
     displayName,
@@ -192,12 +234,10 @@ export default {
     formatAvatarUrl(url) {
       if (!url) return null
       if (url.startsWith('http')) return url
-      return `https://awsimgsrc.dmm.com/dig/mono/actjpgs/${url.replace(/^\//, '')}`
+      return `https://awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/${url.replace(/^\//, '')}`
     },
     formatGalleryUrl(path) {
-      if (!path) return null
-      if (path.startsWith('http')) return path
-      return `https://pics.dmm.co.jp/${path}.jpg`
+      return galleryFullUrl(path) || galleryThumbUrl(path) || null
     },
     async copyMagnet(mag) {
       try {
@@ -206,7 +246,32 @@ export default {
       } catch (e) {
         if (this.$message) this.$message.error('复制失败')
       }
-    }
+    },
+    openGalleryViewer(idx) {
+      this.currentGalleryIndex = idx
+      this.galleryViewerVisible = true
+      window.addEventListener('keydown', this.onGalleryKeydown)
+    },
+    closeGalleryViewer() {
+      this.galleryViewerVisible = false
+      window.removeEventListener('keydown', this.onGalleryKeydown)
+    },
+    prevGallery() {
+      if (!this.galleryThumbs.length) return
+      this.currentGalleryIndex = (this.currentGalleryIndex - 1 + this.galleryThumbs.length) % this.galleryThumbs.length
+    },
+    nextGallery() {
+      if (!this.galleryThumbs.length) return
+      this.currentGalleryIndex = (this.currentGalleryIndex + 1) % this.galleryThumbs.length
+    },
+    onGalleryKeydown(e) {
+      if (e.key === 'Escape') this.closeGalleryViewer()
+      if (e.key === 'ArrowLeft') this.prevGallery()
+      if (e.key === 'ArrowRight') this.nextGallery()
+    },
+  },
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.onGalleryKeydown)
   }
 }
 </script>
@@ -253,6 +318,7 @@ export default {
   background: rgba(0,0,0,0.8);
 }
 
+
 .modal-body {
   display: flex;
   flex-direction: column;
@@ -287,6 +353,9 @@ export default {
 .modal-code-block {
   border-bottom: 2px solid var(--accent);
   padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .modal-code {
@@ -294,6 +363,22 @@ export default {
   font-weight: bold;
   color: var(--accent);
 }
+
+.preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+.preview-btn:hover { opacity: 0.85; }
 
 .modal-title-block {
   border-bottom: 1px solid var(--border);
@@ -351,6 +436,11 @@ export default {
 .meta-value {
   color: var(--text-primary);
   font-size: 13px;
+}
+
+.meta-value--empty {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .clickable {
@@ -557,5 +647,84 @@ export default {
 
 .gallery-item:hover img {
   transform: scale(1.05);
+}
+
+/* ========== Gallery Lightbox ========== */
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  animation: lightbox-in 0.2s ease;
+}
+@keyframes lightbox-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.lightbox-img-wrap {
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 24px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+  z-index: 2;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.22); }
+.lightbox-prev,
+.lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.1);
+  border: none;
+  width: 52px;
+  height: 80px;
+  font-size: 36px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+.lightbox-prev:hover,
+.lightbox-next:hover { background: rgba(255,255,255,0.22); }
+.lightbox-prev:disabled,
+.lightbox-next:disabled { opacity: 0.3; cursor: not-allowed; }
+.lightbox-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  letter-spacing: 0.05em;
 }
 </style>

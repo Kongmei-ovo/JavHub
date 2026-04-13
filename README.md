@@ -1,166 +1,146 @@
 # JavHub
 
-🎬 基于 JavInfoApi 的媒体库管理工具，支持多源搜索、自动订阅与离线下载
+A self-hosted media library management tool with multi-source metadata aggregation, automated monitoring, and direct download integration.
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js)
 
-## 功能特性
+## Features
 
-- 🔍 **多源搜索** - JavBus / JavLib / JavDB 自动 fallback
-- 📺 **订阅管理** - 订阅演员，自动检测新片
-- 📥 **离线下载** - OpenList + 115 网盘无缝集成
-- 🎬 **Emby 库检测** - 自动判断影片是否已存在
-- 💬 **Telegram Bot** - 快捷搜索、下载指令
-- 📬 **通知推送** - 新片发现、下载完成实时通知
-- 🌐 **Web 管理后台** - 直观的 UI 操作界面
+- **Multi-Provider Metadata** — Aggregates content from multiple public sources with automatic fallback
+- **Performer Monitoring** — Subscribe to performers and receive alerts on new content
+- **Direct Link Download** — Integrates with OpenList-compatible endpoints for offline downloads
+- **Emby Library Sync** — Detects whether content already exists in your Emby library
+- **Telegram Bot** — Search, subscribe, and manage downloads directly from chat
+- **Real-time Notifications** — New content alerts, download completion, and system status
+- **Web Dashboard** — Intuitive UI for all management operations
 
-## 快速部署
+## Quick Start
 
-### 方式一：使用 Docker
+### Docker
 
 ```bash
-# 克隆项目
 git clone https://github.com/Kongmei-ovo/JavHub.git
 cd JavHub
-
-# 配置
 cp config.yaml.example config.yaml
-# 编辑 config.yaml 填入你的配置
-
-# 启动
+# Edit config.yaml with your settings
 docker-compose up -d
 ```
 
-### 方式二：手动部署
+### Manual
 
 ```bash
-# 后端
+# Backend
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
-# 前端 (新终端)
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-## 配置说明
+## Configuration
 
-编辑 `config.yaml`:
+Edit `config.yaml`:
 
 ```yaml
 openlist:
-  api_url: "https://your-openlist.com"  # OpenList 地址
+  api_url: "https://your-openlist.com"
   username: "your-username"
   password: "your-password"
-  default_path: "/115/AV"               # 默认下载路径
+  default_path: "/115/AV"
 
 emby:
-  api_url: "http://your-emby:8096"     # Emby 地址
-  api_key: "your-api-key"              # Emby API Key
+  api_url: "http://your-emby:8096"
+  api_key: "your-api-key"
 
 telegram:
-  bot_token: "123456:ABC-DEF..."       # Telegram Bot Token
-  allowed_user_ids: ["123456789"]       # 授权用户 ID
+  bot_token: "123456:ABC-DEF..."
+  allowed_user_ids: ["123456789"]
 
 notification:
   enabled: true
   telegram: true
 
 scheduler:
-  subscription_check_hour: 2           # 每日检查时间（凌晨2点）
+  subscription_check_hour: 2
 ```
 
-## Web 界面
+## Web UI
 
-启动后访问 `http://localhost:3000`
+Access at `http://localhost:3000` after startup.
 
-| 页面 | 功能 |
-|------|------|
-| 首页 | 下载队列状态、统计数据 |
-| 搜索 | 番号/演员搜索，选择磁力下载 |
-| 订阅 | 管理演员订阅，手动检查更新 |
-| 库检测 | 检查影片是否已在 Emby 库中 |
-| 日志 | 查看系统运行日志 |
-| 配置 | 修改系统配置 |
+| Page | Description |
+|------|-------------|
+| Dashboard | Download queue, system statistics |
+| Search | Search by content ID or performer, select download |
+| Subscriptions | Manage performer subscriptions, manual checks |
+| Library Check | Verify if content exists in Emby |
+| Logs | View system logs |
+| Settings | Configure system parameters |
 
-## Telegram Bot 命令
+## Telegram Bot Commands
 
-| 命令 | 说明 |
-|------|------|
-| `/search ABC-123` | 搜索影片 |
-| `/sub add 演员名` | 添加订阅 |
-| `/sub list` | 查看订阅列表 |
-| `/sub del 演员名` | 删除订阅 |
-| `/check` | 手动检查订阅更新 |
-| `/status` | 查看下载队列 |
+| Command | Description |
+|---------|-------------|
+| `/search ABC-123` | Search by content ID |
+| `/sub add Name` | Add performer subscription |
+| `/sub list` | List all subscriptions |
+| `/sub del Name` | Remove subscription |
+| `/check` | Manually trigger subscription check |
+| `/status` | View download queue |
 
-## API 接口
-
-```
-GET  /api/search?keyword=xxx     # 搜索影片
-POST /api/download                # 创建下载任务
-GET  /api/downloads               # 下载列表
-GET  /api/subscriptions           # 订阅列表
-POST /api/subscription           # 添加订阅
-GET  /api/library/check?code=xxx  # 库检测
-GET  /api/logs                   # 日志
-GET  /api/config                 # 配置
-PUT  /api/config                  # 更新配置
-```
-
-## 开发
-
-### 项目结构
+## API
 
 ```
-avdownloader/
-├── backend/              # FastAPI 后端
-│   ├── routers/          # API 路由
-│   ├── services/         # 业务逻辑
-│   └── telegram/         # Telegram Bot
-├── frontend/             # Vue 3 前端
+GET  /api/v1/videos/search?q=xxx      # Search content
+GET  /api/v1/videos/{id}              # Content detail
+POST /api/downloads                    # Create download task
+GET  /api/downloads                   # Download list
+GET  /api/subscriptions               # Subscription list
+POST /api/subscriptions               # Add subscription
+GET  /api/library/check?code=xxx      # Emby library check
+GET  /api/logs                        # System logs
+GET  /api/config                       # Configuration
+PUT  /api/config                       # Update configuration
+```
+
+## Project Structure
+
+```
+JavHub/
+├── backend/              # FastAPI backend
+│   ├── routers/          # API routes
+│   ├── services/         # Business logic
+│   └── telegram/         # Telegram bot
+├── frontend/             # Vue 3 frontend
 │   └── src/
-│       ├── views/        # 页面组件
-│       └── api/          # API 调用
+│       ├── views/        # Page components
+│       └── api/          # API client
 └── docker-compose.yml
 ```
 
-### 本地开发
+## Cloud Deployment
 
-```bash
-# 后端
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+Push to GitHub and GitHub Actions will automatically build Docker images:
 
-# 前端
-cd frontend
-npm install
-npm run dev
-```
-
-## 部署到云端
-
-推送到 GitHub 后，使用 GitHub Actions 自动构建 Docker 镜像：
-
-1. Fork 本项目
-2. 在 GitHub Secrets 添加配置：
+1. Fork this repository
+2. Add to GitHub Secrets:
    - `DOCKER_USERNAME`
    - `DOCKER_TOKEN`
-3. Push 代码触发构建
+3. Push to trigger build
 
-## 免责声明
+## Disclaimer
 
-本项目仅供技术学习与个人研究使用。
+This project is for personal use and educational purposes only.
 
-- 本项目**不提供**影片数据库，不存储、传播任何受版权保护的内容
-- 本项目仅作为元数据管理工具，数据来源为自建 JavInfoApi（基于 DMM/FANZA 等公开页面数据）
-- 使用本项目所产生的一切行为，均由使用者自行承担全部责任
-- 请勿将本项目用于任何商业盈利目的
+- This project does not host or distribute any content
+- All metadata is sourced from publicly available APIs
+- Users are solely responsible for their use of this tool
+- This tool is not intended for commercial use
 
 ## License
 

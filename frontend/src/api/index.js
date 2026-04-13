@@ -174,6 +174,10 @@ export default {
     return api.put('/config', config)
   },
 
+  purgeCache(scope = 'video') {
+    return api.post('/cache/purge', null, { params: { scope } })
+  },
+
   // ========== 图片代理 ==========
 
   proxyImage(url) {

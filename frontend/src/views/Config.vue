@@ -55,6 +55,22 @@
         </div>
       </div>
 
+      <!-- JavInfoApi -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          <h2>数据源 / JavInfoApi</h2>
+        </div>
+        <div class="form-group">
+          <label>API 地址</label>
+          <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
+        </div>
+      </div>
+
       <!-- Telegram -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -252,6 +268,47 @@
             <br/>
             <span class="legendary-dot common"></span> 普通 — 影片库中出现频繁，无光效
           </div>
+          <div class="rarity-thresholds">
+            <div class="rarity-threshold-row">
+              <span class="rarity-dot legendary"></span>
+              <span class="threshold-label">传奇</span>
+              <input
+                type="range"
+                min="1"
+                max="30"
+                step="1"
+                v-model.number="bubbleCfg.rarityThresholds.legendary"
+                class="threshold-slider"
+              />
+              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.legendary }}%</span>
+            </div>
+            <div class="rarity-threshold-row">
+              <span class="rarity-dot epic"></span>
+              <span class="threshold-label">史诗</span>
+              <input
+                type="range"
+                min="5"
+                max="60"
+                step="1"
+                v-model.number="bubbleCfg.rarityThresholds.epic"
+                class="threshold-slider"
+              />
+              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.epic }}%</span>
+            </div>
+            <div class="rarity-threshold-row">
+              <span class="rarity-dot rare"></span>
+              <span class="threshold-label">稀有</span>
+              <input
+                type="range"
+                min="20"
+                max="85"
+                step="1"
+                v-model.number="bubbleCfg.rarityThresholds.rare"
+                class="threshold-slider"
+              />
+              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.rare }}%</span>
+            </div>
+          </div>
         </div>
 
         <div class="form-row" style="margin-top: 16px;">
@@ -324,7 +381,8 @@ export default {
         telegram: { bot_token: '', allowed_user_ids: [] },
         crawler: { request_interval: 3 },
         scheduler: { subscription_check_hour: 2 },
-        notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true }
+        notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
+        javinfo: { api_url: 'http://localhost:8080' },
       },
       telegramUsers: '',
       saving: false,
@@ -335,6 +393,7 @@ export default {
         colorMode: 'legendary', palette: 'monet',
         customGradients: [], customGradientsText: '',
         goldLegend: true, bubbleCount: 36,
+        rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
         actressAvatarSize: 'medium', // 'small' | 'medium' | 'large'
         rarityColors: {
           legendary: '#c89a30',
@@ -397,7 +456,8 @@ export default {
         telegram: data.telegram || { bot_token: '', allowed_user_ids: [] },
         crawler: data.crawler || { request_interval: 3 },
         scheduler: data.scheduler || { subscription_check_hour: 2 },
-        notification: data.notification || { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true }
+        notification: data.notification || { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
+        javinfo: data.javinfo || { api_url: 'http://localhost:8080' },
       }
       this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
     } catch (e) {
@@ -426,7 +486,7 @@ export default {
         if (saved) {
           const parsed = JSON.parse(saved)
           this.bubbleCfg = {
-            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' } },
+            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } },
             ...parsed,
           }
           if (parsed.customGradients) {
@@ -447,7 +507,7 @@ export default {
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
-      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' } }
+      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } }
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
     },
@@ -635,6 +695,38 @@ export default {
 .rarity-color-input::-webkit-color-swatch { border: none; border-radius: 2px; }
 
 .legendary-hint-text { line-height: 1.9; }
+
+.rarity-thresholds {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.rarity-threshold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.rarity-threshold-row .rarity-dot {
+  flex-shrink: 0;
+}
+.threshold-label {
+  width: 36px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.threshold-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.threshold-value {
+  width: 32px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
 
 .legendary-dot {
   display: inline-block;

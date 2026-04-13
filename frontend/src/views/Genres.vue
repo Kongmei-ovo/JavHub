@@ -43,17 +43,29 @@
       </div>
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
-        <div
-          v-for="tag in displayedTags"
-          :key="tag.id"
-          class="bubble"
-          :class="legendaryBubbleClass(tag)"
-          :data-id="tag.id"
-          :style="bubbleStyle(tag)"
-          @click="goGenre(tag)"
-        >
-          {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
-        </div>
+        <template v-for="tag in displayedTags" :key="tag.id">
+          <div
+            v-if="legendaryBubbleClass(tag).includes('rarity-legendary')"
+            class="bubble rarity-legendary"
+            :data-id="tag.id"
+            :style="bubbleStyle(tag)"
+            @click="goGenre(tag)"
+          >
+            <div class="legendary-inner">
+              {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
+            </div>
+          </div>
+          <div
+            v-else
+            class="bubble"
+            :class="legendaryBubbleClass(tag)"
+            :data-id="tag.id"
+            :style="bubbleStyle(tag)"
+            @click="goGenre(tag)"
+          >
+            {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
+          </div>
+        </template>
       </div>
     </div>
 
@@ -123,16 +135,27 @@
       </div>
 
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
-        <div
-          v-for="item in displayedSeries"
-          :key="item.id"
-          class="bubble"
-          :class="legendaryBubbleClass(item)"
-          :style="bubbleStyle(item)"
-          @click="goSeries(item)"
-        >
-          {{ displayName(item, 'name_ja', 'name_en') }}
-        </div>
+        <template v-for="item in displayedSeries" :key="item.id">
+          <div
+            v-if="legendaryBubbleClass(item).includes('rarity-legendary')"
+            class="bubble rarity-legendary"
+            :style="bubbleStyle(item)"
+            @click="goSeries(item)"
+          >
+            <div class="legendary-inner">
+              {{ displayName(item, 'name_ja', 'name_en') }}
+            </div>
+          </div>
+          <div
+            v-else
+            class="bubble"
+            :class="legendaryBubbleClass(item)"
+            :style="bubbleStyle(item)"
+            @click="goSeries(item)"
+          >
+            {{ displayName(item, 'name_ja', 'name_en') }}
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -359,6 +382,7 @@ const DEFAULT_CFG = {
   customGradients: [],    // for custom palette
   goldLegend: true,       // enable gold legend mode
   bubbleCount: 36,        // 每页显示的气泡数量
+  rarityThresholds: { legendary: 5, epic: 20, rare: 50 }, // 百分比阈值（0-100）
 }
 
 export default {
@@ -376,6 +400,7 @@ export default {
       categoryStats: {},
       rarityMap: {},
       bubbleRects: new Map(),
+      moveThrottle: false,  // 节流阀，避免 handleMouseMove 每帧都跑
       // 演员
       actressRawPage: [],       // 后端返回的原始这一页数据
       displayedActresses: [],
@@ -432,6 +457,14 @@ export default {
       this.loadSeries(),
       this.cfg.goldLegend ? this.loadCategoryStats() : Promise.resolve(),
     ])
+    // Delegated legendary listeners — set up once after DOM is ready
+    this.$nextTick(() => {
+      const cloud = this.$refs.tagCloudRef
+      if (cloud) {
+        cloud.addEventListener('mouseenter', this.onLegendaryEnter, true)
+        cloud.addEventListener('mouseleave', this.onLegendaryLeave, true)
+      }
+    })
   },
   methods: {
     displayName,
@@ -511,13 +544,14 @@ export default {
       // 按 video_count 升序：最少 = legendary，最多 = common
       const sorted = [...stats].sort((a, b) => (a.video_count || 0) - (b.video_count || 0))
       const n = sorted.length
+      const { legendary = 5, epic = 20, rare = 50 } = this.cfg.rarityThresholds || {}
       const rarityMap = {}
       sorted.forEach((cat, i) => {
         const pct = i / Math.max(n - 1, 1)  // 0 = rarest (legendary), 1 = most common
-        if (pct < 0.05)       rarityMap[cat.id] = 'legendary'  // 橙卡：Top 5% 最稀缺
-        else if (pct < 0.20) rarityMap[cat.id] = 'epic'        // 紫卡：5-20%
-        else if (pct < 0.50) rarityMap[cat.id] = 'rare'       // 蓝卡：20-50%
-        else                  rarityMap[cat.id] = 'common'      // 白卡：50-100% 最常见
+        if (pct * 100 < legendary)       rarityMap[cat.id] = 'legendary'  // 橙卡
+        else if (pct * 100 < epic)       rarityMap[cat.id] = 'epic'        // 紫卡
+        else if (pct * 100 < rare)       rarityMap[cat.id] = 'rare'       // 蓝卡
+        else                              rarityMap[cat.id] = 'common'      // 白卡
       })
       this.rarityMap = rarityMap
     },
@@ -537,109 +571,120 @@ export default {
         { scale: 1, opacity: 1, duration: 0.25, stagger: 0.005, ease: 'back.out(1.7)' }
       )
 
-      bubbles.forEach((bubble, i) => {
-        gsap.to(bubble, {
-          y: -5,
-          duration: 1.4 + (i % 4) * 0.2,
-          repeat: -1, yoyo: true, ease: 'sine.inOut', delay: i * 0.03,
-        })
-      })
-
-      // No legendary pulse animations — glow is hover-only via handleMouseMove
+      // 浮动动画已迁移至 CSS @keyframes bubble-float（全量复用，无 GSAP tween）
       cloud.addEventListener('mousemove', this.handleMouseMove)
       cloud.addEventListener('mouseleave', this.handleMouseLeave)
     },
+    initCloudGsap(cloudEl) {
+      if (!cloudEl) return
+      // 浮动动画已迁移至 CSS @keyframes bubble-float
+    },
     handleMouseMove(e) {
+      if (this.moveThrottle) return
+      this.moveThrottle = true
       const cloud = this.$refs.tagCloudRef
-      if (!cloud) return
+      if (!cloud) { this.moveThrottle = false; return }
       const mouseX = e.clientX
       const mouseY = e.clientY
-      const bubbles = cloud.querySelectorAll('.bubble')
 
-      // 读取当前配色 CSS 变量
-      const cs = getComputedStyle(cloud)
-      const lc = (cs.getPropertyValue('--rarity-legendary').trim() || '#c89a30')
-      const ec = (cs.getPropertyValue('--rarity-epic').trim() || '#7040a0')
-      const rc = (cs.getPropertyValue('--rarity-rare').trim() || '#3070a8')
+      requestAnimationFrame(() => {
+        const bubbles = cloud.querySelectorAll('.bubble')
 
-      // Proximity scale for all nearby bubbles
-      const scales = new Map()
-      const hoveredBubbles = []
-      bubbles.forEach(bubble => {
-        const r = bubble.getBoundingClientRect()
-        const cx = r.left + r.width / 2
-        const cy = r.top + r.height / 2
-        const dist = Math.hypot(mouseX - cx, mouseY - cy)
-        const maxDist = 160
-        if (dist < maxDist) {
-          scales.set(bubble, 1 + (1 - dist / maxDist) * 0.5)
-          hoveredBubbles.push(bubble)
-        } else {
-          scales.set(bubble, 1)
-        }
-      })
+        // 读取配色 CSS 变量（云容器只读一次）
+        const cs = getComputedStyle(cloud)
+        const lc = (cs.getPropertyValue('--rarity-legendary').trim() || '#c89a30')
+        const ec = (cs.getPropertyValue('--rarity-epic').trim() || '#7040a0')
+        const rc = (cs.getPropertyValue('--rarity-rare').trim() || '#3070a8')
 
-      // Collision detection for z-index layering
-      const overlapped = new Set()
-      for (let i = 0; i < hoveredBubbles.length; i++) {
-        for (let j = i + 1; j < hoveredBubbles.length; j++) {
-          const a = hoveredBubbles[i], b = hoveredBubbles[j]
-          const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect()
-          const sa = scales.get(a), sb = scales.get(b)
-          const raS = { left: ra.left - (sa-1)*ra.width/2, right: ra.right + (sa-1)*ra.width/2, top: ra.top - (sa-1)*ra.height/2, bottom: ra.bottom + (sa-1)*ra.height/2 }
-          const rbS = { left: rb.left - (sb-1)*rb.width/2, right: rb.right + (sb-1)*rb.width/2, top: rb.top - (sb-1)*rb.height/2, bottom: rb.bottom + (sb-1)*rb.height/2 }
-          const intersects = !(raS.right < rbS.left || raS.left > rbS.right || raS.bottom < rbS.top || raS.top > rbS.bottom)
-          if (intersects) { overlapped.add(a); overlapped.add(b) }
-        }
-      }
-
-      let maxZ = 100
-      bubbles.forEach(bubble => {
-        const scale = scales.get(bubble)
-        const isOverlapped = overlapped.has(bubble)
-        const isHovered = hoveredBubbles.includes(bubble)
-        const isLegendary = bubble.classList.contains('rarity-legendary')
-        const isRare = bubble.classList.contains('rarity-rare')
-        const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
-
-        if (isHovered && scale > 1) {
-          // Proximity scale + hover outer glow (GSAP overrides CSS breathing)
-          let outerGlow = ''
-          if (isLegendary && inLegendaryMode) {
-            // 橙卡 hover 光爆
-            outerGlow = `0 0 25px 8px ${lc}fa, 0 0 60px 18px ${lc}d6, 0 0 120px 36px ${lc}8c, 0 0 200px 60px ${lc}4d`
-          } else if (bubble.classList.contains('rarity-epic') && inLegendaryMode) {
-            // 紫卡 hover
-            outerGlow = `0 0 18px 6px ${ec}e6, 0 0 45px 14px ${ec}a6`
-          } else if (isRare && inLegendaryMode) {
-            // 蓝卡 hover
-            outerGlow = `0 0 14px 5px ${rc}bf, 0 0 35px 12px ${rc}73`
+        // Proximity scale + 缓存 rect（每气泡只查一次）
+        const scales = new Map()
+        const hoveredBubbles = []
+        const rects = new Map()
+        bubbles.forEach(bubble => {
+          const r = bubble.getBoundingClientRect()
+          rects.set(bubble, r)
+          const cx = r.left + r.width / 2
+          const cy = r.top + r.height / 2
+          const dist = Math.hypot(mouseX - cx, mouseY - cy)
+          const maxDist = 160
+          if (dist < maxDist) {
+            scales.set(bubble, 1 + (1 - dist / maxDist) * 0.5)
+            hoveredBubbles.push(bubble)
           } else {
-            outerGlow = '0 6px 24px rgba(0,0,0,0.35)'
+            scales.set(bubble, 1)
           }
-          gsap.to(bubble, {
-            scale,
-            opacity: 1,
-            zIndex: isOverlapped ? ++maxZ : 50,
-            boxShadow: outerGlow,
-            duration: 0.12,
-            ease: 'back.out(1.2)',
-            overwrite: 'auto',
-          })
-        } else {
-          // Clear GSAP boxShadow → CSS breathing animation resumes
-          gsap.to(bubble, {
-            scale: 1,
-            opacity: 0.88,
-            zIndex: 1,
-            boxShadow: '',
-            duration: 0.18,
-            ease: 'power3.out',
-            overwrite: 'auto',
-          })
+        })
+
+        // Collision detection（复用已缓存 rect）
+        const overlapped = new Set()
+        for (let i = 0; i < hoveredBubbles.length; i++) {
+          for (let j = i + 1; j < hoveredBubbles.length; j++) {
+            const a = hoveredBubbles[i], b = hoveredBubbles[j]
+            const ra = rects.get(a), rb = rects.get(b)
+            const sa = scales.get(a), sb = scales.get(b)
+            const raS = { left: ra.left - (sa-1)*ra.width/2, right: ra.right + (sa-1)*ra.width/2, top: ra.top - (sa-1)*ra.height/2, bottom: ra.bottom + (sa-1)*ra.height/2 }
+            const rbS = { left: rb.left - (sb-1)*rb.width/2, right: rb.right + (sb-1)*rb.width/2, top: rb.top - (sb-1)*rb.height/2, bottom: rb.bottom + (sb-1)*rb.height/2 }
+            const intersects = !(raS.right < rbS.left || raS.left > rbS.right || raS.bottom < rbS.top || raS.top > rbS.bottom)
+            if (intersects) { overlapped.add(a); overlapped.add(b) }
+          }
         }
+
+        let maxZ = 100
+        bubbles.forEach(bubble => {
+          const scale = scales.get(bubble)
+          const isOverlapped = overlapped.has(bubble)
+          const isHovered = hoveredBubbles.includes(bubble)
+          const isLegendary = bubble.classList.contains('rarity-legendary')
+          const isRare = bubble.classList.contains('rarity-rare')
+          const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
+
+          if (isHovered && scale > 1) {
+            let outerGlow = ''
+            if (isLegendary && inLegendaryMode) {
+              outerGlow = `0 0 25px 8px ${lc}fa, 0 0 60px 18px ${lc}d6, 0 0 120px 36px ${lc}8c, 0 0 200px 60px ${lc}4d`
+            } else if (bubble.classList.contains('rarity-epic') && inLegendaryMode) {
+              outerGlow = `0 0 18px 6px ${ec}e6, 0 0 45px 14px ${ec}a6`
+            } else if (isRare && inLegendaryMode) {
+              outerGlow = `0 0 14px 5px ${rc}bf, 0 0 35px 12px ${rc}73`
+            } else {
+              outerGlow = '0 6px 24px rgba(0,0,0,0.35)'
+            }
+            const gsapOpts = {
+              scale,
+              opacity: 1,
+              zIndex: isOverlapped ? ++maxZ : 50,
+              boxShadow: outerGlow,
+              duration: 0.12,
+              ease: 'back.out(1.2)',
+              overwrite: 'auto',
+            }
+            // 3D tilt：复用已缓存 rect
+            if (isLegendary && inLegendaryMode) {
+              const r = rects.get(bubble)
+              const cx = r.left + r.width / 2
+              const cy = r.top + r.height / 2
+              const maxTilt = 18
+              const tx = Math.round(((mouseY - cy) / (r.height * 0.6)) * maxTilt)
+              const ty = Math.round(-((mouseX - cx) / (r.width * 0.6)) * maxTilt)
+              gsapOpts.rotationX = Math.max(-maxTilt, Math.min(maxTilt, tx))
+              gsapOpts.rotationY = Math.max(-maxTilt, Math.min(maxTilt, ty))
+            }
+            gsap.to(bubble, gsapOpts)
+          } else {
+            gsap.to(bubble, {
+              scale: 1,
+              opacity: 0.88,
+              zIndex: 1,
+              boxShadow: '',
+              duration: 0.18,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            })
+          }
+        })
+
+        this.moveThrottle = false
       })
-      this.updateBubbleRects(bubbles)
     },
     handleMouseLeave() {
       const cloud = this.$refs.tagCloudRef
@@ -650,6 +695,27 @@ export default {
         scale: 1, opacity: 0.88, zIndex: 1,
         boxShadow: '',
         duration: 0.3, ease: 'back.out(1.2)', stagger: 0.004,
+      })
+    },
+    // --- Legendary 3D Tilt (GSAP) — delegated from cloud ---
+    onLegendaryEnter(e) {
+      const bubble = e.target.closest ? e.target.closest('.bubble.rarity-legendary') : null
+      if (!bubble) return
+      // Stop the breathing y-float on this bubble so tilt feels clean
+      gsap.killTweensOf(bubble)
+      gsap.to(bubble, { y: 0, duration: 0.3, ease: 'power2.out' })
+    },
+    onLegendaryLeave(e) {
+      const bubble = e.target.closest ? e.target.closest('.bubble.rarity-legendary') : null
+      if (!bubble) return
+      // Elastic 3D return to neutral
+      gsap.to(bubble, {
+        rotationY: 0,
+        rotationX: 0,
+        scale: 1,
+        duration: 1.0,
+        ease: 'elastic.out(1, 0.45)',
+        overwrite: 'auto',
       })
     },
     reshuffle() {
@@ -685,12 +751,16 @@ export default {
     },
     switchTab(tab) {
       this.activeTab = tab
+      if (tab === 'series' && !this._seriesGsapInited) {
+        this._seriesGsapInited = true
+        this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))
+      }
     },
     actressAvatar(actress) {
       if (actress.image_url) {
         const url = actress.image_url
         if (url.startsWith('http')) return url
-        return `https://awsimgsrc.dmm.com/dig/mono/actjpgs/${url.replace(/^\//, '')}`
+        return `https://awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/${url.replace(/^\//, '')}`
       }
       const name = encodeURIComponent(actress.name_romaji || actress.name_kanji || '')
       return `/api/actors/avatar/${name}`
@@ -763,7 +833,16 @@ export default {
     if (cloud) {
       cloud.removeEventListener('mousemove', this.handleMouseMove)
       cloud.removeEventListener('mouseleave', this.handleMouseLeave)
+      cloud.removeEventListener('mouseenter', this.onLegendaryEnter, true)
+      cloud.removeEventListener('mouseleave', this.onLegendaryLeave, true)
       const bubbles = cloud.querySelectorAll('.bubble')
+      gsap.killTweensOf(bubbles)
+    }
+    const seriesCloud = this.$refs.seriesCloudRef
+    if (seriesCloud) {
+      seriesCloud.removeEventListener('mouseenter', this.onLegendaryEnter, true)
+      seriesCloud.removeEventListener('mouseleave', this.onLegendaryLeave, true)
+      const bubbles = seriesCloud.querySelectorAll('.bubble')
       gsap.killTweensOf(bubbles)
     }
   }
@@ -819,6 +898,7 @@ export default {
   transform-origin: center center;
   position: relative;
   transition: box-shadow 0.3s ease, filter 0.3s ease;
+  animation: bubble-float 1.8s ease-in-out infinite;
 }
 
 /* ================================================
@@ -895,18 +975,20 @@ export default {
   0%   { left: -30%; }
   100% { left: 130%; }
 }
-.bubble.rarity-epic:hover {
-  animation-play-state: paused;
-}
-.bubble.rarity-epic:hover::before {
-  animation-play-state: paused;
+/* 浮动动画（所有气泡共用，替换原有逐气泡 GSAP tween） */
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
 }
 
-/* ---------- 金卡 Legendary：皇家琥珀光晕全特效 ---------- */
+/* ---------- 金卡 Legendary：皇家琥珀光晕 + 3D悬浮 ---------- */
 .bubble.rarity-legendary {
   border-radius: 14px;
   overflow: visible;
-  /* 琥珀金内敛呼吸 glow — 三层环形 */
+  transform-style: preserve-3d;
+  perspective: 800px;
+  animation: bubble-float 1.8s ease-in-out infinite;
+  /* 静态琥珀金内敛光晕（hover 光效全由 GSAP 接管，避免 CSS 动画冲突闪烁） */
   box-shadow:
     0 0 14px 4px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
     0 0 38px 10px color-mix(in srgb, var(--rarity-legendary) 30%, transparent),
@@ -923,11 +1005,47 @@ export default {
     #C9960C 70%,
     #8B6914 100%
   ) !important;
-  animation: legendary-breathe 2.8s ease-in-out infinite;
   position: relative;
   z-index: 1;
+  will-change: transform;
 }
-/* 环绕金晕 — 旋转光晕层 */
+/* 3D悬浮层 — 承载旋转和全息 */
+.bubble.rarity-legendary .legendary-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+/* 全息幻彩层 — color-dodge 叠加在金色上 */
+.bubble.rarity-legendary .legendary-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      125deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255, 255, 255, 0.06) 3px,
+      rgba(255, 255, 255, 0.06) 4px
+    ),
+    repeating-linear-gradient(
+      65deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(255, 200, 50, 0.08) 8px,
+      rgba(255, 200, 50, 0.08) 9px
+    ),
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255, 240, 160, 0.18) 0%, transparent 70%);
+  mix-blend-mode: color-dodge;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+/* 环绕金晕 — 静态光晕层（位于 inner 之外） */
 .bubble.rarity-legendary::before {
   content: '';
   position: absolute;
@@ -948,7 +1066,6 @@ export default {
     transparent 360deg
   );
   z-index: -1;
-  animation: legendary-aura 4s linear infinite;
   pointer-events: none;
   opacity: 0.85;
 }
@@ -966,33 +1083,10 @@ export default {
     rgba(139, 105, 20, 0.25) 100%
   );
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
-@keyframes legendary-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 12px 4px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
-      0 0 35px 9px color-mix(in srgb, var(--rarity-legendary) 30%, transparent),
-      0 0 70px 20px color-mix(in srgb, var(--rarity-legendary) 16%, transparent),
-      0 4px 14px rgba(0, 0, 0, 0.4);
-    filter: brightness(1.05) saturate(1.15);
-  }
-  50% {
-    box-shadow:
-      0 0 22px 7px color-mix(in srgb, var(--rarity-legendary) 80%, transparent),
-      0 0 55px 16px color-mix(in srgb, var(--rarity-legendary) 48%, transparent),
-      0 0 100px 35px color-mix(in srgb, var(--rarity-legendary) 25%, transparent),
-      0 4px 18px rgba(0, 0, 0, 0.45);
-    filter: brightness(1.15) saturate(1.4);
-  }
-}
-/* 环绕光晕旋转动画 */
-@keyframes legendary-aura {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+/* Hover 状态 */
 .bubble.rarity-legendary:hover {
-  animation-play-state: paused;
   filter: brightness(1.18) saturate(1.45);
   box-shadow:
     0 0 28px 8px color-mix(in srgb, var(--rarity-legendary) 85%, transparent),
@@ -1001,7 +1095,9 @@ export default {
     0 6px 22px rgba(0, 0, 0, 0.5);
 }
 .bubble.rarity-legendary:hover::before {
-  animation-play-state: paused;
+  opacity: 1;
+}
+.bubble.rarity-legendary:hover .legendary-inner::before {
   opacity: 1;
 }
 
