@@ -36,6 +36,9 @@ frontend/test-*.cjs
 # Avatar images (may contain copyrighted content)
 backend/data/avatars/
 
+# Runtime data (SQLite DB, diskcache)
+data/
+
 # Docs (internal design specs)
 docs/
 
