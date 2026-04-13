@@ -123,16 +123,31 @@ class InfoClient:
 
     async def get_video(self, content_id: str, service_code: str | None = None) -> dict[str, Any]:
         """获取视频详情（缓存24小时）"""
-        cached = cache.get_video(content_id)
+        # JavInfoApi 的 content_id 是小写无横杠的，如 miaa784
+        normalized = content_id.replace("-", "").replace("_", "").lower()
+        cached = cache.get_video(normalized)
         if cached is not None:
             return cached
         params = {}
         if service_code:
             params["service_code"] = service_code
-        result = await self._get(f"/api/v1/videos/{content_id}", params=params or None)
+        result = await self._get(f"/api/v1/videos/{normalized}", params=params or None)
         # 转换图片URL
         data = _transform_video_item(result)
-        cache.set_video(content_id, data)
+        # 用 metatube 补全 summary / director / score（取不到不影响主流程）
+        try:
+            from modules.metatube_client import get_movie as mt_get_movie
+            mt_data = await mt_get_movie(content_id)
+            if mt_data:
+                if mt_data.get("summary"):
+                    data["summary"] = mt_data["summary"]
+                if mt_data.get("director"):
+                    data["director"] = mt_data["director"]
+                data["score"] = mt_data.get("score", 0)
+                data["meta_provider"] = mt_data.get("provider", "")
+        except Exception:
+            pass
+        cache.set_video(normalized, data)
         return data
 
     # === 演员相关 ===

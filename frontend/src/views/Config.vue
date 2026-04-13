@@ -71,6 +71,31 @@
         </div>
       </div>
 
+      <!-- MetaTube -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <h2>MetaTube / 数据增强</h2>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>服务器地址</label>
+            <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
+          </div>
+          <div class="form-group">
+            <label>端口</label>
+            <input class="input" v-model.number="config.metatube.port" type="number" placeholder="8081" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Token（无Token则留空）</label>
+          <input class="input" v-model="config.metatube.token" type="password" placeholder="可选" />
+        </div>
+      </div>
+
       <!-- Telegram -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -383,6 +408,7 @@ export default {
         scheduler: { subscription_check_hour: 2 },
         notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
         javinfo: { api_url: 'http://localhost:8080' },
+        metatube: { host: '154.23.255.204', port: 8081, token: '' },
       },
       telegramUsers: '',
       saving: false,
@@ -458,6 +484,7 @@ export default {
         scheduler: data.scheduler || { subscription_check_hour: 2 },
         notification: data.notification || { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
         javinfo: data.javinfo || { api_url: 'http://localhost:8080' },
+        metatube: data.metatube || { host: '154.23.255.204', port: 8081, token: '' },
       }
       this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
     } catch (e) {

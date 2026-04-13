@@ -15,6 +15,10 @@ async def update_config(new_config: dict):
     if "javinfo" in new_config:
         from modules.info_client import reset_info_client
         reset_info_client()
+    # MetaTube URL 变更后重置 client
+    if "metatube" in new_config:
+        from modules.metatube_client import close as mt_close
+        await mt_close()
     return {"success": True}
 
 @router.post("/cache/purge")

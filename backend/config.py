@@ -88,6 +88,23 @@ class Config:
     def javinfo_timeout(self) -> int:
         return self._config.get('javinfo', {}).get('timeout', 30)
 
+    # MetaTube settings
+    @property
+    def metatube(self) -> dict:
+        return self._config.get('metatube', {})
+
+    @property
+    def metatube_host(self) -> str:
+        return self._config.get('metatube', {}).get('host', 'localhost')
+
+    @property
+    def metatube_port(self) -> int:
+        return self._config.get('metatube', {}).get('port', 8081)
+
+    @property
+    def metatube_token(self) -> str:
+        return self._config.get('metatube', {}).get('token', '')
+
     # Download sources settings
     @property
     def sources(self) -> dict:
