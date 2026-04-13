@@ -94,9 +94,6 @@ export default {
     return api.get('/v1/labels')
   },
 
-  getStats() {
-    return api.get('/v1/stats')
-  },
 
   // ========== 下载管理 ==========
 
