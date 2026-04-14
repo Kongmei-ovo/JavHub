@@ -195,8 +195,11 @@
     destroy-on-close
     class="video-player-dialog"
     @closed="onVideoClosed"
+    @keydown.left.prevent="seekBackward"
+    @keydown.right.prevent="seekForward"
+    tabindex="0"
   >
-    <div class="video-player-wrap" @mousemove="showControls = true">
+    <div class="video-player-wrap" @mousemove="showControls = true" tabindex="-1">
       <video
         ref="videoPlayer"
         :src="video.sample_url"
@@ -206,6 +209,8 @@
         @play="playing = true"
         @pause="playing = false"
         @click="togglePlay"
+        @keydown.left.prevent="seekBackward"
+        @keydown.right.prevent="seekForward"
       ></video>
 
       <!-- 自定义控件条 -->
@@ -441,6 +446,14 @@ export default {
       const rect = e.currentTarget.getBoundingClientRect()
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       video.currentTime = ratio * this.duration
+    },
+    seekForward() {
+      const video = this.$refs.videoPlayer
+      if (video) video.currentTime = Math.min(video.currentTime + 10, this.duration)
+    },
+    seekBackward() {
+      const video = this.$refs.videoPlayer
+      if (video) video.currentTime = Math.max(video.currentTime - 10, 0)
     },
     setVolume(e) {
       this.volume = parseFloat(e.target.value)
@@ -1008,101 +1021,166 @@ export default {
   letter-spacing: 0.05em;
 }
 
-/* ===== Video Player (custom controls, dark theme) ===== */
+/* ===== Video Player (iOS 26 glass style + dark theme) ===== */
+
+/* el-dialog 遮罩层：blur 背景，视频本身不受影响 */
+:deep(.el-overlay) {
+  background: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+:deep(.video-player-dialog) {
+  background: rgba(15, 15, 28, 0.6) !important;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+:deep(.el-dialog__header) {
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 16px 20px;
+}
+:deep(.el-dialog__title) {
+  color: rgba(255,255,255,0.9);
+  font-size: 14px;
+}
+:deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: rgba(255,255,255,0.5);
+}
+:deep(.el-dialog__body) {
+  background: transparent;
+  padding: 0;
+}
+
+/* 播放器容器 */
 .video-player-wrap {
   position: relative;
-  background: #0d0d12;
-  border-radius: var(--radius-md);
+  background: #000;
+  border-radius: 12px;
   overflow: hidden;
+  outline: none;
 }
 .video-player {
   display: block;
   width: 100%;
   cursor: pointer;
 }
+
+/* 毛玻璃控件条 */
 .vp-controls {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
-  padding: 24px 12px 10px;
-  transition: opacity 0.3s;
+  padding: 40px 16px 14px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: opacity 0.4s ease;
+  border-radius: 0 0 12px 12px;
 }
 .vp-controls.vp-controls-hide {
   opacity: 0;
+  pointer-events: none;
 }
+
+/* 进度条 */
 .vp-progress {
   cursor: pointer;
-  padding: 6px 0;
+  padding: 8px 0;
 }
 .vp-progress-track {
   height: 3px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
   overflow: hidden;
 }
 .vp-progress-fill {
   height: 100%;
   background: var(--accent, #8B5CF6);
-  border-radius: 2px;
-  transition: width 0.1s linear;
+  border-radius: 3px;
+  transition: width 0.05s linear;
+  box-shadow: 0 0 8px var(--accent, #8B5CF6);
 }
 .vp-progress:hover .vp-progress-track {
   height: 5px;
 }
+
+/* 底部控件行 */
 .vp-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .vp-left, .vp-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
+
+/* 按钮 */
 .vp-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.85);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  padding: 5px 8px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .vp-btn:hover {
+  background: rgba(255,255,255,0.15);
   color: #fff;
-  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
 }
+
+/* 时间 */
 .vp-time {
   font-size: 12px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.65);
   font-variant-numeric: tabular-nums;
-  padding: 0 4px;
+  padding: 0 6px;
+  letter-spacing: 0.02em;
 }
+
+/* 音量滑块 */
 .vp-volume {
-  width: 70px;
+  width: 72px;
   height: 3px;
   cursor: pointer;
   accent-color: var(--accent, #8B5CF6);
-}
-.vp-speed-btn {
-  font-size: 12px;
-  padding: 3px 8px;
-  color: rgba(255,255,255,0.8);
-  gap: 2px;
-}
-.vp-speed-btn:hover {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
+  background: transparent;
 }
 
-/* el-dropdown menu item highlight */
+/* 倍速按钮 */
+.vp-speed-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+  gap: 4px;
+}
+
+/* el-dropdown 毛玻璃菜单 */
+:deep(.el-dropdown-menu) {
+  background: rgba(30, 30, 46, 0.9) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+:deep(.el-dropdown-menu__item) {
+  color: rgba(255,255,255,0.75);
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+:deep(.el-dropdown-menu__item:hover),
 :deep(.el-dropdown-menu__item.is-active) {
-  color: var(--accent, #8B5CF6);
+  background: rgba(139, 92, 246, 0.2) !important;
+  color: var(--accent, #8B5CF6) !important;
 }
 </style>

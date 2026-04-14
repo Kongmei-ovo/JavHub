@@ -123,8 +123,8 @@ class InfoClient:
 
     async def get_video(self, content_id: str, service_code: str | None = None) -> dict[str, Any]:
         """获取视频详情（缓存24小时）"""
-        # JavInfoApi 的 content_id 是小写无横杠的，如 miaa784
-        normalized = content_id.replace("-", "").replace("_", "").lower()
+        # JavInfoApi 的 content_id 保留原始格式（部分含下划线如 h_1330gtrp004r）
+        normalized = content_id.replace("-", "").lower()
         cached = cache.get_video(normalized)
         if cached is not None:
             return cached
