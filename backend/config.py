@@ -115,6 +115,23 @@ class Config:
     def sources(self) -> dict:
         return self._config.get('sources', {})
 
+    # Proxy settings
+    @property
+    def proxy(self) -> dict:
+        return self._config.get('proxy', {})
+
+    @property
+    def proxy_enabled(self) -> bool:
+        return self._config.get('proxy', {}).get('enabled', False)
+
+    @property
+    def proxy_http_url(self) -> str:
+        return self._config.get('proxy', {}).get('http_url', '')
+
+    @property
+    def proxy_https_url(self) -> str:
+        return self._config.get('proxy', {}).get('https_url', '')
+
     # Notification settings
     @property
     def notification_enabled(self) -> bool:

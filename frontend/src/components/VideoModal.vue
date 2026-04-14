@@ -186,97 +186,56 @@
     </div>
   </div>
 
-  <!-- 视频预览弹窗 -->
-  <el-dialog
-    v-if="videoPlayerVisible && video.sample_url"
-    v-model="videoPlayerVisible"
-    :title="'预览 ' + (video.dvd_id || video.content_id)"
-    width="860px"
-    destroy-on-close
-    class="video-player-dialog"
-    @closed="onVideoClosed"
-    @keydown.left.prevent="seekBackward"
-    @keydown.right.prevent="seekForward"
-    tabindex="0"
-  >
-    <div class="video-player-wrap" @mousemove="showControls = true" tabindex="-1">
-      <video
-        ref="videoPlayer"
-        :src="video.sample_url"
-        class="video-player"
-        @timeupdate="onTimeUpdate"
-        @loadedmetadata="onMetaLoaded"
-        @play="playing = true"
-        @pause="playing = false"
-        @click="togglePlay"
-        @keydown.left.prevent="seekBackward"
-        @keydown.right.prevent="seekForward"
-      ></video>
+  <!-- 视频预览弹窗：Teleport 避免 el-dialog 样式污染 -->
+  <teleport to="body">
+    <div
+      v-if="videoPlayerVisible && video.sample_url"
+      class="vp-overlay"
+      @click.self="closeVideoPlayer"
+      @keydown.esc="closeVideoPlayer"
+      @keydown.left.prevent="seekBackward"
+      @keydown.right.prevent="seekForward"
+      tabindex="0"
+      ref="vpOverlay"
+    >
+      <div class="vp-container">
+        <!-- 关闭按钮 -->
+        <button class="vp-close" @click="closeVideoPlayer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
 
-      <!-- 自定义控件条 -->
-      <div class="vp-controls" :class="{ 'vp-controls-hide': !showControls }">
-        <!-- 进度条 -->
-        <div class="vp-progress" @click="seek($event)">
-          <div class="vp-progress-track">
-            <div class="vp-progress-fill" :style="{ width: progressPercent + '%' }"></div>
-          </div>
+        <!-- 原生播放器：最稳定，macOS Safari/Chrome 兼容性最好 -->
+        <div class="vp-player-wrap">
+          <video
+            ref="videoEl"
+            :src="video.sample_url"
+            class="vp-video"
+            controls
+            autoplay
+            playsinline
+            @keydown.left.prevent="seekBackward"
+            @keydown.right.prevent="seekForward"
+          ></video>
         </div>
 
-        <div class="vp-bottom">
-          <div class="vp-left">
-            <!-- 播放/暂停 -->
-            <button class="vp-btn" @click="togglePlay">
-              <svg v-if="!playing" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-              </svg>
-            </button>
-            <!-- 时间 -->
-            <span class="vp-time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
-          </div>
-          <div class="vp-right">
-            <!-- 音量 -->
-            <button class="vp-btn" @click="toggleMute">
-              <svg v-if="volume === 0" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-              </svg>
-            </button>
-            <!-- 音量滑块 -->
-            <input type="range" class="vp-volume" min="0" max="1" step="0.05" :value="volume" @input="setVolume" />
-
-            <!-- 倍速 -->
-            <el-dropdown trigger="click" @command="setSpeed">
-              <button class="vp-btn vp-speed-btn">
-                {{ videoSpeed === 1 ? '倍速' : videoSpeed + 'x' }}
-                <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-                  <path d="M7 10l5 5 5-5z"/>
-                </svg>
-              </button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]" :key="s" :command="s" :class="{ 'is-active': videoSpeed === s }">
-                    {{ s === 1 ? '正常' : s + 'x' }}
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-
-            <!-- 全屏 -->
-            <button class="vp-btn" @click="toggleFullscreen">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-              </svg>
-            </button>
+        <!-- 底部信息栏 -->
+        <div class="vp-info">
+          <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
+          <div class="vp-speed-ctrl">
+            <button
+              v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+              :key="s"
+              :class="['vp-speed-btn', { active: videoSpeed === s }]"
+              @click="setSpeed(s)"
+            >{{ s === 1 ? '1x' : s + 'x' }}</button>
           </div>
         </div>
       </div>
     </div>
-  </el-dialog>
+  </teleport>
 </template>
 
 <script>
@@ -295,12 +254,15 @@ export default {
       currentGalleryIndex: 0,
       videoPlayerVisible: false,
       videoSpeed: 1,
-      playing: false,
-      currentTime: 0,
-      duration: 0,
-      volume: 1,
-      showControls: true,
-      controlsTimer: null,
+    }
+  },
+  watch: {
+    videoPlayerVisible(val) {
+      if (!val) {
+        // 关闭时暂停视频
+        const v = this.$refs.videoEl
+        if (v) { v.pause(); v.currentTime = 0 }
+      }
     }
   },
   computed: {
@@ -345,10 +307,6 @@ export default {
         thumbs.push(`${prefix}${i}`)
       }
       return thumbs
-    },
-    progressPercent() {
-      if (!this.duration) return 0
-      return (this.currentTime / this.duration) * 100
     },
   },
   methods: {
@@ -419,88 +377,21 @@ export default {
       return galleryFullUrl(path) || galleryThumbUrl(path) || null
     },
     // ===== Video Player =====
-    togglePlay() {
-      const video = this.$refs.videoPlayer
-      if (!video) return
-      if (video.paused) {
-        video.play()
-      } else {
-        video.pause()
-      }
-    },
-    onTimeUpdate() {
-      const video = this.$refs.videoPlayer
-      if (video) this.currentTime = video.currentTime
-    },
-    onMetaLoaded() {
-      const video = this.$refs.videoPlayer
-      if (video) {
-        this.duration = video.duration
-        video.playbackRate = this.videoSpeed
-        video.volume = this.volume
-      }
-    },
-    seek(e) {
-      const video = this.$refs.videoPlayer
-      if (!video || !this.duration) return
-      const rect = e.currentTarget.getBoundingClientRect()
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-      video.currentTime = ratio * this.duration
-    },
-    seekForward() {
-      const video = this.$refs.videoPlayer
-      if (video) video.currentTime = Math.min(video.currentTime + 10, this.duration)
-    },
-    seekBackward() {
-      const video = this.$refs.videoPlayer
-      if (video) video.currentTime = Math.max(video.currentTime - 10, 0)
-    },
-    setVolume(e) {
-      this.volume = parseFloat(e.target.value)
-      const video = this.$refs.videoPlayer
-      if (video) video.volume = this.volume
-    },
-    toggleMute() {
-      const video = this.$refs.videoPlayer
-      if (!video) return
-      if (this.volume > 0) {
-        this._prevVolume = this.volume
-        this.volume = 0
-        video.volume = 0
-      } else {
-        this.volume = this._prevVolume || 1
-        video.volume = this.volume
-      }
+    closeVideoPlayer() {
+      this.videoPlayerVisible = false
     },
     setSpeed(speed) {
       this.videoSpeed = speed
-      const video = this.$refs.videoPlayer
-      if (video) video.playbackRate = speed
+      const v = this.$refs.videoEl
+      if (v) v.playbackRate = speed
     },
-    toggleFullscreen() {
-      const wrap = this.$el.querySelector('.video-player-wrap')
-      if (!wrap) return
-      if (document.fullscreenElement) {
-        document.exitFullscreen()
-      } else {
-        wrap.requestFullscreen()
-      }
+    seekForward() {
+      const v = this.$refs.videoEl
+      if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || Infinity)
     },
-    formatTime(sec) {
-      if (!sec || isNaN(sec)) return '0:00'
-      const m = Math.floor(sec / 60)
-      const s = Math.floor(sec % 60)
-      return `${m}:${s.toString().padStart(2, '0')}`
-    },
-    onVideoClosed() {
-      const video = this.$refs.videoPlayer
-      if (video) {
-        video.pause()
-        video.currentTime = 0
-      }
-      this.playing = false
-      this.currentTime = 0
-      this.duration = 0
+    seekBackward() {
+      const v = this.$refs.videoEl
+      if (v) v.currentTime = Math.max(v.currentTime - 10, 0)
     },
     async copyMagnet(mag) {
       try {
@@ -1021,166 +912,104 @@ export default {
   letter-spacing: 0.05em;
 }
 
-/* ===== Video Player (iOS 26 glass style + dark theme) ===== */
+/* ===== Video Player (Apple QuickTime style — Teleport + Native) ===== */
 
-/* el-dialog 遮罩层：blur 背景，视频本身不受影响 */
-:deep(.el-overlay) {
-  background: rgba(0, 0, 0, 0.3) !important;
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-}
-:deep(.video-player-dialog) {
-  background: rgba(15, 15, 28, 0.6) !important;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
-}
-:deep(.el-dialog__header) {
-  background: transparent;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  padding: 16px 20px;
-}
-:deep(.el-dialog__title) {
-  color: rgba(255,255,255,0.9);
-  font-size: 14px;
-}
-:deep(.el-dialog__headerbtn .el-dialog__close) {
-  color: rgba(255,255,255,0.5);
-}
-:deep(.el-dialog__body) {
-  background: transparent;
-  padding: 0;
-}
-
-/* 播放器容器 */
-.video-player-wrap {
-  position: relative;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  outline: none;
-}
-.video-player {
-  display: block;
-  width: 100%;
-  cursor: pointer;
-}
-
-/* 毛玻璃控件条 */
-.vp-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 40px 16px 14px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.7));
-  border-top: 1px solid rgba(255,255,255,0.06);
-  transition: opacity 0.4s ease;
-  border-radius: 0 0 12px 12px;
-}
-.vp-controls.vp-controls-hide {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 进度条 */
-.vp-progress {
-  cursor: pointer;
-  padding: 8px 0;
-}
-.vp-progress-track {
-  height: 3px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.vp-progress-fill {
-  height: 100%;
-  background: var(--accent, #8B5CF6);
-  border-radius: 3px;
-  transition: width 0.05s linear;
-  box-shadow: 0 0 8px var(--accent, #8B5CF6);
-}
-.vp-progress:hover .vp-progress-track {
-  height: 5px;
-}
-
-/* 底部控件行 */
-.vp-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-}
-.vp-left, .vp-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* 按钮 */
-.vp-btn {
+.vp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.85);
-  cursor: pointer;
-  padding: 5px 8px;
-  border-radius: 8px;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
-.vp-btn:hover {
+
+.vp-container {
+  position: relative;
+  width: 90vw;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vp-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.vp-close:hover {
   background: rgba(255,255,255,0.15);
   color: #fff;
-  border-color: rgba(255,255,255,0.2);
 }
 
-/* 时间 */
-.vp-time {
-  font-size: 12px;
-  color: rgba(255,255,255,0.65);
-  font-variant-numeric: tabular-nums;
-  padding: 0 6px;
-  letter-spacing: 0.02em;
+.vp-player-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 32px 100px rgba(0,0,0,0.7);
+  background: #000;
 }
 
-/* 音量滑块 */
-.vp-volume {
-  width: 72px;
-  height: 3px;
-  cursor: pointer;
-  accent-color: var(--accent, #8B5CF6);
-  background: transparent;
+/* 原生 video 控件样式重写 */
+.vp-video {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  background: #000;
 }
 
-/* 倍速按钮 */
-.vp-speed-btn {
-  font-size: 12px;
-  padding: 5px 10px;
+/* 底部信息栏 */
+.vp-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.vp-title {
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.vp-speed-ctrl {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
-/* el-dropdown 毛玻璃菜单 */
-:deep(.el-dropdown-menu) {
-  background: rgba(30, 30, 46, 0.9) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 10px;
-  padding: 4px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-}
-:deep(.el-dropdown-menu__item) {
-  color: rgba(255,255,255,0.75);
+.vp-speed-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 6px;
-  font-size: 13px;
-  padding: 6px 12px;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-:deep(.el-dropdown-menu__item:hover),
-:deep(.el-dropdown-menu__item.is-active) {
-  background: rgba(139, 92, 246, 0.2) !important;
-  color: var(--accent, #8B5CF6) !important;
+.vp-speed-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.2);
+}
+.vp-speed-btn.active {
+  background: rgba(139,92,246,0.25);
+  border-color: rgba(139,92,246,0.5);
+  color: var(--accent, #8B5CF6);
 }
 </style>
