@@ -19,19 +19,17 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
-            <a
+            <button
               v-if="video.sample_url"
-              :href="video.sample_url"
-              target="_blank"
-              rel="noopener"
               class="preview-btn"
               title="观看预览"
+              @click="videoPlayerVisible = true"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                 <path d="M8 5v14l11-7z"/>
               </svg>
               预览
-            </a>
+            </button>
           </div>
 
           <!-- 标题 -->
@@ -187,6 +185,35 @@
       </div>
     </div>
   </div>
+
+  <!-- 视频预览弹窗 -->
+  <el-dialog
+    v-if="videoPlayerVisible && video.sample_url"
+    v-model="videoPlayerVisible"
+    :title="'预览 ' + (video.dvd_id || video.content_id)"
+    width="860px"
+    destroy-on-close
+    class="video-player-dialog"
+  >
+    <div class="video-player-wrap">
+      <video
+        ref="videoPlayer"
+        :src="video.sample_url"
+        controls
+        autoplay
+        class="video-player"
+      ></video>
+      <div class="video-speed-bar">
+        <span class="speed-label">倍速</span>
+        <button
+          v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+          :key="s"
+          :class="['speed-btn', { active: videoSpeed === s }]"
+          @click="setVideoSpeed(s)"
+        >{{ s === 1 ? '正常' : s + 'x' }}</button>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script>
@@ -203,6 +230,8 @@ export default {
     return {
       galleryViewerVisible: false,
       currentGalleryIndex: 0,
+      videoPlayerVisible: false,
+      videoSpeed: 1,
     }
   },
   computed: {
@@ -315,6 +344,11 @@ export default {
     },
     formatGalleryUrl(path) {
       return galleryFullUrl(path) || galleryThumbUrl(path) || null
+    },
+    setVideoSpeed(speed) {
+      this.videoSpeed = speed
+      const video = this.$refs.videoPlayer
+      if (video) video.playbackRate = speed
     },
     async copyMagnet(mag) {
       try {
@@ -833,5 +867,47 @@ export default {
   color: rgba(255,255,255,0.7);
   font-size: 14px;
   letter-spacing: 0.05em;
+}
+
+/* ===== Video Player Dialog ===== */
+.video-player-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.video-player {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: #000;
+  max-height: 480px;
+}
+.video-speed-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.speed-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+.speed-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.speed-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.speed-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 </style>
