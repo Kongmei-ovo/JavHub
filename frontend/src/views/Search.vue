@@ -111,6 +111,11 @@
             loading="lazy"
             class="cover-img"
           />
+          <div v-if="item.sample_url" class="card-preview-badge" title="有预览视频">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
         </div>
         <div class="card-info">
           <div class="card-code-row">
@@ -560,6 +565,7 @@ export default {
 }
 
 .card-cover {
+  position: relative;
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
@@ -577,6 +583,20 @@ export default {
   object-fit: none;
   object-position: right center;
   clip-path: inset(0 0 0 50%);
+}
+
+.card-preview-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.65);
+  border-radius: 4px;
+  padding: 3px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  pointer-events: none;
 }
 
 .card-info {
