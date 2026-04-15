@@ -19,77 +19,95 @@ def apply_translation(content_id: str, data: dict) -> dict:
     # per-content_id 映射（标题翻译等）
     content_mapping = get_translation(content_id)
 
-    # === actress ===
+    # === actress：按 ID 查找翻译 ===
     if "actresses" in data and isinstance(data["actresses"], list):
         for actress in data["actresses"]:
             if not isinstance(actress, dict):
                 continue
-            # 尝试多个可能的 name 字段
+            actress_id = actress.get("id")
+            if actress_id:
+                actress_trans = get_translation(f"actress:{actress_id}")
+                actress_map = actress_trans.get("actress", {}) if actress_trans else {}
+            else:
+                actress_map = {}
             for name_key in ["name_ja", "name_en", "name_kanji", "name_romaji", "name"]:
                 orig = actress.get(name_key)
                 if orig:
-                    # 优先用 per-content_id 的 actress 映射，否则用 global actress 映射
-                    actress_map = {}
-                    if content_mapping:
-                        actress_map = content_mapping.get("actress", {})
-                    if not actress_map:
-                        global_map = get_translation(orig)
-                        if global_map:
-                            actress_map = global_map.get("actress", {})
                     translated = _translate_item(orig, actress_map)
                     actress[f"{name_key}_translated"] = translated
                     break
 
-    # === category ===
+    # === category：按 ID 查找翻译 ===
     if "categories" in data and isinstance(data["categories"], list):
         for cat in data["categories"]:
             if not isinstance(cat, dict):
                 continue
-            name = cat.get("name_ja") or cat.get("name_en") or cat.get("name")
-            if name:
-                cat_map = {}
-                if content_mapping:
-                    cat_map = content_mapping.get("category", {})
-                if not cat_map:
-                    global_map = get_translation(name)
-                    if global_map:
-                        cat_map = global_map.get("category", {})
-                translated = _translate_item(name, cat_map)
-                cat["name_translated"] = translated
+            cat_id = cat.get("id")
+            cat_map = {}
+            if cat_id:
+                cat_trans = get_translation(f"category:{cat_id}")
+                if cat_trans:
+                    cat_map = cat_trans.get("category", {})
+            if not cat_map and content_mapping:
+                cat_map = content_mapping.get("category", {})
+            for name_key in ["name_ja", "name_en", "name"]:
+                orig = cat.get(name_key)
+                if orig:
+                    translated = _translate_item(orig, cat_map)
+                    cat[f"{name_key}_translated"] = translated
+                    break
 
-    # === series ===
-    if "series" in data and isinstance(data["series"], dict):
-        name = data["series"].get("name")
+    # === series：按 ID 查找翻译 ===
+    if "series" in data and isinstance(data["series"], dict) and data["series"]:
+        series = data["series"]
+        series_id = series.get("id")
+        series_map = {}
+        if series_id:
+            series_trans = get_translation(f"series:{series_id}")
+            if series_trans:
+                series_map = series_trans.get("series", {})
+        if not series_map and content_mapping:
+            series_map = content_mapping.get("series", {})
+        name = series.get("name")
         if name:
-            series_map = {}
-            if content_mapping:
-                series_map = content_mapping.get("series", {})
-            if not series_map:
-                global_map = get_translation(name)
-                if global_map:
-                    series_map = global_map.get("series", {})
             translated = _translate_item(name, series_map)
-            data["series"]["name_translated"] = translated
+            series["name_translated"] = translated
 
-    # === maker ===
-    if "maker" in data and isinstance(data["maker"], dict):
-        name = data["maker"].get("name")
-        if name:
-            maker_map = {}
-            if content_mapping:
-                maker_map = content_mapping.get("maker", {})
-            translated = _translate_item(name, maker_map)
-            data["maker"]["name_translated"] = translated
+    # === maker：按 ID 查找翻译 ===
+    if "maker" in data and isinstance(data["maker"], dict) and data["maker"]:
+        maker = data["maker"]
+        maker_id = maker.get("id")
+        maker_map = {}
+        if maker_id:
+            maker_trans = get_translation(f"maker:{maker_id}")
+            if maker_trans:
+                maker_map = maker_trans.get("maker", {})
+        if not maker_map and content_mapping:
+            maker_map = content_mapping.get("maker", {})
+        for name_key in ["name_ja", "name_en", "name"]:
+            orig = maker.get(name_key)
+            if orig:
+                translated = _translate_item(orig, maker_map)
+                maker[f"{name_key}_translated"] = translated
+                break
 
-    # === label ===
-    if "label" in data and isinstance(data["label"], dict):
-        name = data["label"].get("name")
-        if name:
-            label_map = {}
-            if content_mapping:
-                label_map = content_mapping.get("label", {})
-            translated = _translate_item(name, label_map)
-            data["label"]["name_translated"] = translated
+    # === label：按 ID 查找翻译 ===
+    if "label" in data and isinstance(data["label"], dict) and data["label"]:
+        label = data["label"]
+        label_id = label.get("id")
+        label_map = {}
+        if label_id:
+            label_trans = get_translation(f"label:{label_id}")
+            if label_trans:
+                label_map = label_trans.get("label", {})
+        if not label_map and content_mapping:
+            label_map = content_mapping.get("label", {})
+        for name_key in ["name_ja", "name_en", "name"]:
+            orig = label.get(name_key)
+            if orig:
+                translated = _translate_item(orig, label_map)
+                label[f"{name_key}_translated"] = translated
+                break
 
     # === title ===
     title_map = {}

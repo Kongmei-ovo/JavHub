@@ -40,7 +40,7 @@ def _get_raw(content_id: str) -> Optional[dict]:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT actress_json, category_json, series_json, title_json FROM translation_mappings WHERE content_id = ?",
+        "SELECT actress_json, category_json, series_json, title_json, maker_json, label_json FROM translation_mappings WHERE content_id = ?",
         (content_id,)
     )
     row = cursor.fetchone()
@@ -52,6 +52,8 @@ def _get_raw(content_id: str) -> Optional[dict]:
         "category": json.loads(row["category_json"] or "{}"),
         "series": json.loads(row["series_json"] or "{}"),
         "title": json.loads(row["title_json"] or "{}"),
+        "maker": json.loads(row["maker_json"] or "{}"),
+        "label": json.loads(row["label_json"] or "{}"),
     }
 
 def get_translation(content_id: str) -> Optional[dict]:
@@ -173,21 +175,28 @@ def import_translations(mapping_type: str, data: dict) -> int:
 
 def get_translation_count(mapping_type: str) -> int:
     """获取有翻译的条数统计。
-    actress/category/series: 统计 global key 里的 kv 对数量。
+    actress: 统计 actress:{id} 和 _global:actress:{name} 的 kv 对数量。
+    category/series: 统计 global key 里的 kv 对数量。
     title: 统计有 title 翻译的 content_id 行数。
     """
     conn = get_db()
     cursor = conn.cursor()
-    if mapping_type in ("actress", "category", "series"):
-        # 从 global key 提取
+    if mapping_type == "actress":
+        # actress:{id} → {name: translated}
         cursor.execute(
-            "SELECT actress_json, category_json, series_json FROM translation_mappings WHERE content_id LIKE '_global:%'"
+            "SELECT actress_json FROM translation_mappings WHERE content_id LIKE 'actress:%'"
         )
         rows = cursor.fetchall()
-        total = 0
-        for row in rows:
-            parsed = json.loads(row[mapping_type + "_json"] or "{}")
-            total += len(parsed)
+        total = sum(len(json.loads(row["actress_json"] or "{}")) for row in rows)
+        conn.close()
+        return total
+    elif mapping_type in ("category", "series"):
+        # {type}:{id} 格式
+        cursor.execute(
+            f"SELECT {mapping_type}_json FROM translation_mappings WHERE content_id LIKE '{mapping_type}:%'"
+        )
+        rows = cursor.fetchall()
+        total = sum(len(json.loads(row[mapping_type + "_json"] or "{}")) for row in rows)
         conn.close()
         return total
     else:  # title

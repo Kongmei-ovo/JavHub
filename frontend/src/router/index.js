@@ -11,7 +11,8 @@ import Actor from '../views/Actor.vue'
 import Favorites from '../views/Favorites.vue'
 
 const routes = [
-  { path: '/', component: Home },
+  { path: '/', component: Genres },
+  { path: '/downloads', component: Home },
   { path: '/search', component: Search },
   { path: '/genres', component: Genres },
   { path: '/genres/:categoryId', name: 'GenreDetail', component: () => import('../views/GenreDetail.vue') },
@@ -26,7 +27,7 @@ const routes = [
   { path: '/missing', name: 'Missing', component: () => import('../views/Missing.vue') },
   { path: '/missing/:id', name: 'MissingDetail', component: () => import('../views/MissingDetail.vue') },
   { path: '/duplicates', name: 'Duplicates', component: () => import('../views/Duplicates.vue') },
-  { path: '/tasks', redirect: '/' },
+  { path: '/tasks', redirect: '/downloads' },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 

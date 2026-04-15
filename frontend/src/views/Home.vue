@@ -201,7 +201,7 @@ export default {
     async loadTasks() {
       try {
         const resp = await api.getDownloads()
-        this.tasks = resp.data
+        this.tasks = resp.data.data || []
         this.stats = {
           pending: this.tasks.filter(t => t.status === 'pending').length,
           downloading: this.tasks.filter(t => t.status === 'downloading').length,

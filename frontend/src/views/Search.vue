@@ -3,17 +3,15 @@
     <!-- 搜索区域 3×2 Grid -->
     <div class="search-hero">
       <h1 class="hero-title">影片搜索</h1>
-      <p class="hero-subtitle">支持番号、演员、厂商、系列、题材多维度检索</p>
       <div class="search-section">
-        <div class="search-grid">
-          <!-- Row 1: 番号 + 关键词 + 厂商 -->
+        <div class="search-row">
           <div class="search-box-wrapper code-search">
             <div class="search-box">
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
-              <input v-model="contentId" placeholder="精确番号" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
+              <input v-model="contentId" placeholder="番号" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
             </div>
           </div>
           <div class="search-box-wrapper">
@@ -23,25 +21,6 @@
                 <path d="m21 21-4.35-4.35"/>
               </svg>
               <input v-model="keyword" placeholder="标题" @keyup.enter="doSearch" class="search-input" />
-            </div>
-          </div>
-          <div class="search-box-wrapper">
-            <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input v-model="makerName" placeholder="厂商" @keyup.enter="doSearch" class="search-input" />
-            </div>
-          </div>
-          <!-- Row 2: 系列 + 演员 + 题材 -->
-          <div class="search-box-wrapper">
-            <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input v-model="seriesName" placeholder="系列" @keyup.enter="doSearch" class="search-input" />
             </div>
           </div>
           <div class="search-box-wrapper">
@@ -62,6 +41,27 @@
               <input v-model="categoryName" placeholder="题材" @keyup.enter="doSearch" class="search-input" />
             </div>
           </div>
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="seriesName" placeholder="系列" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
+          <div class="search-box-wrapper year-search">
+            <input v-model.number="year" placeholder="年份" @keyup.enter="doSearch" class="year-input" type="number" min="1900" max="2100" />
+          </div>
+          <div class="search-box-wrapper">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input v-model="makerName" placeholder="工作室" @keyup.enter="doSearch" class="search-input" />
+            </div>
+          </div>
         </div>
         <button @click="doSearch" :disabled="loading" class="main-search-btn">
           <span v-if="loading" class="spinner"></span>
@@ -70,16 +70,50 @@
       </div>
     </div>
 
-    <!-- 结果信息 -->
+    <!-- 结果信息 + 分页 -->
     <div v-if="results.length > 0 || loading" class="result-bar">
-      <span class="result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
-      <div class="result-sort">
-        <span>排序：</span>
-        <select v-model="sortBy" @change="doSearch" class="filter-select-small">
-          <option value="">默认</option>
-          <option value="date_desc">发行日期 ↓</option>
-          <option value="date_asc">发行日期 ↑</option>
-        </select>
+      <div class="result-bar-left">
+        <span class="result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
+        <div class="result-sort">
+          <span class="sort-label">排序：</span>
+          <div class="sort-rows">
+            <div v-for="(cond, idx) in sortConditions" :key="idx" class="sort-row">
+              <select v-model="cond.value" @change="onSortChange(idx)" class="filter-select-small">
+                <option value="">无</option>
+                <option value="release_date_desc">发售日期 ↓</option>
+                <option value="release_date_asc">发售日期 ↑</option>
+                <option value="title_ja_desc">标题 Z→A</option>
+                <option value="title_ja_asc">标题 A→Z</option>
+                <option value="runtime_mins_desc">时长 长→短</option>
+                <option value="runtime_mins_asc">时长 短→长</option>
+                <option value="random">随机</option>
+              </select>
+              <button v-if="sortConditions.length > 1" class="sort-remove-btn" @click="removeSort(idx)" title="移除">×</button>
+            </div>
+            <button class="btn btn-ghost sort-add-btn" @click="addSort">+ 添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分页控制（顶部） -->
+    <div v-if="results.length > 0" class="pagination-bar">
+      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
+      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <div class="jump-wrap">
+        <input
+          v-model.number="jumpPage"
+          class="jump-input"
+          type="number"
+          min="1"
+          :max="totalPages"
+          @keyup.enter="doJumpPage"
+          :placeholder="totalPages"
+        />
+        <button class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
@@ -139,12 +173,25 @@
       <p class="text-secondary">尝试其他关键词或筛选条件</p>
     </div>
 
-    <!-- 分页 -->
-    <div v-if="results.length > 0 && page < totalPages" class="pagination">
-      <button class="btn btn-ghost" @click="loadMore">
-        加载更多
-      </button>
-      <span class="page-info">第 {{ page }} / {{ totalPages }} 页</span>
+    <!-- 分页控制（底部） -->
+    <div v-if="results.length > 0" class="pagination-bar">
+      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
+      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <div class="jump-wrap">
+        <input
+          v-model.number="jumpPage"
+          class="jump-input"
+          type="number"
+          min="1"
+          :max="totalPages"
+          @keyup.enter="doJumpPage"
+          :placeholder="totalPages"
+        />
+        <button class="jump-btn" @click="doJumpPage">跳转</button>
+      </div>
     </div>
 
     <!-- 影片详情弹窗 -->
@@ -182,14 +229,16 @@ export default {
       makerName: '',
       seriesName: '',
       actressName: '',
+      year: null,
 
-      sortBy: '',
+      sortConditions: [{ value: '' }],
 
       // 分页
       page: 1,
       pageSize: 30,
       total: 0,
-      totalPages: 1
+      totalPages: 1,
+      jumpPage: null
     }
   },
   computed: {
@@ -212,6 +261,11 @@ export default {
     if (q.keyword || q.q) {
       this.keyword = q.keyword || q.q
     }
+    // 从设置加载 page_size
+    api.getConfig().then(resp => {
+      const ps = resp.data?.javinfo?.page_size
+      if (ps) this.pageSize = ps
+    }).catch(() => {})
     if (this.hasFilters) {
       this.doSearch()
     }
@@ -227,7 +281,8 @@ export default {
       this.seriesName = ''
       this.actressName = ''
       this.categoryName = ''
-      this.sortBy = ''
+      this.year = null
+      this.sortConditions = [{ value: '' }]
       this.results = []
       this.searched = false
     },
@@ -265,7 +320,24 @@ export default {
         if (this.makerName) params.maker_name = this.makerName.trim()
         if (this.seriesName) params.series_name = this.seriesName.trim()
         if (this.actressName) params.actress_name = this.actressName.trim()
+        if (this.year) params.year = this.year
         if (this.categoryName) params.category_name = this.categoryName.trim()
+        if (this.sortConditions.length > 0) {
+          const parts = []
+          for (const cond of this.sortConditions) {
+            if (!cond.value) continue
+            if (cond.value === 'random') { parts.unshift('random'); continue }
+            const idx = cond.value.lastIndexOf('_')
+            const field = cond.value.substring(0, idx)
+            const order = cond.value.substring(idx + 1)
+            parts.push(`${field}:${order}`)
+          }
+          if (parts.length === 1 && parts[0] === 'random') {
+            params.random = '1'
+          } else if (parts.length > 0) {
+            params.sort_by = parts.join(',')
+          }
+        }
 
         const resp = await api.searchVideos(params)
         const data = resp.data
@@ -280,32 +352,68 @@ export default {
         this.loading = false
       }
     },
-    async loadMore() {
-      this.page++
+    async goPage(p) {
+      if (p < 1 || p > this.totalPages || p === this.page) return
+      this.page = p
       this.loading = true
+      this.searched = true
       try {
-        const params = {
-          page: this.page,
-          page_size: this.pageSize
-        }
+        const params = { page: this.page, page_size: this.pageSize }
         if (this.contentId) params.content_id = this.contentId.trim()
         if (this.keyword) params.q = this.keyword.trim()
         if (this.makerName) params.maker_name = this.makerName.trim()
         if (this.seriesName) params.series_name = this.seriesName.trim()
         if (this.actressName) params.actress_name = this.actressName.trim()
+        if (this.year) params.year = this.year
         if (this.categoryName) params.category_name = this.categoryName.trim()
+        if (this.sortConditions.length > 0) {
+          const parts = []
+          for (const cond of this.sortConditions) {
+            if (!cond.value) continue
+            if (cond.value === 'random') { parts.unshift('random'); continue }
+            const idx = cond.value.lastIndexOf('_')
+            const field = cond.value.substring(0, idx)
+            const order = cond.value.substring(idx + 1)
+            parts.push(`${field}:${order}`)
+          }
+          if (parts.length === 1 && parts[0] === 'random') {
+            params.random = '1'
+          } else if (parts.length > 0) {
+            params.sort_by = parts.join(',')
+          }
+        }
 
         const resp = await api.searchVideos(params)
         const data = resp.data
-        this.results.push(...(data.data || []))
+        this.results = data.data || []
         this.total = data.total_count || 0
         this.totalPages = data.total_pages || 1
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch (e) {
-        console.error('Load more failed:', e)
-        this.page--
+        console.error('Page change failed:', e)
       } finally {
         this.loading = false
       }
+    },
+    doJumpPage() {
+      if (!this.jumpPage) return
+      const p = Math.max(1, Math.min(this.totalPages, this.jumpPage))
+      this.jumpPage = null
+      this.goPage(p)
+    },
+    onSortChange(idx) {
+      // 选择非空值时，如果已经是最后一个，添加新行
+      if (this.sortConditions[idx].value && idx === this.sortConditions.length - 1) {
+        this.sortConditions.push({ value: '' })
+      }
+      this.doSearch()
+    },
+    addSort() {
+      this.sortConditions.push({ value: '' })
+    },
+    removeSort(idx) {
+      this.sortConditions.splice(idx, 1)
+      this.doSearch()
     },
     async openModal(video) {
       this.selectedVideo = video
@@ -390,14 +498,16 @@ export default {
 
 .search-hero {
   text-align: center;
-  padding: 40px 20px 20px;
+  padding: 30px 20px 24px;
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
 .hero-title {
-  font-size: 32px;
+  font-family: 'Playfair Display', 'Noto Serif SC', serif;
+  font-size: 44px;
   font-weight: 700;
-  margin-bottom: 8px;
+  letter-spacing: 2px;
+  margin-bottom: 0;
 }
 
 .hero-subtitle {
@@ -407,27 +517,50 @@ export default {
 
 .search-section {
   display: flex;
-  gap: 12px;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 20px;
   align-items: stretch;
+  gap: 10px;
+  max-width: 1600px;
+  margin: 12px auto 0;
+  padding: 0 20px;
 }
 
-.search-grid {
+.search-row {
+  display: flex;
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .search-box-wrapper {
   position: relative;
+  flex: 1;
   min-width: 0;
 }
 
-.search-box-wrapper.code-search {
-  grid-column: span 1;
+.year-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+
+.year-input::-webkit-outer-spin-button,
+.year-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.year-input:focus {
+  border-color: var(--accent);
 }
 
 .search-box {
@@ -473,6 +606,7 @@ export default {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .main-search-btn:hover {
@@ -485,21 +619,40 @@ export default {
   align-items: center;
   padding: 12px 20px;
   max-width: 1400px;
-  margin: 0 auto;
+  margin: 16px auto 0;
 }
 
+.result-bar-left { display: flex; align-items: center; gap: 16px; }
 .result-count {
   font-size: 14px;
   color: var(--text-secondary);
 }
 
-.result-sort {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-muted);
+.result-sort { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sort-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
+
+.sort-rows { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sort-row { display: flex; align-items: center; gap: 2px; }
+.sort-remove-btn {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 2px 4px; border-radius: 4px; line-height: 1;
+}
+.sort-remove-btn:hover { color: var(--text-primary); }
+.sort-add-btn {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer;
+  line-height: normal !important;
+}
+.sort-add-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
 .filter-select-small {
   padding: 4px 8px;
@@ -686,6 +839,46 @@ export default {
   gap: 16px;
   padding: 20px;
 }
+
+.pagination-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: var(--transition);
+}
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
+
+.jump-wrap { display: flex; align-items: center; gap: 4px; margin-left: 8px; }
+.jump-input {
+  width: 50px; padding: 4px 6px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text-primary);
+  font-size: 12px; text-align: center;
+}
+.jump-input::-webkit-inner-spin-button,
+.jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.jump-btn {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 4px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px; transition: var(--transition);
+}
+.jump-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .page-info {
   font-size: 13px;

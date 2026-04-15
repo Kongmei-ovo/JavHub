@@ -171,6 +171,10 @@ export default {
     return api.put('/v1/config', config)
   },
 
+  testTelegramBot(token) {
+    return api.post('/v1/notification/telegram/test', null, { params: { token } })
+  },
+
   purgeCache(scope = 'video') {
     return api.post('/v1/cache/purge', null, { params: { scope } })
   },

@@ -1,4 +1,5 @@
 <template>
+  <!-- 单根节点包裹，teleport 放在内部 -->
   <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-container">
       <button class="modal-close" @click="$emit('close')">×</button>
@@ -184,58 +185,58 @@
         <div class="lightbox-counter">{{ currentGalleryIndex + 1 }} / {{ galleryThumbs.length }}</div>
       </div>
     </div>
-  </div>
 
-  <!-- 视频预览弹窗：Teleport 避免 el-dialog 样式污染 -->
-  <teleport to="body">
-    <div
-      v-if="videoPlayerVisible && video.sample_url"
-      class="vp-overlay"
-      @click.self="closeVideoPlayer"
-      @keydown.esc="closeVideoPlayer"
-      @keydown.left.prevent="seekBackward"
-      @keydown.right.prevent="seekForward"
-      tabindex="0"
-      ref="vpOverlay"
-    >
-      <div class="vp-container">
-        <!-- 关闭按钮 -->
-        <button class="vp-close" @click="closeVideoPlayer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+    <!-- 视频预览弹窗：Teleport 避免 el-dialog 样式污染 -->
+    <teleport to="body">
+      <div
+        v-if="videoPlayerVisible && video.sample_url"
+        class="vp-overlay"
+        @click.self="closeVideoPlayer"
+        @keydown.esc="closeVideoPlayer"
+        @keydown.left.prevent="seekBackward"
+        @keydown.right.prevent="seekForward"
+        tabindex="0"
+        ref="vpOverlay"
+      >
+        <div class="vp-container">
+          <!-- 关闭按钮 -->
+          <button class="vp-close" @click="closeVideoPlayer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
 
-        <!-- 原生播放器：最稳定，macOS Safari/Chrome 兼容性最好 -->
-        <div class="vp-player-wrap">
-          <video
-            ref="videoEl"
-            :src="video.sample_url"
-            class="vp-video"
-            controls
-            autoplay
-            playsinline
-            @keydown.left.prevent="seekBackward"
-            @keydown.right.prevent="seekForward"
-          ></video>
-        </div>
+          <!-- 原生播放器：最稳定，macOS Safari/Chrome 兼容性最好 -->
+          <div class="vp-player-wrap">
+            <video
+              ref="videoEl"
+              :src="video.sample_url"
+              class="vp-video"
+              controls
+              autoplay
+              playsinline
+              @keydown.left.prevent="seekBackward"
+              @keydown.right.prevent="seekForward"
+            ></video>
+          </div>
 
-        <!-- 底部信息栏 -->
-        <div class="vp-info">
-          <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
-          <div class="vp-speed-ctrl">
-            <button
-              v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]"
-              :key="s"
-              :class="['vp-speed-btn', { active: videoSpeed === s }]"
-              @click="setSpeed(s)"
-            >{{ s === 1 ? '1x' : s + 'x' }}</button>
+          <!-- 底部信息栏 -->
+          <div class="vp-info">
+            <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
+            <div class="vp-speed-ctrl">
+              <button
+                v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+                :key="s"
+                :class="['vp-speed-btn', { active: videoSpeed === s }]"
+                @click="setSpeed(s)"
+              >{{ s === 1 ? '1x' : s + 'x' }}</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </teleport>
+    </teleport>
+  </div>
 </template>
 
 <script>

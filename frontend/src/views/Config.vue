@@ -2,6 +2,12 @@
   <div class="settings">
     <div class="page-header">
       <h1>设置</h1>
+      <div class="page-header-actions">
+        <button class="btn btn-primary" @click="save" :disabled="saving">
+          <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
+          <span v-else>保存配置</span>
+        </button>
+      </div>
     </div>
 
     <div class="settings-content">
@@ -26,7 +32,13 @@
           </div>
           <div class="form-group">
             <label>密码</label>
-            <input class="input" v-model="config.openlist.password" type="password" />
+            <div class="input-password-wrap">
+              <input class="input" :type="showOpenlistPwd ? 'text' : 'password'" v-model="config.openlist.password" autocomplete="off" />
+              <button class="input-eye-btn" type="button" @click="showOpenlistPwd = !showOpenlistPwd">
+                <svg v-if="!showOpenlistPwd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -51,7 +63,13 @@
         </div>
         <div class="form-group">
           <label>API Key</label>
-          <input class="input" v-model="config.emby.api_key" type="password" />
+          <div class="input-password-wrap">
+            <input class="input" :type="showEmbyKey ? 'text' : 'password'" v-model="config.emby.api_key" autocomplete="off" />
+            <button class="input-eye-btn" type="button" @click="showEmbyKey = !showEmbyKey">
+              <svg v-if="!showEmbyKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -87,13 +105,13 @@
         <div class="form-group">
           <label>映射类型</label>
           <div class="form-row">
-            <select class="input" v-model="translationType" style="flex:1">
+            <select class="input" v-model="translationType" style="flex:1; min-width:0">
               <option value="actress">演员</option>
               <option value="category">题材</option>
               <option value="series">系列</option>
               <option value="title">标题</option>
             </select>
-            <button class="btn btn-primary" @click="loadTransStats" title="刷新">↻</button>
+            <button class="btn btn-ghost trans-refresh-btn" @click="loadTransStats" title="刷新">↻</button>
           </div>
         </div>
         <div v-if="transStats[translationType] !== undefined" class="trans-stat">
@@ -132,7 +150,13 @@
         </div>
         <div class="form-group">
           <label>Token（无Token则留空）</label>
-          <input class="input" v-model="config.metatube.token" type="password" placeholder="可选" />
+          <div class="input-password-wrap">
+            <input class="input" :type="showMetatubeToken ? 'text' : 'password'" v-model="config.metatube.token" autocomplete="off" placeholder="可选" />
+            <button class="input-eye-btn" type="button" @click="showMetatubeToken = !showMetatubeToken">
+              <svg v-if="!showMetatubeToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -146,11 +170,34 @@
         </div>
         <div class="form-group">
           <label>Bot Token</label>
-          <input class="input" v-model="config.telegram.bot_token" />
+          <div class="input-password-wrap">
+            <input
+              class="input"
+              :type="showBotToken ? 'text' : 'password'"
+              v-model="config.telegram.bot_token"
+              autocomplete="off"
+            />
+            <button class="input-eye-btn" type="button" @click="showBotToken = !showBotToken" :title="showBotToken ? '隐藏' : '显示'">
+              <svg v-if="!showBotToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="form-group">
           <label>允许的用户 ID（逗号分隔）</label>
           <input class="input" v-model="telegramUsers" placeholder="123456789,987654321" />
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" @click="testTelegram" :disabled="testingTelegram || !config.telegram.bot_token">
+            {{ testingTelegram ? '发送中...' : '发送测试信息' }}
+          </button>
+          <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
         </div>
       </div>
 
@@ -206,39 +253,79 @@
         </div>
       </div>
 
-      <!-- 主题 -->
+      <!-- 页面设计 -->
       <div class="settings-card">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 2a10 10 0 010 20z" fill="currentColor" opacity="0.3"/>
           </svg>
-          <h2>主题</h2>
+          <h2>页面设计</h2>
+        </div>
+
+        <div class="settings-sub-section">
+          <div class="settings-sub-header">主题</div>
+          <div class="form-group">
+            <div class="theme-select-wrap">
+              <select class="palette-select" v-model="currentTheme" @change="switchTheme(currentTheme)">
+                <option
+                  v-for="(theme, key) in themes"
+                  :key="key"
+                  :value="key"
+                >
+                  {{ theme.label }}
+                </option>
+              </select>
+              <div class="theme-color-preview">
+                <span
+                  v-for="(theme, key) in themes"
+                  :key="key"
+                  class="color-dot"
+                  :class="{ active: currentTheme === key }"
+                  :style="{ background: themes[key].vars['--accent'] }"
+                  :title="theme.label"
+                  @click="switchTheme(key)"
+                ></span>
+              </div>
+              <div class="theme-accent-bar" :style="{ background: themes[currentTheme]?.vars['--accent'] }"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-sub-section">
+          <div class="settings-sub-header">检索页数量</div>
+          <div class="form-group">
+            <select class="input" v-model.number="config.javinfo.page_size">
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 网络代理设置 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+          </svg>
+          <h2>网络代理</h2>
+        </div>
+        <div class="form-group checkbox">
+          <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" />
+          <label for="proxyEnabled">启用代理</label>
         </div>
         <div class="form-group">
-          <div class="theme-select-wrap">
-            <select class="palette-select" v-model="currentTheme" @change="switchTheme(currentTheme)">
-              <option
-                v-for="(theme, key) in themes"
-                :key="key"
-                :value="key"
-              >
-                {{ theme.label }}
-              </option>
-            </select>
-            <div class="theme-color-preview">
-              <span
-                v-for="(theme, key) in themes"
-                :key="key"
-                class="color-dot"
-                :class="{ active: currentTheme === key }"
-                :style="{ background: themes[key].vars['--accent'] }"
-                :title="theme.label"
-                @click="switchTheme(key)"
-              ></span>
-            </div>
-            <div class="theme-accent-bar" :style="{ background: themes[currentTheme]?.vars['--accent'] }"></div>
-          </div>
+          <label>HTTP 代理</label>
+          <input class="input" v-model="config.proxy.http_url" placeholder="http://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
+        </div>
+        <div class="form-group">
+          <label>HTTPS 代理</label>
+          <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
         </div>
       </div>
 
@@ -420,13 +507,6 @@
           <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
         </div>
       </div>
-
-      <div class="settings-actions">
-        <button class="btn btn-primary" @click="save" :disabled="saving">
-          <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
-          <span v-else>保存配置</span>
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -447,8 +527,9 @@ export default {
         crawler: { request_interval: 3 },
         scheduler: { subscription_check_hour: 2 },
         notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-        javinfo: { api_url: 'http://localhost:8080' },
+        javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
         metatube: { host: '154.23.255.204', port: 8081, token: '' },
+        proxy: { enabled: false, http_url: '', https_url: '' },
       },
       telegramUsers: '',
       translationType: 'actress',
@@ -457,6 +538,12 @@ export default {
       transMsg: '',
       transMsgType: 'info',
       saving: false,
+      testingTelegram: false,
+      telegramTestMsg: '',
+      showBotToken: false,
+      showOpenlistPwd: false,
+      showEmbyKey: false,
+      showMetatubeToken: false,
       themes: THEMES,
       currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
       bubbleCfg: {
@@ -528,8 +615,9 @@ export default {
         crawler: data.crawler || { request_interval: 3 },
         scheduler: data.scheduler || { subscription_check_hour: 2 },
         notification: data.notification || { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-        javinfo: data.javinfo || { api_url: 'http://localhost:8080' },
+        javinfo: data.javinfo || { api_url: 'http://localhost:8080', page_size: 30 },
         metatube: data.metatube || { host: '154.23.255.204', port: 8081, token: '' },
+        proxy: data.proxy || { enabled: false, http_url: '', https_url: '' },
       }
       this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
     } catch (e) {
@@ -551,6 +639,24 @@ export default {
         this.$message.error('保存失败')
       } finally {
         this.saving = false
+      }
+    },
+    async testTelegram() {
+      if (!this.config.telegram.bot_token) {
+        this.telegramTestMsg = '请先填写 Bot Token'
+        return
+      }
+      this.testingTelegram = true
+      this.telegramTestMsg = ''
+      try {
+        await api.testTelegramBot(this.config.telegram.bot_token)
+        this.telegramTestMsg = '发送成功'
+        this.$message.success('测试信息已发送')
+      } catch (e) {
+        this.telegramTestMsg = '发送失败'
+        this.$message.error('发送失败，请检查 Token 和用户 ID')
+      } finally {
+        this.testingTelegram = false
       }
     },
     loadBubbleCfg() {
@@ -633,16 +739,23 @@ export default {
 </script>
 
 <style scoped>
-.settings { padding: 24px; max-width: 800px; margin: 0 auto; }
-.page-header { margin-bottom: 24px; }
+.settings { padding: 24px 32px; }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
 .page-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); }
-.settings-content { display: flex; flex-direction: column; gap: 16px; }
+.page-header-actions { display: flex; gap: 8px; align-items: center; }
+.settings-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
 
 .settings-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 20px;
+  min-width: 0;
 }
 .settings-card-header {
   display: flex;
@@ -655,10 +768,37 @@ export default {
 }
 .settings-card-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 
+.settings-sub-section {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.settings-sub-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.settings-sub-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .form-group { margin-bottom: 14px; }
 .form-group:last-child { margin-bottom: 0; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.trans-refresh-btn { padding: 6px 10px; font-size: 14px; flex-shrink: 0; }
+.input-password-wrap { position: relative; display: flex; align-items: center; }
+.input-password-wrap .input { padding-right: 36px; }
+.input-eye-btn {
+  position: absolute; right: 8px; background: none; border: none;
+  cursor: pointer; color: var(--text-muted); padding: 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+.input-eye-btn:hover { color: var(--text-primary); }
 
 .form-group.checkbox {
   display: flex;

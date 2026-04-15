@@ -90,6 +90,9 @@ class InfoClient:
         actress_name: str | None = None,
         category_id: int | None = None,
         category_name: str | None = None,
+        year: int | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
@@ -97,7 +100,11 @@ class InfoClient:
         params = {"q": q, "maker_id": maker_id, "maker_name": maker_name,
                   "series_id": series_id, "series_name": series_name, "actress_id": actress_id,
                   "actress_name": actress_name, "category_id": category_id, "category_name": category_name,
+                  "year": year,
                   "page": page, "page_size": page_size}
+        if sort_by:
+            # JavInfoApi expects "field:dir" format; if already contains ":" (from frontend format), pass as-is
+            params["sort_by"] = sort_by if ':' in sort_by else f"{sort_by}:{sort_order or 'asc'}"
         # content_id 映射到 JavInfoApi 的 dvd_id 字段（JavInfoApi 的 dvd_id = 小写 content_id）
         if content_id:
             params["dvd_id"] = content_id.lower()
