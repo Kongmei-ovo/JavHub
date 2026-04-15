@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import sys
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from database import init_db
 
 # 配置日志
@@ -47,6 +48,30 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# 速率限制中间件
+from config import config as _cfg
+if _cfg.rate_limit_enabled:
+    from middlewares.rate_limit import init_limiter, get_limiter
+    init_limiter(requests_per_minute=_cfg.rate_limit_rpm, burst=_cfg.rate_limit_burst)
+    _rate_limiter = get_limiter()
+
+    @app.middleware("http")
+    async def rate_limit_middleware(request: Request, call_next):
+        if _rate_limiter is None:
+            return await call_next(request)
+        client_ip = request.client.host if request.client else "unknown"
+        allowed, headers = _rate_limiter.is_allowed(client_ip)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "请求过于频繁，请稍后再试"},
+                headers=headers,
+            )
+        response = await call_next(request)
+        for k, v in headers.items():
+            response.headers[k] = v
+        return response
 
 # Init DB
 init_db()

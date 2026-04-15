@@ -161,6 +161,19 @@ class Config:
     def notification_new_movie(self) -> bool:
         return self._config.get('notification', {}).get('new_movie_notify', True)
 
+    # Rate limiting
+    @property
+    def rate_limit_enabled(self) -> bool:
+        return self._config.get('rate_limit', {}).get('enabled', False)
+
+    @property
+    def rate_limit_rpm(self) -> int:
+        return self._config.get('rate_limit', {}).get('requests_per_minute', 60)
+
+    @property
+    def rate_limit_burst(self) -> int:
+        return self._config.get('rate_limit', {}).get('burst', 10)
+
     def get_all(self) -> dict:
         return self._config.copy()
 
