@@ -8,7 +8,7 @@ def create_bot() -> Application:
     app = Application.builder().token(bot_token).build()
 
     # 注册命令处理器
-    from handlers.search import search_handler, download_callback
+    from handlers.search import search_handler, download_callback, callback_handler as search_callback_handler
     from handlers.subscription import sub_add_handler, sub_del_handler, sub_list_handler
     from handlers.status import status_handler
 
@@ -20,6 +20,7 @@ def create_bot() -> Application:
 
     # 注册回调处理器
     app.add_handler(CallbackQueryHandler(download_callback))
+    app.add_handler(CallbackQueryHandler(search_callback_handler))
 
     return app
 
