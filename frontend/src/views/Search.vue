@@ -3,7 +3,21 @@
     <!-- 搜索区域 3×2 Grid -->
     <div class="search-hero">
       <h1 class="hero-title">影片搜索</h1>
-      <div class="search-section">
+
+      <!-- 移动端折叠触发按钮（桌面端隐藏） -->
+      <button class="search-expand-btn" @click="searchExpanded = !searchExpanded">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span>搜索</span>
+        <svg class="chevron-icon" :class="{ expanded: searchExpanded }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      <!-- 搜索表单（移动端可折叠，桌面端始终显示） -->
+      <div class="search-section" :class="{ 'search-section--mobile-hidden': !searchExpanded }">
         <div class="search-row">
           <div class="search-box-wrapper code-search">
             <div class="search-box">
@@ -238,7 +252,8 @@ export default {
       pageSize: 30,
       total: 0,
       totalPages: 1,
-      jumpPage: null
+      jumpPage: null,
+      searchExpanded: false,
     }
   },
   computed: {
@@ -916,5 +931,82 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+
+/* === 移动端折叠搜索 === */
+@media (max-width: 768px) {
+  /* 隐藏桌面端搜索按钮（在表单内） */
+  .search-expand-btn {
+    display: flex;
+  }
+
+  /* 折叠状态：隐藏搜索表单 */
+  .search-section--mobile-hidden {
+    display: none;
+  }
+
+  /* 移动端折叠按钮样式 */
+  .search-expand-btn {
+    display: none; /* 桌面端默认隐藏 */
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: calc(100% - 40px);
+    margin: 0 auto;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .search-expand-btn:active {
+    border-color: var(--accent);
+  }
+
+  .search-expand-btn .search-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+  }
+
+  .search-expand-btn .chevron-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    margin-left: auto;
+    transition: transform 0.25s ease;
+  }
+
+  .search-expand-btn .chevron-icon.expanded {
+    transform: rotate(180deg);
+  }
+
+  /* 移动端搜索区 padding 收紧 */
+  .search-hero {
+    padding: 20px 16px 16px;
+  }
+
+  .search-section {
+    margin-top: 12px;
+  }
+
+  .search-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-box-wrapper {
+    min-width: 100%;
+  }
+
+  .main-search-btn {
+    width: 100%;
+    margin-top: 4px;
+    padding: 12px;
+  }
+}
 }
 </style>
