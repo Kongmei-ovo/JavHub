@@ -327,14 +327,19 @@ def init_db():
             snapshot_key TEXT,
             status TEXT DEFAULT 'pending',
             error_msg TEXT,
+            progress INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
         )
     ''')
 
-    # 迁移：为已存在的表添加 snapshot_key 列
+    # 迁移：为已存在的表添加 snapshot_key 和 progress 列
     try:
         cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN snapshot_key TEXT")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN progress INTEGER DEFAULT 0")
     except Exception:
         pass
 
@@ -601,7 +606,12 @@ def update_inventory_job(job_id: int, status: str, error_msg: Optional[str] = No
     """更新作业状态"""
     conn = get_db_orig()
     cursor = conn.cursor()
-    if error_msg:
+    if snapshot_key is not None:
+        cursor.execute(
+            "UPDATE inventory_jobs SET status = ?, error_msg = ?, snapshot_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (status, error_msg, snapshot_key, job_id)
+        )
+    elif error_msg:
         cursor.execute(
             "UPDATE inventory_jobs SET status = ?, error_msg = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (status, error_msg, job_id)
@@ -611,6 +621,17 @@ def update_inventory_job(job_id: int, status: str, error_msg: Optional[str] = No
             "UPDATE inventory_jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (status, job_id)
         )
+    conn.commit()
+    conn.close()
+
+def update_inventory_progress(job_id: int, progress: int):
+    """更新作业进度"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE inventory_jobs SET progress = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (progress, job_id)
+    )
     conn.commit()
     conn.close()
 

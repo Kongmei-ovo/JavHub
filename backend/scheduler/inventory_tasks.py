@@ -4,7 +4,7 @@ import asyncio
 import threading
 from typing import Optional
 from database import (
-    add_inventory_job, update_inventory_job, get_inventory_job,
+    add_inventory_job, update_inventory_job, update_inventory_progress, get_inventory_job,
     upsert_inventory_actor, upsert_inventory_video, add_missing_video,
     update_inventory_actor_stats, get_exempt_videos,
     get_inventory_actors, create_snapshot_key, clear_snapshot,
@@ -61,20 +61,24 @@ async def run_collect_job(job_id: int):
 
     try:
         emby = get_emby_client()
-        info = get_info_client()
 
         # 1. 生成新快照 key
         snapshot_key = create_snapshot_key()
+        update_inventory_progress(job_id, 5)
         print(f"[Inventory] Created snapshot key: {snapshot_key}")
 
         # 2. 从 Emby 采集所有影片及演员
         actors_data, total = await emby.collect_all_movies_with_actors()
+        update_inventory_progress(job_id, 30)
         print(f"[Inventory] Collected {len(actors_data)} actors, {total} total movies")
 
         # 3. 保存演员快照
         save_emby_actors_snapshot(snapshot_key, actors_data)
+        update_inventory_progress(job_id, 40)
 
-        # 4. 保存影片快照（每个演员的每部影片）
+        # 4. 保存影片快照（每个演员的每部影片），报告进度
+        total_items = sum(len(actor.get("items", [])) for actor in actors_data)
+        processed = 0
         for actor in actors_data:
             for item in actor.get("items", []):
                 save_emvy_snapshot(
@@ -85,18 +89,26 @@ async def run_collect_job(job_id: int):
                     title=item.get("title", ""),
                     filename=item.get("filename", ""),
                 )
+                processed += 1
+                # 每处理10%报告一次进度
+                if processed % max(1, total_items // 10) == 0:
+                    pct = 40 + int(50 * processed / max(total_items, 1))
+                    update_inventory_progress(job_id, min(pct, 89))
 
         # 5. 同步 inventory_actors 表
         for actor in actors_data:
             upsert_inventory_actor(actor["actress_id"], actor["actress_name"])
 
+        update_inventory_progress(job_id, 95)
         # 更新作业，关联快照key
         update_inventory_job(job_id, "completed", snapshot_key=snapshot_key)
+        update_inventory_progress(job_id, 100)
         print(f"[Inventory] Collection job {job_id} completed. Snapshot: {snapshot_key}")
 
     except Exception as e:
         print(f"[Inventory] Collection job {job_id} failed: {e}")
         update_inventory_job(job_id, "failed", str(e))
+        update_inventory_progress(job_id, 0)
 
 
 async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):

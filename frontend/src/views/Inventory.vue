@@ -3,10 +3,33 @@
     <div class="page-header">
       <h1>库存对比</h1>
       <div class="header-actions">
-        <button @click="triggerCollect" class="btn-primary" :disabled="collecting">
+        <!-- 圆形进度指示器 -->
+        <div v-if="running || collecting" class="progress-ring-container">
+          <svg class="progress-ring" width="40" height="40">
+            <circle
+              class="progress-ring-bg"
+              cx="20" cy="20" r="16"
+              fill="none"
+              stroke="#eee"
+              stroke-width="3"
+            />
+            <circle
+              class="progress-ring-fill"
+              cx="20" cy="20" r="16"
+              fill="none"
+              stroke="#1890ff"
+              stroke-width="3"
+              :stroke-dasharray="100"
+              :stroke-dashoffset="100 - currentProgress"
+              transform="rotate(-90 20 20)"
+            />
+          </svg>
+          <span class="progress-text">{{ currentProgress }}%</span>
+        </div>
+        <button @click="triggerCollect" class="btn-primary" :disabled="collecting || running">
           {{ collecting ? '采集中...' : '采集Emby数据' }}
         </button>
-        <button @click="triggerFullJob" class="btn-secondary" :disabled="running" :class="{ 'btn-disabled': !snapshotKey }">
+        <button @click="triggerFullJob" class="btn-secondary" :disabled="running || collecting" :class="{ 'btn-disabled': !snapshotKey }">
           {{ running ? '对比中...' : '全量对比' }}
         </button>
         <button @click="showJobs = true; fetchJobs()" class="btn-ghost">作业历史</button>
@@ -97,6 +120,7 @@ const running = ref(false)
 const collecting = ref(false)
 const snapshotKey = ref('')
 const actorCount = ref(0)
+const currentProgress = ref(0)
 
 const fetchActors = async () => {
   loadingActors.value = true
@@ -156,18 +180,21 @@ const pollJobStatus = async (type) => {
       const jobs = res.data.data || []
       const latest = jobs[0]
       if (latest && latest.status === 'running') {
+        currentProgress.value = latest.progress || 0
         await pollJobStatus(type)
       } else {
         running.value = false
         collecting.value = false
+        currentProgress.value = latest && latest.status === 'completed' ? 100 : 0
         await fetchActors()
         await fetchSnapshotInfo()
       }
     } catch {
       running.value = false
       collecting.value = false
+      currentProgress.value = 0
     }
-  }, 3000)
+  }, 1500)
 }
 
 onMounted(() => { fetchActors(); fetchSnapshotInfo() })
@@ -206,13 +233,30 @@ const fetchJobs = async () => {
   padding: 8px 16px; border-radius: 4px; cursor: pointer;
 }
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-.btn-secondary {
-  background: #fff; color: #1890ff; border: 1px solid #1890ff;
-  padding: 8px 16px; border-radius: 4px; cursor: pointer;
-}
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-ghost {
   background: none; color: #666; border: 1px solid #ddd;
   padding: 8px 16px; border-radius: 4px; cursor: pointer;
+}
+.progress-ring-container {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.progress-ring { position: absolute; top: 0; left: 0; }
+.progress-ring-fill {
+  transition: stroke-dashoffset 0.3s ease;
+}
+.progress-text {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: bold;
+  color: #1890ff;
+}
 }
 .btn-disabled { opacity: 0.5; cursor: not-allowed; }
 .snapshot-info {
