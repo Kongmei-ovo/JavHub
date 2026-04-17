@@ -65,6 +65,67 @@ class EmbyClient:
         except Exception:
             return []
 
+    async def get_items_with_people(self, limit: int = 9999, start: int = 0) -> dict:
+        """分页获取影片（含People演员信息），返回 {items, totalCount}"""
+        try:
+            return await self._get(
+                "/Items",
+                params={
+                    "limit": limit,
+                    "startIndex": start,
+                    "includeItemTypes": "Movie",
+                    "recursive": "true",
+                    "fields": "People",
+                }
+            )
+        except Exception:
+            return {"items": [], "totalCount": 0}
+
+    async def collect_all_movies_with_actors(self) -> tuple[list[dict], int]:
+        """采集所有影片及其演员信息，返回 (actors_map, total_items)
+        actors_map: {actress_id: {actress_id, actress_name, video_count, items: []}}
+        """
+        all_actors: dict[int, dict] = {}
+        total = 0
+        page_size = 500
+        start = 0
+
+        while True:
+            result = await self.get_items_with_people(limit=page_size, start=start)
+            items = result.get("items", [])
+            total_count = result.get("totalCount", 0)
+            if total == 0:
+                total = total_count
+
+            for item in items:
+                people = item.get("People", [])
+                item_info = {
+                    "item_id": item.get("Id"),
+                    "title": item.get("Name", ""),
+                    "filename": item.get("FileName", ""),
+                    "production_year": item.get("ProductionYear"),
+                }
+                for person in people:
+                    if person.get("Type") != "Actor":
+                        continue
+                    actress_id = person.get("Id")
+                    name = person.get("Name", "Unknown")
+                    if actress_id not in all_actors:
+                        all_actors[actress_id] = {
+                            "actress_id": actress_id,
+                            "actress_name": name,
+                            "video_count": 0,
+                            "items": [],
+                        }
+                    all_actors[actress_id]["video_count"] += 1
+                    all_actors[actress_id]["items"].append(item_info)
+
+            start += len(items)
+            if start >= total or len(items) == 0:
+                break
+
+        return list(all_actors.values()), total
+
     async def get_all_actresses(self) -> list[dict]:
         """获取所有演员及其在Emby的影片数"""
         items = await self.get_items(limit=9999)

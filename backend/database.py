@@ -324,12 +324,19 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_type TEXT NOT NULL,
             actor_id INTEGER,
+            snapshot_key TEXT,
             status TEXT DEFAULT 'pending',
             error_msg TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
         )
     ''')
+
+    # 迁移：为已存在的表添加 snapshot_key 列
+    try:
+        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN snapshot_key TEXT")
+    except Exception:
+        pass
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS inventory_actors (
@@ -386,6 +393,29 @@ def init_db():
             alias_id INTEGER NOT NULL,
             canonical_id INTEGER NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS emby_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_key TEXT NOT NULL,
+            actress_id INTEGER NOT NULL,
+            actress_name TEXT NOT NULL,
+            emby_item_id TEXT NOT NULL,
+            title TEXT,
+            filename TEXT,
+            collected_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS emby_actors (
+            actress_id INTEGER PRIMARY KEY,
+            actress_name TEXT NOT NULL,
+            total_videos INTEGER DEFAULT 0,
+            snapshot_key TEXT,
+            updated_at TEXT
         )
     ''')
 
@@ -554,20 +584,20 @@ def get_missing_summary(actress_id: int) -> Optional[dict]:
     return dict(row) if row else None
 
 # === Inventory Jobs ===
-def add_inventory_job(job_type: str, actor_id: Optional[int] = None) -> int:
+def add_inventory_job(job_type: str, actor_id: Optional[int] = None, snapshot_key: Optional[str] = None) -> int:
     """创建对比作业记录"""
     conn = get_db_orig()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO inventory_jobs (job_type, actor_id, status, created_at) VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)",
-        (job_type, actor_id)
+        "INSERT INTO inventory_jobs (job_type, actor_id, snapshot_key, status, created_at) VALUES (?, ?, ?, 'pending', CURRENT_TIMESTAMP)",
+        (job_type, actor_id, snapshot_key)
     )
     conn.commit()
     job_id = cursor.lastrowid
     conn.close()
     return job_id
 
-def update_inventory_job(job_id: int, status: str, error_msg: Optional[str] = None):
+def update_inventory_job(job_id: int, status: str, error_msg: Optional[str] = None, snapshot_key: Optional[str] = None):
     """更新作业状态"""
     conn = get_db_orig()
     cursor = conn.cursor()
@@ -798,3 +828,87 @@ def get_actor_primary_name(actress_id: int) -> Optional[str]:
     row = cursor.fetchone()
     conn.close()
     return row["primary_name"] if row else None
+
+# === Emby Snapshots ===
+import hashlib
+import time
+
+def create_snapshot_key() -> str:
+    """生成新的快照key"""
+    return hashlib.md5(str(time.time()).encode()).hexdigest()[:12]
+
+def clear_snapshot(snapshot_key: str):
+    """清除指定快照的数据"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM emby_snapshots WHERE snapshot_key = ?", (snapshot_key,))
+    cursor.execute("DELETE FROM emby_actors WHERE snapshot_key = ?", (snapshot_key,))
+    conn.commit()
+    conn.close()
+
+def save_emvy_snapshot(snapshot_key: str, actress_id: int, actress_name: str, emby_item_id: str, title: str, filename: str):
+    """保存单个影片到快照"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO emby_snapshots (snapshot_key, actress_id, actress_name, emby_item_id, title, filename, collected_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (snapshot_key, actress_id, actress_name, emby_item_id, title, filename))
+    conn.commit()
+    conn.close()
+
+def save_emby_actors_snapshot(snapshot_key: str, actors: list):
+    """批量保存演员快照（带视频计数）"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    for actor in actors:
+        cursor.execute('''
+            INSERT INTO emby_actors (actress_id, actress_name, total_videos, snapshot_key, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(actress_id) DO UPDATE SET
+                actress_name = excluded.actress_name,
+                total_videos = excluded.total_videos,
+                snapshot_key = excluded.snapshot_key,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (actor["actress_id"], actor["actress_name"], actor["video_count"], snapshot_key))
+    conn.commit()
+    conn.close()
+
+def get_latest_snapshot_key() -> Optional[str]:
+    """获取最新的快照key"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute("SELECT snapshot_key FROM emby_actors ORDER BY updated_at DESC LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    return row["snapshot_key"] if row else None
+
+def get_snapshot_actors(snapshot_key: str) -> list:
+    """获取指定快照的演员列表"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM emby_actors WHERE snapshot_key = ? ORDER BY actress_name", (snapshot_key,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_snapshot_videos(snapshot_key: str, actress_id: int) -> list:
+    """获取指定快照中某演员的所有影片"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM emby_snapshots WHERE snapshot_key = ? AND actress_id = ? ORDER BY title",
+        (snapshot_key, actress_id)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_snapshot_filenames(snapshot_key: str) -> set:
+    """获取指定快照中所有影片的filename集合"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute("SELECT filename FROM emby_snapshots WHERE snapshot_key = ?", (snapshot_key,))
+    rows = cursor.fetchall()
+    conn.close()
+    return {row["filename"] for row in rows if row["filename"]}

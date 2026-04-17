@@ -3,11 +3,22 @@
     <div class="page-header">
       <h1>库存对比</h1>
       <div class="header-actions">
-        <button @click="triggerFullJob" class="btn-primary" :disabled="running">
+        <button @click="triggerCollect" class="btn-primary" :disabled="collecting">
+          {{ collecting ? '采集中...' : '采集Emby数据' }}
+        </button>
+        <button @click="triggerFullJob" class="btn-secondary" :disabled="running" :class="{ 'btn-disabled': !snapshotKey }">
           {{ running ? '对比中...' : '全量对比' }}
         </button>
-        <button @click="showJobs = true; fetchJobs()" class="btn-secondary">作业历史</button>
+        <button @click="showJobs = true; fetchJobs()" class="btn-ghost">作业历史</button>
       </div>
+    </div>
+
+    <!-- 快照信息 -->
+    <div v-if="snapshotKey" class="snapshot-info">
+      当前快照：{{ snapshotKey }} · {{ actorCount }} 位演员
+    </div>
+    <div v-else class="snapshot-warn">
+      尚未采集 Emby 数据，请先点击「采集Emby数据」
     </div>
 
     <!-- 对比概览 -->
@@ -83,6 +94,9 @@ const actors = ref([])
 const loadingActors = ref(false)
 const errorActors = ref('')
 const running = ref(false)
+const collecting = ref(false)
+const snapshotKey = ref('')
+const actorCount = ref(0)
 
 const fetchActors = async () => {
   loadingActors.value = true
@@ -97,36 +111,66 @@ const fetchActors = async () => {
   }
 }
 
+const fetchSnapshotInfo = async () => {
+  try {
+    const res = await axios.get('/api/inventory/snapshots/latest')
+    snapshotKey.value = res.data.snapshot_key || ''
+    actorCount.value = res.data.actors ? res.data.actors.length : 0
+  } catch (e) {
+    snapshotKey.value = ''
+    actorCount.value = 0
+  }
+}
+
+const triggerCollect = async () => {
+  if (!confirm('确定要采集 Emby 数据吗？这会拉取全量媒体库信息。')) return
+  collecting.value = true
+  try {
+    await axios.post('/api/inventory/jobs/trigger', { job_type: 'collect' })
+    pollJobStatus('collect')
+  } catch (e) {
+    alert('触发失败: ' + e.message)
+    collecting.value = false
+  }
+}
+
 const triggerFullJob = async () => {
+  if (!snapshotKey.value) {
+    alert('请先采集 Emby 数据')
+    return
+  }
   running.value = true
   try {
-    await axios.post('/api/inventory/jobs/trigger', { job_type: 'full' })
-    pollJobStatus()
+    await axios.post('/api/inventory/jobs/trigger', { job_type: 'full', snapshot_key: snapshotKey.value })
+    pollJobStatus('full')
   } catch (e) {
     errorActors.value = '触发失败: ' + e.message
     running.value = false
   }
 }
 
-const pollJobStatus = async () => {
+const pollJobStatus = async (type) => {
   setTimeout(async () => {
     try {
       const res = await axios.get('/api/inventory/jobs')
       const jobs = res.data.data || []
       const latest = jobs[0]
       if (latest && latest.status === 'running') {
-        await pollJobStatus()
+        await pollJobStatus(type)
       } else {
         running.value = false
+        collecting.value = false
         await fetchActors()
+        await fetchSnapshotInfo()
       }
     } catch {
       running.value = false
+      collecting.value = false
     }
   }, 3000)
 }
 
-onMounted(fetchActors)
+onMounted(() => { fetchActors(); fetchSnapshotInfo() })
 
 // 作业历史
 const jobs = ref([])
@@ -165,6 +209,21 @@ const fetchJobs = async () => {
 .btn-secondary {
   background: #fff; color: #1890ff; border: 1px solid #1890ff;
   padding: 8px 16px; border-radius: 4px; cursor: pointer;
+}
+.btn-ghost {
+  background: none; color: #666; border: 1px solid #ddd;
+  padding: 8px 16px; border-radius: 4px; cursor: pointer;
+}
+.btn-disabled { opacity: 0.5; cursor: not-allowed; }
+.snapshot-info {
+  background: #f6ffed; border: 1px solid #b7eb8f;
+  padding: 8px 16px; border-radius: 4px; margin-bottom: 16px;
+  font-size: 13px; color: #52c41a;
+}
+.snapshot-warn {
+  background: #fff2e8; border: 1px solid #ffbb96;
+  padding: 8px 16px; border-radius: 4px; margin-bottom: 16px;
+  font-size: 13px; color: #fa8c16;
 }
 .actors-grid {
   display: grid;

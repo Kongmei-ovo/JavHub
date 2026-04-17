@@ -20,12 +20,26 @@ router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 class TriggerJobRequest(BaseModel):
     job_type: str
     actor_id: Optional[int] = None
+    snapshot_key: Optional[str] = None
 
 @router.post("/jobs/trigger")
 async def trigger_job(req: TriggerJobRequest):
-    """触发对比作业"""
-    job_id = add_inventory_job(req.job_type, req.actor_id)
+    """触发作业（collect=采集Emby快照，full/actor=对比）"""
+    job_id = add_inventory_job(req.job_type, req.actor_id, req.snapshot_key)
+    # 异步执行
+    from scheduler.inventory_tasks import run_inventory_job
+    run_inventory_job(job_id)
     return {"job_id": job_id, "status": "pending"}
+
+@router.get("/snapshots/latest")
+async def get_latest_snapshot():
+    """获取最新快照信息"""
+    from database import get_latest_snapshot_key, get_snapshot_actors
+    key = get_latest_snapshot_key()
+    if not key:
+        return {"snapshot_key": None, "actors": []}
+    actors = get_snapshot_actors(key)
+    return {"snapshot_key": key, "actors": actors}
 
 @router.get("/jobs")
 async def list_jobs():
