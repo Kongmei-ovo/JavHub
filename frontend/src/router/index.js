@@ -27,6 +27,9 @@ const routes = [
   { path: '/missing', name: 'Missing', component: () => import('../views/Missing.vue') },
   { path: '/missing/:id', name: 'MissingDetail', component: () => import('../views/MissingDetail.vue') },
   { path: '/duplicates', name: 'Duplicates', component: () => import('../views/Duplicates.vue') },
+  { path: '/inventory', name: 'Inventory', component: () => import('../views/Inventory.vue') },
+  { path: '/inventory/actors/:id', name: 'InventoryActor', component: () => import('../views/InventoryActor.vue') },
+  { path: '/normalize', name: 'Normalize', component: () => import('../views/Normalize.vue') },
   { path: '/tasks', redirect: '/downloads' },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
