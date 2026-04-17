@@ -79,8 +79,6 @@ const IconSettings = defineComponent({ render: () => h('svg', { viewBox: '0 0 24
 const IconInventory = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5' })]) })
 // 归一化图标：合并/alias
 const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' })]) })
-// 缺失图标：感叹号
-const IconMissing = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('circle', { cx: '12', cy: '12', r: '10' }), h('line', { x1: '12', y1: '8', x2: '12', y2: '12' }), h('line', { x1: '12', y1: '16', x2: '12.01', y2: '16' })]) })
 
 export default {
   name: 'App',
@@ -96,7 +94,6 @@ export default {
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员合并', icon: IconNormalize },
-      { path: '/missing', label: '缺失演员', icon: IconMissing },
       { path: '/downloads', label: '下载管理', icon: IconHome },
       { path: '/settings', label: '设置', icon: IconSettings },
     ]
