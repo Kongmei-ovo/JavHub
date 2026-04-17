@@ -253,6 +253,23 @@
         </div>
       </div>
 
+      <!-- 库存对比定时任务 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <h2>库存对比定时任务</h2>
+        </div>
+        <div class="form-group">
+          <label>Cron 表达式</label>
+          <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
+          <small>例：0 2 * * * 表示每天凌晨2点</small>
+        </div>
+        <button class="btn btn-primary" @click="saveInventoryCron">保存</button>
+      </div>
+
       <!-- 页面设计 -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -540,6 +557,7 @@ export default {
       transMsgType: 'info',
       saving: false,
       testingTelegram: false,
+      inventoryCron: '',
       telegramTestMsg: '',
       showBotToken: false,
       showOpenlistPwd: false,
@@ -621,6 +639,7 @@ export default {
         proxy: data.proxy || { enabled: false, http_url: '', https_url: '' },
       }
       this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
+      this.inventoryCron = data.inventory_cron || ''
     } catch (e) {
       console.error('Failed to load config:', e)
     }
@@ -640,6 +659,15 @@ export default {
         this.$message.error('保存失败')
       } finally {
         this.saving = false
+      }
+    },
+    async saveInventoryCron() {
+      try {
+        await api.updateConfig({ inventory_cron: this.inventoryCron })
+        this.$message.success('库存对比定时任务配置已保存')
+      } catch (e) {
+        console.error('Failed to save inventory cron:', e)
+        this.$message.error('保存失败')
       }
     },
     async testTelegram() {
