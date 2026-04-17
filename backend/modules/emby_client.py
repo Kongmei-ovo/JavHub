@@ -68,7 +68,7 @@ class EmbyClient:
     async def get_items_with_people(self, limit: int = 9999, start: int = 0) -> dict:
         """分页获取影片（含People演员信息），返回 {items, totalCount}"""
         try:
-            return await self._get(
+            result = await self._get(
                 "/Items",
                 params={
                     "limit": limit,
@@ -78,6 +78,13 @@ class EmbyClient:
                     "fields": "People",
                 }
             )
+            # Emby returns "Items" (capitalized), normalize to lowercase
+            if isinstance(result, dict):
+                return {
+                    "items": result.get("Items", result.get("items", [])),
+                    "totalCount": result.get("TotalRecordCount", result.get("totalCount", 0))
+                }
+            return {"items": [], "totalCount": 0}
         except Exception:
             return {"items": [], "totalCount": 0}
 

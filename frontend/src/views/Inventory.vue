@@ -257,7 +257,6 @@ const fetchJobs = async () => {
   font-weight: bold;
   color: #1890ff;
 }
-}
 .btn-disabled { opacity: 0.5; cursor: not-allowed; }
 .snapshot-info {
   background: #f6ffed; border: 1px solid #b7eb8f;
