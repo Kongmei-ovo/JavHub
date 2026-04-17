@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from config import config
 from database import add_log
+from backend.scheduler.inventory_tasks import run_inventory_comparison
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,16 @@ def start_scheduler():
         id='subscription_check',
         name='订阅检查',
         replace_existing=True
+    )
+
+    # 库存对比任务
+    scheduler.add_job(
+        run_inventory_comparison,
+        CronTrigger(hour=3, minute=0),
+        id='inventory_comparison',
+        name='库存对比',
+        replace_existing=True,
+        kwargs={"job_type": "full"}
     )
 
     scheduler.start()
