@@ -6,7 +6,6 @@
         <button @click="triggerFullJob" class="btn-primary" :disabled="running">
           {{ running ? '对比中...' : '全量对比' }}
         </button>
-        <button @click="$router.push('/inventory/jobs')" class="btn-secondary">作业历史</button>
       </div>
     </div>
 
@@ -17,9 +16,9 @@
         @click="activeTab = 'actors'"
       >对比概览</button>
       <button
-        :class="{ active: activeTab === 'missing' }"
-        @click="activeTab = 'missing'"
-      >缺失详情</button>
+        :class="{ active: activeTab === 'jobs' }"
+        @click="activeTab = 'jobs'"
+      >作业历史</button>
     </div>
 
     <!-- 对比概览 Tab -->
@@ -48,44 +47,41 @@
       </div>
     </div>
 
-    <!-- 缺失详情 Tab -->
-    <div v-if="activeTab === 'missing'" class="tab-content">
-      <div class="page-header" style="margin-bottom: 12px;">
-        <button @click="fillAll" class="btn-primary" :disabled="fillingAll">
-          {{ fillingAll ? '补全中...' : '一键补全全部' }}
-        </button>
-      </div>
+    <!-- 作业历史 Tab -->
+    <div v-if="activeTab === 'jobs'" class="tab-content">
+      <div v-if="loadingJobs" class="loading">加载中...</div>
+      <div v-if="errorJobs" class="error">{{ errorJobs }}</div>
 
-      <div v-if="loadingMissing" class="loading">加载中...</div>
-      <div v-if="errorMissing" class="error">{{ errorMissing }}</div>
-
-      <div class="missing-list">
+      <div class="jobs-list">
         <div
-          v-for="item in missingVideos"
-          :key="item.content_id"
-          class="missing-item"
+          v-for="job in jobs"
+          :key="job.id"
+          class="job-item"
         >
-          <div class="missing-info">
-            <div class="missing-id">{{ item.content_id }}</div>
-            <div class="missing-title">{{ item.title || item.content_id }}</div>
-            <div class="missing-actress">{{ item.actress_name }}</div>
+          <div class="job-info">
+            <div class="job-type">{{ job.job_type }}</div>
+            <div class="job-meta">
+              <span v-if="job.actor_id">演员ID: {{ job.actor_id }}</span>
+              <span>状态: {{ job.status }}</span>
+              <span>{{ job.created_at }}</span>
+            </div>
           </div>
-          <div class="missing-actions">
-            <button @click="fillOne(item.content_id)" class="btn-small">补全</button>
-            <button @click="exempt(item.content_id)" class="btn-danger-small">豁免</button>
+          <div class="job-stats" v-if="job.result">
+            <span v-if="job.result.scanned">已扫描 {{ job.result.scanned }}</span>
+            <span v-if="job.result.missing" class="missing-tag">缺失 {{ job.result.missing }}</span>
           </div>
         </div>
       </div>
 
-      <div v-if="!loadingMissing && missingVideos.length === 0" class="empty">
-        暂无缺失影片
+      <div v-if="!loadingJobs && jobs.length === 0" class="empty">
+        暂无作业记录
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import ActressAvatar from '../components/ActressAvatar.vue'
 
@@ -139,58 +135,30 @@ const pollJobStatus = async () => {
   }, 3000)
 }
 
-// 缺失详情
-const missingVideos = ref([])
-const loadingMissing = ref(false)
-const errorMissing = ref('')
-const fillingAll = ref(false)
-
-const fetchMissing = async () => {
-  loadingMissing.value = true
-  errorMissing.value = ''
-  try {
-    const res = await axios.get('/api/inventory/missing')
-    missingVideos.value = res.data.data || []
-  } catch (e) {
-    errorMissing.value = '加载失败: ' + e.message
-  } finally {
-    loadingMissing.value = false
-  }
-}
-
-const fillOne = async (contentId) => {
-  try {
-    await axios.post(`/api/inventory/fill/${contentId}`)
-    await fetchMissing()
-  } catch (e) {
-    alert('补全失败: ' + e.message)
-  }
-}
-
-const fillAll = async () => {
-  if (!confirm('确定要补全所有缺失影片吗？')) return
-  fillingAll.value = true
-  try {
-    await axios.post('/api/inventory/fill-all')
-    await fetchMissing()
-  } catch (e) {
-    alert('补全失败: ' + e.message)
-  } finally {
-    fillingAll.value = false
-  }
-}
-
-const exempt = async (contentId) => {
-  if (!confirm('确定要豁免此影片吗？')) return
-  try {
-    await axios.delete(`/api/inventory/missing/${contentId}`)
-    await fetchMissing()
-  } catch (e) {
-    alert('豁免失败: ' + e.message)
-  }
-}
-
 onMounted(fetchActors)
+
+// 作业历史
+const jobs = ref([])
+const loadingJobs = ref(false)
+const errorJobs = ref('')
+
+const fetchJobs = async () => {
+  loadingJobs.value = true
+  errorJobs.value = ''
+  try {
+    const res = await axios.get('/api/inventory/jobs')
+    jobs.value = res.data.data || []
+  } catch (e) {
+    errorJobs.value = '加载失败: ' + e.message
+  } finally {
+    loadingJobs.value = false
+  }
+}
+
+// Watch tab changes to load data
+watch(activeTab, (tab) => {
+  if (tab === 'jobs' && jobs.value.length === 0) fetchJobs()
+})
 </script>
 
 <style scoped>
@@ -253,9 +221,9 @@ onMounted(fetchActors)
 .loading, .error, .empty { text-align: center; padding: 40px; }
 .error { color: #ff4d4f; }
 
-/* 缺失列表 */
-.missing-list { display: flex; flex-direction: column; gap: 8px; }
-.missing-item {
+/* 作业历史 */
+.jobs-list { display: flex; flex-direction: column; gap: 8px; }
+.job-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -263,16 +231,7 @@ onMounted(fetchActors)
   background: #fff;
   border-radius: 8px;
 }
-.missing-id { font-weight: bold; font-size: 14px; }
-.missing-title { font-size: 13px; color: #666; margin-top: 2px; }
-.missing-actress { font-size: 12px; color: #999; margin-top: 2px; }
-.missing-actions { display: flex; gap: 8px; }
-.btn-small {
-  background: #1890ff; color: #fff; border: none;
-  padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
-}
-.btn-danger-small {
-  background: #ff4d4f; color: #fff; border: none;
-  padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
-}
+.job-type { font-weight: bold; }
+.job-meta { font-size: 12px; color: #999; margin-top: 4px; display: flex; gap: 12px; }
+.job-stats { display: flex; gap: 12px; font-size: 13px; }
 </style>
