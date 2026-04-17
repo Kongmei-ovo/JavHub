@@ -6,23 +6,12 @@
         <button @click="triggerFullJob" class="btn-primary" :disabled="running">
           {{ running ? '对比中...' : '全量对比' }}
         </button>
+        <button @click="showJobs = true; fetchJobs()" class="btn-secondary">作业历史</button>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button
-        :class="{ active: activeTab === 'actors' }"
-        @click="activeTab = 'actors'"
-      >对比概览</button>
-      <button
-        :class="{ active: activeTab === 'jobs' }"
-        @click="activeTab = 'jobs'"
-      >作业历史</button>
-    </div>
-
-    <!-- 对比概览 Tab -->
-    <div v-if="activeTab === 'actors'" class="tab-content">
+    <!-- 对比概览 -->
+    <div class="tab-content">
       <div v-if="loadingActors" class="loading">加载中...</div>
       <div v-if="errorActors" class="error">{{ errorActors }}</div>
 
@@ -47,45 +36,47 @@
       </div>
     </div>
 
-    <!-- 作业历史 Tab -->
-    <div v-if="activeTab === 'jobs'" class="tab-content">
-      <div v-if="loadingJobs" class="loading">加载中...</div>
-      <div v-if="errorJobs" class="error">{{ errorJobs }}</div>
-
-      <div class="jobs-list">
-        <div
-          v-for="job in jobs"
-          :key="job.id"
-          class="job-item"
-        >
-          <div class="job-info">
-            <div class="job-type">{{ job.job_type }}</div>
-            <div class="job-meta">
-              <span v-if="job.actor_id">演员ID: {{ job.actor_id }}</span>
-              <span>状态: {{ job.status }}</span>
-              <span>{{ job.created_at }}</span>
+    <!-- 作业历史弹窗 -->
+    <div v-if="showJobs" class="dialog-overlay" @click.self="showJobs = false">
+      <div class="dialog jobs-dialog">
+        <div class="dialog-header">
+          <h3>作业历史</h3>
+          <button @click="showJobs = false" class="close-btn">×</button>
+        </div>
+        <div v-if="loadingJobs" class="loading">加载中...</div>
+        <div v-if="errorJobs" class="error">{{ errorJobs }}</div>
+        <div class="jobs-list">
+          <div
+            v-for="job in jobs"
+            :key="job.id"
+            class="job-item"
+          >
+            <div class="job-info">
+              <div class="job-type">{{ job.job_type }}</div>
+              <div class="job-meta">
+                <span v-if="job.actor_id">演员ID: {{ job.actor_id }}</span>
+                <span>状态: {{ job.status }}</span>
+                <span>{{ job.created_at }}</span>
+              </div>
+            </div>
+            <div class="job-stats" v-if="job.result">
+              <span v-if="job.result.scanned">已扫描 {{ job.result.scanned }}</span>
+              <span v-if="job.result.missing" class="missing-tag">缺失 {{ job.result.missing }}</span>
             </div>
           </div>
-          <div class="job-stats" v-if="job.result">
-            <span v-if="job.result.scanned">已扫描 {{ job.result.scanned }}</span>
-            <span v-if="job.result.missing" class="missing-tag">缺失 {{ job.result.missing }}</span>
-          </div>
         </div>
-      </div>
-
-      <div v-if="!loadingJobs && jobs.length === 0" class="empty">
-        暂无作业记录
+        <div v-if="!loadingJobs && jobs.length === 0" class="empty">暂无作业记录</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import ActressAvatar from '../components/ActressAvatar.vue'
 
-const activeTab = ref('actors')
+const showJobs = ref(false)
 
 // 对比概览
 const actors = ref([])
@@ -155,10 +146,6 @@ const fetchJobs = async () => {
   }
 }
 
-// Watch tab changes to load data
-watch(activeTab, (tab) => {
-  if (tab === 'jobs' && jobs.value.length === 0) fetchJobs()
-})
 </script>
 
 <style scoped>
@@ -178,26 +165,6 @@ watch(activeTab, (tab) => {
 .btn-secondary {
   background: #fff; color: #1890ff; border: 1px solid #1890ff;
   padding: 8px 16px; border-radius: 4px; cursor: pointer;
-}
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-.tabs button {
-  background: none;
-  border: none;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  border-radius: 4px;
-}
-.tabs button.active {
-  background: #1890ff;
-  color: #fff;
 }
 .actors-grid {
   display: grid;
@@ -234,4 +201,24 @@ watch(activeTab, (tab) => {
 .job-type { font-weight: bold; }
 .job-meta { font-size: 12px; color: #999; margin-top: 4px; display: flex; gap: 12px; }
 .job-stats { display: flex; gap: 12px; font-size: 13px; }
+
+/* 作业历史弹窗 */
+.dialog-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.jobs-dialog {
+  background: #fff; border-radius: 8px; width: 600px; max-height: 80vh;
+  display: flex; flex-direction: column;
+}
+.dialog-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid #eee;
+}
+.dialog-header h3 { margin: 0; }
+.close-btn {
+  background: none; border: none; font-size: 24px; cursor: pointer; color: #999;
+}
+.jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }
 </style>
