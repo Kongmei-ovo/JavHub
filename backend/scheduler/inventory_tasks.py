@@ -1,5 +1,7 @@
 """库存对比定时任务"""
+from __future__ import annotations
 import asyncio
+from typing import Optional
 from backend.database import (
     add_inventory_job, update_inventory_job, get_inventory_job,
     upsert_inventory_actor, upsert_inventory_video, add_missing_video,
