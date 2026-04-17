@@ -57,15 +57,13 @@
           @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
         >
           <div class="actor-cover">
-            <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.display_name" @error="$event.target.style.display='none'" />
-            <div v-else class="actor-placeholder">{{ actor.display_name.slice(0,1) }}</div>
-            <div v-if="actor.missing_count > 0" class="actor-badge">{{ actor.missing_count }}</div>
+            <img :src="actor.avatar_url || ''" :alt="actor.display_name" @error="$event.target.style.display='none'" />
           </div>
           <div class="actor-info">
             <div class="actor-name">{{ actor.display_name }}</div>
             <div class="actor-stats">
-              <span>{{ actor.total_videos }} 部</span>
-              <span v-if="actor.missing_count > 0" class="missing-tag">{{ actor.missing_count }} 缺失</span>
+              {{ actor.total_videos }} 部
+              <span v-if="actor.missing_count > 0" class="missing-tag"> · {{ actor.missing_count }} 缺失</span>
             </div>
           </div>
         </div>
@@ -286,40 +284,10 @@ const fetchJobs = async () => {
   transition: transform 0.2s;
 }
 .actor-card:hover { transform: translateY(-2px); }
-.actor-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: #f0f0f0;
-}
 .actor-cover img {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 3/4;
   object-fit: cover;
-}
-.actor-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  font-size: 32px;
-  font-weight: bold;
-}
-.actor-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: #ff4d4f;
-  color: #fff;
-  border-radius: 10px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: bold;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 .actor-info {
   padding: 8px;
@@ -327,13 +295,11 @@ const fetchJobs = async () => {
 .actor-name {
   font-weight: bold;
   margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .actor-stats {
   font-size: 12px;
   color: #666;
+  margin-bottom: 4px;
 }
 .missing-tag { color: #ff4d4f; }
 .loading, .error, .empty { text-align: center; padding: 40px; }
