@@ -2,14 +2,14 @@
 from __future__ import annotations
 import asyncio
 from typing import Optional
-from backend.database import (
+from database import (
     add_inventory_job, update_inventory_job, get_inventory_job,
     upsert_inventory_actor, upsert_inventory_video, add_missing_video,
     update_inventory_actor_stats, get_exempt_videos,
     get_inventory_actors
 )
-from backend.modules.emby_client import get_emby_client
-from backend.modules.info_client import get_info_client
+from modules.emby_client import get_emby_client
+from modules.info_client import get_info_client
 
 
 def is_exempt(content_id: str) -> bool:

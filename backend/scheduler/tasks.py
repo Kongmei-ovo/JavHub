@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from config import config
 from database import add_log
-from backend.scheduler.inventory_tasks import run_inventory_comparison
+from scheduler.inventory_tasks import run_inventory_comparison
 
 logger = logging.getLogger(__name__)
 

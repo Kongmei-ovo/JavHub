@@ -1,7 +1,7 @@
 from __future__ import annotations
 import httpx
 from typing import Any
-from backend.services import cache
+from services import cache
 
 # DMM/FANZA 图片基础URL
 DMM_IMAGE_BASE_URL = "https://pics.dmm.co.jp"

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from backend.database import (
+from database import (
     get_inventory_actors, get_inventory_actor, get_inventory_videos,
     get_missing_videos, get_all_missing_videos, delete_missing_video,
     get_exempt_videos, add_exempt_video, delete_exempt_video, is_video_exempt,
@@ -11,7 +11,7 @@ from backend.database import (
     upsert_inventory_actor, upsert_inventory_video, add_missing_video, get_missing_count_by_actress,
     update_inventory_job
 )
-from backend.modules.info_client import get_info_client
+from modules.info_client import get_info_client
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
