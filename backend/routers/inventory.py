@@ -9,7 +9,7 @@ from database import (
     add_inventory_job, get_inventory_jobs, get_inventory_job,
     get_actor_aliases, add_actor_alias, get_canonical_actress_id, get_actor_primary_name, set_actor_primary_name,
     upsert_inventory_actor, upsert_inventory_video, add_missing_video, get_missing_count_by_actress,
-    update_inventory_job
+    update_inventory_job, get_latest_snapshot_key, get_snapshot_actors
 )
 from modules.info_client import get_info_client
 
@@ -56,17 +56,39 @@ async def get_job(job_id: int):
 
 # === 演员 ===
 
+def _emby_image_url(actress_id: str, image_tag: str) -> str:
+    """构造 Emby 演员头像 URL"""
+    if not image_tag:
+        return ""
+    from config import config
+    emby_cfg = getattr(config, "emby", {})
+    api_url = emby_cfg.get("api_url", "").rstrip("/")
+    api_key = emby_cfg.get("api_key", "")
+    return f"{api_url}/Items/{actress_id}/Images/Primary?tag={image_tag}&api_key={api_key}"
+
 @router.get("/actors")
 async def list_actors():
-    """获取库存演员列表"""
-    actors = get_inventory_actors()
+    """获取库存演员列表（从 Emby 快照，含头像）"""
+    snapshot_key = get_latest_snapshot_key()
+    if not snapshot_key:
+        return {"data": []}
+    actors = get_snapshot_actors(snapshot_key)
+    # 读取对比统计（missing_count）
+    inventory_map = {a["actress_id"]: a for a in get_inventory_actors()}
     result = []
     for actor in actors:
-        canon_id = get_canonical_actress_id(actor["actress_id"])
+        actress_id = actor["actress_id"]
+        canon_id = get_canonical_actress_id(actress_id)
         primary = get_actor_primary_name(canon_id)
+        inv = inventory_map.get(actress_id, {})
+        image_tag = actor.get("image_tag", "")
         result.append({
-            **actor,
+            "actress_id": actress_id,
+            "actress_name": actor["actress_name"],
             "display_name": primary or actor["actress_name"],
+            "total_videos": actor.get("total_videos", 0),
+            "missing_count": inv.get("missing_count", 0),
+            "avatar_url": _emby_image_url(str(actress_id), image_tag),
         })
     return {"data": result}
 

@@ -56,7 +56,7 @@
           class="actor-card"
           @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
         >
-          <ActressAvatar :name="actor.display_name" :size="80" :badge="actor.missing_count" />
+          <ActressAvatar :name="actor.display_name" :avatar-url="actor.avatar_url" :size="80" :badge="actor.missing_count" />
           <div class="actor-name">{{ actor.display_name }}</div>
           <div class="actor-stats">
             <span>共 {{ actor.total_videos }} 部</span>

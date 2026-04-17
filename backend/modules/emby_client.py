@@ -90,7 +90,7 @@ class EmbyClient:
 
     async def collect_all_movies_with_actors(self) -> tuple[list[dict], int]:
         """采集所有影片及其演员信息，返回 (actors_map, total_items)
-        actors_map: {actress_id: {actress_id, actress_name, video_count, items: []}}
+        actors_map: {actress_id: {actress_id, actress_name, video_count, items: [], image_tag}}
         """
         all_actors: dict[int, dict] = {}
         total = 0
@@ -117,15 +117,20 @@ class EmbyClient:
                         continue
                     actress_id = person.get("Id")
                     name = person.get("Name", "Unknown")
+                    image_tag = person.get("PrimaryImageTag")
                     if actress_id not in all_actors:
                         all_actors[actress_id] = {
                             "actress_id": actress_id,
                             "actress_name": name,
                             "video_count": 0,
                             "items": [],
+                            "image_tag": image_tag,
                         }
                     all_actors[actress_id]["video_count"] += 1
                     all_actors[actress_id]["items"].append(item_info)
+                    # 保留第一个出现的 image_tag
+                    if image_tag and not all_actors[actress_id].get("image_tag"):
+                        all_actors[actress_id]["image_tag"] = image_tag
 
             start += len(items)
             if start >= total or len(items) == 0:

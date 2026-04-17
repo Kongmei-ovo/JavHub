@@ -419,10 +419,17 @@ def init_db():
             actress_id INTEGER PRIMARY KEY,
             actress_name TEXT NOT NULL,
             total_videos INTEGER DEFAULT 0,
+            image_tag TEXT,
             snapshot_key TEXT,
             updated_at TEXT
         )
     ''')
+
+    # 迁移：添加 image_tag 列
+    try:
+        cursor.execute("ALTER TABLE emby_actors ADD COLUMN image_tag TEXT")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
@@ -879,19 +886,20 @@ def save_emvy_snapshot(snapshot_key: str, actress_id: int, actress_name: str, em
     conn.close()
 
 def save_emby_actors_snapshot(snapshot_key: str, actors: list):
-    """批量保存演员快照（带视频计数）"""
+    """批量保存演员快照（带视频计数和头像标签）"""
     conn = get_db_orig()
     cursor = conn.cursor()
     for actor in actors:
         cursor.execute('''
-            INSERT INTO emby_actors (actress_id, actress_name, total_videos, snapshot_key, updated_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO emby_actors (actress_id, actress_name, total_videos, image_tag, snapshot_key, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(actress_id) DO UPDATE SET
                 actress_name = excluded.actress_name,
                 total_videos = excluded.total_videos,
+                image_tag = COALESCE(excluded.image_tag, emby_actors.image_tag),
                 snapshot_key = excluded.snapshot_key,
                 updated_at = CURRENT_TIMESTAMP
-        ''', (actor["actress_id"], actor["actress_name"], actor["video_count"], snapshot_key))
+        ''', (actor["actress_id"], actor["actress_name"], actor["video_count"], actor.get("image_tag"), snapshot_key))
     conn.commit()
     conn.close()
 
