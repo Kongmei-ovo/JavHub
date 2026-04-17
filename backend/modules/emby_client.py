@@ -232,6 +232,49 @@ class EmbyClient:
         except Exception:
             return False
 
+    async def merge_actor_in_emby(self, from_actress_id: int, to_actress_id: int, to_actress_name: str) -> dict:
+        """在 Emby 中合并演员：
+        1. 找到 from 的所有电影
+        2. 对每部电影调用 Identify API，用正确的演员名重新刮削
+        3. 从 from 的电影列表中移除（Emby 会处理）
+        """
+        # 1. 获取 from 的所有电影 item_ids
+        from_items = await self.get_actress_videos(from_actress_id)
+        item_ids = [item["Id"] for item in from_items if item.get("Id")]
+        merged_count = 0
+        failed = []
+
+        # 2. 对每个 item 调用 Emby Identify 重刮
+        for item_id in item_ids:
+            try:
+                client = await self._get_client()
+                # Emby Identify: 重新识别元数据，传入目标演员名
+                await client.post(
+                    f"{self.api_url}/Items/{item_id}/MetadataEditors",
+                    json={
+                        "Identify": {
+                            "SearchInfo": {
+                                "Name": to_actress_name,
+                                "ProviderIds": {}
+                            },
+                            "Options": [
+                                {"Name": "ActorMetadata", "Value": True}
+                            ]
+                        }
+                    }
+                )
+                merged_count += 1
+            except Exception as e:
+                failed.append({"item_id": item_id, "error": str(e)})
+
+        return {
+            "from_actress_id": from_actress_id,
+            "to_actress_id": to_actress_id,
+            "total_items": len(item_ids),
+            "merged_count": merged_count,
+            "failed": failed
+        }
+
     # === 缺失检测 ===
 
     async def get_missing_actresses_summary(self, info_client) -> list[dict]:

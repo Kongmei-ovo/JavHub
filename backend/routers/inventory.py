@@ -125,14 +125,37 @@ class MergeActorsRequest(BaseModel):
     from_actress_id: int
     to_actress_id: int
 
-@router.post("/actors/merge")
-async def merge_actors(req: MergeActorsRequest):
-    """批量合并演员：把 from 的电影全部转移到 to，然后删除 from"""
+@router.post("/actors/merge-javhub")
+async def merge_actors_javhub(req: MergeActorsRequest):
+    """JavHub 映射层合并：只建立 alias 映射，不动电影数据，不碰 JavInfo 库"""
     if req.from_actress_id == req.to_actress_id:
         raise HTTPException(status_code=400, detail="不能合并到自身")
-    reassign_actress_movies(req.from_actress_id, req.to_actress_id)
     add_actor_alias(req.from_actress_id, req.to_actress_id)
-    return {"success": True, "from": req.from_actress_id, "to": req.to_actress_id}
+    return {"success": True, "from": req.from_actress_id, "to": req.to_actress_id, "type": "javhub_mapping"}
+
+@router.post("/actors/merge-emby")
+async def merge_actors_emby(req: MergeActorsRequest):
+    """Emby 层合并：修改 Emby 服务器元数据，把 from 的电影转给 to"""
+    if req.from_actress_id == req.to_actress_id:
+        raise HTTPException(status_code=400, detail="不能合并到自身")
+    # 获取目标演员名字（用于 Identify API）
+    from database import get_snapshot_actors, get_latest_snapshot_key
+    snapshot_key = get_latest_snapshot_key()
+    to_name = None
+    if snapshot_key:
+        result = get_snapshot_actors(snapshot_key, page_size=10000)
+        for a in result["data"]:
+            if a["actress_id"] == req.to_actress_id:
+                to_name = a["actress_name"]
+                break
+    if not to_name:
+        raise HTTPException(status_code=404, detail="目标演员在快照中不存在")
+
+    # 调用 Emby API 合并
+    from modules.emby_client import get_emby_client
+    emby = get_emby_client()
+    result = await emby.merge_actor_in_emby(req.from_actress_id, req.to_actress_id, to_name)
+    return {"success": True, "emby_result": result}
 
 @router.get("/actors/find-similar")
 async def find_similar_actors(name: str = None, threshold: float = 0.6):
