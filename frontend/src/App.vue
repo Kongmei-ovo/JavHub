@@ -95,7 +95,7 @@ export default {
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
-      { path: '/normalize', label: '归一化', icon: IconNormalize },
+      { path: '/normalize', label: '演员合并', icon: IconNormalize },
       { path: '/missing', label: '缺失演员', icon: IconMissing },
       { path: '/downloads', label: '下载管理', icon: IconHome },
       { path: '/settings', label: '设置', icon: IconSettings },
@@ -108,7 +108,7 @@ export default {
       { path: '/parse', label: '解析', icon: IconParse },
       { path: '/subscription', label: '订阅', icon: IconStar },
       { path: '/inventory', label: '库存', icon: IconInventory },
-      { path: '/normalize', label: '归一', icon: IconNormalize },
+      { path: '/normalize', label: '合并', icon: IconNormalize },
       { path: '/downloads', label: '下载', icon: IconHome },
       { path: '/settings', label: '我的', icon: IconSettings },
     ]

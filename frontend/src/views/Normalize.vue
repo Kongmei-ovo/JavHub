@@ -1,7 +1,7 @@
 <template>
   <div class="normalize-page">
     <div class="page-header">
-      <h1>演员归一化</h1>
+      <h1>演员合并</h1>
       <button @click="showAddDialog = true" class="btn-primary">添加映射</button>
     </div>
 
