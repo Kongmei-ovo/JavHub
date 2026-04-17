@@ -158,7 +158,7 @@ async def set_primary_name(actress_id: int, req: PrimaryNameRequest):
 @router.post("/fill/{content_id}")
 async def fill_video(content_id: str):
     """补全单个缺失影片"""
-    from backend.services.downloader import create_download_task
+    from services.downloader import create_download_task
     info = get_info_client()
     try:
         video = await info.get_video(content_id)
@@ -175,7 +175,7 @@ async def fill_video(content_id: str):
 @router.post("/fill-all")
 async def fill_all_videos():
     """一键补全所有缺失影片"""
-    from backend.services.downloader import create_download_task
+    from services.downloader import create_download_task
     missing = get_all_missing_videos()
     info = get_info_client()
     count = 0

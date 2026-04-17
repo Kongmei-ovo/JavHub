@@ -336,7 +336,7 @@ async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         except Exception:
             print("[ID HANDLER] failed to send error reply", flush=True)
     try:
-        from backend.routers.download import create_download_by_content_id
+        from routers.download import create_download_by_content_id
         await create_download_by_content_id(content_id)
         text = f"✅ <code>{content_id}</code> 已加入下载队列"
     except Exception as e:
