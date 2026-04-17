@@ -51,17 +51,18 @@ class EmbyClient:
         except Exception:
             return []
 
-    async def get_items(self, limit: int = 200) -> list[dict]:
+    async def get_items(self, limit: int = 200, include_people: bool = False) -> list[dict]:
         """获取媒体库中的所有项目"""
         try:
-            return await self._get(
-                "/Items",
-                params={
-                    "limit": limit,
-                    "includeItemTypes": "Movie",
-                    "recursive": "true",
-                }
-            )
+            params = {
+                "limit": limit,
+                "includeItemTypes": "Movie",
+                "recursive": "true",
+            }
+            if include_people:
+                params["fields"] = "People"
+            result = await self._get("/Items", params=params)
+            return result.get("Items", []) if isinstance(result, dict) else result
         except Exception:
             return []
 
@@ -159,16 +160,26 @@ class EmbyClient:
         return list(actors_map.values())
 
     async def get_actress_videos(self, actress_id: int) -> list[dict]:
-        """获取指定演员在Emby中的影片"""
-        items = await self.get_items(limit=9999)
-        result = []
-        for item in items:
-            people = item.get("People", [])
-            for person in people:
-                if person.get("Type") == "Actor" and person.get("Id") == actress_id:
-                    result.append(item)
-                    break
-        return result
+        """获取指定演员在Emby中的影片（支持自动分页）"""
+        all_items = []
+        page_size = 500
+        start = 0
+        while True:
+            result = await self.get_items_with_people(limit=page_size, start=start)
+            items = result.get("items", [])
+            if not items:
+                break
+            for item in items:
+                people = item.get("People", [])
+                for person in people:
+                    if person.get("Type") == "Actor" and str(person.get("Id")) == str(actress_id):
+                        all_items.append(item)
+                        break
+            start += len(items)
+            total = result.get("totalCount", 0)
+            if start >= total:
+                break
+        return all_items
 
     # === 去重相关 ===
 
@@ -235,33 +246,43 @@ class EmbyClient:
     async def merge_actor_in_emby(self, from_actress_id: int, to_actress_id: int, to_actress_name: str) -> dict:
         """在 Emby 中合并演员：
         1. 找到 from 的所有电影
-        2. 对每部电影调用 Identify API，用正确的演员名重新刮削
-        3. 从 from 的电影列表中移除（Emby 会处理）
+        2. 获取每个电影的 People 列表，将 from_actress 替换为 to_actress
+        3. 更新每部电影的 People 元数据
+        4. 触发 Refresh 让 Emby 更新演员头像
         """
-        # 1. 获取 from 的所有电影 item_ids
+        # 1. 获取 from 的所有电影
         from_items = await self.get_actress_videos(from_actress_id)
-        item_ids = [item["Id"] for item in from_items if item.get("Id")]
+        item_ids = [(item["Id"], item.get("People", [])) for item in from_items if item.get("Id")]
         merged_count = 0
         failed = []
 
-        # 2. 对每个 item 调用 Emby Identify 重刮
-        for item_id in item_ids:
+        for item_id, people in item_ids:
             try:
+                # 2. 构建新 People 列表：将 from 替换为 to（按名字匹配）
+                new_people = []
+                for p in people:
+                    if p.get("Type") == "Actor" and str(p.get("Id")) == str(from_actress_id):
+                        # 保留原有字段但名字用 to_actress_name（ID 保持不变，名字会被 Emby 更新）
+                        new_people.append({
+                            "Name": to_actress_name,
+                            "Id": str(to_actress_id),
+                            "Type": "Actor",
+                            "PrimaryImageTag": p.get("PrimaryImageTag", "")
+                        })
+                    else:
+                        new_people.append(p)
+
+                # 3. 更新 People 元数据
                 client = await self._get_client()
-                # Emby Identify: 重新识别元数据，传入目标演员名
                 await client.post(
-                    f"{self.api_url}/Items/{item_id}/MetadataEditors",
-                    json={
-                        "Identify": {
-                            "SearchInfo": {
-                                "Name": to_actress_name,
-                                "ProviderIds": {}
-                            },
-                            "Options": [
-                                {"Name": "ActorMetadata", "Value": True}
-                            ]
-                        }
-                    }
+                    f"{self.api_url}/Items/{item_id}/People",
+                    json=new_people
+                )
+
+                # 4. 触发 Refresh 更新头像
+                await client.post(
+                    f"{self.api_url}/Items/{item_id}/Refresh",
+                    params={"forceRefresh": "true"}
                 )
                 merged_count += 1
             except Exception as e:
