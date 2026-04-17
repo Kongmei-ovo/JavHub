@@ -9,7 +9,8 @@ from database import (
     add_inventory_job, get_inventory_jobs, get_inventory_job,
     get_actor_aliases, add_actor_alias, get_canonical_actress_id, get_actor_primary_name, set_actor_primary_name,
     upsert_inventory_actor, upsert_inventory_video, add_missing_video, get_missing_count_by_actress,
-    update_inventory_job, get_latest_snapshot_key, get_snapshot_actors
+    update_inventory_job, get_latest_snapshot_key, get_snapshot_actors,
+    reassign_actress_movies, find_similar_actresses
 )
 from modules.info_client import get_info_client
 
@@ -119,6 +120,33 @@ async def list_actors(
         "page_size": result["page_size"],
         "total_pages": result["total_pages"]
     }
+
+class MergeActorsRequest(BaseModel):
+    from_actress_id: int
+    to_actress_id: int
+
+@router.post("/actors/merge")
+async def merge_actors(req: MergeActorsRequest):
+    """批量合并演员：把 from 的电影全部转移到 to，然后删除 from"""
+    if req.from_actress_id == req.to_actress_id:
+        raise HTTPException(status_code=400, detail="不能合并到自身")
+    reassign_actress_movies(req.from_actress_id, req.to_actress_id)
+    add_actor_alias(req.from_actress_id, req.to_actress_id)
+    return {"success": True, "from": req.from_actress_id, "to": req.to_actress_id}
+
+@router.get("/actors/find-similar")
+async def find_similar_actors(name: str = None, threshold: float = 0.6):
+    """查找名字相似的演员（用于发现重复演员）"""
+    snapshot_key = get_latest_snapshot_key()
+    if not snapshot_key:
+        return {"data": []}
+    similar = find_similar_actresses(snapshot_key, name, threshold)
+    # 补充 avatar_url
+    for pair in similar:
+        for actor_key in ("actor_a", "actor_b"):
+            actor = pair[actor_key]
+            actor["avatar_url"] = _emby_image_url(str(actor["actress_id"]), actor.get("image_tag", ""))
+    return {"data": similar}
 
 @router.get("/actors/{actress_id}")
 async def get_actor(actress_id: int):

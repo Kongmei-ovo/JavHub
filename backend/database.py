@@ -849,6 +849,86 @@ def set_actor_primary_name(actress_id: int, primary_name: str):
     conn.commit()
     conn.close()
 
+def reassign_actress_movies(from_actress_id: int, to_actress_id: int):
+    """将一个演员的所有电影转移到另一个演员（批量合并）"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+
+    # 1. 转移 inventory_videos
+    cursor.execute(
+        "UPDATE inventory_videos SET actress_id = ?, updated_at = CURRENT_TIMESTAMP WHERE actress_id = ?",
+        (to_actress_id, from_actress_id)
+    )
+
+    # 2. 转移 missing_videos
+    cursor.execute(
+        "UPDATE missing_videos SET actress_id = ? WHERE actress_id = ?",
+        (to_actress_id, from_actress_id)
+    )
+
+    # 3. 重建统计（inventory_actors）
+    # 被合并方的统计合并到目标方
+    for table, id_field in [("inventory_videos", "actress_id"), ("missing_videos", "actress_id")]:
+        cursor.execute(
+            f"SELECT COUNT(*) as cnt FROM {table} WHERE actress_id = ?",
+            (to_actress_id,)
+        )
+        new_total = cursor.fetchone()["cnt"]
+        cursor.execute(
+            f"SELECT COUNT(*) as cnt FROM missing_videos WHERE actress_id = ?",
+            (to_actress_id,)
+        )
+        new_missing = cursor.fetchone()["cnt"]
+        cursor.execute(
+            "UPDATE inventory_actors SET total_videos = ?, missing_count = ?, updated_at = CURRENT_TIMESTAMP WHERE actress_id = ?",
+            (new_total, new_missing, to_actress_id)
+        )
+
+    # 4. 从 emby_actors 删除被合并方
+    cursor.execute("DELETE FROM emby_actors WHERE actress_id = ?", (from_actress_id,))
+
+    conn.commit()
+    conn.close()
+    return True
+
+def delete_emby_actor(actress_id: int):
+    """从 emby_actors 表删除演员"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM emby_actors WHERE actress_id = ?", (actress_id,))
+    conn.commit()
+    conn.close()
+
+def find_similar_actresses(snapshot_key: str, name: str = None, threshold: float = 0.6) -> list:
+    """查找名字相似的演员（用于发现重复演员）"""
+    import difflib
+    result = get_snapshot_actors(snapshot_key, page_size=10000)
+    all_actors = result["data"]
+    if name:
+        candidates = [a for a in all_actors if name.lower() in a["actress_name"].lower()]
+    else:
+        candidates = all_actors
+
+    similar = []
+    checked = set()
+    for i, a in enumerate(candidates):
+        for j, b in enumerate(candidates):
+            if i >= j or b["actress_id"] in checked:
+                continue
+            ratio = difflib.SequenceMatcher(None, a["actress_name"].lower(), b["actress_name"].lower()).ratio()
+            if ratio >= threshold and a["actress_id"] != b["actress_id"]:
+                similar.append({
+                    "actor_a": a,
+                    "actor_b": b,
+                    "similarity": round(ratio, 2)
+                })
+                checked.add(b["actress_id"])
+    # 按相似度降序
+    similar.sort(key=lambda x: x["similarity"], reverse=True)
+    return similar
+    conn.commit()
+    conn.close()
+
 def get_actor_primary_name(actress_id: int) -> Optional[str]:
     conn = get_db_orig()
     cursor = conn.cursor()
