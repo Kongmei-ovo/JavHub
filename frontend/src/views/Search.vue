@@ -738,6 +738,7 @@ export default {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  padding: 0 12px;
 }
 
 .service-code-wrap {
@@ -833,7 +834,7 @@ export default {
   flex: 1;
   border: none;
   outline: none;
-  padding: 12px;
+  padding: 12px 8px;
   font-size: 15px;
   background: transparent;
   color: var(--text-primary);
