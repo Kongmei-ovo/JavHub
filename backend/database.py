@@ -912,14 +912,53 @@ def get_latest_snapshot_key() -> Optional[str]:
     conn.close()
     return row["snapshot_key"] if row else None
 
-def get_snapshot_actors(snapshot_key: str) -> list:
-    """获取指定快照的演员列表"""
+def get_snapshot_actors(snapshot_key: str, search: str = None, sort_by: str = None, sort_order: str = "asc",
+                          page: int = 1, page_size: int = 50) -> dict:
+    """获取指定快照的演员列表，支持搜索、排序、分页"""
     conn = get_db_orig()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM emby_actors WHERE snapshot_key = ? ORDER BY actress_name", (snapshot_key,))
+
+    # 构建 WHERE 条件
+    where_clause = "WHERE snapshot_key = ?"
+    params = [snapshot_key]
+
+    if search:
+        where_clause += " AND actress_name LIKE ?"
+        params.append(f"%{search}%")
+
+    # 获取总数
+    count_sql = f"SELECT COUNT(*) as cnt FROM emby_actors {where_clause}"
+    cursor.execute(count_sql, params)
+    total = cursor.fetchone()["cnt"]
+
+    # 构建 ORDER BY
+    order_col = "actress_name"
+    if sort_by == "total_videos":
+        order_col = "total_videos"
+    elif sort_by == "missing_count":
+        # missing_count 来自 inventory_actors 表，这里按 actress_name 排序后由调用方处理
+        order_col = "actress_name"
+
+    order_dir = "ASC" if sort_order == "asc" else "DESC"
+    order_clause = f"ORDER BY {order_col} {order_dir}"
+
+    # 分页
+    offset = (page - 1) * page_size
+    limit = page_size
+
+    sql = f"SELECT * FROM emby_actors {where_clause} {order_clause} LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+    cursor.execute(sql, params)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+
+    return {
+        "data": [dict(row) for row in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if total > 0 else 1
+    }
 
 def get_snapshot_videos(snapshot_key: str, actress_id: int) -> list:
     """获取指定快照中某演员的所有影片"""

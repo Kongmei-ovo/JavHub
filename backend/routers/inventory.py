@@ -67,22 +67,38 @@ def _emby_image_url(actress_id: str, image_tag: str) -> str:
     return f"{api_url}/Items/{actress_id}/Images/Primary?tag={image_tag}&api_key={api_key}"
 
 @router.get("/actors")
-async def list_actors():
-    """获取库存演员列表（从 Emby 快照，含头像）"""
+async def list_actors(
+    search: str = None,
+    sort_by: str = "actress_name",
+    sort_order: str = "asc",
+    page: int = 1,
+    page_size: int = 50
+):
+    """获取库存演员列表（从 Emby 快照，含头像），支持搜索、排序、分页"""
     snapshot_key = get_latest_snapshot_key()
     if not snapshot_key:
-        return {"data": []}
-    actors = get_snapshot_actors(snapshot_key)
+        return {"data": [], "total": 0, "page": 1, "page_size": page_size, "total_pages": 1}
+
+    # 排序字段映射
+    sort_field = "actress_name"
+    if sort_by == "total_videos":
+        sort_field = "total_videos"
+    elif sort_by == "missing_count":
+        # missing_count 来自 inventory_actors，需特殊处理
+        sort_field = None
+
+    result = get_snapshot_actors(snapshot_key, search, sort_field, sort_order, page, page_size)
+
     # 读取对比统计（missing_count）
     inventory_map = {a["actress_id"]: a for a in get_inventory_actors()}
-    result = []
-    for actor in actors:
+    enriched = []
+    for actor in result["data"]:
         actress_id = actor["actress_id"]
         canon_id = get_canonical_actress_id(actress_id)
         primary = get_actor_primary_name(canon_id)
         inv = inventory_map.get(actress_id, {})
         image_tag = actor.get("image_tag", "")
-        result.append({
+        enriched.append({
             "actress_id": actress_id,
             "actress_name": actor["actress_name"],
             "display_name": primary or actor["actress_name"],
@@ -90,7 +106,19 @@ async def list_actors():
             "missing_count": inv.get("missing_count", 0),
             "avatar_url": _emby_image_url(str(actress_id), image_tag),
         })
-    return {"data": result}
+
+    # 如果按 missing_count 排序，在应用层排序
+    if sort_by == "missing_count":
+        reverse = sort_order == "desc"
+        enriched.sort(key=lambda x: x["missing_count"], reverse=reverse)
+
+    return {
+        "data": enriched,
+        "total": result["total"],
+        "page": result["page"],
+        "page_size": result["page_size"],
+        "total_pages": result["total_pages"]
+    }
 
 @router.get("/actors/{actress_id}")
 async def get_actor(actress_id: int):
