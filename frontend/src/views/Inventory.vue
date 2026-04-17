@@ -56,17 +56,23 @@
           class="actor-card"
           @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
         >
-          <ActressAvatar :name="actor.display_name" :avatar-url="actor.avatar_url" :size="80" :badge="actor.missing_count" />
-          <div class="actor-name">{{ actor.display_name }}</div>
-          <div class="actor-stats">
-            <span>共 {{ actor.total_videos }} 部</span>
-            <span v-if="actor.missing_count > 0" class="missing-tag">缺 {{ actor.missing_count }}</span>
+          <div class="actor-cover">
+            <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.display_name" @error="$event.target.style.display='none'" />
+            <div v-else class="actor-placeholder">{{ actor.display_name.slice(0,1) }}</div>
+            <div v-if="actor.missing_count > 0" class="actor-badge">{{ actor.missing_count }}</div>
+          </div>
+          <div class="actor-info">
+            <div class="actor-name">{{ actor.display_name }}</div>
+            <div class="actor-stats">
+              <span>{{ actor.total_videos }} 部</span>
+              <span v-if="actor.missing_count > 0" class="missing-tag">{{ actor.missing_count }} 缺失</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div v-if="!loadingActors && actors.length === 0" class="empty">
-        暂无演员数据，请先执行全量对比
+        暂无演员数据，请先采集 Emby 数据
       </div>
     </div>
 
@@ -108,7 +114,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import ActressAvatar from '../components/ActressAvatar.vue'
 
 const showJobs = ref(false)
 
@@ -270,22 +275,66 @@ const fetchJobs = async () => {
 }
 .actors-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
 }
 .actor-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
   background: #fff;
   border-radius: 8px;
+  overflow: hidden;
   cursor: pointer;
+  transition: transform 0.2s;
 }
-.actor-card:hover { background: #f5f5f5; }
-.actor-name { font-weight: bold; text-align: center; }
-.actor-stats { font-size: 12px; color: #666; text-align: center; }
+.actor-card:hover { transform: translateY(-2px); }
+.actor-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+.actor-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.actor-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 32px;
+  font-weight: bold;
+}
+.actor-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #ff4d4f;
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.actor-info {
+  padding: 8px;
+}
+.actor-name {
+  font-weight: bold;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.actor-stats {
+  font-size: 12px;
+  color: #666;
+}
 .missing-tag { color: #ff4d4f; }
 .loading, .error, .empty { text-align: center; padding: 40px; }
 .error { color: #ff4d4f; }
