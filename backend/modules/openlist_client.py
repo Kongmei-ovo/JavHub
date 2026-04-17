@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Optional
+
 class OpenListClient:
     """OpenList (115) API 客户端"""
 
@@ -7,7 +10,7 @@ class OpenListClient:
         self.password = password
         self.default_path = default_path
 
-    async def add_offline_download(self, magnet: str, path: str | None = None) -> str:
+    async def add_offline_download(self, magnet: str, path: Optional[str] = None) -> str:
         """添加离线下载，返回任务ID"""
         # TODO: 实现 OpenList API 调用
         return "mock_task_id"
@@ -20,7 +23,7 @@ class OpenListClient:
         """删除任务"""
         return True
 
-_openlist_client: OpenListClient | None = None
+_openlist_client: Optional[OpenListClient] = None
 
 def get_openlist_client() -> OpenListClient:
     global _openlist_client
