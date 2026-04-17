@@ -65,6 +65,38 @@ class EmbyClient:
         except Exception:
             return []
 
+    async def get_all_actresses(self) -> list[dict]:
+        """获取所有演员及其在Emby的影片数"""
+        items = await self.get_items(limit=9999)
+        actors_map: dict[int, dict] = {}
+        for item in items:
+            people = item.get("People", [])
+            for person in people:
+                if person.get("Type") != "Actor":
+                    continue
+                actress_id = person.get("Id")
+                name = person.get("Name", "Unknown")
+                if actress_id not in actors_map:
+                    actors_map[actress_id] = {
+                        "actress_id": actress_id,
+                        "actress_name": name,
+                        "video_count": 0,
+                    }
+                actors_map[actress_id]["video_count"] += 1
+        return list(actors_map.values())
+
+    async def get_actress_videos(self, actress_id: int) -> list[dict]:
+        """获取指定演员在Emby中的影片"""
+        items = await self.get_items(limit=9999)
+        result = []
+        for item in items:
+            people = item.get("People", [])
+            for person in people:
+                if person.get("Type") == "Actor" and person.get("Id") == actress_id:
+                    result.append(item)
+                    break
+        return result
+
     # === 去重相关 ===
 
     def _extract_code_from_name(self, name: str) -> str | None:
