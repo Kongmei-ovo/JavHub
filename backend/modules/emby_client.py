@@ -274,16 +274,22 @@ class EmbyClient:
 
                 # 3. 更新 People 元数据
                 client = await self._get_client()
-                await client.post(
+                people_resp = await client.post(
                     f"{self.api_url}/Items/{item_id}/People",
                     json=new_people
                 )
+                if people_resp.status_code == 404:
+                    # Emby Server 不支持此 API，标记失败但继续处理剩余 item
+                    failed.append({"item_id": item_id, "error": "Emby Server 不支持 /Items/{id}/People API"})
+                    continue
+                people_resp.raise_for_status()
 
                 # 4. 触发 Refresh 更新头像
-                await client.post(
+                refresh_resp = await client.post(
                     f"{self.api_url}/Items/{item_id}/Refresh",
                     params={"forceRefresh": "true"}
                 )
+                refresh_resp.raise_for_status()
                 merged_count += 1
             except Exception as e:
                 failed.append({"item_id": item_id, "error": str(e)})
@@ -293,7 +299,8 @@ class EmbyClient:
             "to_actress_id": to_actress_id,
             "total_items": len(item_ids),
             "merged_count": merged_count,
-            "failed": failed
+            "failed": failed,
+            "api_not_supported": any("不支持" in f.get("error", "") for f in failed)
         }
 
     # === 缺失检测 ===
