@@ -213,8 +213,10 @@ const embyImageUrl = (itemId, imageTag) => {
 }
 
 const openEmbyItem = (video) => {
-  // 可选：跳转 Emby Web 界面
-  if (actor.value._emby_web_url) {
+  if (actor.value._emby_web_url && actor.value._emby_server_id) {
+    const url = `${actor.value._emby_web_url}/web/index.html#!/item?id=${video.item_id}&serverId=${actor.value._emby_server_id}`
+    window.open(url, '_blank')
+  } else if (actor.value._emby_web_url) {
     window.open(`${actor.value._emby_web_url}/web/index.html#!/details?id=${video.item_id}`, '_blank')
   }
 }

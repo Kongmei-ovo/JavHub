@@ -171,9 +171,10 @@ async def get_actor(actress_id: int):
         if match:
             emby_web_url = f"{match.group(1)}:8096"
 
-    # 获取演员头像 URL
+    # 获取演员头像 URL 和 Emby serverId
     from database import get_latest_snapshot_key, get_snapshot_actors
     avatar_url = ""
+    emby_server_id = ""
     snapshot_key = get_latest_snapshot_key()
     if snapshot_key:
         snapshot_result = get_snapshot_actors(snapshot_key, page_size=100000)
@@ -183,6 +184,14 @@ async def get_actor(actress_id: int):
                 if image_tag:
                     avatar_url = _emby_image_url(str(actress_id), image_tag)
                 break
+        # 获取 Emby serverId
+        from modules.emby_client import get_emby_client
+        try:
+            emby = get_emby_client()
+            system_info = await emby._get("/System/Info")
+            emby_server_id = system_info.get("Id", "")
+        except Exception:
+            pass
 
     return {
         **actor,
@@ -192,6 +201,7 @@ async def get_actor(actress_id: int):
         "avatar_url": avatar_url,
         "_emby_api_url": emby_api_url,
         "_emby_web_url": emby_web_url,
+        "_emby_server_id": emby_server_id,
     }
 
 @router.get("/actors/{actress_id}/emby-videos")
