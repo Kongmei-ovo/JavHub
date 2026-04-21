@@ -157,12 +157,52 @@ async def get_actor(actress_id: int):
     missing = get_missing_videos(actress_id)
     canon_id = get_canonical_actress_id(actress_id)
     primary = get_actor_primary_name(canon_id)
+
+    # 获取 Emby 配置（用于前端构造图片 URL）
+    from config import config
+    emby_cfg = getattr(config, "emby", {})
+    emby_api_url = emby_cfg.get("api_url", "").rstrip("/")
+    # Web URL 从 api_url 推断（去掉 /emby 或端口换为 8096）
+    emby_web_url = emby_cfg.get("web_url", "")
+    if not emby_web_url and emby_api_url:
+        # 默认用 8096 端口
+        import re
+        match = re.match(r'(https?://[^:]+)', emby_api_url)
+        if match:
+            emby_web_url = f"{match.group(1)}:8096"
+
     return {
         **actor,
         "display_name": primary or actor["actress_name"],
         "videos": videos,
         "missing_videos": missing,
+        "_emby_api_url": emby_api_url,
+        "_emby_web_url": emby_web_url,
     }
+
+@router.get("/actors/{actress_id}/emby-videos")
+async def get_actor_emby_videos(actress_id: int):
+    """从 Emby 实时获取演员的影片列表"""
+    from modules.emby_client import get_emby_client
+    emby = get_emby_client()
+    try:
+        items = await emby.get_actress_videos(actress_id)
+        # 提取关键字段并按发布年份排序
+        videos = []
+        for item in items:
+            videos.append({
+                "item_id": item.get("Id"),
+                "title": item.get("Name"),
+                "filename": item.get("FileName"),
+                "production_year": item.get("ProductionYear"),
+                "premiere_date": item.get("PremiereDate"),
+                "image_tag": item.get("ImageTags", {}).get("Primary"),
+            })
+        # 按日期倒序排列
+        videos.sort(key=lambda x: x.get("premiere_date") or "", reverse=True)
+        return {"data": videos, "total": len(videos)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取Emby影片失败: {str(e)}")
 
 # === 缺失影片 ===
 

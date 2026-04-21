@@ -344,6 +344,8 @@ onMounted(() => {
   background: var(--bg-secondary); color: var(--text-secondary);
   border: 1px solid var(--border); padding: 4px 12px;
   border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+
 .loading, .error, .empty {
   text-align: center; padding: 40px; color: var(--text-secondary);
 }
