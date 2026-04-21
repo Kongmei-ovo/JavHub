@@ -76,7 +76,7 @@ class EmbyClient:
                     "startIndex": start,
                     "includeItemTypes": "Movie",
                     "recursive": "true",
-                    "fields": "People",
+                    "fields": "People,PremiereDate,ProductionYear",
                 }
             )
             # Emby returns "Items" (capitalized), normalize to lowercase
