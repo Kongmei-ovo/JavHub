@@ -243,66 +243,6 @@ class EmbyClient:
         except Exception:
             return False
 
-    async def merge_actor_in_emby(self, from_actress_id: int, to_actress_id: int, to_actress_name: str) -> dict:
-        """在 Emby 中合并演员：
-        1. 找到 from 的所有电影
-        2. 获取每个电影的 People 列表，将 from_actress 替换为 to_actress
-        3. 更新每部电影的 People 元数据
-        4. 触发 Refresh 让 Emby 更新演员头像
-        """
-        # 1. 获取 from 的所有电影
-        from_items = await self.get_actress_videos(from_actress_id)
-        item_ids = [(item["Id"], item.get("People", [])) for item in from_items if item.get("Id")]
-        merged_count = 0
-        failed = []
-
-        for item_id, people in item_ids:
-            try:
-                # 2. 构建新 People 列表：将 from 替换为 to（按名字匹配）
-                new_people = []
-                for p in people:
-                    if p.get("Type") == "Actor" and str(p.get("Id")) == str(from_actress_id):
-                        # 保留原有字段但名字用 to_actress_name（ID 保持不变，名字会被 Emby 更新）
-                        new_people.append({
-                            "Name": to_actress_name,
-                            "Id": str(to_actress_id),
-                            "Type": "Actor",
-                            "PrimaryImageTag": p.get("PrimaryImageTag", "")
-                        })
-                    else:
-                        new_people.append(p)
-
-                # 3. 更新 People 元数据
-                client = await self._get_client()
-                people_resp = await client.post(
-                    f"{self.api_url}/Items/{item_id}/People",
-                    json=new_people
-                )
-                if people_resp.status_code == 404:
-                    # Emby Server 不支持此 API，标记失败但继续处理剩余 item
-                    failed.append({"item_id": item_id, "error": "Emby Server 不支持 /Items/{id}/People API"})
-                    continue
-                people_resp.raise_for_status()
-
-                # 4. 触发 Refresh 更新头像
-                refresh_resp = await client.post(
-                    f"{self.api_url}/Items/{item_id}/Refresh",
-                    params={"forceRefresh": "true"}
-                )
-                refresh_resp.raise_for_status()
-                merged_count += 1
-            except Exception as e:
-                failed.append({"item_id": item_id, "error": str(e)})
-
-        return {
-            "from_actress_id": from_actress_id,
-            "to_actress_id": to_actress_id,
-            "total_items": len(item_ids),
-            "merged_count": merged_count,
-            "failed": failed,
-            "api_not_supported": any("不支持" in f.get("error", "") for f in failed)
-        }
-
     # === 缺失检测 ===
 
     async def get_missing_actresses_summary(self, info_client) -> list[dict]:

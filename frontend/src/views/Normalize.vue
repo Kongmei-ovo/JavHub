@@ -13,13 +13,6 @@
       >
         JavHub 映射
       </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'emby' }"
-        @click="activeTab = 'emby'"
-      >
-        Emby 演员合并
-      </button>
     </div>
 
     <!-- ========== JavHub 映射 Tab ========== -->
@@ -99,69 +92,6 @@
       <div v-else class="empty">
         <template v-if="filterName || threshold < 0.8">未找到符合条件的相似演员</template>
         <template v-else>暂无疑似重复演员，试试降低相似度阈值</template>
-      </div>
-    </div>
-
-    <!-- ========== Emby 演员合并 Tab ========== -->
-    <div v-if="activeTab === 'emby'" class="tab-panel">
-      <div class="panel-desc">
-        真实修改 Emby 服务器：对 Emby 中同名/相似演员进行合并操作，
-        将被合并演员的电影元数据更新为指向目标演员。
-        <strong>需要 Emby 刮削器支持。</strong>
-      </div>
-
-      <div class="filter-bar">
-        <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input v-model="embyFilterName" placeholder="搜索演员名..." class="search-input" @input="onEmbyFilterInput" />
-          <button v-if="embyFilterName" class="search-clear" @click="embyFilterName = ''; loadEmbyActors()">×</button>
-        </div>
-        <span class="result-count">共 {{ embyActors.length }} 位演员</span>
-      </div>
-
-      <div v-if="embyLoading" class="loading">加载 Emby 演员中...</div>
-      <div v-else-if="embyError" class="error">{{ embyError }}</div>
-
-      <div v-else class="actors-grid">
-        <div
-          v-for="actor in embyActors"
-          :key="actor.actress_id"
-          class="actor-card"
-          :class="{ 'merge-source': mergeSource && mergeSource.actress_id === actor.actress_id, 'merge-target': mergeTarget && mergeTarget.actress_id === actor.actress_id }"
-          @click="onActorClick(actor)"
-        >
-          <div class="actor-cover">
-            <img :src="actor.avatar_url || ''" :alt="actor.actress_name" @error="$event.target.style.display='none'" />
-          </div>
-          <div class="actor-info">
-            <div class="actor-name">{{ actor.actress_name }}</div>
-            <div class="actor-meta">{{ actor.video_count }} 部</div>
-          </div>
-          <div v-if="mergeSource && mergeSource.actress_id === actor.actress_id" class="actor-badge source">来源</div>
-          <div v-if="mergeTarget && mergeTarget.actress_id === actor.actress_id" class="actor-badge target">目标</div>
-        </div>
-      </div>
-
-      <!-- 合并操作区 -->
-      <div v-if="mergeSource" class="merge-action-bar">
-        <div class="action-info">
-          <span class="action-label">合并：</span>
-          <span class="action-name source-name">{{ mergeSource.actress_name }}</span>
-          <span class="action-arrow">→</span>
-          <span class="action-name target-name">{{ mergeTarget ? mergeTarget.actress_name : '请选择目标演员' }}</span>
-        </div>
-        <div class="action-btns">
-          <button v-if="!mergeTarget" class="btn-hint">← 点击目标演员确认</button>
-          <template v-else>
-            <button class="btn-merge" @click="executeEmbyMerge" :disabled="embyMerging">
-              {{ embyMerging ? '合并中...' : '执行 Emby 合并' }}
-            </button>
-            <button class="btn-cancel" @click="clearMergeSelection">取消</button>
-          </template>
-        </div>
       </div>
     </div>
 
@@ -254,90 +184,10 @@ const mergeJavhub = async (pair) => {
   }
 }
 
-// ---- Emby 演员合并 ----
-const embyActors = ref([])
-const embyLoading = ref(false)
-const embyError = ref('')
-const embyFilterName = ref('')
-const mergeSource = ref(null)   // 被合并方（来源）
-const mergeTarget = ref(null)   // 目标方
-const embyMerging = ref(false)
+// ---- 映射历史 ----
 const showHistory = ref(false)
 const mergeHistory = ref([])
 const loadingHistory = ref(false)
-
-const loadEmbyActors = async () => {
-  embyLoading.value = true
-  embyError.value = ''
-  try {
-    const params = {}
-    if (embyFilterName.value) params.search = embyFilterName.value
-    const res = await axios.get('/api/inventory/actors', { params })
-    const actors = res.data.data || []
-    // 补充 avatar_url（从 Emby 快照获取）
-    embyActors.value = actors.map(a => ({
-      ...a,
-      avatar_url: a.avatar_url || `/api/actors/avatar/${encodeURIComponent(a.display_name || a.actress_name)}`
-    }))
-  } catch (e) {
-    embyError.value = '加载失败: ' + e.message
-  } finally {
-    embyLoading.value = false
-  }
-}
-
-let embyFilterTimer = null
-const onEmbyFilterInput = () => {
-  clearTimeout(embyFilterTimer)
-  embyFilterTimer = setTimeout(loadEmbyActors, 300)
-}
-
-const onActorClick = (actor) => {
-  if (!mergeSource.value) {
-    // 第一步：选来源
-    mergeSource.value = actor
-    mergeTarget.value = null
-  } else if (mergeSource.value.actress_id === actor.actress_id) {
-    // 再次点击来源 = 取消
-    mergeSource.value = null
-    mergeTarget.value = null
-  } else if (!mergeTarget.value) {
-    // 第二步：选目标
-    mergeTarget.value = actor
-  } else if (mergeTarget.value.actress_id === actor.actress_id) {
-    // 再次点击目标 = 取消目标
-    mergeTarget.value = null
-  } else {
-    // 换了目标
-    mergeTarget.value = actor
-  }
-}
-
-const clearMergeSelection = () => {
-  mergeSource.value = null
-  mergeTarget.value = null
-}
-
-const executeEmbyMerge = async () => {
-  if (!mergeSource.value || !mergeTarget.value) return
-  if (!confirm(`确认在 Emby 中执行合并？\n\n"${mergeSource.value.actress_name}" 的所有电影将重新刮削元数据，指向 "${mergeTarget.value.actress_name}"。\n\n注意：此操作会修改 Emby 服务器数据，建议提前备份。`)) return
-
-  embyMerging.value = true
-  try {
-    const res = await axios.post('/api/inventory/actors/merge-emby', {
-      from_actress_id: mergeSource.value.actress_id,
-      to_actress_id: mergeTarget.value.actress_id
-    })
-    const r = res.data.emby_result || {}
-    alert(`Emby 合并完成\n总电影: ${r.total_items}\n已合并: ${r.merged_count}\n失败: ${r.failed?.length || 0}`)
-    clearMergeSelection()
-    await loadEmbyActors()
-  } catch (e) {
-    alert('Emby 合并失败: ' + e.message)
-  } finally {
-    embyMerging.value = false
-  }
-}
 
 const fetchHistory = async () => {
   loadingHistory.value = true
@@ -361,7 +211,6 @@ const fetchHistory = async () => {
 
 onMounted(() => {
   loadSimilar()
-  loadEmbyActors()
 })
 </script>
 
@@ -495,67 +344,6 @@ onMounted(() => {
   background: var(--bg-secondary); color: var(--text-secondary);
   border: 1px solid var(--border); padding: 4px 12px;
   border-radius: 4px; cursor: pointer; font-size: 12px;
-}
-
-/* Emby 演员网格 */
-.actors-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-}
-.actor-card {
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-.actor-card:hover { border-color: var(--accent, #1890ff); transform: translateY(-2px); }
-.actor-card.merge-source { border-color: #fa8c16; }
-.actor-card.merge-target { border-color: #52c41a; }
-.actor-badge {
-  position: absolute;
-  top: 4px; right: 4px;
-  font-size: 10px; font-weight: bold;
-  padding: 2px 6px; border-radius: 8px;
-}
-.actor-badge.source { background: #fa8c16; color: #fff; }
-.actor-badge.target { background: #52c41a; color: #fff; }
-.actor-info { padding: 6px 8px; }
-.actor-info .actor-name { font-size: 12px; }
-.actor-info .actor-meta { font-size: 10px; }
-
-/* Emby 合并操作栏 */
-.merge-action-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--accent, #1890ff);
-  border-radius: 12px;
-  padding: 12px 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  z-index: 100;
-}
-.action-info { display: flex; align-items: center; gap: 8px; }
-.action-label { font-size: 13px; color: var(--text-secondary); }
-.action-name { font-weight: 600; font-size: 14px; }
-.source-name { color: #fa8c16; }
-.target-name { color: #52c41a; }
-.action-arrow { color: var(--text-muted); font-size: 16px; }
-.action-btns { display: flex; align-items: center; gap: 8px; }
-.btn-hint {
-  background: none; border: 1px dashed var(--border);
-  color: var(--text-muted); padding: 4px 12px;
-  border-radius: 4px; font-size: 12px; cursor: default;
-}
-
 .loading, .error, .empty {
   text-align: center; padding: 40px; color: var(--text-secondary);
 }
@@ -594,7 +382,5 @@ onMounted(() => {
   .merge-arrow { transform: rotate(90deg); }
   .filter-bar { flex-direction: column; align-items: stretch; }
   .search-box { max-width: none; }
-  .merge-action-bar { flex-direction: column; width: calc(100% - 32px); }
-  .actors-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
 </style>
