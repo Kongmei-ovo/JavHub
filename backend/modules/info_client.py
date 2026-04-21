@@ -112,6 +112,11 @@ class InfoClient:
                   "actress_name": actress_name, "category_id": category_id, "category_name": cat_names,
                   "year": year, "service_code": service_code,
                   "page": page, "page_size": page_size}
+        # content_id 映射到 JavInfoApi 的 dvd_id 字段
+        # JavInfoApi 会同时匹配带横杠和不带横杠的版本
+        # 例如输入 XRW-429 会匹配 XRW-429 和 XRW429
+        if content_id:
+            params["dvd_id"] = content_id
         if random:
             params["random"] = random
             # 随机查询跳过缓存，每次直接请求 JavInfoApi 获取新的随机顺序
@@ -122,11 +127,6 @@ class InfoClient:
         elif sort_by:
             # JavInfoApi expects "field:dir" format; if already contains ":" (from frontend format), pass as-is
             params["sort_by"] = sort_by if ':' in sort_by else f"{sort_by}:{sort_order or 'asc'}"
-        # content_id 映射到 JavInfoApi 的 dvd_id 字段
-        # JavInfoApi 会同时匹配带横杠和不带横杠的版本
-        # 例如输入 XRW-429 会匹配 XRW-429 和 XRW429
-        if content_id:
-            params["dvd_id"] = content_id
         cached = cache.get_search({k: v for k, v in params.items() if v is not None}, page)
         if cached is not None:
             return cached
