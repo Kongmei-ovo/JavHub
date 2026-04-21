@@ -17,14 +17,28 @@ ALLOWED_IMAGE_DOMAINS = {
 }
 
 
+def _get_allowed_domains() -> set:
+    """获取允许的图片域名白名单（包含动态添加的 Emby 域名）"""
+    domains = set(ALLOWED_IMAGE_DOMAINS)
+    # 动态添加 Emby 域名
+    emby_cfg = getattr(config, "emby", {})
+    emby_url = emby_cfg.get("api_url", "")
+    if emby_url:
+        from urllib.parse import urlparse
+        parsed = urlparse(emby_url)
+        if parsed.netloc:
+            domains.add(parsed.netloc.lower())
+    return domains
+
+
 def _is_url_allowed(url: str) -> bool:
     """验证 URL 域名是否在白名单内"""
     from urllib.parse import urlparse
     try:
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
-        # 检查是否以某个白名单域名结尾
-        return any(domain.endswith(allowed) or domain == allowed for allowed in ALLOWED_IMAGE_DOMAINS)
+        allowed = _get_allowed_domains()
+        return any(domain.endswith(allowed_domain) or domain == allowed_domain for allowed_domain in allowed)
     except Exception:
         return False
 

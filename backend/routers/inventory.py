@@ -198,8 +198,11 @@ async def get_actor_emby_videos(actress_id: int):
                 "premiere_date": item.get("PremiereDate"),
                 "image_tag": item.get("ImageTags", {}).get("Primary"),
             })
-        # 按日期倒序排列
-        videos.sort(key=lambda x: x.get("premiere_date") or "", reverse=True)
+        # 编年正序：最早的年份/日期在前
+        videos.sort(key=lambda x: (
+            x.get("production_year") or 9999,
+            x.get("premiere_date") or ""
+        ))
         return {"data": videos, "total": len(videos)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取Emby影片失败: {str(e)}")

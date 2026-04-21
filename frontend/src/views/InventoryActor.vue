@@ -54,8 +54,8 @@
               <div v-else class="no-cover">无封面</div>
             </div>
             <div class="video-info">
+              <div class="video-code" :title="video.title">{{ video._code || extractCode(video.title) }}</div>
               <div class="video-title" :title="video.title">{{ video.title }}</div>
-              <div class="video-meta">{{ video.production_year }}</div>
             </div>
           </div>
         </div>
@@ -73,7 +73,11 @@
           <VideoCard
             v-for="video in groupVideos"
             :key="video.content_id"
-            :video="video"
+            :contentId="video.content_id"
+            :title="video.title"
+            :coverUrl="video.jacket_thumb_url || ''"
+            :actressNames="actor.display_name || actor.actress_name"
+            :releaseDate="video.release_date || ''"
             @click="showDetail(video)"
           />
         </div>
@@ -100,40 +104,82 @@ const missingVideos = ref([])
 const loading = ref(false)
 const activeTab = ref('emby')
 
+// 从 title 提取番号（去除时间戳等后缀）
+function extractCode(title) {
+  if (!title) return ''
+  // 匹配常见番号格式：ABC-123, ABC-123-hack, ABC123 等
+  const match = title.match(/([A-Z]+-\d+)/i)
+  return match ? match[1].toUpperCase() : ''
+}
+
+// 从 title 提取年份（用于年份为空的情况）
+function extractYearFromTitle(title) {
+  if (!title) return null
+  // 匹配 4 位年份数字
+  const match = title.match(/\b(19\d{2}|20\d{2})\b/)
+  return match ? parseInt(match[1]) : null
+}
+
+// 获取影片年份（优先字段值，其次从 title 提取）
+function getVideoYear(video, yearField, dateField) {
+  let year
+  if (yearField === 'release_date') {
+    // 缺失影片用 release_date 字段
+    year = video[yearField] ? parseInt(video[yearField].slice(0, 4)) : null
+    if (!year) year = extractYearFromTitle(video.title)
+  } else {
+    // Emby 影片优先用 production_year，否则用 premiere_date
+    year = video[yearField] || (video[dateField] ? new Date(video[dateField]).getFullYear() : null)
+    if (!year || isNaN(year)) year = extractYearFromTitle(video.title)
+  }
+  return year || null
+}
+
 // Emby 已有影片按年分组（编年正序：最早的在前）
 const groupedEmbyByYear = computed(() => {
-  return groupByYear(embyVideos.value, 'production_year', 'premiere_date')
-})
-
-// 缺失影片按年分组（编年正序）
-const groupedMissingByYear = computed(() => {
-  return groupByYear(missingVideos.value, 'release_date')
-})
-
-function groupByYear(videos, yearField, dateField) {
   const groups = {}
-  for (const v of videos) {
-    let year
-    if (yearField === 'release_date') {
-      // 缺失影片用 release_date 字段
-      year = v[yearField] ? v[yearField].slice(0, 4) : '未知'
-    } else {
-      // Emby 影片优先用 production_year，否则用 premiere_date
-      year = v[yearField] || (v[dateField] ? new Date(v[dateField]).getFullYear() : null)
-      if (!year || isNaN(year)) year = '未知'
-      year = String(year)
-    }
-    if (!groups[year]) groups[year] = []
-    groups[year].push(v)
+  for (const v of embyVideos.value) {
+    const year = getVideoYear(v, 'production_year', 'premiere_date')
+    const yearKey = year ? String(year) : '未知'
+    if (!groups[yearKey]) groups[yearKey] = []
+    // 附加提取的番号
+    v._code = v._code || extractCode(v.title)
+    groups[yearKey].push(v)
   }
   // 编年正序：最早的年份在前
   return Object.keys(groups)
-    .sort((a, b) => a.localeCompare(b))
+    .sort((a, b) => {
+      if (a === '未知') return 1
+      if (b === '未知') return -1
+      return a.localeCompare(b)
+    })
     .reduce((acc, key) => {
       acc[key] = groups[key]
       return acc
     }, {})
-}
+})
+
+// 缺失影片按年分组（编年正序）
+const groupedMissingByYear = computed(() => {
+  const groups = {}
+  for (const v of missingVideos.value) {
+    const year = getVideoYear(v, 'release_date', null)
+    const yearKey = year ? String(year) : '未知'
+    if (!groups[yearKey]) groups[yearKey] = []
+    groups[yearKey].push(v)
+  }
+  // 编年正序：最早的年份在前
+  return Object.keys(groups)
+    .sort((a, b) => {
+      if (a === '未知') return 1
+      if (b === '未知') return -1
+      return a.localeCompare(b)
+    })
+    .reduce((acc, key) => {
+      acc[key] = groups[key]
+      return acc
+    }, {})
+})
 
 const fetchActor = async () => {
   loading.value = true
@@ -237,9 +283,13 @@ onMounted(async () => {
   justify-content: center; color: var(--text-muted); font-size: 12px;
 }
 .video-info { padding: 8px; }
+.video-code {
+  font-size: 12px; font-weight: bold; color: var(--accent, #1890ff);
+  margin-bottom: 4px;
+}
 .video-title {
-  font-size: 12px; color: var(--text-primary); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;
+  font-size: 11px; color: var(--text-secondary); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
 }
 .video-meta { font-size: 11px; color: var(--text-muted); }
 
