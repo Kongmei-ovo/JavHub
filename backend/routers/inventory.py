@@ -171,11 +171,25 @@ async def get_actor(actress_id: int):
         if match:
             emby_web_url = f"{match.group(1)}:8096"
 
+    # 获取演员头像 URL
+    from database import get_latest_snapshot_key, get_snapshot_actors
+    avatar_url = ""
+    snapshot_key = get_latest_snapshot_key()
+    if snapshot_key:
+        snapshot_result = get_snapshot_actors(snapshot_key, page_size=100000)
+        for a in snapshot_result.get("data", []):
+            if a.get("actress_id") == actress_id:
+                image_tag = a.get("image_tag", "")
+                if image_tag:
+                    avatar_url = _emby_image_url(str(actress_id), image_tag)
+                break
+
     return {
         **actor,
         "display_name": primary or actor["actress_name"],
         "videos": videos,
         "missing_videos": missing,
+        "avatar_url": avatar_url,
         "_emby_api_url": emby_api_url,
         "_emby_web_url": emby_web_url,
     }

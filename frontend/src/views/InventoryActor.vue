@@ -2,7 +2,7 @@
   <div class="actor-page">
     <div class="actor-header">
       <button class="back-btn" @click="$router.back()">← 返回</button>
-      <ActressAvatar :name="actor.display_name || actor.actress_name" :size="100" />
+      <ActressAvatar :name="actor.display_name || actor.actress_name" :avatarUrl="actor.avatar_url" :size="100" />
       <h2>{{ actor.display_name || actor.actress_name }}</h2>
       <div class="stats">
         Emby {{ embyVideos.length }} 部 / 缺失 {{ missingVideos.length }} 部
