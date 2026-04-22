@@ -52,8 +52,12 @@ class EmbyClient:
                 name = item.get("Name", "") or item.get("FileName", "")
                 name_upper = name.upper()
                 # 精确匹配：content_id 作为独立词组出现（前后是分隔符或边界）
-                # 匹配格式: ABC-123, ABC-123-c, ABC-123.hack, (ABC-123), ABC-123_2020 等
-                if re.search(r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?![A-Z0-9\-])', name_upper, re.IGNORECASE):
+                # 匹配: ABC-123, ABC-123-c, ABC-123.hack 等
+                # 不匹配: XABC-123, ABC-123-456, ABC-1234
+                if re.search(
+                    r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?:-(?=[A-Za-z])[A-Za-z]*)?(?=\s|[().,!]|$)',
+                    name_upper
+                ):
                     return True
             return False
         except Exception:
