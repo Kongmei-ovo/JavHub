@@ -91,12 +91,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 
 const route = useRoute()
+const router = useRouter()
 const actorId = parseInt(route.params.id)
 const actor = ref({})
 const embyVideos = ref([])
@@ -222,7 +223,11 @@ const openEmbyItem = (video) => {
 }
 
 const showDetail = (video) => {
-  // 复用 Search 页的详情逻辑
+  // 跳转到搜索页查看影片详情
+  const contentId = video.content_id || video.dvd_id
+  if (contentId) {
+    router.push({ path: '/search', query: { q: contentId } })
+  }
 }
 
 onMounted(async () => {

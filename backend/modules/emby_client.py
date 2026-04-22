@@ -136,7 +136,7 @@ class EmbyClient:
                 for person in people:
                     if person.get("Type") != "Actor":
                         continue
-                    actress_id = person.get("Id")
+                    actress_id = int(person.get("Id"))
                     name = person.get("Name", "Unknown")
                     image_tag = person.get("PrimaryImageTag")
                     if actress_id not in all_actors:
@@ -168,7 +168,7 @@ class EmbyClient:
             for person in people:
                 if person.get("Type") != "Actor":
                     continue
-                actress_id = person.get("Id")
+                actress_id = int(person.get("Id"))
                 name = person.get("Name", "Unknown")
                 if actress_id not in actors_map:
                     actors_map[actress_id] = {

@@ -58,14 +58,13 @@ async def get_job(job_id: int):
 # === 演员 ===
 
 def _emby_image_url(actress_id: str, image_tag: str) -> str:
-    """构造 Emby 演员头像 URL"""
+    """构造 Emby 演员头像 URL（无需api_key，Emby默认允许公开访问图片）"""
     if not image_tag:
         return ""
     from config import config
     emby_cfg = getattr(config, "emby", {})
     api_url = emby_cfg.get("api_url", "").rstrip("/")
-    api_key = emby_cfg.get("api_key", "")
-    return f"{api_url}/Items/{actress_id}/Images/Primary?tag={image_tag}&api_key={api_key}"
+    return f"{api_url}/Items/{actress_id}/Images/Primary?tag={image_tag}"
 
 @router.get("/actors")
 async def list_actors(
