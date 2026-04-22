@@ -35,13 +35,26 @@ class EmbyClient:
     # === 库检测 ===
 
     async def check_exists(self, content_id: str) -> bool:
-        """检查影片是否在库中"""
-        items = await self.get_all_movies()
-        for item in items:
-            name = item.get("Name", "") or item.get("FileName", "")
-            if content_id.upper() in name.upper():
-                return True
-        return False
+        """检查影片是否在库中（使用 Emby 查询接口，替代遍历全量数据）"""
+        # 使用 Emby 的查询接口直接检查
+        try:
+            result = await self._get(
+                "/Items",
+                params={
+                    "limit": 10,
+                    "includeItemTypes": "Movie",
+                    "recursive": "true",
+                    "searchTerm": content_id,
+                }
+            )
+            items = result.get("Items", result.get("items", []))
+            for item in items:
+                name = item.get("Name", "") or item.get("FileName", "")
+                if content_id.upper() in name.upper():
+                    return True
+            return False
+        except Exception:
+            return False
 
     async def get_all_movies(self) -> list[dict]:
         """获取所有影片库项"""
