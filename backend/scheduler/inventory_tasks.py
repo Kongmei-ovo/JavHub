@@ -147,6 +147,8 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
                 javinfo_videos = result.get("data", [])
             except Exception as e:
                 print(f"[Inventory] Failed to get JavInfo videos for actress {actress_id}: {e}")
+                # JavInfo 查询失败时标记状态为未知，避免静默跳过导致统计失真
+                update_inventory_actor_stats(actress_id, total=-1, missing=-1)
                 continue
 
             # 从快照获取该演员在 Emby 的影片

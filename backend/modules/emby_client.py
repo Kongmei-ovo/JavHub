@@ -36,7 +36,6 @@ class EmbyClient:
 
     async def check_exists(self, content_id: str) -> bool:
         """检查影片是否在库中（使用 Emby 查询接口，替代遍历全量数据）"""
-        # 使用 Emby 的查询接口直接检查
         try:
             result = await self._get(
                 "/Items",
@@ -48,9 +47,13 @@ class EmbyClient:
                 }
             )
             items = result.get("Items", result.get("items", []))
+            code_upper = content_id.upper()
             for item in items:
                 name = item.get("Name", "") or item.get("FileName", "")
-                if content_id.upper() in name.upper():
+                name_upper = name.upper()
+                # 精确匹配：content_id 作为独立词组出现（前后是分隔符或边界）
+                # 匹配格式: ABC-123, ABC-123-c, ABC-123.hack, (ABC-123), ABC-123_2020 等
+                if re.search(r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?![A-Z0-9\-])', name_upper, re.IGNORECASE):
                     return True
             return False
         except Exception:
