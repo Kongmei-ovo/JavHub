@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from database import init_db
@@ -31,6 +31,45 @@ from routers.proxy import router as proxy_router
 from routers.inventory import router as inventory_router
 
 app = FastAPI(title="AV Downloader API")
+
+# ========== 统一错误响应格式 ==========
+class ApiResponse:
+    """统一 API 响应格式
+    成功: { "data": ..., "message": "ok" }
+    错误: { "detail": "错误信息", "code": "ERR_XXX" }
+    """
+    SUCCESS = "ok"
+    ERR_NOT_FOUND = "ERR_NOT_FOUND"
+    ERR_BAD_REQUEST = "ERR_BAD_REQUEST"
+    ERR_INTERNAL = "ERR_INTERNAL"
+    ERR_UNAUTHORIZED = "ERR_UNAUTHORIZED"
+    ERR_FORBIDDEN = "ERR_FORBIDDEN"
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "code": exc.status_code,
+            "message": exc.detail,
+        },
+        headers={"X-Error-Code": str(exc.status_code)} if exc.status_code >= 500 else {}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    import traceback
+    logging.error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "服务器内部错误",
+            "code": "ERR_INTERNAL",
+            "message": str(exc) if hasattr(exc, '__str__') else "Unknown error",
+        },
+        headers={"X-Error-Code": "ERR_INTERNAL"}
+    )
 
 # CORS - 默认仅允许本地开发前端，部署时通过配置覆盖
 _frontend_origin = "http://localhost:5173"  # Vite dev server
