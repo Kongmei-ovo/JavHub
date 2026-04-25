@@ -3,11 +3,11 @@
     <!-- 顶部工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <button class="back-btn" @click="$router.push('/genres')">
+        <button class="back-btn" @click="handleBack">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
-          题材发现
+          {{ $route.query.returnTo ? '返回影片' : '题材发现' }}
         </button>
         <h2 class="category-title">{{ categoryName }}</h2>
       </div>
@@ -148,10 +148,7 @@
       :video="selectedVideo"
       @close="closeModal"
       @download="handleDownload"
-      @search-by-category="searchByCategory"
-      @search-by-maker="searchByMaker"
-      @search-by-series="searchBySeries"
-      @search-by-actress="searchByActress"
+      @navigate="handleNavigate"
     />
   </div>
 </template>
@@ -349,23 +346,34 @@ export default {
         this.$message.error('添加下载失败')
       }
     },
-    searchByCategory(categoryName) {
-      const cat = this.categories.find(c =>
-        (c.name_en || c.name_ja || c.name) === categoryName
-      )
-      if (cat) {
-        this.closeModal()
-        this.$router.push({ name: 'GenreDetail', params: { categoryId: cat.id } })
+    handleBack() {
+      this.selectedVideo = null
+      this.$router.back()
+    },
+    handleNavigate({ type, item }) {
+      this.selectedVideo = null
+      const q = {}
+      if (type === 'category') {
+        const returnTo = 'genreDetail'
+        const videoId = this.selectedVideo?.content_id || this.selectedVideo?.dvd_id
+        const cat = this.categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
+        if (cat) {
+          this.$router.push({
+            name: 'GenreDetail',
+            params: { categoryId: cat.id },
+            query: { returnTo, videoId }
+          })
+        }
+      } else if (type === 'actress') {
+        q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
+        this.$router.push({ path: '/search', query: q })
+      } else if (type === 'maker') {
+        q.maker = item.name_en || item.name_ja || ''
+        this.$router.push({ path: '/search', query: q })
+      } else if (type === 'series') {
+        q.series = item.name_en || item.name_ja || ''
+        this.$router.push({ path: '/search', query: q })
       }
-    },
-    searchByMaker(makerName) {
-      this.$router.push({ path: '/search', query: { maker: makerName } })
-    },
-    searchBySeries(seriesName) {
-      this.$router.push({ path: '/search', query: { series: seriesName } })
-    },
-    searchByActress(actressName) {
-      this.$router.push({ path: '/search', query: { actress: actressName } })
     },
     handleImgError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'

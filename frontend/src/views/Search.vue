@@ -330,6 +330,20 @@ export default {
       const ps = resp.data?.javinfo?.page_size
       if (ps) this.pageSize = ps
     }).catch(() => {})
+    // 从 GenreDetail 返回时恢复影片详情弹窗
+    if (this.results.length > 0) {
+      try {
+        const last = sessionStorage.getItem('javhub_last_modal')
+        if (last) {
+          const video = JSON.parse(last)
+          const exists = this.results.find(v => v.content_id === video.content_id || v.dvd_id === video.dvd_id)
+          if (exists) {
+            this.$nextTick(() => this.openModal(exists))
+          }
+          sessionStorage.removeItem('javhub_last_modal')
+        }
+      } catch {}
+    }
     if (this.hasFilters) {
       this.doSearch()
     }
@@ -525,10 +539,26 @@ export default {
       }
     },
     handleNavigate({ type, item }) {
-      // 关闭弹窗，跳转到搜索页并自动搜索
+      // 关闭弹窗，根据类型跳转到对应页面
+      if (this.selectedVideo) {
+        sessionStorage.setItem('javhub_last_modal', JSON.stringify(this.selectedVideo))
+      }
       this.selectedVideo = null
       const q = {}
-      if (type === 'actress') {
+      if (type === 'category') {
+        // 跳转到题材详情页，携带你当前内容ID作为返回凭证
+        const returnTo = this.results.find(v => v.content_id === this.selectedVideo?.content_id || v.dvd_id === this.selectedVideo?.dvd_id)
+          ? (this.selectedVideo?.content_id || this.selectedVideo?.dvd_id)
+          : null
+        const cat = this.categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
+        if (cat) {
+          this.$router.push({
+            name: 'GenreDetail',
+            params: { categoryId: cat.id },
+            query: returnTo ? { returnTo: 'search', videoId: returnTo } : {}
+          })
+        }
+      } else if (type === 'actress') {
         q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
         this.$router.push({ path: '/search', query: q })
       } else if (type === 'maker') {
@@ -536,9 +566,6 @@ export default {
         this.$router.push({ path: '/search', query: q })
       } else if (type === 'series') {
         q.series = item.name_en || item.name_ja || ''
-        this.$router.push({ path: '/search', query: q })
-      } else if (type === 'category') {
-        q.keyword = item.name_en || item.name_ja || ''
         this.$router.push({ path: '/search', query: q })
       }
     },
