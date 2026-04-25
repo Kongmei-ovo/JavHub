@@ -1,14 +1,32 @@
 import axios from 'axios'
+import Vue from 'vue'
 
 const api = axios.create({
   baseURL: '/api'
 })
 
+// ========== 全局错误拦截 ==========
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const errMsg = error.response?.data?.detail
+      || error.response?.data?.message
+      || error.message
+      || '网络错误'
+    const VueProto = Vue.prototype
+    if (VueProto.$message) {
+      VueProto.$message.error(errMsg)
+    }
+    console.error('API Error:', error.response?.status, errMsg)
+    return Promise.reject(error)
+  }
+)
+
 // ==============================================
 // 全局缓存：题材统计数据（启动时拉取，所有页面共享）
 // ==============================================
 const STATS_CACHE_KEY = 'javhub_category_stats'
-const STATS_TTL_MS = 60 * 60 * 1000  // 1小时过期
+const STATS_TTL_MS = 60 * 60 * 1000
 
 let _cachedStats = null
 
