@@ -219,6 +219,15 @@ export default {
   async mounted() {
     await this.loadCategories()
     this.doSearch()
+    // 从 Search 跳转过来时，恢复影片详情弹窗
+    try {
+      const last = sessionStorage.getItem('javhub_last_modal')
+      if (last) {
+        const video = JSON.parse(last)
+        this.$nextTick(() => this.openModal(video))
+        sessionStorage.removeItem('javhub_last_modal')
+      }
+    } catch {}
   },
   watch: {
     categoryId() {
@@ -228,6 +237,10 @@ export default {
   },
   methods: {
     displayName,
+    handleBack() {
+      this.selectedVideo = null
+      this.$router.back()
+    },
     async loadCategories() {
       try {
         const resp = await api.listCategories()
