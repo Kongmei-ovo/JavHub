@@ -46,7 +46,7 @@
           </svg>
         </div>
         <div class="stat-info">
-          <div class="stat-num">{{ stats.pending }}</div>
+          <div class="stat-num" :class="{ 'animate-in': statsLoaded }">{{ stats.pending }}</div>
           <div class="stat-label">待处理</div>
         </div>
       </div>
@@ -181,7 +181,8 @@ export default {
       tasks: [],
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
       filterStatus: null,
-      timer: null
+      timer: null,
+      statsLoaded: false
     }
   },
   computed: {
@@ -208,6 +209,7 @@ export default {
           completed: this.tasks.filter(t => t.status === 'completed').length,
           failed: this.tasks.filter(t => t.status === 'failed').length
         }
+        this.statsLoaded = true
       } catch (e) {
         console.error('Failed to load tasks:', e)
       }
@@ -270,49 +272,83 @@ export default {
 
 .stat-card {
   background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: statEntrance 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-.stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); }
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.1s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.2s; }
+@keyframes statEntrance {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stat-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-hover), 0 0 24px var(--accent-glow);
+}
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .stat-icon svg { width: 24px; height: 24px; }
-.stat-icon.pending { background: rgba(158, 158, 158, 0.15); color: var(--text-secondary); }
-.stat-icon.downloading { background: rgba(33, 150, 243, 0.15); color: #42A5F5; }
-.stat-icon.completed { background: rgba(76, 175, 80, 0.15); color: var(--accent-light); }
-.stat-icon.failed { background: rgba(244, 67, 54, 0.15); color: #EF5350; }
+.stat-icon.pending { background: rgba(161, 161, 170, 0.12); color: var(--text-secondary); }
+.stat-icon.downloading { background: rgba(99, 102, 241, 0.15); color: var(--accent-light); }
+.stat-icon.completed { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.stat-icon.failed { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
 
 .stat-info { min-width: 0; }
-.stat-num { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+.stat-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  animation: statPop 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.stat-num.animate-in { animation: statPop 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes statPop {
+  from { opacity: 0; transform: translateY(16px) scale(0.85); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stat-card:nth-child(1) .stat-num { animation-delay: 0.05s; }
+.stat-card:nth-child(2) .stat-num { animation-delay: 0.1s; }
+.stat-card:nth-child(3) .stat-num { animation-delay: 0.15s; }
+.stat-card:nth-child(4) .stat-num { animation-delay: 0.2s; }
 .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
 
 /* ===== Filter Bar ===== */
 .filter-bar {
-  background: rgba(76, 175, 80, 0.08);
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-md);
   padding: 10px 16px;
   margin-bottom: 16px;
   cursor: pointer;
   transition: var(--transition);
 }
-.filter-bar:hover { background: rgba(76, 175, 80, 0.12); }
+.filter-bar:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.35);
+}
 .filter-hint { font-size: 13px; color: var(--text-secondary); }
-.filter-hint strong { color: var(--accent); }
+.filter-hint strong { color: var(--accent-light); }
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {

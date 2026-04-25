@@ -247,6 +247,7 @@
 <script>
 import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
+import api from '../api'
 
 export default {
   name: 'VideoModal',
@@ -293,10 +294,6 @@ export default {
           : jacketFullUrl(thumbUrl)
       }
       if (!hiResUrl) return '/placeholder.png'
-      // 高清 URL 如果是 awsimgsrc 或 pics.dmm 域名，走代理避免 CORS
-      if (hiResUrl.startsWith('https://awsimgsrc.') || hiResUrl.startsWith('https://pics.')) {
-        return `/api/proxy/image?url=${encodeURIComponent(hiResUrl)}`
-      }
       return hiResUrl
     },
     galleryThumbs() {

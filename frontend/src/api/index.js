@@ -12,11 +12,6 @@ const STATS_TTL_MS = 60 * 60 * 1000  // 1小时过期
 
 let _cachedStats = null
 
-/**
- * 获取题材统计（含影片数量）
- * 优先从内存缓存返回，避免重复请求
- * forceRefresh=true 时强制从 API 重新拉取
- */
 async function getCategoryStats(forceRefresh = false) {
   if (!forceRefresh && _cachedStats) {
     return _cachedStats
@@ -43,9 +38,6 @@ async function getCategoryStats(forceRefresh = false) {
 }
 
 export default {
-  // ==============================================
-  // 共享 stats 缓存（async，内存+localStorage 双缓存）
-  // ==============================================
   getCategoryStats,
 
   // ========== 视频搜索 & 详情 (JavInfoApi) ==========
@@ -93,7 +85,6 @@ export default {
   listLabels() {
     return api.get('/v1/labels')
   },
-
 
   // ========== 下载管理 ==========
 
@@ -177,12 +168,6 @@ export default {
 
   purgeCache(scope = 'video') {
     return api.post('/v1/cache/purge', null, { params: { scope } })
-  },
-
-  // ========== 图片代理 ==========
-
-  proxyImage(url) {
-    return `/api/proxy/image?url=${encodeURIComponent(url)}`
   },
 
   // ========== 翻译映射 ==========

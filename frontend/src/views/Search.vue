@@ -577,16 +577,34 @@ export default {
 
 .search-hero {
   text-align: center;
-  padding: 30px 20px 24px;
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  padding: 36px 20px 28px;
+  background: linear-gradient(180deg, rgba(99,102,241,0.06) 0%, var(--bg-primary) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.search-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .hero-title {
-  font-family: 'Playfair Display', 'Noto Serif SC', serif;
-  font-size: 44px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   margin-bottom: 0;
+  background: linear-gradient(135deg, #FFFFFF 0%, #A1A1AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .hero-subtitle {
@@ -841,23 +859,25 @@ export default {
 }
 
 .main-search-btn {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
   color: white;
   border: none;
   border-radius: var(--radius-md);
   padding: 10px 28px;
   font-size: 15px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 .main-search-btn:hover {
-  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--accent-glow);
 }
 
 .result-bar {
@@ -920,17 +940,51 @@ export default {
   margin: 0 auto;
 }
 
+/* 卡片入场动画 - 交错出现 */
+.results-grid .movie-card {
+  animation: cardEntrance 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.results-grid .movie-card:nth-child(1) { animation-delay: 0.02s; }
+.results-grid .movie-card:nth-child(2) { animation-delay: 0.04s; }
+.results-grid .movie-card:nth-child(3) { animation-delay: 0.06s; }
+.results-grid .movie-card:nth-child(4) { animation-delay: 0.08s; }
+.results-grid .movie-card:nth-child(5) { animation-delay: 0.10s; }
+.results-grid .movie-card:nth-child(6) { animation-delay: 0.12s; }
+.results-grid .movie-card:nth-child(7) { animation-delay: 0.14s; }
+.results-grid .movie-card:nth-child(8) { animation-delay: 0.16s; }
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .skeleton-card {
   background: var(--bg-card);
   border-radius: var(--radius-md);
   overflow: hidden;
+  border: 1px solid var(--border);
 }
 
 .skeleton-cover {
   aspect-ratio: 3/4;
-  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background: linear-gradient(90deg,
+    var(--bg-card) 25%,
+    rgba(255,255,255,0.05) 50%,
+    var(--bg-card) 75%
+  );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .skeleton-info {
@@ -947,21 +1001,23 @@ export default {
 .w-60 { width: 60%; }
 .w-80 { width: 80%; }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 .movie-card {
   background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s ease;
+  border: 1px solid var(--border);
 }
 
 .movie-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 30px var(--accent-glow);
+  border-color: var(--accent);
 }
 
 .card-cover {
@@ -969,6 +1025,7 @@ export default {
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
+  background: var(--bg-secondary);
 }
 
 .cover-img {
@@ -976,10 +1033,14 @@ export default {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.movie-card:hover .cover-img {
+  transform: scale(1.07);
 }
 
 .cover-img.wide {
-  /* 横向长图，对折显示右半边 */
   object-fit: none;
   object-position: right center;
   clip-path: inset(0 0 0 50%);

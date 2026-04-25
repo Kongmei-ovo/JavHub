@@ -52,9 +52,9 @@
 
     <!-- 主内容区 -->
     <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
+      <router-view v-slot="{ Component, route }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" :key="route.path" />
         </transition>
       </router-view>
     </main>
@@ -134,9 +134,9 @@ export default {
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background: var(--bg-secondary);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(22, 27, 34, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -167,9 +167,12 @@ export default {
 }
 
 .logo-text {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   white-space: nowrap;
   letter-spacing: -0.02em;
 }
@@ -201,41 +204,49 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  padding: 11px 14px;
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: var(--transition);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   overflow: hidden;
   position: relative;
 }
-.nav-item:hover { background: var(--white-06); color: var(--text-primary); }
-.nav-item.active { background: var(--nav-active-bg); color: var(--accent); }
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  background: var(--accent);
-  border-radius: 0 3px 3px 0;
+.nav-item:hover {
+  background: var(--white-06);
+  color: var(--text-primary);
 }
-.nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(129,140,248,0.08));
+  color: var(--accent-light);
+  border: 1px solid rgba(99,102,241,0.25);
+}
+.nav-item.active::before {
+  display: none;
+}
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+.nav-item:hover svg { transform: scale(1.1); }
+.nav-item.active svg { filter: drop-shadow(0 0 8px var(--accent-glow)); }
+
 .nav-badge {
   margin-left: auto;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
   color: white;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 10px;
   min-width: 18px;
   text-align: center;
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 .sidebar-footer {
   padding: 16px;
@@ -258,9 +269,9 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-secondary);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--border);
   z-index: 100;
   padding: 8px 0 env(safe-area-inset-bottom, 8px);
@@ -272,15 +283,18 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 10px;
   font-weight: 500;
   padding: 6px 0;
-  transition: var(--transition);
+  transition: all 0.25s ease;
 }
-.bottom-nav-item svg { width: 22px; height: 22px; }
-.bottom-nav-item.active { color: var(--accent); }
+.bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
+.bottom-nav-item:hover { color: var(--text-secondary); }
+.bottom-nav-item:hover svg { transform: scale(1.15); }
+.bottom-nav-item.active { color: var(--accent-light); }
+.bottom-nav-item.active svg { filter: drop-shadow(0 0 6px var(--accent-glow)); }
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
