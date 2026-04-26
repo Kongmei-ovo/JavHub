@@ -244,29 +244,17 @@
         <button class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
-
-    <!-- 影片详情弹窗 -->
-    <VideoModal
-      :key="selectedVideo?.content_id || selectedVideo?.dvd_id"
-      v-if="selectedVideo"
-      :visible="!!selectedVideo"
-      :video="selectedVideo"
-      @close="closeModal"
-      @download="handleDownload"
-      @navigate="handleNavigate"
-    />
   </div>
 </template>
 
 <script>
 import api from '../api'
-import VideoModal from '../components/VideoModal.vue'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
+import { openVideoModal } from '../utils/modalState'
 
 export default {
   name: 'Search',
-  components: { VideoModal },
   data() {
     return {
       keyword: '',
@@ -274,7 +262,6 @@ export default {
       results: [],
       loading: false,
       searched: false,
-      selectedVideo: null,
 
       // 筛选
       categoryName: '',
@@ -330,22 +317,38 @@ export default {
       const ps = resp.data?.javinfo?.page_size
       if (ps) this.pageSize = ps
     }).catch(() => {})
-    // 从 GenreDetail 返回时恢复影片详情弹窗
-    if (this.results.length > 0) {
-      try {
-        const last = sessionStorage.getItem('javhub_last_modal')
-        if (last) {
-          const video = JSON.parse(last)
-          const exists = this.results.find(v => v.content_id === video.content_id || v.dvd_id === video.dvd_id)
-          if (exists) {
-            this.$nextTick(() => this.openModal(exists))
-          }
-          sessionStorage.removeItem('javhub_last_modal')
-        }
-      } catch {}
-    }
+
     if (this.hasFilters) {
       this.doSearch()
+    }
+  },
+  activated() {
+    // 检查是否有新的查询参数
+    const q = this.$route.query
+    let changed = false
+    if (q.actress && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
+    if (q.maker && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
+    if (q.series && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
+    if ((q.keyword || q.q) && (q.keyword || q.q) !== this.keyword) {
+      this.keyword = q.keyword || q.q
+      changed = true
+    }
+    if (changed) {
+      this.doSearch()
+    }
+  },
+  watch: {
+    '$route.query'(q) {
+      let changed = false
+      if (q.actress !== undefined && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
+      if (q.maker !== undefined && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
+      if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
+      if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
+      if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
+
+      if (changed) {
+        this.doSearch()
+      }
     }
   },
   methods: {
@@ -509,64 +512,17 @@ export default {
       this.doSearch()
     },
     async openModal(video) {
-      this.selectedVideo = video
+      openVideoModal(video, this.$route.path)
       // 如果需要加载完整详情
       if (!video.magnets && !video.gallery_thumb_first) {
         try {
           const resp = await api.getVideo(video.content_id || video.dvd_id)
           if (resp.data) {
-            this.selectedVideo = { ...video, ...resp.data }
+            openVideoModal({ ...video, ...resp.data }, this.$route.path)
           }
         } catch (e) {
           console.error('Load video detail failed:', e)
         }
-      }
-    },
-    closeModal() {
-      this.selectedVideo = null
-    },
-    async handleDownload(magnet) {
-      try {
-        await api.createDownload({
-          content_id: this.selectedVideo.content_id || this.selectedVideo.dvd_id,
-          title: this.selectedVideo.title_en,
-          magnet: magnet.magnet || magnet
-        })
-        this.$message.success('已添加到下载队列')
-      } catch (e) {
-        console.error('Download failed:', e)
-        this.$message.error('添加下载失败')
-      }
-    },
-    handleNavigate({ type, item }) {
-      // 关闭弹窗，根据类型跳转到对应页面
-      if (this.selectedVideo) {
-        sessionStorage.setItem('javhub_last_modal', JSON.stringify(this.selectedVideo))
-      }
-      this.selectedVideo = null
-      const q = {}
-      if (type === 'category') {
-        // 跳转到题材详情页，携带你当前内容ID作为返回凭证
-        const returnTo = this.results.find(v => v.content_id === this.selectedVideo?.content_id || v.dvd_id === this.selectedVideo?.dvd_id)
-          ? (this.selectedVideo?.content_id || this.selectedVideo?.dvd_id)
-          : null
-        const cat = this.categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
-        if (cat) {
-          this.$router.push({
-            name: 'GenreDetail',
-            params: { categoryId: cat.id },
-            query: returnTo ? { returnTo: 'search', videoId: returnTo } : {}
-          })
-        }
-      } else if (type === 'actress') {
-        q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
-        this.$router.push({ path: '/search', query: q })
-      } else if (type === 'maker') {
-        q.maker = item.name_en || item.name_ja || ''
-        this.$router.push({ path: '/search', query: q })
-      } else if (type === 'series') {
-        q.series = item.name_en || item.name_ja || ''
-        this.$router.push({ path: '/search', query: q })
       }
     },
     handleImgError(e) {

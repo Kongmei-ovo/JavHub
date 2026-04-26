@@ -52,18 +52,34 @@
 
     <!-- 主内容区 -->
     <main class="main-content">
-      <router-view v-slot="{ Component, route }">
+      <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
+          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'GenreDetail', 'InventoryActor']">
+            <component :is="Component" />
+          </keep-alive>
         </transition>
       </router-view>
     </main>
+
+    <!-- 全局影片详情弹窗 -->
+    <VideoModal
+      v-if="modalState.selectedVideo"
+      :visible="modalState.visible"
+      :video="modalState.selectedVideo"
+      @close="closeVideoModal"
+      @download="handleDownload"
+      @navigate="handleNavigate"
+    />
   </div>
 </template>
 
 <script>
-import { h, ref, defineComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { h, ref, defineComponent, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import VideoModal from './components/VideoModal.vue'
+import { modalState, closeVideoModal, openVideoModal, interruptModal, resumeModal } from './utils/modalState'
+import api from './api'
+import { ElMessage } from 'element-plus'
 
 // Icon components (inline SVG)
 const IconHome = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' }), h('polyline', { points: '9 22 9 12 15 12 15 22' })]) })
@@ -75,16 +91,23 @@ const IconParse = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24
 const IconStar = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' }), h('circle', { cx: '9', cy: '7', r: '4' }), h('path', { d: 'M23 21v-2a4 4 0 00-3-3.87' }), h('path', { d: 'M16 3.13a4 4 0 010 7.75' })]) })
 const IconHeart = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z' })]) })
 const IconSettings = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('circle', { cx: '12', cy: '12', r: '3' }), h('path', { d: 'M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z' })]) })
-// 库存对比图标：两个箭头对比
 const IconInventory = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5' })]) })
-// 归一化图标：合并/alias
 const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [h('path', { d: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' })]) })
 
 export default {
   name: 'App',
+  components: { VideoModal },
   setup() {
     const sidebarCollapsed = ref(false)
     const route = useRoute()
+    const router = useRouter()
+
+    // 监听路由变化，处理弹窗恢复
+    watch(() => route.path, (newPath) => {
+      if (newPath === modalState.openedOnRoute && modalState.interrupted) {
+        resumeModal()
+      }
+    })
 
     const navItems = [
       { path: '/genres', label: '个性推荐', icon: IconGenres },
@@ -117,7 +140,59 @@ export default {
       favoritesCount.value = fav ? JSON.parse(fav).length : 0
     } catch (e) {}
 
-    return { sidebarCollapsed, navItems, bottomNavItems, favoritesCount }
+    const handleDownload = async (magnet) => {
+      try {
+        await api.createDownload({
+          content_id: modalState.selectedVideo.content_id || modalState.selectedVideo.dvd_id,
+          title: modalState.selectedVideo.title_en,
+          magnet: magnet.magnet || magnet
+        })
+        ElMessage.success('已添加到下载队列')
+      } catch (e) {
+        console.error('Download failed:', e)
+      }
+    }
+
+    const handleNavigate = async ({ type, item }) => {
+      // 在跳转前，暂时隐藏（中断）弹窗
+      interruptModal()
+
+      const q = {}
+      if (type === 'category') {
+        try {
+          const resp = await api.listCategories()
+          const categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
+          const cat = categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
+          if (cat) {
+            router.push({
+              name: 'GenreDetail',
+              params: { categoryId: cat.id },
+              query: { returnTo: 'video' }
+            })
+          }
+        } catch (e) { console.error(e) }
+      } else if (type === 'actress') {
+        q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
+        router.push({ path: '/search', query: q })
+      } else if (type === 'maker') {
+        q.maker = item.name_en || item.name_ja || ''
+        router.push({ path: '/search', query: q })
+      } else if (type === 'series') {
+        q.series = item.name_en || item.name_ja || ''
+        router.push({ path: '/search', query: q })
+      }
+    }
+
+    return {
+      sidebarCollapsed,
+      navItems,
+      bottomNavItems,
+      favoritesCount,
+      modalState,
+      closeVideoModal,
+      handleDownload,
+      handleNavigate
+    }
   }
 }
 </script>

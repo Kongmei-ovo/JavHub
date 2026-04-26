@@ -89,12 +89,20 @@
   </div>
 </template>
 
+<script>
+export default {
+  name: 'InventoryActor'
+}
+</script>
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
+import { openVideoModal } from '../utils/modalState'
+import api from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -222,11 +230,18 @@ const openEmbyItem = (video) => {
   }
 }
 
-const showDetail = (video) => {
-  // 跳转到搜索页查看影片详情
+const showDetail = async (video) => {
+  openVideoModal(video)
   const contentId = video.content_id || video.dvd_id
   if (contentId) {
-    router.push({ path: '/search', query: { q: contentId } })
+    try {
+      const resp = await api.getVideo(contentId)
+      if (resp.data) {
+        openVideoModal({ ...video, ...resp.data })
+      }
+    } catch (e) {
+      console.error('Failed to load detail:', e)
+    }
   }
 }
 

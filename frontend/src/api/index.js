@@ -1,5 +1,5 @@
 import axios from 'axios'
-import Vue from 'vue'
+import { ElMessage } from 'element-plus'
 
 const api = axios.create({
   baseURL: '/api'
@@ -13,10 +13,7 @@ api.interceptors.response.use(
       || error.response?.data?.message
       || error.message
       || '网络错误'
-    const VueProto = Vue.prototype
-    if (VueProto.$message) {
-      VueProto.$message.error(errMsg)
-    }
+    ElMessage.error(errMsg)
     console.error('API Error:', error.response?.status, errMsg)
     return Promise.reject(error)
   }
