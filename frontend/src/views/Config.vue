@@ -21,7 +21,7 @@
           </svg>
           <h2>OpenList / 115云盘</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>API 地址</label>
           <input class="input" v-model="config.openlist.api_url" placeholder="https://fox.oplist.org" />
         </div>
@@ -58,7 +58,7 @@
           </svg>
           <h2>Emby</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>API 地址</label>
           <input class="input" v-model="config.emby.api_url" placeholder="http://your-emby:8096" />
         </div>
@@ -85,7 +85,7 @@
           </svg>
           <h2>数据源 / JavInfoApi</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>API 地址</label>
           <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
         </div>
@@ -105,7 +105,7 @@
           </svg>
           <h2>翻译映射</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>映射类型</label>
           <div class="form-row">
             <select class="input" v-model="translationType" style="flex:1; min-width:0">
@@ -117,7 +117,7 @@
             <button class="btn btn-ghost trans-refresh-btn" @click="loadTransStats" title="刷新">↻</button>
           </div>
         </div>
-        <div v-if="transStats[translationType] !== undefined" class="trans-stat">
+        <div v-if="transStats[translationType] !== undefined" class="trans-stat widget-always-show">
           当前 {{ translationTypeLabels[translationType] }} 已翻译 <strong>{{ transStats[translationType] }}</strong> 条
         </div>
         <div class="trans-actions">
@@ -142,11 +142,11 @@
           </svg>
           <h2>MetaTube / 数据增强</h2>
         </div>
+        <div class="form-group widget-always-show">
+          <label>服务器地址</label>
+          <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
+        </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>服务器地址</label>
-            <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
-          </div>
           <div class="form-group">
             <label>端口</label>
             <input class="input" v-model.number="config.metatube.port" type="number" placeholder="8081" />
@@ -173,7 +173,7 @@
           </svg>
           <h2>Telegram Bot</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>Bot Token</label>
           <div class="input-password-wrap">
             <input
@@ -216,7 +216,7 @@
           </svg>
           <h2>通知设置</h2>
         </div>
-        <div class="form-group checkbox">
+        <div class="form-group checkbox widget-always-show">
           <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
           <label for="notifEnabled">启用通知</label>
         </div>
@@ -248,11 +248,11 @@
           </svg>
           <h2>爬虫设置</h2>
         </div>
+        <div class="form-group widget-always-show">
+          <label>请求间隔（秒）</label>
+          <input class="input" v-model="config.crawler.request_interval" type="number" min="1" />
+        </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>请求间隔（秒）</label>
-            <input class="input" v-model="config.crawler.request_interval" type="number" min="1" />
-          </div>
           <div class="form-group">
             <label>订阅检查时间（小时，0-23）</label>
             <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
@@ -270,12 +270,12 @@
           </svg>
           <h2>库存对比定时任务</h2>
         </div>
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>Cron 表达式</label>
           <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
           <small>例：0 2 * * * 表示每天凌晨2点</small>
         </div>
-        <button class="btn btn-primary" @click="saveInventoryCron">保存</button>
+        <button class="btn btn-primary widget-always-show" @click="saveInventoryCron">保存</button>
         <div class="resize-handle" @click.stop="toggleWidgetSize('inventory')"></div>
       </div>
 
@@ -289,7 +289,7 @@
           <h2>页面设计</h2>
         </div>
 
-        <div class="settings-sub-section">
+        <div class="settings-sub-section widget-always-show">
           <div class="settings-sub-header">主题选择</div>
           <div class="theme-grid">
             <div 
@@ -343,7 +343,7 @@
           </svg>
           <h2>网络代理</h2>
         </div>
-        <div class="form-group checkbox">
+        <div class="form-group checkbox widget-always-show">
           <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" />
           <label for="proxyEnabled">启用代理</label>
         </div>
@@ -369,7 +369,7 @@
         </div>
 
         <!-- 颜色模式 -->
-        <div class="form-group">
+        <div class="form-group widget-always-show">
           <label>颜色模式</label>
           <div class="color-mode-tabs">
             <button
@@ -863,6 +863,10 @@ export default {
 }
 @media (max-width: 640px) {
   .settings-content { grid-template-columns: 1fr; }
+  .settings-card {
+    grid-column: span 1 !important;
+    grid-row: span 1 !important;
+  }
 }
 
 .settings-card {
@@ -887,26 +891,57 @@ export default {
 .settings-card.widget-l { grid-column: span 2; grid-row: span 2; }
 
 /* Handle inner content visibility */
-.settings-card.widget-s .form-group:not(.widget-always-show),
-.settings-card.widget-s .form-row,
-.settings-card.widget-s .settings-sub-section {
+.settings-card.widget-s > *:not(.settings-card-header):not(.widget-always-show):not(.resize-handle) {
   display: none;
 }
 
 .resize-handle {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
-  width: 14px;
-  height: 14px;
-  border-right: 2px solid var(--white-20);
-  border-bottom: 2px solid var(--white-20);
-  border-radius: 0 0 4px 0;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
   cursor: pointer;
   opacity: 0;
   transition: var(--transition);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 6px;
+  z-index: 10;
 }
+
+.resize-handle::before,
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  border-radius: 0 0 2px 0;
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.resize-handle::after {
+  width: 6px;
+  height: 6px;
+  bottom: 6px;
+  right: 6px;
+}
+
+.resize-handle::before {
+  width: 10px;
+  height: 10px;
+  bottom: 10px;
+  right: 10px;
+}
+
 .settings-card:hover .resize-handle { opacity: 1; }
+.resize-handle:hover::before,
+.resize-handle:hover::after {
+  border-color: var(--accent);
+  opacity: 1;
+}
 
 .settings-sub-section {
   padding: 12px 0;
