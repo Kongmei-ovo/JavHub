@@ -3,9 +3,6 @@
     <div class="page-header">
       <h1>设置</h1>
       <div class="page-header-actions">
-        <button class="btn btn-ghost" @click="toggleEditMode">
-          {{ editMode ? '完成布局' : '调整布局' }}
-        </button>
         <button class="btn btn-primary" @click="save" :disabled="saving">
           <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
           <span v-else>保存配置</span>
@@ -13,540 +10,568 @@
       </div>
     </div>
 
-    <div class="settings-content" :class="{ 'edit-mode': editMode }">
-      <!-- OpenList -->
-      <div class="settings-card" :class="getWidgetClass('openlist')" :style="getWidgetStyle('openlist')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          <h2>OpenList / 115云盘</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>API 地址</label>
-          <input class="input" v-model="config.openlist.api_url" placeholder="https://fox.oplist.org" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>用户名</label>
-            <input class="input" v-model="config.openlist.username" />
+    <div class="config-container">
+      <aside class="config-sidebar">
+        <nav class="config-nav">
+          <button 
+            v-for="group in navGroups" 
+            :key="group.id"
+            class="nav-item"
+            :class="{ active: activeGroup === group.id }"
+            @click="activeGroup = group.id"
+          >
+            <span class="nav-icon">{{ group.icon }}</span>
+            <span class="nav-label">{{ group.label }}</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="config-main">
+        <!-- OpenList -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <h2>OpenList / 115云盘</h2>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input class="input" v-model="config.openlist.api_url" placeholder="https://fox.oplist.org" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>用户名</label>
+                <input class="input" v-model="config.openlist.username" />
+              </div>
+              <div class="form-group">
+                <label>密码</label>
+                <div class="input-password-wrap">
+                  <input class="input" :type="showOpenlistPwd ? 'text' : 'password'" v-model="config.openlist.password" autocomplete="off" />
+                  <button class="input-eye-btn" type="button" @click="showOpenlistPwd = !showOpenlistPwd">
+                    <svg v-if="!showOpenlistPwd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>默认下载路径</label>
+              <input class="input" v-model="config.openlist.default_path" placeholder="/115/AV" />
+            </div>
           </div>
-          <div class="form-group">
-            <label>密码</label>
-            <div class="input-password-wrap">
-              <input class="input" :type="showOpenlistPwd ? 'text' : 'password'" v-model="config.openlist.password" autocomplete="off" />
-              <button class="input-eye-btn" type="button" @click="showOpenlistPwd = !showOpenlistPwd">
-                <svg v-if="!showOpenlistPwd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </div>
+
+        <!-- Emby -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              <h2>Emby</h2>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input class="input" v-model="config.emby.api_url" placeholder="http://your-emby:8096" />
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <div class="input-password-wrap">
+                <input class="input" :type="showEmbyKey ? 'text' : 'password'" v-model="config.emby.api_key" autocomplete="off" />
+                <button class="input-eye-btn" type="button" @click="showEmbyKey = !showEmbyKey">
+                  <svg v-if="!showEmbyKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- JavInfoApi -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+              </svg>
+              <h2>数据源 / JavInfoApi</h2>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 翻译映射 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M5 8l6 6"/>
+                <path d="M4 14l6-6 2-2"/>
+                <path d="M2 5h12"/>
+                <path d="M7 2v3"/>
+                <path d="M22 22l-5-10-5 10"/>
+                <path d="M14 18h6"/>
+              </svg>
+              <h2>翻译映射</h2>
+            </div>
+            <div class="form-group">
+              <label>映射类型</label>
+              <div class="form-row">
+                <select class="input" v-model="translationType" style="flex:1; min-width:0">
+                  <option value="actress">演员</option>
+                  <option value="category">题材</option>
+                  <option value="series">系列</option>
+                  <option value="title">标题</option>
+                </select>
+                <button class="btn btn-ghost trans-refresh-btn" @click="loadTransStats" title="刷新">↻</button>
+              </div>
+            </div>
+            <div v-if="transStats[translationType] !== undefined" class="trans-stat">
+              当前 {{ translationTypeLabels[translationType] }} 已翻译 <strong>{{ transStats[translationType] }}</strong> 条
+            </div>
+            <div class="trans-actions">
+              <button class="btn btn-ghost" @click="exportTranslation">
+                导出 {{ translationTypeLabels[translationType] }}
               </button>
+              <label class="btn btn-ghost trans-import-btn">
+                导入 {{ translationTypeLabels[translationType] }}
+                <input type="file" accept=".json" style="display:none" @change="importTranslation" />
+              </label>
+            </div>
+            <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
+          </div>
+        </div>
+
+        <!-- MetaTube -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <h2>MetaTube / 数据增强</h2>
+            </div>
+            <div class="form-group">
+              <label>服务器地址</label>
+              <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>端口</label>
+                <input class="input" v-model.number="config.metatube.port" type="number" placeholder="8081" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Token（无Token则留空）</label>
+              <div class="input-password-wrap">
+                <input class="input" :type="showMetatubeToken ? 'text' : 'password'" v-model="config.metatube.token" autocomplete="off" placeholder="可选" />
+                <button class="input-eye-btn" type="button" @click="showMetatubeToken = !showMetatubeToken">
+                  <svg v-if="!showMetatubeToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="form-group">
-          <label>默认下载路径</label>
-          <input class="input" v-model="config.openlist.default_path" placeholder="/115/AV" />
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'openlist')"></div>
-      </div>
 
-      <!-- Emby -->
-      <div class="settings-card" :class="getWidgetClass('emby')" :style="getWidgetStyle('emby')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          <h2>Emby</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>API 地址</label>
-          <input class="input" v-model="config.emby.api_url" placeholder="http://your-emby:8096" />
-        </div>
-        <div class="form-group">
-          <label>API Key</label>
-          <div class="input-password-wrap">
-            <input class="input" :type="showEmbyKey ? 'text' : 'password'" v-model="config.emby.api_key" autocomplete="off" />
-            <button class="input-eye-btn" type="button" @click="showEmbyKey = !showEmbyKey">
-              <svg v-if="!showEmbyKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'emby')"></div>
-      </div>
-
-      <!-- JavInfoApi -->
-      <div class="settings-card" :class="getWidgetClass('javinfo')" :style="getWidgetStyle('javinfo')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-          </svg>
-          <h2>数据源 / JavInfoApi</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>API 地址</label>
-          <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'javinfo')"></div>
-      </div>
-
-      <!-- 翻译映射 -->
-      <div class="settings-card" :class="getWidgetClass('translation')" :style="getWidgetStyle('translation')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <path d="M5 8l6 6"/>
-            <path d="M4 14l6-6 2-2"/>
-            <path d="M2 5h12"/>
-            <path d="M7 2v3"/>
-            <path d="M22 22l-5-10-5 10"/>
-            <path d="M14 18h6"/>
-          </svg>
-          <h2>翻译映射</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>映射类型</label>
-          <div class="form-row">
-            <select class="input" v-model="translationType" style="flex:1; min-width:0">
-              <option value="actress">演员</option>
-              <option value="category">题材</option>
-              <option value="series">系列</option>
-              <option value="title">标题</option>
-            </select>
-            <button class="btn btn-ghost trans-refresh-btn" @click="loadTransStats" title="刷新">↻</button>
-          </div>
-        </div>
-        <div v-if="transStats[translationType] !== undefined" class="trans-stat widget-always-show">
-          当前 {{ translationTypeLabels[translationType] }} 已翻译 <strong>{{ transStats[translationType] }}</strong> 条
-        </div>
-        <div class="trans-actions">
-          <button class="btn btn-ghost" @click="exportTranslation">
-            导出 {{ translationTypeLabels[translationType] }}
-          </button>
-          <label class="btn btn-ghost trans-import-btn">
-            导入 {{ translationTypeLabels[translationType] }}
-            <input type="file" accept=".json" style="display:none" @change="importTranslation" />
-          </label>
-        </div>
-        <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'translation')"></div>
-      </div>
-
-      <!-- MetaTube -->
-      <div class="settings-card" :class="getWidgetClass('metatube')" :style="getWidgetStyle('metatube')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <h2>MetaTube / 数据增强</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>服务器地址</label>
-          <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>端口</label>
-            <input class="input" v-model.number="config.metatube.port" type="number" placeholder="8081" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Token（无Token则留空）</label>
-          <div class="input-password-wrap">
-            <input class="input" :type="showMetatubeToken ? 'text' : 'password'" v-model="config.metatube.token" autocomplete="off" placeholder="可选" />
-            <button class="input-eye-btn" type="button" @click="showMetatubeToken = !showMetatubeToken">
-              <svg v-if="!showMetatubeToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'metatube')"></div>
-      </div>
-
-      <!-- Telegram -->
-      <div class="settings-card" :class="getWidgetClass('telegram')" :style="getWidgetStyle('telegram')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-          </svg>
-          <h2>Telegram Bot</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>Bot Token</label>
-          <div class="input-password-wrap">
-            <input
-              class="input"
-              :type="showBotToken ? 'text' : 'password'"
-              v-model="config.telegram.bot_token"
-              autocomplete="off"
-            />
-            <button class="input-eye-btn" type="button" @click="showBotToken = !showBotToken" :title="showBotToken ? '隐藏' : '显示'">
-              <svg v-if="!showBotToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
+        <!-- Telegram -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
               </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>允许的用户 ID（逗号分隔）</label>
-          <input class="input" v-model="telegramUsers" placeholder="123456789,987654321" />
-        </div>
-        <div class="form-group">
-          <button class="btn btn-secondary" @click="testTelegram" :disabled="testingTelegram || !config.telegram.bot_token">
-            {{ testingTelegram ? '发送中...' : '发送测试信息' }}
-          </button>
-          <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'telegram')"></div>
-      </div>
-
-      <!-- 通知 -->
-      <div class="settings-card" :class="getWidgetClass('notification')" :style="getWidgetStyle('notification')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 01-3.46 0"/>
-          </svg>
-          <h2>通知设置</h2>
-        </div>
-        <div class="form-group checkbox widget-always-show">
-          <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
-          <label for="notifEnabled">启用通知</label>
-        </div>
-        <div class="form-group checkbox">
-          <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" />
-          <label for="notifTelegram">通过 Telegram 发送通知</label>
-        </div>
-        <div class="form-group checkbox">
-          <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" />
-          <label for="notifAutoDownload">自动下载时通知</label>
-        </div>
-        <div class="form-group checkbox">
-          <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" />
-          <label for="notifComplete">下载完成时通知</label>
-        </div>
-        <div class="form-group checkbox">
-          <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
-          <label for="notifNewMovie">发现新片时通知</label>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'notification')"></div>
-      </div>
-
-      <!-- 爬虫 -->
-      <div class="settings-card" :class="getWidgetClass('crawler')" :style="getWidgetStyle('crawler')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <h2>爬虫设置</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>请求间隔（秒）</label>
-          <input class="input" v-model="config.crawler.request_interval" type="number" min="1" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>订阅检查时间（小时，0-23）</label>
-            <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
-          </div>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'crawler')"></div>
-      </div>
-
-      <!-- 库存对比定时任务 -->
-      <div class="settings-card" :class="getWidgetClass('inventory')" :style="getWidgetStyle('inventory')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <h2>库存对比定时任务</h2>
-        </div>
-        <div class="form-group widget-always-show">
-          <label>Cron 表达式</label>
-          <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
-          <small>例：0 2 * * * 表示每天凌晨2点</small>
-        </div>
-        <button class="btn btn-primary widget-always-show" @click="saveInventoryCron">保存</button>
-        <div class="resize-handle" @mousedown="startResizing($event, 'inventory')"></div>
-      </div>
-
-      <!-- 页面设计 -->
-      <div class="settings-card" :class="getWidgetClass('design')" :style="getWidgetStyle('design')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 2a10 10 0 010 20z" fill="currentColor" opacity="0.3"/>
-          </svg>
-          <h2>页面设计</h2>
-        </div>
-
-        <div class="settings-sub-section widget-always-show">
-          <div class="settings-sub-header">主题选择</div>
-          <div class="theme-grid">
-            <div 
-              v-for="(theme, key) in themes" 
-              :key="key"
-              class="theme-card"
-              :class="{ active: currentTheme === key }"
-              @click="switchTheme(key)"
-            >
-              <div class="theme-card-preview" :style="{ background: theme.vars['--bg-primary'] }">
-                <div class="preview-accent" :style="{ background: theme.vars['--accent'] }"></div>
-                <div class="preview-secondary" :style="{ background: theme.vars['--bg-secondary'] }"></div>
-              </div>
-              <div class="theme-card-info">
-                <div class="theme-icon">{{ theme.icon }}</div>
-                <div class="theme-names">
-                  <span class="theme-label">{{ theme.label }}</span>
-                  <span class="theme-label-en">{{ theme.labelEn }}</span>
-                </div>
-                <div class="theme-check" v-if="currentTheme === key">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14">
-                    <polyline points="20 6 9 17 4 12"></polyline>
+              <h2>Telegram Bot</h2>
+            </div>
+            <div class="form-group">
+              <label>Bot Token</label>
+              <div class="input-password-wrap">
+                <input
+                  class="input"
+                  :type="showBotToken ? 'text' : 'password'"
+                  v-model="config.telegram.bot_token"
+                  autocomplete="off"
+                />
+                <button class="input-eye-btn" type="button" @click="showBotToken = !showBotToken" :title="showBotToken ? '隐藏' : '显示'">
+                  <svg v-if="!showBotToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
                   </svg>
-                </div>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>允许的用户 ID（逗号分隔）</label>
+              <input class="input" v-model="telegramUsers" placeholder="123456789,987654321" />
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary" @click="testTelegram" :disabled="testingTelegram || !config.telegram.bot_token">
+                {{ testingTelegram ? '发送中...' : '发送测试信息' }}
+              </button>
+              <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通知 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 01-3.46 0"/>
+              </svg>
+              <h2>通知设置</h2>
+            </div>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
+              <label for="notifEnabled">启用通知</label>
+            </div>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" />
+              <label for="notifTelegram">通过 Telegram 发送通知</label>
+            </div>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" />
+              <label for="notifAutoDownload">自动下载时通知</label>
+            </div>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" />
+              <label for="notifComplete">下载完成时通知</label>
+            </div>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
+              <label for="notifNewMovie">发现新片时通知</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 爬虫 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <h2>爬虫设置</h2>
+            </div>
+            <div class="form-group">
+              <label>请求间隔（秒）</label>
+              <input class="input" v-model="config.crawler.request_interval" type="number" min="1" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>订阅检查时间（小时，0-23）</label>
+                <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
               </div>
             </div>
           </div>
         </div>
 
-        <div class="settings-sub-section">
-          <div class="settings-sub-header">检索页数量</div>
-          <div class="form-group">
-            <select class="input" v-model.number="config.javinfo.page_size">
-              <option value="15">15</option>
-              <option value="30">30</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'design')"></div>
-      </div>
-
-      <!-- 网络代理设置 -->
-      <div class="settings-card" :class="getWidgetClass('proxy')" :style="getWidgetStyle('proxy')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
-          </svg>
-          <h2>网络代理</h2>
-        </div>
-        <div class="form-group checkbox widget-always-show">
-          <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" />
-          <label for="proxyEnabled">启用代理</label>
-        </div>
-        <div class="form-group">
-          <label>HTTP 代理</label>
-          <input class="input" v-model="config.proxy.http_url" placeholder="http://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
-        </div>
-        <div class="form-group">
-          <label>HTTPS 代理</label>
-          <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
-        </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'proxy')"></div>
-      </div>
-
-      <!-- 题材气泡设置 -->
-      <div class="settings-card" :class="getWidgetClass('bubbles')" :style="getWidgetStyle('bubbles')">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-          </svg>
-          <h2>题材气泡设置</h2>
-        </div>
-
-        <!-- 颜色模式 -->
-        <div class="form-group widget-always-show">
-          <label>颜色模式</label>
-          <div class="color-mode-tabs">
-            <button
-              class="mode-tab"
-              :class="{ active: bubbleCfg.colorMode === 'random' }"
-              @click="bubbleCfg.colorMode = 'random'"
-            >随机颜色</button>
-            <button
-              class="mode-tab"
-              :class="{ active: bubbleCfg.colorMode === 'legendary' }"
-              @click="bubbleCfg.colorMode = 'legendary'"
-            >金色传说</button>
+        <!-- 库存对比定时任务 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <h2>库存对比定时任务</h2>
+            </div>
+            <div class="form-group">
+              <label>Cron 表达式</label>
+              <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
+              <small>例：0 2 * * * 表示每天凌晨2点</small>
+            </div>
+            <button class="btn btn-primary" @click="saveInventoryCron">保存</button>
           </div>
         </div>
 
-        <!-- 随机颜色：下拉选择色系 -->
-        <template v-if="bubbleCfg.colorMode === 'random'">
-          <div class="form-group">
-            <label>色系</label>
-            <div class="palette-select-wrap">
-              <select class="palette-select" v-model="bubbleCfg.palette">
-                <option value="__all__">🌈 完全随机（混合全部色系）</option>
-                <option
-                  v-for="p in palettes"
-                  :key="p.key"
-                  :value="p.key"
+        <!-- 页面设计 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a10 10 0 010 20z" fill="currentColor" opacity="0.3"/>
+              </svg>
+              <h2>页面设计</h2>
+            </div>
+
+            <div class="settings-sub-section">
+              <div class="settings-sub-header">主题选择</div>
+              <div class="theme-grid">
+                <div 
+                  v-for="(theme, key) in themes" 
+                  :key="key"
+                  class="theme-card"
+                  :class="{ active: currentTheme === key }"
+                  @click="switchTheme(key)"
                 >
-                  {{ p.label }}
-                </option>
-                <option value="__custom__">✏️ 自定义色</option>
-              </select>
-              <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
+                  <div class="theme-card-preview" :style="{ background: theme.vars['--bg-primary'] }">
+                    <div class="preview-accent" :style="{ background: theme.vars['--accent'] }"></div>
+                    <div class="preview-secondary" :style="{ background: theme.vars['--bg-secondary'] }"></div>
+                  </div>
+                  <div class="theme-card-info">
+                    <div class="theme-icon">{{ theme.icon }}</div>
+                    <div class="theme-names">
+                      <span class="theme-label">{{ theme.label }}</span>
+                      <span class="theme-label-en">{{ theme.labelEn }}</span>
+                    </div>
+                    <div class="theme-check" v-if="currentTheme === key">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <!-- 自定义色输入（选中"自定义色"时显示） -->
-          <div v-if="bubbleCfg.palette === '__custom__'" class="form-group">
-            <label>自定义渐变（逗号分隔，CSS渐变）</label>
-            <textarea
-              class="input custom-gradients-input"
-              v-model="bubbleCfg.customGradientsText"
-              placeholder="linear-gradient(#ff0000, #0000ff),linear-gradient(#00ff00, #ffff00)"
-              rows="3"
-            ></textarea>
-          </div>
-        </template>
 
-        <!-- 金色传说说明 + 颜色自定义 -->
-        <div v-if="bubbleCfg.colorMode === 'legendary'" class="legendary-hint">
-          <div class="legendary-colors-grid">
-            <div class="legendary-color-item">
-              <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
-              <span>传奇</span>
-              <input type="color" v-model="bubbleCfg.rarityColors.legendary" class="rarity-color-input" title="传奇颜色" />
-            </div>
-            <div class="legendary-color-item">
-              <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
-              <span>史诗</span>
-              <input type="color" v-model="bubbleCfg.rarityColors.epic" class="rarity-color-input" title="史诗颜色" />
-            </div>
-            <div class="legendary-color-item">
-              <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
-              <span>稀有</span>
-              <input type="color" v-model="bubbleCfg.rarityColors.rare" class="rarity-color-input" title="稀有颜色" />
-            </div>
-            <div class="legendary-color-item">
-              <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span>
-              <span>普通</span>
-              <input type="color" v-model="bubbleCfg.rarityColors.common" class="rarity-color-input" title="普通颜色" />
-            </div>
-          </div>
-          <div class="legendary-hint-text">
-            <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 影片库中出现极少，琥珀金呼吸光效
-            <br/>
-            <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 影片库中出现较少，紫色呼吸光效
-            <br/>
-            <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 影片库中出现一般，蓝色微光
-            <br/>
-            <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 普通 — 影片库中出现频繁，无光效
-          </div>
-          <div class="rarity-thresholds">
-            <div class="rarity-threshold-row">
-              <span class="rarity-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
-              <span class="threshold-label">传奇</span>
-              <input
-                type="range"
-                min="1"
-                max="30"
-                step="1"
-                v-model.number="bubbleCfg.rarityThresholds.legendary"
-                class="threshold-slider"
-              />
-              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.legendary }}%</span>
-            </div>
-            <div class="rarity-threshold-row">
-              <span class="rarity-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
-              <span class="threshold-label">史诗</span>
-              <input
-                type="range"
-                min="5"
-                max="60"
-                step="1"
-                v-model.number="bubbleCfg.rarityThresholds.epic"
-                class="threshold-slider"
-              />
-              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.epic }}%</span>
-            </div>
-            <div class="rarity-threshold-row">
-              <span class="rarity-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
-              <span class="threshold-label">稀有</span>
-              <input
-                type="range"
-                min="20"
-                max="85"
-                step="1"
-                v-model.number="bubbleCfg.rarityThresholds.rare"
-                class="threshold-slider"
-              />
-              <span class="threshold-value">{{ bubbleCfg.rarityThresholds.rare }}%</span>
+            <div class="settings-sub-section">
+              <div class="settings-sub-header">检索页数量</div>
+              <div class="form-group">
+                <select class="input" v-model.number="config.javinfo.page_size">
+                  <option value="15">15</option>
+                  <option value="30">30</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="form-row" style="margin-top: 16px;">
-          <div class="form-group">
-            <label>每页气泡数量</label>
-            <input class="input" v-model.number="bubbleCfg.bubbleCount" type="number" min="12" max="120" step="6" />
-          </div>
-          <div class="form-group">
-            <label>气泡大小（px）</label>
-            <input class="input" v-model.number="bubbleCfg.baseSize" type="number" min="8" max="48" step="1" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>气体填充（%）</label>
-            <input class="input" v-model.number="bubbleCfg.fillPercent" type="number" min="30" max="200" step="5" />
-          </div>
-          <div class="form-group">
-            <label>气泡间距（px）</label>
-            <input class="input" v-model.number="bubbleCfg.spacing" type="number" min="0" max="48" step="2" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>演员头像尺寸</label>
-            <div class="avatar-size-btns">
-              <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'small' }" @click="bubbleCfg.actressAvatarSize = 'small'">小</button>
-              <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'medium' }" @click="bubbleCfg.actressAvatarSize = 'medium'">中</button>
-              <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'large' }" @click="bubbleCfg.actressAvatarSize = 'large'">大</button>
+        <!-- 网络代理设置 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+              </svg>
+              <h2>网络代理</h2>
             </div>
-            <div class="size-hint">{{ { small: '4行 · 约48个', medium: '3行 · 约36个', large: '2行 · 约24个' }[bubbleCfg.actressAvatarSize] }}</div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>显示语言</label>
-            <div class="avatar-size-btns">
-              <button class="size-btn" :class="{ active: displayLangVal === 'ja' }" @click="setDisplayLang('ja')">日文</button>
-              <button class="size-btn" :class="{ active: displayLangVal === 'zh' }" @click="setDisplayLang('zh')">中文</button>
-              <button class="size-btn" :class="{ active: displayLangVal === 'en' }" @click="setDisplayLang('en')">英文</button>
+            <div class="form-group checkbox">
+              <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" />
+              <label for="proxyEnabled">启用代理</label>
+            </div>
+            <div class="form-group">
+              <label>HTTP 代理</label>
+              <input class="input" v-model="config.proxy.http_url" placeholder="http://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
+            </div>
+            <div class="form-group">
+              <label>HTTPS 代理</label>
+              <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
             </div>
           </div>
         </div>
-        <div class="form-row">
-          <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
+
+        <!-- 题材气泡设置 -->
+        <div class="settings-card">
+          <div class="card-content">
+            <div class="settings-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+              </svg>
+              <h2>题材气泡设置</h2>
+            </div>
+
+            <!-- 颜色模式 -->
+            <div class="form-group">
+              <label>颜色模式</label>
+              <div class="color-mode-tabs">
+                <button
+                  class="mode-tab"
+                  :class="{ active: bubbleCfg.colorMode === 'random' }"
+                  @click="bubbleCfg.colorMode = 'random'"
+                >随机颜色</button>
+                <button
+                  class="mode-tab"
+                  :class="{ active: bubbleCfg.colorMode === 'legendary' }"
+                  @click="bubbleCfg.colorMode = 'legendary'"
+                >金色传说</button>
+              </div>
+            </div>
+
+            <!-- 随机颜色：下拉选择色系 -->
+            <template v-if="bubbleCfg.colorMode === 'random'">
+              <div class="form-group">
+                <label>色系</label>
+                <div class="palette-select-wrap">
+                  <select class="palette-select" v-model="bubbleCfg.palette">
+                    <option value="__all__">🌈 完全随机（混合全部色系）</option>
+                    <option
+                      v-for="p in palettes"
+                      :key="p.key"
+                      :value="p.key"
+                    >
+                      {{ p.label }}
+                    </option>
+                    <option value="__custom__">✏️ 自定义色</option>
+                  </select>
+                  <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
+                </div>
+              </div>
+              <!-- 自定义色输入（选中"自定义色"时显示） -->
+              <div v-if="bubbleCfg.palette === '__custom__'" class="form-group">
+                <label>自定义渐变（逗号分隔，CSS渐变）</label>
+                <textarea
+                  class="input custom-gradients-input"
+                  v-model="bubbleCfg.customGradientsText"
+                  placeholder="linear-gradient(#ff0000, #0000ff),linear-gradient(#00ff00, #ffff00)"
+                  rows="3"
+                ></textarea>
+              </div>
+            </template>
+
+            <!-- 金色传说说明 + 颜色自定义 -->
+            <div v-if="bubbleCfg.colorMode === 'legendary'" class="legendary-hint">
+              <div class="legendary-colors-grid">
+                <div class="legendary-color-item">
+                  <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
+                  <span>传奇</span>
+                  <input type="color" v-model="bubbleCfg.rarityColors.legendary" class="rarity-color-input" title="传奇颜色" />
+                </div>
+                <div class="legendary-color-item">
+                  <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
+                  <span>史诗</span>
+                  <input type="color" v-model="bubbleCfg.rarityColors.epic" class="rarity-color-input" title="史诗颜色" />
+                </div>
+                <div class="legendary-color-item">
+                  <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
+                  <span>稀有</span>
+                  <input type="color" v-model="bubbleCfg.rarityColors.rare" class="rarity-color-input" title="稀有颜色" />
+                </div>
+                <div class="legendary-color-item">
+                  <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span>
+                  <span>普通</span>
+                  <input type="color" v-model="bubbleCfg.rarityColors.common" class="rarity-color-input" title="普通颜色" />
+                </div>
+              </div>
+              <div class="legendary-hint-text">
+                <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 影片库中出现极少，琥珀金呼吸光效
+                <br/>
+                <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 影片库中出现较少，紫色呼吸光效
+                <br/>
+                <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 影片库中出现一般，蓝色微光
+                <br/>
+                <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 普通 — 影片库中出现频繁，无光效
+              </div>
+              <div class="rarity-thresholds">
+                <div class="rarity-threshold-row">
+                  <span class="rarity-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
+                  <span class="threshold-label">传奇</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    step="1"
+                    v-model.number="bubbleCfg.rarityThresholds.legendary"
+                    class="threshold-slider"
+                  />
+                  <span class="threshold-value">{{ bubbleCfg.rarityThresholds.legendary }}%</span>
+                </div>
+                <div class="rarity-threshold-row">
+                  <span class="rarity-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
+                  <span class="threshold-label">史诗</span>
+                  <input
+                    type="range"
+                    min="5"
+                    max="60"
+                    step="1"
+                    v-model.number="bubbleCfg.rarityThresholds.epic"
+                    class="threshold-slider"
+                  />
+                  <span class="threshold-value">{{ bubbleCfg.rarityThresholds.epic }}%</span>
+                </div>
+                <div class="rarity-threshold-row">
+                  <span class="rarity-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
+                  <span class="threshold-label">稀有</span>
+                  <input
+                    type="range"
+                    min="20"
+                    max="85"
+                    step="1"
+                    v-model.number="bubbleCfg.rarityThresholds.rare"
+                    class="threshold-slider"
+                  />
+                  <span class="threshold-value">{{ bubbleCfg.rarityThresholds.rare }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-top: 16px;">
+              <div class="form-group">
+                <label>每页气泡数量</label>
+                <input class="input" v-model.number="bubbleCfg.bubbleCount" type="number" min="12" max="120" step="6" />
+              </div>
+              <div class="form-group">
+                <label>气泡大小（px）</label>
+                <input class="input" v-model.number="bubbleCfg.baseSize" type="number" min="8" max="48" step="1" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>气体填充（%）</label>
+                <input class="input" v-model.number="bubbleCfg.fillPercent" type="number" min="30" max="200" step="5" />
+              </div>
+              <div class="form-group">
+                <label>气泡间距（px）</label>
+                <input class="input" v-model.number="bubbleCfg.spacing" type="number" min="0" max="48" step="2" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>演员头像尺寸</label>
+                <div class="avatar-size-btns">
+                  <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'small' }" @click="bubbleCfg.actressAvatarSize = 'small'">小</button>
+                  <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'medium' }" @click="bubbleCfg.actressAvatarSize = 'medium'">中</button>
+                  <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'large' }" @click="bubbleCfg.actressAvatarSize = 'large'">大</button>
+                </div>
+                <div class="size-hint">{{ { small: '4行 · 约48个', medium: '3行 · 约36个', large: '2行 · 约24个' }[bubbleCfg.actressAvatarSize] }}</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>显示语言</label>
+                <div class="avatar-size-btns">
+                  <button class="size-btn" :class="{ active: displayLangVal === 'ja' }" @click="setDisplayLang('ja')">日文</button>
+                  <button class="size-btn" :class="{ active: displayLangVal === 'zh' }" @click="setDisplayLang('zh')">中文</button>
+                  <button class="size-btn" :class="{ active: displayLangVal === 'en' }" @click="setDisplayLang('en')">英文</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
+            </div>
+          </div>
         </div>
-        <div class="resize-handle" @mousedown="startResizing($event, 'bubbles')"></div>
-      </div>
+      </main>
     </div>
   </div>
 </template>
 
 <script>
-import gsap from 'gsap'
 import api from '../api'
 import { THEMES, applyTheme } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
@@ -601,8 +626,13 @@ export default {
       showMetatubeToken: false,
       themes: THEMES,
       currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
-      editMode: false,
-      resizingKey: null,
+      navGroups: [
+        { id: 'services', label: '常规与服务', icon: '🌐', sections: ['openlist', 'emby', 'javinfo', 'metatube'] },
+        { id: 'automation', label: '自动化任务', icon: '⚙️', sections: ['crawler', 'inventory'] },
+        { id: 'appearance', label: '界面与外观', icon: '🎨', sections: ['design', 'bubbles'] },
+        { id: 'advanced', label: '高级设置', icon: '🛠️', sections: ['translation', 'proxy', 'backup', 'telegram', 'notification'] }
+      ],
+      activeGroup: 'services',
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       palettes: [
         { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
@@ -619,20 +649,6 @@ export default {
         { key: 'earth',   label: '大地',    colors: ['#8b7355', '#6b8e5a'] },
         { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#b8e0ff'] },
       ],
-      widgetLayout: {
-        openlist: { w: 2, h: 1 },
-        emby: { w: 1, h: 1 },
-        javinfo: { w: 1, h: 1 },
-        translation: { w: 2, h: 1 },
-        metatube: { w: 1, h: 1 },
-        telegram: { w: 1, h: 1 },
-        notification: { w: 1, h: 1 },
-        crawler: { w: 1, h: 1 },
-        inventory: { w: 1, h: 1 },
-        design: { w: 2, h: 2 },
-        proxy: { w: 1, h: 1 },
-        bubbles: { w: 2, h: 2 }
-      },
     }
   },
   computed: {
@@ -688,129 +704,11 @@ export default {
     } catch (e) {
       console.error('Failed to load config:', e)
     }
-    this.loadLayout()
     this.loadBubbleCfg()
     this.loadTransStats()
-  },
-  methods: {
-    toggleEditMode() {
-      this.editMode = !this.editMode;
-      if (!this.editMode) {
-        this.stopResizing();
-      }
     },
-    loadLayout() {
-      const saved = localStorage.getItem('javhub_config_layout');
-      if (!saved) return;
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          // Only merge known keys with valid w/h objects
-          Object.keys(this.widgetLayout).forEach(key => {
-            if (parsed[key] && typeof parsed[key] === 'object') {
-              const { w, h } = parsed[key];
-              if (typeof w === 'number' && typeof h === 'number') {
-                this.widgetLayout[key] = { w, h };
-              }
-            } else if (typeof parsed[key] === 'string') {
-              // Backward compatibility for 's', 'm', 'l'
-              const map = { s: { w: 1, h: 1 }, m: { w: 2, h: 1 }, l: { w: 2, h: 2 } };
-              if (map[parsed[key]]) this.widgetLayout[key] = map[parsed[key]];
-            }
-          });
-        }
-      } catch (e) {
-        console.error("Failed to parse layout", e);
-      }
-    },
-    startResizing(e, key) {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startW = this.widgetLayout[key].w;
-      const startH = this.widgetLayout[key].h;
-      
-      this.resizingKey = key;
-      const el = e.target.closest('.settings-card');
-      const quickSkewX = gsap.quickSetter(el, "skewX", "deg");
-      const quickScale = gsap.quickSetter(el, "scale");
-      
-      const onMouseMove = (moveEvent) => {
-        this.doResize(moveEvent, key, startX, startY, startW, startH, quickSkewX, quickScale);
-      };
-      
-      const onMouseUp = () => {
-        this.resizingKey = null;
-        this.stopResizing(el);
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-      };
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    },
-    doResize(e, key, startX, startY, startW, startH, quickSkewX, quickScale) {
-      const grid = this.$el.querySelector('.settings-content');
-      if (!grid) return;
-      
-      const style = window.getComputedStyle(grid);
-      const gridColumns = style.getPropertyValue('grid-template-columns').split(' ').filter(Boolean).length || 4;
-      const colWidth = grid.offsetWidth / gridColumns;
-      
-      const sCard = grid.querySelector('.widget-s');
-      const actualRowHeight = sCard ? sCard.offsetHeight : 180;
-      
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-      
-      const newW = Math.max(1, Math.min(gridColumns, startW + Math.round(deltaX / colWidth)));
-      const newH = Math.max(1, Math.min(6, startH + Math.round(deltaY / actualRowHeight)));
-      
-      // Calculate drag tension for jelly effect
-      const targetWidth = newW * colWidth;
-      const currentWidth = startW * colWidth + deltaX;
-      const tensionX = (currentWidth - targetWidth) / colWidth;
-      
-      const targetHeight = newH * actualRowHeight;
-      const currentHeight = startH * actualRowHeight + deltaY;
-      const tensionY = (currentHeight - targetHeight) / actualRowHeight;
-
-      if (quickSkewX && quickScale) {
-        quickSkewX(tensionX * 5); // Subtle skew based on X tension
-        quickScale(1 + Math.abs(tensionX + tensionY) * 0.03); // Subtle scale based on overall tension
-      }
-      
-      if (newW !== this.widgetLayout[key].w || newH !== this.widgetLayout[key].h) {
-        this.widgetLayout[key] = { w: newW, h: newH };
-      }
-    },
-    stopResizing(el = null) {
-      if (el) {
-        gsap.to(el, {
-          scale: 1,
-          skewX: 0,
-          duration: 0.6,
-          ease: "elastic.out(1, 0.3)"
-        });
-      }
-      localStorage.setItem('javhub_config_layout', JSON.stringify(this.widgetLayout));
-    },
-    getWidgetStyle(key) {
-      const layout = this.widgetLayout[key];
-      return {
-        gridColumn: `span ${layout.w}`,
-        gridRow: `span ${layout.h}`
-      };
-    },
-    getWidgetClass(key) {
-      const layout = this.widgetLayout[key];
-      return {
-        'widget-s': layout.w === 1 && layout.h === 1,
-        'resizing': this.resizingKey === key
-      };
-    },
-    async save() {
-      this.saving = true
+    methods: {
+    async save() {      this.saving = true
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
         await api.updateConfig(this.config)
@@ -937,119 +835,113 @@ export default {
 </script>
 
 <style scoped>
-.settings { padding: 24px 32px; }
-@media (max-width: 768px) {
-  .settings { padding: 16px; }
-}
+.settings { padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  padding: 24px 40px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
 }
 .page-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); }
 .page-header-actions { display: flex; gap: 8px; align-items: center; }
-.settings-content {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-flow: dense;
-  gap: 24px;
+
+.config-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-@media (max-width: 1024px) {
-  .settings-content { grid-template-columns: repeat(2, 1fr); }
+.config-sidebar {
+  width: 240px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: 24px 12px;
+  overflow-y: auto;
 }
-@media (max-width: 640px) {
-  .settings-content { grid-template-columns: 1fr; }
-  .settings-card {
-    grid-column: span 1 !important;
-    grid-row: span 1 !important;
-  }
+
+.config-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: var(--white-06);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.nav-icon {
+  font-size: 18px;
+  width: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.config-main {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+  background: var(--bg-primary);
 }
 
 .settings-card {
-  position: relative;
+  margin-bottom: 32px;
+  max-width: 800px;
+}
+
+.card-content {
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  min-width: 0;
-  box-shadow: var(--shadow-card);
-  transition: var(--transition);
-}
-.settings-card:hover {
-  border-color: var(--border-light);
-  box-shadow: var(--shadow-hover);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
 }
 
-.settings-card.widget-s { grid-column: span 1; grid-row: span 1; }
-.settings-card.widget-m { grid-column: span 2; grid-row: span 1; }
-.settings-card.widget-l { grid-column: span 2; grid-row: span 2; }
-
-.settings-card.resizing {
-  z-index: 100;
-  cursor: grabbing !important;
-  border-color: var(--accent);
-  box-shadow: var(--shadow-hover);
-}
-
-/* Handle inner content visibility */
-.settings-card.widget-s > *:not(.settings-card-header):not(.widget-always-show):not(.resize-handle) {
-  display: none;
-}
-
-.resize-handle {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  opacity: 0;
-  transition: var(--transition);
+.settings-card-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 6px;
-  z-index: 10;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.resize-handle::before,
-.resize-handle::after {
-  content: "";
-  position: absolute;
-  border-right: 1.5px solid var(--text-muted);
-  border-bottom: 1.5px solid var(--text-muted);
-  border-radius: 0 0 2px 0;
-  opacity: 0.5;
-  transition: var(--transition);
-}
-
-.resize-handle::after {
-  width: 6px;
-  height: 6px;
-  bottom: 6px;
-  right: 6px;
-}
-
-.resize-handle::before {
-  width: 10px;
-  height: 10px;
-  bottom: 10px;
-  right: 10px;
-}
-
-.settings-card:hover .resize-handle { opacity: 1; }
-.resize-handle:hover::before,
-.resize-handle:hover::after {
-  border-color: var(--accent);
-  opacity: 1;
+.settings-card-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .settings-sub-section {
-  padding: 12px 0;
+  padding: 24px 0;
   border-top: 1px solid var(--border);
 }
 .settings-sub-section:first-child {
@@ -1061,18 +953,23 @@ export default {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.form-group { margin-bottom: 14px; }
+.form-group { margin-bottom: 20px; }
 .form-group:last-child { margin-bottom: 0; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 480px) {
-  .form-row { grid-template-columns: 1fr; gap: 14px; }
+.form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+@media (max-width: 768px) {
+  .config-sidebar { width: 64px; padding: 12px 8px; }
+  .nav-label { display: none; }
+  .config-main { padding: 24px; }
+  .form-row { grid-template-columns: 1fr; gap: 16px; }
 }
+
 .trans-refresh-btn { padding: 6px 10px; font-size: 14px; flex-shrink: 0; }
 .input-password-wrap { position: relative; display: flex; align-items: center; }
 .input-password-wrap .input { padding-right: 36px; }
@@ -1087,7 +984,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
+  padding: 8px 0;
   cursor: pointer;
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
@@ -1285,9 +1182,6 @@ export default {
   line-height: 1.5;
   min-height: 60px;
 }
-
-.settings-actions { padding-top: 8px; }
-.settings-actions .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 
 /* Theme Selection Grid */
 .theme-grid {
