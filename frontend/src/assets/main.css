@@ -274,6 +274,27 @@ a:hover { color: var(--accent-light); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes countUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes jiggle {
+  0% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+  100% { transform: rotate(-0.5deg); }
+}
+
+.edit-mode .settings-card {
+  animation: jiggle 0.3s infinite ease-in-out;
+  cursor: grab;
+}
+
+.edit-mode .settings-card:nth-child(even) {
+  animation-duration: 0.27s;
+  animation-direction: reverse;
+}
+
+.edit-mode .settings-card .resize-handle {
+  opacity: 1 !important;
+  background: var(--accent);
+  border-radius: 50% 0 0 0;
+}
 
 .fade-enter-active { animation: fadeIn 0.3s ease; }
 .fade-leave-active { animation: fadeIn 0.2s ease reverse; }

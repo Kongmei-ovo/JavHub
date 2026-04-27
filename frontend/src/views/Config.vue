@@ -3,6 +3,9 @@
     <div class="page-header">
       <h1>设置</h1>
       <div class="page-header-actions">
+        <button class="btn btn-ghost" @click="toggleEditMode">
+          {{ editMode ? '完成布局' : '调整布局' }}
+        </button>
         <button class="btn btn-primary" @click="save" :disabled="saving">
           <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
           <span v-else>保存配置</span>
@@ -10,9 +13,9 @@
       </div>
     </div>
 
-    <div class="settings-content">
+    <div class="settings-content" :class="{ 'edit-mode': editMode }">
       <!-- OpenList -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.openlist">
+      <div class="settings-card" :class="getWidgetClass('openlist')" :style="getWidgetStyle('openlist')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -49,7 +52,7 @@
       </div>
 
       <!-- Emby -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.emby">
+      <div class="settings-card" :class="getWidgetClass('emby')" :style="getWidgetStyle('emby')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -76,7 +79,7 @@
       </div>
 
       <!-- JavInfoApi -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.javinfo">
+      <div class="settings-card" :class="getWidgetClass('javinfo')" :style="getWidgetStyle('javinfo')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -93,7 +96,7 @@
       </div>
 
       <!-- 翻译映射 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.translation">
+      <div class="settings-card" :class="getWidgetClass('translation')" :style="getWidgetStyle('translation')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M5 8l6 6"/>
@@ -134,7 +137,7 @@
       </div>
 
       <!-- MetaTube -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.metatube">
+      <div class="settings-card" :class="getWidgetClass('metatube')" :style="getWidgetStyle('metatube')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -166,7 +169,7 @@
       </div>
 
       <!-- Telegram -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.telegram">
+      <div class="settings-card" :class="getWidgetClass('telegram')" :style="getWidgetStyle('telegram')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -208,7 +211,7 @@
       </div>
 
       <!-- 通知 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.notification">
+      <div class="settings-card" :class="getWidgetClass('notification')" :style="getWidgetStyle('notification')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -240,7 +243,7 @@
       </div>
 
       <!-- 爬虫 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.crawler">
+      <div class="settings-card" :class="getWidgetClass('crawler')" :style="getWidgetStyle('crawler')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -262,7 +265,7 @@
       </div>
 
       <!-- 库存对比定时任务 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.inventory">
+      <div class="settings-card" :class="getWidgetClass('inventory')" :style="getWidgetStyle('inventory')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -280,7 +283,7 @@
       </div>
 
       <!-- 页面设计 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.design">
+      <div class="settings-card" :class="getWidgetClass('design')" :style="getWidgetStyle('design')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -334,7 +337,7 @@
       </div>
 
       <!-- 网络代理设置 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.proxy">
+      <div class="settings-card" :class="getWidgetClass('proxy')" :style="getWidgetStyle('proxy')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -359,7 +362,7 @@
       </div>
 
       <!-- 题材气泡设置 -->
-      <div class="settings-card" :class="'widget-' + widgetLayout.bubbles">
+      <div class="settings-card" :class="getWidgetClass('bubbles')" :style="getWidgetStyle('bubbles')">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="3"/>
@@ -597,6 +600,7 @@ export default {
       showMetatubeToken: false,
       themes: THEMES,
       currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
+      editMode: false,
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       palettes: [
         { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
@@ -614,18 +618,18 @@ export default {
         { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#b8e0ff'] },
       ],
       widgetLayout: {
-        openlist: 'm',
-        emby: 's',
-        javinfo: 's',
-        translation: 'm',
-        metatube: 's',
-        telegram: 's',
-        notification: 's',
-        crawler: 's',
-        inventory: 's',
-        design: 'l',
-        proxy: 's',
-        bubbles: 'l'
+        openlist: { w: 2, h: 1 },
+        emby: { w: 1, h: 1 },
+        javinfo: { w: 1, h: 1 },
+        translation: { w: 2, h: 1 },
+        metatube: { w: 1, h: 1 },
+        telegram: { w: 1, h: 1 },
+        notification: { w: 1, h: 1 },
+        crawler: { w: 1, h: 1 },
+        inventory: { w: 1, h: 1 },
+        design: { w: 2, h: 2 },
+        proxy: { w: 1, h: 1 },
+        bubbles: { w: 2, h: 2 }
       },
     }
   },
@@ -687,16 +691,29 @@ export default {
     this.loadTransStats()
   },
   methods: {
+    toggleEditMode() {
+      this.editMode = !this.editMode;
+      if (!this.editMode) {
+        this.stopResizing();
+      }
+    },
     loadLayout() {
       const saved = localStorage.getItem('javhub_config_layout');
       if (!saved) return;
       try {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          // Only merge known keys with valid sizes
+          // Only merge known keys with valid w/h objects
           Object.keys(this.widgetLayout).forEach(key => {
-            if (['s', 'm', 'l'].includes(parsed[key])) {
-              this.widgetLayout[key] = parsed[key];
+            if (parsed[key] && typeof parsed[key] === 'object') {
+              const { w, h } = parsed[key];
+              if (typeof w === 'number' && typeof h === 'number') {
+                this.widgetLayout[key] = { w, h };
+              }
+            } else if (typeof parsed[key] === 'string') {
+              // Backward compatibility for 's', 'm', 'l'
+              const map = { s: { w: 1, h: 1 }, m: { w: 2, h: 1 }, l: { w: 2, h: 2 } };
+              if (map[parsed[key]]) this.widgetLayout[key] = map[parsed[key]];
             }
           });
         }
@@ -708,51 +725,53 @@ export default {
       e.preventDefault();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startSize = this.widgetLayout[key];
+      const startW = this.widgetLayout[key].w;
+      const startH = this.widgetLayout[key].h;
       
       const onMouseMove = (moveEvent) => {
-        this.doResize(moveEvent, key, startX, startY, startSize);
+        this.doResize(moveEvent, key, startX, startY, startW, startH);
       };
       
       const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
-        this.stopResizing();
       };
       
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    doResize(e, key, startX, startY, startSize) {
+    doResize(e, key, startX, startY, startW, startH) {
       const grid = this.$el.querySelector('.settings-content');
       if (!grid) return;
       
-      const cellWidth = grid.offsetWidth / 4;
-      const sCard = grid.querySelector('.widget-s');
-      const cellHeight = sCard ? sCard.offsetHeight : 180;
+      const colWidth = grid.offsetWidth / 4;
+      const rowHeight = 180; // Approximate base height
       
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
       
-      let nextSize = startSize;
+      const newW = Math.max(1, Math.min(4, startW + Math.round(deltaX / colWidth)));
+      const newH = Math.max(1, Math.min(4, startH + Math.round(deltaY / rowHeight)));
       
-      if (startSize === 's') {
-        if (deltaX > cellWidth * 0.5) nextSize = 'm';
-        if (deltaY > cellHeight * 0.5) nextSize = 'l';
-      } else if (startSize === 'm') {
-        if (deltaX < -cellWidth * 0.5) nextSize = 's';
-        if (deltaY > cellHeight * 0.5) nextSize = 'l';
-      } else if (startSize === 'l') {
-        if (deltaY < -cellHeight * 0.5) nextSize = 'm';
-        if (deltaX < -cellWidth * 0.5) nextSize = 's';
-      }
-      
-      if (nextSize !== this.widgetLayout[key]) {
-        this.widgetLayout[key] = nextSize;
+      if (newW !== this.widgetLayout[key].w || newH !== this.widgetLayout[key].h) {
+        this.widgetLayout[key] = { w: newW, h: newH };
       }
     },
     stopResizing() {
       localStorage.setItem('javhub_config_layout', JSON.stringify(this.widgetLayout));
+    },
+    getWidgetStyle(key) {
+      const layout = this.widgetLayout[key];
+      return {
+        gridColumn: `span ${layout.w}`,
+        gridRow: `span ${layout.h}`
+      };
+    },
+    getWidgetClass(key) {
+      const layout = this.widgetLayout[key];
+      return {
+        'widget-s': layout.w === 1 && layout.h === 1
+      };
     },
     async save() {
       this.saving = true
