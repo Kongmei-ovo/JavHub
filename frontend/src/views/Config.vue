@@ -45,7 +45,7 @@
           <label>默认下载路径</label>
           <input class="input" v-model="config.openlist.default_path" placeholder="/115/AV" />
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('openlist')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'openlist')"></div>
       </div>
 
       <!-- Emby -->
@@ -72,7 +72,7 @@
             </button>
           </div>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('emby')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'emby')"></div>
       </div>
 
       <!-- JavInfoApi -->
@@ -89,7 +89,7 @@
           <label>API 地址</label>
           <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('javinfo')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'javinfo')"></div>
       </div>
 
       <!-- 翻译映射 -->
@@ -130,7 +130,7 @@
           </label>
         </div>
         <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('translation')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'translation')"></div>
       </div>
 
       <!-- MetaTube -->
@@ -162,7 +162,7 @@
             </button>
           </div>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('metatube')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'metatube')"></div>
       </div>
 
       <!-- Telegram -->
@@ -204,7 +204,7 @@
           </button>
           <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('telegram')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'telegram')"></div>
       </div>
 
       <!-- 通知 -->
@@ -236,7 +236,7 @@
           <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
           <label for="notifNewMovie">发现新片时通知</label>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('notification')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'notification')"></div>
       </div>
 
       <!-- 爬虫 -->
@@ -258,7 +258,7 @@
             <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
           </div>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('crawler')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'crawler')"></div>
       </div>
 
       <!-- 库存对比定时任务 -->
@@ -276,7 +276,7 @@
           <small>例：0 2 * * * 表示每天凌晨2点</small>
         </div>
         <button class="btn btn-primary widget-always-show" @click="saveInventoryCron">保存</button>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('inventory')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'inventory')"></div>
       </div>
 
       <!-- 页面设计 -->
@@ -330,7 +330,7 @@
             </select>
           </div>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('design')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'design')"></div>
       </div>
 
       <!-- 网络代理设置 -->
@@ -355,7 +355,7 @@
           <label>HTTPS 代理</label>
           <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('proxy')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'proxy')"></div>
       </div>
 
       <!-- 题材气泡设置 -->
@@ -536,7 +536,7 @@
         <div class="form-row">
           <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
         </div>
-        <div class="resize-handle" @click.stop="toggleWidgetSize('bubbles')"></div>
+        <div class="resize-handle" @mousedown="startResizing($event, 'bubbles')"></div>
       </div>
     </div>
   </div>
@@ -704,11 +704,54 @@ export default {
         console.error("Failed to parse layout", e);
       }
     },
-    toggleWidgetSize(key) {
-      const sizes = ['s', 'm', 'l'];
-      const current = this.widgetLayout[key] || 's';
-      const next = sizes[(sizes.indexOf(current) + 1) % sizes.length];
-      this.widgetLayout[key] = next;
+    startResizing(e, key) {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startSize = this.widgetLayout[key];
+      
+      const onMouseMove = (moveEvent) => {
+        this.doResize(moveEvent, key, startX, startY, startSize);
+      };
+      
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        this.stopResizing();
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    doResize(e, key, startX, startY, startSize) {
+      const grid = this.$el.querySelector('.settings-content');
+      if (!grid) return;
+      
+      const cellWidth = grid.offsetWidth / 4;
+      const sCard = grid.querySelector('.widget-s');
+      const cellHeight = sCard ? sCard.offsetHeight : 180;
+      
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      let nextSize = startSize;
+      
+      if (startSize === 's') {
+        if (deltaX > cellWidth * 0.5) nextSize = 'm';
+        if (deltaY > cellHeight * 0.5) nextSize = 'l';
+      } else if (startSize === 'm') {
+        if (deltaX < -cellWidth * 0.5) nextSize = 's';
+        if (deltaY > cellHeight * 0.5) nextSize = 'l';
+      } else if (startSize === 'l') {
+        if (deltaY < -cellHeight * 0.5) nextSize = 'm';
+        if (deltaX < -cellWidth * 0.5) nextSize = 's';
+      }
+      
+      if (nextSize !== this.widgetLayout[key]) {
+        this.widgetLayout[key] = nextSize;
+      }
+    },
+    stopResizing() {
       localStorage.setItem('javhub_config_layout', JSON.stringify(this.widgetLayout));
     },
     async save() {
