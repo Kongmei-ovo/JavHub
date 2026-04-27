@@ -303,3 +303,86 @@ a:hover { color: var(--accent-light); }
 }
 .empty-state svg { width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 16px; opacity: 0.5; }
 .empty-state p { color: var(--text-secondary); font-size: 15px; }
+
+/* ==========================================
+   ✨ 高级感 Element Plus 样式覆盖
+   ========================================== */
+
+/* 1. 弹窗和卡片：加入毛玻璃效果（因为你的主题里 bg-card 已经是 rgba 了） */
+.el-dialog, .el-card, .el-popover, .el-dropdown-menu {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-light) !important; /* 只保留极细的高光边框 */
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* 移除卡片默认的无用内部边框 */
+.el-card__header {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* 2. 输入框和下拉框：从“线框”变成“微质感面” */
+.el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
+  background-color: var(--black-10) !important; /* 使用你定义的半透明叠加层 */
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  transition: var(--transition);
+}
+
+.el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {
+  background-color: var(--black-20) !important;
+}
+
+.el-input__wrapper.is-focus, .el-textarea__inner:focus {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-bg) !important; /* 优雅的焦点光晕 */
+}
+
+/* 3. 按钮：更加果断和纯粹 */
+.el-button {
+  font-weight: 500;
+  border: none !important; /* 去掉冗余边框 */
+}
+
+.el-button--default {
+  background-color: var(--white-06) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-button--default:hover {
+  background-color: var(--white-15) !important;
+}
+
+/* 4. 表格：去线化，呼吸感 (极简风的重灾区通常是表格) */
+.el-table {
+  background-color: transparent !important;
+  --el-table-border-color: transparent !important; /* 彻底干掉表格外竖线 */
+  --el-table-row-hover-bg-color: var(--white-06) !important;
+}
+.el-table th.el-table__cell {
+  background-color: transparent !important;
+  border-bottom: 2px solid var(--border-light) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 0.05em; /* 表头加大字间距，显著提升高级感 */
+  color: var(--text-secondary);
+}
+.el-table td.el-table__cell {
+  background-color: transparent !important;
+  border-bottom: 1px solid var(--border) !important; /* 只保留很淡的横向分割线 */
+}
+
+/* 5. 分页器：融入背景 */
+.el-pagination button:disabled, 
+.el-pagination .btn-next, 
+.el-pagination .btn-prev, 
+.el-pagination .el-pager li {
+  background-color: transparent !important;
+}
+.el-pagination .el-pager li.is-active {
+  color: var(--accent);
+  font-weight: bold;
+}
