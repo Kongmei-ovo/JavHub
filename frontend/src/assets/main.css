@@ -173,50 +173,49 @@ a:hover { color: var(--accent-light); }
   font-weight: 500;
   cursor: pointer;
   border: none;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   outline: none;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
 }
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  color: white;
-  box-shadow: 0 4px 16px var(--accent-glow);
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px var(--accent-glow);
+  background: #F2F2F7 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 .btn-ghost {
-  background: var(--white-06);
+  background: rgba(255, 255, 255, 0.05) !important;
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 .btn-ghost:hover {
-  background: var(--white-10);
-  border-color: var(--border-light);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--border-light) !important;
 }
 .btn-icon { padding: 8px; border-radius: 50%; }
 .btn svg { width: 16px; height: 16px; }
 
 /* ===== Cards ===== */
 .av-card {
-  background: var(--bg-card);
+  background: var(--bg-card) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
-  transition: var(--transition);
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
   overflow: hidden;
 }
 .av-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: var(--shadow-hover), 0 0 30px var(--accent-glow);
-  border-color: var(--accent);
-  background: var(--bg-card-hover);
+  transform: translateY(-4px) !important; /* Remove scale(1.02) */
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-hover) !important;
 }
 
 /* ===== Progress Bar ===== */
