@@ -39,7 +39,7 @@
   /* 过渡 */
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* 通用白色叠加层 */
-  --white-0: rgba(255,255,255,0);
+  --white-00: rgba(255,255,255,0);
   --white-06: rgba(255,255,255,0.06);
   --white-10: rgba(255,255,255,0.10);
   --white-15: rgba(255,255,255,0.15);
@@ -60,9 +60,9 @@
   --badge-error-bg: rgba(239, 68, 68, 0.15);
   --badge-error-border: rgba(239, 68, 68, 0.30);
   --badge-error-text: #EF4444;
-  --badge-info-bg: rgba(99, 102, 241, 0.15);
-  --badge-info-border: rgba(99, 102, 241, 0.30);
-  --badge-info-text: #818CF8;
+  --badge-info-bg: var(--white-10);
+  --badge-info-border: var(--white-20);
+  --badge-info-text: var(--text-primary);
   --badge-pending-bg: rgba(161, 161, 170, 0.12);
   --badge-pending-border: rgba(161, 161, 170, 0.25);
   --badge-pending-text: #A1A1AA;
