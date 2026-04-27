@@ -282,7 +282,7 @@ export default {
 .favorites-hero {
   text-align: center;
   padding: 60px 20px 40px;
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  background: var(--bg-primary);
 }
 
 .hero-title {
@@ -290,6 +290,7 @@ export default {
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
+  letter-spacing: -0.03em;
 }
 
 .hero-subtitle {
@@ -362,13 +363,15 @@ export default {
 }
 
 .movie-card:hover .cover-img {
-  transform: scale(1.05);
+  transform: translateY(-4px);
 }
 
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 40%, rgba(0,0,0,0.85) 100%);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -385,14 +388,15 @@ export default {
   color: white;
   font-size: 14px;
   font-weight: 700;
+  font-family: var(--font-mono);
 }
 
 .unfavorite-btn {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(244, 67, 54, 0.8);
-  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -405,8 +409,8 @@ export default {
 }
 
 .unfavorite-btn:hover {
-  background: #F44336;
-  transform: scale(1.1);
+  background: #EF4444;
+  border-color: #EF4444;
 }
 
 .card-info {

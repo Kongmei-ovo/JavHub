@@ -54,7 +54,7 @@
     <main class="main-content">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'GenreDetail', 'InventoryActor']">
+          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'DiscoveryDetail', 'InventoryActor']">
             <component :is="Component" />
           </keep-alive>
         </transition>
@@ -157,29 +157,41 @@ export default {
       // 在跳转前，暂时隐藏（中断）弹窗
       interruptModal()
 
-      const q = {}
       if (type === 'category') {
+        // 题材跳转
         try {
           const resp = await api.listCategories()
           const categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
           const cat = categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
           if (cat) {
             router.push({
-              name: 'GenreDetail',
-              params: { categoryId: cat.id },
+              name: 'DiscoveryDetail',
+              params: { type: 'category', value: cat.id },
               query: { returnTo: 'video' }
             })
           }
         } catch (e) { console.error(e) }
       } else if (type === 'actress') {
-        q.actress = item.name_kanji || item.name_romaji || item.name_en || ''
-        router.push({ path: '/search', query: q })
+        const name = item.name_kanji || item.name_romaji || item.name_en || ''
+        router.push({
+          name: 'DiscoveryDetail',
+          params: { type: 'actress', value: name },
+          query: { returnTo: 'video' }
+        })
       } else if (type === 'maker') {
-        q.maker = item.name_en || item.name_ja || ''
-        router.push({ path: '/search', query: q })
+        const name = item.name_en || item.name_ja || ''
+        router.push({
+          name: 'DiscoveryDetail',
+          params: { type: 'maker', value: name },
+          query: { returnTo: 'video' }
+        })
       } else if (type === 'series') {
-        q.series = item.name_en || item.name_ja || ''
-        router.push({ path: '/search', query: q })
+        const name = item.name_en || item.name_ja || ''
+        router.push({
+          name: 'DiscoveryDetail',
+          params: { type: 'series', value: name },
+          query: { returnTo: 'video' }
+        })
       }
     }
 
@@ -209,7 +221,7 @@ export default {
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background: rgba(22, 27, 34, 0.8);
+  background: var(--bg-secondary);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-right: 1px solid var(--border);
@@ -244,10 +256,7 @@ export default {
 .logo-text {
   font-size: 17px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
   white-space: nowrap;
   letter-spacing: -0.02em;
 }
@@ -285,7 +294,7 @@ export default {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
   overflow: hidden;
   position: relative;
@@ -295,9 +304,9 @@ export default {
   color: var(--text-primary);
 }
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(129,140,248,0.08));
-  color: var(--accent-light);
-  border: 1px solid rgba(99,102,241,0.25);
+  background: var(--white-10);
+  color: var(--accent);
+  border: 1px solid var(--border-light);
 }
 .nav-item.active::before {
   display: none;
@@ -306,22 +315,20 @@ export default {
   width: 22px;
   height: 22px;
   flex-shrink: 0;
-  transition: transform 0.25s ease;
+  transition: transform 0.2s ease;
 }
-.nav-item:hover svg { transform: scale(1.1); }
 .nav-item.active svg { filter: drop-shadow(0 0 8px var(--accent-glow)); }
 
 .nav-badge {
   margin-left: auto;
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  color: white;
+  background: var(--accent);
+  color: var(--bg-primary);
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 10px;
   min-width: 18px;
   text-align: center;
-  box-shadow: 0 2px 8px var(--accent-glow);
 }
 .sidebar-footer {
   padding: 16px;

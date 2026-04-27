@@ -122,6 +122,8 @@ html, body {
   background: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
 #app {
@@ -136,7 +138,8 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
 /* ===== Typography ===== */
-h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.01em; }
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.03em; }
+h4 { font-weight: 600; letter-spacing: -0.01em; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-light); }
 
@@ -228,7 +231,7 @@ a:hover { color: var(--accent-light); }
 }
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  background: var(--accent);
   border-radius: 4px;
   transition: width 0.4s ease;
 }
@@ -249,11 +252,16 @@ a:hover { color: var(--accent-light); }
 .input::placeholder { color: var(--text-muted); }
 
 /* ===== Grid Layout ===== */
-.results-grid {
+.results-grid, .stats-bar {
   display: grid;
-  gap: 20px;
+  gap: 24px !important;
   padding: 0 20px 40px;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.stats-bar {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  padding: 20px;
 }
 
 /* ===== Animations ===== */

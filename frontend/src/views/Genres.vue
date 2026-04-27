@@ -596,10 +596,9 @@ export default {
         const ec = (cs.getPropertyValue('--rarity-epic').trim() || '#7040a0')
         const rc = (cs.getPropertyValue('--rarity-rare').trim() || '#3070a8')
 
-        // Proximity scale + 缓存 rect（每气泡只查一次）
-        const scales = new Map()
-        const hoveredBubbles = []
+        // Proximity glow +缓存 rect（每气泡只查一次）
         const rects = new Map()
+        const hoveredBubbles = []
         bubbles.forEach(bubble => {
           const r = bubble.getBoundingClientRect()
           rects.set(bubble, r)
@@ -608,37 +607,18 @@ export default {
           const dist = Math.hypot(mouseX - cx, mouseY - cy)
           const maxDist = 160
           if (dist < maxDist) {
-            scales.set(bubble, 1 + (1 - dist / maxDist) * 0.5)
             hoveredBubbles.push(bubble)
-          } else {
-            scales.set(bubble, 1)
           }
         })
 
-        // Collision detection（复用已缓存 rect）
-        const overlapped = new Set()
-        for (let i = 0; i < hoveredBubbles.length; i++) {
-          for (let j = i + 1; j < hoveredBubbles.length; j++) {
-            const a = hoveredBubbles[i], b = hoveredBubbles[j]
-            const ra = rects.get(a), rb = rects.get(b)
-            const sa = scales.get(a), sb = scales.get(b)
-            const raS = { left: ra.left - (sa-1)*ra.width/2, right: ra.right + (sa-1)*ra.width/2, top: ra.top - (sa-1)*ra.height/2, bottom: ra.bottom + (sa-1)*ra.height/2 }
-            const rbS = { left: rb.left - (sb-1)*rb.width/2, right: rb.right + (sb-1)*rb.width/2, top: rb.top - (sb-1)*rb.height/2, bottom: rb.bottom + (sb-1)*rb.height/2 }
-            const intersects = !(raS.right < rbS.left || raS.left > rbS.right || raS.bottom < rbS.top || raS.top > rbS.bottom)
-            if (intersects) { overlapped.add(a); overlapped.add(b) }
-          }
-        }
-
         let maxZ = 100
         bubbles.forEach(bubble => {
-          const scale = scales.get(bubble)
-          const isOverlapped = overlapped.has(bubble)
           const isHovered = hoveredBubbles.includes(bubble)
           const isLegendary = bubble.classList.contains('rarity-legendary')
           const isRare = bubble.classList.contains('rarity-rare')
           const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
 
-          if (isHovered && scale > 1) {
+          if (isHovered) {
             let outerGlow = ''
             if (isLegendary && inLegendaryMode) {
               outerGlow = `0 0 25px 8px ${lc}fa, 0 0 60px 18px ${lc}d6, 0 0 120px 36px ${lc}8c, 0 0 200px 60px ${lc}4d`
@@ -650,12 +630,12 @@ export default {
               outerGlow = '0 6px 24px rgba(0,0,0,0.35)'
             }
             const gsapOpts = {
-              scale,
+              scale: 1, // Ensure no scaling
               opacity: 1,
-              zIndex: isOverlapped ? ++maxZ : 50,
+              zIndex: maxZ++,
               boxShadow: outerGlow,
               duration: 0.12,
-              ease: 'back.out(1.2)',
+              ease: 'power2.out',
               overwrite: 'auto',
             }
             // 3D tilt：复用已缓存 rect
@@ -747,7 +727,7 @@ export default {
       })
     },
     goGenre(tag) {
-      this.$router.push({ name: 'GenreDetail', params: { categoryId: tag.id } })
+      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'category', value: tag.id } })
     },
     switchTab(tab) {
       this.activeTab = tab
@@ -815,11 +795,11 @@ export default {
     },
     goActress(actress) {
       const name = actress.name_kanji || actress.name_romaji || actress.name || ''
-      this.$router.push({ name: 'Actor', query: { name } })
+      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'actress', value: name } })
     },
     goSeries(item) {
-      // 系列点击 → 搜索结果页，带 series 参数
-      this.$router.push({ path: '/search', query: { series: item.name } })
+      const name = item.name_ja || item.name_en || item.name || ''
+      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'series', value: name } })
     },
     legendaryBubbleClass(tag) {
       if (this.cfg.colorMode !== 'legendary' || !this.cfg.goldLegend) return ''
@@ -851,8 +831,8 @@ export default {
 
 <style scoped>
 .genres-page { min-height: 100vh; background: var(--bg-primary); }
-.genres-hero { text-align: center; padding: 48px 20px 32px; background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); }
-.hero-title { font-size: 36px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.genres-hero { text-align: center; padding: 48px 20px 32px; background: var(--bg-secondary); }
+.hero-title { font-size: 36px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 14px; color: var(--text-muted); }
 .tag-cloud-wrap { padding: 20px; max-width: 1200px; margin: 0 auto; }
 .cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 16px; }
@@ -867,9 +847,9 @@ export default {
 .tab-bar { display: flex; gap: 4px; justify-content: center; margin-top: 24px; }
 .tab-btn { padding: 8px 24px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
 .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
-.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.tab-count { background: rgba(255,255,255,0.2); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-.tab-btn.active .tab-count { background: rgba(255,255,255,0.3); }
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); }
+.tab-count { background: rgba(0,0,0,0.1); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+.tab-btn.active .tab-count { background: rgba(0,0,0,0.2); }
 
 /* 演员卡片：整个圆形，参照VideoModal */
 .actress-tab { padding: 20px; max-width: 1200px; margin: 0 auto; }
@@ -880,7 +860,7 @@ export default {
 .actress-avatar { width: var(--actress-avatar-size, 80px); height: var(--actress-avatar-size, 80px); border-radius: 50%; overflow: hidden; background: var(--bg-secondary); border: 2px solid var(--border); transition: border-color 0.2s, box-shadow 0.2s; flex-shrink: 0; }
 .actress-card:hover .actress-avatar { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
-.actress-card:hover .actress-avatar img { transform: scale(1.06); }
+.actress-card:hover .actress-avatar img { transform: translateY(-2px); }
 .actress-name { font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tag-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; padding: 10px 4px; background: var(--bg-primary); border-radius: 16px; }
