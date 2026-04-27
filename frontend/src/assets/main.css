@@ -1,36 +1,43 @@
 /* ===== CSS Variables - Design System ===== */
 :root {
-  /* 背景 - 深色系 + 毛玻璃ready */
-  --bg-primary: #0f0f14;
-  --bg-secondary: rgba(26, 26, 36, 0.85);
-  --bg-card: rgba(37, 37, 66, 0.7);
-  --bg-card-hover: rgba(45, 45, 74, 0.8);
-  /* 强调色 - 靛蓝紫渐变 */
-  --accent: #6366f1;
-  --accent-light: #818cf8;
-  --accent-glow: rgba(99, 102, 241, 0.35);
-  --accent-bg: rgba(99, 102, 241, 0.12);
+  /* 背景 - 极致深色 */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  
+  /* 强调色 - 纯白高反差 */
+  --accent: #FFFFFF;
+  --accent-light: #F2F2F7;
+  --accent-glow: rgba(255, 255, 255, 0.1);
+  --accent-bg: rgba(255, 255, 255, 0.05);
+  
   /* 文字 */
   --text-primary: #FFFFFF;
   --text-secondary: #A1A1AA;
   --text-muted: #71717A;
-  /* 边框 - 毛玻璃边框 */
+  
+  /* 边框与高光 */
   --border: rgba(255, 255, 255, 0.08);
   --border-light: rgba(255, 255, 255, 0.15);
-  /* 阴影 */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.6);
-  /* 圆角 */
+  
+  /* 阴影 - 深邃悬浮感 */
+  --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.6);
+  --shadow-hover: 0 30px 60px rgba(0, 0, 0, 0.8);
+  
+  /* 圆角 - Apple 大圆角 */
   --radius-sm: 8px;
-  --radius-md: 14px;
+  --radius-md: 12px;
   --radius-lg: 20px;
+  
+  /* 字体 - 接入等宽 */
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', monospace;
+
   /* 侧边栏宽度 */
   --sidebar-width: 240px;
   /* 过渡 */
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* 字体 */
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
   /* 通用白色叠加层 */
   --white-0: rgba(255,255,255,0);
   --white-06: rgba(255,255,255,0.06);
