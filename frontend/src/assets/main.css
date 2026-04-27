@@ -81,6 +81,29 @@
   --el-text-color-regular: var(--text-secondary);
   --el-text-color-secondary: var(--text-muted);
   --el-text-color-placeholder: var(--text-muted);
+
+  /* ---------------------------------------------------- */
+  /* 💎 3. 削弱边框感 (极简风的核心：能不用线就不用线) */
+  /* ---------------------------------------------------- */
+  --el-border-color: var(--border);
+  --el-border-color-light: var(--border-light);
+  --el-border-color-lighter: var(--border-light);
+  --el-border-color-extra-light: transparent; /* 隐藏不必要的表格或分割线边框 */
+  
+  /* ---------------------------------------------------- */
+  /* 💎 4. 统一圆角和字体 (增加精致感) */
+  /* ---------------------------------------------------- */
+  --el-border-radius-base: var(--radius-sm, 8px); /* 按钮、输入框圆角 */
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+  
+  --el-font-family: var(--font-body);
+  
+  /* ---------------------------------------------------- */
+  /* 💎 5. 替换沉闷的黑色阴影为你的主题阴影 */
+  /* ---------------------------------------------------- */
+  --el-box-shadow: var(--shadow-card);
+  --el-box-shadow-light: var(--shadow-card);
 }
 
 /* ===== Base Reset ===== */
