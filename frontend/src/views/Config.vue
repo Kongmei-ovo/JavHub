@@ -570,7 +570,7 @@ export default {
         baseSize: 16, fillPercent: 50, spacing: 16,
         colorMode: 'legendary', palette: 'monet',
         customGradients: [], customGradientsText: '',
-        goldLegend: true, bubbleCount: 36,
+        bubbleCount: 36,
         rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
         actressAvatarSize: 'medium', // 'small' | 'medium' | 'large'
         rarityColors: {
@@ -695,7 +695,7 @@ export default {
         if (saved) {
           const parsed = JSON.parse(saved)
           this.bubbleCfg = {
-            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } },
+            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } },
             ...parsed,
           }
           if (parsed.customGradients) {
@@ -716,7 +716,7 @@ export default {
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
-      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', goldLegend: true, bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } }
+      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } }
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
     },
@@ -773,6 +773,9 @@ export default {
 
 <style scoped>
 .settings { padding: 24px 32px; }
+@media (max-width: 768px) {
+  .settings { padding: 16px; }
+}
 .page-header {
   display: flex;
   align-items: center;
@@ -781,14 +784,26 @@ export default {
 }
 .page-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); }
 .page-header-actions { display: flex; gap: 8px; align-items: center; }
-.settings-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.settings-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 20px;
+}
 
 .settings-card {
   background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 24px;
   min-width: 0;
+  box-shadow: var(--shadow-card);
+  transition: var(--transition);
+}
+.settings-card:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-hover);
 }
 .settings-card-header {
   display: flex;
@@ -823,6 +838,9 @@ export default {
 .form-group:last-child { margin-bottom: 0; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 480px) {
+  .form-row { grid-template-columns: 1fr; gap: 14px; }
+}
 .trans-refresh-btn { padding: 6px 10px; font-size: 14px; flex-shrink: 0; }
 .input-password-wrap { position: relative; display: flex; align-items: center; }
 .input-password-wrap .input { padding-right: 36px; }
@@ -864,7 +882,7 @@ export default {
 .mode-tab.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--bg-primary);
 }
 
 .mode-tab:hover:not(.active) {
@@ -909,7 +927,7 @@ export default {
   transition: var(--transition);
 }
 .size-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-.size-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+.size-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 600; }
 .size-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
 .palette-select:focus {
@@ -1083,7 +1101,7 @@ export default {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border-light);
 }
 
 .preview-secondary {
@@ -1160,17 +1178,21 @@ export default {
   font-size: 13px;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
 }
 .trans-msg.success {
-  background: rgba(76, 175, 80, 0.15);
-  color: #4CAF50;
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+  border-color: var(--badge-success-border);
 }
 .trans-msg.error {
-  background: rgba(244, 67, 54, 0.15);
-  color: #f44336;
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
 }
 .trans-msg.info {
-  background: var(--bg-secondary);
-  color: var(--text-muted);
+  background: var(--badge-info-bg);
+  color: var(--badge-info-text);
+  border-color: var(--badge-info-border);
 }
 </style>
