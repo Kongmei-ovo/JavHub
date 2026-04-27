@@ -46,3 +46,4 @@ docs/
 *.log
 logs/
 \n.worktrees/
+.superpowers/
