@@ -12,7 +12,7 @@
 
     <div class="settings-content">
       <!-- OpenList -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.openlist">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -45,10 +45,11 @@
           <label>默认下载路径</label>
           <input class="input" v-model="config.openlist.default_path" placeholder="/115/AV" />
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('openlist')"></div>
       </div>
 
       <!-- Emby -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.emby">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -71,10 +72,11 @@
             </button>
           </div>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('emby')"></div>
       </div>
 
       <!-- JavInfoApi -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.javinfo">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -87,10 +89,11 @@
           <label>API 地址</label>
           <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('javinfo')"></div>
       </div>
 
       <!-- 翻译映射 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.translation">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M5 8l6 6"/>
@@ -127,10 +130,11 @@
           </label>
         </div>
         <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('translation')"></div>
       </div>
 
       <!-- MetaTube -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.metatube">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -158,10 +162,11 @@
             </button>
           </div>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('metatube')"></div>
       </div>
 
       <!-- Telegram -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.telegram">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -199,10 +204,11 @@
           </button>
           <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('telegram')"></div>
       </div>
 
       <!-- 通知 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.notification">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -230,10 +236,11 @@
           <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
           <label for="notifNewMovie">发现新片时通知</label>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('notification')"></div>
       </div>
 
       <!-- 爬虫 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.crawler">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -251,10 +258,11 @@
             <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
           </div>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('crawler')"></div>
       </div>
 
       <!-- 库存对比定时任务 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.inventory">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -268,10 +276,11 @@
           <small>例：0 2 * * * 表示每天凌晨2点</small>
         </div>
         <button class="btn btn-primary" @click="saveInventoryCron">保存</button>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('inventory')"></div>
       </div>
 
       <!-- 页面设计 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.design">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -321,10 +330,11 @@
             </select>
           </div>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('design')"></div>
       </div>
 
       <!-- 网络代理设置 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.proxy">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
@@ -345,10 +355,11 @@
           <label>HTTPS 代理</label>
           <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('proxy')"></div>
       </div>
 
       <!-- 题材气泡设置 -->
-      <div class="settings-card">
+      <div class="settings-card" :class="'widget-' + widgetLayout.bubbles">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="3"/>
@@ -525,6 +536,7 @@
         <div class="form-row">
           <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认</button>
         </div>
+        <div class="resize-handle" @click.stop="toggleWidgetSize('bubbles')"></div>
       </div>
     </div>
   </div>
@@ -607,6 +619,8 @@ export default {
         javinfo: 's',
         translation: 'm',
         metatube: 's',
+        telegram: 's',
+        notification: 's',
         crawler: 's',
         inventory: 's',
         design: 'l',
@@ -675,10 +689,19 @@ export default {
   methods: {
     loadLayout() {
       const saved = localStorage.getItem('javhub_config_layout');
-      if (saved) {
-        try {
-          this.widgetLayout = { ...this.widgetLayout, ...JSON.parse(saved) };
-        } catch (e) { console.error("Failed to parse layout", e); }
+      if (!saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          // Only merge known keys with valid sizes
+          Object.keys(this.widgetLayout).forEach(key => {
+            if (['s', 'm', 'l'].includes(parsed[key])) {
+              this.widgetLayout[key] = parsed[key];
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse layout", e);
       }
     },
     toggleWidgetSize(key) {
@@ -734,16 +757,20 @@ export default {
         const saved = localStorage.getItem('genres_bubble_cfg')
         if (saved) {
           const parsed = JSON.parse(saved)
-          this.bubbleCfg = {
-            ...JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
-            ...parsed,
-          }
-          if (parsed.customGradients) {
-            this.bubbleCfg.customGradients = parsed.customGradients
-            this.bubbleCfg.customGradientsText = parsed.customGradients.join(',')
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            this.bubbleCfg = {
+              ...JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
+              ...parsed,
+            }
+            if (Array.isArray(parsed.customGradients)) {
+              this.bubbleCfg.customGradients = parsed.customGradients
+              this.bubbleCfg.customGradientsText = parsed.customGradients.join(',')
+            }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.error("Failed to parse bubble cfg", e);
+      }
     },
     saveBubbleCfg() {
       // Parse custom gradients text into array before saving
@@ -826,11 +853,20 @@ export default {
 .page-header-actions { display: flex; gap: 8px; align-items: center; }
 .settings-content {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: dense;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .settings-content { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .settings-content { grid-template-columns: 1fr; }
 }
 
 .settings-card {
+  position: relative;
   background: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -845,16 +881,32 @@ export default {
   border-color: var(--border-light);
   box-shadow: var(--shadow-hover);
 }
-.settings-card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  color: var(--accent);
+
+.settings-card.widget-s { grid-column: span 1; grid-row: span 1; }
+.settings-card.widget-m { grid-column: span 2; grid-row: span 1; }
+.settings-card.widget-l { grid-column: span 2; grid-row: span 2; }
+
+/* Handle inner content visibility */
+.settings-card.widget-s .form-group:not(.widget-always-show),
+.settings-card.widget-s .form-row,
+.settings-card.widget-s .settings-sub-section {
+  display: none;
 }
-.settings-card-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+.resize-handle {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  border-right: 2px solid var(--white-20);
+  border-bottom: 2px solid var(--white-20);
+  border-radius: 0 0 4px 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: var(--transition);
+}
+.settings-card:hover .resize-handle { opacity: 1; }
 
 .settings-sub-section {
   padding: 12px 0;
