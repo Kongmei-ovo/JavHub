@@ -317,7 +317,7 @@
               </div>
             </div>
 
-            <!-- 题材气泡设置 -->
+            <!-- 灵动标签设置 (Aura Tags) -->
             <div class="settings-card">
               <div class="card-content">
                 <div class="settings-card-header">
@@ -325,34 +325,34 @@
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
                   </svg>
-                  <h2>题材气泡设置</h2>
+                  <h2>灵动标签设置</h2>
                 </div>
 
                 <div class="form-slot">
                   <!-- 颜色模式 -->
                   <div class="form-group">
-                    <label>颜色模式</label>
+                    <label>视觉风格</label>
                     <div class="color-mode-tabs">
                       <button
                         class="mode-tab"
                         :class="{ active: bubbleCfg.colorMode === 'random' }"
                         @click="bubbleCfg.colorMode = 'random'"
-                      >随机颜色</button>
+                      >柔和色彩</button>
                       <button
                         class="mode-tab"
                         :class="{ active: bubbleCfg.colorMode === 'legendary' }"
                         @click="bubbleCfg.colorMode = 'legendary'"
-                      >金色传说</button>
+                      >灵动金传说</button>
                     </div>
                   </div>
 
                   <!-- 随机颜色：下拉选择色系 -->
                   <template v-if="bubbleCfg.colorMode === 'random'">
                     <div class="form-group">
-                      <label>色系</label>
+                      <label>色系预设</label>
                       <div class="palette-select-wrap">
                         <select class="palette-select" v-model="bubbleCfg.palette">
-                          <option value="__all__">🌈 完全随机（混合全部色系）</option>
+                          <option value="__all__">🌈 艺术随机（混合全部色系）</option>
                           <option
                             v-for="p in palettes"
                             :key="p.key"
@@ -360,24 +360,14 @@
                           >
                             {{ p.label }}
                           </option>
-                          <option value="__custom__">✏️ 自定义色</option>
+                          <option value="__custom__">✏️ 自定义材质</option>
                         </select>
                         <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
                       </div>
                     </div>
-                    <!-- 自定义色输入（选中"自定义色"时显示） -->
-                    <div v-if="bubbleCfg.palette === '__custom__'" class="form-group">
-                      <label>自定义渐变（逗号分隔，CSS渐变）</label>
-                      <textarea
-                        class="input custom-gradients-input"
-                        v-model="bubbleCfg.customGradientsText"
-                        placeholder="linear-gradient(#ff0000, #0000ff),linear-gradient(#00ff00, #ffff00)"
-                        rows="3"
-                      ></textarea>
-                    </div>
                   </template>
 
-                  <!-- 金色传说说明 + 颜色自定义 -->
+                  <!-- 灵动金传说说明 + 颜色自定义 -->
                   <div v-if="bubbleCfg.colorMode === 'legendary'" class="legendary-hint">
                     <div class="legendary-colors-grid">
                       <div class="legendary-color-item">
@@ -397,18 +387,18 @@
                       </div>
                       <div class="legendary-color-item">
                         <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span>
-                        <span>普通</span>
-                        <input type="color" v-model="bubbleCfg.rarityColors.common" class="rarity-color-input" title="普通颜色" />
+                        <span>基础</span>
+                        <input type="color" v-model="bubbleCfg.rarityColors.common" class="rarity-color-input" title="基础颜色" />
                       </div>
                     </div>
                     <div class="legendary-hint-text">
-                      <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 影片库中出现极少，琥珀金呼吸光效
+                      <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 极其罕见，香槟金 1px 动态切光与环境氛围光
                       <br/>
-                      <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 影片库中出现较少，紫色呼吸光效
+                      <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 出现较少，紫色磨砂玻璃质感
                       <br/>
-                      <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 影片库中出现一般，蓝色微光
+                      <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 出现一般，深邃蓝微光
                       <br/>
-                      <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 普通 — 影片库中出现频繁，无光效
+                      <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 基础 — 频繁出现，极简半透明材质
                     </div>
                     <div class="rarity-thresholds">
                       <div class="rarity-threshold-row">
@@ -455,21 +445,21 @@
 
                   <div class="form-row" style="margin-top: 16px;">
                     <div class="form-group">
-                      <label>每页气泡数量</label>
+                      <label>每页显示数量</label>
                       <input class="input" v-model.number="bubbleCfg.bubbleCount" type="number" min="12" max="120" step="6" />
                     </div>
                     <div class="form-group">
-                      <label>气泡大小（px）</label>
+                      <label>基础尺寸（px）</label>
                       <input class="input" v-model.number="bubbleCfg.baseSize" type="number" min="8" max="48" step="1" />
                     </div>
                   </div>
                   <div class="form-row">
                     <div class="form-group">
-                      <label>气体填充（%）</label>
+                      <label>填充间距（%）</label>
                       <input class="input" v-model.number="bubbleCfg.fillPercent" type="number" min="30" max="200" step="5" />
                     </div>
                     <div class="form-group">
-                      <label>气泡间距（px）</label>
+                      <label>标签间距（px）</label>
                       <input class="input" v-model.number="bubbleCfg.spacing" type="number" min="0" max="48" step="2" />
                     </div>
                   </div>
@@ -495,7 +485,7 @@
                     </div>
                   </div>
                   <div class="form-row">
-                    <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认气泡设置</button>
+                    <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认设置</button>
                   </div>
                 </div>
               </div>

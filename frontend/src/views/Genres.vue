@@ -45,25 +45,17 @@
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="tag in displayedTags" :key="tag.id">
           <div
-            v-if="legendaryBubbleClass(tag).includes('rarity-legendary')"
-            class="bubble rarity-legendary"
-            :data-id="tag.id"
-            :style="bubbleStyle(tag)"
-            @click="goGenre(tag)"
-          >
-            <div class="legendary-inner">
-              {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
-            </div>
-          </div>
-          <div
-            v-else
             class="bubble"
             :class="legendaryBubbleClass(tag)"
             :data-id="tag.id"
             :style="bubbleStyle(tag)"
             @click="goGenre(tag)"
           >
-            {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
+            <div class="bubble-content">
+              {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
+            </div>
+            <!-- 高级感光效层 -->
+            <div v-if="legendaryBubbleClass(tag).includes('rarity-legendary')" class="golden-shimmer"></div>
           </div>
         </template>
       </div>
@@ -137,23 +129,15 @@
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="item in displayedSeries" :key="item.id">
           <div
-            v-if="legendaryBubbleClass(item).includes('rarity-legendary')"
-            class="bubble rarity-legendary"
-            :style="bubbleStyle(item)"
-            @click="goSeries(item)"
-          >
-            <div class="legendary-inner">
-              {{ displayName(item, 'name_ja', 'name_en') }}
-            </div>
-          </div>
-          <div
-            v-else
             class="bubble"
             :class="legendaryBubbleClass(item)"
             :style="bubbleStyle(item)"
             @click="goSeries(item)"
           >
-            {{ displayName(item, 'name_ja', 'name_en') }}
+            <div class="bubble-content">
+              {{ displayName(item, 'name_ja', 'name_en') }}
+            </div>
+            <div v-if="legendaryBubbleClass(item).includes('rarity-legendary')" class="golden-shimmer"></div>
           </div>
         </template>
       </div>
@@ -589,75 +573,41 @@ export default {
 
       requestAnimationFrame(() => {
         const bubbles = cloud.querySelectorAll('.bubble')
-
-        // 读取配色 CSS 变量（云容器只读一次）
-        const cs = getComputedStyle(cloud)
-        const lc = (cs.getPropertyValue('--rarity-legendary').trim() || '#c89a30')
-        const ec = (cs.getPropertyValue('--rarity-epic').trim() || '#7040a0')
-        const rc = (cs.getPropertyValue('--rarity-rare').trim() || '#3070a8')
-
-        // Proximity glow +缓存 rect（每气泡只查一次）
-        const rects = new Map()
-        const hoveredBubbles = []
+        
         bubbles.forEach(bubble => {
           const r = bubble.getBoundingClientRect()
-          rects.set(bubble, r)
           const cx = r.left + r.width / 2
           const cy = r.top + r.height / 2
           const dist = Math.hypot(mouseX - cx, mouseY - cy)
-          const maxDist = 160
-          if (dist < maxDist) {
-            hoveredBubbles.push(bubble)
-          }
-        })
-
-        let maxZ = 100
-        bubbles.forEach(bubble => {
-          const isHovered = hoveredBubbles.includes(bubble)
-          const isLegendary = bubble.classList.contains('rarity-legendary')
-          const isRare = bubble.classList.contains('rarity-rare')
+          const maxDist = 120
+          
           const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
+          const isLegendary = bubble.classList.contains('rarity-legendary')
 
-          if (isHovered) {
-            let outerGlow = ''
-            if (isLegendary && inLegendaryMode) {
-              outerGlow = `0 0 25px 8px ${lc}fa, 0 0 60px 18px ${lc}d6, 0 0 120px 36px ${lc}8c, 0 0 200px 60px ${lc}4d`
-            } else if (bubble.classList.contains('rarity-epic') && inLegendaryMode) {
-              outerGlow = `0 0 18px 6px ${ec}e6, 0 0 45px 14px ${ec}a6`
-            } else if (isRare && inLegendaryMode) {
-              outerGlow = `0 0 14px 5px ${rc}bf, 0 0 35px 12px ${rc}73`
-            } else {
-              outerGlow = '0 6px 24px rgba(0,0,0,0.35)'
-            }
+          if (dist < maxDist) {
             const gsapOpts = {
-              scale: 1, // Ensure no scaling
-              opacity: 1,
-              zIndex: maxZ++,
-              boxShadow: outerGlow,
-              duration: 0.12,
+              zIndex: 10,
+              duration: 0.3,
               ease: 'power2.out',
               overwrite: 'auto',
             }
-            // 3D tilt：复用已缓存 rect
+
+            // 仅为金色传说提供极轻微的 3D 倾斜
             if (isLegendary && inLegendaryMode) {
-              const r = rects.get(bubble)
-              const cx = r.left + r.width / 2
-              const cy = r.top + r.height / 2
-              const maxTilt = 18
-              const tx = Math.round(((mouseY - cy) / (r.height * 0.6)) * maxTilt)
-              const ty = Math.round(-((mouseX - cx) / (r.width * 0.6)) * maxTilt)
-              gsapOpts.rotationX = Math.max(-maxTilt, Math.min(maxTilt, tx))
-              gsapOpts.rotationY = Math.max(-maxTilt, Math.min(maxTilt, ty))
+              const maxTilt = 10
+              const tx = ((mouseY - cy) / (r.height * 0.5)) * maxTilt
+              const ty = -((mouseX - cx) / (r.width * 0.5)) * maxTilt
+              gsapOpts.rotationX = tx
+              gsapOpts.rotationY = ty
             }
             gsap.to(bubble, gsapOpts)
           } else {
             gsap.to(bubble, {
-              scale: 1,
-              opacity: 0.88,
+              rotationX: 0,
+              rotationY: 0,
               zIndex: 1,
-              boxShadow: '',
-              duration: 0.18,
-              ease: 'power3.out',
+              duration: 0.4,
+              ease: 'power2.out',
               overwrite: 'auto',
             })
           }
@@ -670,11 +620,13 @@ export default {
       const cloud = this.$refs.tagCloudRef
       if (!cloud) return
       const bubbles = cloud.querySelectorAll('.bubble')
-      // Clear boxShadow inline style → CSS breathing animation auto-resumes
       gsap.to(bubbles, {
-        scale: 1, opacity: 0.88, zIndex: 1,
-        boxShadow: '',
-        duration: 0.3, ease: 'back.out(1.2)', stagger: 0.004,
+        rotationX: 0,
+        rotationY: 0,
+        zIndex: 1,
+        duration: 0.5,
+        ease: 'power2.out',
+        stagger: 0.002
       })
     },
     // --- Legendary 3D Tilt (GSAP) — delegated from cloud ---
@@ -863,228 +815,143 @@ export default {
 .actress-card:hover .actress-avatar img { transform: translateY(-2px); }
 .actress-name { font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.tag-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; padding: 10px 4px; background: var(--bg-primary); border-radius: 16px; }
+.tag-cloud { 
+  display: flex; 
+  flex-wrap: wrap; 
+  justify-content: center; 
+  align-items: center; 
+  padding: 30px 10px; 
+  background: var(--bg-primary); 
+  border-radius: 16px; 
+  gap: 16px;
+}
+
 .bubble {
-  border-radius: 50px;
-  color: white;
-  font-weight: 600;
+  position: relative;
+  padding: 8px 18px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  flex-shrink: 0;
-  opacity: 0.88;
-  transform-origin: center center;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+
+.bubble:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.bubble-content {
   position: relative;
-  transition: box-shadow 0.3s ease, filter 0.3s ease;
-  animation: bubble-float 1.8s ease-in-out infinite;
+  z-index: 2;
 }
 
 /* ================================================
-   LEGENDARY MODE — 炉石传说卡牌质感
-   Legendary=橙金 Epic=紫 Rare=蓝 Common=白（无光）
-   GSAP: proximity scale + hover glow
-   CSS: shimmer (epic/legendary only) + breathing glow (legendary only)
+   ✨ 金色传说 2.0 (Aura Gold) - Apple Pro Design
    ================================================ */
 
-/* ---------- 白卡 Common：无光效，纯药丸气泡 ---------- */
-.bubble.rarity-common {
-  border-radius: 50px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
-  background: linear-gradient(135deg, var(--rarity-common), color-mix(in srgb, var(--rarity-common) 70%, #000)) !important;
-}
-.bubble.rarity-common:hover {
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.35);
-}
+/* 1. 基础稀有度颜色 */
+.bubble.rarity-common { border-color: rgba(255, 255, 255, 0.05); opacity: 0.6; }
+.bubble.rarity-rare { border-color: rgba(48, 112, 168, 0.3); }
+.bubble.rarity-epic { border-color: rgba(112, 64, 160, 0.4); }
 
-/* ---------- 蓝卡 Rare：纯平板，蓝天白云无特效 ---------- */
-.bubble.rarity-rare {
-  border-radius: 50px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  background: linear-gradient(135deg, var(--rarity-rare), color-mix(in srgb, var(--rarity-rare) 75%, #000)) !important;
-}
-.bubble.rarity-rare:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-}
-
-/* ---------- 紫卡 Epic：紫色呼吸光晕 + 扫光 ---------- */
-.bubble.rarity-epic {
-  border-radius: 50px;
-  box-shadow:
-    0 0 12px 4px color-mix(in srgb, var(--rarity-epic) 60%, transparent),
-    0 0 35px 10px color-mix(in srgb, var(--rarity-epic) 35%, transparent);
-  background: linear-gradient(135deg, var(--rarity-epic), color-mix(in srgb, var(--rarity-epic) 75%, #000)) !important;
-  animation: epic-breathe 2.8s ease-in-out infinite;
-}
-.bubble.rarity-epic::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -30%;
-  width: 26%;
-  height: 100%;
-  background: linear-gradient(
-    105deg,
-    transparent 0%,
-    rgba(220, 180, 255, 0.35) 45%,
-    rgba(240, 210, 255, 0.75) 50%,
-    rgba(220, 180, 255, 0.4) 55%,
-    transparent 100%
-  );
-  transform: skewX(-18deg);
-  pointer-events: none;
-  border-radius: inherit;
-  z-index: 1;
-  animation: epic-shimmer 2.2s linear infinite;
-}
-@keyframes epic-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 10px 3px color-mix(in srgb, var(--rarity-epic) 60%, transparent),
-      0 0 30px 9px color-mix(in srgb, var(--rarity-epic) 35%, transparent);
-    filter: brightness(1.04) saturate(1.1);
-  }
-  50% {
-    box-shadow:
-      0 0 18px 6px color-mix(in srgb, var(--rarity-epic) 80%, transparent),
-      0 0 50px 15px color-mix(in srgb, var(--rarity-epic) 50%, transparent);
-    filter: brightness(1.1) saturate(1.25);
-  }
-}
-@keyframes epic-shimmer {
-  0%   { left: -30%; }
-  100% { left: 130%; }
-}
-/* 浮动动画（所有气泡共用，替换原有逐气泡 GSAP tween） */
-@keyframes bubble-float {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-5px); }
-}
-
-/* ---------- 金卡 Legendary：皇家琥珀光晕 + 3D悬浮 ---------- */
+/* 2. 金色传说核心样式 (Legendary) */
 .bubble.rarity-legendary {
-  border-radius: 14px;
-  overflow: visible;
-  transform-style: preserve-3d;
-  perspective: 800px;
-  animation: bubble-float 1.8s ease-in-out infinite;
-  /* 静态琥珀金内敛光晕（hover 光效全由 GSAP 接管，避免 CSS 动画冲突闪烁） */
-  box-shadow:
-    0 0 14px 4px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
-    0 0 38px 10px color-mix(in srgb, var(--rarity-legendary) 30%, transparent),
-    0 0 75px 22px color-mix(in srgb, var(--rarity-legendary) 16%, transparent),
-    0 4px 16px rgba(0, 0, 0, 0.45);
-  /* 皇家金渐变：深金→中金→琥珀金→亮金→中金→深金 */
-  background: linear-gradient(
-    145deg,
-    #8B6914 0%,
-    #C9960C 20%,
-    #E5B819 35%,
-    #F5D033 45%,
-    #E5B819 55%,
-    #C9960C 70%,
-    #8B6914 100%
-  ) !important;
-  position: relative;
-  z-index: 1;
-  will-change: transform;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 10px 40px -10px rgba(212, 175, 55, 0.1); /* 极其克制的氛围光 */
 }
-/* 3D悬浮层 — 承载旋转和全息 */
-.bubble.rarity-legendary .legendary-inner {
-  position: relative;
-  transform-style: preserve-3d;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
+
+/* 文字渐变 */
+.rarity-legendary .bubble-content {
+  background: linear-gradient(135deg, #fcf6ba 0%, #d4af37 50%, #aa771c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
-/* 全息幻彩层 — color-dodge 叠加在金色上 */
-.bubble.rarity-legendary .legendary-inner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    repeating-linear-gradient(
-      125deg,
-      transparent 0px,
-      transparent 3px,
-      rgba(255, 255, 255, 0.06) 3px,
-      rgba(255, 255, 255, 0.06) 4px
-    ),
-    repeating-linear-gradient(
-      65deg,
-      transparent 0px,
-      transparent 8px,
-      rgba(255, 200, 50, 0.08) 8px,
-      rgba(255, 200, 50, 0.08) 9px
-    ),
-    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255, 240, 160, 0.18) 0%, transparent 70%);
-  mix-blend-mode: color-dodge;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.7;
-  transition: opacity 0.3s;
-}
-/* 环绕金晕 — 静态光晕层（位于 inner 之外） */
+
+/* 3. 极细旋转切光 (1px Edge Light) */
 .bubble.rarity-legendary::before {
   content: '';
   position: absolute;
-  inset: -6px;
-  border-radius: 18px;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
   background: conic-gradient(
     from 0deg,
-    transparent 0deg,
-    rgba(255, 215, 0, 0.18) 30deg,
-    rgba(255, 200, 50, 0.35) 60deg,
-    rgba(255, 215, 0, 0.18) 90deg,
-    transparent 120deg,
-    rgba(255, 215, 0, 0.12) 180deg,
-    transparent 210deg,
-    rgba(255, 215, 0, 0.22) 250deg,
-    rgba(255, 200, 50, 0.35) 290deg,
-    rgba(255, 215, 0, 0.18) 330deg,
-    transparent 360deg
-  );
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.85;
-}
-/* 内部金色高光边缘 */
-.bubble.rarity-legendary::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 11px;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 210, 0.35) 0%,
-    transparent 40%,
     transparent 60%,
-    rgba(139, 105, 20, 0.25) 100%
+    rgba(212, 175, 55, 0.8) 80%,
+    #fcf6ba 90%,
+    rgba(212, 175, 55, 0.8) 100%
   );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rotateLight 6s linear infinite;
   pointer-events: none;
-  z-index: 3;
-}
-/* Hover 状态 */
-.bubble.rarity-legendary:hover {
-  filter: brightness(1.18) saturate(1.45);
-  box-shadow:
-    0 0 28px 8px color-mix(in srgb, var(--rarity-legendary) 85%, transparent),
-    0 0 75px 22px color-mix(in srgb, var(--rarity-legendary) 55%, transparent),
-    0 0 130px 48px color-mix(in srgb, var(--rarity-legendary) 28%, transparent),
-    0 6px 22px rgba(0, 0, 0, 0.5);
-}
-.bubble.rarity-legendary:hover::before {
-  opacity: 1;
-}
-.bubble.rarity-legendary:hover .legendary-inner::before {
-  opacity: 1;
 }
 
-/* ---------- Active状态 ---------- */
+@keyframes rotateLight {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 4. 微光扫掠 (The Shimmer) */
+.golden-shimmer {
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 245, 225, 0.1) 50%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  animation: shimmerMove 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmerMove {
+  0% { left: -150%; }
+  30%, 100% { left: 250%; }
+}
+
+/* 史诗级呼吸感 */
+.bubble.rarity-epic {
+  background: rgba(112, 64, 160, 0.05);
+  box-shadow: 0 10px 30px -10px rgba(112, 64, 160, 0.1);
+}
+.bubble.rarity-epic .bubble-content {
+  color: #dcb4ff;
+}
+
+/* 悬浮反馈 */
+.bubble.rarity-legendary:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 15px 50px -10px rgba(212, 175, 55, 0.2);
+}
+
 .bubble.active {
-  opacity: 1;
-  filter: brightness(1.1) saturate(1.2);
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
 }
 
 </style>
