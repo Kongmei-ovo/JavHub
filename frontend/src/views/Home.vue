@@ -275,6 +275,7 @@ export default {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); /* Top highlight */
   border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
@@ -289,13 +290,12 @@ export default {
 .stat-card:nth-child(3) { animation-delay: 0.15s; }
 .stat-card:nth-child(4) { animation-delay: 0.2s; }
 @keyframes statEntrance {
-  from { opacity: 0; transform: translateY(20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .stat-card:hover {
+  transform: translateY(-4px) !important;
   border-color: var(--accent);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--shadow-hover), 0 0 24px var(--accent-glow);
 }
 
 .stat-icon {
@@ -306,26 +306,26 @@ export default {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary) !important;
 }
 .stat-icon svg { width: 24px; height: 24px; }
-.stat-icon.pending { background: rgba(161, 161, 170, 0.12); color: var(--text-secondary); }
-.stat-icon.downloading { background: rgba(99, 102, 241, 0.15); color: var(--accent-light); }
-.stat-icon.completed { background: rgba(16, 185, 129, 0.15); color: #10B981; }
-.stat-icon.failed { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
 
 .stat-info { min-width: 0; }
 .stat-num {
-  font-size: 30px;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  letter-spacing: -0.04em;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
-  letter-spacing: -0.02em;
   animation: statPop 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 .stat-num.animate-in { animation: statPop 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
 @keyframes statPop {
-  from { opacity: 0; transform: translateY(16px) scale(0.85); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .stat-card:nth-child(1) .stat-num { animation-delay: 0.05s; }
 .stat-card:nth-child(2) .stat-num { animation-delay: 0.1s; }
