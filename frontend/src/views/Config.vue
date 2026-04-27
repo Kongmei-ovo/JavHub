@@ -281,30 +281,31 @@
         </div>
 
         <div class="settings-sub-section">
-          <div class="settings-sub-header">主题</div>
-          <div class="form-group">
-            <div class="theme-select-wrap">
-              <select class="palette-select" v-model="currentTheme" @change="switchTheme(currentTheme)">
-                <option
-                  v-for="(theme, key) in themes"
-                  :key="key"
-                  :value="key"
-                >
-                  {{ theme.label }}
-                </option>
-              </select>
-              <div class="theme-color-preview">
-                <span
-                  v-for="(theme, key) in themes"
-                  :key="key"
-                  class="color-dot"
-                  :class="{ active: currentTheme === key }"
-                  :style="{ background: themes[key].vars['--accent'] }"
-                  :title="theme.label"
-                  @click="switchTheme(key)"
-                ></span>
+          <div class="settings-sub-header">主题选择</div>
+          <div class="theme-grid">
+            <div 
+              v-for="(theme, key) in themes" 
+              :key="key"
+              class="theme-card"
+              :class="{ active: currentTheme === key }"
+              @click="switchTheme(key)"
+            >
+              <div class="theme-card-preview" :style="{ background: theme.vars['--bg-primary'] }">
+                <div class="preview-accent" :style="{ background: theme.vars['--accent'] }"></div>
+                <div class="preview-secondary" :style="{ background: theme.vars['--bg-secondary'] }"></div>
               </div>
-              <div class="theme-accent-bar" :style="{ background: themes[currentTheme]?.vars['--accent'] }"></div>
+              <div class="theme-card-info">
+                <div class="theme-icon">{{ theme.icon }}</div>
+                <div class="theme-names">
+                  <span class="theme-label">{{ theme.label }}</span>
+                  <span class="theme-label-en">{{ theme.labelEn }}</span>
+                </div>
+                <div class="theme-check" v-if="currentTheme === key">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -580,19 +581,19 @@ export default {
         },
       },
       palettes: [
-        { key: 'monet',    label: '莫奈',    colors: ['linear-gradient(135deg, #c4b5d8, #a5b4c8)', 'linear-gradient(135deg, #d4c4e0, #b8c5d6)'] },
-        { key: 'sunset',   label: '夕阳',    colors: ['linear-gradient(135deg, #c89080, #d8a898)', 'linear-gradient(135deg, #c87868, #d8a088)'] },
-        { key: 'ocean',   label: '海洋',    colors: ['linear-gradient(135deg, #7aaec0, #8cbcc8)', 'linear-gradient(135deg, #88c0b0, #a0d0c0)'] },
-        { key: 'forest',   label: '森林',    colors: ['linear-gradient(135deg, #90b898, #a0c8a8)', 'linear-gradient(135deg, #7aa888, #8ab898)'] },
-        { key: 'gold',    label: '金色',    colors: ['linear-gradient(135deg, #a88050, #c8a068)', 'linear-gradient(135deg, #c89050, #d8b070)'] },
-        { key: 'anime',   label: '动漫',    colors: ['linear-gradient(135deg, #e8a0c8, #f0b8d8)', 'linear-gradient(135deg, #c0a0e0, #d0b0f0)'] },
-        { key: 'retro',    label: '复古',    colors: ['linear-gradient(135deg, #c89050, #d0a068)', 'linear-gradient(135deg, #8b7355, #a08060)'] },
-        { key: 'cyber',   label: '赛博',    colors: ['linear-gradient(135deg, #00c8ff, #0080ff)', 'linear-gradient(135deg, #8000ff, #c000ff)'] },
-        { key: 'pastel',  label: '马卡龙',  colors: ['linear-gradient(135deg, #f0b8c0, #f8d0d8)', 'linear-gradient(135deg, #b8d0f0, #c8e0f8)'] },
-        { key: 'nord',    label: 'Nord',    colors: ['linear-gradient(135deg, #88c0d0, #81a1c1)', 'linear-gradient(135deg, #a3be8c, #b48ead)'] },
-        { key: 'neon',    label: '霓虹',    colors: ['linear-gradient(135deg, #ff0080, #ff4000)', 'linear-gradient(135deg, #00ff80, #00c0ff)'] },
-        { key: 'earth',   label: '大地',    colors: ['linear-gradient(135deg, #8b7355, #a08060)', 'linear-gradient(135deg, #6b8e5a, #7a9e68)'] },
-        { key: 'candy',   label: '糖果',    colors: ['linear-gradient(135deg, #ffb8d0, #ffc8e0)', 'linear-gradient(135deg, #b8e0ff, #c8f0ff)'] },
+        { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
+        { key: 'sunset',   label: '夕阳',    colors: ['#c89080', '#c87868'] },
+        { key: 'ocean',   label: '海洋',    colors: ['#7aaec0', '#88c0b0'] },
+        { key: 'forest',   label: '森林',    colors: ['#90b898', '#7aa888'] },
+        { key: 'gold',    label: '金色',    colors: ['#a88050', '#c89050'] },
+        { key: 'anime',   label: '动漫',    colors: ['#e8a0c8', '#c0a0e0'] },
+        { key: 'retro',    label: '复古',    colors: ['#c89050', '#8b7355'] },
+        { key: 'cyber',   label: '赛博',    colors: ['#00c8ff', '#8000ff'] },
+        { key: 'pastel',  label: '马卡龙',  colors: ['#f0b8c0', '#b8d0f0'] },
+        { key: 'nord',    label: 'Nord',    colors: ['#88c0d0', '#a3be8c'] },
+        { key: 'neon',    label: '霓虹',    colors: ['#ff0080', '#00ff80'] },
+        { key: 'earth',   label: '大地',    colors: ['#8b7355', '#6b8e5a'] },
+        { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#b8e0ff'] },
       ],
     }
   },
@@ -602,15 +603,15 @@ export default {
     currentPalettePreview() {
       if (this.bubbleCfg.palette === '__all__') {
         // 完全随机：展示所有色系的混合渐变
-        return 'linear-gradient(90deg, #c4b5d8 0%, #e8a0c8 14%, #7aaec0 28%, #90b898 42%, #a88050 57%, #ff0080 71%, #00c8ff 85%, #ffb8d0 100%)'
+        return 'var(--accent)'
       }
       if (this.bubbleCfg.palette === '__custom__') {
-        return 'linear-gradient(90deg, #888, #aaa)'
+        return '#888'
       }
       const p = this.palettes.find(p => p.key === this.bubbleCfg.palette)
-      if (!p) return 'linear-gradient(90deg, #888, #aaa)'
+      if (!p) return '#888'
       const [c1, c2] = p.colors
-      return `${c1}, ${c2}`
+      return c1
     },
   },
   watch: {
@@ -1022,10 +1023,10 @@ export default {
   vertical-align: middle;
 }
 
-.legendary-dot.legendary { background: linear-gradient(135deg, #b88040, #d8a868); }
-.legendary-dot.epic { background: linear-gradient(135deg, #9060c0, #7040a0); }
-.legendary-dot.rare { background: linear-gradient(135deg, #4890c8, #3070a8); }
-.legendary-dot.common { background: linear-gradient(135deg, #8090a0, #607080); }
+.legendary-dot.legendary { background: #b88040; }
+.legendary-dot.epic { background: #9060c0; }
+.legendary-dot.rare { background: #4890c8; }
+.legendary-dot.common { background: #8090a0; }
 
 .custom-gradients-input {
   resize: vertical;
@@ -1038,78 +1039,103 @@ export default {
 .settings-actions { padding-top: 8px; }
 .settings-actions .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 
-/* 主题下拉 */
-.theme-select-wrap {
-  position: relative;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+/* Theme Selection Grid */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.theme-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
-}
-
-.theme-select-wrap select {
-  width: 100%;
-  padding: 10px 40px 10px 14px;
-  background: var(--bg-primary);
-  border: none;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: var(--font-body);
+  overflow: hidden;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
 }
 
-.theme-select-wrap select:focus {
-  outline: none;
+.theme-card:hover {
+  border-color: var(--accent-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.theme-card.active {
   border-color: var(--accent);
+  border-width: 2px;
+  background: var(--bg-card);
 }
 
-.theme-select-wrap::after {
-  content: '';
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--text-muted);
-  pointer-events: none;
-}
-
-.theme-accent-bar {
-  height: 3px;
-  width: 100%;
-  transition: background 0.3s ease;
-}
-
-.theme-color-preview {
+.theme-card-preview {
+  height: 60px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
   display: flex;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-primary);
+  gap: 4px;
+  align-items: flex-end;
 }
 
-.color-dot {
+.preview-accent {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  border: 2px solid transparent;
-  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-.color-dot:hover {
-  transform: scale(1.2);
+.preview-secondary {
+  width: 40px;
+  height: 8px;
+  border-radius: 4px;
+  opacity: 0.5;
 }
 
-.color-dot.active {
-  border-color: var(--text-primary);
-  transform: scale(1.15);
-  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px currentColor;
+.theme-card-info {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-icon {
+  font-size: 18px;
+}
+
+.theme-names {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-label-en {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.theme-check {
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 翻译映射 */
