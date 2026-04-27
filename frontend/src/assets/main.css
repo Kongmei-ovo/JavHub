@@ -280,14 +280,18 @@ a:hover { color: var(--accent-light); }
   100% { transform: rotate(-0.5deg); }
 }
 
-.edit-mode .settings-card {
-  animation: jiggle 0.3s infinite ease-in-out;
-  cursor: grab;
+@media (prefers-reduced-motion: no-preference) {
+  .edit-mode .settings-card {
+    animation: jiggle 0.3s infinite ease-in-out;
+  }
+  .edit-mode .settings-card:nth-child(even) {
+    animation-duration: 0.27s;
+    animation-direction: reverse;
+  }
 }
 
-.edit-mode .settings-card:nth-child(even) {
-  animation-duration: 0.27s;
-  animation-direction: reverse;
+.edit-mode .settings-card {
+  cursor: grab;
 }
 
 .edit-mode .settings-card .resize-handle {

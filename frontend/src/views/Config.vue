@@ -601,6 +601,7 @@ export default {
       themes: THEMES,
       currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
       editMode: false,
+      resizingKey: null,
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       palettes: [
         { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
@@ -728,11 +729,15 @@ export default {
       const startW = this.widgetLayout[key].w;
       const startH = this.widgetLayout[key].h;
       
+      this.resizingKey = key;
+      
       const onMouseMove = (moveEvent) => {
         this.doResize(moveEvent, key, startX, startY, startW, startH);
       };
       
       const onMouseUp = () => {
+        this.resizingKey = null;
+        this.stopResizing();
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
@@ -744,14 +749,19 @@ export default {
       const grid = this.$el.querySelector('.settings-content');
       if (!grid) return;
       
-      const colWidth = grid.offsetWidth / 4;
-      const rowHeight = 180; // Approximate base height
+      const style = window.getComputedStyle(grid);
+      const gridColumns = style.getPropertyValue('grid-template-columns').split(' ').filter(Boolean).length || 4;
+      const colWidth = grid.offsetWidth / gridColumns;
+      
+      // Measure actual row height from a 1x1 card if available
+      const sCard = grid.querySelector('.widget-s');
+      const actualRowHeight = sCard ? sCard.offsetHeight : 180;
       
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
       
-      const newW = Math.max(1, Math.min(4, startW + Math.round(deltaX / colWidth)));
-      const newH = Math.max(1, Math.min(4, startH + Math.round(deltaY / rowHeight)));
+      const newW = Math.max(1, Math.min(gridColumns, startW + Math.round(deltaX / colWidth)));
+      const newH = Math.max(1, Math.min(6, startH + Math.round(deltaY / actualRowHeight)));
       
       if (newW !== this.widgetLayout[key].w || newH !== this.widgetLayout[key].h) {
         this.widgetLayout[key] = { w: newW, h: newH };
@@ -770,7 +780,8 @@ export default {
     getWidgetClass(key) {
       const layout = this.widgetLayout[key];
       return {
-        'widget-s': layout.w === 1 && layout.h === 1
+        'widget-s': layout.w === 1 && layout.h === 1,
+        'resizing': this.resizingKey === key
       };
     },
     async save() {
@@ -951,6 +962,13 @@ export default {
 .settings-card.widget-s { grid-column: span 1; grid-row: span 1; }
 .settings-card.widget-m { grid-column: span 2; grid-row: span 1; }
 .settings-card.widget-l { grid-column: span 2; grid-row: span 2; }
+
+.settings-card.resizing {
+  z-index: 100;
+  cursor: grabbing !important;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+}
 
 /* Handle inner content visibility */
 .settings-card.widget-s > *:not(.settings-card-header):not(.widget-always-show):not(.resize-handle) {
