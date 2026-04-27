@@ -546,6 +546,7 @@
 </template>
 
 <script>
+import gsap from 'gsap'
 import api from '../api'
 import { THEMES, applyTheme } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
@@ -730,14 +731,17 @@ export default {
       const startH = this.widgetLayout[key].h;
       
       this.resizingKey = key;
+      const el = e.target.closest('.settings-card');
+      const quickSkewX = gsap.quickSetter(el, "skewX", "deg");
+      const quickScale = gsap.quickSetter(el, "scale");
       
       const onMouseMove = (moveEvent) => {
-        this.doResize(moveEvent, key, startX, startY, startW, startH);
+        this.doResize(moveEvent, key, startX, startY, startW, startH, quickSkewX, quickScale);
       };
       
       const onMouseUp = () => {
         this.resizingKey = null;
-        this.stopResizing();
+        this.stopResizing(el);
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
@@ -745,7 +749,7 @@ export default {
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    doResize(e, key, startX, startY, startW, startH) {
+    doResize(e, key, startX, startY, startW, startH, quickSkewX, quickScale) {
       const grid = this.$el.querySelector('.settings-content');
       if (!grid) return;
       
@@ -753,7 +757,6 @@ export default {
       const gridColumns = style.getPropertyValue('grid-template-columns').split(' ').filter(Boolean).length || 4;
       const colWidth = grid.offsetWidth / gridColumns;
       
-      // Measure actual row height from a 1x1 card if available
       const sCard = grid.querySelector('.widget-s');
       const actualRowHeight = sCard ? sCard.offsetHeight : 180;
       
@@ -763,11 +766,33 @@ export default {
       const newW = Math.max(1, Math.min(gridColumns, startW + Math.round(deltaX / colWidth)));
       const newH = Math.max(1, Math.min(6, startH + Math.round(deltaY / actualRowHeight)));
       
+      // Calculate drag tension for jelly effect
+      const targetWidth = newW * colWidth;
+      const currentWidth = startW * colWidth + deltaX;
+      const tensionX = (currentWidth - targetWidth) / colWidth;
+      
+      const targetHeight = newH * actualRowHeight;
+      const currentHeight = startH * actualRowHeight + deltaY;
+      const tensionY = (currentHeight - targetHeight) / actualRowHeight;
+
+      if (quickSkewX && quickScale) {
+        quickSkewX(tensionX * 5); // Subtle skew based on X tension
+        quickScale(1 + Math.abs(tensionX + tensionY) * 0.03); // Subtle scale based on overall tension
+      }
+      
       if (newW !== this.widgetLayout[key].w || newH !== this.widgetLayout[key].h) {
         this.widgetLayout[key] = { w: newW, h: newH };
       }
     },
-    stopResizing() {
+    stopResizing(el = null) {
+      if (el) {
+        gsap.to(el, {
+          scale: 1,
+          skewX: 0,
+          duration: 0.6,
+          ease: "elastic.out(1, 0.3)"
+        });
+      }
       localStorage.setItem('javhub_config_layout', JSON.stringify(this.widgetLayout));
     },
     getWidgetStyle(key) {
