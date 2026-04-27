@@ -430,17 +430,17 @@
             </div>
           </div>
           <div class="legendary-hint-text">
-            <span class="legendary-dot legendary"></span> 传奇 — 影片库中出现极少，琥珀金呼吸光效
+            <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 影片库中出现极少，琥珀金呼吸光效
             <br/>
-            <span class="legendary-dot epic"></span> 史诗 — 影片库中出现较少，紫色呼吸光效
+            <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 影片库中出现较少，紫色呼吸光效
             <br/>
-            <span class="legendary-dot rare"></span> 稀有 — 影片库中出现一般，蓝色微光
+            <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 影片库中出现一般，蓝色微光
             <br/>
-            <span class="legendary-dot common"></span> 普通 — 影片库中出现频繁，无光效
+            <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 普通 — 影片库中出现频繁，无光效
           </div>
           <div class="rarity-thresholds">
             <div class="rarity-threshold-row">
-              <span class="rarity-dot legendary"></span>
+              <span class="rarity-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
               <span class="threshold-label">传奇</span>
               <input
                 type="range"
@@ -453,7 +453,7 @@
               <span class="threshold-value">{{ bubbleCfg.rarityThresholds.legendary }}%</span>
             </div>
             <div class="rarity-threshold-row">
-              <span class="rarity-dot epic"></span>
+              <span class="rarity-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
               <span class="threshold-label">史诗</span>
               <input
                 type="range"
@@ -466,7 +466,7 @@
               <span class="threshold-value">{{ bubbleCfg.rarityThresholds.epic }}%</span>
             </div>
             <div class="rarity-threshold-row">
-              <span class="rarity-dot rare"></span>
+              <span class="rarity-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
               <span class="threshold-label">稀有</span>
               <input
                 type="range"
@@ -535,24 +535,43 @@ import api from '../api'
 import { THEMES, applyTheme } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
 
+const DEFAULT_CONFIG = {
+  openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
+  emby: { api_url: '', api_key: '' },
+  telegram: { bot_token: '', allowed_user_ids: [] },
+  crawler: { request_interval: 3 },
+  scheduler: { subscription_check_hour: 2 },
+  notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
+  javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
+  metatube: { host: '154.23.255.204', port: 8081, token: '' },
+  proxy: { enabled: false, http_url: '', https_url: '' },
+}
+
+const DEFAULT_BUBBLE_CFG = {
+  baseSize: 16, fillPercent: 50, spacing: 16,
+  colorMode: 'legendary', palette: 'monet',
+  customGradients: [], customGradientsText: '',
+  bubbleCount: 36,
+  rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
+  actressAvatarSize: 'medium', // 'small' | 'medium' | 'large'
+  rarityColors: {
+    legendary: '#c89a30',
+    epic: '#7040a0',
+    rare: '#3070a8',
+    common: '#607080',
+  },
+}
+
+const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', title: '标题' }
+
 export default {
   name: 'Config',
   data() {
     return {
-      config: {
-        openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
-        emby: { api_url: '', api_key: '' },
-        telegram: { bot_token: '', allowed_user_ids: [] },
-        crawler: { request_interval: 3 },
-        scheduler: { subscription_check_hour: 2 },
-        notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-        javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
-        metatube: { host: '154.23.255.204', port: 8081, token: '' },
-        proxy: { enabled: false, http_url: '', https_url: '' },
-      },
+      config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
       telegramUsers: '',
       translationType: 'actress',
-      translationTypeLabels: { actress: '演员', category: '题材', series: '系列', title: '标题' },
+      translationTypeLabels: TRANSLATION_TYPE_LABELS,
       transStats: {},
       transMsg: '',
       transMsgType: 'info',
@@ -566,20 +585,7 @@ export default {
       showMetatubeToken: false,
       themes: THEMES,
       currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
-      bubbleCfg: {
-        baseSize: 16, fillPercent: 50, spacing: 16,
-        colorMode: 'legendary', palette: 'monet',
-        customGradients: [], customGradientsText: '',
-        bubbleCount: 36,
-        rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
-        actressAvatarSize: 'medium', // 'small' | 'medium' | 'large'
-        rarityColors: {
-          legendary: '#c89a30',
-          epic: '#7040a0',
-          rare: '#3070a8',
-          common: '#607080',
-        },
-      },
+      bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       palettes: [
         { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
         { key: 'sunset',   label: '夕阳',    colors: ['#c89080', '#c87868'] },
@@ -595,6 +601,18 @@ export default {
         { key: 'earth',   label: '大地',    colors: ['#8b7355', '#6b8e5a'] },
         { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#b8e0ff'] },
       ],
+      widgetLayout: {
+        openlist: 'm',
+        emby: 's',
+        javinfo: 's',
+        translation: 'm',
+        metatube: 's',
+        crawler: 's',
+        inventory: 's',
+        design: 'l',
+        proxy: 's',
+        bubbles: 'l'
+      },
     }
   },
   computed: {
@@ -606,10 +624,10 @@ export default {
         return 'var(--accent)'
       }
       if (this.bubbleCfg.palette === '__custom__') {
-        return '#888'
+        return 'var(--text-muted)'
       }
       const p = this.palettes.find(p => p.key === this.bubbleCfg.palette)
-      if (!p) return '#888'
+      if (!p) return 'var(--text-muted)'
       const [c1, c2] = p.colors
       return c1
     },
@@ -628,26 +646,48 @@ export default {
     try {
       const resp = await api.getConfig()
       const data = resp.data
+      
+      // Merge with DEFAULT_CONFIG to ensure all fields exist
       this.config = {
-        openlist: data.openlist || { api_url: '', username: '', password: '', default_path: '/115/AV' },
-        emby: data.emby || { api_url: '', api_key: '' },
-        telegram: data.telegram || { bot_token: '', allowed_user_ids: [] },
-        crawler: data.crawler || { request_interval: 3 },
-        scheduler: data.scheduler || { subscription_check_hour: 2 },
-        notification: data.notification || { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-        javinfo: data.javinfo || { api_url: 'http://localhost:8080', page_size: 30 },
-        metatube: data.metatube || { host: '154.23.255.204', port: 8081, token: '' },
-        proxy: data.proxy || { enabled: false, http_url: '', https_url: '' },
+        ...JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
+        ...data
       }
+      
+      // Handle sub-objects to ensure they are also merged
+      for (const key in DEFAULT_CONFIG) {
+        if (typeof DEFAULT_CONFIG[key] === 'object' && !Array.isArray(DEFAULT_CONFIG[key])) {
+          this.config[key] = {
+            ...JSON.parse(JSON.stringify(DEFAULT_CONFIG[key])),
+            ...(data[key] || {})
+          }
+        }
+      }
+
       this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
       this.inventoryCron = data.inventory_cron || ''
     } catch (e) {
       console.error('Failed to load config:', e)
     }
+    this.loadLayout()
     this.loadBubbleCfg()
     this.loadTransStats()
   },
   methods: {
+    loadLayout() {
+      const saved = localStorage.getItem('javhub_config_layout');
+      if (saved) {
+        try {
+          this.widgetLayout = { ...this.widgetLayout, ...JSON.parse(saved) };
+        } catch (e) { console.error("Failed to parse layout", e); }
+      }
+    },
+    toggleWidgetSize(key) {
+      const sizes = ['s', 'm', 'l'];
+      const current = this.widgetLayout[key] || 's';
+      const next = sizes[(sizes.indexOf(current) + 1) % sizes.length];
+      this.widgetLayout[key] = next;
+      localStorage.setItem('javhub_config_layout', JSON.stringify(this.widgetLayout));
+    },
     async save() {
       this.saving = true
       try {
@@ -695,7 +735,7 @@ export default {
         if (saved) {
           const parsed = JSON.parse(saved)
           this.bubbleCfg = {
-            ...{ baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } },
+            ...JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
             ...parsed,
           }
           if (parsed.customGradients) {
@@ -716,7 +756,7 @@ export default {
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
-      this.bubbleCfg = { baseSize: 16, fillPercent: 50, spacing: 16, colorMode: 'legendary', palette: 'monet', customGradients: [], customGradientsText: '', bubbleCount: 36, rarityColors: { legendary: '#c89a30', epic: '#7040a0', rare: '#3070a8', common: '#607080' }, rarityThresholds: { legendary: 5, epic: 20, rare: 50 } }
+      this.bubbleCfg = JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG))
       localStorage.removeItem('genres_bubble_cfg')
       this.$message.info('已恢复默认')
     },
@@ -1041,10 +1081,10 @@ export default {
   vertical-align: middle;
 }
 
-.legendary-dot.legendary { background: #b88040; }
-.legendary-dot.epic { background: #9060c0; }
-.legendary-dot.rare { background: #4890c8; }
-.legendary-dot.common { background: #8090a0; }
+.legendary-dot.legendary { background: #c89a30; }
+.legendary-dot.epic { background: #7040a0; }
+.legendary-dot.rare { background: #3070a8; }
+.legendary-dot.common { background: #607080; }
 
 .custom-gradients-input {
   resize: vertical;
