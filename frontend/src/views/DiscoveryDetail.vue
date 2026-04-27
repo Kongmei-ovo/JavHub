@@ -334,7 +334,7 @@ export default {
 .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
 .skeleton-card { background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); }
 .skeleton-cover { aspect-ratio: 3/4; background: var(--bg-card-hover); position: relative; overflow: hidden; }
-.skeleton-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
+.skeleton-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--white-06), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
 .skeleton-info { padding: 12px; }
 .skeleton-line { height: 12px; background: var(--border); border-radius: 6px; margin-bottom: 8px; }
 .skeleton-line.w-60 { width: 60%; }
@@ -355,5 +355,5 @@ export default {
 .card-meta { display: flex; gap: 8px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
 .empty-state { text-align: center; padding: 60px; color: var(--text-muted); }
 .skeleton { background: var(--bg-card-hover); position: relative; overflow: hidden; }
-.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--white-06), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
 </style>

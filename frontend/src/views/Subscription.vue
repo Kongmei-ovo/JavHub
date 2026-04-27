@@ -288,7 +288,7 @@ export default {
 .search-hero {
   text-align: center;
   padding: 48px 20px 36px;
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, transparent 100%);
+  background: var(--bg-primary);
   margin: -24px -24px 0;
 }
 .hero-title {
@@ -351,7 +351,7 @@ export default {
   width: 100%; height: 100%; object-fit: cover;
   transition: transform 0.3s;
 }
-.actor-card:hover .actor-cover-img { transform: scale(1.04); }
+.actor-card:hover .actor-cover-img { }
 .actor-body { padding: 10px 12px 6px; }
 .actor-name {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
@@ -387,9 +387,17 @@ export default {
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 2/3;
-  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
+  background: var(--bg-card-hover);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--white-06), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
 }
 .skeleton-body { padding: 10px 12px; }
 .skeleton-line {

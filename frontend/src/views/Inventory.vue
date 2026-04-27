@@ -569,7 +569,6 @@ const fetchJobs = async () => {
   transition: transform 0.3s;
 }
 .actor-card:hover .actor-cover img {
-  transform: scale(1.05);
 }
 .missing-badge {
   position: absolute;
@@ -607,9 +606,17 @@ const fetchJobs = async () => {
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 3/4;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: var(--bg-card-hover);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--white-06), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
 }
 .skeleton-line {
   height: 12px;

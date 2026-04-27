@@ -444,7 +444,7 @@ export default {
 .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
 .gallery-item:hover img { transform: translateY(-4px); }
 .skeleton { background: var(--bg-card-hover); position: relative; overflow: hidden; border-radius: 4px; }
-.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--white-06), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 .skeleton-title { height: 24px; width: 80%; }
 .skeleton-text { height: 16px; width: 40px; }

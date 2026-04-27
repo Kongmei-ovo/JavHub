@@ -1,5 +1,15 @@
 <template>
   <div class="search-page">
+    <!-- 顶部工具栏（仅从详情页跳转来时显示） -->
+    <div v-if="$route.query.returnTo === 'video'" class="search-back-toolbar">
+      <button class="back-btn" @click="$router.back()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        返回详情
+      </button>
+    </div>
+
     <!-- 搜索区域 -->
     <div class="search-hero">
       <h1 class="hero-title">影片搜索</h1>
@@ -326,13 +336,21 @@ export default {
     // 检查是否有新的查询参数
     const q = this.$route.query
     let changed = false
-    if (q.actress && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
-    if (q.maker && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
-    if (q.series && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
-    if ((q.keyword || q.q) && (q.keyword || q.q) !== this.keyword) {
-      this.keyword = q.keyword || q.q
-      changed = true
+    if (q.actress !== undefined && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
+    if (q.maker !== undefined && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
+    if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
+    if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
+    if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
+    
+    // 处理题材标签
+    if (q.category_name !== undefined) {
+      const tags = q.category_name.split(' ').filter(t => t)
+      if (JSON.stringify(tags) !== JSON.stringify(this.categoryTags)) {
+        this.categoryTags = tags
+        changed = true
+      }
     }
+
     if (changed) {
       this.doSearch()
     }
@@ -345,6 +363,14 @@ export default {
       if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
       if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
       if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
+      
+      if (q.category_name !== undefined) {
+        const tags = q.category_name.split(' ').filter(t => t)
+        if (JSON.stringify(tags) !== JSON.stringify(this.categoryTags)) {
+          this.categoryTags = tags
+          changed = true
+        }
+      }
 
       if (changed) {
         this.doSearch()
@@ -369,28 +395,6 @@ export default {
       this.results = []
       this.searched = false
     },
-    searchByCategory(categoryName) {
-      this.closeModal()
-      if (categoryName && !this.categoryTags.includes(categoryName)) {
-        this.categoryTags.push(categoryName)
-      }
-      this.doSearch()
-    },
-    searchByMaker(makerName) {
-      this.closeModal()
-      this.makerName = makerName
-      this.doSearch()
-    },
-    searchBySeries(seriesName) {
-      this.closeModal()
-      this.seriesName = seriesName
-      this.doSearch()
-    },
-    searchByActress(actressName) {
-      this.closeModal()
-      this.actressName = actressName
-      this.doSearch()
-    },
     addCategoryTag() {
       const tag = this.categoryInput.trim()
       if (tag && !this.categoryTags.includes(tag)) {
@@ -400,6 +404,7 @@ export default {
     },
     removeCategoryTag(idx) {
       this.categoryTags.splice(idx, 1)
+      this.doSearch()
     },
     async doSearch() {
       this.loading = true
@@ -512,18 +517,28 @@ export default {
       this.doSearch()
     },
     async openModal(video) {
-      openVideoModal(video, this.$route.path)
-      // 如果需要加载完整详情
-      if (!video.magnets && !video.gallery_thumb_first) {
-        try {
-          const resp = await api.getVideo(video.content_id || video.dvd_id)
-          if (resp.data) {
-            openVideoModal({ ...video, ...resp.data }, this.$route.path)
-          }
-        } catch (e) {
-          console.error('Load video detail failed:', e)
+      const contentId = video.content_id || video.dvd_id
+
+      // 先获取 JavInfoApi 完整数据，再打开弹窗（避免多次渲染）
+      let fullVideo = { ...video }
+      try {
+        const resp = await api.getVideo(contentId)
+        if (resp.data) {
+          fullVideo = { ...video, ...resp.data }
         }
+      } catch (e) {
+        console.error('Load video detail failed:', e)
       }
+
+      // 打开弹窗，使用完整数据（一次渲染到位）
+      openVideoModal(fullVideo, this.$route.path)
+
+      // 异步获取外部元数据（简介、评分等），不阻塞前台
+      api.getVideoMetadata(contentId).then(resp => {
+        if (resp.data && Object.keys(resp.data).length > 0) {
+          openVideoModal({ ...modalState.selectedVideo, ...resp.data }, this.$route.path)
+        }
+      }).catch(e => console.warn('Load lazy metadata failed:', e))
     },
     handleImgError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'
@@ -558,10 +573,37 @@ export default {
   background: var(--bg-primary);
 }
 
+.search-back-toolbar {
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.search-back-toolbar .back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.search-back-toolbar .back-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .search-hero {
   text-align: center;
   padding: 36px 20px 28px;
-  background: linear-gradient(180deg, rgba(99,102,241,0.06) 0%, var(--bg-primary) 100%);
+  background: var(--bg-primary);
   position: relative;
   overflow: hidden;
 }
@@ -574,7 +616,7 @@ export default {
   transform: translateX(-50%);
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -584,10 +626,7 @@ export default {
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 0;
-  background: linear-gradient(135deg, #FFFFFF 0%, #A1A1AA 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
 }
 
 .hero-subtitle {
@@ -842,25 +881,26 @@ export default {
 }
 
 .main-search-btn {
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  color: white;
+  background: var(--accent);
+  color: var(--bg-primary);
   border: none;
   border-radius: var(--radius-md);
   padding: 10px 28px;
   font-size: 15px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px var(--accent-glow);
+  box-shadow: 0 4px 12px var(--black-20);
 }
 
 .main-search-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px var(--accent-glow);
+  background: var(--accent-light);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .result-bar {
@@ -956,18 +996,14 @@ export default {
 
 .skeleton-cover {
   aspect-ratio: 3/4;
-  background: linear-gradient(90deg,
-    var(--bg-card) 25%,
-    rgba(255,255,255,0.05) 50%,
-    var(--bg-card) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  background: var(--bg-card-hover);
+  animation: pulse 2s infinite ease-in-out;
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .skeleton-info {
@@ -991,15 +1027,13 @@ export default {
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
   border: 1px solid var(--border);
 }
 
 .movie-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 30px var(--accent-glow);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
   border-color: var(--accent);
 }
 
@@ -1020,7 +1054,6 @@ export default {
 }
 
 .movie-card:hover .cover-img {
-  transform: scale(1.07);
 }
 
 .cover-img.wide {

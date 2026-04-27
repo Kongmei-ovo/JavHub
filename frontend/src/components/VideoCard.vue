@@ -61,7 +61,6 @@ const handleImageError = () => {
 }
 
 .video-card:hover .video-cover img {
-  transform: scale(1.08);
 }
 
 .cover-placeholder {
@@ -70,7 +69,7 @@ const handleImageError = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+  background: var(--bg-card);
   color: var(--text-muted);
 }
 
@@ -80,7 +79,9 @@ const handleImageError = () => {
   left: 0;
   right: 0;
   padding: 8px 10px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .cover-code {
