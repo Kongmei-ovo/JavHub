@@ -832,8 +832,22 @@ export default {
   font-size: 14px;
 }
 
-.tray-slide-enter-active, .tray-slide-leave-active { transition: all 0.4s var(--ease-pro); }
-.tray-slide-enter-from, .tray-slide-leave-to { opacity: 0; transform: translateY(-20px); }
+/* 优化后的过渡动效 */
+.tray-slide-enter-active {
+  transition: all 0.4s var(--ease-pro);
+  will-change: transform, opacity;
+}
+
+.tray-slide-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 1, 1); /* 离场更干脆 */
+  will-change: transform, opacity;
+}
+
+.tray-slide-enter-from, 
+.tray-slide-leave-to { 
+  opacity: 0; 
+  transform: translateY(-16px) scale(0.99); 
+}
 
 /* 结果网格样式同步 2.0 */
 .results-grid {
