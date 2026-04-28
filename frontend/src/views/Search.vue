@@ -10,126 +10,111 @@
       </button>
     </div>
 
-    <!-- 搜索区域 -->
+    <!-- 搜索核心区域 -->
     <div class="search-hero">
-      <h1 class="hero-title">影片搜索</h1>
-      <div class="search-section">
-        <!-- 主检索：番号 + 关键词 -->
-        <div class="search-row search-row-main">
-          <div class="search-box-wrapper code-search">
-            <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input v-model="contentId" placeholder="番号" @keyup.enter="doSearch" @input="contentId = contentId.toUpperCase()" class="search-input" />
-            </div>
+      <h1 class="hero-title">发现</h1>
+      <p class="hero-subtitle">搜索影片、番号、演员或工作室</p>
+      
+      <div class="command-capsule-container">
+        <!-- 主指令胶囊 -->
+        <div class="command-capsule" :class="{ focused: isSearchFocused }">
+          <div class="capsule-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
           </div>
-          <div class="search-box-wrapper">
-            <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
+          
+          <div class="capsule-main">
+            <input 
+              v-model="contentId" 
+              placeholder="搜索番号 (如 SSIS-123)" 
+              @focus="isSearchFocused = true"
+              @blur="isSearchFocused = false"
+              @keyup.enter="doSearch"
+              @input="contentId = contentId.toUpperCase()"
+              class="capsule-input primary"
+            />
+            <div class="capsule-divider"></div>
+            <input 
+              v-model="keyword" 
+              placeholder="或输入标题关键词" 
+              @focus="isSearchFocused = true"
+              @blur="isSearchFocused = false"
+              @keyup.enter="doSearch"
+              class="capsule-input"
+            />
+          </div>
+
+          <button @click="doSearch" :disabled="loading" class="capsule-search-btn">
+            <span v-if="loading" class="spinner"></span>
+            <span v-else>执行</span>
+          </button>
+        </div>
+
+        <!-- 快速筛选盘 (Filter Tray) -->
+        <div class="filter-tray">
+          <div class="filter-group">
+            <div class="filter-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+                <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
               </svg>
-              <input v-model="keyword" placeholder="标题" @keyup.enter="doSearch" class="search-input" />
+              <select v-model="serviceCode" class="tray-select">
+                <option value="">全部版本</option>
+                <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
+              </select>
             </div>
+            
+            <button class="filter-item toggle" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+                <path d="M20 7h-9m14 10h-9M5 7h14M5 17h14"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>
+              </svg>
+              高级筛选
+            </button>
           </div>
         </div>
 
-        <!-- 更多筛选（折叠） -->
-        <transition name="slide">
-          <div v-if="showMoreFilters" class="search-row search-row-more">
-            <!-- 题材占一整行：tag 输入 -->
-            <div class="search-box-wrapper full-width">
-              <div class="search-box tag-input-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="m21 21-4.35-4.35"/>
-                </svg>
-                <div class="tag-list">
-                  <span v-for="(tag, idx) in categoryTags" :key="idx" class="tag-chip">
-                    {{ tag }}
-                    <button class="tag-remove" @click="removeCategoryTag(idx)">×</button>
-                  </span>
-                  <input
-                    v-model="categoryInput"
-                    placeholder="题材（空格添加）"
-                    @keydown.space.prevent="addCategoryTag"
-                    @keydown.enter.prevent="addCategoryTag"
-                    @keyup.enter="doSearch"
-                    class="search-input tag-input"
-                  />
+        <!-- 高级筛选详情面板 -->
+        <transition name="tray-slide">
+          <div v-if="showMoreFilters" class="advanced-panel">
+            <div class="panel-grid">
+              <div class="panel-field">
+                <label>工作室</label>
+                <input v-model="makerName" placeholder="Maker Name" class="panel-input" @keyup.enter="doSearch" />
+              </div>
+              <div class="panel-field">
+                <label>演员</label>
+                <input v-model="actressName" placeholder="Actress Name" class="panel-input" @keyup.enter="doSearch" />
+              </div>
+              <div class="panel-field">
+                <label>系列</label>
+                <input v-model="seriesName" placeholder="Series Name" class="panel-input" @keyup.enter="doSearch" />
+              </div>
+              <div class="panel-field">
+                <label>年份</label>
+                <input v-model.number="year" placeholder="YYYY" type="number" class="panel-input" @keyup.enter="doSearch" />
+              </div>
+              <div class="panel-field full">
+                <label>题材标签 (空格分隔)</label>
+                <div class="panel-tag-input">
+                  <div class="tray-tags">
+                    <span v-for="(tag, idx) in categoryTags" :key="idx" class="tray-tag">
+                      {{ tag }}<b @click="removeCategoryTag(idx)">×</b>
+                    </span>
+                  </div>
+                  <input v-model="categoryInput" placeholder="输入题材..." @keydown.space.prevent="addCategoryTag" @keydown.enter.prevent="addCategoryTag" class="panel-input" />
                 </div>
               </div>
             </div>
-            <!-- 第二行：工作室(半) + 演员(半) -->
-            <div class="search-box-wrapper maker-half">
-              <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input v-model="makerName" placeholder="工作室" @keyup.enter="doSearch" class="search-input" />
-              </div>
-            </div>
-            <div class="search-box-wrapper">
-              <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input v-model="actressName" placeholder="演员" @keyup.enter="doSearch" class="search-input" />
-              </div>
-            </div>
-            <!-- 第三行：系列 + 年份 -->
-            <div class="search-box-wrapper">
-              <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input v-model="seriesName" placeholder="系列" @keyup.enter="doSearch" class="search-input" />
-              </div>
-            </div>
-            <div class="search-box-wrapper year-search">
-              <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <input v-model.number="year" placeholder="年份" @keyup.enter="doSearch" class="search-input year-input" type="number" min="1900" max="2100" />
-              </div>
+            <div class="panel-footer">
+              <button class="btn-clear" @click="clearFilters">清空重置</button>
+              <button class="btn-apply" @click="doSearch">立即应用</button>
             </div>
           </div>
         </transition>
-
-        <!-- 操作栏 -->
-        <div class="search-actions">
-          <button class="more-filter-btn" @click="showMoreFilters = !showMoreFilters">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
-              <path v-if="showMoreFilters" d="M18 15l-6-6-6 6"/>
-              <path v-else d="M6 9l6 6 6-6"/>
-            </svg>
-            {{ showMoreFilters ? '收起' : '更多筛选' }}
-          </button>
-          <div class="version-select-wrapper">
-            <select v-model="serviceCode" class="version-select">
-              <option value="">全部版本</option>
-              <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
-            </select>
-            <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </div>
-          <button @click="doSearch" :disabled="loading" class="main-search-btn">
-            <span v-if="loading" class="spinner"></span>
-            <span v-else>搜索</span>
-          </button>
-        </div>
       </div>
     </div>
+
 
     <!-- 结果信息 + 分页 -->
     <div v-if="results.length > 0 || loading" class="result-bar">
@@ -299,7 +284,8 @@ export default {
       pageSize: 30,
       total: 0,
       totalPages: 1,
-      jumpPage: null
+      jumpPage: null,
+      isSearchFocused: false
     }
   },
   computed: {
@@ -568,647 +554,306 @@ export default {
 </script>
 
 <style scoped>
-.search-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-}
-
-.search-back-toolbar {
-  padding: 12px 20px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-}
-
-.search-back-toolbar .back-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
-}
-
-.search-back-toolbar .back-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+/* ================================================
+   ✨ 指令胶囊 (Command Capsule) - Search 2.0
+   ================================================ */
 
 .search-hero {
-  text-align: center;
-  padding: 36px 20px 28px;
+  padding: 60px 20px 40px;
   background: var(--bg-primary);
-  position: relative;
-  overflow: hidden;
-}
-
-.search-hero::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
-  pointer-events: none;
+  text-align: center;
 }
 
 .hero-title {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 42px;
+  font-size: 48px;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 0;
-  color: var(--text-primary);
+  letter-spacing: -0.04em;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-subtitle {
+  font-size: 15px;
   color: var(--text-muted);
-  margin-bottom: 24px;
+  margin-bottom: 40px;
+  letter-spacing: 0.02em;
 }
 
-.search-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 1600px;
-  margin: 12px auto 0;
-  padding: 0 20px;
-}
-
-.search-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.search-row-main {
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-.search-row-main .search-box-wrapper {
-  flex: 1 0 calc(50% - 5px);
-  min-width: calc(50% - 5px);
-}
-
-.search-row-more {
-  flex-wrap: wrap;
-}
-
-.search-row-more .search-box-wrapper {
-  flex: 1;
-  min-width: calc(50% - 5px);
-}
-
-.search-row-more .maker-half {
-  flex: 1;
-  min-width: calc(50% - 5px);
-}
-
-.search-row-more .full-width {
-  flex: 1 1 100%;
-  min-width: 100%;
-}
-
-.search-box-wrapper {
+.command-capsule-container {
+  max-width: 800px;
+  margin: 0 auto;
   position: relative;
+  z-index: 10;
+}
+
+/* 主胶囊容器 */
+.command-capsule {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--border-light);
+  border-radius: 30px;
+  padding: 6px 10px 6px 20px;
+  transition: all 0.5s var(--ease-pro);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.command-capsule.focused {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--accent);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.03);
+  transform: scale(1.01);
+}
+
+.capsule-icon {
+  color: var(--text-muted);
+  margin-right: 14px;
+  display: flex;
+}
+
+.capsule-main {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.capsule-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 16px;
+  padding: 12px 10px;
   min-width: 0;
 }
 
-.search-actions {
+.capsule-input.primary {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.capsule-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 10px;
+}
+
+.capsule-search-btn {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 24px;
+  padding: 0 24px;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-pro);
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+
+.capsule-search-btn:hover {
+  background: var(--accent-light);
+  transform: scale(1.05);
+}
+
+/* 筛选盘 (Filter Tray) */
+.filter-tray {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.filter-group {
+  display: flex;
   gap: 10px;
 }
 
-.more-filter-btn {
+.filter-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: var(--bg-secondary);
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 20px;
+  padding: 6px 16px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  transition: var(--transition);
-  white-space: nowrap;
+  transition: all 0.3s var(--ease-pro);
 }
-.more-filter-btn:hover {
+
+.filter-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-light);
+}
+
+.filter-item.toggle.active {
+  background: var(--accent-bg);
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.version-select-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.version-select {
-  appearance: none;
-  padding: 10px 36px 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: var(--transition-pro);
-  min-width: 140px;
-  backdrop-filter: blur(10px);
-}
-
-.version-select:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-light);
-}
-
-.version-select:focus {
+.tray-select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: inherit;
   outline: none;
-  border-color: var(--accent);
-  background: var(--bg-card-hover);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  padding-right: 4px;
 }
 
-.select-arrow {
-  position: absolute;
-  right: 12px;
-  pointer-events: none;
-  color: var(--text-muted);
-}
-
-/* 折叠展开动画 */
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.2s ease;
-  overflow: hidden;
-}
-.slide-enter-from,
-.slide-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-.slide-enter-to,
-.slide-leave-from {
-  opacity: 1;
-  max-height: 200px;
-}
-
-.year-input {
-  -moz-appearance: textfield;
-}
-.year-input::-webkit-outer-spin-button,
-.year-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
+/* 高级面板 (Advanced Panel) */
+.advanced-panel {
+  margin-top: 16px;
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 0 14px;
-  transition: var(--transition-pro);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow-card);
+  animation: panelEntry 0.5s var(--ease-pro) both;
 }
 
-.search-box:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-light);
+@keyframes panelEntry {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.search-box:focus-within {
-  border-color: var(--accent);
-  background: var(--bg-card-hover);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  text-align: left;
 }
 
-.tag-input-box {
-  flex-wrap: wrap;
-  padding: 8px 14px;
+.panel-field {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.tag-list {
+.panel-field.full { grid-column: span 2; }
+
+.panel-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-left: 4px;
+}
+
+.panel-input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.3s var(--ease-pro);
+}
+
+.panel-input:focus {
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.3);
+  outline: none;
+}
+
+.panel-tag-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tray-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
+  gap: 8px;
 }
 
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--accent);
-  color: white;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0;
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.8;
-}
-.tag-remove:hover {
-  opacity: 1;
-}
-
-.tag-input {
-  flex: 1;
-  min-width: 80px;
-  padding: 4px 0;
-}
-
-.search-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  padding: 12px 8px;
-  font-size: 15px;
-  background: transparent;
+.tray-tag {
+  background: var(--white-10);
+  border: 1px solid var(--border-light);
   color: var(--text-primary);
-}
-
-.main-search-btn {
-  background: var(--accent);
-  color: var(--bg-primary);
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 10px 28px;
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px var(--black-20);
+  gap: 6px;
 }
 
-.main-search-btn:hover {
-  background: var(--accent-light);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+.tray-tag b {
+  cursor: pointer;
+  opacity: 0.5;
+  font-size: 14px;
+}
+.tray-tag b:hover { opacity: 1; }
+
+.panel-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-apply {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 10px 32px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tray-slide-enter-active, .tray-slide-leave-active { transition: all 0.4s var(--ease-pro); }
+.tray-slide-enter-from, .tray-slide-leave-to { opacity: 0; transform: translateY(-20px); }
+
+/* 结果网格样式同步 2.0 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 30px;
+  padding: 40px 20px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .result-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-  max-width: 1400px;
-  margin: 16px auto 0;
-}
-
-.result-bar-left { display: flex; align-items: center; gap: 16px; }
-.result-count {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.result-sort { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sort-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.sort-rows { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.sort-row { display: flex; align-items: center; gap: 2px; }
-.sort-remove-btn {
-  background: none; border: none; color: var(--text-muted); cursor: pointer;
-  font-size: 14px; padding: 2px 4px; border-radius: 4px; line-height: 1;
-}
-.sort-remove-btn:hover { color: var(--text-primary); }
-.sort-add-btn {
-  font-size: 12px !important;
-  padding: 4px 10px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-sm) !important;
-  background: var(--bg-secondary) !important;
-  color: var(--text-secondary) !important;
-  cursor: pointer;
-  line-height: normal !important;
-}
-.sort-add-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
-
-.filter-select-small {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 12px;
-}
-
-.skeleton-grid,
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
-  padding: 0 20px 40px;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
-}
-
-/* 卡片入场动画 - 交错出现 */
-.results-grid .movie-card {
-  animation: cardEntrance 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-.results-grid .movie-card:nth-child(1) { animation-delay: 0.02s; }
-.results-grid .movie-card:nth-child(2) { animation-delay: 0.04s; }
-.results-grid .movie-card:nth-child(3) { animation-delay: 0.06s; }
-.results-grid .movie-card:nth-child(4) { animation-delay: 0.08s; }
-.results-grid .movie-card:nth-child(5) { animation-delay: 0.10s; }
-.results-grid .movie-card:nth-child(6) { animation-delay: 0.12s; }
-.results-grid .movie-card:nth-child(7) { animation-delay: 0.14s; }
-.results-grid .movie-card:nth-child(8) { animation-delay: 0.16s; }
-
-@keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.skeleton-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.skeleton-cover {
-  aspect-ratio: 3/4;
-  background: var(--bg-card-hover);
-  animation: pulse 2s infinite ease-in-out;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.skeleton-info {
-  padding: 12px;
-}
-
-.skeleton-line {
-  height: 12px;
-  background: var(--bg-card-hover);
-  border-radius: 6px;
-  margin-bottom: 8px;
-}
-
-.w-60 { width: 60%; }
-.w-80 { width: 80%; }
-
-.movie-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-  border: 1px solid var(--border);
-}
-
-.movie-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-  border-color: var(--accent);
-}
-
-.card-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3/4;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.movie-card:hover .cover-img {
-}
-
-.cover-img.wide {
-  object-fit: none;
-  object-position: right center;
-  clip-path: inset(0 0 0 50%);
-}
-
-.card-preview-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0,0,0,0.65);
-  border-radius: 4px;
-  padding: 3px 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  pointer-events: none;
-}
-
-.card-info {
-  padding: 10px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.card-code-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.card-code {
-  font-weight: bold;
-  font-size: 13px;
-}
-
-.card-type {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.type-mono {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
-}
-
-.type-digital {
-  background: rgba(33, 150, 243, 0.2);
-  color: #2196F3;
-}
-
-.type-rental {
-  background: rgba(255, 152, 0, 0.2);
-  color: #FF9800;
-}
-
-.type-download {
-  background: rgba(156, 39, 176, 0.2);
-  color: #9C27B0;
-}
-
-.type-streaming,
-.type-subscription {
-  background: rgba(244, 67, 54, 0.2);
-  color: #F44336;
-}
-
-.card-title {
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.card-meta {
-  display: flex;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-muted);
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
   padding: 20px;
+  border-bottom: 1px solid var(--border);
 }
 
 .pagination-bar {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.page-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 6px 12px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 13px;
-  transition: var(--transition-pro);
-  backdrop-filter: blur(10px);
-}
-.page-btn:hover:not(:disabled) { 
-  border-color: var(--accent); 
-  color: var(--accent); 
-  background: var(--bg-card-hover);
-}
-.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
-
-.jump-wrap { display: flex; align-items: center; gap: 4px; margin-left: 12px; }
-.jump-input {
-  width: 56px; 
-  padding: 6px 8px; 
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md); 
-  background: var(--bg-card); 
-  color: var(--text-primary);
-  font-size: 12px; 
-  text-align: center;
-  transition: var(--transition-pro);
-}
-.jump-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background: var(--bg-card-hover);
-}
-.jump-input::-webkit-inner-spin-button,
-.jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-.jump-btn {
-  background: var(--bg-secondary); 
-  border: 1px solid var(--border);
-  color: var(--text-primary); 
-  padding: 6px 14px; 
-  border-radius: var(--radius-md);
-  cursor: pointer; 
-  font-size: 12px; 
-  transition: var(--transition-pro);
-}
-.jump-btn:hover { 
-  border-color: var(--accent); 
-  color: var(--accent); 
-  background: var(--bg-card-hover);
+  padding: 30px 20px;
 }
 
 .page-info {
