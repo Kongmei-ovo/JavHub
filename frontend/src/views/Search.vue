@@ -18,17 +18,10 @@
       <div class="command-capsule-container">
         <!-- 主指令胶囊 -->
         <div class="command-capsule" :class="{ focused: isSearchFocused }">
-          <div class="capsule-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
-            </svg>
-          </div>
-          
           <div class="capsule-main">
             <input 
               v-model="contentId" 
-              placeholder="搜索番号 (如 SSIS-123)" 
+              placeholder="搜索番号" 
               @focus="isSearchFocused = true"
               @blur="isSearchFocused = false"
               @keyup.enter="doSearch"
@@ -600,7 +593,7 @@ export default {
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--border-light);
   border-radius: 30px;
-  padding: 6px 10px 6px 20px;
+  padding: 6px 6px 6px 24px;
   transition: all 0.5s var(--ease-pro);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
 }
@@ -610,12 +603,6 @@ export default {
   border-color: var(--accent);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.03);
   transform: scale(1.01);
-}
-
-.capsule-icon {
-  color: var(--text-muted);
-  margin-right: 14px;
-  display: flex;
 }
 
 .capsule-main {
@@ -631,7 +618,7 @@ export default {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px;
   padding: 12px 10px;
   min-width: 0;
 }
@@ -644,9 +631,9 @@ export default {
 
 .capsule-divider {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: var(--border);
-  margin: 0 10px;
+  margin: 0 12px;
 }
 
 .capsule-search-btn {
@@ -690,11 +677,14 @@ export default {
 .filter-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 6px 16px;
+  padding: 0 20px;
+  height: 38px;
+  min-width: 150px;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
