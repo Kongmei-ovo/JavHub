@@ -20,17 +20,32 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
-            <button
-              v-if="video.sample_url"
-              class="preview-btn"
-              title="观看预览"
-              @click="videoPlayerVisible = true"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              预览
-            </button>
+            
+            <div class="modal-actions">
+              <button
+                v-if="video.sample_url"
+                class="preview-btn"
+                title="观看预览"
+                @click="videoPlayerVisible = true"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                预览
+              </button>
+
+              <button 
+                class="favorite-btn" 
+                :class="{ 'is-active': isFavorited }" 
+                @click="toggleFavorite"
+                :title="isFavorited ? '取消收藏' : '添加收藏'"
+              >
+                <svg viewBox="0 0 24 24" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- 标题 -->
@@ -262,6 +277,7 @@
 <script>
 import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
+import favoriteState from '../utils/favoriteState'
 import api from '../api'
 
 export default {
@@ -279,6 +295,10 @@ export default {
     }
   },
   computed: {
+    isFavorited() {
+      const id = this.video.dvd_id || this.video.content_id
+      return favoriteState.isFavorited('video', id)
+    },
     videoLoaded() {
       // 基本信息（dvd_id / release_date）已到就认为数据可用，不等待 categories/actresses
       return !!(this.video.dvd_id || this.video.release_date || this.video.content_id)
@@ -312,6 +332,18 @@ export default {
     },
   },
   methods: {
+    async toggleFavorite() {
+      const id = this.video.dvd_id || this.video.content_id
+      if (!id) return
+      try {
+        await favoriteState.toggle('video', id, {
+          title: this.video.title_ja || this.video.title_en,
+          cover_url: this.coverImageUrl
+        })
+      } catch (err) {
+        console.error('Failed to toggle favorite:', err)
+      }
+    },
     actressNameDisplay(actress) {
       if (!actress) return ''
       const lang = displayLang.value
@@ -394,10 +426,17 @@ export default {
 .modal-gallery { width: 100%; background: var(--bg-secondary); display: flex; justify-content: center; align-items: flex-start; }
 .gallery-img { width: 100%; max-height: 65vh; object-fit: contain; object-position: top center; }
 .modal-content { padding: 48px 64px 64px; display: flex; flex-direction: column; gap: 48px; }
-.modal-code-block { border-bottom: var(--stroke-pro) solid var(--accent); padding-bottom: 12px; display: flex; align-items: center; gap: 16px; }
+.modal-code-block { border-bottom: var(--stroke-pro) solid var(--accent); padding-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.modal-actions { display: flex; align-items: center; gap: 12px; }
 .modal-code { font-size: 28px; font-weight: 700; color: var(--accent); font-family: var(--font-mono); letter-spacing: var(--ls-pro); }
-.preview-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: var(--accent); color: var(--bg-primary); border-radius: 40px; font-size: 14px; font-weight: 600; text-decoration: none; transition: var(--transition-pro); flex-shrink: 0; }
+.preview-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: var(--accent); color: var(--bg-primary); border-radius: 40px; font-size: 14px; font-weight: 600; text-decoration: none; transition: var(--transition-pro); flex-shrink: 0; border: none; cursor: pointer; }
 .preview-btn:hover { background: var(--accent-light); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255,255,255,0.1); }
+.favorite-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: var(--bg-secondary); color: var(--text-primary); border-radius: 40px; font-size: 14px; font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: var(--stroke-pro) solid var(--border); cursor: pointer; }
+.favorite-btn:hover { border-color: var(--text-secondary); background: var(--white-06); }
+.favorite-btn.is-active { background: rgba(212, 175, 55, 0.1); border-color: rgba(212, 175, 55, 0.4); color: #FFD60A; }
+.favorite-btn.is-active:hover { background: rgba(212, 175, 55, 0.2); }
+.favorite-btn svg { width: 16px; height: 16px; transition: transform 0.3s var(--ease-pro); }
+.favorite-btn:active svg { transform: scale(0.8); }
 .modal-title-block { border-bottom: var(--stroke-pro) solid var(--border); padding-bottom: 16px; }
 .modal-title { font-size: 18px; color: var(--text-primary); font-weight: 600; line-height: 1.6; letter-spacing: var(--ls-pro); }
 .modal-meta { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: var(--stroke-pro) solid var(--border); }

@@ -70,14 +70,25 @@
       @download="handleDownload"
       @navigate="handleNavigate"
     />
+
+    <!-- 全局 Toast 提示 -->
+    <ToastCapsule
+      :visible="toast.visible"
+      :message="toast.message"
+      :show-organize="toast.showOrganize"
+      @close="toast.visible = false"
+      @organize="handleOrganize"
+    />
   </div>
 </template>
 
 <script>
-import { h, ref, defineComponent, watch } from 'vue'
+import { h, ref, defineComponent, watch, onMounted, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VideoModal from './components/VideoModal.vue'
+import ToastCapsule from './components/ToastCapsule.vue'
 import { modalState, closeVideoModal, openVideoModal, interruptModal, resumeModal } from './utils/modalState'
+import { favoriteState } from './utils/favoriteState'
 import api from './api'
 import { ElMessage } from 'element-plus'
 
@@ -96,11 +107,45 @@ const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 2
 
 export default {
   name: 'App',
-  components: { VideoModal },
+  components: { VideoModal, ToastCapsule },
   setup() {
     const sidebarCollapsed = ref(false)
     const route = useRoute()
     const router = useRouter()
+
+    // Toast state
+    const toast = reactive({
+      visible: false,
+      message: '',
+      showOrganize: false,
+      timer: null
+    })
+
+    const showToast = (message, showOrganize = false) => {
+      if (toast.timer) clearTimeout(toast.timer)
+      toast.message = message
+      toast.showOrganize = showOrganize
+      toast.visible = true
+      toast.timer = setTimeout(() => {
+        toast.visible = false
+      }, 4000)
+    }
+
+    const handleOrganize = () => {
+      toast.visible = false
+      router.push('/favorites')
+    }
+
+    // 监听收藏状态变化
+    favoriteState.subscribe(({ is_favorited }) => {
+      if (is_favorited) {
+        showToast('已加入收藏', true)
+      }
+    })
+
+    onMounted(() => {
+      favoriteState.init()
+    })
 
     // 监听路由变化，处理弹窗恢复
     watch(() => route.path, (newPath) => {
@@ -109,19 +154,19 @@ export default {
       }
     })
 
-    const navItems = [
+    const navItems = computed(() => [
       { path: '/genres', label: '个性推荐', icon: IconGenres },
       { path: '/search', label: '影片检索', icon: IconSearch },
       { path: '/parse', label: '磁链解析', icon: IconParse },
-      { path: '/favorites', label: '我的收藏', icon: IconHeart },
+      { path: '/favorites', label: '我的收藏', icon: IconHeart, badge: favoriteState.count.value || 0 },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员合并', icon: IconNormalize },
       { path: '/downloads', label: '下载管理', icon: IconHome },
       { path: '/settings', label: '设置', icon: IconSettings },
-    ]
+    ])
 
-    const bottomNavItems = [
+    const bottomNavItems = computed(() => [
       { path: '/genres', label: '推荐', icon: IconGenres },
       { path: '/search', label: '检索', icon: IconSearch },
       { path: '/favorites', label: '收藏', icon: IconHeart },
@@ -131,14 +176,7 @@ export default {
       { path: '/normalize', label: '合并', icon: IconNormalize },
       { path: '/downloads', label: '下载', icon: IconHome },
       { path: '/settings', label: '我的', icon: IconSettings },
-    ]
-
-    // Get favorites count for badge
-    const favoritesCount = ref(0)
-    try {
-      const fav = localStorage.getItem('movieFavorites')
-      favoritesCount.value = fav ? JSON.parse(fav).length : 0
-    } catch (e) {}
+    ])
 
     const handleDownload = async (magnet) => {
       try {
@@ -199,11 +237,12 @@ export default {
       sidebarCollapsed,
       navItems,
       bottomNavItems,
-      favoritesCount,
+      toast,
       modalState,
       closeVideoModal,
       handleDownload,
-      handleNavigate
+      handleNavigate,
+      handleOrganize
     }
   }
 }

@@ -55,6 +55,8 @@ def init_db():
 
     from database.translation import init_translation_db
     init_translation_db()
+    from database.favorite import init_favorite_db
+    init_favorite_db()
     _migrate_download_tasks()
 
     conn = get_db_orig()

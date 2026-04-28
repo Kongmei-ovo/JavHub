@@ -203,6 +203,20 @@ export default {
     return api.get('/v1/translations/stats')
   },
 
+  // ========== 收藏管理 ==========
+
+  getFavorites(entity_type) {
+    return api.get('/v1/favorites', { params: { entity_type } })
+  },
+
+  toggleFavorite(data) {
+    return api.post('/v1/favorites/toggle', data)
+  },
+
+  getCollections() {
+    return api.get('/v1/favorites/collections')
+  },
+
   // ========== 健康检查 ==========
 
   health() {

@@ -1,178 +1,201 @@
 <template>
   <div class="favorites-page">
-    <!-- Hero -->
-    <div class="favorites-hero">
-      <h1 class="hero-title">我的收藏</h1>
-      <p class="hero-subtitle">收藏喜欢的影片，方便随时查看</p>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="loading-wrap">
-      <div class="spinner-large"></div>
-      <p>加载中...</p>
-    </div>
-
-    <!-- Favorites Grid -->
-    <div v-else-if="favorites.length > 0" class="favorites-content">
-      <div class="favorites-header">
-        <span class="favorites-count">{{ favorites.length }} 部收藏</span>
-        <button class="btn btn-ghost" @click="clearAll">清空全部</button>
+    <div class="curate-header">
+      <h1 class="curate-title">私人策展</h1>
+      <div class="curate-stats">
+        共 {{ state.count }} 个收藏项
       </div>
-      <div class="favorites-grid">
-        <div
-          v-for="movie in favorites"
-          :key="movie.code"
-          class="movie-card av-card"
-          @click="openModal(movie)"
+      
+      <!-- iOS 风格的分段选择器 -->
+      <div class="segmented-control">
+        <button 
+          v-for="tab in tabs" 
+          :key="tab.id"
+          class="segment-item"
+          :class="{ active: activeTab === tab.id }"
+          @click="activeTab = tab.id"
         >
-          <div class="card-cover">
-            <img
-              :src="proxyImg(movie.cover_url)"
-              :alt="movie.code"
-              class="cover-img"
-              @error="handleImgError"
-              loading="lazy"
-            />
-            <div class="card-overlay">
-              <span class="overlay-code">{{ movie.code }}</span>
-              <button class="unfavorite-btn" @click.stop="removeFavorite(movie.code)">
-                <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" width="16" height="16">
-                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="card-info">
-            <h3 class="card-title" :title="movie.title">{{ movie.title }}</h3>
-            <div class="card-meta">
-              <span v-if="movie.actor" class="meta-item">{{ movie.actor }}</span>
-              <span v-if="movie.date" class="meta-item">{{ movie.date }}</span>
-            </div>
-          </div>
-        </div>
+          {{ tab.label }}
+        </button>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-      </svg>
-      <p>暂无收藏</p>
-      <p class="text-secondary" style="font-size:13px;margin-top:6px">在搜索结果中点击心形图标收藏影片</p>
-      <button class="btn btn-primary" style="margin-top:20px" @click="$router.push('/search')">
-        去搜索
-      </button>
-    </div>
-
-    <!-- Movie Modal -->
-    <transition name="modal-fade">
-      <div v-if="selectedMovie" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-container">
-          <button class="modal-close" @click="closeModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-          <div class="modal-body">
-            <div class="modal-gallery">
-              <div class="gallery-main">
-                <img
-                  v-if="mainGalleryImg"
-                  :src="proxyImg(mainGalleryImg)"
-                  :alt="selectedMovie?.code"
-                  @error="handleImgError"
-                />
-              </div>
-              <div v-if="galleryImages.length > 0" class="gallery-thumbs">
-                <img
-                  v-for="(img, idx) in galleryImages"
-                  :key="idx"
-                  :src="proxyImg(img)"
-                  :alt="'sample-' + idx"
-                  class="gallery-thumb"
-                  :class="{ active: mainGalleryImg === img }"
-                  @click="mainGalleryImg = img"
-                />
-              </div>
-            </div>
-
-            <div class="modal-content">
-              <div class="modal-header">
-                <h2 class="modal-title">{{ selectedMovie?.title }}</h2>
-                <div class="modal-header-actions">
-                  <span class="modal-code-badge">{{ selectedMovie?.code }}</span>
-                  <button
-                    class="favorite-btn"
-                    :class="{ active: true }"
-                    @click="toggleFavorite(selectedMovie)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5">
-                      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div class="modal-meta">
-                <span v-if="selectedMovie?.actor" class="modal-meta-item">
-                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                  </svg>
-                  {{ selectedMovie.actor }}
-                </span>
-                <span v-if="selectedMovie?.date" class="modal-meta-item">
-                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                  </svg>
-                  {{ selectedMovie.date }}
-                </span>
-              </div>
-
-              <div v-if="selectedMovie?.genres?.length" class="modal-genres">
-                <span v-for="(g, i) in selectedMovie.genres" :key="i" class="genre-tag">{{ g }}</span>
-              </div>
-
-              <div class="modal-magnets">
-                <div class="magnets-header">
-                  <span>磁力链接</span>
-                </div>
-                <div v-if="loadingMagnets" class="magnets-loading">
-                  <span class="spinner"></span>
-                  <span>加载中...</span>
-                </div>
-                <div v-else-if="filteredMagnets.length > 0" class="magnets-list">
-                  <div v-for="(mag, idx) in filteredMagnets" :key="idx" class="magnet-row">
-                    <div class="magnet-left">
-                      <span v-if="mag.hd" class="badge badge-hd">HD</span>
-                      <span v-if="mag.resolution" class="badge badge-resolution">{{ mag.resolution }}</span>
-                      <span class="mag-title">{{ mag.title }}</span>
-                    </div>
-                    <div class="magnet-right">
-                      <span class="mag-size">{{ mag.size }}</span>
-                      <button class="btn btn-primary download-btn" @click="download(selectedMovie, mag)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
-                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        下载
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="magnets-empty">
-                  <span>暂无可用磁力</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- 收藏网格 -->
+    <div class="curate-content">
+      <div v-if="filteredItems.length > 0" class="favorites-grid">
+        <VideoCard 
+          v-for="item in filteredItems" 
+          :key="item.entity_id"
+          :content-id="item.entity_id"
+          :cover-url="item.metadata?.jacket_thumb_url"
+          :actress="item.metadata?.actress_name"
+          @click="openVideo(item)"
+        />
       </div>
-    </transition>
+
+      <!-- 空状态：Apple 风格 -->
+      <div v-else class="curate-empty">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+          </svg>
+        </div>
+        <h3>开始你的策展</h3>
+        <p>在探索过程中点击心形图标，将喜欢的项目收入此处。</p>
+        <button class="btn-explore" @click="$router.push('/search')">去探索</button>
+      </div>
+    </div>
   </div>
 </template>
+
+<script>
+import { ref, computed } from 'vue'
+import { state } from '../utils/favoriteState'
+import { openVideoModal } from '../utils/modalState'
+import VideoCard from '../components/VideoCard.vue'
+
+export default {
+  name: 'Favorites',
+  components: { VideoCard },
+  setup() {
+    const activeTab = ref('all')
+    const tabs = [
+      { id: 'all', label: '全部' },
+      { id: 'video', label: '影片' },
+      { id: 'actress', label: '演员' },
+      { id: 'maker', label: '工作室' }
+    ]
+
+    const filteredItems = computed(() => {
+      if (activeTab.value === 'all') return state.items
+      return state.items.filter(i => i.entity_type === activeTab.value)
+    })
+
+    const openVideo = (item) => {
+      if (item.entity_type === 'video') {
+        openVideoModal(item.metadata || { content_id: item.entity_id })
+      }
+    }
+
+    return {
+      state,
+      activeTab,
+      tabs,
+      filteredItems,
+      openVideo
+    }
+  }
+}
+</script>
+
+<style scoped>
+.favorites-page {
+  padding: 60px 40px;
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.curate-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.curate-title {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.curate-stats {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+/* Segmented Control - Apple Look */
+.segmented-control {
+  display: inline-flex;
+  background: var(--white-06);
+  padding: 3px;
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+}
+
+.segment-item {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-pro);
+}
+
+.segment-item.active {
+  background: var(--white-10);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.curate-content {
+  margin-top: 20px;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 32px;
+}
+
+.curate-empty {
+  padding: 100px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-icon {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.curate-empty h3 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.curate-empty p {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+.btn-explore {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 12px 40px;
+  border-radius: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-pro);
+}
+
+.btn-explore:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .favorites-page { padding: 40px 20px; }
+  .curate-title { font-size: 32px; }
+  .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+}
+</style>
 
 <script>
 import api from '../api'

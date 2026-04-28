@@ -74,11 +74,23 @@ from database.snapshot import (
     get_snapshot_filenames,
     find_similar_actresses,
 )
+from database.favorite import (
+    init_favorite_db,
+    toggle_favorite,
+    is_favorite,
+    list_favorites,
+    list_collections,
+)
 
 __all__ = [
     "get_db_orig",
     "init_db",
     "init_translation_db",
+    "init_favorite_db",
+    "toggle_favorite",
+    "is_favorite",
+    "list_favorites",
+    "list_collections",
     "get_translation",
     "upsert_translation",
     "get_all_translations",
