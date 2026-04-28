@@ -418,12 +418,71 @@ export default {
 </script>
 
 <style scoped>
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 40px; transition: all 0.4s var(--ease-pro); }
-.modal-container { background: rgba(35, 35, 35, 0.35); backdrop-filter: blur(80px) saturate(200%); -webkit-backdrop-filter: blur(80px) saturate(200%); border-radius: var(--radius-pro); border: 1px solid rgba(255, 255, 255, 0.15); width: 100%; max-width: 900px; max-height: 90vh; overflow: hidden; position: relative; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.2); }
-.modal-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.05); width: 44px; height: 44px; border-radius: 50%; font-size: 24px; cursor: pointer; color: rgba(255,255,255,0.8); z-index: 10; transition: var(--transition-pro); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-.modal-close:hover { background: rgba(255,255,255,0.25); color: white; transform: scale(1.1) rotate(90deg); }
-.modal-body { display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
-.modal-gallery { width: 100%; background: transparent; display: flex; justify-content: center; align-items: flex-start; border-bottom: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.modal-overlay { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0, 0, 0, 0.25); /* 极轻量的遮罩，保留背景可见度 */
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  z-index: 1000; 
+  padding: 40px; 
+  transition: all 0.4s var(--ease-pro); 
+}
+
+.modal-container { 
+  background: rgba(255, 255, 255, 0.03); /* 极细微的白色提亮 */
+  backdrop-filter: blur(60px) saturate(210%) brightness(1.1); 
+  -webkit-backdrop-filter: blur(60px) saturate(210%) brightness(1.1); 
+  border-radius: var(--radius-pro); 
+  border: 1px solid rgba(255, 255, 255, 0.15); 
+  width: 100%; 
+  max-width: 900px; 
+  max-height: 90vh; 
+  overflow: hidden; 
+  position: relative; 
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.1); 
+}
+
+.modal-close { 
+  position: absolute; 
+  top: 20px; 
+  right: 20px; 
+  background: rgba(255, 255, 255, 0.1); 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  width: 44px; 
+  height: 44px; 
+  border-radius: 50%; 
+  font-size: 24px; 
+  cursor: pointer; 
+  color: white; 
+  z-index: 10; 
+  transition: var(--transition-pro); 
+  backdrop-filter: blur(20px); 
+  -webkit-backdrop-filter: blur(20px); 
+}
+
+.modal-close:hover { 
+  background: rgba(255, 255, 255, 0.2); 
+  transform: scale(1.1) rotate(90deg); 
+}
+
+.modal-body { 
+  display: flex; 
+  flex-direction: column; 
+  max-height: 90vh; 
+  overflow-y: auto; 
+  background: transparent;
+}
+
+.modal-gallery { 
+  width: 100%; 
+  background: rgba(0, 0, 0, 0.1); /* 极暗的相框感 */
+  display: flex; 
+  justify-content: center; 
+  align-items: flex-start; 
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+}
 .gallery-img { width: 100%; max-height: 65vh; object-fit: contain; object-position: top center; }
 .modal-content { padding: 48px 64px 64px; display: flex; flex-direction: column; gap: 48px; }
 .modal-code-block { border-bottom: 1px solid rgba(255, 255, 255, 0.15); padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
