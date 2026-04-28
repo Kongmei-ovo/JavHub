@@ -4,7 +4,7 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <button class="back-btn" @click="handleBack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
           {{ isFromVideo ? '返回详情' : '题材发现' }}
@@ -34,7 +34,7 @@
         </select>
       </div>
       <button class="shuffle-btn" @click="refresh" :disabled="loading">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
           <polyline points="23 4 23 10 17 10"/>
           <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
         </svg>

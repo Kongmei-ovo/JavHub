@@ -1,5 +1,21 @@
 /* ===== CSS Variables - Design System ===== */
 :root {
+  /* Motion Physics - Apple Style */
+  --ease-pro: cubic-bezier(0.23, 1, 0.32, 1);
+  --transition-pro: all 0.5s var(--ease-pro);
+  
+  /* Materials */
+  --glass-bg: rgba(20, 20, 20, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --ambient-glow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  
+  /* Precision Lines */
+  --stroke-pro: 1.5px;
+  --radius-pro: 22px;
+  
+  /* Typo - Retouch */
+  --ls-pro: -0.02em;
+
   /* 背景 - 极致深色 */
   --bg-primary: #000000;
   --bg-secondary: #0a0a0a;
@@ -8,6 +24,7 @@
   
   /* 强调色 - 纯白高反差 */
   --accent: #FFFFFF;
+  --accent-rgb: 255, 255, 255;
   --accent-light: #F2F2F7;
   --accent-glow: rgba(255, 255, 255, 0.1);
   --accent-bg: rgba(255, 255, 255, 0.05);
@@ -50,22 +67,22 @@
   --black-40: rgba(0,0,0,0.40);
   --black-60: rgba(0,0,0,0.60);
   --black-80: rgba(0,0,0,0.80);
-  /* 徽章色 - 与新accent协调 */
-  --badge-success-bg: rgba(16, 185, 129, 0.15);
-  --badge-success-border: rgba(16, 185, 129, 0.30);
-  --badge-success-text: #10B981;
-  --badge-warning-bg: rgba(245, 158, 11, 0.15);
-  --badge-warning-border: rgba(245, 158, 11, 0.30);
-  --badge-warning-text: #F59E0B;
-  --badge-error-bg: rgba(239, 68, 68, 0.15);
-  --badge-error-border: rgba(239, 68, 68, 0.30);
-  --badge-error-text: #EF4444;
-  --badge-info-bg: var(--white-10);
-  --badge-info-border: var(--white-20);
-  --badge-info-text: var(--text-primary);
-  --badge-pending-bg: rgba(161, 161, 170, 0.12);
-  --badge-pending-border: rgba(161, 161, 170, 0.25);
-  --badge-pending-text: #A1A1AA;
+  /* 徽章色 - 与新accent协调 (Apple Pro 风格：低饱和，清晰边框) */
+  --badge-success-bg: rgba(52, 199, 89, 0.08);
+  --badge-success-border: rgba(52, 199, 89, 0.25);
+  --badge-success-text: #32D74B;
+  --badge-warning-bg: rgba(255, 159, 10, 0.08);
+  --badge-warning-border: rgba(255, 159, 10, 0.25);
+  --badge-warning-text: #FF9F0A;
+  --badge-error-bg: rgba(255, 69, 58, 0.08);
+  --badge-error-border: rgba(255, 69, 58, 0.25);
+  --badge-error-text: #FF453A;
+  --badge-info-bg: rgba(255, 255, 255, 0.05);
+  --badge-info-border: rgba(255, 255, 255, 0.15);
+  --badge-info-text: #F2F2F7;
+  --badge-pending-bg: rgba(142, 142, 147, 0.08);
+  --badge-pending-border: rgba(142, 142, 147, 0.25);
+  --badge-pending-text: #8E8E93;
 
   /* ---------------------------------------------------- */
   /* 💎 1. 接管 Element Plus 的核心色彩 (去油第一步：统一色调) */
@@ -153,11 +170,15 @@ a:hover { color: var(--accent-light); }
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 20px;
+  padding: 4px 10px;
+  border-radius: 6px; /* Apple uses softer squares for many badges now, or pill. Let's use 6px for a pro look */
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: var(--transition-pro);
 }
 .badge-success { background: var(--badge-success-bg); color: var(--badge-success-text); border: 1px solid var(--badge-success-border); }
 .badge-warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); border: 1px solid var(--badge-warning-border); }
@@ -237,18 +258,27 @@ a:hover { color: var(--accent-light); }
 }
 
 /* ===== Form Elements ===== */
+.el-input__wrapper, .input {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid transparent !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.02) !important;
+  border-radius: 12px !important;
+  transition: var(--transition-pro) !important;
+}
+
+.el-input__wrapper.is-focus, .input:focus {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05) !important;
+}
+
 .input {
   width: 100%;
   padding: 10px 14px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
-  transition: var(--transition);
 }
-.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 .input::placeholder { color: var(--text-muted); }
 
 /* ===== Grid Layout ===== */
@@ -361,22 +391,23 @@ a:hover { color: var(--accent-light); }
   border-bottom: 1px solid var(--border) !important;
 }
 
-/* 2. 输入框和下拉框：从“线框”变成“微质感面” */
+/* 2. 输入框和下拉框：使用 Sensing Surfaces 设计 */
 .el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
-  background-color: var(--black-10) !important; /* 使用你定义的半透明叠加层 */
+  background-color: rgba(255, 255, 255, 0.03) !important;
   border: 1px solid transparent !important;
-  box-shadow: none !important;
-  transition: var(--transition);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.02) !important;
+  border-radius: 12px !important;
+  transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {
-  background-color: var(--black-20) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .el-input__wrapper.is-focus, .el-textarea__inner:focus {
-  background-color: var(--bg-primary) !important;
-  border: 1px solid var(--accent) !important;
-  box-shadow: 0 0 0 2px var(--accent-bg) !important; /* 优雅的焦点光晕 */
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05) !important;
 }
 
 /* 3. 按钮：更加果断和纯粹 */

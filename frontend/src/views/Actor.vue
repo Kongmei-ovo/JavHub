@@ -24,7 +24,7 @@
         </div>
       </div>
       <button class="btn btn-ghost back-btn" @click="$router.back()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
         返回
@@ -89,7 +89,7 @@
       <div v-if="selectedMovie" class="modal-overlay" @click.self="closeModal">
         <div class="modal-container">
           <button class="modal-close" @click="closeModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
               <line x1="18" y1="6" x2="6" y2="18"/>
               <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -160,7 +160,7 @@
                     <div class="magnet-right">
                       <span class="mag-size">{{ mag.size }}</span>
                       <button class="btn btn-primary download-btn" @click="download(mag)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
                           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                           <polyline points="7 10 12 15 17 10"/>
                           <line x1="12" y1="15" x2="12" y2="3"/>

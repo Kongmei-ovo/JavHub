@@ -5,7 +5,7 @@
       <h1 class="hero-title">订阅演员</h1>
       <div class="search-container">
         <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="11" cy="11" r="8"/>
             <path d="m21 21-4.35-4.35"/>
           </svg>
@@ -16,7 +16,7 @@
             class="search-input"
           />
           <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
@@ -56,7 +56,7 @@
           </div>
           <div class="actor-action">
             <span v-if="isSubscribed(actor.name)" class="subscribed-tag">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
               已订阅
@@ -132,14 +132,14 @@
           </div>
           <div class="sub-actions">
             <button class="btn btn-primary" style="font-size:12px;padding:6px 10px" @click="checkNow(sub.id)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13">
                 <polyline points="23 4 23 10 17 10"/>
                 <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
               </svg>
               检查
             </button>
             <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="remove(sub.id)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
@@ -161,7 +161,7 @@
           <div class="modal-header">
             <h3>{{ checkResult.actor_name }}</h3>
             <button class="modal-close" @click="checkResult = null">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>

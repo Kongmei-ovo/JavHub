@@ -44,6 +44,11 @@ const handleImageError = () => {
 .video-card {
   cursor: pointer;
   overflow: hidden;
+  border-radius: var(--radius-pro);
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: var(--transition-pro);
 }
 
 .video-cover {
@@ -57,10 +62,12 @@ const handleImageError = () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-pro);
 }
 
 .video-card:hover .video-cover img {
+  transform: scale(1.05);
+  filter: saturate(1.2);
 }
 
 .cover-placeholder {
@@ -78,41 +85,43 @@ const handleImageError = () => {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--glass-border);
 }
 
 .cover-code {
   font-size: 12px;
   font-weight: 600;
   color: white;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--ls-pro);
 }
 
 .video-info {
-  padding: 10px 12px 12px;
+  padding: 14px 16px 18px;
 }
 
 .video-code {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  letter-spacing: var(--ls-pro);
 }
 
 .video-actresses {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .video-date {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 </style>

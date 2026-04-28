@@ -4,7 +4,7 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <button class="back-btn" @click="handleBack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
           {{ isFromVideo ? '返回详情' : '返回' }}
@@ -37,7 +37,7 @@
         </select>
       </div>
       <button class="shuffle-btn" @click="refresh" :disabled="loading">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
           <polyline points="23 4 23 10 17 10"/>
           <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
         </svg>
@@ -320,15 +320,66 @@ export default {
 .result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
 .result-bar-left { display: flex; align-items: center; gap: 12px; }
 .result-count { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.sort-select { padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; cursor: pointer; outline: none; transition: var(--transition); }
-.sort-select:focus { border-color: var(--accent); }
-.shuffle-btn { display: flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 14px; border-radius: 20px; transition: var(--transition); flex-shrink: 0; }
-.shuffle-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.sort-select { 
+  padding: 8px 12px; 
+  background: var(--bg-card); 
+  border: 1px solid var(--border); 
+  border-radius: var(--radius-md); 
+  color: var(--text-primary); 
+  font-size: 13px; 
+  cursor: pointer; 
+  outline: none; 
+  transition: var(--transition-pro);
+  backdrop-filter: blur(10px);
+}
+.sort-select:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+}
+.sort-select:focus { 
+  border-color: var(--accent); 
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+.shuffle-btn { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  background: var(--bg-card); 
+  border: 1px solid var(--border); 
+  color: var(--text-secondary); 
+  font-size: 13px; 
+  cursor: pointer; 
+  padding: 8px 16px; 
+  border-radius: var(--radius-md); 
+  transition: var(--transition-pro); 
+  flex-shrink: 0; 
+  backdrop-filter: blur(10px);
+}
+.shuffle-btn:hover:not(:disabled) { 
+  border-color: var(--accent); 
+  color: var(--accent); 
+  background: var(--bg-card-hover);
+}
 .shuffle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .pagination-bar { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
 .pagination-bar.bottom { border-top: 1px solid var(--border); }
-.page-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); padding: 5px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; transition: var(--transition); }
-.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn { 
+  background: var(--bg-card); 
+  border: 1px solid var(--border); 
+  color: var(--text-primary); 
+  padding: 6px 12px; 
+  border-radius: var(--radius-md); 
+  cursor: pointer; 
+  font-size: 13px; 
+  transition: var(--transition-pro);
+  backdrop-filter: blur(10px);
+}
+.page-btn:hover:not(:disabled) { 
+  border-color: var(--accent); 
+  color: var(--accent); 
+  background: var(--bg-card-hover);
+}
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
 .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }

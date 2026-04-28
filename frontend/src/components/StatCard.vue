@@ -28,31 +28,51 @@ const handleClick = () => {
 .stat-card {
   display: flex;
   align-items: center;
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: var(--stroke-pro) solid var(--border);
+  border-radius: var(--radius-pro);
+  padding: 24px 32px;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  transition: var(--transition-pro);
+  box-shadow: var(--shadow-card);
 }
 .stat-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
 }
 .stat-icon {
-  font-size: 24px;
-  margin-right: 12px;
+  font-size: 32px;
+  margin-right: 20px;
+  filter: drop-shadow(0 0 10px var(--accent-glow));
 }
 .stat-content {
   flex: 1;
 }
 .stat-value {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  letter-spacing: var(--ls-pro);
+  margin-bottom: 4px;
 }
 .stat-label {
-  color: #666;
-  font-size: 14px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 .stat-arrow {
-  color: #999;
+  color: var(--text-muted);
+  font-size: 20px;
+  transition: var(--transition-pro);
+}
+.stat-card:hover .stat-arrow {
+  color: var(--accent);
+  transform: translate(4px, -4px);
 }
 </style>

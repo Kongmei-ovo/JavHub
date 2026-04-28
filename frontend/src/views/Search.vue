@@ -3,7 +3,7 @@
     <!-- 顶部工具栏（仅从详情页跳转来时显示） -->
     <div v-if="$route.query.returnTo === 'video'" class="search-back-toolbar">
       <button class="back-btn" @click="$router.back()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
         返回详情
@@ -18,7 +18,7 @@
         <div class="search-row search-row-main">
           <div class="search-box-wrapper code-search">
             <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
@@ -27,7 +27,7 @@
           </div>
           <div class="search-box-wrapper">
             <div class="search-box">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
@@ -42,7 +42,7 @@
             <!-- 题材占一整行：tag 输入 -->
             <div class="search-box-wrapper full-width">
               <div class="search-box tag-input-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <circle cx="11" cy="11" r="8"/>
                   <path d="m21 21-4.35-4.35"/>
                 </svg>
@@ -65,7 +65,7 @@
             <!-- 第二行：工作室(半) + 演员(半) -->
             <div class="search-box-wrapper maker-half">
               <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <circle cx="11" cy="11" r="8"/>
                   <path d="m21 21-4.35-4.35"/>
                 </svg>
@@ -74,7 +74,7 @@
             </div>
             <div class="search-box-wrapper">
               <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <circle cx="11" cy="11" r="8"/>
                   <path d="m21 21-4.35-4.35"/>
                 </svg>
@@ -84,7 +84,7 @@
             <!-- 第三行：系列 + 年份 -->
             <div class="search-box-wrapper">
               <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <circle cx="11" cy="11" r="8"/>
                   <path d="m21 21-4.35-4.35"/>
                 </svg>
@@ -93,7 +93,7 @@
             </div>
             <div class="search-box-wrapper year-search">
               <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                   <line x1="16" y1="2" x2="16" y2="6"/>
                   <line x1="8" y1="2" x2="8" y2="6"/>
@@ -108,7 +108,7 @@
         <!-- 操作栏 -->
         <div class="search-actions">
           <button class="more-filter-btn" @click="showMoreFilters = !showMoreFilters">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
               <path v-if="showMoreFilters" d="M18 15l-6-6-6 6"/>
               <path v-else d="M6 9l6 6 6-6"/>
             </svg>
@@ -119,7 +119,7 @@
               <option value="">全部版本</option>
               <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
             </select>
-            <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
               <path d="M6 9l6 6 6-6"/>
             </svg>
           </div>
@@ -719,29 +719,33 @@ export default {
 
 .version-select {
   appearance: none;
-  padding: 10px 32px 10px 14px;
+  padding: 10px 36px 10px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
   color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
-  transition: var(--transition);
-  min-width: 120px;
+  transition: var(--transition-pro);
+  min-width: 140px;
+  backdrop-filter: blur(10px);
+}
+
+.version-select:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
 }
 
 .version-select:focus {
   outline: none;
   border-color: var(--accent);
-}
-
-.version-select:hover {
-  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
 
 .select-arrow {
   position: absolute;
-  right: 10px;
+  right: 12px;
   pointer-events: none;
   color: var(--text-muted);
 }
@@ -778,48 +782,26 @@ export default {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 0 12px;
+  padding: 0 14px;
+  transition: var(--transition-pro);
+  backdrop-filter: blur(10px);
 }
 
-.service-code-wrap {
-  flex: 1 1 100%;
-}
-
-.service-code-btns {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.service-code-btn {
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.service-code-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.service-code-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-  font-weight: 600;
+.search-box:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
 }
 
 .search-box:focus-within {
   border-color: var(--accent);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
 
 .tag-input-box {
   flex-wrap: wrap;
-  padding: 6px 12px;
-  gap: 6px;
+  padding: 8px 14px;
+  gap: 8px;
 }
 
 .tag-list {
@@ -1178,31 +1160,56 @@ export default {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 13px;
-  transition: var(--transition);
+  transition: var(--transition-pro);
+  backdrop-filter: blur(10px);
 }
-.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn:hover:not(:disabled) { 
+  border-color: var(--accent); 
+  color: var(--accent); 
+  background: var(--bg-card-hover);
+}
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
 
-.jump-wrap { display: flex; align-items: center; gap: 4px; margin-left: 8px; }
+.jump-wrap { display: flex; align-items: center; gap: 4px; margin-left: 12px; }
 .jump-input {
-  width: 50px; padding: 4px 6px; border: 1px solid var(--border);
-  border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text-primary);
-  font-size: 12px; text-align: center;
+  width: 56px; 
+  padding: 6px 8px; 
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md); 
+  background: var(--bg-card); 
+  color: var(--text-primary);
+  font-size: 12px; 
+  text-align: center;
+  transition: var(--transition-pro);
+}
+.jump-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
 }
 .jump-input::-webkit-inner-spin-button,
 .jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 .jump-btn {
-  background: var(--bg-secondary); border: 1px solid var(--border);
-  color: var(--text-primary); padding: 4px 10px; border-radius: var(--radius-sm);
-  cursor: pointer; font-size: 12px; transition: var(--transition);
+  background: var(--bg-secondary); 
+  border: 1px solid var(--border);
+  color: var(--text-primary); 
+  padding: 6px 14px; 
+  border-radius: var(--radius-md);
+  cursor: pointer; 
+  font-size: 12px; 
+  transition: var(--transition-pro);
 }
-.jump-btn:hover { border-color: var(--accent); color: var(--accent); }
+.jump-btn:hover { 
+  border-color: var(--accent); 
+  color: var(--accent); 
+  background: var(--bg-card-hover);
+}
 
 .page-info {
   font-size: 13px;

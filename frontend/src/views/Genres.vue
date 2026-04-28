@@ -23,7 +23,7 @@
       <div class="cloud-header">
         <span class="cloud-hint">共 {{ categories.length }} 个题材</span>
         <button class="shuffle-btn" @click="reshuffle" :disabled="loading">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
@@ -65,11 +65,11 @@
     <div v-if="activeTab === 'actress'" class="actress-tab">
       <div class="actress-header" v-if="!actressesLoading && displayedActresses.length">
         <button class="shuffle-btn" @click="prevActressPage" :disabled="actressPage <= 1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
           上一页
         </button>
         <button class="shuffle-btn" @click="randomActressPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
@@ -78,7 +78,7 @@
         </button>
         <button class="shuffle-btn" @click="nextActressPage" :disabled="actressPage >= actressTotalPages">
           下一页
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
 
@@ -112,7 +112,7 @@
       <div class="cloud-header">
         <span class="cloud-hint">共 {{ seriesList.length }} 个系列</span>
         <button class="shuffle-btn" @click="reshuffleSeries" :disabled="seriesLoading">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
