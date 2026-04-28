@@ -91,14 +91,22 @@
                 <input v-model.number="year" placeholder="YYYY" type="number" class="panel-input" @keyup.enter="doSearch" />
               </div>
               <div class="panel-field full">
-                <label>题材标签 (空格分隔)</label>
+                <label>题材标签</label>
                 <div class="panel-tag-input">
                   <div class="tray-tags">
                     <span v-for="(tag, idx) in categoryTags" :key="idx" class="tray-tag">
                       {{ tag }}<b @click="removeCategoryTag(idx)">×</b>
                     </span>
                   </div>
-                  <input v-model="categoryInput" placeholder="输入题材..." @keydown.space.prevent="addCategoryTag" @keydown.enter.prevent="addCategoryTag" class="panel-input" />
+                  <input 
+                    v-model="categoryInput" 
+                    placeholder="输入题材并按空格或回车..." 
+                    @compositionstart="isComposing = true"
+                    @compositionend="handleCompositionEnd"
+                    @keydown.space="handleCategoryKeydown"
+                    @keydown.enter="handleCategoryKeydown"
+                    class="panel-input" 
+                  />
                 </div>
               </div>
             </div>
@@ -281,7 +289,8 @@ export default {
       total: 0,
       totalPages: 1,
       jumpPage: null,
-      isSearchFocused: false
+      isSearchFocused: false,
+      isComposing: false
     }
   },
   computed: {
@@ -383,6 +392,18 @@ export default {
         this.categoryTags.push(tag)
       }
       this.categoryInput = ''
+    },
+    handleCompositionEnd() {
+      setTimeout(() => {
+        this.isComposing = false
+      }, 50)
+    },
+    handleCategoryKeydown(e) {
+      if (this.isComposing || e.isComposing || e.keyCode === 229) return
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault()
+        this.addCategoryTag()
+      }
     },
     removeCategoryTag(idx) {
       this.categoryTags.splice(idx, 1)
