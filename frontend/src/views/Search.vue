@@ -714,21 +714,28 @@ export default {
   padding-right: 4px;
 }
 
-/* 高级面板 (Advanced Panel) */
+/* 高级面板 (Advanced Panel) - 绝对定位消除重排 */
 .advanced-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   margin-top: 16px;
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   border: 1px solid var(--border-light);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  transform: translateZ(0);
   animation: panelEntry 0.5s var(--ease-pro) both;
 }
 
 @keyframes panelEntry {
-  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(-10px) scale(0.98) translateZ(0); }
+  to { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
 }
 
 .panel-grid {
@@ -832,21 +839,20 @@ export default {
   font-size: 14px;
 }
 
-/* 优化后的过渡动效 */
+/* 极速响应动效 */
 .tray-slide-enter-active {
   transition: all 0.4s var(--ease-pro);
-  will-change: transform, opacity;
 }
 
 .tray-slide-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 1, 1); /* 离场更干脆 */
-  will-change: transform, opacity;
+  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+  pointer-events: none;
 }
 
 .tray-slide-enter-from, 
 .tray-slide-leave-to { 
   opacity: 0; 
-  transform: translateY(-16px) scale(0.99); 
+  transform: translateY(-16px) scale(0.99) translateZ(0); 
 }
 
 /* 结果网格样式同步 2.0 */
