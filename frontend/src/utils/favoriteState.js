@@ -4,61 +4,60 @@ import api from '../api'
 /**
  * 全局收藏状态管理
  * 使用 Action-First-Organize-Later 理念
- const state = reactive({
-   // 按实体类型存储收藏 ID 集合
-   registry: {},
-   // 存储完整的收藏对象列表
-   items: [],
-   initialized: false
- })
+ */
+export const state = reactive({
+  // 按实体类型存储收藏 ID 集合 (Set)
+  registry: {},
+  // 存储完整的收藏对象列表
+  items: [],
+  initialized: false
+})
 
- export const favoriteState = {
-   /**
-    * 初始化：从后端拉取所有收藏
-    */
-   async init() {
-     if (state.initialized) return
-     try {
-       const resp = await api.getFavorites()
-       const items = resp.data || []
+export const favoriteState = {
+  /**
+   * 初始化：从后端拉取所有收藏
+   */
+  async init() {
+    if (state.initialized) return
+    try {
+      const resp = await api.getFavorites()
+      const items = resp.data || []
 
-       state.items = items
-       state.registry = {}
+      state.items = items
+      state.registry = {}
 
-       items.forEach(item => {
-         const type = item.entity_type
-         if (!state.registry[type]) {
-           state.registry[type] = new Set()
-         }
-         state.registry[type].add(String(item.entity_id))
-       })
+      items.forEach(item => {
+        const type = item.entity_type
+        if (!state.registry[type]) {
+          state.registry[type] = new Set()
+        }
+        state.registry[type].add(String(item.entity_id))
+      })
 
-       state.initialized = true
-       console.info(`[FavoriteState] Initialized with ${items.length} items.`)
-     } catch (err) {
-       console.error('[FavoriteState] Init failed:', err)
-     }
-   },
+      state.initialized = true
+      console.info(`[FavoriteState] Initialized with ${items.length} items.`)
+    } catch (err) {
+      console.error('[FavoriteState] Init failed:', err)
+    }
+  },
 
-   /**
-    * 刷新数据
-    */
-   async refresh() {
-     state.initialized = false
-     await this.init()
-   },
- ...
-       if (is_favorited) {
-         state.registry[type].add(String(id))
-         // 简单处理：如果是新增，可能需要刷新 items 或者手动 push
-         // 为了保持一致性，建议 refresh
-         await this.refresh()
-       } else {
-         state.registry[type].delete(String(id))
-         state.items = state.items.filter(i => !(i.entity_type === type && String(i.entity_id) === String(id)))
-       }
- ...
+  /**
+   * 刷新数据
+   */
+  async refresh() {
+    state.initialized = false
+    await this.init()
+  },
 
+  /**
+   * 检查是否已收藏
+   */
+  isFavorited(type, id) {
+    if (!state.registry[type]) return false
+    return state.registry[type].has(String(id))
+  },
+
+  /**
    * 切换收藏状态
    */
   async toggle(type, id, metadata = {}) {
@@ -70,6 +69,7 @@ import api from '../api'
         entity_id: String(id), 
         metadata 
       })
+      
       const is_favorited = resp.data.is_favorited
       
       if (!state.registry[type]) {
@@ -78,11 +78,15 @@ import api from '../api'
       
       if (is_favorited) {
         state.registry[type].add(String(id))
+        // 乐观 UI：暂时不刷新全列表，由 refresh 任务或页面 mount 时同步
       } else {
         state.registry[type].delete(String(id))
       }
       
-      // Notify listeners
+      // 触发数据刷新以保持 items 列表最新
+      await this.refresh()
+
+      // Notify listeners (for Toast)
       if (this.listener) {
         this.listener({ type, id, is_favorited, metadata })
       }
@@ -100,7 +104,9 @@ import api from '../api'
     this.listener = callback
   },
 
-  // 统计总数
+  /**
+   * 统计总数 (Computed)
+   */
   count: computed(() => {
     let total = 0
     for (const key in state.registry) {
