@@ -46,9 +46,12 @@
             />
           </div>
 
-          <button @click="doSearch" :disabled="loading" class="capsule-search-btn">
+          <button @click="doSearch" :disabled="loading" class="capsule-search-btn" title="开始探索">
             <span v-if="loading" class="spinner"></span>
-            <span v-else>执行</span>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
           </button>
         </div>
 
@@ -107,8 +110,8 @@
               </div>
             </div>
             <div class="panel-footer">
-              <button class="btn-clear" @click="clearFilters">清空重置</button>
-              <button class="btn-apply" @click="doSearch">立即应用</button>
+              <button class="btn-clear" @click="clearFilters">重置</button>
+              <button class="btn-apply" @click="doSearch">查看结果</button>
             </div>
           </div>
         </transition>
@@ -647,24 +650,29 @@ export default {
 }
 
 .capsule-search-btn {
-  background: var(--accent);
+  background: var(--text-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 24px;
-  padding: 0 24px;
+  border-radius: 50%;
+  width: 44px;
   height: 44px;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 0;
   cursor: pointer;
   transition: all 0.3s var(--ease-pro);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 .capsule-search-btn:hover {
-  background: var(--accent-light);
-  transform: scale(1.05);
+  background: var(--accent);
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.capsule-search-btn:active {
+  transform: scale(0.9);
 }
 
 /* 筛选盘 (Filter Tray) */
@@ -819,24 +827,38 @@ export default {
 }
 
 .btn-clear {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   color: var(--text-secondary);
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
+  transition: all 0.3s var(--ease-pro);
+}
+
+.btn-clear:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .btn-apply {
-  background: var(--text-primary);
-  color: var(--bg-primary);
+  background: linear-gradient(135deg, #fcf6ba 0%, #d4af37 100%);
+  color: #121212;
   border: none;
-  padding: 10px 32px;
+  padding: 10px 36px;
   border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
   font-size: 14px;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
+  transition: all 0.3s var(--ease-pro);
+}
+
+.btn-apply:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4);
+  filter: brightness(1.1);
 }
 
 /* 极速响应动效 */
