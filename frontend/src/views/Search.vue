@@ -180,41 +180,18 @@
 
     <!-- 搜索结果网格 -->
     <div v-else-if="results.length > 0" class="results-grid">
-      <div
+      <VideoCard
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
-        class="movie-card"
+        :content-id="item.dvd_id || item.content_id"
+        :cover-url="cardImageUrl(item)"
+        :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja"
+        :release-date="item.release_date"
+        :runtime="item.runtime_mins"
+        :service-code="item.service_code"
+        :has-preview="!!item.sample_url"
         @click="openModal(item)"
-      >
-        <div class="card-cover">
-          <img
-            :src="cardImageUrl(item)"
-            :alt="item.dvd_id || item.content_id"
-            @error="handleImgError"
-            @load="onImgLoad($event)"
-            loading="lazy"
-            class="cover-img"
-          />
-          <div v-if="item.sample_url" class="card-preview-badge" title="有预览视频">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
-        </div>
-        <div class="card-info">
-          <div class="card-code-row">
-            <span class="card-code">{{ item.dvd_id || item.content_id }}</span>
-            <span v-if="item.service_code" class="card-type" :class="'type-' + item.service_code">{{ formatServiceCode(item.service_code) }}</span>
-          </div>
-          <div class="card-title" :title="item.title_en || item.title_ja">
-            {{ item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja }}
-          </div>
-          <div class="card-meta">
-            <span v-if="item.release_date" class="meta-date">{{ item.release_date }}</span>
-            <span v-if="item.runtime_mins" class="meta-time">{{ item.runtime_mins }}分钟</span>
-          </div>
-        </div>
-      </div>
+      />
     </div>
 
     <!-- 空状态 -->
@@ -914,25 +891,6 @@ export default {
   color: var(--text-muted);
 }
 
-.btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  transition: var(--transition);
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn-ghost {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
 .spinner {
   display: inline-block;
   width: 16px;
@@ -949,20 +907,36 @@ export default {
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
-  .search-row-main .search-box-wrapper {
-    min-width: 100%;
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+    padding: 20px;
   }
-  .search-row-more .search-box-wrapper {
-    min-width: 100%;
+  
+  .panel-grid {
+    grid-template-columns: 1fr;
   }
-  .search-actions {
-    flex-wrap: wrap;
+  
+  .panel-field.full {
+    grid-column: span 1;
   }
-  .more-filter-btn {
-    flex: 1;
+  
+  .hero-title {
+    font-size: 32px;
   }
-  .main-search-btn {
-    flex: 1;
+  
+  .command-capsule {
+    padding: 4px 4px 4px 16px;
+  }
+  
+  .capsule-divider {
+    margin: 0 6px;
+  }
+  
+  .filter-tray {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
   }
 }
 </style>
