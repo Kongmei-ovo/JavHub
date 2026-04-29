@@ -200,6 +200,16 @@
               <path d="M8 5v14l11-7z"/>
             </svg>
           </div>
+          <!-- Favorite Toggle -->
+          <button 
+            class="favorite-toggle" 
+            :class="{ 'is-active': isFavorited('video', item.dvd_id || item.content_id) }" 
+            @click.stop="toggleFavorite(item)"
+          >
+            <svg viewBox="0 0 24 24" :fill="isFavorited('video', item.dvd_id || item.content_id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
         </div>
         <div class="card-info">
           <div class="card-code-row">
@@ -251,12 +261,28 @@ import api from '../api'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
 import { openVideoModal } from '../utils/modalState'
+import favoriteState from '../utils/favoriteState'
 
 export default {
   name: 'Search',
   data() {
-    return {
-      keyword: '',
+...
+    isFavorited(type, id) {
+      return favoriteState.isFavorited(type, id)
+    },
+    async toggleFavorite(item) {
+      try {
+        const id = item.dvd_id || item.content_id
+        await favoriteState.toggle('video', id, {
+          title: item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja,
+          jacket_thumb_url: this.cardImageUrl(item)
+        })
+      } catch (err) {
+        console.error('Failed to toggle favorite:', err)
+      }
+    },
+    async doSearch() {
+
       contentId: '',
       results: [],
       loading: false,

@@ -22,7 +22,7 @@ class CollectionItem(BaseModel):
     description: Optional[str]
     created_at: str
 
-@router.get("/", response_model=List[FavoriteItem])
+@router.get("")
 async def get_favorites(entity_type: Optional[str] = Query(None)):
     """获取收藏列表"""
     return favorite.list_favorites(entity_type)
