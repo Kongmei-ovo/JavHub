@@ -266,27 +266,13 @@ import favoriteState from '../utils/favoriteState'
 export default {
   name: 'Search',
   data() {
-...
-    isFavorited(type, id) {
-      return favoriteState.isFavorited(type, id)
-    },
-    async toggleFavorite(item) {
-      try {
-        const id = item.dvd_id || item.content_id
-        await favoriteState.toggle('video', id, {
-          title: item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja,
-          jacket_thumb_url: this.cardImageUrl(item)
-        })
-      } catch (err) {
-        console.error('Failed to toggle favorite:', err)
-      }
-    },
-    async doSearch() {
-
+    return {
+      keyword: '',
       contentId: '',
       results: [],
       loading: false,
       searched: false,
+      total: 0,
 
       // 筛选
       categoryName: '',
@@ -312,7 +298,6 @@ export default {
       // 分页
       page: 1,
       pageSize: 30,
-      total: 0,
       totalPages: 1,
       jumpPage: null,
       isSearchFocused: false,
@@ -395,9 +380,24 @@ export default {
     }
   },
   methods: {
+    isFavorited(type, id) {
+      return favoriteState.isFavorited(type, id)
+    },
+    async toggleFavorite(item) {
+      try {
+        const id = item.dvd_id || item.content_id
+        await favoriteState.toggle('video', id, {
+          title: item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja,
+          jacket_thumb_url: this.cardImageUrl(item)
+        })
+      } catch (err) {
+        console.error('Failed to toggle favorite:', err)
+      }
+    },
     async loadFilters() {
       // categories now use category_name text input
     },
+
     clearFilters() {
       this.keyword = ''
       this.contentId = ''
