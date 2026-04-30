@@ -133,6 +133,26 @@ export default {
     return api.post('/v1/subscriptions/check')
   },
 
+  searchActors(keyword) {
+    return api.get('/v1/subscriptions/search', { params: { q: keyword } })
+  },
+
+  checkSubscription(id) {
+    return api.post(`/v1/subscriptions/${id}/check`)
+  },
+
+  toggleSubscription(data) {
+    return api.post('/v1/subscriptions/toggle', data)
+  },
+
+  updateSubscription(id, data) {
+    return api.put(`/v1/subscriptions/${id}`, data)
+  },
+
+  getSubscriptionStatus(actressId) {
+    return api.get(`/v1/subscriptions/status/${actressId}`)
+  },
+
   // ========== 缺失检测 ==========
 
   getMissingActresses() {
