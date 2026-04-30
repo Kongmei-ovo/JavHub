@@ -5,6 +5,7 @@ from sources.registry import SourceRegistry
 from sources.javbus_source import JavBusSource
 from sources.javdb_source import JavDBSource
 from sources.javlib_source import JavLibSource
+from sources.m3u8_source import M3U8Source
 
 __all__ = [
     "MagnetSource",
@@ -12,6 +13,7 @@ __all__ = [
     "JavBusSource",
     "JavDBSource",
     "JavLibSource",
+    "M3U8Source",
 ]
 
 def register_all_sources():
