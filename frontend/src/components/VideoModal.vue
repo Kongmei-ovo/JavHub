@@ -221,6 +221,14 @@
           <div v-else class="no-magnets">
             <span>暂无磁力链接</span>
           </div>
+
+          <!-- 在线播放 -->
+          <div class="stream-actions" v-if="video">
+            <button class="btn btn-primary stream-play-btn" @click="playStream" :disabled="streamLoading">
+              <span v-if="streamLoading" class="spinner"></span>
+              <span v-else>在线播放</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -292,6 +300,9 @@ export default {
       currentGalleryIndex: 0,
       videoPlayerVisible: false,
       videoSpeed: 1,
+      streamLoading: false,
+      streamUrl: '',
+      showPlayer: false,
     }
   },
   computed: {
@@ -409,6 +420,26 @@ export default {
     prevGallery() { if (!this.galleryThumbs.length) return; this.currentGalleryIndex = (this.currentGalleryIndex - 1 + this.galleryThumbs.length) % this.galleryThumbs.length },
     nextGallery() { if (!this.galleryThumbs.length) return; this.currentGalleryIndex = (this.currentGalleryIndex + 1) % this.galleryThumbs.length },
     onGalleryKeydown(e) { if (e.key === 'Escape') this.closeGalleryViewer(); if (e.key === 'ArrowLeft') this.prevGallery(); if (e.key === 'ArrowRight') this.nextGallery() },
+    async playStream() {
+      if (!this.video?.content_id) return
+      this.streamLoading = true
+      try {
+        const resp = await api.getStreamUrl(this.video.content_id)
+        const m3u8Url = resp.data?.data?.m3u8_url
+        if (m3u8Url) {
+          this.streamUrl = m3u8Url
+          this.showPlayer = true
+          window.open(m3u8Url, '_blank')
+        } else {
+          this.$message?.info('未找到播放地址')
+        }
+      } catch (e) {
+        console.error('Get stream URL failed:', e)
+        this.$message?.error('获取播放地址失败')
+      } finally {
+        this.streamLoading = false
+      }
+    },
   },
   beforeUnmount() { window.removeEventListener('keydown', this.onGalleryKeydown) }
 }
@@ -572,4 +603,6 @@ export default {
 .vp-speed-btn { font-size: 13px; padding: 5px 14px; background: rgba(255,255,255,0.07); border: var(--stroke-pro) solid rgba(255,255,255,0.1); border-radius: 40px; color: rgba(255,255,255,0.5); cursor: pointer; transition: var(--transition-pro); }
 .vp-speed-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
 .vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 700; }
+.stream-actions { margin-top: 12px; }
+.stream-play-btn { width: 100%; justify-content: center; }
 </style>

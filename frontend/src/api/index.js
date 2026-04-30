@@ -245,5 +245,15 @@ export default {
 
   health() {
     return api.get('/health')
+  },
+
+  // ========== 流媒体 ==========
+
+  getStreamUrl(contentId) {
+    return api.get(`/v1/stream/${contentId}`)
+  },
+
+  transferToCloud(contentId, data) {
+    return api.post(`/v1/stream/${contentId}/transfer`, data)
   }
 }
