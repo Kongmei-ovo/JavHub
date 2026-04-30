@@ -41,6 +41,7 @@ async def get_favorite_videos():
     client = get_info_client()
 
     async def fetch_one(item):
+        # entity_id 就是 content_id，JavInfoApi 通用键
         content_id = item["entity_id"]
         try:
             data = await client.get_video(content_id)
@@ -48,7 +49,6 @@ async def get_favorite_videos():
             data["_created_at"] = item["created_at"]
             return data
         except Exception as e:
-            # 单条失败不影响整体，返回降级数据
             return {
                 "content_id": content_id,
                 "dvd_id": content_id,
@@ -58,7 +58,6 @@ async def get_favorite_videos():
             }
 
     results = await asyncio.gather(*[fetch_one(item) for item in items])
-    # 按收藏时间倒序
     results.sort(key=lambda x: x.get("_created_at", ""), reverse=True)
     return results
 

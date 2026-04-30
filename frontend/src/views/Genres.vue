@@ -13,7 +13,6 @@
           @click="switchTab(tab.key)"
         >
           {{ tab.label }}
-          <span v-if="tab.key === 'series' && displayedSeries.length" class="tab-count">{{ displayedSeries.length }}</span>
         </button>
       </div>
     </div>
@@ -800,8 +799,6 @@ export default {
 .tab-btn { padding: 8px 24px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
 .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
 .tab-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); }
-.tab-count { background: rgba(0,0,0,0.1); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
-.tab-btn.active .tab-count { background: rgba(0,0,0,0.2); }
 
 /* 演员卡片：整个圆形，参照VideoModal */
 .actress-tab { padding: 20px; max-width: 1200px; margin: 0 auto; }

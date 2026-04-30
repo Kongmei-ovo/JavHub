@@ -199,7 +199,7 @@
         :releaseDate="item.release_date || ''"
         :runtimeMins="item.runtime_mins || ''"
         :sampleUrl="item.sample_url || ''"
-        :isFavorited="isFavorited('video', item.dvd_id || item.content_id)"
+        :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
         @click="openModal(item)"
         @toggle-favorite="toggleFavorite(item)"
       />
@@ -380,7 +380,7 @@ export default {
     },
     async toggleFavorite(item) {
       try {
-        const id = item.dvd_id || item.content_id
+        const id = item.content_id || item.dvd_id
         await favoriteState.toggle('video', id)
       } catch (err) {
         console.error('Failed to toggle favorite:', err)
@@ -558,13 +558,6 @@ export default {
 
       // 打开弹窗，使用完整数据（一次渲染到位）
       openVideoModal(fullVideo, this.$route.path)
-
-      // 异步获取外部元数据（简介、评分等），不阻塞前台
-      api.getVideoMetadata(contentId).then(resp => {
-        if (resp.data && Object.keys(resp.data).length > 0) {
-          openVideoModal({ ...modalState.selectedVideo, ...resp.data }, this.$route.path)
-        }
-      }).catch(e => console.warn('Load lazy metadata failed:', e))
     },
     cardImageUrl(item) {
       return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'

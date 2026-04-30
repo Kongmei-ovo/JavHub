@@ -33,6 +33,10 @@ class Config:
         self._load()
 
     @property
+    def server_port(self) -> int:
+        return self._config.get('server', {}).get('port', 18090)
+
+    @property
     def openlist_api_url(self) -> str:
         return self._config.get('openlist', {}).get('api_url', '')
 

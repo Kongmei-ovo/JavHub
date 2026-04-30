@@ -34,9 +34,22 @@
                 预览
               </button>
 
-              <button 
-                class="favorite-btn" 
-                :class="{ 'is-active': isFavorited }" 
+              <button
+                class="stream-btn"
+                @click="playStream"
+                :disabled="streamLoading"
+                title="在线播放"
+              >
+                <span v-if="streamLoading" class="spinner"></span>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <span>播放</span>
+              </button>
+
+              <button
+                class="favorite-btn"
+                :class="{ 'is-active': isFavorited }"
                 @click="toggleFavorite"
                 :title="isFavorited ? '取消收藏' : '添加收藏'"
               >
@@ -222,11 +235,14 @@
             <span>暂无磁力链接</span>
           </div>
 
-          <!-- 在线播放 -->
+          <!-- m3u8 下载 -->
           <div class="stream-actions" v-if="video">
-            <button class="btn btn-primary stream-play-btn" @click="playStream" :disabled="streamLoading">
+            <button class="btn btn-primary stream-download-btn" @click="downloadStream" :disabled="streamLoading">
               <span v-if="streamLoading" class="spinner"></span>
-              <span v-else>在线播放</span>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>m3u8 下载</span>
             </button>
           </div>
         </div>
@@ -278,6 +294,32 @@
           </div>
         </div>
       </div>
+
+      <!-- m3u8 在线播放弹窗 -->
+      <div
+        v-if="streamPlayerVisible"
+        class="vp-overlay"
+        @click.self="closeStreamPlayer"
+        @keydown.esc="closeStreamPlayer"
+        tabindex="0"
+      >
+        <div class="vp-container">
+          <button class="vp-close" @click="closeStreamPlayer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="vp-player-wrap">
+            <video ref="streamVideoEl" class="vp-video" controls autoplay playsinline></video>
+          </div>
+          <div class="vp-info">
+            <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
+            <div class="vp-speed-ctrl">
+              <button v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]" :key="s" :class="['vp-speed-btn', { active: streamSpeed === s }]" @click="setStreamSpeed(s)">{{ s === 1 ? '1x' : s + 'x' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </teleport>
   </div>
 </template>
@@ -286,6 +328,7 @@
 import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
 import favoriteState from '../utils/favoriteState'
+import Hls from 'hls.js'
 import api from '../api'
 
 export default {
@@ -301,13 +344,15 @@ export default {
       videoPlayerVisible: false,
       videoSpeed: 1,
       streamLoading: false,
-      streamUrl: '',
-      showPlayer: false,
+      streamPlayerVisible: false,
+      streamM3u8Url: '',
+      streamSpeed: 1,
+      hlsInstance: null,
     }
   },
   computed: {
     isFavorited() {
-      const id = this.video.dvd_id || this.video.content_id
+      const id = this.video.content_id || this.video.dvd_id
       return favoriteState.isFavorited('video', id)
     },
     videoLoaded() {
@@ -344,7 +389,7 @@ export default {
   },
   methods: {
     async toggleFavorite() {
-      const id = this.video.dvd_id || this.video.content_id
+      const id = this.video.content_id || this.video.dvd_id
       if (!id) return
       try {
         await favoriteState.toggle('video', id)
@@ -421,15 +466,72 @@ export default {
     nextGallery() { if (!this.galleryThumbs.length) return; this.currentGalleryIndex = (this.currentGalleryIndex + 1) % this.galleryThumbs.length },
     onGalleryKeydown(e) { if (e.key === 'Escape') this.closeGalleryViewer(); if (e.key === 'ArrowLeft') this.prevGallery(); if (e.key === 'ArrowRight') this.nextGallery() },
     async playStream() {
-      if (!this.video?.content_id) return
+      const code = this.video?.dvd_id || this.video?.content_id
+      if (!code) return
       this.streamLoading = true
       try {
-        const resp = await api.getStreamUrl(this.video.content_id)
+        const resp = await api.getStreamUrl(code)
         const m3u8Url = resp.data?.data?.m3u8_url
         if (m3u8Url) {
-          this.streamUrl = m3u8Url
-          this.showPlayer = true
-          window.open(m3u8Url, '_blank')
+          // 走后端代理，绕过 CORS
+          this.streamM3u8Url = `/api/v1/stream/proxy?url=${encodeURIComponent(m3u8Url)}`
+          this.streamPlayerVisible = true
+          this.$nextTick(() => this.initHlsPlayer())
+        } else {
+          this.$message?.info('未找到播放地址')
+        }
+      } catch (e) {
+        console.error('Get stream URL failed:', e)
+        this.$message?.error('获取播放地址失败')
+      } finally {
+        this.streamLoading = false
+      }
+    },
+    initHlsPlayer() {
+      const video = this.$refs.streamVideoEl
+      if (!video) return
+      if (this.hlsInstance) {
+        this.hlsInstance.destroy()
+        this.hlsInstance = null
+      }
+      if (Hls.isSupported()) {
+        const hls = new Hls()
+        hls.loadSource(this.streamM3u8Url)
+        hls.attachMedia(video)
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play() })
+        this.hlsInstance = hls
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = this.streamM3u8Url
+        video.addEventListener('loadedmetadata', () => { video.play() })
+      }
+    },
+    closeStreamPlayer() {
+      if (this.hlsInstance) {
+        this.hlsInstance.destroy()
+        this.hlsInstance = null
+      }
+      this.streamPlayerVisible = false
+      this.streamM3u8Url = ''
+    },
+    setStreamSpeed(speed) {
+      this.streamSpeed = speed
+      if (this.$refs.streamVideoEl) this.$refs.streamVideoEl.playbackRate = speed
+    },
+    async downloadStream() {
+      const code = this.video?.dvd_id || this.video?.content_id
+      if (!code) return
+      this.streamLoading = true
+      try {
+        const resp = await api.getStreamUrl(code)
+        const m3u8Url = resp.data?.data?.m3u8_url
+        if (m3u8Url) {
+          const a = document.createElement('a')
+          a.href = m3u8Url
+          a.download = `${this.video.dvd_id || this.video.content_id}.m3u8`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          this.$message?.success('m3u8 下载已开始')
         } else {
           this.$message?.info('未找到播放地址')
         }
@@ -441,7 +543,13 @@ export default {
       }
     },
   },
-  beforeUnmount() { window.removeEventListener('keydown', this.onGalleryKeydown) }
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.onGalleryKeydown)
+    if (this.hlsInstance) {
+      this.hlsInstance.destroy()
+      this.hlsInstance = null
+    }
+  }
 }
 </script>
 
@@ -503,13 +611,13 @@ export default {
   background: transparent;
 }
 
-.modal-gallery { 
-  width: 100%; 
+.modal-gallery {
+  width: 100%;
   background: rgba(0, 0, 0, 0.1); /* 极暗的相框感 */
-  display: flex; 
-  justify-content: center; 
-  align-items: flex-start; 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .gallery-img { width: 100%; max-height: 65vh; object-fit: contain; object-position: top center; }
 .modal-content { padding: 48px 64px 64px; display: flex; flex-direction: column; gap: 48px; }
@@ -518,6 +626,10 @@ export default {
 .modal-code { font-size: 28px; font-weight: 700; color: #ffffff; font-family: var(--font-mono); letter-spacing: var(--ls-pro); text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
 .preview-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.9); color: #000; border-radius: 40px; font-size: 14px; font-weight: 600; text-decoration: none; transition: var(--transition-pro); flex-shrink: 0; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 .preview-btn:hover { background: #fff; transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
+.stream-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.9); color: #000; border-radius: 40px; font-size: 14px; font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.stream-btn:hover:not(:disabled) { background: #fff; transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
+.stream-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.stream-btn svg { width: 16px; height: 16px; }
 .favorite-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border-radius: 40px; font-size: 14px; font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.15); cursor: pointer; }
 .favorite-btn:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.2); }
 .favorite-btn.is-active { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.5); color: #FFD60A; }
@@ -604,5 +716,31 @@ export default {
 .vp-speed-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
 .vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 700; }
 .stream-actions { margin-top: 12px; }
-.stream-play-btn { width: 100%; justify-content: center; }
+.stream-download-btn {
+  width: 100%;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-pro);
+}
+.stream-download-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.stream-download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.stream-download-btn svg { width: 18px; height: 18px; }
 </style>

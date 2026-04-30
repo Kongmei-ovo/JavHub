@@ -1,11 +1,74 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any, Optional
+from urllib.parse import urljoin, quote
+import httpx
+import re
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
+
+
+@router.get("/proxy")
+async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts URL")):
+    """代理 m3u8 和 ts，m3u8 内容中的相对 URL 会被改写为代理地址"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "*/*",
+        "Referer": "/".join(url.split("/")[:3]) + "/",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail="上游请求失败")
+
+            content_type = resp.headers.get("content-type", "application/octet-stream")
+            body = resp.content
+
+            # m3u8: 重写相对路径为代理绝对路径
+            if url.endswith(".m3u8") or "mpegurl" in content_type.lower():
+                content_type = "application/vnd.apple.mpegurl"
+                text = body.decode("utf-8", errors="replace")
+                base_url = url.rsplit("/", 1)[0] + "/"
+
+                proxy_prefix = "/api/v1/stream/proxy?url="
+
+                def rewrite_uri(m):
+                    raw = m.group(1)
+                    abs_url = urljoin(base_url, raw)
+                    return f'URI="{proxy_prefix}{quote(abs_url, safe="")}"'
+
+                def rewrite_line(line):
+                    stripped = line.strip()
+                    # 改写 #EXT-X-KEY 等标签中的 URI="..."
+                    if 'URI="' in stripped:
+                        stripped = re.sub(r'URI="([^"]+)"', rewrite_uri, stripped)
+                    if not stripped or stripped.startswith("#"):
+                        return stripped
+                    abs_url = urljoin(base_url, stripped)
+                    return f"{proxy_prefix}{quote(abs_url, safe='')}"
+
+                lines = text.strip().split("\n")
+                rewritten = "\n".join(rewrite_line(l) for l in lines)
+                body = rewritten.encode("utf-8")
+            elif url.endswith(".ts"):
+                content_type = "video/mp2t"
+
+            return Response(
+                content=body,
+                media_type=content_type,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "no-cache",
+                },
+            )
+    except httpx.RequestError as e:
+        logger.error(f"Proxy request failed for {url}: {e}")
+        raise HTTPException(status_code=502, detail="代理请求失败")
 
 
 @router.get("/{content_id}")
