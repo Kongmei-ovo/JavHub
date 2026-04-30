@@ -20,31 +20,39 @@ def subscription_check_job():
     if _running:
         add_log("WARNING", "订阅检查任务正在执行，跳过本次触发（防重入）")
         return
-
     add_log("INFO", "开始订阅检查...")
     _running = True
     try:
         from services.subscription import check_all_subscriptions
-
-        # asyncio.run() 管理自己的 loop，避免重复创建/关闭
         new_movies = asyncio.run(check_all_subscriptions())
-
-        for movie in new_movies:
-            add_log("INFO", f"自动下载: {movie['code']}")
-            # TODO: 调用 OpenList 下载
-            # from modules.openlist_client import get_openlist_client
-            # asyncio.run(openlist.add_offline_download(...))
-
         add_log("INFO", f"订阅检查完成，发现 {len(new_movies)} 部新片")
 
-        # 发送通知
         if new_movies:
+            # 自动下载（auto_download 的订阅）
+            from database import get_subscriptions
+            subs = get_subscriptions()
+            auto_subs = {s["actress_name"]: s for s in subs if s.get("auto_download")}
+
+            for movie in new_movies:
+                actress = movie.get("actress_name", "")
+                if actress in auto_subs and movie.get("magnet"):
+                    try:
+                        from services.downloader import downloader_service
+                        downloader_service.create_download_task(
+                            code=movie["code"],
+                            title=movie.get("title", ""),
+                            magnet=movie["magnet"],
+                        )
+                        add_log("INFO", f"自动下载: {movie['code']}")
+                    except Exception as e:
+                        add_log("ERROR", f"自动下载失败 {movie['code']}: {e}")
+
+            # 发送通知
             try:
                 from services.notification import notification_service
                 asyncio.run(notification_service.notify_new_movies(new_movies))
             except Exception as e:
                 logger.error(f"Notification failed: {e}")
-
     except Exception as e:
         add_log("ERROR", f"订阅检查失败: {e}")
     finally:
