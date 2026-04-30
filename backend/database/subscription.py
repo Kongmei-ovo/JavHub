@@ -33,10 +33,10 @@ def delete_subscription(subscription_id: int):
 
 
 def is_subscribed(actress_id: int) -> bool:
-    """检查某演员是否已订阅"""
+    """检查某演员是否已订阅（enabled=1）"""
     conn = get_db_orig()
     cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM subscriptions WHERE actress_id = ?", (actress_id,))
+    cursor.execute("SELECT 1 FROM subscriptions WHERE actress_id = ? AND enabled = 1", (actress_id,))
     row = cursor.fetchone()
     conn.close()
     return row is not None
@@ -46,16 +46,17 @@ def toggle_subscription(actress_id: int, actress_name: str, auto_download: bool 
     """切换订阅状态，返回 {subscribed: bool, id: int}"""
     conn = get_db_orig()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM subscriptions WHERE actress_id = ?", (actress_id,))
+    cursor.execute("SELECT id, enabled FROM subscriptions WHERE actress_id = ?", (actress_id,))
     row = cursor.fetchone()
     if row:
-        cursor.execute("DELETE FROM subscriptions WHERE id = ?", (row["id"],))
+        new_enabled = 0 if row["enabled"] else 1
+        cursor.execute("UPDATE subscriptions SET enabled = ? WHERE id = ?", (new_enabled, row["id"]))
         conn.commit()
         conn.close()
-        return {"subscribed": False, "id": row["id"]}
+        return {"subscribed": bool(new_enabled), "id": row["id"]}
     else:
         cursor.execute(
-            "INSERT INTO subscriptions (actress_id, actress_name, auto_download, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+            "INSERT INTO subscriptions (actress_id, actress_name, auto_download, enabled, created_at) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)",
             (actress_id, actress_name, auto_download)
         )
         conn.commit()

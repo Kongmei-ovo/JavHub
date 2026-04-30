@@ -251,5 +251,6 @@ def _migrate_subscriptions():
         cursor.execute("ALTER TABLE subscriptions ADD COLUMN last_check TEXT")
     if "last_found" not in columns:
         cursor.execute("ALTER TABLE subscriptions ADD COLUMN last_found TEXT")
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_actress_id ON subscriptions(actress_id)")
     conn.commit()
     conn.close()
