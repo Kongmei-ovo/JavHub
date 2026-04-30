@@ -54,10 +54,7 @@ const isFavorited = computed(() => favoriteState.isFavorited('video', props.cont
 
 const toggleFavorite = async () => {
   try {
-    await favoriteState.toggle('video', props.contentId, {
-      title: props.title,
-      cover_url: props.coverUrl
-    })
+    await favoriteState.toggle('video', props.contentId)
   } catch (err) {
     console.error('Failed to toggle favorite:', err)
   }

@@ -60,14 +60,13 @@ export const favoriteState = {
   /**
    * 切换收藏状态
    */
-  async toggle(type, id, metadata = {}) {
+  async toggle(type, id) {
     if (!type || !id) return false
-    
+
     try {
-      const resp = await api.toggleFavorite({ 
-        entity_type: type, 
-        entity_id: String(id), 
-        metadata 
+      const resp = await api.toggleFavorite({
+        entity_type: type,
+        entity_id: String(id),
       })
       
       const is_favorited = resp.data.is_favorited
@@ -88,7 +87,7 @@ export const favoriteState = {
 
       // Notify listeners (for Toast)
       if (this.listener) {
-        this.listener({ type, id, is_favorited, metadata })
+        this.listener({ type, id, is_favorited })
       }
 
       return is_favorited

@@ -336,10 +336,7 @@ export default {
       const id = this.video.dvd_id || this.video.content_id
       if (!id) return
       try {
-        await favoriteState.toggle('video', id, {
-          title: this.video.title_ja || this.video.title_en,
-          cover_url: this.coverImageUrl
-        })
+        await favoriteState.toggle('video', id)
       } catch (err) {
         console.error('Failed to toggle favorite:', err)
       }

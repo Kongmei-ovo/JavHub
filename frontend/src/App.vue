@@ -158,7 +158,7 @@ export default {
       { path: '/genres', label: '个性推荐', icon: IconGenres },
       { path: '/search', label: '影片检索', icon: IconSearch },
       { path: '/parse', label: '磁链解析', icon: IconParse },
-      { path: '/favorites', label: '我的收藏', icon: IconHeart, badge: favoriteState.count.value || 0 },
+      { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员合并', icon: IconNormalize },

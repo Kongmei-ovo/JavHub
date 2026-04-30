@@ -1,7 +1,10 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite
+from modules.info_client import get_info_client
+from services.translation import apply_translation
 
 router = APIRouter(prefix="/api/v1/favorites", tags=["Favorites"])
 
@@ -24,8 +27,40 @@ class CollectionItem(BaseModel):
 
 @router.get("")
 async def get_favorites(entity_type: Optional[str] = Query(None)):
-    """获取收藏列表"""
+    """获取收藏列表（轻量，仅 ID + 元数据）"""
     return favorite.list_favorites(entity_type)
+
+
+@router.get("/videos")
+async def get_favorite_videos():
+    """获取 video 类型收藏的完整影片数据（javinfo + metatube + 翻译）"""
+    items = favorite.list_favorites("video")
+    if not items:
+        return []
+
+    client = get_info_client()
+
+    async def fetch_one(item):
+        content_id = item["entity_id"]
+        try:
+            data = await client.get_video(content_id)
+            data = apply_translation(content_id, data)
+            data["_created_at"] = item["created_at"]
+            return data
+        except Exception as e:
+            # 单条失败不影响整体，返回降级数据
+            return {
+                "content_id": content_id,
+                "dvd_id": content_id,
+                "title_ja": content_id,
+                "_created_at": item["created_at"],
+                "_error": str(e),
+            }
+
+    results = await asyncio.gather(*[fetch_one(item) for item in items])
+    # 按收藏时间倒序
+    results.sort(key=lambda x: x.get("_created_at", ""), reverse=True)
+    return results
 
 @router.post("/toggle")
 async def toggle_favorite(req: ToggleFavoriteRequest):

@@ -13,6 +13,17 @@
           <span class="type-label">{{ typeLabel }}发现:</span>
           {{ displayNameValue || value }}
         </h2>
+        <button
+          class="entity-fav-btn"
+          :class="{ 'is-active': isEntityFavorited }"
+          @click="toggleEntityFavorite"
+          :title="isEntityFavorited ? '取消收藏' : '收藏'"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path v-if="isEntityFavorited" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+            <path v-else d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -70,64 +81,32 @@
       <div v-for="(group, year) in groupedByYear" :key="year" class="year-section">
         <div class="year-header">{{ year === 'null' ? '未知' : year }}</div>
         <div class="results-grid">
-          <div
+          <MovieCard
             v-for="item in group"
             :key="item.content_id || item.dvd_id"
-            class="movie-card"
+            :contentId="item.dvd_id || item.content_id"
+            :coverUrl="cardImageUrl(item)"
+            :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
+            :releaseDate="item.release_date || ''"
+            :runtimeMins="item.runtime_mins || ''"
             @click="openModal(item)"
-          >
-            <div class="card-cover">
-              <img
-                :src="cardImageUrl(item)"
-                :alt="item.dvd_id || item.content_id"
-                @error="handleImgError"
-                loading="lazy"
-                class="cover-img"
-              />
-            </div>
-            <div class="card-info">
-              <div class="card-code-row">
-                <span class="card-code">{{ item.dvd_id || item.content_id }}</span>
-              </div>
-              <div class="card-title" :title="item.title_en || item.title_ja">{{ item.title_en || item.title_ja }}</div>
-              <div class="card-meta">
-                <span v-if="item.release_date" class="meta-date">{{ item.release_date }}</span>
-                <span v-if="item.runtime_mins" class="meta-time">{{ item.runtime_mins }}分钟</span>
-              </div>
-            </div>
-          </div>
+          />
         </div>
       </div>
     </template>
 
     <!-- 结果网格：普通模式 -->
     <div v-else-if="results.length > 0" class="results-grid">
-      <div
+      <MovieCard
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
-        class="movie-card"
+        :contentId="item.dvd_id || item.content_id"
+        :coverUrl="cardImageUrl(item)"
+        :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
+        :releaseDate="item.release_date || ''"
+        :runtimeMins="item.runtime_mins || ''"
         @click="openModal(item)"
-      >
-        <div class="card-cover">
-          <img
-            :src="cardImageUrl(item)"
-            :alt="item.dvd_id || item.content_id"
-            @error="handleImgError"
-            loading="lazy"
-            class="cover-img"
-          />
-        </div>
-        <div class="card-info">
-          <div class="card-code-row">
-            <span class="card-code">{{ item.dvd_id || item.content_id }}</span>
-          </div>
-          <div class="card-title" :title="item.title_en || item.title_ja">{{ item.title_en || item.title_ja }}</div>
-          <div class="card-meta">
-            <span v-if="item.release_date" class="meta-date">{{ item.release_date }}</span>
-            <span v-if="item.runtime_mins" class="meta-time">{{ item.runtime_mins }}分钟</span>
-          </div>
-        </div>
-      </div>
+      />
     </div>
 
     <!-- 空状态 -->
@@ -151,11 +130,14 @@ import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
+import { favoriteState } from '../utils/favoriteState'
+import MovieCard from '../components/MovieCard.vue'
 
 const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
+  components: { MovieCard },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -183,6 +165,8 @@ export default {
       return map[this.type] || '内容'
     },
     displayNameValue() {
+      // 优先使用 query 传来的名称（从 Genres 页跳转时携带）
+      if (this.$route.query.name) return this.$route.query.name
       if (this.type === 'category' && this.metadata.length) {
         const cat = this.metadata.find(c => c.id === parseInt(this.value))
         return cat ? (displayName(cat, 'name_ja', 'name_en') || cat.name) : ''
@@ -195,6 +179,9 @@ export default {
     },
     isFromVideo() {
       return modalState.interrupted || this.$route.query.returnTo === 'video'
+    },
+    isEntityFavorited() {
+      return favoriteState.isFavorited(this.type, this.value)
     },
     groupedByYear() {
       const groups = {}
@@ -226,6 +213,13 @@ export default {
   },
   methods: {
     handleBack() { this.$router.back() },
+    async toggleEntityFavorite() {
+      try {
+        await favoriteState.toggle(this.type, this.value)
+      } catch (err) {
+        console.error('Toggle entity favorite failed:', err)
+      }
+    },
     async loadMetadata() {
       try {
         if (this.type === 'category') {
@@ -242,12 +236,20 @@ export default {
     buildParams() {
       const params = { page: this.page, page_size: PAGE_SIZE }
       if (this.serviceCode) params.service_code = this.serviceCode
-      
-      // 根据类型填充参数
-      if (this.type === 'category') params.category_id = parseInt(this.value)
-      else if (this.type === 'maker') params.maker_name = this.value
-      else if (this.type === 'series') params.series_name = this.value
-      else if (this.type === 'actress') params.actress_name = this.value
+
+      // 根据类型填充参数：支持 ID (数字) 和名称 (字符串)
+      const v = this.value
+      const isNumeric = /^\d+$/.test(v)
+      if (this.type === 'category') {
+        params.category_id = isNumeric ? parseInt(v) : undefined
+        if (!isNumeric) params.category_name = v
+      } else if (this.type === 'maker') {
+        if (isNumeric) params.maker_id = parseInt(v); else params.maker_name = v
+      } else if (this.type === 'series') {
+        if (isNumeric) params.series_id = parseInt(v); else params.series_name = v
+      } else if (this.type === 'actress') {
+        if (isNumeric) params.actress_id = parseInt(v); else params.actress_name = v
+      }
 
       if (this.sortValue === 'random') {
         params.random = '1'
@@ -303,7 +305,6 @@ export default {
         if (resp.data) openVideoModal({ ...modalState.selectedVideo, ...resp.data }, this.$route.path)
       })
     },
-    handleImgError(e) { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>' },
     cardImageUrl(item) { return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png' }
   }
 }
@@ -315,6 +316,15 @@ export default {
 .toolbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .back-btn { display: flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: var(--transition); flex-shrink: 0; }
 .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.entity-fav-btn {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--bg-card);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  flex-shrink: 0; padding: 0;
+}
+.entity-fav-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-card-hover); }
+.entity-fav-btn.is-active { color: #FF375F; border-color: rgba(255, 55, 95, 0.3); background: rgba(255, 55, 95, 0.1); }
+.entity-fav-btn.is-active:hover { background: rgba(255, 55, 95, 0.2); }
 .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
 .result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
@@ -394,16 +404,6 @@ export default {
 .year-section { margin-bottom: 8px; }
 .year-header { font-size: 13px; font-weight: 700; color: var(--accent-light); padding: 12px 20px 8px; max-width: 1400px; margin: 0 auto; letter-spacing: 0.05em; border-left: 3px solid var(--accent); padding-left: 12px; margin-left: 20px; margin-right: 20px; font-family: var(--font-mono); }
 .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px !important; padding: 0 20px 24px; max-width: 1400px; margin: 0 auto; }
-.movie-card { background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-color 0.3s, box-shadow 0.3s; border: 1px solid var(--border); }
-.movie-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: var(--shadow-hover); }
-.card-cover { width: 100%; aspect-ratio: 3/4; overflow: hidden; background: var(--bg-secondary); }
-.cover-img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.5s cubic-bezier(0.2, 0, 0, 1); }
-.movie-card:hover .cover-img { transform: translateY(-2px); }
-.card-info { padding: 12px; }
-.card-code-row { display: flex; justify-content: flex-start; margin-bottom: 6px; }
-.card-code { font-weight: bold; font-size: 13px; color: var(--accent); font-family: var(--font-mono); }
-.card-title { font-size: 13px; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 6px; line-height: 1.4; }
-.card-meta { display: flex; gap: 8px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
 .empty-state { text-align: center; padding: 60px; color: var(--text-muted); }
 .skeleton { background: var(--bg-card-hover); position: relative; overflow: hidden; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--white-06), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }

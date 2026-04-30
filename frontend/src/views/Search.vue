@@ -60,7 +60,7 @@
                 <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
               </select>
             </div>
-            
+
             <button class="filter-item toggle" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
                 <path d="M20 7h-9m14 10h-9M5 7h14M5 17h14"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>
@@ -68,6 +68,36 @@
               高级筛选
             </button>
           </div>
+        </div>
+
+        <!-- 排序胶囊条 (Sort Pill Bar) -->
+        <div class="sort-strip">
+          <span class="sort-strip-label">排序</span>
+          <div class="sort-pills">
+            <button
+              v-for="pill in sortPills"
+              :key="pill.key"
+              class="sort-pill"
+              :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
+              @click="cycleSort(pill.key)"
+            >
+              <span class="pill-label">{{ pill.label }}</span>
+              <svg v-if="sortState[pill.key] === 'desc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                <path d="M12 5v14M19 12l-7 7-7-7"/>
+              </svg>
+              <svg v-else-if="sortState[pill.key] === 'asc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              <svg v-else-if="pill.key === 'random' && sortState.random" class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </button>
+          </div>
+          <button v-if="hasSort" class="sort-clear-btn" @click="clearSort" title="清除排序">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
 
         <!-- 高级筛选详情面板 -->
@@ -120,30 +150,9 @@
     </div>
 
 
-    <!-- 结果信息 + 分页 -->
+    <!-- 结果信息 -->
     <div v-if="results.length > 0 || loading" class="result-bar">
-      <div class="result-bar-left">
-        <span class="result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
-        <div class="result-sort">
-          <span class="sort-label">排序：</span>
-          <div class="sort-rows">
-            <div v-for="(cond, idx) in sortConditions" :key="idx" class="sort-row">
-              <select v-model="cond.value" @change="onSortChange(idx)" class="filter-select-small">
-                <option value="">无</option>
-                <option value="release_date_desc">发售日期 ↓</option>
-                <option value="release_date_asc">发售日期 ↑</option>
-                <option value="title_ja_desc">标题 Z→A</option>
-                <option value="title_ja_asc">标题 A→Z</option>
-                <option value="runtime_mins_desc">时长 长→短</option>
-                <option value="runtime_mins_asc">时长 短→长</option>
-                <option value="random">随机</option>
-              </select>
-              <button v-if="sortConditions.length > 1" class="sort-remove-btn" @click="removeSort(idx)" title="移除">×</button>
-            </div>
-            <button class="btn btn-ghost sort-add-btn" @click="addSort">+ 添加</button>
-          </div>
-        </div>
-      </div>
+      <span class="result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
     </div>
 
     <!-- 分页控制（顶部） -->
@@ -180,51 +189,20 @@
 
     <!-- 搜索结果网格 -->
     <div v-else-if="results.length > 0" class="results-grid">
-      <div
+      <MovieCard
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
-        class="movie-card"
+        :contentId="item.dvd_id || item.content_id"
+        :coverUrl="cardImageUrl(item)"
+        :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja"
+        :serviceCode="item.service_code || ''"
+        :releaseDate="item.release_date || ''"
+        :runtimeMins="item.runtime_mins || ''"
+        :sampleUrl="item.sample_url || ''"
+        :isFavorited="isFavorited('video', item.dvd_id || item.content_id)"
         @click="openModal(item)"
-      >
-        <div class="card-cover">
-          <img
-            :src="cardImageUrl(item)"
-            :alt="item.dvd_id || item.content_id"
-            @error="handleImgError"
-            @load="onImgLoad($event)"
-            loading="lazy"
-            class="cover-img"
-          />
-          <div v-if="item.sample_url" class="card-preview-badge" title="有预览视频">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
-          <!-- Favorite Toggle -->
-          <button 
-            class="favorite-toggle" 
-            :class="{ 'is-active': isFavorited('video', item.dvd_id || item.content_id) }" 
-            @click.stop="toggleFavorite(item)"
-          >
-            <svg viewBox="0 0 24 24" :fill="isFavorited('video', item.dvd_id || item.content_id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="card-info">
-          <div class="card-code-row">
-            <span class="card-code">{{ item.dvd_id || item.content_id }}</span>
-            <span v-if="item.service_code" class="card-type" :class="'type-' + item.service_code">{{ formatServiceCode(item.service_code) }}</span>
-          </div>
-          <div class="card-title" :title="item.title_en || item.title_ja">
-            {{ item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja }}
-          </div>
-          <div class="card-meta">
-            <span v-if="item.release_date" class="meta-date">{{ item.release_date }}</span>
-            <span v-if="item.runtime_mins" class="meta-time">{{ item.runtime_mins }}分钟</span>
-          </div>
-        </div>
-      </div>
+        @toggle-favorite="toggleFavorite(item)"
+      />
     </div>
 
     <!-- 空状态 -->
@@ -260,11 +238,13 @@
 import api from '../api'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
-import { openVideoModal } from '../utils/modalState'
+import { modalState, openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
+import MovieCard from '../components/MovieCard.vue'
 
 export default {
   name: 'Search',
+  components: { MovieCard },
   data() {
     return {
       keyword: '',
@@ -293,7 +273,19 @@ export default {
       // 折叠更多筛选
       showMoreFilters: false,
 
-      sortConditions: [{ value: 'random' }],
+      // 排序状态
+      sortState: {
+        release_date: null,
+        title_ja: null,
+        runtime_mins: null,
+        random: true,
+      },
+      sortPills: [
+        { key: 'release_date', label: '日期' },
+        { key: 'title_ja', label: '标题' },
+        { key: 'runtime_mins', label: '时长' },
+        { key: 'random', label: '随机' },
+      ],
 
       // 分页
       page: 1,
@@ -307,6 +299,9 @@ export default {
   computed: {
     hasFilters() {
       return this.categoryTags.length || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName
+    },
+    hasSort() {
+      return Object.values(this.sortState).some(v => v !== null && v !== false)
     }
   },
   mounted() {
@@ -386,10 +381,7 @@ export default {
     async toggleFavorite(item) {
       try {
         const id = item.dvd_id || item.content_id
-        await favoriteState.toggle('video', id, {
-          title: item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja,
-          jacket_thumb_url: this.cardImageUrl(item)
-        })
+        await favoriteState.toggle('video', id)
       } catch (err) {
         console.error('Failed to toggle favorite:', err)
       }
@@ -408,7 +400,7 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.sortConditions = [{ value: '' }]
+      this.clearSort()
       this.results = []
       this.searched = false
     },
@@ -452,21 +444,16 @@ export default {
         if (this.year) params.year = this.year
         if (this.serviceCode) params.service_code = this.serviceCode
         if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
-        if (this.sortConditions.length > 0) {
-          const parts = []
-          for (const cond of this.sortConditions) {
-            if (!cond.value) continue
-            if (cond.value === 'random') { parts.unshift('random'); continue }
-            const idx = cond.value.lastIndexOf('_')
-            const field = cond.value.substring(0, idx)
-            const order = cond.value.substring(idx + 1)
-            parts.push(`${field}:${order}`)
+        // 构建排序参数
+        if (this.sortState.random) {
+          params.random = '1'
+        } else {
+          const sortParts = []
+          for (const [field, dir] of Object.entries(this.sortState)) {
+            if (field === 'random' || dir === null) continue
+            sortParts.push(`${field}:${dir}`)
           }
-          if (parts.length === 1 && parts[0] === 'random') {
-            params.random = '1'
-          } else if (parts.length > 0) {
-            params.sort_by = parts.join(',')
-          }
+          if (sortParts.length > 0) params.sort_by = sortParts.join(',')
         }
 
         const resp = await api.searchVideos(params)
@@ -497,21 +484,16 @@ export default {
         if (this.year) params.year = this.year
         if (this.serviceCode) params.service_code = this.serviceCode
         if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
-        if (this.sortConditions.length > 0) {
-          const parts = []
-          for (const cond of this.sortConditions) {
-            if (!cond.value) continue
-            if (cond.value === 'random') { parts.unshift('random'); continue }
-            const idx = cond.value.lastIndexOf('_')
-            const field = cond.value.substring(0, idx)
-            const order = cond.value.substring(idx + 1)
-            parts.push(`${field}:${order}`)
+        // 构建排序参数
+        if (this.sortState.random) {
+          params.random = '1'
+        } else {
+          const sortParts = []
+          for (const [field, dir] of Object.entries(this.sortState)) {
+            if (field === 'random' || dir === null) continue
+            sortParts.push(`${field}:${dir}`)
           }
-          if (parts.length === 1 && parts[0] === 'random') {
-            params.random = '1'
-          } else if (parts.length > 0) {
-            params.sort_by = parts.join(',')
-          }
+          if (sortParts.length > 0) params.sort_by = sortParts.join(',')
         }
 
         const resp = await api.searchVideos(params)
@@ -532,17 +514,32 @@ export default {
       this.jumpPage = null
       this.goPage(p)
     },
-    onSortChange(idx) {
-      if (this.sortConditions[idx].value && idx === this.sortConditions.length - 1) {
-        this.sortConditions.push({ value: '' })
+    cycleSort(key) {
+      if (key === 'random') {
+        // 随机是互斥开关
+        this.sortState.random = !this.sortState.random
+        if (this.sortState.random) {
+          // 激活随机时清除其他排序
+          this.sortState.release_date = null
+          this.sortState.title_ja = null
+          this.sortState.runtime_mins = null
+        }
+      } else {
+        // 普通排序：null → desc → asc → null
+        const cycle = { null: 'desc', desc: 'asc', asc: null }
+        this.sortState[key] = cycle[this.sortState[key]]
+        // 激活非随机排序时关闭随机
+        if (this.sortState[key] !== null) {
+          this.sortState.random = false
+        }
       }
       this.doSearch()
     },
-    addSort() {
-      this.sortConditions.push({ value: '' })
-    },
-    removeSort(idx) {
-      this.sortConditions.splice(idx, 1)
+    clearSort() {
+      this.sortState.release_date = null
+      this.sortState.title_ja = null
+      this.sortState.runtime_mins = null
+      this.sortState.random = false
       this.doSearch()
     },
     async openModal(video) {
@@ -569,28 +566,8 @@ export default {
         }
       }).catch(e => console.warn('Load lazy metadata failed:', e))
     },
-    handleImgError(e) {
-      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>'
-    },
     cardImageUrl(item) {
       return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'
-    },
-    onImgLoad(e) {
-      const img = e.target
-      if (img.naturalWidth > img.naturalHeight) {
-        img.classList.add('wide')
-      }
-    },
-    formatServiceCode(code) {
-      const map = {
-        'mono': 'DVD',
-        'digital': '数字',
-        'rental': '租赁',
-        'download': '下载',
-        'streaming': '流媒体',
-        'subscription': '订阅'
-      }
-      return map[code] || code
     }
   }
 }
@@ -714,6 +691,110 @@ export default {
   margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+/* ===== 排序胶囊条 (Sort Pill Bar) ===== */
+.sort-strip {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sort-strip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sort-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.sort-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  user-select: none;
+}
+
+.sort-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.sort-pill.active {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #fcf6ba;
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.1);
+}
+
+.sort-pill.active:hover {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.6);
+}
+
+.sort-pill.random.active {
+  background: rgba(130, 100, 255, 0.12);
+  border-color: rgba(130, 100, 255, 0.4);
+  color: #c8b8ff;
+  box-shadow: 0 2px 12px rgba(130, 100, 255, 0.1);
+}
+
+.sort-pill.random.active:hover {
+  background: rgba(130, 100, 255, 0.18);
+  border-color: rgba(130, 100, 255, 0.6);
+}
+
+.pill-label {
+  line-height: 1;
+}
+
+.pill-arrow {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.pill-check {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.sort-clear-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.sort-clear-btn:hover {
+  background: rgba(255, 55, 95, 0.1);
+  border-color: rgba(255, 55, 95, 0.3);
+  color: #FF375F;
 }
 
 .filter-group {
@@ -971,171 +1052,6 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-/* ===== 恢复旧版电影卡片样式 ===== */
-.skeleton-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.skeleton-cover {
-  aspect-ratio: 3/4;
-  background: var(--bg-card-hover);
-  animation: pulse 2s infinite ease-in-out;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.skeleton-info {
-  padding: 12px;
-}
-
-.skeleton-line {
-  height: 12px;
-  background: var(--bg-card-hover);
-  border-radius: 6px;
-  margin-bottom: 8px;
-}
-
-.w-60 { width: 60%; }
-.w-80 { width: 80%; }
-
-.movie-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-  border: 1px solid var(--border);
-}
-
-.movie-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-  border-color: var(--accent);
-}
-
-.card-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3/4;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.movie-card:hover .cover-img {
-  transform: scale(1.05);
-}
-
-.cover-img.wide {
-  object-fit: none;
-  object-position: right center;
-  clip-path: inset(0 0 0 50%);
-}
-
-.card-preview-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0,0,0,0.65);
-  border-radius: 4px;
-  padding: 3px 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  pointer-events: none;
-}
-
-.card-info {
-  padding: 10px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.card-code-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.card-code {
-  font-weight: bold;
-  font-size: 13px;
-}
-
-.card-type {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.type-mono {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
-}
-
-.type-digital {
-  background: rgba(33, 150, 243, 0.2);
-  color: #2196F3;
-}
-
-.type-rental {
-  background: rgba(255, 152, 0, 0.2);
-  color: #FF9800;
-}
-
-.type-download {
-  background: rgba(156, 39, 176, 0.2);
-  color: #9C27B0;
-}
-
-.type-streaming,
-.type-subscription {
-  background: rgba(244, 67, 54, 0.2);
-  color: #F44336;
-}
-
-.card-title {
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.card-meta {
-  display: flex;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .empty-state {

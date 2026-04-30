@@ -209,6 +209,10 @@ export default {
     return api.get('/v1/favorites', { params: { entity_type } })
   },
 
+  getFavoriteVideos() {
+    return api.get('/v1/favorites/videos')
+  },
+
   toggleFavorite(data) {
     return api.post('/v1/favorites/toggle', data)
   },
