@@ -24,6 +24,18 @@
             <path v-else d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" fill="currentColor"/>
           </svg>
         </button>
+        <button
+          v-if="type === 'actress'"
+          class="entity-sub-btn"
+          :class="{ 'is-active': isEntitySubscribed }"
+          @click="toggleEntitySubscription"
+          :title="isEntitySubscribed ? '取消订阅' : '订阅'"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path v-if="isEntitySubscribed" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+            <path v-else d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-4h2v2h-2v-2zm0-2h2V7h-2v7z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -131,6 +143,7 @@ import { displayName } from '../utils/displayLang.js'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
 import { favoriteState } from '../utils/favoriteState'
+import subscriptionState from '../utils/subscriptionState'
 import MovieCard from '../components/MovieCard.vue'
 
 const PAGE_SIZE = 30
@@ -183,6 +196,10 @@ export default {
     isEntityFavorited() {
       return favoriteState.isFavorited(this.type, this.value)
     },
+    isEntitySubscribed() {
+      if (this.type !== 'actress') return false
+      return subscriptionState.isSubscribed(this.value)
+    },
     groupedByYear() {
       const groups = {}
       for (const item of this.results) {
@@ -200,6 +217,7 @@ export default {
     }
   },
   async mounted() {
+    subscriptionState.init()
     if (this.type === 'category') {
       await this.loadMetadata()
     }
@@ -218,6 +236,15 @@ export default {
         await favoriteState.toggle(this.type, this.value)
       } catch (err) {
         console.error('Toggle entity favorite failed:', err)
+      }
+    },
+    async toggleEntitySubscription() {
+      if (this.type !== 'actress') return
+      const subscribed = await subscriptionState.toggle(this.value, this.displayNameValue || this.value)
+      if (this.$message) {
+        this.$message[subscribed ? 'success' : 'info'](
+          subscribed ? `已订阅 ${this.displayNameValue || this.value}` : '已取消订阅'
+        )
       }
     },
     async loadMetadata() {
@@ -325,6 +352,27 @@ export default {
 .entity-fav-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-card-hover); }
 .entity-fav-btn.is-active { color: #FF375F; border-color: rgba(255, 55, 95, 0.3); background: rgba(255, 55, 95, 0.1); }
 .entity-fav-btn.is-active:hover { background: rgba(255, 55, 95, 0.2); }
+.entity-sub-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+  margin-left: 6px;
+}
+.entity-sub-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.entity-sub-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+}
 .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
 .result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
