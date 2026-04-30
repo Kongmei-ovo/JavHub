@@ -30,6 +30,7 @@ from routers.translation import router as translation_router
 from routers.proxy import router as proxy_router
 from routers.inventory import router as inventory_router
 from routers.favorites import router as favorites_router
+from routers.stream import router as stream_router
 
 app = FastAPI(title="AV Downloader API")
 
@@ -134,6 +135,7 @@ app.include_router(translation_router)
 app.include_router(proxy_router)
 app.include_router(inventory_router)
 app.include_router(favorites_router)
+app.include_router(stream_router)
 
 
 @app.on_event("startup")
