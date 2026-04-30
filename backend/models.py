@@ -74,13 +74,13 @@ class DownloadTask(BaseModel):
 
 class Subscription(BaseModel):
     id: str
-    actor_name: str
-    actor_code: Optional[str] = None
+    actress_name: str
+    actress_id: Optional[int] = None
     enabled: bool = True
-    auto_download: bool = True
-    last_check: Optional[datetime] = None
+    auto_download: bool = False
+    last_check: Optional[str] = None
     last_found: Optional[str] = None
-    created_at: datetime
+    created_at: str
 
 
 class ConfigUpdate(BaseModel):
