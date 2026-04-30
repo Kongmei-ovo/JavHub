@@ -138,6 +138,9 @@
               </svg>
               检查
             </button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="toggleEnabled(sub)">
+              {{ sub.enabled ? '暂停' : '启用' }}
+            </button>
             <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" @click="remove(sub.id)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13">
                 <polyline points="3 6 5 6 21 6"/>
@@ -255,6 +258,15 @@ export default {
     },
     isSubscribed(actressName) {
       return this.subs.some(s => s.actress_name === actressName)
+    },
+    async toggleEnabled(sub) {
+      try {
+        await api.updateSubscription(sub.id, { enabled: !sub.enabled })
+        this.loadSubs()
+      } catch (e) {
+        console.error('Toggle enabled failed:', e)
+        this.$message?.error('操作失败')
+      }
     },
     async remove(id) {
       try {
