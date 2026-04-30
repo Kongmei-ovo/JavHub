@@ -236,3 +236,20 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+    _migrate_subscriptions()
+
+
+def _migrate_subscriptions():
+    """迁移 subscriptions 表结构"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    # 检查 last_check 列是否存在
+    cursor.execute("PRAGMA table_info(subscriptions)")
+    columns = [row["name"] for row in cursor.fetchall()]
+    if "last_check" not in columns:
+        cursor.execute("ALTER TABLE subscriptions ADD COLUMN last_check TEXT")
+    if "last_found" not in columns:
+        cursor.execute("ALTER TABLE subscriptions ADD COLUMN last_found TEXT")
+    conn.commit()
+    conn.close()

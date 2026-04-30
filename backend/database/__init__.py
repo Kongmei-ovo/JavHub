@@ -22,6 +22,11 @@ from database.subscription import (
     add_subscription,
     get_subscriptions,
     delete_subscription,
+    is_subscribed,
+    toggle_subscription,
+    update_last_check,
+    get_subscription_by_actress,
+    update_subscription,
 )
 from database.log import (
     add_log,
@@ -104,6 +109,11 @@ __all__ = [
     "add_subscription",
     "get_subscriptions",
     "delete_subscription",
+    "is_subscribed",
+    "toggle_subscription",
+    "update_last_check",
+    "get_subscription_by_actress",
+    "update_subscription",
     "add_log",
     "get_logs",
     "add_ignored_duplicate",
