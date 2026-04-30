@@ -40,22 +40,32 @@ class NotificationService:
             logger.error(f"Telegram send failed: {e}")
             return False
 
-    async def notify_new_movies(self, movies: List[dict]):
+    async def notify_new_movies(self, movies: list):
         """通知发现新片"""
-        if not self.enabled or not self.telegram_notify:
-            return
+        from database import get_subscriptions
 
-        if not movies:
-            return
+        subs = get_subscriptions()
+        auto_subs = {s["actress_name"]: s for s in subs if s.get("auto_download")}
 
-        text = f"📢 *发现 {len(movies)} 部新片！*\n\n"
-        for movie in movies[:10]:
-            text += f"• `{movie['code']}` - {movie.get('actor', '未知')}\n"
+        # 按演员分组
+        by_actress = {}
+        for movie in movies:
+            actress = movie.get("actress_name", "未知")
+            if actress not in by_actress:
+                by_actress[actress] = []
+            by_actress[actress].append(movie)
 
-        if len(movies) > 10:
-            text += f"\n...还有 {len(movies) - 10} 部"
+        for actress, actress_movies in by_actress.items():
+            is_auto = actress in auto_subs
+            if is_auto:
+                text = f"🎬 *{actress}* 有新片已自动下载\n\n"
+            else:
+                text = f"🎬 *{actress}* 有新片\n\n"
 
-        await self._broadcast(text)
+            for movie in actress_movies[:5]:
+                text += f"• `{movie['code']}` {movie.get('title', '')}\n"
+
+            await self._broadcast(text)
 
     async def notify_download_complete(self, code: str, title: str):
         """通知下载完成"""
