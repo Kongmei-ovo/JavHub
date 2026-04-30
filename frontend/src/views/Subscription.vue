@@ -55,7 +55,7 @@
             <p v-if="actor.star_id" class="actor-star-id">ID: {{ actor.star_id }}</p>
           </div>
           <div class="actor-action">
-            <span v-if="isSubscribed(actor.name)" class="subscribed-tag">
+            <span v-if="isSubscribed(actor.name_kanji || actor.name_en || actor.name)" class="subscribed-tag">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
@@ -113,13 +113,13 @@
         <div v-for="sub in subs" :key="sub.id" class="sub-card">
           <div class="sub-avatar">
             <img
-              :src="'/api/actors/avatar/' + encodeURIComponent(sub.actor_name)"
-              :alt="sub.actor_name"
+              :src="'/api/actors/avatar/' + encodeURIComponent(sub.actress_name)"
+              :alt="sub.actress_name"
               @error="$event.target.style.display='none'"
             />
           </div>
           <div class="sub-body">
-            <h3 class="sub-name">{{ sub.actor_name }}</h3>
+            <h3 class="sub-name">{{ sub.actress_name }}</h3>
             <div class="sub-meta">
               <span :class="['badge', sub.enabled ? 'badge-success' : 'badge-pending']">
                 {{ sub.enabled ? '监控中' : '已暂停' }}
@@ -226,7 +226,7 @@ export default {
       this.searchResults = []
       try {
         const resp = await api.searchActors(this.searchKeyword.trim())
-        this.searchResults = resp.data || []
+        this.searchResults = resp.data?.data || resp.data || []
       } catch (e) {
         console.error('Search actors failed:', e)
       } finally {
@@ -239,18 +239,22 @@ export default {
       this.searched = false
     },
     async subscribe(actor) {
-      if (this.isSubscribed(actor.name)) return
+      const name = actor.name_kanji || actor.name_en || actor.name || ''
+      if (this.isSubscribed(name)) return
       try {
-        await api.addSubscription({ actor_name: actor.name })
-        this.$message.success(`已订阅 ${actor.name}`)
+        await api.addSubscription({
+          actress_id: actor.id || 0,
+          actress_name: name,
+        })
+        this.$message?.success(`已订阅 ${name}`)
         this.loadSubs()
       } catch (e) {
         console.error('Subscribe failed:', e)
-        this.$message.error('订阅失败')
+        this.$message?.error('订阅失败')
       }
     },
-    isSubscribed(actorName) {
-      return this.subs.some(s => s.actor_name === actorName)
+    isSubscribed(actressName) {
+      return this.subs.some(s => s.actress_name === actressName)
     },
     async remove(id) {
       try {
@@ -267,6 +271,7 @@ export default {
         this.checkResult = resp.data
       } catch (e) {
         console.error('Check failed:', e)
+        this.$message?.error('检查失败')
       }
     },
     async downloadMovie(movie) {
