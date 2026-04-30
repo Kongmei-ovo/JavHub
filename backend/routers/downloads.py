@@ -15,7 +15,7 @@ class CreateDownloadRequest(BaseModel):
 @router.post("")
 async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
     """创建下载任务并发送到OpenList"""
-    task_id = downloader_service.create_download_task(
+    task_id = await downloader_service.create_download_task(
         code=req.content_id,
         title=req.title,
         magnet=req.magnet,

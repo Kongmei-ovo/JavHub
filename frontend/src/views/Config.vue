@@ -145,7 +145,7 @@
                 <div class="form-slot">
                   <div class="form-group">
                     <label>服务器地址</label>
-                    <input class="input" v-model="config.metatube.host" placeholder="154.23.255.204" />
+                    <input class="input" v-model="config.metatube.host" placeholder="localhost" />
                   </div>
                   <div class="form-row">
                     <div class="form-group">
@@ -649,7 +649,7 @@ const DEFAULT_CONFIG = {
   scheduler: { subscription_check_hour: 2 },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
-  metatube: { host: '154.23.255.204', port: 8081, token: '' },
+  metatube: { host: 'localhost', port: 8081, token: '' },
   proxy: { enabled: false, http_url: '', https_url: '' },
 }
 

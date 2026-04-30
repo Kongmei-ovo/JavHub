@@ -77,13 +77,9 @@ export const favoriteState = {
       
       if (is_favorited) {
         state.registry[type].add(String(id))
-        // 乐观 UI：暂时不刷新全列表，由 refresh 任务或页面 mount 时同步
       } else {
         state.registry[type].delete(String(id))
       }
-      
-      // 触发数据刷新以保持 items 列表最新
-      await this.refresh()
 
       // Notify listeners (for Toast)
       if (this.listener) {

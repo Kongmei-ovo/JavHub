@@ -57,7 +57,11 @@ async def get_favorite_videos():
                 "_error": str(e),
             }
 
-    results = await asyncio.gather(*[fetch_one(item) for item in items])
+    sem = asyncio.Semaphore(8)
+    async def limited_fetch(item):
+        async with sem:
+            return await fetch_one(item)
+    results = await asyncio.gather(*[limited_fetch(item) for item in items])
     results.sort(key=lambda x: x.get("_created_at", ""), reverse=True)
     return results
 

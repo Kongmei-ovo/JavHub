@@ -34,6 +34,7 @@ docker-compose*
 # Misc
 .env
 .env.*
+config.yaml
 *.log
 .DS_Store
 Thumbs.db

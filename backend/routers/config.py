@@ -5,21 +5,38 @@ from .proxy import _get_httpx_proxies
 
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
+_SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
+_WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'metatube', 'notification', 'scheduler',
+                  'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
+
+
+def _sanitize_config(cfg: dict) -> dict:
+    """递归脱敏：移除嵌套 dict 中的敏感字段"""
+    result = {}
+    for k, v in cfg.items():
+        if isinstance(v, dict):
+            result[k] = {sk: sv for sk, sv in v.items() if sk not in _SENSITIVE_KEYS}
+        elif k not in _SENSITIVE_KEYS:
+            result[k] = v
+    return result
+
+
 @router.get("/config")
 async def get_config():
-    sensitive_keys = {'api_key', 'bot_token', 'password', 'secret', 'db_pass', 'jwt_secret'}
-    all_config = config.get_all()
-    return {k: v for k, v in all_config.items() if k not in sensitive_keys}
+    return _sanitize_config(config.get_all())
+
 
 @router.put("/config")
 async def update_config(new_config: dict):
-    config.update(new_config)
+    # 只允许更新白名单内的顶层 key
+    sanitized = {k: v for k, v in new_config.items() if k in _WRITABLE_KEYS}
+    config.update(sanitized)
     # JavInfoApi URL 变更后立即生效
-    if "javinfo" in new_config:
+    if "javinfo" in sanitized:
         from modules.info_client import reset_info_client
         reset_info_client()
     # MetaTube URL 变更后重置 client
-    if "metatube" in new_config:
+    if "metatube" in sanitized:
         from modules.metatube_client import close as mt_close
         await mt_close()
     return {"success": True}

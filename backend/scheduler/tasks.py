@@ -38,11 +38,11 @@ def subscription_check_job():
                 if actress in auto_subs and movie.get("magnet"):
                     try:
                         from services.downloader import downloader_service
-                        downloader_service.create_download_task(
+                        asyncio.run(downloader_service.create_download_task(
                             code=movie["code"],
                             title=movie.get("title", ""),
                             magnet=movie["magnet"],
-                        )
+                        ))
                         add_log("INFO", f"自动下载: {movie['code']}")
                     except Exception as e:
                         add_log("ERROR", f"自动下载失败 {movie['code']}: {e}")

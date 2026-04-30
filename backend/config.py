@@ -37,6 +37,10 @@ class Config:
         return self._config.get('server', {}).get('port', 18090)
 
     @property
+    def api_key(self) -> str:
+        return _env('API_KEY', self._config.get('server', {}).get('api_key', ''))
+
+    @property
     def openlist_api_url(self) -> str:
         return self._config.get('openlist', {}).get('api_url', '')
 
@@ -58,7 +62,7 @@ class Config:
 
     @property
     def emby_api_url(self) -> str:
-        return self._config.get('emby', {}).get('api_url', '')
+        return _env('EMBY_API_URL', self._config.get('emby', {}).get('api_url', ''))
 
     @property
     def emby_api_key(self) -> str:
@@ -112,11 +116,11 @@ class Config:
 
     @property
     def metatube_host(self) -> str:
-        return self._config.get('metatube', {}).get('host', 'localhost')
+        return _env('METATUBE_HOST', self._config.get('metatube', {}).get('host', 'localhost'))
 
     @property
     def metatube_port(self) -> int:
-        return self._config.get('metatube', {}).get('port', 8081)
+        return int(_env('METATUBE_PORT', str(self._config.get('metatube', {}).get('port', 8081))))
 
     @property
     def metatube_token(self) -> str:

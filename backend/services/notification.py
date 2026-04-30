@@ -26,16 +26,16 @@ class NotificationService:
 
         try:
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-            resp = httpx.post(
-                url,
-                json={
-                    "chat_id": user_id,
-                    "text": text,
-                    "parse_mode": "Markdown"
-                },
-                timeout=self.telegram_timeout
-            )
-            return resp.status_code == 200
+            async with httpx.AsyncClient(timeout=self.telegram_timeout) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "chat_id": user_id,
+                        "text": text,
+                        "parse_mode": "Markdown"
+                    },
+                )
+                return resp.status_code == 200
         except Exception as e:
             logger.error(f"Telegram send failed: {e}")
             return False
@@ -69,11 +69,10 @@ class NotificationService:
 
     async def notify_download_complete(self, code: str, title: str):
         """通知下载完成"""
-        if not self.enabled or not self.notification_download_complete:
+        if not self.enabled or not self.download_complete_notify:
             return
 
         text = f"✅ *下载完成*\n\n`{code}`\n{title}"
-
         await self._broadcast(text)
 
     async def notify_download_failed(self, code: str, error: str):
@@ -82,16 +81,14 @@ class NotificationService:
             return
 
         text = f"❌ *下载失败*\n\n`{code}`\n原因: {error}"
-
         await self._broadcast(text)
 
     async def notify_auto_download(self, code: str, actor: str, title: str):
         """通知自动下载"""
-        if not self.enabled or not self.notification_auto_download:
+        if not self.enabled or not self.auto_download_notify:
             return
 
         text = f"📥 *自动下载已触发*\n\n`{code}`\n演员: {actor}\n{title}"
-
         await self._broadcast(text)
 
     async def _broadcast(self, text: str):
@@ -105,8 +102,5 @@ class NotificationService:
     def log_and_notify(self, level: str, message: str, notify: bool = False):
         """记录日志并可选通知"""
         add_log(level, message)
-        if notify and level in ['ERROR', 'WARNING']:
-            # 简化的通知（同步）
-            pass
 
 notification_service = NotificationService()

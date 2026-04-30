@@ -1,6 +1,7 @@
 """数据库基础连接和初始化"""
 import sqlite3
 from pathlib import Path
+from contextlib import contextmanager
 
 # 关键：database/ 在 backend/ 下，比原 database.py 深一层，所以是 parent.parent.parent
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "avdownloader.db"
@@ -10,7 +11,22 @@ def get_db_orig():
     """主数据库连接（向后兼容原 get_db_orig）"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
+
+
+@contextmanager
+def get_db():
+    """数据库连接上下文管理器，自动 commit/rollback/close"""
+    conn = get_db_orig()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def _migrate_download_tasks():
@@ -238,6 +254,32 @@ def init_db():
     conn.close()
 
     _migrate_subscriptions()
+    _create_indexes()
+
+
+def _create_indexes():
+    """创建常用查询索引"""
+    conn = get_db_orig()
+    cursor = conn.cursor()
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_download_tasks_status ON download_tasks(status)",
+        "CREATE INDEX IF NOT EXISTS idx_download_tasks_content_id ON download_tasks(content_id)",
+        "CREATE INDEX IF NOT EXISTS idx_missing_videos_actress_id ON missing_videos(actress_id)",
+        "CREATE INDEX IF NOT EXISTS idx_emby_snapshots_snapshot_key ON emby_snapshots(snapshot_key, actress_id)",
+        "CREATE INDEX IF NOT EXISTS idx_actor_aliases_alias_id ON actor_aliases(alias_id)",
+        "CREATE INDEX IF NOT EXISTS idx_actor_aliases_canonical_id ON actor_aliases(canonical_id)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)",
+        "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_status ON inventory_jobs(status)",
+        "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_job_type ON inventory_jobs(job_type)",
+    ]
+    for sql in indexes:
+        try:
+            cursor.execute(sql)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
 
 
 def _migrate_subscriptions():

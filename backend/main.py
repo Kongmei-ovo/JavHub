@@ -68,7 +68,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={
             "detail": "服务器内部错误",
             "code": "ERR_INTERNAL",
-            "message": str(exc) if hasattr(exc, '__str__') else "Unknown error",
+            "message": "服务器内部错误",
         },
         headers={"X-Error-Code": "ERR_INTERNAL"}
     )
@@ -90,6 +90,22 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# API Key 认证中间件（配置了 api_key 时生效）
+_AUTH_EXEMPT_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    if _cfg.api_key and request.method != "OPTIONS":
+        path = request.url.path
+        if not any(path.startswith(p) for p in _AUTH_EXEMPT_PATHS):
+            key = request.headers.get("X-API-Key", "")
+            if key != _cfg.api_key:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "未授权：请提供有效的 API Key", "code": "ERR_UNAUTHORIZED"},
+                )
+    return await call_next(request)
 
 # 速率限制中间件
 from config import config as _cfg
@@ -145,14 +161,14 @@ async def startup_event():
         from scheduler.tasks import start_scheduler
         start_scheduler()
     except Exception as e:
-        print(f"Failed to start scheduler: {e}")
+        logging.error(f"Failed to start scheduler: {e}")
 
     # 注册下载源插件
     try:
         from sources import register_all_sources
         register_all_sources()
     except Exception as e:
-        print(f"Failed to register sources: {e}")
+        logging.error(f"Failed to register sources: {e}")
 
 
 @app.on_event("shutdown")
@@ -162,7 +178,7 @@ async def shutdown_event():
         from scheduler.tasks import stop_scheduler
         stop_scheduler()
     except Exception as e:
-        print(f"Failed to stop scheduler: {e}")
+        logging.error(f"Failed to stop scheduler: {e}")
 
     # 关闭 HTTP 客户端
     try:
@@ -174,5 +190,11 @@ async def shutdown_event():
     try:
         from modules.emby_client import get_emby_client
         await get_emby_client().close()
+    except Exception:
+        pass
+
+    try:
+        from modules.metatube_client import close as mt_close
+        await mt_close()
     except Exception:
         pass

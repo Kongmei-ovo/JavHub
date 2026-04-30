@@ -61,6 +61,10 @@ export default {
     return api.get('/v1/videos/search', { params })
   },
 
+  checkLibrary(code) {
+    return api.get(`/v1/videos/${code}`)
+  },
+
   listVideos(page = 1, page_size = 20) {
     return api.get('/v1/videos', { params: { page, page_size } })
   },

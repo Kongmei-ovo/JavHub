@@ -387,6 +387,15 @@ export default {
       return thumbs
     },
   },
+  watch: {
+    visible(val) {
+      if (!val) {
+        this.closeStreamPlayer()
+        this.closeVideoPlayer()
+        this.galleryViewerVisible = false
+      }
+    }
+  },
   methods: {
     async toggleFavorite() {
       const id = this.video.content_id || this.video.dvd_id
@@ -499,6 +508,24 @@ export default {
         hls.loadSource(this.streamM3u8Url)
         hls.attachMedia(video)
         hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play() })
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                this.$message?.error('网络错误，视频加载失败')
+                hls.startLoad()
+                break
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                this.$message?.error('视频解码错误')
+                hls.recoverMediaError()
+                break
+              default:
+                this.$message?.error('视频播放失败')
+                this.closeStreamPlayer()
+                break
+            }
+          }
+        })
         this.hlsInstance = hls
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = this.streamM3u8Url

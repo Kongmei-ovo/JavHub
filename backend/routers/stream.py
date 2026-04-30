@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any, Optional
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin, quote, urlparse
+import ipaddress
 import httpx
 import re
 import logging
@@ -11,10 +12,47 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
 
+# ── SSRF 防护 ─────────────────────────────────────────────────────
+
+ALLOWED_STREAM_DOMAINS = {
+    "jable.tv", "missav.ai", "surrit.com", "memojav.com",
+    "kanav.info", "hohoj.tv",
+}
+
+BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"}
+
+
+def _validate_proxy_url(url: str):
+    """校验代理 URL，防止 SSRF
+
+    - m3u8 请求：强制域名白名单 + 私有 IP 拦截
+    - ts/其他请求：仅拦截私有 IP（CDN 域名不可预测）
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(400, "仅允许 http/https 协议")
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        raise HTTPException(400, "无效的 URL")
+    if hostname in BLOCKED_HOSTS:
+        raise HTTPException(403, "不允许访问内部地址")
+    # 检查是否为私有/环路/链路本地 IP
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise HTTPException(403, "不允许访问私有网络")
+    except ValueError:
+        pass  # 域名而非 IP
+    # m3u8 请求强制域名白名单（ts 段在 CDN 上，不强制）
+    if url.endswith(".m3u8") or "mpegurl" in url.lower():
+        if not any(hostname.endswith(d) or hostname == d for d in ALLOWED_STREAM_DOMAINS):
+            raise HTTPException(403, f"域名 {hostname} 不在允许列表中")
+
 
 @router.get("/proxy")
 async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts URL")):
     """代理 m3u8 和 ts，m3u8 内容中的相对 URL 会被改写为代理地址"""
+    _validate_proxy_url(url)
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "*/*",
@@ -67,7 +105,7 @@ async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts U
                 },
             )
     except httpx.RequestError as e:
-        logger.error(f"Proxy request failed for {url}: {e}")
+        logger.error(f"Proxy request failed for {urlparse(url).hostname}: {e}")
         raise HTTPException(status_code=502, detail="代理请求失败")
 
 

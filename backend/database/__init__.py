@@ -2,7 +2,7 @@
 
 所有函数从各子模块导出，兼容原有 import 方式。
 """
-from database.base import get_db_orig, init_db
+from database.base import get_db_orig, get_db, init_db
 from database.translation import (
     init_translation_db,
     get_translation,
