@@ -20,6 +20,7 @@ def create_bot() -> Application:
     app.add_handler(CommandHandler("help", help_handler))
 
     # 注册回调处理器
+    app.add_handler(CallbackQueryHandler(subscribe_callback, pattern="^subscribe:"))
     app.add_handler(CallbackQueryHandler(download_callback))
     app.add_handler(CallbackQueryHandler(search_callback_handler))
 
@@ -44,10 +45,65 @@ async def handle_sub_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         await update.message.reply_text("用法：/sub <add/del/list> [演员名]")
 
-async def check_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """处理 /check 命令"""
-    # TODO: 调用 SubscriptionService.check_all()
+async def check_handler(update, context):
+    """处理 /check 命令 — 手动触发订阅检查"""
     await update.message.reply_text("🔄 正在检查订阅更新...")
+    try:
+        from services.subscription import check_all_subscriptions
+        new_movies = await check_all_subscriptions()
+        if new_movies:
+            text = f"📢 发现 {len(new_movies)} 部新片！\n\n"
+            for movie in new_movies[:10]:
+                text += f"• `{movie['code']}` - {movie.get('actress_name', '未知')}\n"
+            await update.message.reply_text(text, parse_mode="Markdown")
+        else:
+            await update.message.reply_text("✅ 暂无新片")
+    except Exception as e:
+        await update.message.reply_text(f"❌ 检查失败：{str(e)}")
+
+async def subscribe_callback(update, context):
+    """处理订阅按钮回调"""
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    if not data.startswith("subscribe:"):
+        return
+
+    parts = data.split(":", 2)
+    if len(parts) < 2:
+        return
+
+    actress_name = parts[1] if len(parts) == 2 else parts[1]
+
+    try:
+        # 查找 actress_id
+        from modules.info_client import get_info_client
+        client = get_info_client()
+        result = await client.list_actresses(page=1, page_size=100)
+        items = result.get("data", []) if isinstance(result, dict) else []
+
+        actress_id = 0
+        for item in items:
+            names = [
+                item.get("name_kanji", ""),
+                item.get("name_romaji", ""),
+                item.get("name_en", ""),
+                item.get("name_ja", ""),
+                item.get("name", ""),
+            ]
+            if actress_name in names:
+                actress_id = item.get("id", 0)
+                break
+
+        from database import toggle_subscription
+        result = toggle_subscription(actress_id, actress_name)
+        if result["subscribed"]:
+            await query.edit_message_text(f"✅ 已订阅：{actress_name}")
+        else:
+            await query.edit_message_text(f"❌ 已取消订阅：{actress_name}")
+    except Exception as e:
+        await query.edit_message_text(f"❌ 操作失败：{str(e)}")
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 /help 命令"""

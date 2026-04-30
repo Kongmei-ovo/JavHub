@@ -3,18 +3,39 @@ from telegram.ext import ContextTypes
 from database import add_subscription, get_subscriptions, delete_subscription
 
 async def sub_add_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """处理 /sub add 命令"""
     if not context.args:
         await update.message.reply_text("用法：/sub add <演员名>")
         return
-
     actress_name = " ".join(context.args)
-
-    # TODO: 需要通过 InfoClient 获取 actress_id
-    # 暂时用名称代替
     try:
-        add_subscription(actress_id=0, actress_name=actress_name, auto_download=False)
-        await update.message.reply_text(f"✅ 已添加订阅：{actress_name}")
+        # 通过 InfoClient 查找 actress_id
+        from modules.info_client import get_info_client
+        client = get_info_client()
+        result = await client.list_actresses(page=1, page_size=100)
+        items = result.get("data", []) if isinstance(result, dict) else []
+
+        actress_id = 0
+        for item in items:
+            names = [
+                item.get("name_kanji", ""),
+                item.get("name_romaji", ""),
+                item.get("name_en", ""),
+                item.get("name_ja", ""),
+                item.get("name", ""),
+            ]
+            if actress_name in names:
+                actress_id = item.get("id", 0)
+                break
+
+        # 检查是否已订阅
+        from database import is_subscribed
+        if actress_id and is_subscribed(actress_id):
+            await update.message.reply_text(f"ℹ️ 已经订阅了：{actress_name}")
+            return
+
+        add_subscription(actress_id=actress_id, actress_name=actress_name, auto_download=False)
+        id_msg = f" (ID: {actress_id})" if actress_id else ""
+        await update.message.reply_text(f"✅ 已添加订阅：{actress_name}{id_msg}")
     except Exception as e:
         await update.message.reply_text(f"❌ 添加失败：{str(e)}")
 
