@@ -11,7 +11,8 @@
           />
         </div>
         <div class="actor-info">
-          <h1 class="actor-name">{{ actorName }}</h1>
+          <h1 class="actor-name">{{ translatedName || actorName }}</h1>
+          <p v-if="translatedName && translatedName !== actorName" class="actor-name-original">{{ actorName }}</p>
           <div class="actor-meta">
             <span class="meta-item">
               <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
@@ -52,7 +53,7 @@
         >
           <div class="card-cover">
             <img
-              :src="proxyImg(movie.cover_url || movie.img)"
+              :src="movie.cover_url"
               :alt="movie.code || movie.id"
               class="cover-img"
               @error="handleImgError"
@@ -99,7 +100,7 @@
               <div class="gallery-main">
                 <img
                   v-if="mainGalleryImg"
-                  :src="proxyImg(mainGalleryImg)"
+                  :src="mainGalleryImg"
                   :alt="selectedMovie?.code"
                   @error="handleImgError"
                 />
@@ -108,7 +109,7 @@
                 <img
                   v-for="(img, idx) in galleryImages"
                   :key="idx"
-                  :src="proxyImg(img)"
+                  :src="img"
                   :alt="'sample-' + idx"
                   class="gallery-thumb"
                   :class="{ active: mainGalleryImg === img }"
@@ -184,12 +185,15 @@
 
 <script>
 import api from '../api'
+import { actressImgUrl } from '../utils/imageUrl.js'
+import { displayName } from '../utils/displayLang.js'
 
 export default {
   name: 'Actor',
   data() {
     return {
       actorName: '',
+      actressData: null,
       movies: [],
       loading: false,
       selectedMovie: null,
@@ -199,7 +203,12 @@ export default {
   },
   computed: {
     avatarUrl() {
-      return `/api/actors/avatar/${encodeURIComponent(this.actorName)}`
+      if (this.actressData?.image_url) return actressImgUrl(this.actressData.image_url)
+      return ''
+    },
+    translatedName() {
+      if (!this.actressData) return this.actorName
+      return displayName(this.actressData, 'name_kanji', 'name_romaji') || this.actorName
     },
     galleryImages() {
       if (!this.selectedMovie) return []
@@ -211,38 +220,54 @@ export default {
     }
   },
   mounted() {
-    // Get actor name from route query
     this.actorName = this.$route.query.name || this.$route.params.name || ''
     if (this.actorName) {
+      this.loadActressInfo()
       this.loadActorMovies()
     }
   },
   methods: {
-    proxyImg(url) {
-      if (!url) return ''
-      if (url.includes('javbus.com') || url.includes('javcdn')) return api.proxyImage(url)
-      return url
+    async loadActressInfo() {
+      try {
+        const resp = await api.searchActors(this.actorName)
+        const results = resp.data?.data || resp.data || []
+        const match = results.find(a =>
+          (a.name_kanji === this.actorName) ||
+          (a.name_romaji === this.actorName) ||
+          (a.name_kanji && this.actorName.includes(a.name_kanji))
+        )
+        if (match) this.actressData = match
+      } catch (e) {
+        console.error('Load actress info failed:', e)
+      }
+    },
+    normalizeMovie(m) {
+      return {
+        code: m.dvd_id || m.content_id || '',
+        id: m.content_id || m.dvd_id || '',
+        title: m.title_en || m.title_ja || '',
+        cover_url: m.jacket_thumb_url || '',
+        date: m.release_date || '',
+        actor: m.actress_name || this.actorName,
+        genres: m.categories || [],
+        _raw: m
+      }
     },
     async loadActorMovies() {
       this.loading = true
       try {
-        // Search by actor name
-        const resp = await api.searchMovies(this.actorName, 1)
+        const pageSize = 30
+        const resp = await api.searchVideos({ actress_name: this.actorName, page: 1, page_size: pageSize })
         const data = resp.data
-        const allMovies = [...(data.movies || [])]
+        const allMovies = (data.data || []).map(m => this.normalizeMovie(m))
+        const totalPages = data.total_pages || 1
 
-        // Load more pages if available
-        const totalPages = data.pagination?.pages?.length || 1
         for (let page = 2; page <= Math.min(totalPages, 5); page++) {
-          const r = await api.searchMovies(this.actorName, page)
-          allMovies.push(...(r.data.movies || []))
+          const r = await api.searchVideos({ actress_name: this.actorName, page, page_size: pageSize })
+          allMovies.push(...(r.data.data || []).map(m => this.normalizeMovie(m)))
         }
 
-        // Filter to only include movies with this actor
-        this.movies = allMovies.filter(m =>
-          m.actor?.toLowerCase().includes(this.actorName.toLowerCase()) ||
-          m.stars?.some(s => s.name?.toLowerCase().includes(this.actorName.toLowerCase()))
-        )
+        this.movies = allMovies
       } catch (e) {
         console.error('Load actor movies failed:', e)
       } finally {
@@ -251,16 +276,25 @@ export default {
     },
     async openModal(movie) {
       this.selectedMovie = movie
-      this.mainGalleryImg = movie.cover_url || movie.img || ''
+      this.mainGalleryImg = movie.cover_url || ''
       this.loadingMagnets = true
 
       try {
-        const resp = await api.getMovieFull(movie.code || movie.id)
-        if (resp.data && !resp.data.error) {
-          this.selectedMovie = { ...movie, ...resp.data }
+        const resp = await api.getVideo(movie.code || movie.id)
+        if (resp.data) {
+          const full = resp.data
+          this.selectedMovie = {
+            ...movie,
+            ...full,
+            code: full.dvd_id || full.content_id || movie.code,
+            title: full.title_en || full.title_ja || movie.title,
+            cover_url: full.jacket_thumb_url || movie.cover_url,
+            date: full.release_date || movie.date
+          }
+          this.mainGalleryImg = this.selectedMovie.cover_url
         }
       } catch (e) {
-        console.error('Load magnets failed:', e)
+        console.error('Load video detail failed:', e)
       }
       this.loadingMagnets = false
     },
@@ -273,7 +307,7 @@ export default {
         await api.createDownload({
           code: this.selectedMovie.code || this.selectedMovie.id,
           title: this.selectedMovie.title,
-          magnet: mag.magnet
+          magnet: mag.magnet || ''
         })
         this.$message.success('已添加到下载队列')
       } catch (e) {
@@ -336,7 +370,13 @@ export default {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.actor-name-original {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
 }
 
 .actor-meta {

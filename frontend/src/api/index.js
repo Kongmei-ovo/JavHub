@@ -87,14 +87,18 @@ export default {
     return api.get(`/v1/actresses/${actressId}/videos`, { params: { page, page_size } })
   },
 
+  batchGetActressVideos(ids, page = 1, page_size = 5) {
+    return api.post('/v1/actresses/batch_videos', { ids, page, page_size })
+  },
+
   // ========== 枚举数据 ==========
 
   listMakers() {
     return api.get('/v1/makers')
   },
 
-  listSeries() {
-    return api.get('/v1/series')
+  listSeries(page = 1, page_size = 20) {
+    return api.get('/v1/series', { params: { page, page_size } })
   },
 
   listCategories() {
@@ -143,6 +147,10 @@ export default {
 
   checkSubscription(id) {
     return api.post(`/v1/subscriptions/${id}/check`)
+  },
+
+  getNewMovies() {
+    return api.get('/v1/subscriptions/new_movies')
   },
 
   toggleSubscription(data) {

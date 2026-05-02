@@ -74,10 +74,34 @@ class InfoClient:
         return response.json()
 
     async def _get_list(self, path: str, params: dict | None = None) -> list[dict]:
+        """获取列表数据（单页），自动处理分页格式返回纯 list"""
         client = await self._get_client()
         response = await client.get(f"{self.api_url}{path}", params=params)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        # 兼容分页格式 {data: [...], ...} 和纯数组格式 [...]
+        if isinstance(data, dict):
+            return data.get("data", [])
+        return data if isinstance(data, list) else []
+
+    async def _get_all_pages(self, path: str, page_size: int = 100) -> list[dict]:
+        """获取所有分页数据，自动翻页合并"""
+        all_items = []
+        page = 1
+        while True:
+            params = {"page": page, "page_size": page_size}
+            client = await self._get_client()
+            response = await client.get(f"{self.api_url}{path}", params=params)
+            response.raise_for_status()
+            data = response.json()
+            items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+            all_items.extend(items)
+            # 检查是否还有下一页
+            total_pages = data.get("total_pages", 1) if isinstance(data, dict) else 1
+            if page >= total_pages or not items:
+                break
+            page += 1
+        return all_items
 
     # === 视频相关 ===
 
@@ -178,9 +202,12 @@ class InfoClient:
 
     # === 演员相关 ===
 
-    async def list_actresses(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
-        """获取演员列表"""
-        return await self._get("/api/v1/actresses", params={"page": page, "page_size": page_size})
+    async def list_actresses(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """获取演员列表（支持 q 关键词搜索）"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        return await self._get("/api/v1/actresses", params=params)
 
     async def get_actress(self, actress_id: int) -> dict[str, Any]:
         """获取演员详情"""
@@ -199,47 +226,126 @@ class InfoClient:
 
     # === 枚举数据 ===
 
-    async def list_makers(self) -> list[dict]:
-        """获取所有厂商（缓存24小时）"""
+    async def list_makers(self, q: str | None = None) -> list[dict]:
+        """获取所有厂商（缓存24小时，支持 q 搜索）"""
+        if q:
+            # 搜索不走缓存
+            result = await self._get("/api/v1/makers", params={"q": q, "page_size": 100})
+            return result.get("data", []) if isinstance(result, dict) else result
         cached = cache.get_enum_list("makers")
         if cached is not None:
             return cached
-        data = await self._get_list("/api/v1/makers")
+        data = await self._get_all_pages("/api/v1/makers")
         cache.set_enum_list("makers", data)
         return data
 
-    async def list_series(self) -> list[dict]:
-        """获取所有系列（缓存24小时）"""
+    async def list_series(self, q: str | None = None) -> list[dict]:
+        """获取所有系列（缓存24小时，支持 q 搜索）"""
+        if q:
+            result = await self._get("/api/v1/series", params={"q": q, "page_size": 100})
+            return result.get("data", []) if isinstance(result, dict) else result
         cached = cache.get_enum_list("series")
         if cached is not None:
             return cached
-        data = await self._get_list("/api/v1/series")
+        data = await self._get_all_pages("/api/v1/series")
         cache.set_enum_list("series", data)
         return data
 
-    async def list_categories(self) -> list[dict]:
-        """获取所有题材（缓存24小时）"""
+    async def list_categories(self, q: str | None = None) -> list[dict]:
+        """获取所有题材（缓存24小时，支持 q 搜索）"""
+        if q:
+            result = await self._get("/api/v1/categories", params={"q": q, "page_size": 100})
+            return result.get("data", []) if isinstance(result, dict) else result
         cached = cache.get_enum_list("categories")
         if cached is not None:
             return cached
-        data = await self._get_list("/api/v1/categories")
+        data = await self._get_all_pages("/api/v1/categories")
         cache.set_enum_list("categories", data)
         return data
 
-    async def list_labels(self) -> list[dict]:
-        """获取所有品牌（缓存24小时）"""
+    async def list_labels(self, q: str | None = None) -> list[dict]:
+        """获取所有品牌（缓存24小时，支持 q 搜索）"""
+        if q:
+            result = await self._get("/api/v1/labels", params={"q": q, "page_size": 100})
+            return result.get("data", []) if isinstance(result, dict) else result
         cached = cache.get_enum_list("labels")
         if cached is not None:
             return cached
-        data = await self._get_list("/api/v1/labels")
+        data = await self._get_all_pages("/api/v1/labels")
         cache.set_enum_list("labels", data)
         return data
+
+    # === 批量接口 ===
+
+    async def batch_get_videos(self, ids: list[str]) -> list[dict]:
+        """批量获取视频详情（最多100个 content_id）"""
+        if not ids:
+            return []
+        # 分批，每批最多100
+        results = []
+        for i in range(0, len(ids), 100):
+            batch = ids[i:i + 100]
+            client = await self._get_client()
+            resp = await client.post(f"{self.api_url}/api/v1/videos/batch", json={"ids": batch})
+            resp.raise_for_status()
+            items = resp.json()
+            if isinstance(items, list):
+                results.extend([_transform_video_item(item) for item in items])
+        return results
+
+    async def batch_lookup_by_dvd_id(self, dvd_ids: list[str]) -> dict[str, dict]:
+        """批量番号查找（最多100个 dvd_id），返回 {dvd_id: video} 映射"""
+        if not dvd_ids:
+            return {}
+        results = {}
+        for i in range(0, len(dvd_ids), 100):
+            batch = dvd_ids[i:i + 100]
+            client = await self._get_client()
+            resp = await client.post(f"{self.api_url}/api/v1/videos/lookup", json={"dvd_ids": batch})
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    results[k] = _transform_video_item(v)
+        return results
+
+    async def batch_get_actress_videos(
+        self, actress_ids: list[int], page: int = 1, page_size: int = 20
+    ) -> dict[str, dict]:
+        """批量获取演员作品（最多20个演员），返回 {actress_id: {total_count, videos}}"""
+        if not actress_ids:
+            return {}
+        results = {}
+        for i in range(0, len(actress_ids), 20):
+            batch = actress_ids[i:i + 20]
+            client = await self._get_client()
+            resp = await client.post(
+                f"{self.api_url}/api/v1/actresses/batch_videos",
+                json={"ids": batch, "page": page, "page_size": page_size},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, dict):
+                for aid, info in data.items():
+                    if isinstance(info, dict) and "videos" in info:
+                        info["videos"] = [_transform_video_item(v) for v in info["videos"]]
+                    results[aid] = info
+        return results
 
     # === 统计 ===
 
     async def get_stats(self) -> dict[str, Any]:
         """获取统计数据"""
         return await self._get("/api/v1/stats")
+
+    async def get_category_stats(self) -> list[dict]:
+        """获取题材分类统计（含 video_count），走缓存"""
+        cached = cache.get_category_stats()
+        if cached is not None:
+            return cached
+        data = await self._get_list("/api/v1/categories/stats")
+        cache.set_category_stats(data)
+        return data
 
 
 # 全局单例（复用 httpx client，只把 api_url 做成动态读配置）

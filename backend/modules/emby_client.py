@@ -214,43 +214,59 @@ class EmbyClient:
         return SequenceMatcher(None, str1.upper(), str2.upper()).ratio()
 
     async def find_duplicates(self, info_client) -> list[dict]:
-        """查找可疑重复（Emby名称 ↔ JavInfoApi匹配）"""
+        """查找可疑重复（Emby名称 ↔ JavInfoApi匹配），使用批量接口"""
         from database import is_duplicate_ignored
 
         duplicates = []
         embys = await self.get_items()
 
+        # 收集需要查询的番号及其对应的 emby 信息
+        code_to_items: dict[str, list[dict]] = {}
         for emby_item in embys:
             emby_id = emby_item.get("Id")
             emby_name = emby_item.get("Name", "")
 
-            # 跳过已忽略的
             if is_duplicate_ignored(emby_id):
                 continue
 
-            # 提取番号
             code = self._extract_code_from_name(emby_name)
             if not code:
                 continue
 
-            # 查询 JavInfoApi
+            if code not in code_to_items:
+                code_to_items[code] = []
+            code_to_items[code].append({"emby_id": emby_id, "emby_name": emby_name, "code": code})
+
+        if not code_to_items:
+            return duplicates
+
+        # 批量查找（每批最多100个 dvd_id）
+        all_codes = list(code_to_items.keys())
+        javinfo_map: dict[str, dict] = {}
+        for i in range(0, len(all_codes), 100):
+            batch = all_codes[i:i + 100]
             try:
-                result = await info_client.search_videos(content_id=code, page_size=1)
-                items = result.get("data", [])
-                if items:
-                    javinfo = items[0]
-                    similarity = self._calculate_similarity(emby_name, javinfo.get("title_en", ""))
-                    if similarity > 0.5:  # 相似度阈值
-                        duplicates.append({
-                            "emby_item_id": emby_id,
-                            "emby_name": emby_name,
-                            "content_id": code,
-                            "javinfo_title": javinfo.get("title_en"),
-                            "similarity": round(similarity, 2),
-                            "reason": f"Emby名称与JavInfoApi番号匹配 (相似度 {similarity:.0%})",
-                        })
+                result = await info_client.batch_lookup_by_dvd_id(batch)
+                javinfo_map.update(result)
             except Exception:
                 continue
+
+        # 匹配并计算相似度
+        for code, emby_items in code_to_items.items():
+            javinfo = javinfo_map.get(code)
+            if not javinfo:
+                continue
+            for emby_info in emby_items:
+                similarity = self._calculate_similarity(emby_info["emby_name"], javinfo.get("title_en", ""))
+                if similarity > 0.5:
+                    duplicates.append({
+                        "emby_item_id": emby_info["emby_id"],
+                        "emby_name": emby_info["emby_name"],
+                        "content_id": code,
+                        "javinfo_title": javinfo.get("title_en"),
+                        "similarity": round(similarity, 2),
+                        "reason": f"Emby名称与JavInfoApi番号匹配 (相似度 {similarity:.0%})",
+                    })
 
         return duplicates
 

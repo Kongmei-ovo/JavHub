@@ -62,22 +62,15 @@
 
     <!-- 演员 Tab：头像卡片 -->
     <div v-if="activeTab === 'actress'" class="actress-tab">
-      <div class="actress-header" v-if="!actressesLoading && displayedActresses.length">
-        <button class="shuffle-btn" @click="prevActressPage" :disabled="actressPage <= 1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
-          上一页
-        </button>
-        <button class="shuffle-btn" @click="randomActressPage">
+      <div class="cloud-header">
+        <span class="cloud-hint">第 {{ actressPage }} / {{ actressTotalPages }} 页</span>
+        <button class="shuffle-btn" @click="shuffleActresses" :disabled="actressesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
           </svg>
-          随机
-        </button>
-        <button class="shuffle-btn" @click="nextActressPage" :disabled="actressPage >= actressTotalPages">
-          下一页
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
+          换一批
         </button>
       </div>
 
@@ -109,7 +102,7 @@
     <!-- 系列 Tab：系列气泡云 -->
     <div v-if="activeTab === 'series'" class="tag-cloud-wrap">
       <div class="cloud-header">
-        <span class="cloud-hint">共 {{ seriesList.length }} 个系列</span>
+        <span class="cloud-hint">第 {{ seriesPage }} / {{ seriesTotalPages }} 页</span>
         <button class="shuffle-btn" @click="reshuffleSeries" :disabled="seriesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
@@ -391,9 +384,11 @@ export default {
       actressPage: 1,
       actressTotalPages: 1,
       // 系列
-      seriesList: [],
+      seriesRawPage: [],
       displayedSeries: [],
       seriesLoading: false,
+      seriesPage: 1,
+      seriesTotalPages: 1,
     }
   },
   computed: {
@@ -715,34 +710,30 @@ export default {
         this.actressesLoading = false
       }
     },
-    async loadSeries() {
+    shuffleActresses() {
+      // 随机选一页加载
+      const randomPage = Math.floor(Math.random() * this.actressTotalPages) + 1
+      this.loadActresses(randomPage)
+    },
+    async loadSeries(page = 1) {
       this.seriesLoading = true
       try {
-        const resp = await api.listSeries()
-        this.seriesList = resp.data?.data || resp.data || []
-        this.displayedSeries = shuffle(this.seriesList).slice(0, 60)
+        const pageSize = 60
+        const resp = await api.listSeries(page, pageSize)
+        const raw = resp.data
+        this.seriesRawPage = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : [])
+        this.displayedSeries = shuffle([...this.seriesRawPage])
+        this.seriesTotalPages = raw.total_pages || 1
+        this.seriesPage = page
       } catch (e) {
         console.error('Load series failed:', e)
       } finally {
         this.seriesLoading = false
       }
     },
-    randomActressPage() {
-      // 本地 shuffle 当前页，不调后端
-      this.displayedActresses = shuffle([...this.actressRawPage])
-    },
-    nextActressPage() {
-      if (this.actressPage < this.actressTotalPages) {
-        this.loadActresses(this.actressPage + 1)
-      }
-    },
-    prevActressPage() {
-      if (this.actressPage > 1) {
-        this.loadActresses(this.actressPage - 1)
-      }
-    },
     reshuffleSeries() {
-      this.displayedSeries = shuffle(this.seriesList).slice(0, 60)
+      const randomPage = Math.floor(Math.random() * this.seriesTotalPages) + 1
+      this.loadSeries(randomPage)
     },
     goActress(actress) {
       const name = actress.name_kanji || actress.name_romaji || actress.name || ''
@@ -786,11 +777,24 @@ export default {
 .hero-title { font-size: 36px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 14px; color: var(--text-muted); }
 .tag-cloud-wrap { padding: 20px; max-width: 1200px; margin: 0 auto; }
-.cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 16px; }
-.cloud-hint { font-size: 13px; color: var(--text-muted); }
-.shuffle-btn { display: flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 14px; border-radius: 20px; transition: var(--transition); }
-.shuffle-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.shuffle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 20px; }
+.cloud-hint { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
+.shuffle-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  padding: 7px 16px;
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.shuffle-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: var(--text-primary); }
+.shuffle-btn:active:not(:disabled) { transform: scale(0.96); }
+.shuffle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-wrap { text-align: center; padding: 60px; color: var(--text-secondary); }
 .spinner-large { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 
@@ -802,7 +806,6 @@ export default {
 
 /* 演员卡片：整个圆形，参照VideoModal */
 .actress-tab { padding: 20px; max-width: 1200px; margin: 0 auto; }
-.actress-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 16px; }
 .actress-grid { display: grid; gap: 20px; justify-items: center; }
 .actress-card { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: var(--transition); }
 .actress-card:hover { transform: translateY(-4px); }

@@ -23,11 +23,7 @@ BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"}
 
 
 def _validate_proxy_url(url: str):
-    """校验代理 URL，防止 SSRF
-
-    - m3u8 请求：强制域名白名单 + 私有 IP 拦截
-    - ts/其他请求：仅拦截私有 IP（CDN 域名不可预测）
-    """
+    """校验代理 URL，防止 SSRF（仅拦截私有/环路/链路本地 IP）"""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(400, "仅允许 http/https 协议")
@@ -36,17 +32,12 @@ def _validate_proxy_url(url: str):
         raise HTTPException(400, "无效的 URL")
     if hostname in BLOCKED_HOSTS:
         raise HTTPException(403, "不允许访问内部地址")
-    # 检查是否为私有/环路/链路本地 IP
     try:
         ip = ipaddress.ip_address(hostname)
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
             raise HTTPException(403, "不允许访问私有网络")
     except ValueError:
         pass  # 域名而非 IP
-    # m3u8 请求强制域名白名单（ts 段在 CDN 上，不强制）
-    if url.endswith(".m3u8") or "mpegurl" in url.lower():
-        if not any(hostname.endswith(d) or hostname == d for d in ALLOWED_STREAM_DOMAINS):
-            raise HTTPException(403, f"域名 {hostname} 不在允许列表中")
 
 
 @router.get("/proxy")

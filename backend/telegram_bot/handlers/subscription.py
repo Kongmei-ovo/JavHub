@@ -8,10 +8,10 @@ async def sub_add_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     actress_name = " ".join(context.args)
     try:
-        # 通过 InfoClient 查找 actress_id
+        # 通过 InfoClient 搜索 actress_id（使用 q 参数直接搜索）
         from modules.info_client import get_info_client
         client = get_info_client()
-        result = await client.list_actresses(page=1, page_size=100)
+        result = await client.list_actresses(q=actress_name, page=1, page_size=10)
         items = result.get("data", []) if isinstance(result, dict) else []
 
         actress_id = 0

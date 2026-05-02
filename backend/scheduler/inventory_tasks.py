@@ -112,12 +112,11 @@ async def run_collect_job(job_id: int):
 
 
 async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
-    """对比阶段：基于快照数据对比 JavInfo，计算缺失"""
+    """对比阶段：基于快照数据对比 JavInfo，计算缺失（使用批量接口）"""
     update_inventory_job(job_id, "running")
     print(f"[Inventory] Starting compare job {job_id}, snapshot: {snapshot_key}")
 
     try:
-        # 如果没有指定快照，用最新的
         if not snapshot_key:
             snapshot_key = get_latest_snapshot_key()
 
@@ -125,67 +124,75 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             update_inventory_job(job_id, "failed", "No snapshot available. Please run collect first.")
             return
 
-        emby = get_emby_client()
         info = get_info_client()
 
-        # 获取快照中的演员列表
         actors = get_snapshot_actors(snapshot_key)
         print(f"[Inventory] Comparing {len(actors)} actors from snapshot {snapshot_key}")
 
         scanned = 0
         missing_total = 0
 
-        for actor in actors:
-            actress_id = actor["actress_id"]
-            actress_name = actor["actress_name"]
-            total = 0
-            missing = 0
+        # 分批处理演员，每批最多20个（JavInfoApi 限制）
+        for batch_start in range(0, len(actors), 20):
+            batch_actors = actors[batch_start:batch_start + 20]
+            actress_ids = [a["actress_id"] for a in batch_actors]
 
+            # 批量获取演员作品
             try:
-                # 从 JavInfo 查该演员所有作品
-                result = await info.get_actress_videos(actress_id, page_size=999)
-                javinfo_videos = result.get("data", [])
+                batch_results = await info.batch_get_actress_videos(actress_ids, page_size=999)
             except Exception as e:
-                print(f"[Inventory] Failed to get JavInfo videos for actress {actress_id}: {e}")
-                # JavInfo 查询失败时标记状态为未知，避免静默跳过导致统计失真
-                update_inventory_actor_stats(actress_id, total=-1, missing=-1)
+                print(f"[Inventory] Batch fetch failed for actors {actress_ids}: {e}")
+                for actor in batch_actors:
+                    update_inventory_actor_stats(actor["actress_id"], total=-1, missing=-1)
                 continue
 
-            # 从快照获取该演员在 Emby 的影片
-            snapshot_videos = get_snapshot_videos(snapshot_key, actress_id)
-            emby_filenames = {v.get("filename", "").upper() for v in snapshot_videos}
-            emby_titles = {v.get("title", "").upper() for v in snapshot_videos}
+            for actor in batch_actors:
+                actress_id = actor["actress_id"]
+                actress_name = actor["actress_name"]
+                total = 0
+                missing = 0
 
-            for video in javinfo_videos:
-                content_id = (video.get("content_id") or video.get("dvd_id") or "").upper()
-                if not content_id:
+                result = batch_results.get(str(actress_id), {})
+                javinfo_videos = result.get("videos", [])
+
+                if not javinfo_videos:
+                    # 批量接口没返回数据，标记为未知
+                    update_inventory_actor_stats(actress_id, total=-1, missing=-1)
                     continue
 
-                total += 1
-                scanned += 1
+                # 从快照获取该演员在 Emby 的影片
+                snapshot_videos = get_snapshot_videos(snapshot_key, actress_id)
+                emby_filenames = {v.get("filename", "").upper() for v in snapshot_videos}
+                emby_titles = {v.get("title", "").upper() for v in snapshot_videos}
 
-                if is_exempt(content_id):
-                    continue
+                for video in javinfo_videos:
+                    content_id = (video.get("content_id") or video.get("dvd_id") or "").upper()
+                    if not content_id:
+                        continue
 
-                # 判断是否在 Emby 中：匹配 filename 或 title
-                in_emby = (
-                    any(content_id in fn.upper() for fn in emby_filenames) or
-                    any(content_id in t.upper() for t in emby_titles)
-                )
+                    total += 1
+                    scanned += 1
 
-                if not in_emby:
-                    add_missing_video(
-                        content_id=video.get("content_id", ""),
-                        actress_id=actress_id,
-                        title=video.get("title_en", ""),
-                        release_date=video.get("release_date"),
-                        jacket_thumb_url=video.get("jacket_thumb_url"),
+                    if is_exempt(content_id):
+                        continue
+
+                    in_emby = (
+                        any(content_id in fn.upper() for fn in emby_filenames) or
+                        any(content_id in t.upper() for t in emby_titles)
                     )
-                    missing += 1
-                    missing_total += 1
 
-            # 更新该演员统计
-            update_inventory_actor_stats(actress_id, total, missing)
+                    if not in_emby:
+                        add_missing_video(
+                            content_id=video.get("content_id", ""),
+                            actress_id=actress_id,
+                            title=video.get("title_en", ""),
+                            release_date=video.get("release_date"),
+                            jacket_thumb_url=video.get("jacket_thumb_url"),
+                        )
+                        missing += 1
+                        missing_total += 1
+
+                update_inventory_actor_stats(actress_id, total, missing)
 
         update_inventory_job(job_id, "completed")
         print(f"[Inventory] Compare job {job_id} completed. Scanned: {scanned}, Missing: {missing_total}")

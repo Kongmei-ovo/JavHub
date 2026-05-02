@@ -77,10 +77,10 @@ async def subscribe_callback(update, context):
     actress_name = parts[1] if len(parts) == 2 else parts[1]
 
     try:
-        # 查找 actress_id
+        # 查找 actress_id（使用 q 参数直接搜索）
         from modules.info_client import get_info_client
         client = get_info_client()
-        result = await client.list_actresses(page=1, page_size=100)
+        result = await client.list_actresses(q=actress_name, page=1, page_size=10)
         items = result.get("data", []) if isinstance(result, dict) else []
 
         actress_id = 0
