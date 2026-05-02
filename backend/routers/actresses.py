@@ -35,6 +35,13 @@ async def get_actress(actress_id: int) -> dict[str, Any]:
     client = get_info_client()
     result = await client.get_actress(actress_id)
     if isinstance(result, dict):
+        # 补充 movie_count（单演员接口不返回此字段，从作品接口获取）
+        if "movie_count" not in result:
+            try:
+                vids = await client.get_actress_videos(actress_id, page=1, page_size=1)
+                result["movie_count"] = vids.get("total_count", 0)
+            except Exception:
+                pass
         trans = get_translation(f"actress:{actress_id}")
         if trans:
             actress_map = trans.get("actress", {})

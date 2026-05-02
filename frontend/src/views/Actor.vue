@@ -19,7 +19,7 @@
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
               </svg>
-              {{ movies.length }} 部作品
+              {{ totalCount || movies.length }} 部作品
             </span>
           </div>
         </div>
@@ -38,36 +38,43 @@
       <p>加载作品集中...</p>
     </div>
 
-    <!-- Movies Grid -->
+    <!-- Movies by Year -->
     <div v-else-if="movies.length > 0" class="movies-section">
       <div class="section-header">
         <h2>全部作品</h2>
-        <span class="movie-count">{{ movies.length }} 部</span>
+        <span class="movie-count">{{ totalCount || movies.length }} 部</span>
       </div>
-      <div class="movies-grid">
-        <div
-          v-for="movie in movies"
-          :key="movie.code || movie.id"
-          class="movie-card av-card"
-          @click="openModal(movie)"
-        >
-          <div class="card-cover">
-            <img
-              :src="movie.cover_url"
-              :alt="movie.code || movie.id"
-              class="cover-img"
-              @error="handleImgError"
-              loading="lazy"
-            />
-            <div class="card-overlay">
-              <span class="overlay-code">{{ movie.code || movie.id }}</span>
+
+      <!-- Year groups -->
+      <div v-for="group in yearGroups" :key="group.year" :id="'year-' + group.year" class="year-group">
+        <div class="year-header">
+          <span class="year-label">{{ group.year }}</span>
+          <span class="year-count">{{ group.movies.length }} 部</span>
+        </div>
+        <div class="movies-grid">
+          <div
+            v-for="movie in group.movies"
+            :key="movie.code || movie.id"
+            class="movie-card av-card"
+            @click="openModal(movie)"
+          >
+            <div class="card-cover">
+              <img
+                :src="movie.cover_url"
+                :alt="movie.code || movie.id"
+                class="cover-img"
+                @error="handleImgError"
+                loading="lazy"
+              />
+              <div class="card-overlay">
+                <span class="overlay-code">{{ movie.code || movie.id }}</span>
+              </div>
             </div>
-          </div>
-          <div class="card-info">
-            <h3 class="card-title" :title="movie.title">{{ movie.title }}</h3>
-            <div class="card-meta">
-              <span v-if="movie.date" class="meta-item">{{ movie.date }}</span>
-              <span v-if="movie.genres?.length" class="meta-item">{{ movie.genres[0] }}</span>
+            <div class="card-info">
+              <h3 class="card-title" :title="movie.title">{{ movie.title }}</h3>
+              <div class="card-meta">
+                <span v-if="movie.date" class="meta-item">{{ movie.date }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -84,6 +91,21 @@
       </svg>
       <p>暂无演员信息</p>
     </div>
+
+    <!-- Year Navigator (right side) -->
+    <transition name="nav-fade">
+      <div v-if="yearGroups.length > 1" class="year-nav">
+        <button
+          v-for="group in yearGroups"
+          :key="group.year"
+          class="year-nav-item"
+          :class="{ active: activeYear === group.year }"
+          @click="scrollToYear(group.year)"
+        >
+          {{ group.year.toString().slice(2) }}
+        </button>
+      </div>
+    </transition>
 
     <!-- Movie Modal -->
     <transition name="modal-fade">
@@ -195,10 +217,13 @@ export default {
       actorName: '',
       actressData: null,
       movies: [],
+      totalCount: 0,
       loading: false,
       selectedMovie: null,
       mainGalleryImg: '',
-      loadingMagnets: false
+      loadingMagnets: false,
+      activeYear: null,
+      _yearObserver: null
     }
   },
   computed: {
@@ -217,6 +242,17 @@ export default {
     filteredMagnets() {
       if (!this.selectedMovie?.magnets) return []
       return this.selectedMovie.magnets
+    },
+    yearGroups() {
+      const groups = {}
+      for (const m of this.movies) {
+        const year = m.date ? m.date.slice(0, 4) : '未知'
+        if (!groups[year]) groups[year] = []
+        groups[year].push(m)
+      }
+      return Object.keys(groups)
+        .sort((a, b) => b.localeCompare(a))
+        .map(year => ({ year, movies: groups[year] }))
     }
   },
   mounted() {
@@ -225,6 +261,9 @@ export default {
       this.loadActressInfo()
       this.loadActorMovies()
     }
+  },
+  beforeUnmount() {
+    if (this._yearObserver) this._yearObserver.disconnect()
   },
   methods: {
     async loadActressInfo() {
@@ -256,23 +295,46 @@ export default {
     async loadActorMovies() {
       this.loading = true
       try {
-        const pageSize = 30
+        const pageSize = 100
         const resp = await api.searchVideos({ actress_name: this.actorName, page: 1, page_size: pageSize })
         const data = resp.data
         const allMovies = (data.data || []).map(m => this.normalizeMovie(m))
         const totalPages = data.total_pages || 1
+        this.totalCount = data.total_count || allMovies.length
 
-        for (let page = 2; page <= Math.min(totalPages, 5); page++) {
+        for (let page = 2; page <= totalPages; page++) {
           const r = await api.searchVideos({ actress_name: this.actorName, page, page_size: pageSize })
           allMovies.push(...(r.data.data || []).map(m => this.normalizeMovie(m)))
         }
 
         this.movies = allMovies
+        this.$nextTick(() => this._setupYearObserver())
       } catch (e) {
         console.error('Load actor movies failed:', e)
       } finally {
         this.loading = false
       }
+    },
+    _setupYearObserver() {
+      if (this._yearObserver) this._yearObserver.disconnect()
+      if (!this.yearGroups.length) return
+      this.activeYear = this.yearGroups[0].year
+      this._yearObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const year = entry.target.id.replace('year-', '')
+            this.activeYear = year
+          }
+        }
+      }, { rootMargin: '-80px 0px -70% 0px' })
+      for (const group of this.yearGroups) {
+        const el = document.getElementById('year-' + group.year)
+        if (el) this._yearObserver.observe(el)
+      }
+    },
+    scrollToYear(year) {
+      const el = document.getElementById('year-' + year)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
     async openModal(movie) {
       this.selectedMovie = movie
@@ -440,6 +502,34 @@ export default {
   color: var(--text-secondary);
 }
 
+/* Year Groups */
+.year-group {
+  margin-bottom: 32px;
+}
+
+.year-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  scroll-margin-top: 20px;
+}
+
+.year-label {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.year-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .movies-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -517,6 +607,52 @@ export default {
   font-size: 11px;
   color: var(--text-secondary);
 }
+
+/* Year Navigator */
+.year-nav {
+  position: fixed;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+  background: rgba(22, 22, 24, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 6px 4px;
+}
+
+.year-nav-item {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  text-align: center;
+  min-width: 32px;
+}
+
+.year-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.year-nav-item.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.nav-fade-enter-active { transition: opacity 0.3s ease; }
+.nav-fade-leave-active { transition: opacity 0.2s ease; }
+.nav-fade-enter-from, .nav-fade-leave-to { opacity: 0; }
 
 /* Empty */
 .empty-state {
@@ -864,6 +1000,21 @@ export default {
   .modal-gallery {
     width: 100%;
     min-width: unset;
+  }
+
+  .year-nav {
+    right: 6px;
+    padding: 4px 3px;
+  }
+
+  .year-nav-item {
+    font-size: 10px;
+    padding: 3px 5px;
+    min-width: 26px;
+  }
+
+  .year-label {
+    font-size: 18px;
   }
 }
 </style>
