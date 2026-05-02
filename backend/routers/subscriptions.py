@@ -67,6 +67,54 @@ async def check_subscriptions() -> dict[str, Any]:
     new_movies = await check_all_subscriptions()
     return {"status": "ok", "new_found": len(new_movies), "movies": new_movies}
 
+@router.get("/new_movies")
+async def get_new_movies() -> dict[str, Any]:
+    """获取所有订阅的新片（不在 Emby 库中的），按 actress_id 分组"""
+    from modules.info_client import get_info_client
+    from modules.emby_client import get_emby_client
+
+    info_client = get_info_client()
+    emby_client = get_emby_client()
+    subscriptions = get_subscriptions()
+
+    result = {}  # {actress_id: [movies]}
+
+    for sub in subscriptions:
+        if not sub.get("enabled"):
+            continue
+
+        actress_id = sub.get("actress_id")
+        if not actress_id:
+            continue
+
+        try:
+            resp = await info_client.get_actress_videos(actress_id, page_size=10)
+            videos = resp.get("data", []) if isinstance(resp, dict) else []
+
+            new_movies = []
+            for video in videos:
+                code = video.get("dvd_id") or video.get("content_id")
+                if not code:
+                    continue
+                exists = await emby_client.check_exists(code)
+                if not exists:
+                    new_movies.append({
+                        "content_id": code,
+                        "dvd_id": video.get("dvd_id", ""),
+                        "title_en": video.get("title_en", ""),
+                        "title_ja": video.get("title_ja", ""),
+                        "release_date": video.get("release_date", ""),
+                        "jacket_thumb_url": video.get("jacket_thumb_url", ""),
+                    })
+
+            if new_movies:
+                result[actress_id] = new_movies
+
+        except Exception:
+            continue
+
+    return {"data": result}
+
 class UpdateSubscriptionRequest(BaseModel):
     enabled: bool | None = None
     auto_download: bool | None = None
