@@ -34,7 +34,7 @@
       </div>
 
       <div v-if="searching" class="card-grid">
-        <div v-for="n in 8" :key="n" class="skel-card"><div class="skel-cover"></div></div>
+        <div v-for="n in 8" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
       </div>
 
       <div v-else-if="searchResults.length > 0" class="card-grid">
@@ -43,7 +43,9 @@
           :key="actor.id"
           :coverUrl="avatarSrc(actor)"
           :name="displayName(actor, 'name_kanji', 'name_romaji') || '未知'"
+          :originalName="actor.name_kanji || actor.name_romaji || ''"
           :totalCount="actor.movie_count"
+          :subscribed="isSubscribed(actor.id)"
           @click="openActorSheet(actor)"
         />
       </div>
@@ -57,7 +59,7 @@
     <!-- ===== 已订阅 Tab ===== -->
     <div v-show="activeTab === 'subscribed'" class="tab-content">
       <div v-if="loading" class="card-grid">
-        <div v-for="n in 6" :key="n" class="skel-card"><div class="skel-cover"></div></div>
+        <div v-for="n in 6" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
       </div>
 
       <div v-else-if="subs.length > 0" class="card-grid">
@@ -66,8 +68,9 @@
           :key="sub.id"
           :coverUrl="subCoverUrl(sub)"
           :name="subDisplayName(sub)"
+          :originalName="subOriginalName(sub)"
           :totalCount="subMeta(sub)?.movie_count ?? null"
-          :missingCount="0"
+          :subscribed="true"
           @click="openSubSheet(sub)"
         />
       </div>
@@ -234,6 +237,10 @@ function subDisplayName(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
   if (meta) { const n = displayName(meta, 'name_kanji', 'name_romaji'); if (n) return n }
   return sub.actress_name || '未知'
+}
+function subOriginalName(sub) {
+  const meta = actressMetaMap.value[sub.actress_id]
+  return meta?.name_kanji || sub.actress_name || ''
 }
 function newMovieCount(actressId) { return (newMovieMap.value[actressId] || []).length }
 function movieCoverUrl(movie) { return jacketHdUrl(movie.jacket_thumb_url) || movie.jacket_thumb_url || '' }
@@ -455,16 +462,33 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 /* ===== Skeleton ===== */
 .skel-card {
-  border-radius: 14px; overflow: hidden;
+  border-radius: 16px; overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(80px) saturate(200%);
+  -webkit-backdrop-filter: blur(80px) saturate(200%);
 }
 
 .skel-cover {
   aspect-ratio: 3/4;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
   animation: pulse 1.5s ease-in-out infinite;
 }
+
+.skel-info {
+  padding: 10px 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.skel-line {
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skel-line.w60 { width: 60%; }
+.skel-line.w40 { width: 40%; }
 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
