@@ -28,6 +28,8 @@ async def create_subscription(req: CreateSubscriptionRequest) -> dict[str, Any]:
 async def search_actresses(q: str = Query("", min_length=1)) -> dict[str, Any]:
     """搜索演员（供前端订阅搜索用）"""
     from modules.info_client import get_info_client
+    from database import get_translation
+    from services.translation import _translate_item
     client = get_info_client()
     result = await client.list_actresses(page=1, page_size=100)
     items = result.get("data", []) if isinstance(result, dict) else []
@@ -40,6 +42,17 @@ async def search_actresses(q: str = Query("", min_length=1)) -> dict[str, Any]:
         or q_lower in (item.get("name_ja", "") or "").lower()
         or q_lower in (item.get("name", "") or "").lower()
     ]
+    for actress in matched:
+        actress_id = actress.get("id")
+        if actress_id:
+            trans = get_translation(f"actress:{actress_id}")
+            if trans:
+                actress_map = trans.get("actress", {})
+                for name_key in ["name_kanji", "name_romaji", "name_ja", "name_en", "name"]:
+                    orig = actress.get(name_key)
+                    if orig:
+                        actress[f"{name_key}_translated"] = _translate_item(orig, actress_map)
+                        break
     return {"data": matched, "total": len(matched)}
 
 class ToggleSubscriptionRequest(BaseModel):

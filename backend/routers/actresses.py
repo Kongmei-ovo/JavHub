@@ -33,7 +33,17 @@ async def list_actresses(
 @router.get("/{actress_id}")
 async def get_actress(actress_id: int) -> dict[str, Any]:
     client = get_info_client()
-    return await client.get_actress(actress_id)
+    result = await client.get_actress(actress_id)
+    if isinstance(result, dict):
+        trans = get_translation(f"actress:{actress_id}")
+        if trans:
+            actress_map = trans.get("actress", {})
+            for name_key in ["name_kanji", "name_romaji", "name_ja", "name_en", "name"]:
+                orig = result.get(name_key)
+                if orig:
+                    result[f"{name_key}_translated"] = _translate_item(orig, actress_map)
+                    break
+    return result
 
 @router.get("/{actress_id}/videos")
 async def get_actress_videos(
