@@ -89,7 +89,6 @@
           <div class="sheet" @click.stop>
             <!-- Top Bar: grabber + actions -->
             <div class="sheet-top-bar">
-              <div class="sheet-grabber"></div>
               <div v-if="sheetSub" class="sheet-top-actions">
                 <button class="top-action-btn" @click="checkNow(sheetSub)" :disabled="checkingId === sheetSub.id">
                   <span v-if="checkingId === sheetSub.id" class="spinner-tiny"></span>
@@ -276,7 +275,7 @@ async function openActorSheet(actor) {
 
 async function openSubSheet(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
-  sheetActor.value = { id: sub.actress_id, name_kanji: sub.actress_name, image_url: meta?.image_url || '', movie_count: meta?.movie_count, name_romaji: meta?.name_romaji, name_kana: meta?.name_kana, name_kanji_translated: meta?.name_kanji_translated || '', name_romaji_translated: meta?.name_romaji_translated || '' }
+  sheetActor.value = { id: sub.actress_id, name_kanji: meta?.name_kanji || sub.actress_name || '', image_url: meta?.image_url || '', movie_count: meta?.movie_count, name_romaji: meta?.name_romaji || '', name_kana: meta?.name_kana || '', name_kanji_translated: meta?.name_kanji_translated || '', name_romaji_translated: meta?.name_romaji_translated || '' }
   sheetSub.value = sub
   sheetMovies.value = []; sheetLoading.value = true
   try {
@@ -291,16 +290,24 @@ function closeSheet() { sheetActor.value = null; sheetSub.value = null; sheetMov
 function viewAllVideos() {
   if (!sheetActor.value) return
   const name = sheetActor.value.name_kanji || sheetActor.value.name_romaji || ''
-  router.push({ path: `/actor/${encodeURIComponent(name)}`, query: { name } })
+  router.push({ path: `/actor/${encodeURIComponent(name)}`, query: { name, actress_id: sheetActor.value.id } })
 }
 
-function openVideoModal(movie) { openVideoModalFn(movie, router.currentRoute.value.path) }
+async function openVideoModal(movie) {
+  const contentId = movie.content_id || movie.dvd_id
+  let fullVideo = { ...movie }
+  try {
+    const resp = await api.getVideo(contentId)
+    if (resp.data) fullVideo = { ...movie, ...resp.data }
+  } catch (e) { console.error('Load video detail failed:', e) }
+  openVideoModalFn(fullVideo, router.currentRoute.value.path)
+}
 
 async function subscribeFromSheet() {
   if (!sheetActor.value) return
   const a = sheetActor.value; const name = a.name_kanji || a.name_romaji || ''
   subscribing.value = true
-  try { await api.addSubscription({ actress_id: a.id, actress_name: name }); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
+  try { await api.addSubscription({ actress_id: a.id }); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
   catch (e) { ElMessage.error('订阅失败') } finally { subscribing.value = false }
 }
 
@@ -568,12 +575,6 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   background: rgba(22, 22, 24, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-}
-
-.sheet-grabber {
-  width: 36px; height: 5px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
 }
 
 .sheet-top-actions { display: flex; gap: 8px; }
