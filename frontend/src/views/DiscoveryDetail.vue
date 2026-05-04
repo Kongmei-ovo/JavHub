@@ -39,33 +39,52 @@
       </div>
     </div>
 
-    <!-- 排序 + 结果信息栏 -->
+    <!-- 排序 + 版本筛选栏 -->
     <div class="result-bar">
       <div class="result-bar-left">
         <span class="result-count">{{ loading ? '加载中...' : `${total} 个结果` }}</span>
-        <select v-model="sortValue" @change="doSearch" class="sort-select">
-          <option value="random">随机</option>
-          <option value="release_date_desc">发售日期 ↓</option>
-          <option value="release_date_asc">发售日期 ↑</option>
-          <option value="year_chronicle_asc">年份编年 ↓</option>
-          <option value="year_chronicle_desc">年份编年 ↑</option>
-          <option value="title_ja_desc">标题 Z→A</option>
-          <option value="title_ja_asc">标题 A→Z</option>
-          <option value="runtime_mins_desc">时长 长→短</option>
-          <option value="runtime_mins_asc">时长 短→长</option>
-        </select>
-        <select v-model="serviceCode" @change="doSearch" class="sort-select">
-          <option value="">全部版本</option>
-          <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
-        </select>
+        <div class="sort-pills">
+          <button
+            v-for="pill in sortPills"
+            :key="pill.key"
+            class="sort-pill"
+            :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
+            @click="cycleSort(pill.key)"
+          >
+            <span class="pill-label">{{ pill.label }}</span>
+            <svg v-if="sortState[pill.key] === 'desc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <path d="M12 5v14M19 12l-7 7-7-7"/>
+            </svg>
+            <svg v-else-if="sortState[pill.key] === 'asc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <path d="M12 19V5M5 12l7-7 7 7"/>
+            </svg>
+            <svg v-else-if="pill.key === 'random' && sortState.random" class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </button>
+        </div>
       </div>
-      <button class="shuffle-btn" @click="refresh" :disabled="loading">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
-          <polyline points="23 4 23 10 17 10"/>
-          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-        </svg>
-        刷新
-      </button>
+      <div class="result-bar-right">
+        <div class="custom-select" @click.stop="versionDropdownOpen = !versionDropdownOpen">
+          <span class="select-label">{{ currentVersionLabel }}</span>
+          <svg class="select-arrow" :class="{ open: versionDropdownOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+          <transition name="dropdown-fade">
+            <div v-if="versionDropdownOpen" class="select-dropdown" @mousedown.stop>
+              <button class="select-option" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
+              <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
+            </div>
+          </transition>
+        </div>
+        <div class="bar-divider"></div>
+        <button class="chronicle-btn" :class="{ active: chronicleMode }" @click="toggleChronicle" title="年份编年视图">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          编年
+        </button>
+      </div>
     </div>
 
     <!-- 分页（顶部） -->
@@ -154,13 +173,26 @@ export default {
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
-      sortValue: 'random',
+      sortState: {
+        release_date: null,
+        title_ja: null,
+        runtime_mins: null,
+        random: true,
+      },
+      sortPills: [
+        { key: 'random', label: '随机' },
+        { key: 'release_date', label: '日期' },
+        { key: 'title_ja', label: '标题' },
+        { key: 'runtime_mins', label: '时长' },
+      ],
+      chronicleMode: false,
       serviceCode: '',
+      versionDropdownOpen: false,
       serviceCodeOptions: [
         { value: 'digital', label: '数字版' },
         { value: 'mono', label: '单体版' },
         { value: 'rental', label: '租赁版' },
-        { value: 'ebook', label: '电子书版' },
+        { value: 'ebook', label: '写真' },
       ],
       results: [],
       loading: false,
@@ -169,6 +201,16 @@ export default {
       total: 0,
       totalPages: 1,
     }
+  },
+  mounted() {
+    document.addEventListener('mousedown', this._onDocClick = (e) => {
+      if (!this.versionDropdownOpen) return
+      const sel = this.$el?.querySelector('.custom-select')
+      if (!sel || !sel.contains(e.target)) this.versionDropdownOpen = false
+    })
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousedown', this._onDocClick)
   },
   computed: {
     type() { return this.$route.params.type },
@@ -187,8 +229,13 @@ export default {
       // 其他类型直接显示 value (名称)
       return this.value
     },
+    currentVersionLabel() {
+      if (!this.serviceCode) return '全部版本'
+      const found = this.serviceCodeOptions.find(o => o.value === this.serviceCode)
+      return found ? found.label : this.serviceCode
+    },
     isChronicle() {
-      return this.sortValue === 'year_chronicle_asc' || this.sortValue === 'year_chronicle_desc'
+      return this.chronicleMode
     },
     isFromVideo() {
       return modalState.interrupted || this.$route.query.returnTo === 'video'
@@ -230,6 +277,34 @@ export default {
     }
   },
   methods: {
+    selectVersion(val) {
+      this.serviceCode = val
+      this.versionDropdownOpen = false
+      this.doSearch()
+    },
+    cycleSort(key) {
+      if (key === 'random') {
+        this.sortState.random = !this.sortState.random
+        if (this.sortState.random) {
+          this.sortState.release_date = null
+          this.sortState.title_ja = null
+          this.sortState.runtime_mins = null
+        }
+      } else {
+        const cycle = { null: 'desc', desc: 'asc', asc: null }
+        this.sortState[key] = cycle[this.sortState[key]]
+        if (this.sortState[key] !== null) this.sortState.random = false
+      }
+      this.doSearch()
+    },
+    toggleChronicle() {
+      this.chronicleMode = !this.chronicleMode
+      if (this.chronicleMode && this.sortState.random) {
+        this.sortState.random = false
+        this.sortState.release_date = 'asc'
+      }
+      this.doSearch()
+    },
     handleBack() { this.$router.back() },
     async toggleEntityFavorite() {
       try {
@@ -256,7 +331,8 @@ export default {
       } catch (e) { console.error('Load metadata failed:', e) }
     },
     resetFilters() {
-      this.sortValue = 'random'
+      this.sortState = { release_date: null, title_ja: null, runtime_mins: null, random: true }
+      this.chronicleMode = false
       this.serviceCode = ''
       this.page = 1
     },
@@ -278,19 +354,16 @@ export default {
         if (isNumeric) params.actress_id = parseInt(v); else params.actress_name = v
       }
 
-      if (this.sortValue === 'random') {
+      if (this.sortState.random) {
         params.random = '1'
-      } else if (this.sortValue === 'year_chronicle_asc') {
-        params.sort_by = 'release_date:asc'
-      } else if (this.sortValue === 'year_chronicle_desc') {
-        params.sort_by = 'release_date:desc'
       } else {
-        const idx = this.sortValue.lastIndexOf('_')
-        if (idx > 0) {
-          const field = this.sortValue.substring(0, idx)
-          const order = this.sortValue.substring(idx + 1)
-          params.sort_by = `${field}:${order}`
+        const sortParts = []
+        for (const [field, dir] of Object.entries(this.sortState)) {
+          if (field === 'random' || dir === null) continue
+          sortParts.push(`${field}:${dir}`)
         }
+        if (sortParts.length > 0) params.sort_by = sortParts.join(',')
+        if (this.chronicleMode && !params.sort_by) params.sort_by = 'release_date:asc'
       }
       return params
     },
@@ -375,30 +448,90 @@ export default {
 }
 .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
-.result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; }
-.result-bar-left { display: flex; align-items: center; gap: 12px; }
+.result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; position: relative; z-index: 50; }
+.result-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.result-bar-right { display: flex; align-items: center; gap: 10px; }
+.bar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+.sort-pills { display: flex; gap: 6px; }
+.sort-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.25s cubic-bezier(0.23,1,0.32,1); user-select: none;
+}
+.sort-pill:hover { background: rgba(255,255,255,0.08); border-color: var(--border-light); color: var(--text-primary); }
+.sort-pill.active { background: rgba(212,175,55,0.12); border-color: rgba(212,175,55,0.4); color: #fcf6ba; box-shadow: 0 2px 12px rgba(212,175,55,0.1); }
+.sort-pill.active:hover { background: rgba(212,175,55,0.18); border-color: rgba(212,175,55,0.6); }
+.sort-pill.random.active { background: rgba(130,100,255,0.12); border-color: rgba(130,100,255,0.4); color: #c8b8ff; box-shadow: 0 2px 12px rgba(130,100,255,0.1); }
+.sort-pill.random.active:hover { background: rgba(130,100,255,0.18); border-color: rgba(130,100,255,0.6); }
+.pill-label { line-height: 1; }
+.pill-arrow, .pill-check { opacity: 0.8; flex-shrink: 0; }
+.chronicle-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--text-muted); font-size: 12px;
+  cursor: pointer; transition: all 0.25s; user-select: none;
+}
+.chronicle-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+.chronicle-btn.active { background: rgba(100,200,255,0.12); border-color: rgba(100,200,255,0.4); color: #80d4ff; }
 .result-count { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.sort-select { 
-  padding: 8px 12px; 
-  background: var(--bg-card); 
-  border: 1px solid var(--border); 
-  border-radius: var(--radius-md); 
-  color: var(--text-primary); 
-  font-size: 13px; 
-  cursor: pointer; 
-  outline: none; 
+.custom-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
   transition: var(--transition-pro);
   backdrop-filter: blur(10px);
+  user-select: none;
 }
-.sort-select:hover {
+.custom-select:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-light);
 }
-.sort-select:focus { 
-  border-color: var(--accent); 
-  background: var(--bg-card-hover);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+.select-label { white-space: nowrap; }
+.select-arrow { flex-shrink: 0; transition: transform 0.25s var(--ease-pro); opacity: 0.5; }
+.select-arrow.open { transform: rotate(180deg); }
+.select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  background: rgba(30, 30, 36, 0.95);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 4px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  overflow: hidden;
 }
+.select-option {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 10px;
+  text-align: left;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.select-option:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary); }
+.select-option.selected { background: rgba(212, 175, 55, 0.12); color: #fcf6ba; font-weight: 600; }
+.dropdown-fade-enter-active { transition: all 0.2s var(--ease-pro); }
+.dropdown-fade-leave-active { transition: all 0.12s cubic-bezier(0.4, 0, 1, 1); }
+.dropdown-fade-enter-from, .dropdown-fade-leave-to { opacity: 0; transform: translateY(-6px) scale(0.97); }
 .shuffle-btn { 
   display: flex; 
   align-items: center; 

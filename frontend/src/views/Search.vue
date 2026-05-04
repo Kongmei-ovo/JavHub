@@ -11,10 +11,14 @@
     </div>
 
     <!-- 搜索核心区域 -->
-    <div class="search-hero">
-      <h1 class="hero-title">发现</h1>
-      <p class="hero-subtitle">搜索影片、番号、演员或工作室</p>
-      
+    <div class="search-hero" :class="{ compact: searched }">
+      <transition name="hero-fade">
+        <div v-if="!searched" class="hero-intro">
+          <h1 class="hero-title">发现</h1>
+          <p class="hero-subtitle">搜索影片、番号、演员或工作室</p>
+        </div>
+      </transition>
+
       <div class="command-capsule-container">
         <!-- 主指令胶囊 -->
         <div class="command-capsule" :class="{ focused: isSearchFocused }">
@@ -48,19 +52,51 @@
           </button>
         </div>
 
-        <!-- 快速筛选盘 (Filter Tray) -->
-        <div class="filter-tray">
-          <div class="filter-group">
-            <div class="filter-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
-                <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
-              </svg>
-              <select v-model="serviceCode" class="tray-select">
-                <option value="">全部版本</option>
-                <option v-for="sc in serviceCodeOptions" :key="sc.value" :value="sc.value">{{ sc.label }}</option>
-              </select>
+        <!-- 排序 + 筛选条 -->
+        <div class="sort-strip">
+          <div class="sort-strip-left">
+            <span v-if="searched" class="sort-result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
+            <span v-else class="sort-strip-label">排序</span>
+            <div class="sort-pills">
+              <button
+                v-for="pill in sortPills"
+                :key="pill.key"
+                class="sort-pill"
+                :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
+                @click="cycleSort(pill.key)"
+              >
+                <span class="pill-label">{{ pill.label }}</span>
+                <svg v-if="sortState[pill.key] === 'desc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <path d="M12 5v14M19 12l-7 7-7-7"/>
+                </svg>
+                <svg v-else-if="sortState[pill.key] === 'asc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+                <svg v-else-if="pill.key === 'random' && sortState.random" class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </button>
             </div>
-
+            <button v-if="hasSort" class="sort-clear-btn" @click="clearSort" title="清除排序">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="sort-strip-right">
+            <div class="filter-item custom-select" :class="{ active: serviceCode }" @click.stop="versionDropdownOpen = !versionDropdownOpen">
+              <span class="select-label">{{ currentVersionLabel }}</span>
+              <svg class="select-arrow" :class="{ open: versionDropdownOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+              <transition name="dropdown-fade">
+                <div v-if="versionDropdownOpen" class="select-dropdown" @mousedown.stop>
+                  <button class="select-option" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
+                  <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
+                </div>
+              </transition>
+            </div>
+            <div class="bar-divider"></div>
             <button class="filter-item toggle" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
                 <path d="M20 7h-9m14 10h-9M5 7h14M5 17h14"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>
@@ -68,36 +104,6 @@
               高级筛选
             </button>
           </div>
-        </div>
-
-        <!-- 排序胶囊条 (Sort Pill Bar) -->
-        <div class="sort-strip">
-          <span class="sort-strip-label">排序</span>
-          <div class="sort-pills">
-            <button
-              v-for="pill in sortPills"
-              :key="pill.key"
-              class="sort-pill"
-              :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
-              @click="cycleSort(pill.key)"
-            >
-              <span class="pill-label">{{ pill.label }}</span>
-              <svg v-if="sortState[pill.key] === 'desc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
-                <path d="M12 5v14M19 12l-7 7-7-7"/>
-              </svg>
-              <svg v-else-if="sortState[pill.key] === 'asc'" class="pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
-                <path d="M12 19V5M5 12l7-7 7 7"/>
-              </svg>
-              <svg v-else-if="pill.key === 'random' && sortState.random" class="pill-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-            </button>
-          </div>
-          <button v-if="hasSort" class="sort-clear-btn" @click="clearSort" title="清除排序">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
         </div>
 
         <!-- 高级筛选详情面板 -->
@@ -142,7 +148,7 @@
             </div>
             <div class="panel-footer">
               <button class="btn-clear" @click="clearFilters">重置</button>
-              <button class="btn-apply" @click="doSearch">查看结果</button>
+              <button class="btn-apply" @click="applyFilters">查看结果</button>
             </div>
           </div>
         </transition>
@@ -150,13 +156,8 @@
     </div>
 
 
-    <!-- 结果信息 -->
-    <div v-if="results.length > 0 || loading" class="result-bar">
-      <span class="result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
-    </div>
-
     <!-- 分页控制（顶部） -->
-    <div v-if="results.length > 0" class="pagination-bar">
+    <div v-if="totalPages > 1" class="pagination-bar">
       <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
@@ -212,7 +213,7 @@
     </div>
 
     <!-- 分页控制（底部） -->
-    <div v-if="results.length > 0" class="pagination-bar">
+    <div v-if="totalPages > 1" class="pagination-bar">
       <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
@@ -267,8 +268,11 @@ export default {
         { value: 'digital', label: '数字版' },
         { value: 'mono', label: '单体版' },
         { value: 'rental', label: '租赁版' },
-        { value: 'ebook', label: '电子书版' },
+        { value: 'ebook', label: '写真' },
       ],
+
+      // 版本下拉
+      versionDropdownOpen: false,
 
       // 折叠更多筛选
       showMoreFilters: false,
@@ -302,9 +306,30 @@ export default {
     },
     hasSort() {
       return Object.values(this.sortState).some(v => v !== null && v !== false)
+    },
+    currentVersionLabel() {
+      if (!this.serviceCode) return '全部版本'
+      const found = this.serviceCodeOptions.find(o => o.value === this.serviceCode)
+      return found ? found.label : this.serviceCode
     }
   },
   mounted() {
+    document.addEventListener('mousedown', this._onDocumentClick = (e) => {
+      // 关闭版本下拉
+      if (this.versionDropdownOpen) {
+        const sel = this.$el?.querySelector('.custom-select')
+        if (!sel || !sel.contains(e.target)) this.versionDropdownOpen = false
+      }
+      // 关闭高级筛选
+      if (this.showMoreFilters) {
+        const panel = this.$el?.querySelector('.advanced-panel')
+        const toggle = this.$el?.querySelector('.filter-item.toggle')
+        if ((!panel || !panel.contains(e.target)) && (!toggle || !toggle.contains(e.target))) {
+          this.showMoreFilters = false
+        }
+      }
+    })
+
     const route = useRoute()
     const q = route.query
     if (q.actress) {
@@ -351,6 +376,9 @@ export default {
     if (changed) {
       this.doSearch()
     }
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousedown', this._onDocumentClick)
   },
   watch: {
     '$route.query'(q) {
@@ -425,6 +453,15 @@ export default {
     },
     removeCategoryTag(idx) {
       this.categoryTags.splice(idx, 1)
+      this.doSearch()
+    },
+    selectVersion(val) {
+      this.serviceCode = val
+      this.versionDropdownOpen = false
+      this.doSearch()
+    },
+    applyFilters() {
+      this.showMoreFilters = false
       this.doSearch()
     },
     async doSearch() {
@@ -575,6 +612,15 @@ export default {
   padding: 60px 20px 40px;
   background: var(--bg-primary);
   text-align: center;
+  transition: padding 0.3s ease;
+}
+
+.search-hero.compact {
+  padding: 24px 20px 20px;
+}
+
+.hero-intro {
+  text-align: center;
 }
 
 .hero-title {
@@ -593,6 +639,10 @@ export default {
   margin-bottom: 40px;
   letter-spacing: 0.02em;
 }
+
+.hero-fade-enter-active { transition: all 0.3s ease; }
+.hero-fade-leave-active { transition: all 0.2s ease; }
+.hero-fade-enter-from, .hero-fade-leave-to { opacity: 0; transform: translateY(-10px); }
 
 .command-capsule-container {
   max-width: 800px;
@@ -680,19 +730,27 @@ export default {
 }
 
 /* 筛选盘 (Filter Tray) */
-.filter-tray {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-/* ===== 排序胶囊条 (Sort Pill Bar) ===== */
+/* ===== 排序 + 筛选条 ===== */
 .sort-strip {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 12px;
+}
+
+.sort-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sort-strip-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .sort-strip-label {
@@ -701,6 +759,22 @@ export default {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.sort-result-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-right: 4px;
+  border-right: 1px solid var(--border);
+  margin-right: 4px;
+}
+
+.bar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
 }
 
 .sort-pills {
@@ -790,26 +864,20 @@ export default {
   color: #FF375F;
 }
 
-.filter-group {
-  display: flex;
-  gap: 10px;
-}
-
 .filter-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 0 20px;
-  height: 38px;
-  min-width: 150px;
+  padding: 5px 12px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s var(--ease-pro);
+  white-space: nowrap;
 }
 
 .filter-item:hover {
@@ -823,14 +891,86 @@ export default {
   color: var(--accent);
 }
 
-.tray-select {
+/* 自定义版本下拉 */
+.custom-select {
+  position: relative;
+  user-select: none;
+}
+
+.custom-select.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-light);
+}
+
+.select-label {
+  white-space: nowrap;
+  white-space: nowrap;
+}
+
+.select-arrow {
+  flex-shrink: 0;
+  transition: transform 0.25s var(--ease-pro);
+  opacity: 0.5;
+}
+
+.select-arrow.open {
+  transform: rotate(180deg);
+}
+
+.select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  background: rgba(30, 30, 36, 0.95);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 4px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.select-option {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
   background: transparent;
   border: none;
-  color: inherit;
-  font-size: inherit;
-  outline: none;
+  color: var(--text-secondary);
+  font-size: 13px;
   cursor: pointer;
-  padding-right: 4px;
+  border-radius: 10px;
+  text-align: left;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.select-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.select-option.selected {
+  background: rgba(212, 175, 55, 0.12);
+  color: #fcf6ba;
+  font-weight: 600;
+}
+
+.dropdown-fade-enter-active {
+  transition: all 0.2s var(--ease-pro);
+}
+
+.dropdown-fade-leave-active {
+  transition: all 0.12s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
 }
 
 /* 高级面板 (Advanced Panel) - 绝对定位消除重排 */
@@ -998,15 +1138,8 @@ export default {
   margin: 0 auto;
 }
 
-.result-bar {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 20px;
-  border-bottom: 1px solid var(--border);
-}
-
 .pagination-bar {
-  padding: 30px 20px;
+  padding: 12px 20px;
 }
 
 .page-info {
@@ -1186,10 +1319,13 @@ export default {
   .capsule-divider {
     margin: 0 6px;
   }
-  .filter-tray {
+  .sort-strip {
     flex-direction: column;
-    align-items: center;
-    gap: 12px;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .sort-strip-left, .sort-strip-right {
+    justify-content: center;
   }
 }
 </style>

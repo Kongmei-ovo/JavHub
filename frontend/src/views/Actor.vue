@@ -19,7 +19,7 @@
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
               </svg>
-              {{ totalCount || movies.length }} 部作品
+              {{ variantInfo.canonical.length }} 部作品
             </span>
           </div>
         </div>
@@ -42,7 +42,21 @@
     <div v-else-if="movies.length > 0" class="movies-section">
       <div class="section-header">
         <h2>全部作品</h2>
-        <span class="movie-count">{{ totalCount || movies.length }} 部</span>
+        <div class="header-right">
+          <div v-if="variantCount > 0" class="variant-switch">
+            <button
+              class="switch-btn"
+              :class="{ active: !showVariants }"
+              @click="showVariants = false"
+            >标准版</button>
+            <button
+              class="switch-btn"
+              :class="{ active: showVariants }"
+              @click="showVariants = true"
+            >变体 <span class="variant-badge">{{ variantCount }}</span></button>
+          </div>
+          <span class="movie-count">{{ displayMovies.length }} 部</span>
+        </div>
       </div>
 
       <!-- Year groups -->
@@ -52,19 +66,26 @@
           <span class="year-count">{{ group.movies.length }} 部</span>
         </div>
         <div class="movies-grid">
-          <MovieCard
+          <div
             v-for="movie in group.movies"
             :key="movie.code || movie.id"
-            :contentId="movie.code || movie.id"
-            :coverUrl="cardImageUrl(movie)"
-            :title="movie.title || ''"
-            :serviceCode="movie._raw?.service_code || ''"
-            :releaseDate="movie.date || ''"
-            :runtimeMins="movie._raw?.runtime_mins || ''"
-            :sampleUrl="movie._raw?.sample_url || ''"
-            :isFavorited="false"
-            @click="openModal(movie)"
-          />
+            class="movie-card-wrap"
+          >
+            <MovieCard
+              :contentId="movie.code || movie.id"
+              :coverUrl="cardImageUrl(movie)"
+              :title="movie.title || ''"
+              :serviceCode="movie._raw?.service_code || ''"
+              :releaseDate="movie.date || ''"
+              :runtimeMins="movie._raw?.runtime_mins || ''"
+              :sampleUrl="movie._raw?.sample_url || ''"
+              :isFavorited="false"
+              @click="openModal(movie)"
+            />
+            <span v-if="movie._variant" class="variant-label">
+              {{ variantLabel(movie._variant) }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -103,6 +124,7 @@ import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
+import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
 import MovieCard from '../components/MovieCard.vue'
 
 export default {
@@ -116,6 +138,7 @@ export default {
       totalCount: 0,
       loading: false,
       activeYear: null,
+      showVariants: false,
       _yearObserver: null
     }
   },
@@ -128,9 +151,19 @@ export default {
       if (!this.actressData) return this.actorName
       return displayName(this.actressData, 'name_kanji', 'name_romaji') || this.actorName
     },
+    variantInfo() {
+      return groupByVariant(this.movies)
+    },
+    displayMovies() {
+      if (this.showVariants) return this.variantInfo.variants
+      return this.variantInfo.canonical
+    },
+    variantCount() {
+      return this.variantInfo.totalVariants
+    },
     yearGroups() {
       const groups = {}
-      for (const m of this.movies) {
+      for (const m of this.displayMovies) {
         const year = m.date ? m.date.slice(0, 4) : '未知'
         if (!groups[year]) groups[year] = []
         groups[year].push(m)
@@ -364,9 +397,73 @@ export default {
   color: var(--text-primary);
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.variant-switch {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.switch-btn:hover {
+  color: var(--text-secondary);
+}
+
+.switch-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.variant-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
 .movie-count {
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.movie-card-wrap {
+  position: relative;
+}
+
+.variant-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  background: rgba(var(--accent-rgb, 120, 120, 255), 0.8);
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  font-size: 11px;
+  color: #fff;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Year Groups */

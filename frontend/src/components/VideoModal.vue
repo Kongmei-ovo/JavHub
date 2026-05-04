@@ -110,8 +110,14 @@
             </div>
             <div class="meta-row">
               <span class="meta-label">导演</span>
-              <span v-if="video.director" class="meta-value">{{ video.director }}</span>
+              <span v-if="directorsDisplay" class="meta-value">{{ directorsDisplay }}</span>
               <div v-else-if="!metadataLoaded" class="skeleton skeleton-text"></div>
+              <span v-else class="meta-value meta-value--empty">无</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">作者</span>
+              <span v-if="video.authors && video.authors.length" class="meta-value">{{ authorsDisplay }}</span>
+              <div v-else-if="!videoLoaded" class="skeleton skeleton-text"></div>
               <span v-else class="meta-value meta-value--empty">无</span>
             </div>
             <div class="meta-row">
@@ -168,6 +174,20 @@
                  <div class="skeleton skeleton-text w-60" style="margin-top: 4px"></div>
                </div>
              </div>
+          </div>
+
+          <!-- 男优 -->
+          <div v-if="video.actors && video.actors.length" class="modal-section">
+            <h4 class="section-title">男优</h4>
+            <div class="actress-list">
+              <span
+                v-for="actor in video.actors"
+                :key="actor.id"
+                class="actress-tag"
+              >
+                {{ actor.name_kanji || actor.name_kana || '—' }}
+              </span>
+            </div>
           </div>
 
           <!-- 题材 -->
@@ -362,6 +382,16 @@ export default {
     metadataLoaded() {
       // 通过是否存在外部元数据判定扩展请求是否完成
       return !!(this.video.summary || this.video.score || this.video.director)
+    },
+    directorsDisplay() {
+      if (this.video?.directors?.length) {
+        return this.video.directors.map(d => d.name_kanji || d.name_romaji || d.name_kana).filter(Boolean).join('、')
+      }
+      return this.video?.director || ''
+    },
+    authorsDisplay() {
+      if (!this.video?.authors?.length) return ''
+      return this.video.authors.map(a => a.name_kanji || a.name_kana).filter(Boolean).join('、')
     },
     magnets() { return this.video?.magnets || [] },
     coverImageUrl() {

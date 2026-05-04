@@ -69,6 +69,7 @@ const formatServiceCode = (code) => {
     'mono': 'DVD',
     'digital': '数字',
     'rental': '租赁',
+    'ebook': '写真',
     'download': '下载',
     'streaming': '流媒体',
     'subscription': '订阅'
@@ -232,6 +233,7 @@ const formatServiceCode = (code) => {
 .type-mono { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
 .type-digital { background: rgba(33, 150, 243, 0.2); color: #2196F3; }
 .type-rental { background: rgba(255, 152, 0, 0.2); color: #FF9800; }
+.type-ebook { background: rgba(233, 30, 99, 0.2); color: #E91E63; }
 .type-download { background: rgba(156, 39, 176, 0.2); color: #9C27B0; }
 .type-streaming, .type-subscription { background: rgba(244, 67, 54, 0.2); color: #F44336; }
 
