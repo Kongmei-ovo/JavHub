@@ -239,7 +239,7 @@
 import api from '../api'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
-import { modalState, openVideoModal } from '../utils/modalState'
+import { openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
 import MovieCard from '../components/MovieCard.vue'
 
@@ -579,22 +579,8 @@ export default {
       this.sortState.random = false
       this.doSearch()
     },
-    async openModal(video) {
-      const contentId = video.content_id || video.dvd_id
-
-      // 先获取 JavInfoApi 完整数据，再打开弹窗（避免多次渲染）
-      let fullVideo = { ...video }
-      try {
-        const resp = await api.getVideo(contentId)
-        if (resp.data) {
-          fullVideo = { ...video, ...resp.data }
-        }
-      } catch (e) {
-        console.error('Load video detail failed:', e)
-      }
-
-      // 打开弹窗，使用完整数据（一次渲染到位）
-      openVideoModal(fullVideo, this.$route.path)
+    openModal(video) {
+      openVideoModal(video, this.$route.path)
     },
     cardImageUrl(item) {
       return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'

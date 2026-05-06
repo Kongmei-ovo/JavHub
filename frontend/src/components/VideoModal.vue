@@ -380,6 +380,7 @@ export default {
       return !!(this.video.dvd_id || this.video.release_date || this.video.content_id)
     },
     metadataLoaded() {
+      if (this.video?._loading?.metatube === false) return true
       // 通过是否存在外部元数据判定扩展请求是否完成
       return !!(this.video.summary || this.video.score || this.video.director)
     },

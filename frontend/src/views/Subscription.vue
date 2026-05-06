@@ -293,14 +293,8 @@ function viewAllVideos() {
   router.push({ path: `/actor/${encodeURIComponent(name)}`, query: { name, actress_id: sheetActor.value.id } })
 }
 
-async function openVideoModal(movie) {
-  const contentId = movie.content_id || movie.dvd_id
-  let fullVideo = { ...movie }
-  try {
-    const resp = await api.getVideo(contentId)
-    if (resp.data) fullVideo = { ...movie, ...resp.data }
-  } catch (e) { console.error('Load video detail failed:', e) }
-  openVideoModalFn(fullVideo, router.currentRoute.value.path)
+function openVideoModal(movie) {
+  openVideoModalFn(movie, router.currentRoute.value.path)
 }
 
 async function subscribeFromSheet() {

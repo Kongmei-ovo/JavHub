@@ -393,17 +393,8 @@ export default {
       } catch (e) { console.error('Page change failed:', e) }
       finally { this.loading = false }
     },
-    async openModal(video) {
-      const contentId = video.content_id || video.dvd_id
-      let fullVideo = { ...video }
-      try {
-        const resp = await api.getVideo(contentId)
-        if (resp.data) fullVideo = { ...video, ...resp.data }
-      } catch (e) {}
-      openVideoModal(fullVideo, this.$route.path)
-      api.getVideoMetadata(contentId).then(resp => {
-        if (resp.data) openVideoModal({ ...modalState.selectedVideo, ...resp.data }, this.$route.path)
-      })
+    openModal(video) {
+      openVideoModal(video, this.$route.path)
     },
     cardImageUrl(item) { return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png' }
   }
