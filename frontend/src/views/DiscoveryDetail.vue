@@ -98,13 +98,7 @@
 
     <!-- 加载骨架屏 -->
     <div v-if="loading" class="skeleton-grid">
-      <div v-for="n in 12" :key="n" class="skeleton-card">
-        <div class="skeleton-cover"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
-        </div>
-      </div>
+      <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
     <!-- 结果网格：年份编年模式 -->
@@ -141,9 +135,13 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="searched && !loading" class="empty-state">
-      <p>暂无相关影片</p>
-    </div>
+    <AppleEmptyState
+      v-else-if="searched && !loading"
+      title="暂无相关影片"
+      description="这个分类暂时没有匹配影片，可以返回推荐页换一个入口。"
+      action-label="返回"
+      @action="handleBack"
+    />
 
     <!-- 分页（底部） -->
     <div v-if="totalPages > 1" class="pagination-bar bottom">
@@ -163,13 +161,16 @@ import { jacketHdUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
 import { favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
+import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 
 const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -200,6 +201,7 @@ export default {
       page: 1,
       total: 0,
       totalPages: 1,
+      searchSequence: createRequestSequence()
     }
   },
   mounted() {
@@ -211,6 +213,7 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('mousedown', this._onDocClick)
+    this.searchSequence.invalidate()
   },
   computed: {
     type() { return this.$route.params.type },
@@ -371,39 +374,41 @@ export default {
       this.loading = true
       this.searched = true
       this.page = 1
+      const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
+        if (!this.searchSequence.isCurrent(token)) return
         this.results = resp.data.data || []
         this.total = resp.data.total_count || 0
         this.totalPages = resp.data.total_pages || 1
       } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
         console.error('Search failed:', e)
         this.results = []; this.total = 0
-      } finally { this.loading = false }
+      } finally {
+        if (this.searchSequence.isCurrent(token)) this.loading = false
+      }
     },
     async refresh() { this.doSearch() },
     async goPage(p) {
       if (p < 1 || p > this.totalPages) return
       this.page = p
       this.loading = true
+      const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
+        if (!this.searchSequence.isCurrent(token)) return
         this.results = resp.data.data || []
         window.scrollTo({ top: 0, behavior: 'smooth' })
-      } catch (e) { console.error('Page change failed:', e) }
-      finally { this.loading = false }
+      } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
+        console.error('Page change failed:', e)
+      } finally {
+        if (this.searchSequence.isCurrent(token)) this.loading = false
+      }
     },
-    async openModal(video) {
-      const contentId = video.content_id || video.dvd_id
-      let fullVideo = { ...video }
-      try {
-        const resp = await api.getVideo(contentId)
-        if (resp.data) fullVideo = { ...video, ...resp.data }
-      } catch (e) {}
-      openVideoModal(fullVideo, this.$route.path)
-      api.getVideoMetadata(contentId).then(resp => {
-        if (resp.data) openVideoModal({ ...modalState.selectedVideo, ...resp.data }, this.$route.path)
-      })
+    openModal(video) {
+      openVideoModal(video, this.$route.path)
     },
     cardImageUrl(item) { return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png' }
   }

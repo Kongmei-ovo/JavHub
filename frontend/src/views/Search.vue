@@ -179,13 +179,7 @@
 
     <!-- 加载骨架屏 -->
     <div v-if="loading" class="skeleton-grid">
-      <div v-for="n in 12" :key="n" class="skeleton-card">
-        <div class="skeleton-cover"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
-        </div>
-      </div>
+      <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
     <!-- 搜索结果网格 -->
@@ -207,10 +201,13 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="searched" class="empty-state">
-      <p>未找到相关影片</p>
-      <p class="text-secondary">尝试其他关键词或筛选条件</p>
-    </div>
+    <AppleEmptyState
+      v-else-if="searched"
+      title="未找到相关影片"
+      description="尝试其他关键词、番号或筛选条件。"
+      action-label="重置筛选"
+      @action="clearFilters"
+    />
 
     <!-- 分页控制（底部） -->
     <div v-if="totalPages > 1" class="pagination-bar">
@@ -239,13 +236,16 @@
 import api from '../api'
 import { jacketHdUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
-import { modalState, openVideoModal } from '../utils/modalState'
+import { openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
+import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 
 export default {
   name: 'Search',
-  components: { MovieCard },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState },
   data() {
     return {
       keyword: '',
@@ -297,7 +297,8 @@ export default {
       totalPages: 1,
       jumpPage: null,
       isSearchFocused: false,
-      isComposing: false
+      isComposing: false,
+      searchSequence: createRequestSequence()
     }
   },
   computed: {
@@ -379,6 +380,7 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('mousedown', this._onDocumentClick)
+    this.searchSequence.invalidate()
   },
   watch: {
     '$route.query'(q) {
@@ -464,46 +466,50 @@ export default {
       this.showMoreFilters = false
       this.doSearch()
     },
+    buildSearchParams(page) {
+      const params = {
+        page,
+        page_size: this.pageSize
+      }
+      if (this.contentId) params.content_id = this.contentId.trim()
+      if (this.keyword) params.q = this.keyword.trim()
+      if (this.makerName) params.maker_name = this.makerName.trim()
+      if (this.seriesName) params.series_name = this.seriesName.trim()
+      if (this.actressName) params.actress_name = this.actressName.trim()
+      if (this.year) params.year = this.year
+      if (this.serviceCode) params.service_code = this.serviceCode
+      if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
+      if (this.sortState.random) {
+        params.random = '1'
+      } else {
+        const sortParts = []
+        for (const [field, dir] of Object.entries(this.sortState)) {
+          if (field === 'random' || dir === null) continue
+          sortParts.push(`${field}:${dir}`)
+        }
+        if (sortParts.length > 0) params.sort_by = sortParts.join(',')
+      }
+      return params
+    },
     async doSearch() {
       this.loading = true
       this.searched = true
       this.page = 1
+      const token = this.searchSequence.next()
       try {
-        const params = {
-          page: this.page,
-          page_size: this.pageSize
-        }
-        if (this.contentId) params.content_id = this.contentId.trim()
-        if (this.keyword) params.q = this.keyword.trim()
-        if (this.makerName) params.maker_name = this.makerName.trim()
-        if (this.seriesName) params.series_name = this.seriesName.trim()
-        if (this.actressName) params.actress_name = this.actressName.trim()
-        if (this.year) params.year = this.year
-        if (this.serviceCode) params.service_code = this.serviceCode
-        if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
-        // 构建排序参数
-        if (this.sortState.random) {
-          params.random = '1'
-        } else {
-          const sortParts = []
-          for (const [field, dir] of Object.entries(this.sortState)) {
-            if (field === 'random' || dir === null) continue
-            sortParts.push(`${field}:${dir}`)
-          }
-          if (sortParts.length > 0) params.sort_by = sortParts.join(',')
-        }
-
-        const resp = await api.searchVideos(params)
+        const resp = await api.searchVideos(this.buildSearchParams(1))
+        if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
         this.total = data.total_count || 0
         this.totalPages = data.total_pages || 1
       } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
         console.error('Search failed:', e)
         this.results = []
         this.total = 0
       } finally {
-        this.loading = false
+        if (this.searchSequence.isCurrent(token)) this.loading = false
       }
     },
     async goPage(p) {
@@ -511,38 +517,20 @@ export default {
       this.page = p
       this.loading = true
       this.searched = true
+      const token = this.searchSequence.next()
       try {
-        const params = { page: this.page, page_size: this.pageSize }
-        if (this.contentId) params.content_id = this.contentId.trim()
-        if (this.keyword) params.q = this.keyword.trim()
-        if (this.makerName) params.maker_name = this.makerName.trim()
-        if (this.seriesName) params.series_name = this.seriesName.trim()
-        if (this.actressName) params.actress_name = this.actressName.trim()
-        if (this.year) params.year = this.year
-        if (this.serviceCode) params.service_code = this.serviceCode
-        if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
-        // 构建排序参数
-        if (this.sortState.random) {
-          params.random = '1'
-        } else {
-          const sortParts = []
-          for (const [field, dir] of Object.entries(this.sortState)) {
-            if (field === 'random' || dir === null) continue
-            sortParts.push(`${field}:${dir}`)
-          }
-          if (sortParts.length > 0) params.sort_by = sortParts.join(',')
-        }
-
-        const resp = await api.searchVideos(params)
+        const resp = await api.searchVideos(this.buildSearchParams(p))
+        if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
         this.total = data.total_count || 0
         this.totalPages = data.total_pages || 1
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
         console.error('Page change failed:', e)
       } finally {
-        this.loading = false
+        if (this.searchSequence.isCurrent(token)) this.loading = false
       }
     },
     doJumpPage() {
@@ -579,22 +567,8 @@ export default {
       this.sortState.random = false
       this.doSearch()
     },
-    async openModal(video) {
-      const contentId = video.content_id || video.dvd_id
-
-      // 先获取 JavInfoApi 完整数据，再打开弹窗（避免多次渲染）
-      let fullVideo = { ...video }
-      try {
-        const resp = await api.getVideo(contentId)
-        if (resp.data) {
-          fullVideo = { ...video, ...resp.data }
-        }
-      } catch (e) {
-        console.error('Load video detail failed:', e)
-      }
-
-      // 打开弹窗，使用完整数据（一次渲染到位）
-      openVideoModal(fullVideo, this.$route.path)
+    openModal(video) {
+      openVideoModal(video, this.$route.path)
     },
     cardImageUrl(item) {
       return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'

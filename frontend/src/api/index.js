@@ -9,12 +9,14 @@ const api = axios.create({
 api.interceptors.response.use(
   response => response,
   error => {
-    const errMsg = error.response?.data?.detail
-      || error.response?.data?.message
-      || error.message
-      || '网络错误'
-    ElMessage.error(errMsg)
-    console.error('API Error:', error.response?.status, errMsg)
+    if (!error.config?.silentError) {
+      const errMsg = error.response?.data?.detail
+        || error.response?.data?.message
+        || error.message
+        || '网络错误'
+      ElMessage.error(errMsg)
+      console.error('API Error:', error.response?.status, errMsg)
+    }
     return Promise.reject(error)
   }
 )
@@ -71,6 +73,10 @@ export default {
 
   getVideo(contentId) {
     return api.get(`/v1/videos/${contentId}`)
+  },
+
+  getVideoMetadata(contentId) {
+    return api.get(`/v1/videos/${contentId}/metadata`, { silentError: true })
   },
 
   // ========== 演员 ==========

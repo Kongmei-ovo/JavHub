@@ -6,6 +6,8 @@ from services.translation import _translate_item
 
 router = APIRouter(prefix="/api/v1/categories", tags=["categories"])
 
+CATEGORY_STATS_CONCURRENCY = 8
+
 @router.get("")
 async def list_categories():
     client = get_info_client()
@@ -39,13 +41,16 @@ async def category_stats():
     categories = await client.list_categories()
 
     import asyncio
+    semaphore = asyncio.Semaphore(CATEGORY_STATS_CONCURRENCY)
+
     async def fetch_count(cat: dict) -> dict:
-        try:
-            result = await client.search_videos(category_id=cat.get('id'), page=1, page_size=1)
-            count = result.get('total', 0) if isinstance(result, dict) else 0
-            return {**cat, 'video_count': count}
-        except Exception:
-            return {**cat, 'video_count': 0}
+        async with semaphore:
+            try:
+                result = await client.search_videos(category_id=cat.get('id'), page=1, page_size=1)
+                count = result.get('total_count', result.get('total', 0)) if isinstance(result, dict) else 0
+                return {**cat, 'video_count': count}
+            except Exception:
+                return {**cat, 'video_count': 0}
 
     tasks = [fetch_count(c) for c in categories]
     results = await asyncio.gather(*tasks, return_exceptions=True)

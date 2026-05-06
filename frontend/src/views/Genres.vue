@@ -74,9 +74,8 @@
         </button>
       </div>
 
-      <div v-if="actressesLoading" class="loading-wrap">
-        <div class="spinner-large"></div>
-        <p>加载演员中...</p>
+      <div v-if="actressesLoading" class="actress-grid" :style="actressGridStyle">
+        <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
       </div>
 
       <div v-else class="actress-grid" :style="actressGridStyle">
@@ -361,8 +360,11 @@ const DEFAULT_CFG = {
   rarityThresholds: { legendary: 5, epic: 20, rare: 50 }, // 百分比阈值（0-100）
 }
 
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+
 export default {
   name: 'Genres',
+  components: { AppleSkeleton },
   data() {
     return {
       activeTab: 'genre',

@@ -12,6 +12,25 @@
   /* Precision Lines */
   --stroke-pro: 1.5px;
   --radius-pro: 22px;
+
+  --radius-card: 22px;
+  --radius-sheet: 32px;
+  --radius-control: 999px;
+  --touch-target: 44px;
+
+  --material-glass-subtle: rgba(255, 255, 255, 0.035);
+  --material-glass-elevated: rgba(255, 255, 255, 0.065);
+  --material-glass-sheet: rgba(18, 18, 22, 0.78);
+  --surface-card: rgba(255, 255, 255, 0.035);
+  --surface-card-hover: rgba(255, 255, 255, 0.065);
+
+  --shadow-floating: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --shadow-sheet: 0 40px 100px rgba(0, 0, 0, 0.65);
+
+  --motion-fast: 160ms var(--ease-pro);
+  --motion-standard: 280ms var(--ease-pro);
+  --motion-emphasized: 460ms var(--ease-pro);
+  --motion-reveal: 420ms var(--ease-pro);
   
   /* Typo - Retouch */
   --ls-pro: -0.02em;
@@ -240,6 +259,41 @@ a:hover { color: var(--accent-light); }
   transform: translateY(-4px); /* Remove scale(1.02) */
   border-color: var(--accent);
   box-shadow: var(--shadow-hover);
+}
+
+.apple-surface {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+.apple-surface-elevated {
+  background: var(--material-glass-elevated);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-floating);
+}
+
+.apple-reveal {
+  animation: apple-content-reveal var(--motion-reveal);
+}
+
+@keyframes apple-content-reveal {
+  from { opacity: 0; transform: translateY(6px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes apple-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.apple-skeleton-block {
+  background: linear-gradient(90deg, rgba(255,255,255,0.045), rgba(255,255,255,0.095), rgba(255,255,255,0.045));
+  background-size: 200% 100%;
+  animation: apple-skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
 /* ===== Progress Bar ===== */

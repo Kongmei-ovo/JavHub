@@ -102,7 +102,6 @@ import axios from 'axios'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'
-import api from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -230,19 +229,8 @@ const openEmbyItem = (video) => {
   }
 }
 
-const showDetail = async (video) => {
+const showDetail = (video) => {
   openVideoModal(video)
-  const contentId = video.content_id || video.dvd_id
-  if (contentId) {
-    try {
-      const resp = await api.getVideo(contentId)
-      if (resp.data) {
-        openVideoModal({ ...video, ...resp.data })
-      }
-    } catch (e) {
-      console.error('Failed to load detail:', e)
-    }
-  }
 }
 
 onMounted(async () => {

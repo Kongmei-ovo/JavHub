@@ -46,6 +46,13 @@ def _transform_video_item(item: dict) -> dict:
     return item
 
 
+def _strip_metadata_fields(item: dict) -> dict:
+    data = dict(item)
+    for field in ("summary", "director", "score", "meta_provider"):
+        data.pop(field, None)
+    return data
+
+
 class InfoClient:
     """JavInfoApi HTTP 客户端"""
 
@@ -177,27 +184,34 @@ class InfoClient:
         normalized = content_id.replace("-", "").lower()
         cached = cache.get_video(normalized)
         if cached is not None:
-            return cached
+            return _strip_metadata_fields(cached)
         params = {}
         if service_code:
             params["service_code"] = service_code
         result = await self._get(f"/api/v1/videos/{normalized}", params=params or None)
         # 转换图片URL
-        data = _transform_video_item(result)
-        # 用 metatube 补全 summary / director / score（取不到不影响主流程）
+        data = _strip_metadata_fields(_transform_video_item(result))
+        cache.set_video(normalized, data)
+        return data
+
+    async def get_video_metadata(self, content_id: str) -> dict[str, Any]:
+        """获取 MetaTube 增强元数据（失败不影响主流程）"""
         try:
             from modules.metatube_client import get_movie as mt_get_movie
             mt_data = await mt_get_movie(content_id)
-            if mt_data:
-                if mt_data.get("summary"):
-                    data["summary"] = mt_data["summary"]
-                if mt_data.get("director"):
-                    data["director"] = mt_data["director"]
-                data["score"] = mt_data.get("score", 0)
-                data["meta_provider"] = mt_data.get("provider", "")
         except Exception:
-            pass
-        cache.set_video(normalized, data)
+            return {}
+        if not mt_data:
+            return {}
+        data = {}
+        if mt_data.get("summary"):
+            data["summary"] = mt_data["summary"]
+        if mt_data.get("director"):
+            data["director"] = mt_data["director"]
+        if "score" in mt_data:
+            data["score"] = mt_data.get("score", 0)
+        if mt_data.get("provider"):
+            data["meta_provider"] = mt_data["provider"]
         return data
 
     # === 演员相关 ===

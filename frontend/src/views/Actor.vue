@@ -268,14 +268,8 @@ export default {
       const el = document.getElementById('year-' + year)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
-    async openModal(movie) {
-      const contentId = movie.code || movie.id
-      let fullVideo = { ...movie }
-      try {
-        const resp = await api.getVideo(contentId)
-        if (resp.data) fullVideo = { ...movie, ...resp.data }
-      } catch (e) { console.error('Load video detail failed:', e) }
-      openVideoModal(fullVideo, this.$route.path)
+    openModal(movie) {
+      openVideoModal(movie._raw || movie, this.$route.path)
     },
     cardImageUrl(movie) {
       return jacketHdUrl(movie.cover_url) || movie.cover_url || ''
