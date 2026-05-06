@@ -45,5 +45,6 @@ docs/
 # Logs
 *.log
 logs/
-\n.worktrees/
+
+.worktrees/
 .superpowers/
