@@ -163,6 +163,7 @@ import { jacketHdUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
 import { favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
+import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
 
 const PAGE_SIZE = 30
@@ -200,6 +201,7 @@ export default {
       page: 1,
       total: 0,
       totalPages: 1,
+      searchSequence: createRequestSequence()
     }
   },
   mounted() {
@@ -211,6 +213,7 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('mousedown', this._onDocClick)
+    this.searchSequence.invalidate()
   },
   computed: {
     type() { return this.$route.params.type },
@@ -371,27 +374,38 @@ export default {
       this.loading = true
       this.searched = true
       this.page = 1
+      const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
+        if (!this.searchSequence.isCurrent(token)) return
         this.results = resp.data.data || []
         this.total = resp.data.total_count || 0
         this.totalPages = resp.data.total_pages || 1
       } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
         console.error('Search failed:', e)
         this.results = []; this.total = 0
-      } finally { this.loading = false }
+      } finally {
+        if (this.searchSequence.isCurrent(token)) this.loading = false
+      }
     },
     async refresh() { this.doSearch() },
     async goPage(p) {
       if (p < 1 || p > this.totalPages) return
       this.page = p
       this.loading = true
+      const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
+        if (!this.searchSequence.isCurrent(token)) return
         this.results = resp.data.data || []
         window.scrollTo({ top: 0, behavior: 'smooth' })
-      } catch (e) { console.error('Page change failed:', e) }
-      finally { this.loading = false }
+      } catch (e) {
+        if (!this.searchSequence.isCurrent(token)) return
+        console.error('Page change failed:', e)
+      } finally {
+        if (this.searchSequence.isCurrent(token)) this.loading = false
+      }
     },
     openModal(video) {
       openVideoModal(video, this.$route.path)
