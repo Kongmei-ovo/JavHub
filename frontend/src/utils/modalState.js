@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import defaultApi from '../api/index.js'
+import { normalizeVideo, videoCodeOf } from './videoNormalize.js'
 
 let modalRequestId = 0
 
@@ -10,12 +11,30 @@ export const modalState = reactive({
   interrupted: false   // 记录是否因为点击 Tag 导航而暂时隐藏
 })
 
-function getContentId(video) {
-  return video?.content_id || video?.dvd_id
+function withLoadingState(video, contentId, api) {
+  const normalized = normalizeVideo(video)
+  return {
+    ...normalized,
+    _loading: {
+      javinfo: Boolean(contentId && api?.getVideo),
+      metatube: Boolean(contentId && api?.getVideoMetadata),
+      cover: true,
+      gallery: false,
+      ...(video._loading || {})
+    },
+    _errors: {
+      javinfo: null,
+      metatube: null,
+      cover: null,
+      gallery: null,
+      stream: null,
+      ...(video._errors || {})
+    }
+  }
 }
 
 function isCurrentRequest(requestId, contentId) {
-  return modalRequestId === requestId && getContentId(modalState.selectedVideo) === contentId
+  return modalRequestId === requestId && videoCodeOf(modalState.selectedVideo) === contentId
 }
 
 function errorMessage(error) {
@@ -27,15 +46,8 @@ function errorMessage(error) {
 
 export function openVideoModal(video, routePath = null, api = defaultApi) {
   const requestId = ++modalRequestId
-  const contentId = getContentId(video)
-  modalState.selectedVideo = {
-    ...video,
-    _loading: {
-      javinfo: Boolean(contentId && api?.getVideo),
-      metatube: Boolean(contentId && api?.getVideoMetadata),
-    },
-    _errors: {}
-  }
+  const contentId = videoCodeOf(video)
+  modalState.selectedVideo = withLoadingState(video, contentId, api)
   modalState.visible = true
   modalState.interrupted = false
   if (routePath) {
