@@ -41,3 +41,9 @@ test('videoCodeOf returns first available stable identifier', () => {
   assert.equal(videoCodeOf({ id: 123 }), '123')
   assert.equal(videoCodeOf({}), '')
 })
+
+test('videoCodeOf skips empty string identifiers while preserving numeric zero', () => {
+  assert.equal(videoCodeOf({ content_id: '', dvd_id: 'DVD-001' }), 'DVD-001')
+  assert.equal(videoCodeOf({ content_id: '', dvd_id: '', code: 'CODE-001' }), 'CODE-001')
+  assert.equal(videoCodeOf({ content_id: 0, dvd_id: 'DVD-001' }), '0')
+})

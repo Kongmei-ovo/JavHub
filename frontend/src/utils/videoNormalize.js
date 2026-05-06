@@ -1,5 +1,6 @@
 export function videoCodeOf(video = {}) {
-  const code = video?.content_id ?? video?.dvd_id ?? video?.code ?? video?.id ?? ''
+  const code = [video?.content_id, video?.dvd_id, video?.code, video?.id]
+    .find(identifier => identifier != null && identifier !== '')
   return code == null ? '' : String(code)
 }
 
