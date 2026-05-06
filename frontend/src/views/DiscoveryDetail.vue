@@ -98,13 +98,7 @@
 
     <!-- 加载骨架屏 -->
     <div v-if="loading" class="skeleton-grid">
-      <div v-for="n in 12" :key="n" class="skeleton-card">
-        <div class="skeleton-cover"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
-        </div>
-      </div>
+      <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
     <!-- 结果网格：年份编年模式 -->
@@ -141,9 +135,13 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="searched && !loading" class="empty-state">
-      <p>暂无相关影片</p>
-    </div>
+    <AppleEmptyState
+      v-else-if="searched && !loading"
+      title="暂无相关影片"
+      description="这个分类暂时没有匹配影片，可以返回推荐页换一个入口。"
+      action-label="返回"
+      @action="handleBack"
+    />
 
     <!-- 分页（底部） -->
     <div v-if="totalPages > 1" class="pagination-bar bottom">
@@ -165,12 +163,14 @@ import { favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 
 const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名

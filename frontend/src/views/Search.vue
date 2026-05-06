@@ -179,13 +179,7 @@
 
     <!-- 加载骨架屏 -->
     <div v-if="loading" class="skeleton-grid">
-      <div v-for="n in 12" :key="n" class="skeleton-card">
-        <div class="skeleton-cover"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
-        </div>
-      </div>
+      <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
     <!-- 搜索结果网格 -->
@@ -207,10 +201,13 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="searched" class="empty-state">
-      <p>未找到相关影片</p>
-      <p class="text-secondary">尝试其他关键词或筛选条件</p>
-    </div>
+    <AppleEmptyState
+      v-else-if="searched"
+      title="未找到相关影片"
+      description="尝试其他关键词、番号或筛选条件。"
+      action-label="重置筛选"
+      @action="clearFilters"
+    />
 
     <!-- 分页控制（底部） -->
     <div v-if="totalPages > 1" class="pagination-bar">
@@ -243,10 +240,12 @@ import { openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 
 export default {
   name: 'Search',
-  components: { MovieCard },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState },
   data() {
     return {
       keyword: '',
