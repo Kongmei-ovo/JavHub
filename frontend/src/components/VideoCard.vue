@@ -19,7 +19,8 @@ const props = defineProps({
   title: { type: String, default: '' },
   coverUrl: { type: String, default: '' },
   actressNames: { type: String, default: '' },
-  releaseDate: { type: String, default: '' }
+  releaseDate: { type: String, default: '' },
+  serviceCode: { type: String, default: '' }
 })
 
 defineEmits(['click'])
@@ -30,6 +31,7 @@ const video = computed(() => ({
   title_ja: props.title || props.actressNames,
   jacket_thumb_url: props.coverUrl,
   release_date: props.releaseDate,
+  service_code: props.serviceCode,
 }))
 
 const isFavorited = computed(() => favoriteState.isFavorited('video', props.contentId))
