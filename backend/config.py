@@ -109,6 +109,10 @@ class Config:
     def javinfo_timeout(self) -> int:
         return self._config.get('javinfo', {}).get('timeout', 30)
 
+    @property
+    def supplement_admin_token(self) -> str:
+        return _env('SUPPLEMENT_ADMIN_TOKEN', self._config.get('javinfo', {}).get('supplement_admin_token', ''))
+
     # MetaTube settings
     @property
     def metatube(self) -> dict:
