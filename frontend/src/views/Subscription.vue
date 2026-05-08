@@ -301,7 +301,7 @@ async function subscribeFromSheet() {
   if (!sheetActor.value) return
   const a = sheetActor.value; const name = a.name_kanji || a.name_romaji || ''
   subscribing.value = true
-  try { await api.addSubscription({ actress_id: a.id }); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
+  try { await api.addSubscription({ actress_id: a.id, actress_name: name }); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
   catch (e) { ElMessage.error('订阅失败') } finally { subscribing.value = false }
 }
 

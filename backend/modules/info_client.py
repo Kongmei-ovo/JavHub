@@ -147,6 +147,7 @@ class InfoClient:
         self,
         q: str | None = None,
         content_id: str | None = None,
+        dvd_id: str | None = None,
         maker_id: int | None = None,
         maker_name: str | None = None,
         series_id: int | None = None,
@@ -155,7 +156,16 @@ class InfoClient:
         actress_name: str | None = None,
         category_id: int | None = None,
         category_name: str | None = None,
+        label_id: int | None = None,
+        label_name: str | None = None,
+        site_id: int | None = None,
         year: int | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        runtime_min: int | None = None,
+        runtime_max: int | None = None,
+        release_date_from: str | None = None,
+        release_date_to: str | None = None,
         service_code: str | None = None,
         sort_by: str | None = None,
         sort_order: str | None = None,
@@ -172,13 +182,19 @@ class InfoClient:
         params: dict[str, Any] = {"q": q, "maker_id": maker_id, "maker_name": maker_name,
                   "series_id": series_id, "series_name": series_name, "actress_id": actress_id,
                   "actress_name": actress_name, "category_id": category_id, "category_name": cat_names,
-                  "year": year, "service_code": service_code,
+                  "label_id": label_id, "label_name": label_name, "site_id": site_id,
+                  "year": year, "year_from": year_from, "year_to": year_to,
+                  "runtime_min": runtime_min, "runtime_max": runtime_max,
+                  "release_date_from": release_date_from, "release_date_to": release_date_to,
+                  "service_code": service_code,
                   "page": page, "page_size": page_size}
         # content_id 映射到 JavInfoApi 的 dvd_id 字段
         # JavInfoApi 会同时匹配带横杠和不带横杠的版本
         # 例如输入 XRW-429 会匹配 XRW-429 和 XRW429
         if content_id:
             params["dvd_id"] = content_id
+        elif dvd_id:
+            params["dvd_id"] = dvd_id
         if random:
             params["random"] = random
             # 随机查询跳过缓存，每次直接请求 JavInfoApi 获取新的随机顺序
@@ -395,6 +411,29 @@ class InfoClient:
                         info["videos"] = [_transform_video_item(v) for v in info["videos"]]
                     results[aid] = info
         return results
+
+    # === 辅助数据 (v1.2.0) ===
+
+    async def list_directors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """获取导演列表（支持 q 搜索）"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        return await self._get("/api/v1/directors", params=params)
+
+    async def list_actors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """获取男演员列表（支持 q 搜索）"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        return await self._get("/api/v1/actors", params=params)
+
+    async def list_authors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """获取作者列表（支持 q 搜索）"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        return await self._get("/api/v1/authors", params=params)
 
     # === 统计 ===
 

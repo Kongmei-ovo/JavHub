@@ -128,6 +128,18 @@ export default {
     return api.get('/v1/labels')
   },
 
+  listDirectors(params = {}) {
+    return api.get('/v1/directors', { params })
+  },
+
+  listActors(params = {}) {
+    return api.get('/v1/actors', { params })
+  },
+
+  listAuthors(params = {}) {
+    return api.get('/v1/authors', { params })
+  },
+
   // ========== 下载管理 ==========
 
   getDownloads() {

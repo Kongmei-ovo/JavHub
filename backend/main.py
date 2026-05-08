@@ -32,6 +32,9 @@ from routers.inventory import router as inventory_router
 from routers.favorites import router as favorites_router
 from routers.stream import router as stream_router
 from routers.supplement import router as supplement_router
+from routers.directors import router as directors_router
+from routers.actors import router as actors_router
+from routers.authors import router as authors_router
 
 app = FastAPI(title="AV Downloader API")
 
@@ -154,6 +157,9 @@ app.include_router(inventory_router)
 app.include_router(favorites_router)
 app.include_router(stream_router)
 app.include_router(supplement_router)
+app.include_router(directors_router)
+app.include_router(actors_router)
+app.include_router(authors_router)
 
 
 @app.on_event("startup")

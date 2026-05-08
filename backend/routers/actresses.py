@@ -10,11 +10,12 @@ router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
 
 @router.get("")
 async def list_actresses(
+    q: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     client = get_info_client()
-    result = await client.list_actresses(page=page, page_size=page_size)
+    result = await client.list_actresses(q=q, page=page, page_size=page_size)
     # 为每个 actress 注入翻译字段
     items = result.get("data", []) if isinstance(result, dict) else result
     if isinstance(items, list):
