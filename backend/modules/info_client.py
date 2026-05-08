@@ -141,6 +141,20 @@ class InfoClient:
         response.raise_for_status()
         return response.json()
 
+    async def proxy_patch(self, path: str, json_body: dict | None = None) -> dict:
+        """代理 PATCH 请求"""
+        client = await self._get_client()
+        response = await client.patch(
+            f"{self.api_url}{path}",
+            json=json_body,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def push_proxy_config(self, proxy_url: str) -> dict:
+        """推送代理配置到 JavInfoApi"""
+        return await self.proxy_patch("/api/v1/config", {"proxy_url": proxy_url})
+
     # === 视频相关 ===
 
     async def search_videos(

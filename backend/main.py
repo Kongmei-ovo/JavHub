@@ -171,6 +171,13 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Failed to start scheduler: {e}")
 
+    # 推送代理配置到 JavInfoApi（如果 JavInfoApi 未就绪则静默失败）
+    try:
+        from routers.config import _push_proxy_to_javinfo
+        await _push_proxy_to_javinfo()
+    except Exception as e:
+        logging.warning(f"Failed to push proxy to JavInfoApi on startup: {e}")
+
     # 注册下载源插件
     try:
         from sources import register_all_sources

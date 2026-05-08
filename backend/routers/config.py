@@ -1,7 +1,24 @@
+import logging
 from fastapi import APIRouter
 from config import config
 from services import cache
 from .proxy import _get_httpx_proxies
+
+logger = logging.getLogger(__name__)
+
+
+async def _push_proxy_to_javinfo():
+    """将 JavHub 的代理配置推送到 JavInfoApi"""
+    try:
+        from modules.info_client import get_info_client
+        client = get_info_client()
+        proxy_url = ""
+        if config.proxy_enabled:
+            proxy_url = config.proxy_http_url or config.proxy_https_url
+        await client.push_proxy_config(proxy_url)
+        logger.info(f"Pushed proxy config to JavInfoApi: {proxy_url or '(none)'}")
+    except Exception as e:
+        logger.warning(f"Failed to push proxy config to JavInfoApi: {e}")
 
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
@@ -39,6 +56,9 @@ async def update_config(new_config: dict):
     if "metatube" in sanitized:
         from modules.metatube_client import close as mt_close
         await mt_close()
+    # 代理配置变更后推送到 JavInfoApi
+    if "proxy" in sanitized:
+        await _push_proxy_to_javinfo()
     return {"success": True}
 
 @router.post("/notification/telegram/test")
