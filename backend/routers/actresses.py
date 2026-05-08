@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+from fastapi.params import Query as QueryParam
 from typing import Any
 from modules.info_client import get_info_client
 from services.translation import apply_translation
@@ -57,9 +58,25 @@ async def get_actress_videos(
     actress_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    include_supplement: str | None = Query(None),
+    service_code: str | None = Query(None),
+    year: int | None = Query(None),
+    sort_by: str | None = Query(None),
 ) -> dict[str, Any]:
+    # Resolve Query() defaults to plain None for testability
+    _inc = None if isinstance(include_supplement, QueryParam) else include_supplement
+    _svc = None if isinstance(service_code, QueryParam) else service_code
+    _yr  = None if isinstance(year, QueryParam) else year
+    _srt = None if isinstance(sort_by, QueryParam) else sort_by
+
     client = get_info_client()
-    result = await client.get_actress_videos(actress_id, page=page, page_size=page_size)
+    result = await client.get_actress_videos(
+        actress_id, page=page, page_size=page_size,
+        include_supplement=_inc,
+        service_code=_svc,
+        year=_yr,
+        sort_by=_srt,
+    )
     if result.get("data"):
         result["data"] = [_apply_translation(item) for item in result["data"]]
     return result
