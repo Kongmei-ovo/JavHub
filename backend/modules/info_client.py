@@ -110,6 +110,37 @@ class InfoClient:
             page += 1
         return all_items
 
+    def _auth_headers(self) -> dict[str, str]:
+        """返回补全管理接口认证头（如果 token 已配置）"""
+        from config import config
+        token = config.supplement_admin_token
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+        return {}
+
+    async def proxy_get(self, path: str, params: dict | None = None) -> dict:
+        """代理 GET 请求，注入补全 token，不做图片转换和缓存"""
+        client = await self._get_client()
+        response = await client.get(
+            f"{self.api_url}{path}",
+            params=params,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def proxy_post(self, path: str, json_body: dict | None = None, params: dict | None = None) -> dict:
+        """代理 POST 请求，注入补全 token，不做图片转换和缓存"""
+        client = await self._get_client()
+        response = await client.post(
+            f"{self.api_url}{path}",
+            json=json_body,
+            params=params,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
     # === 视频相关 ===
 
     async def search_videos(
@@ -182,7 +213,8 @@ class InfoClient:
         """获取视频详情（缓存24小时）"""
         # JavInfoApi 的 content_id 保留原始格式（部分含下划线如 h_1330gtrp004r）
         normalized = content_id.replace("-", "").lower()
-        cached = cache.get_video(normalized)
+        cache_key = f"{normalized}:service:{service_code}" if service_code else normalized
+        cached = cache.get_video(cache_key)
         if cached is not None:
             return _strip_metadata_fields(cached)
         params = {}
@@ -191,7 +223,7 @@ class InfoClient:
         result = await self._get(f"/api/v1/videos/{normalized}", params=params or None)
         # 转换图片URL
         data = _strip_metadata_fields(_transform_video_item(result))
-        cache.set_video(normalized, data)
+        cache.set_video(cache_key, data)
         return data
 
     async def get_video_metadata(self, content_id: str) -> dict[str, Any]:
@@ -227,11 +259,29 @@ class InfoClient:
         """获取演员详情"""
         return await self._get(f"/api/v1/actresses/{actress_id}")
 
-    async def get_actress_videos(self, actress_id: int, page: int = 1, page_size: int = 20) -> dict[str, Any]:
-        """获取演员作品列表"""
+    async def get_actress_videos(
+        self,
+        actress_id: int,
+        page: int = 1,
+        page_size: int = 20,
+        include_supplement: str | None = None,
+        service_code: str | None = None,
+        year: int | None = None,
+        sort_by: str | None = None,
+    ) -> dict[str, Any]:
+        """获取演员作品列表（支持补全层查询）"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if include_supplement:
+            params["include_supplement"] = include_supplement
+        if service_code:
+            params["service_code"] = service_code
+        if year:
+            params["year"] = year
+        if sort_by:
+            params["sort_by"] = sort_by
         result = await self._get(
             f"/api/v1/actresses/{actress_id}/videos",
-            params={"page": page, "page_size": page_size}
+            params=params,
         )
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
