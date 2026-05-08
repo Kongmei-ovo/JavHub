@@ -32,6 +32,56 @@
       </button>
     </div>
 
+    <!-- Supplement Status Card -->
+    <div v-if="actressId && supplementStatus" class="supplement-card">
+      <div class="supplement-header">
+        <h3>补全状态</h3>
+        <span
+          class="supplement-badge"
+          :class="{
+            'badge-running': supplementStatus.last_job?.status === 'running' || supplementStatus.last_job?.status === 'queued',
+            'badge-failed': supplementStatus.last_job?.status === 'failed',
+            'badge-ok': supplementStatus.last_job?.status === 'succeeded',
+          }"
+        >
+          {{ statusLabel(supplementStatus.last_job?.status) }}
+        </span>
+      </div>
+      <div v-if="supplementStatus.last_job?.last_error && supplementStatus.last_job?.status === 'failed'" class="supplement-error">
+        {{ supplementStatus.last_job.last_error }}
+      </div>
+      <div class="supplement-counters">
+        <div class="counter-item">
+          <span class="counter-value">{{ supplementStatus.supplement_movies ?? '—' }}</span>
+          <span class="counter-label">补全影片</span>
+        </div>
+        <div class="counter-item">
+          <span class="counter-value">{{ supplementStatus.matched_r18 ?? '—' }}</span>
+          <span class="counter-label">已匹配</span>
+        </div>
+        <div class="counter-item">
+          <span class="counter-value">{{ supplementStatus.supplement_only ?? '—' }}</span>
+          <span class="counter-label">仅补全</span>
+        </div>
+        <div class="counter-item">
+          <span class="counter-value">{{ supplementStatus.resolved_videos ?? '—' }}</span>
+          <span class="counter-label">可展示</span>
+        </div>
+      </div>
+      <div class="supplement-actions">
+        <button
+          class="btn btn-primary btn-sm"
+          :disabled="isSupplementRunning"
+          @click="startSupplement"
+        >
+          {{ isSupplementRunning ? '补全中...' : '补全作品' }}
+        </button>
+        <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新 resolved</button>
+        <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">查看补全影片</button>
+        <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">查看任务</button>
+      </div>
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="loading-wrap">
       <div class="spinner-large"></div>
@@ -43,6 +93,12 @@
       <div class="section-header">
         <h2>全部作品</h2>
         <div class="header-right">
+          <div class="supplement-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" v-model="includeSupplement" @change="onSupplementToggle" />
+              <span>包含补全</span>
+            </label>
+          </div>
           <div v-if="variantCount > 0" class="variant-switch">
             <button
               class="switch-btn"
@@ -139,6 +195,10 @@ export default {
       loading: false,
       activeYear: null,
       showVariants: false,
+      includeSupplement: false,
+      supplementStatus: null,
+      supplementLoading: false,
+      supplementPolling: null,
       _yearObserver: null
     }
   },
@@ -171,16 +231,25 @@ export default {
       return Object.keys(groups)
         .sort((a, b) => b.localeCompare(a))
         .map(year => ({ year, movies: groups[year] }))
-    }
+    },
+    actressId() {
+      return this.$route.query.actress_id || this.actressData?.id || null
+    },
+    isSupplementRunning() {
+      const s = this.supplementStatus?.last_job?.status
+      return s === 'running' || s === 'queued'
+    },
   },
   mounted() {
     this.actorName = this.$route.query.name || this.$route.params.name || ''
     if (this.actorName) {
       this.loadActressInfo()
       this.loadActorMovies()
+      this.loadSupplementStatus()
     }
   },
   beforeUnmount() {
+    this._stopSupplementPolling()
     if (this._yearObserver) this._yearObserver.disconnect()
   },
   methods: {
@@ -210,36 +279,61 @@ export default {
       return {
         code: m.dvd_id || m.content_id || '',
         id: m.content_id || m.dvd_id || '',
-        title: m.title_en || m.title_ja || '',
+        title: m.title_en || m.title_ja || m.canonical_number || '',
         cover_url: m.jacket_thumb_url || '',
         date: m.release_date || '',
         actor: m.actress_name || this.actorName,
         genres: m.categories || [],
-        _raw: m
+        _raw: m,
+        _dataOrigin: m.data_origin || null,
       }
     },
     async loadActorMovies() {
       this.loading = true
       try {
         const pageSize = 100
-        const resp = await api.searchVideos({ actress_name: this.actorName, page: 1, page_size: pageSize })
-        const data = resp.data
-        const allMovies = (data.data || []).map(m => this.normalizeMovie(m))
-        const totalPages = data.total_pages || 1
-        this.totalCount = data.total_count || allMovies.length
+        let allMovies = []
+        let totalCount = 0
 
-        if (totalPages > 1) {
-          const pagePromises = []
-          for (let page = 2; page <= totalPages; page++) {
-            pagePromises.push(api.searchVideos({ actress_name: this.actorName, page, page_size: pageSize }))
+        if (this.includeSupplement && this.actressId) {
+          const fetchPage = async (page) => {
+            const resp = await api.getActressVideos(this.actressId, page, pageSize, { include_supplement: '1' })
+            return resp.data
           }
-          const results = await Promise.all(pagePromises)
-          for (const r of results) {
-            allMovies.push(...(r.data.data || []).map(m => this.normalizeMovie(m)))
+          const first = await fetchPage(1)
+          allMovies = (first.data || []).map(m => this.normalizeMovie(m))
+          totalCount = first.total_count || allMovies.length
+          const totalPages = first.total_pages || 1
+          if (totalPages > 1) {
+            const pagePromises = []
+            for (let page = 2; page <= totalPages; page++) {
+              pagePromises.push(fetchPage(page))
+            }
+            const results = await Promise.all(pagePromises)
+            for (const r of results) {
+              allMovies.push(...(r.data || []).map(m => this.normalizeMovie(m)))
+            }
+          }
+        } else {
+          const resp = await api.searchVideos({ actress_name: this.actorName, page: 1, page_size: pageSize })
+          const data = resp.data
+          allMovies = (data.data || []).map(m => this.normalizeMovie(m))
+          totalCount = data.total_count || allMovies.length
+          const totalPages = data.total_pages || 1
+          if (totalPages > 1) {
+            const pagePromises = []
+            for (let page = 2; page <= totalPages; page++) {
+              pagePromises.push(api.searchVideos({ actress_name: this.actorName, page, page_size: pageSize }))
+            }
+            const results = await Promise.all(pagePromises)
+            for (const r of results) {
+              allMovies.push(...(r.data.data || []).map(m => this.normalizeMovie(m)))
+            }
           }
         }
 
         this.movies = allMovies
+        this.totalCount = totalCount
         this.$nextTick(() => this._setupYearObserver())
       } catch (e) {
         console.error('Load actor movies failed:', e)
@@ -276,7 +370,63 @@ export default {
     },
     handleAvatarError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="%23333" width="120" height="120" rx="60"/><text x="50%" y="55%" text-anchor="middle" dy=".3em" fill="%23999" font-size="40">?</text></svg>'
-    }
+    },
+    async loadSupplementStatus() {
+      if (!this.actressId) return
+      try {
+        const resp = await api.getSupplementActressStatus(this.actressId)
+        this.supplementStatus = resp.data || resp
+        if (this.isSupplementRunning) {
+          this._startSupplementPolling()
+        }
+      } catch (e) {
+        console.warn('Load supplement status failed:', e)
+      }
+    },
+    async startSupplement() {
+      if (!this.actressId || this.isSupplementRunning) return
+      try {
+        await api.startSupplementFilmographyJob(this.actressId)
+        await this.loadSupplementStatus()
+      } catch (e) {
+        console.error('Start supplement failed:', e)
+      }
+    },
+    async refreshResolved() {
+      if (!this.actressId) return
+      try {
+        await api.refreshSupplementActressResolved(this.actressId)
+        await this.loadSupplementStatus()
+      } catch (e) {
+        console.error('Refresh resolved failed:', e)
+      }
+    },
+    goSupplementMovies() {
+      this.$router.push({ path: '/supplement', query: { tab: 'movies', actress_id: this.actressId } })
+    },
+    goSupplementJobs() {
+      this.$router.push({ path: '/supplement', query: { tab: 'jobs', actress_id: this.actressId } })
+    },
+    statusLabel(status) {
+      const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }
+      return map[status] || status || '未知'
+    },
+    _startSupplementPolling() {
+      this._stopSupplementPolling()
+      this.supplementPolling = setInterval(async () => {
+        await this.loadSupplementStatus()
+        if (!this.isSupplementRunning) this._stopSupplementPolling()
+      }, 4000)
+    },
+    _stopSupplementPolling() {
+      if (this.supplementPolling) {
+        clearInterval(this.supplementPolling)
+        this.supplementPolling = null
+      }
+    },
+    async onSupplementToggle() {
+      await this.loadActorMovies()
+    },
   }
 }
 </script>
@@ -561,6 +711,114 @@ export default {
   to { transform: rotate(360deg); }
 }
 
+/* Supplement Card */
+.supplement-card {
+  margin: 0 40px 20px;
+  padding: 20px 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.supplement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.supplement-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.supplement-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.badge-running {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.badge-failed {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.badge-ok {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.supplement-error {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #f87171;
+}
+
+.supplement-counters {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.counter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.counter-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.counter-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.supplement-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.supplement-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .actor-hero {
@@ -595,6 +853,13 @@ export default {
 
   .year-label {
     font-size: 18px;
+  }
+
+  .supplement-card {
+    margin: 0 16px 16px;
+  }
+  .supplement-counters {
+    gap: 16px;
   }
 }
 </style>
