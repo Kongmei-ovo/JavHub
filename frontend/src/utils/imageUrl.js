@@ -91,6 +91,11 @@ export function jacketThumbUrl(video) {
   return video?.jacket_thumb_url || video?.jacket_full_url || null
 }
 
+export function videoCardCoverUrl(video) {
+  const jacketUrl = jacketThumbUrl(video)
+  return jacketHdUrl(jacketUrl) || jacketUrl || '/placeholder.png'
+}
+
 /**
  * 构建高清剧照 URL
  * 低清：https://pics.dmm.co.jp/digital/video/{id}/{id}-{n}.jpg

@@ -46,6 +46,41 @@ class CategoryStatsTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result[0]["video_count"], 123)
 
+    async def test_concurrent_cache_misses_share_one_rebuild(self):
+        rebuilds = 0
+
+        class ClientStub:
+            async def list_categories(self):
+                nonlocal rebuilds
+                rebuilds += 1
+                await asyncio.sleep(0.001)
+                return [{"id": 1, "name": "cat"}]
+
+            async def search_videos(self, category_id, page, page_size):
+                await asyncio.sleep(0.001)
+                return {"total_count": 123}
+
+        cache_value = None
+
+        def get_cached():
+            return cache_value
+
+        def set_cached(value):
+            nonlocal cache_value
+            cache_value = value
+
+        with patch("routers.categories.cache.get_category_stats", side_effect=get_cached), \
+             patch("routers.categories.cache.set_category_stats", side_effect=set_cached), \
+             patch("routers.categories.get_info_client", return_value=ClientStub()):
+            results = await asyncio.gather(
+                categories.category_stats(),
+                categories.category_stats(),
+                categories.category_stats(),
+            )
+
+        self.assertEqual(rebuilds, 1)
+        self.assertEqual(results, [[{"id": 1, "name": "cat", "video_count": 123}]] * 3)
+
 
 if __name__ == "__main__":
     unittest.main()

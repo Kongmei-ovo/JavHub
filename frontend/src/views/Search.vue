@@ -234,7 +234,7 @@
 
 <script>
 import api from '../api'
-import { jacketHdUrl } from '../utils/imageUrl.js'
+import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { useRoute } from 'vue-router'
 import { openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
@@ -571,7 +571,7 @@ export default {
       openVideoModal(video, this.$route.path)
     },
     cardImageUrl(item) {
-      return jacketHdUrl(item.jacket_thumb_url) || item.jacket_thumb_url || '/placeholder.png'
+      return videoCardCoverUrl(item)
     }
   }
 }

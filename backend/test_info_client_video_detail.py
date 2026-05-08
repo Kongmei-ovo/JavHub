@@ -52,6 +52,22 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("score", data)
         self.assertNotIn("meta_provider", data)
 
+    async def test_get_video_uses_service_code_in_cache_key(self):
+        client = InfoClient()
+        javinfo_detail = {
+            "dvd_id": "MIAA-784",
+            "title_ja": "Digital detail",
+        }
+
+        with patch("services.cache.get_video", return_value=None) as get_cache, \
+             patch("services.cache.set_video") as set_cache, \
+             patch.object(client, "_get", AsyncMock(return_value=javinfo_detail)):
+            await client.get_video("MIAA-784", service_code="digital")
+
+        get_cache.assert_called_once_with("miaa784:service:digital")
+        set_cache.assert_called_once()
+        self.assertEqual(set_cache.call_args.args[0], "miaa784:service:digital")
+
     async def test_get_video_metadata_returns_only_metatube_enhancement_fields(self):
         client = InfoClient()
         metatube_detail = {

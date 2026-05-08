@@ -93,7 +93,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
 import { openVideoModal } from '../utils/modalState'
-import { jacketHdUrl } from '../utils/imageUrl.js'
+import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import api from '../api'
 import MovieCard from '../components/MovieCard.vue'
@@ -213,9 +213,7 @@ export default {
       }
     }
 
-    const cardImageUrl = (metadata) => {
-      return jacketHdUrl(metadata.jacket_thumb_url) || metadata.jacket_thumb_url || '/placeholder.png'
-    }
+    const cardImageUrl = (metadata) => videoCardCoverUrl(metadata)
 
     return {
       state,
