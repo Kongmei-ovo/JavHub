@@ -118,5 +118,127 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
+from routers import supplement
+
+
+class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
+    async def test_stats_proxies_to_info_client(self):
+        fake_stats = {
+            "jobs_by_status": {"succeeded": 5},
+            "total_movies": 100,
+            "matched_r18": 60,
+            "supplement_only": 40,
+        }
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = fake_stats
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            result = await supplement.supplement_stats()
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/stats", params=None)
+        self.assertEqual(result, fake_stats)
+
+    async def test_actress_status_passes_source_param(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"actress_id": 1}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.supplement_actress_status(actress_id=1)
+
+        mock_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/actresses/1/status",
+            params={"source": "avbase"},
+        )
+
+    async def test_filmography_job_defaults_source_avbase(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 1, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.create_filmography_job(actress_id=1)
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/actresses/1/filmography/jobs",
+            params={"source": "avbase"},
+        )
+
+    async def test_resolved_refresh_no_params(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"actress_id": 1, "resolved_refreshed": 10}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.refresh_resolved(actress_id=1)
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/actresses/1/resolved/refresh",
+            params=None,
+        )
+
+    async def test_list_jobs_passes_filters(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"data": [], "total_count": 0}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_jobs(page=2, page_size=50, status="failed", actress_id=123)
+
+        mock_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/jobs",
+            params={"page": 2, "page_size": 50, "status": "failed", "actress_id": 123},
+        )
+
+    async def test_retry_job(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 2, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.retry_job(job_id=1)
+
+        mock_client.proxy_post.assert_awaited_once_with("/api/v1/supplement/jobs/1/retry")
+
+    async def test_cancel_job(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 1, "status": "failed"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.cancel_job(job_id=1)
+
+        mock_client.proxy_post.assert_awaited_once_with("/api/v1/supplement/jobs/1/cancel")
+
+    async def test_recover_stale_defaults_30_minutes(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"recovered": 2}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.recover_stale()
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/jobs/recover_stale",
+            params={"older_than_minutes": 30},
+        )
+
+    async def test_list_movies_passes_filters(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"data": [], "total_count": 0}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_supplement_movies(
+                page=1, page_size=20, matched=False, actress_id=456, q="ABP588",
+            )
+
+        mock_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/movies",
+            params={"page": 1, "page_size": 20, "matched": "false", "actress_id": 456, "q": "ABP588"},
+        )
+
+    async def test_get_job_detail(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"id": 1, "status": "succeeded"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.get_job_detail(job_id=1)
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/jobs/1")
+
+
 if __name__ == '__main__':
     unittest.main()
