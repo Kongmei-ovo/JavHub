@@ -31,17 +31,8 @@ async def search_actresses(q: str = Query("", min_length=1)) -> dict[str, Any]:
     from database import get_translation
     from services.translation import _translate_item
     client = get_info_client()
-    result = await client.list_actresses(page=1, page_size=100)
-    items = result.get("data", []) if isinstance(result, dict) else []
-    q_lower = q.lower()
-    matched = [
-        item for item in items
-        if q_lower in (item.get("name_kanji", "") or "").lower()
-        or q_lower in (item.get("name_romaji", "") or "").lower()
-        or q_lower in (item.get("name_en", "") or "").lower()
-        or q_lower in (item.get("name_ja", "") or "").lower()
-        or q_lower in (item.get("name", "") or "").lower()
-    ]
+    result = await client.list_actresses(q=q, page=1, page_size=20)
+    matched = result.get("data", []) if isinstance(result, dict) else []
     for actress in matched:
         actress_id = actress.get("id")
         if actress_id:
