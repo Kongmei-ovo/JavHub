@@ -28,10 +28,14 @@ const STATS_CACHE_KEY = 'javhub_category_stats'
 const STATS_TTL_MS = 60 * 60 * 1000
 
 let _cachedStats = null
+let _statsRequest = null
 
 async function getCategoryStats(forceRefresh = false) {
   if (!forceRefresh && _cachedStats) {
     return _cachedStats
+  }
+  if (!forceRefresh && _statsRequest) {
+    return _statsRequest
   }
   if (!forceRefresh) {
     try {
@@ -45,13 +49,20 @@ async function getCategoryStats(forceRefresh = false) {
       }
     } catch {}
   }
-  const resp = await api.get('/v1/categories/stats')
-  const data = Array.isArray(resp.data) ? resp.data : (resp.data || [])
-  _cachedStats = data
-  try {
-    localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))
-  } catch {}
-  return data
+  const request = api.get('/v1/categories/stats')
+    .then(resp => {
+      const data = Array.isArray(resp.data) ? resp.data : (resp.data || [])
+      _cachedStats = data
+      try {
+        localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))
+      } catch {}
+      return data
+    })
+    .finally(() => {
+      if (_statsRequest === request) _statsRequest = null
+    })
+  _statsRequest = request
+  return request
 }
 
 export default {
@@ -89,8 +100,10 @@ export default {
     return api.get(`/v1/actresses/${actressId}`)
   },
 
-  getActressVideos(actressId, page = 1, page_size = 20) {
-    return api.get(`/v1/actresses/${actressId}/videos`, { params: { page, page_size } })
+  getActressVideos(actressId, page = 1, page_size = 20, options = {}) {
+    return api.get(`/v1/actresses/${actressId}/videos`, {
+      params: { page, page_size, ...options },
+    })
   },
 
   batchGetActressVideos(ids, page = 1, page_size = 5) {
@@ -257,6 +270,48 @@ export default {
 
   getCollections() {
     return api.get('/v1/favorites/collections')
+  },
+
+  // ========== 补全管理 ==========
+
+  getSupplementStats() {
+    return api.get('/v1/supplement/stats')
+  },
+
+  getSupplementActressStatus(actressId) {
+    return api.get(`/v1/supplement/actresses/${actressId}/status`)
+  },
+
+  startSupplementFilmographyJob(actressId) {
+    return api.post(`/v1/supplement/actresses/${actressId}/filmography/jobs`)
+  },
+
+  refreshSupplementActressResolved(actressId) {
+    return api.post(`/v1/supplement/actresses/${actressId}/resolved/refresh`)
+  },
+
+  listSupplementJobs(params = {}) {
+    return api.get('/v1/supplement/jobs', { params })
+  },
+
+  getSupplementJob(jobId) {
+    return api.get(`/v1/supplement/jobs/${jobId}`)
+  },
+
+  retrySupplementJob(jobId) {
+    return api.post(`/v1/supplement/jobs/${jobId}/retry`)
+  },
+
+  cancelSupplementJob(jobId) {
+    return api.post(`/v1/supplement/jobs/${jobId}/cancel`)
+  },
+
+  recoverStaleSupplementJobs(olderThanMinutes = 30) {
+    return api.post('/v1/supplement/jobs/recover_stale', null, { params: { older_than_minutes: olderThanMinutes } })
+  },
+
+  listSupplementMovies(params = {}) {
+    return api.get('/v1/supplement/movies', { params })
   },
 
   // ========== 健康检查 ==========

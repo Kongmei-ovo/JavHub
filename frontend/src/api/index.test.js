@@ -37,3 +37,161 @@ test('main path API failure still shows global error toast', async (t) => {
   assert.equal(errorMock.mock.callCount(), 1)
   assert.equal(errorMock.mock.calls[0].arguments[0], '服务器内部错误')
 })
+
+test('concurrent getCategoryStats calls share one network request', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const originalLocalStorage = globalThis.localStorage
+  let requestCount = 0
+
+  globalThis.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+  }
+  axios.defaults.adapter = async (config) => {
+    requestCount += 1
+    return {
+      config,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      data: [{ category_id: 1, count: 12 }],
+    }
+  }
+  t.after(() => {
+    axios.defaults.adapter = originalAdapter
+    if (originalLocalStorage === undefined) {
+      delete globalThis.localStorage
+    } else {
+      globalThis.localStorage = originalLocalStorage
+    }
+  })
+
+  const { default: api } = await import(`./index.js?category-stats-dedupe-${Date.now()}`)
+
+  const [first, second] = await Promise.all([
+    api.getCategoryStats(),
+    api.getCategoryStats(),
+  ])
+
+  assert.deepEqual(first, [{ category_id: 1, count: 12 }])
+  assert.deepEqual(second, [{ category_id: 1, count: 12 }])
+  assert.equal(requestCount, 1)
+})
+
+test('getActressVideos forwards include_supplement and extra params', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [], total_count: 0 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?actress-videos-supplement-${Date.now()}`)
+  await api.getActressVideos(123, 1, 20, { include_supplement: '1', service_code: 'digital', year: 2024 })
+
+  assert.equal(capturedConfig.url, '/v1/actresses/123/videos')
+  assert.equal(capturedConfig.params.include_supplement, '1')
+  assert.equal(capturedConfig.params.service_code, 'digital')
+  assert.equal(capturedConfig.params.year, 2024)
+})
+
+test('getSupplementStats sends GET to correct path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-stats-${Date.now()}`)
+  await api.getSupplementStats()
+
+  assert.equal(capturedConfig.url, '/v1/supplement/stats')
+  assert.equal(capturedConfig.method, 'get')
+})
+
+test('startSupplementFilmographyJob sends POST to correct path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 1, status: 'queued' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-start-job-${Date.now()}`)
+  await api.startSupplementFilmographyJob(456)
+
+  assert.equal(capturedConfig.url, '/v1/supplement/actresses/456/filmography/jobs')
+  assert.equal(capturedConfig.method, 'post')
+})
+
+test('listSupplementJobs forwards filter params', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-jobs-${Date.now()}`)
+  await api.listSupplementJobs({ page: 2, status: 'failed', actress_id: 123 })
+
+  assert.equal(capturedConfig.url, '/v1/supplement/jobs')
+  assert.equal(capturedConfig.params.page, 2)
+  assert.equal(capturedConfig.params.status, 'failed')
+  assert.equal(capturedConfig.params.actress_id, 123)
+})
+
+test('listSupplementMovies forwards matched=false filter', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-movies-${Date.now()}`)
+  await api.listSupplementMovies({ matched: false, actress_id: 456 })
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies')
+  assert.equal(capturedConfig.params.matched, false)
+  assert.equal(capturedConfig.params.actress_id, 456)
+})
+
+test('cancelSupplementJob sends POST to correct path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { job_id: 1, status: 'failed' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-cancel-${Date.now()}`)
+  await api.cancelSupplementJob(1)
+
+  assert.equal(capturedConfig.url, '/v1/supplement/jobs/1/cancel')
+  assert.equal(capturedConfig.method, 'post')
+})
+
+test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { recovered: 2 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-recover-${Date.now()}`)
+  await api.recoverStaleSupplementJobs(60)
+
+  assert.equal(capturedConfig.url, '/v1/supplement/jobs/recover_stale')
+  assert.equal(capturedConfig.params.older_than_minutes, 60)
+})
+
