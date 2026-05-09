@@ -159,8 +159,8 @@
         <div class="movie-list">
           <div v-for="movie in supplementMovies" :key="movie.id" class="movie-item">
             <div class="movie-main">
-              <span class="movie-number">{{ movie.canonical_number || '—' }}</span>
-              <span class="movie-title">{{ movie.title || movie.canonical_number || '—' }}</span>
+              <span class="movie-number">{{ movie.dvd_id || movie.canonical_number || '—' }}</span>
+              <span class="movie-title">{{ movie.title || movie.dvd_id || movie.canonical_number || '—' }}</span>
               <span class="movie-actress">{{ movie.actress_name || '' }}</span>
               <span class="movie-date">{{ movie.release_date || '' }}</span>
               <span
