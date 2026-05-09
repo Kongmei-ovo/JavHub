@@ -326,6 +326,18 @@ export default {
     return api.get('/v1/supplement/movies', { params })
   },
 
+  enrichSupplementMovieDetail(sourceMovieId, source = 'avbase') {
+    return api.post('/v1/supplement/movies/detail', null, {
+      params: { source, source_movie_id: sourceMovieId },
+    })
+  },
+
+  startSupplementMovieDetailJob(sourceMovieId, source = 'avbase') {
+    return api.post('/v1/supplement/movies/detail/jobs', null, {
+      params: { source, source_movie_id: sourceMovieId },
+    })
+  },
+
   // ========== 健康检查 ==========
 
   health() {

@@ -230,6 +230,58 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
             params={"page": 1, "page_size": 20, "matched": "false", "actress_id": 456, "q": "ABP588"},
         )
 
+    async def test_list_movies_passes_quality_filters(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"data": [], "total_count": 0}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_supplement_movies(
+                page=1,
+                page_size=20,
+                missing_cover=True,
+                missing_runtime=True,
+                missing_maker=True,
+                missing_categories=True,
+                max_completeness=2,
+            )
+
+        mock_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/movies",
+            params={
+                "page": 1,
+                "page_size": 20,
+                "missing_cover": "true",
+                "missing_runtime": "true",
+                "missing_maker": "true",
+                "missing_categories": "true",
+                "max_completeness": 2,
+            },
+        )
+
+    async def test_enrich_movie_detail_passes_source_movie_id(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"source": "avbase", "source_movie_id": "prestige:SIVR-438"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.enrich_movie_detail(source_movie_id="prestige:SIVR-438", source="avbase")
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/movies/detail",
+            params={"source": "avbase", "source_movie_id": "prestige:SIVR-438"},
+        )
+
+    async def test_create_movie_detail_job_passes_source_movie_id(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 3, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.create_movie_detail_job(source_movie_id="prestige:SIVR-438", source="avbase")
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/movies/detail/jobs",
+            params={"source": "avbase", "source_movie_id": "prestige:SIVR-438"},
+        )
+
     async def test_get_job_detail(self):
         mock_client = AsyncMock()
         mock_client.proxy_get.return_value = {"id": 1, "status": "succeeded"}

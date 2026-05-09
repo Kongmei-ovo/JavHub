@@ -138,6 +138,14 @@
             <option :value="false">未匹配</option>
             <option :value="true">已匹配</option>
           </select>
+          <select v-model="movieFilters.quality" @change="loadMovies" class="filter-select">
+            <option value="">全部质量</option>
+            <option value="missing_cover">缺封面</option>
+            <option value="missing_runtime">缺时长</option>
+            <option value="missing_maker">缺厂商</option>
+            <option value="missing_categories">缺分类</option>
+            <option value="low_completeness">低完整度</option>
+          </select>
           <input
             v-model="movieFilters.actress_id"
             placeholder="演员 ID"
@@ -171,6 +179,12 @@
               </span>
             </div>
             <div class="movie-actions">
+              <button
+                v-if="movie.source_movie_id"
+                class="btn btn-primary btn-sm"
+                :disabled="enrichingMovies[movie.id]"
+                @click="enrichMovie(movie)"
+              >{{ enrichingMovies[movie.id] ? '排队中...' : '补详情' }}</button>
               <a
                 v-if="movie.matched_content_id"
                 :href="`/search?q=${movie.matched_content_id}`"
@@ -224,10 +238,11 @@ export default {
       // Movies
       supplementMovies: [],
       moviesLoading: false,
+      enrichingMovies: {},
       moviePage: 1,
       moviesTotalCount: 0,
       moviesTotalPages: 1,
-      movieFilters: { matched: false, actress_id: '', q: '' },
+      movieFilters: { matched: false, quality: '', actress_id: '', q: '' },
     }
   },
   watch: {
@@ -318,6 +333,11 @@ export default {
         if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
         if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
         if (this.movieFilters.q) params.q = this.movieFilters.q
+        if (this.movieFilters.quality === 'missing_cover') params.missing_cover = true
+        if (this.movieFilters.quality === 'missing_runtime') params.missing_runtime = true
+        if (this.movieFilters.quality === 'missing_maker') params.missing_maker = true
+        if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
+        if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
         const resp = await api.listSupplementMovies(params)
         const data = resp.data || resp
         this.supplementMovies = data.data || []
@@ -327,6 +347,20 @@ export default {
         console.error('Load supplement movies failed:', e)
       } finally {
         this.moviesLoading = false
+      }
+    },
+    async enrichMovie(movie) {
+      if (!movie?.source_movie_id || this.enrichingMovies[movie.id]) return
+      this.enrichingMovies = { ...this.enrichingMovies, [movie.id]: true }
+      try {
+        await api.startSupplementMovieDetailJob(movie.source_movie_id, movie.source || 'avbase')
+        await this.loadJobs()
+      } catch (e) {
+        console.error('Start movie detail job failed:', e)
+      } finally {
+        const next = { ...this.enrichingMovies }
+        delete next[movie.id]
+        this.enrichingMovies = next
       }
     },
   },

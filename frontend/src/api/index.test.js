@@ -163,6 +163,42 @@ test('listSupplementMovies forwards matched=false filter', async (t) => {
   assert.equal(capturedConfig.params.actress_id, 456)
 })
 
+test('enrichSupplementMovieDetail sends POST with source movie id', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { source: 'avbase' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-${Date.now()}`)
+  await api.enrichSupplementMovieDetail('prestige:SIVR-438', 'avbase')
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies/detail')
+  assert.equal(capturedConfig.method, 'post')
+  assert.equal(capturedConfig.params.source, 'avbase')
+  assert.equal(capturedConfig.params.source_movie_id, 'prestige:SIVR-438')
+})
+
+test('startSupplementMovieDetailJob sends POST with source movie id', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-job-${Date.now()}`)
+  await api.startSupplementMovieDetailJob('prestige:SIVR-438', 'avbase')
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies/detail/jobs')
+  assert.equal(capturedConfig.method, 'post')
+  assert.equal(capturedConfig.params.source, 'avbase')
+  assert.equal(capturedConfig.params.source_movie_id, 'prestige:SIVR-438')
+})
+
 test('cancelSupplementJob sends POST to correct path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
@@ -194,4 +230,3 @@ test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) 
   assert.equal(capturedConfig.url, '/v1/supplement/jobs/recover_stale')
   assert.equal(capturedConfig.params.older_than_minutes, 60)
 })
-

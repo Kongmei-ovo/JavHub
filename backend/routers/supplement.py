@@ -109,6 +109,11 @@ async def list_supplement_movies(
     source: str | None = Query(None),
     actress_id: int | None = Query(None),
     q: str | None = Query(None),
+    missing_cover: bool | None = Query(None),
+    missing_runtime: bool | None = Query(None),
+    missing_maker: bool | None = Query(None),
+    missing_categories: bool | None = Query(None),
+    max_completeness: int | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
     p = page.default if hasattr(page, "default") else page
@@ -117,6 +122,11 @@ async def list_supplement_movies(
     src = source.default if hasattr(source, "default") else source
     aid = actress_id.default if hasattr(actress_id, "default") else actress_id
     qv = q.default if hasattr(q, "default") else q
+    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
+    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
+    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
+    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
+    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
     params: dict[str, Any] = {"page": p, "page_size": ps}
     if m is not None:
         params["matched"] = "true" if m else "false"
@@ -126,4 +136,42 @@ async def list_supplement_movies(
         params["actress_id"] = aid
     if qv:
         params["q"] = qv
+    if mc is not None:
+        params["missing_cover"] = "true" if mc else "false"
+    if mr is not None:
+        params["missing_runtime"] = "true" if mr else "false"
+    if mm is not None:
+        params["missing_maker"] = "true" if mm else "false"
+    if mcat is not None:
+        params["missing_categories"] = "true" if mcat else "false"
+    if maxc is not None:
+        params["max_completeness"] = maxc
     return await client.proxy_get("/api/v1/supplement/movies", params=params)
+
+
+@router.post("/movies/detail")
+async def enrich_movie_detail(
+    source_movie_id: str = Query(...),
+    source: str = Query("avbase"),
+) -> dict[str, Any]:
+    client = get_info_client()
+    smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
+    src = source.default if hasattr(source, "default") else source
+    return await client.proxy_post(
+        "/api/v1/supplement/movies/detail",
+        params={"source": src, "source_movie_id": smid},
+    )
+
+
+@router.post("/movies/detail/jobs")
+async def create_movie_detail_job(
+    source_movie_id: str = Query(...),
+    source: str = Query("avbase"),
+) -> dict[str, Any]:
+    client = get_info_client()
+    smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
+    src = source.default if hasattr(source, "default") else source
+    return await client.proxy_post(
+        "/api/v1/supplement/movies/detail/jobs",
+        params={"source": src, "source_movie_id": smid},
+    )
