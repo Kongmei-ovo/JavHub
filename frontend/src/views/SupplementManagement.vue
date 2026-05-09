@@ -160,6 +160,9 @@
           />
           <button class="btn btn-ghost btn-sm" @click="loadMovies">筛选</button>
         </div>
+        <button class="btn btn-primary btn-sm" :disabled="batchEnriching" @click="batchEnrichMovies">
+          {{ batchEnriching ? '批量排队中...' : '批量补详情' }}
+        </button>
       </div>
 
       <div v-if="moviesLoading" class="loading-wrap"><div class="spinner-large"></div></div>
@@ -239,6 +242,7 @@ export default {
       supplementMovies: [],
       moviesLoading: false,
       enrichingMovies: {},
+      batchEnriching: false,
       moviePage: 1,
       moviesTotalCount: 0,
       moviesTotalPages: 1,
@@ -361,6 +365,27 @@ export default {
         const next = { ...this.enrichingMovies }
         delete next[movie.id]
         this.enrichingMovies = next
+      }
+    },
+    async batchEnrichMovies() {
+      if (this.batchEnriching) return
+      this.batchEnriching = true
+      try {
+        const params = { source: 'avbase', limit: 20 }
+        if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
+        if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
+        if (this.movieFilters.q) params.q = this.movieFilters.q
+        if (this.movieFilters.quality === 'missing_cover') params.missing_cover = true
+        if (this.movieFilters.quality === 'missing_runtime') params.missing_runtime = true
+        if (this.movieFilters.quality === 'missing_maker') params.missing_maker = true
+        if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
+        if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
+        await api.startSupplementMovieDetailBatchJobs(params)
+        await this.loadJobs()
+      } catch (e) {
+        console.error('Start batch movie detail jobs failed:', e)
+      } finally {
+        this.batchEnriching = false
       }
     },
   },

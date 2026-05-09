@@ -282,6 +282,30 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
             params={"source": "avbase", "source_movie_id": "prestige:SIVR-438"},
         )
 
+    async def test_create_movie_detail_batch_jobs_passes_filters(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"queued": 2, "existing": 1, "skipped": 0, "job_ids": [1, 2, 3]}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.create_movie_detail_batch_jobs(
+                source="avbase",
+                limit=20,
+                matched=False,
+                missing_cover=True,
+                max_completeness=2,
+            )
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/movies/detail/jobs/batch",
+            params={
+                "source": "avbase",
+                "limit": 20,
+                "matched": "false",
+                "missing_cover": "true",
+                "max_completeness": 2,
+            },
+        )
+
     async def test_get_job_detail(self):
         mock_client = AsyncMock()
         mock_client.proxy_get.return_value = {"id": 1, "status": "succeeded"}

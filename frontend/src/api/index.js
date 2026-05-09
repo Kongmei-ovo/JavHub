@@ -338,6 +338,10 @@ export default {
     })
   },
 
+  startSupplementMovieDetailBatchJobs(params = {}) {
+    return api.post('/v1/supplement/movies/detail/jobs/batch', null, { params })
+  },
+
   // ========== 健康检查 ==========
 
   health() {

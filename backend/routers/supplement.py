@@ -175,3 +175,50 @@ async def create_movie_detail_job(
         "/api/v1/supplement/movies/detail/jobs",
         params={"source": src, "source_movie_id": smid},
     )
+
+
+@router.post("/movies/detail/jobs/batch")
+async def create_movie_detail_batch_jobs(
+    source: str = Query("avbase"),
+    limit: int = Query(20, ge=1, le=100),
+    matched: bool | None = Query(None),
+    actress_id: int | None = Query(None),
+    q: str | None = Query(None),
+    missing_cover: bool | None = Query(None),
+    missing_runtime: bool | None = Query(None),
+    missing_maker: bool | None = Query(None),
+    missing_categories: bool | None = Query(None),
+    max_completeness: int | None = Query(None),
+) -> dict[str, Any]:
+    client = get_info_client()
+    src = source.default if hasattr(source, "default") else source
+    lim = limit.default if hasattr(limit, "default") else limit
+    m = matched.default if hasattr(matched, "default") else matched
+    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
+    qv = q.default if hasattr(q, "default") else q
+    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
+    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
+    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
+    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
+    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
+    params: dict[str, Any] = {"source": src, "limit": lim}
+    if m is not None:
+        params["matched"] = "true" if m else "false"
+    if aid is not None:
+        params["actress_id"] = aid
+    if qv:
+        params["q"] = qv
+    if mc is not None:
+        params["missing_cover"] = "true" if mc else "false"
+    if mr is not None:
+        params["missing_runtime"] = "true" if mr else "false"
+    if mm is not None:
+        params["missing_maker"] = "true" if mm else "false"
+    if mcat is not None:
+        params["missing_categories"] = "true" if mcat else "false"
+    if maxc is not None:
+        params["max_completeness"] = maxc
+    return await client.proxy_post(
+        "/api/v1/supplement/movies/detail/jobs/batch",
+        params=params,
+    )

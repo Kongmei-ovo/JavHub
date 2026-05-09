@@ -199,6 +199,25 @@ test('startSupplementMovieDetailJob sends POST with source movie id', async (t) 
   assert.equal(capturedConfig.params.source_movie_id, 'prestige:SIVR-438')
 })
 
+test('startSupplementMovieDetailBatchJobs sends POST with filters', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 202, statusText: 'Accepted', headers: {}, data: { queued: 2 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-batch-${Date.now()}`)
+  await api.startSupplementMovieDetailBatchJobs({ source: 'avbase', limit: 20, missing_cover: true })
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies/detail/jobs/batch')
+  assert.equal(capturedConfig.method, 'post')
+  assert.equal(capturedConfig.params.source, 'avbase')
+  assert.equal(capturedConfig.params.limit, 20)
+  assert.equal(capturedConfig.params.missing_cover, true)
+})
+
 test('cancelSupplementJob sends POST to correct path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
