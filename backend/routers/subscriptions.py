@@ -69,17 +69,20 @@ async def check_subscriptions() -> dict[str, Any]:
     """手动检查订阅更新"""
     from services.subscription import check_all_subscriptions
     new_movies = await check_all_subscriptions()
-    return {"status": "ok", "new_found": len(new_movies), "movies": new_movies}
+    created = sum(1 for movie in new_movies if movie.get("candidate_id"))
+    return {
+        "status": "ok",
+        "new_found": len(new_movies),
+        "created": created,
+        "candidate_count": len(new_movies),
+        "movies": new_movies,
+    }
 
 @router.get("/new_movies")
 async def get_new_movies() -> dict[str, Any]:
     """获取所有订阅的新片（不在 Emby 库中的），按 actress_id 分组"""
-    from modules.info_client import get_info_client
-    from modules.emby_client import get_emby_client
-
-    info_client = get_info_client()
-    emby_client = get_emby_client()
     subscriptions = get_subscriptions()
+    from database import list_download_candidates
 
     result = {}  # {actress_id: [movies]}
 
@@ -91,31 +94,25 @@ async def get_new_movies() -> dict[str, Any]:
         if not actress_id:
             continue
 
-        try:
-            resp = await info_client.get_actress_videos(actress_id, page_size=10)
-            videos = resp.get("data", []) if isinstance(resp, dict) else []
-
-            new_movies = []
-            for video in videos:
-                code = video.get("dvd_id") or video.get("content_id")
-                if not code:
-                    continue
-                exists = await emby_client.check_exists(code)
-                if not exists:
-                    new_movies.append({
-                        "content_id": code,
-                        "dvd_id": video.get("dvd_id", ""),
-                        "title_en": video.get("title_en", ""),
-                        "title_ja": video.get("title_ja", ""),
-                        "release_date": video.get("release_date", ""),
-                        "jacket_thumb_url": video.get("jacket_thumb_url", ""),
-                    })
-
-            if new_movies:
-                result[actress_id] = new_movies
-
-        except Exception:
-            continue
+        rows = list_download_candidates(
+            status="candidate",
+            actress_id=actress_id,
+            source="subscription",
+            limit=100,
+        )
+        if rows:
+            result[actress_id] = [
+                {
+                    "candidate_id": row.get("id"),
+                    "content_id": row.get("content_id"),
+                    "dvd_id": row.get("dvd_id"),
+                    "title_en": row.get("title"),
+                    "title_ja": row.get("title"),
+                    "release_date": row.get("release_date"),
+                    "jacket_thumb_url": row.get("jacket_thumb_url"),
+                }
+                for row in rows
+            ]
 
     return {"data": result}
 

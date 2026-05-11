@@ -25,28 +25,9 @@ def subscription_check_job():
     try:
         from services.subscription import check_all_subscriptions
         new_movies = asyncio.run(check_all_subscriptions())
-        add_log("INFO", f"订阅检查完成，发现 {len(new_movies)} 部新片")
+        add_log("INFO", f"订阅检查完成，生成/刷新 {len(new_movies)} 个下载候选")
 
         if new_movies:
-            # 自动下载（auto_download 的订阅）
-            from database import get_subscriptions
-            subs = get_subscriptions()
-            auto_subs = {s["actress_name"]: s for s in subs if s.get("auto_download")}
-
-            for movie in new_movies:
-                actress = movie.get("actress_name", "")
-                if actress in auto_subs and movie.get("magnet"):
-                    try:
-                        from services.downloader import downloader_service
-                        asyncio.run(downloader_service.create_download_task(
-                            code=movie["code"],
-                            title=movie.get("title", ""),
-                            magnet=movie["magnet"],
-                        ))
-                        add_log("INFO", f"自动下载: {movie['code']}")
-                    except Exception as e:
-                        add_log("ERROR", f"自动下载失败 {movie['code']}: {e}")
-
             # 发送通知
             try:
                 from services.notification import notification_service

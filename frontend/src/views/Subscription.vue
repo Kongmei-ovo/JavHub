@@ -95,6 +95,10 @@
                   <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                   立即检查
                 </button>
+                <button class="top-action-btn" @click="viewCandidates(sheetSub)">
+                  查看候选
+                  <span v-if="newMovieCount(sheetSub.actress_id)" class="inline-badge">{{ newMovieCount(sheetSub.actress_id) }}</span>
+                </button>
                 <button class="top-action-btn danger" @click="remove(sheetSub.id)">取消订阅</button>
               </div>
             </div>
@@ -130,7 +134,7 @@
               </button>
               <button v-if="sheetSub" class="toggle-pill" :class="{ on: sheetSub.auto_download }" @click="toggleAutoDownload(sheetSub)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                自动下载
+                自动候选
               </button>
               <button class="toggle-pill" @click="viewAllVideos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
@@ -267,7 +271,7 @@ async function openActorSheet(actor) {
   sheetActor.value = actor; sheetSub.value = null
   sheetMovies.value = []; sheetLoading.value = true
   try {
-    const r = await api.getActressVideos(actor.id, 1, 30)
+    const r = await api.getActressVideos(actor.id, 1, 30, { include_supplement: '1' })
     const all = r.data?.data || []
     sheetMovies.value = shuffleArray(all).slice(0, 12)
   } catch (e) { console.error(e) } finally { sheetLoading.value = false }
@@ -279,7 +283,7 @@ async function openSubSheet(sub) {
   sheetSub.value = sub
   sheetMovies.value = []; sheetLoading.value = true
   try {
-    const r = await api.getActressVideos(sub.actress_id, 1, 30)
+    const r = await api.getActressVideos(sub.actress_id, 1, 30, { include_supplement: '1' })
     const all = r.data?.data || []
     sheetMovies.value = shuffleArray(all).slice(0, 12)
   } catch (e) { console.error(e) } finally { sheetLoading.value = false }
@@ -336,8 +340,8 @@ async function checkNow(sub) {
   checkingId.value = sub.id
   try {
     const r = await api.checkSubscription(sub.id)
-    if (r.data.new_movies_count > 0) ElMessage.success(`发现 ${r.data.new_movies_count} 部新片`)
-    else ElMessage.info('暂无新片')
+    if (r.data.new_movies_count > 0) ElMessage.success(`已生成/刷新 ${r.data.new_movies_count} 个下载候选`)
+    else ElMessage.info('暂无缺失候选')
     await loadSubs(); await loadNewMovieBadges()
   } catch (e) { ElMessage.error('检查失败') } finally { checkingId.value = null }
 }
@@ -358,8 +362,28 @@ async function remove(id) {
 }
 
 async function downloadMovie(movie) {
-  try { await api.createDownload({ code: movie.dvd_id || movie.content_id, title: movie.title_en || movie.title_ja || '', magnet: '' }); ElMessage.success('已添加到下载队列') }
-  catch (e) { ElMessage.error('下载失败') }
+  try {
+    await api.createDownloadCandidate({
+      content_id: movie.content_id || movie.dvd_id,
+      dvd_id: movie.dvd_id || movie.content_id,
+      title: movie.title_ja || movie.title_en || movie.title || '',
+      actress_id: sheetActor.value?.id || null,
+      actress_name: sheetActor.value?.name_kanji || sheetActor.value?.name_romaji || '',
+      jacket_thumb_url: movie.jacket_thumb_url || '',
+      release_date: movie.release_date || '',
+      source: 'subscription',
+      reason: 'subscription_manual_pick'
+    })
+    ElMessage.success('已加入下载候选')
+    await loadNewMovieBadges()
+  } catch (e) { ElMessage.error('加入候选失败') }
+}
+
+function viewCandidates(sub) {
+  router.push({
+    path: '/downloads',
+    query: { tab: 'candidates', status: 'candidate', source: 'subscription', actress_id: sub.actress_id }
+  })
 }
 
 onMounted(loadSubs)
@@ -415,6 +439,20 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   font-size: 10px; background: #FF375F; color: #fff;
   padding: 1px 5px; border-radius: 8px;
   font-weight: 700; min-width: 16px; text-align: center;
+}
+
+.inline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff375f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .tab-content { padding: 0 16px; animation: fadeIn 0.2s ease; }
@@ -571,7 +609,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   -webkit-backdrop-filter: blur(20px);
 }
 
-.sheet-top-actions { display: flex; gap: 8px; }
+.sheet-top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .top-action-btn {
   display: inline-flex; align-items: center; gap: 5px;

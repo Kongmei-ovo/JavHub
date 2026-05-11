@@ -422,6 +422,59 @@ test('cancelSupplementJob sends POST to correct path', async (t) => {
   assert.equal(capturedConfig.method, 'post')
 })
 
+test('download candidate APIs send expected requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
+  await api.listDownloadCandidates({ status: 'candidate', source: 'subscription' })
+  await api.createDownloadCandidate({ content_id: 'SIVR-438', title: 'Title' })
+  await api.updateDownloadCandidateMagnet(7, 'magnet:?xt=urn:btih:abc')
+  await api.approveDownloadCandidate(7)
+  await api.rejectDownloadCandidate(8)
+
+  assert.equal(calls[0].url, '/v1/downloads/candidates')
+  assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription' })
+  assert.equal(calls[1].method, 'post')
+  assert.equal(calls[1].url, '/v1/downloads/candidates')
+  assert.deepEqual(JSON.parse(calls[2].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
+  assert.equal(calls[3].url, '/v1/downloads/candidates/7/approve')
+  assert.equal(calls[4].url, '/v1/downloads/candidates/8/reject')
+})
+
+test('actor mapping APIs send expected requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?actor-mappings-${Date.now()}`)
+  await api.listActorMappings({ status: 'confirmed' })
+  await api.getActorMappingSummary()
+  await api.listUnmappedActors({ search: '瑠花' })
+  await api.confirmActorMapping({ emby_actor_id: '1', javinfo_actress_id: 2 })
+  await api.ignoreActorMapping({ emby_actor_id: '3', emby_actor_name: 'Ignored' })
+  await api.deleteActorMapping(9)
+
+  assert.equal(calls[0].url, '/inventory/actor-mappings')
+  assert.deepEqual(calls[0].params, { status: 'confirmed' })
+  assert.equal(calls[1].url, '/inventory/actor-mappings/summary')
+  assert.equal(calls[2].url, '/inventory/actor-mappings/unmapped')
+  assert.deepEqual(calls[2].params, { search: '瑠花' })
+  assert.equal(calls[3].url, '/inventory/actor-mappings/confirm')
+  assert.equal(calls[4].url, '/inventory/actor-mappings/ignore')
+  assert.equal(calls[5].url, '/inventory/actor-mappings/9')
+  assert.equal(calls[5].method, 'delete')
+})
+
 test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null

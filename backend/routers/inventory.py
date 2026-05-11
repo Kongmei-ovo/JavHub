@@ -132,6 +132,101 @@ async def merge_actors_javhub(req: MergeActorsRequest):
     add_actor_alias(req.from_actress_id, req.to_actress_id)
     return {"success": True, "from": req.from_actress_id, "to": req.to_actress_id, "type": "javhub_mapping"}
 
+
+class ActorMappingRequest(BaseModel):
+    emby_actor_id: str | int
+    emby_actor_name: str
+    javinfo_actress_id: Optional[int] = None
+    javinfo_actress_name: Optional[str] = None
+    confidence: float = 1.0
+    source: str = "manual"
+
+
+@router.get("/actor-mappings")
+async def list_mappings(status: Optional[str] = None, q: Optional[str] = None, emby_actor_id: Optional[str] = None):
+    """获取 Emby actor -> JavInfo actress 映射。"""
+    from database import list_actor_mappings
+    return {"data": list_actor_mappings(status=status, q=q, emby_actor_id=emby_actor_id)}
+
+
+@router.get("/actor-mappings/summary")
+async def actor_mapping_summary():
+    """最新 Emby 快照的演员映射覆盖率。"""
+    from database import mapping_summary
+    snapshot_key = get_latest_snapshot_key()
+    actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
+    return {"snapshot_key": snapshot_key, **mapping_summary(actors)}
+
+
+@router.get("/actor-mappings/unmapped")
+async def list_unmapped_actor_mappings(search: Optional[str] = None, limit: int = 200):
+    """列出最新快照中尚未确认/忽略的 Emby 演员。"""
+    from database import list_actor_mappings
+    snapshot_key = get_latest_snapshot_key()
+    if not snapshot_key:
+        return {"data": [], "total": 0, "snapshot_key": None}
+    actors = get_snapshot_actors(snapshot_key, search=search, page_size=100000).get("data", [])
+    decisions = {
+        str(row["emby_actor_id"]): row
+        for row in list_actor_mappings(limit=100000)
+        if row.get("status") in ("confirmed", "ignored")
+    }
+    data = []
+    for actor in actors:
+        actor_id = str(actor.get("actress_id"))
+        if actor_id in decisions:
+            continue
+        image_tag = actor.get("image_tag", "")
+        data.append({
+            "emby_actor_id": actor_id,
+            "emby_actor_name": actor.get("actress_name", ""),
+            "total_videos": actor.get("total_videos", 0),
+            "avatar_url": _emby_image_url(actor_id, image_tag),
+        })
+        if len(data) >= limit:
+            break
+    return {"data": data, "total": len(data), "snapshot_key": snapshot_key}
+
+
+@router.post("/actor-mappings/confirm")
+async def confirm_mapping(req: ActorMappingRequest):
+    """确认 Emby 演员映射到 JavInfo 演员。"""
+    if not req.javinfo_actress_id:
+        raise HTTPException(status_code=400, detail="javinfo_actress_id is required")
+    from database import confirm_actor_mapping
+    mapping_id = confirm_actor_mapping(
+        emby_actor_id=req.emby_actor_id,
+        emby_actor_name=req.emby_actor_name,
+        javinfo_actress_id=req.javinfo_actress_id,
+        javinfo_actress_name=req.javinfo_actress_name or "",
+        confidence=req.confidence,
+        source=req.source,
+    )
+    return {"success": True, "id": mapping_id}
+
+
+@router.post("/actor-mappings/ignore")
+async def ignore_mapping(req: ActorMappingRequest):
+    """忽略某个 Emby 演员或某个候选映射。"""
+    from database import ignore_actor_mapping
+    mapping_id = ignore_actor_mapping(
+        emby_actor_id=req.emby_actor_id,
+        emby_actor_name=req.emby_actor_name,
+        javinfo_actress_id=req.javinfo_actress_id,
+        javinfo_actress_name=req.javinfo_actress_name,
+        source=req.source,
+    )
+    return {"success": True, "id": mapping_id}
+
+
+@router.delete("/actor-mappings/{mapping_id}")
+async def delete_mapping(mapping_id: int):
+    """解除映射/忽略记录。"""
+    from database import delete_actor_mapping
+    if not delete_actor_mapping(mapping_id):
+        raise HTTPException(status_code=404, detail="Mapping not found")
+    return {"success": True}
+
 @router.get("/actors/find-similar")
 async def find_similar_actors(name: str = None, threshold: float = 0.6):
     """查找名字相似的演员（用于发现重复演员）"""

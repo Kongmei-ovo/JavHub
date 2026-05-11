@@ -9,6 +9,9 @@
           <span v-if="stats.downloading > 0" class="downloading-hint">
             · {{ stats.downloading }} 个下载中
           </span>
+          <span v-if="candidateStats.candidate > 0" class="downloading-hint">
+            · {{ candidateStats.candidate }} 个候选待确认
+          </span>
         </p>
       </div>
       <div class="header-actions">
@@ -95,8 +98,16 @@
       <span class="filter-hint">筛选: <strong>{{ filterStatus }}</strong> (点击清除)</span>
     </div>
 
+    <div class="download-tabs">
+      <button class="tab-btn" :class="{ active: activeTab === 'tasks' }" @click="activeTab = 'tasks'">真实任务</button>
+      <button class="tab-btn" :class="{ active: activeTab === 'candidates' }" @click="activeTab = 'candidates'; loadCandidates()">
+        下载候选
+        <span v-if="candidateStats.candidate" class="tab-badge">{{ candidateStats.candidate }}</span>
+      </button>
+    </div>
+
     <!-- 任务卡片网格 -->
-    <div v-if="filteredTasks.length > 0" class="tasks-grid">
+    <div v-if="activeTab === 'tasks' && filteredTasks.length > 0" class="tasks-grid">
       <div
         v-for="task in filteredTasks"
         :key="task.id"
@@ -116,7 +127,7 @@
             </svg>
           </div>
           <div class="cover-overlay">
-            <span class="cover-code">{{ task.code }}</span>
+            <span class="cover-code">{{ task.content_id || task.code }}</span>
           </div>
           <!-- 下载进度条 -->
           <div v-if="task.status === 'downloading'" class="progress-overlay">
@@ -158,8 +169,68 @@
       </div>
     </div>
 
+    <div v-else-if="activeTab === 'candidates'" class="candidate-panel">
+      <div class="candidate-toolbar">
+        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
+        <button class="chip" :class="{ active: candidateFilter.status === 'sent' }" @click="setCandidateStatus('sent')">已下发</button>
+        <button class="chip" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
+        <button class="chip" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
+        <button class="chip" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
+      </div>
+
+      <div v-if="filteredCandidates.length > 0" class="tasks-grid">
+        <div
+          v-for="candidate in filteredCandidates"
+          :key="candidate.id"
+          class="task-card av-card candidate-card"
+        >
+          <div class="task-cover">
+            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" />
+            <div v-else class="cover-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                <line x1="7" y1="2" x2="7" y2="22"/>
+                <line x1="17" y1="2" x2="17" y2="22"/>
+              </svg>
+            </div>
+            <div class="cover-overlay">
+              <span class="cover-code">{{ candidate.dvd_id || candidate.content_id }}</span>
+            </div>
+          </div>
+
+          <div class="task-info">
+            <h3 class="task-title" :title="candidate.title">{{ candidate.title || candidate.content_id }}</h3>
+            <div class="task-meta">
+              <span :class="['badge', candidateBadge(candidate.status)]">{{ candidateStatusLabel(candidate.status) }}</span>
+              <span class="task-time">{{ candidate.source }}</span>
+            </div>
+            <div class="candidate-subtitle">{{ candidate.actress_name || '未知演员' }} · {{ candidate.release_date || '日期未知' }}</div>
+            <div class="candidate-magnet" :class="{ empty: !candidate.magnet }">
+              {{ candidate.magnet ? '已有 magnet' : '待补磁力' }}
+            </div>
+          </div>
+
+          <div class="task-actions">
+            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" @click="editCandidateMagnet(candidate)">填磁力</button>
+            <button v-if="candidate.status === 'candidate'" class="btn btn-primary" @click="approveCandidate(candidate)">批准</button>
+            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" @click="rejectCandidate(candidate)">拒绝</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <p>暂无下载候选</p>
+        <p class="text-secondary" style="font-size:13px;margin-top:6px">订阅检查和库存对比会把缺失影片写到这里</p>
+      </div>
+    </div>
+
     <!-- 空状态 -->
-    <div v-else class="empty-state">
+    <div v-else-if="activeTab === 'tasks'" class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -178,9 +249,17 @@ export default {
   name: 'Home',
   data() {
     return {
+      activeTab: this.$route.query.tab === 'candidates' ? 'candidates' : 'tasks',
       tasks: [],
+      candidates: [],
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
+      candidateStats: { candidate: 0, approved: 0, rejected: 0, sent: 0, failed: 0, needs_magnet: 0 },
       filterStatus: null,
+      candidateFilter: {
+        status: this.$route.query.status || 'candidate',
+        source: this.$route.query.source || '',
+        actress_id: this.$route.query.actress_id || ''
+      },
       timer: null,
       statsLoaded: false
     }
@@ -189,10 +268,14 @@ export default {
     filteredTasks() {
       if (!this.filterStatus) return this.tasks
       return this.tasks.filter(t => t.status === this.filterStatus)
+    },
+    filteredCandidates() {
+      return this.candidates
     }
   },
   mounted() {
     this.loadTasks()
+    this.loadCandidates()
     this.timer = setInterval(this.loadTasks, 30000)
   },
   beforeUnmount() {
@@ -214,6 +297,43 @@ export default {
         console.error('Failed to load tasks:', e)
       }
     },
+    async loadCandidates() {
+      try {
+        const params = {}
+        if (this.candidateFilter.status) params.status = this.candidateFilter.status
+        if (this.candidateFilter.source) params.source = this.candidateFilter.source
+        if (this.candidateFilter.actress_id) params.actress_id = this.candidateFilter.actress_id
+        const resp = await api.listDownloadCandidates(params)
+        this.candidates = resp.data.data || []
+        this.candidateStats = resp.data.stats || this.candidateStats
+      } catch (e) {
+        console.error('Failed to load candidates:', e)
+      }
+    },
+    setCandidateStatus(status) {
+      this.candidateFilter.status = status
+      this.loadCandidates()
+    },
+    async editCandidateMagnet(candidate) {
+      const magnet = window.prompt('输入 magnet 链接', candidate.magnet || '')
+      if (!magnet) return
+      await api.updateDownloadCandidateMagnet(candidate.id, magnet)
+      await this.loadCandidates()
+    },
+    async approveCandidate(candidate) {
+      try {
+        await api.approveDownloadCandidate(candidate.id)
+        await this.loadCandidates()
+        await this.loadTasks()
+      } catch (e) {
+        console.error('Approve candidate failed:', e)
+      }
+    },
+    async rejectCandidate(candidate) {
+      if (!window.confirm(`拒绝候选 ${candidate.dvd_id || candidate.content_id}？`)) return
+      await api.rejectDownloadCandidate(candidate.id)
+      await this.loadCandidates()
+    },
     async remove(id) {
       try {
         await api.deleteDownload(id)
@@ -223,7 +343,7 @@ export default {
       }
     },
     retry(task) {
-      api.createDownload({ code: task.code, title: task.title, magnet: task.magnet, path: task.path })
+      api.createDownload({ content_id: task.content_id || task.code, title: task.title, magnet: task.magnet, path: task.path })
       this.loadTasks()
     },
     statusBadge(status) {
@@ -232,6 +352,14 @@ export default {
     },
     statusLabel(status) {
       const map = { pending: '待处理', downloading: '下载中', completed: '已完成', failed: '失败' }
+      return map[status] || status
+    },
+    candidateBadge(status) {
+      const map = { candidate: 'badge-pending', approved: 'badge-info', sent: 'badge-success', failed: 'badge-error', rejected: 'badge-pending' }
+      return map[status] || 'badge-pending'
+    },
+    candidateStatusLabel(status) {
+      const map = { candidate: '待确认', approved: '已批准', sent: '已下发', failed: '失败', rejected: '已拒绝' }
       return map[status] || status
     },
     formatTime(time) {
@@ -349,6 +477,74 @@ export default {
 }
 .filter-hint { font-size: 13px; color: var(--text-secondary); }
 .filter-hint strong { color: var(--accent-light); }
+
+.download-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.tab-btn.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+.tab-badge {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ff375f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.candidate-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.chip.active {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+.candidate-card .task-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.candidate-subtitle,
+.candidate-magnet {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.candidate-magnet.empty { color: #fa8c16; }
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {

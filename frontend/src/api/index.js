@@ -154,6 +154,29 @@ export default {
     return api.delete(`/v1/downloads/${taskId}`)
   },
 
+  listDownloadCandidates(params = {}) {
+    return api.get('/v1/downloads/candidates', { params })
+  },
+
+  createDownloadCandidate(data) {
+    return api.post('/v1/downloads/candidates', data)
+  },
+
+  updateDownloadCandidateMagnet(candidateId, magnet, magnetSource = 'manual') {
+    return api.put(`/v1/downloads/candidates/${candidateId}/magnet`, {
+      magnet,
+      magnet_source: magnetSource,
+    })
+  },
+
+  approveDownloadCandidate(candidateId) {
+    return api.post(`/v1/downloads/candidates/${candidateId}/approve`)
+  },
+
+  rejectDownloadCandidate(candidateId) {
+    return api.post(`/v1/downloads/candidates/${candidateId}/reject`)
+  },
+
   // ========== 订阅管理 ==========
 
   getSubscriptions() {
@@ -194,6 +217,32 @@ export default {
 
   getSubscriptionStatus(actressId) {
     return api.get(`/v1/subscriptions/status/${actressId}`)
+  },
+
+  // ========== 演员映射 ==========
+
+  listActorMappings(params = {}) {
+    return api.get('/inventory/actor-mappings', { params })
+  },
+
+  getActorMappingSummary() {
+    return api.get('/inventory/actor-mappings/summary')
+  },
+
+  listUnmappedActors(params = {}) {
+    return api.get('/inventory/actor-mappings/unmapped', { params })
+  },
+
+  confirmActorMapping(data) {
+    return api.post('/inventory/actor-mappings/confirm', data)
+  },
+
+  ignoreActorMapping(data) {
+    return api.post('/inventory/actor-mappings/ignore', data)
+  },
+
+  deleteActorMapping(mappingId) {
+    return api.delete(`/inventory/actor-mappings/${mappingId}`)
   },
 
   // ========== 缺失检测 ==========

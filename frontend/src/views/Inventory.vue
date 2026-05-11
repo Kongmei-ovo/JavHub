@@ -38,6 +38,13 @@
     <!-- 快照信息 -->
     <div v-if="snapshotKey" class="snapshot-info">
       当前快照：{{ snapshotKey }} · {{ total }} 位演员
+      <span v-if="mappingSummary.total">
+        · 映射覆盖率 {{ mappingCoverageText }}
+        · 未映射 {{ mappingSummary.unmapped || 0 }}
+        · 候选 {{ candidateStats.candidate || 0 }}
+      </span>
+      <button class="inline-link" @click="$router.push('/normalize')">处理未映射演员</button>
+      <button class="inline-link" @click="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })">查看候选</button>
     </div>
     <div v-else class="snapshot-warn">
       尚未采集 Emby 数据，请先点击「采集Emby数据」
@@ -212,6 +219,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import api from '../api'
 
 const showJobs = ref(false)
 
@@ -223,6 +231,9 @@ const running = ref(false)
 const collecting = ref(false)
 const snapshotKey = ref('')
 const currentProgress = ref(0)
+const mappingSummary = ref({})
+const candidateStats = ref({})
+const mappingCoverageText = ref('0%')
 
 // 分页 & 搜索 & 排序
 const searchKeyword = ref('')
@@ -281,8 +292,23 @@ const fetchSnapshotInfo = async () => {
   try {
     const res = await axios.get('/api/inventory/snapshots/latest')
     snapshotKey.value = res.data.snapshot_key || ''
+    await fetchMappingSummary()
   } catch (e) {
     snapshotKey.value = ''
+  }
+}
+
+const fetchMappingSummary = async () => {
+  try {
+    const summary = await api.getActorMappingSummary()
+    mappingSummary.value = summary.data || {}
+    mappingCoverageText.value = `${Math.round((mappingSummary.value.coverage || 0) * 100)}%`
+    const candidates = await api.listDownloadCandidates({ source: 'inventory', status: 'candidate' })
+    candidateStats.value = candidates.data.stats || {}
+  } catch (e) {
+    mappingSummary.value = {}
+    candidateStats.value = {}
+    mappingCoverageText.value = '0%'
   }
 }
 
@@ -444,6 +470,15 @@ const fetchJobs = async () => {
   background: #f6ffed; border: 1px solid #b7eb8f;
   padding: 8px 16px; border-radius: 4px; margin-bottom: 16px;
   font-size: 13px; color: #52c41a;
+}
+.inline-link {
+  margin-left: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
 }
 .snapshot-warn {
   background: #fff2e8; border: 1px solid #ffbb96;

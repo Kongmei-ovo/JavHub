@@ -220,6 +220,52 @@ def init_db():
         )
     ''')
 
+    # Actor mappings (Emby actor -> JavInfo actress)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS actor_mappings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            emby_actor_id TEXT NOT NULL,
+            emby_actor_name TEXT NOT NULL,
+            javinfo_actress_id INTEGER,
+            javinfo_actress_name TEXT,
+            confidence REAL DEFAULT 0,
+            status TEXT DEFAULT 'candidate',
+            source TEXT DEFAULT 'manual',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_actor_mappings_pair
+        ON actor_mappings(emby_actor_id, javinfo_actress_id)
+    ''')
+
+    # Download candidates (subscription/inventory output before real download task)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS download_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_id TEXT NOT NULL,
+            dvd_id TEXT,
+            title TEXT,
+            actress_id INTEGER,
+            actress_name TEXT,
+            jacket_thumb_url TEXT,
+            release_date TEXT,
+            source TEXT DEFAULT 'manual',
+            reason TEXT,
+            status TEXT DEFAULT 'candidate',
+            magnet TEXT,
+            magnet_source TEXT,
+            download_task_id INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_download_candidates_content_source
+        ON download_candidates(content_id, source)
+    ''')
+
     # Emby snapshots (movies)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS emby_snapshots (
@@ -272,6 +318,12 @@ def _create_indexes():
         "CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)",
         "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_status ON inventory_jobs(status)",
         "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_job_type ON inventory_jobs(job_type)",
+        "CREATE INDEX IF NOT EXISTS idx_actor_mappings_emby_actor_id ON actor_mappings(emby_actor_id)",
+        "CREATE INDEX IF NOT EXISTS idx_actor_mappings_javinfo_actress_id ON actor_mappings(javinfo_actress_id)",
+        "CREATE INDEX IF NOT EXISTS idx_actor_mappings_status ON actor_mappings(status)",
+        "CREATE INDEX IF NOT EXISTS idx_download_candidates_status ON download_candidates(status)",
+        "CREATE INDEX IF NOT EXISTS idx_download_candidates_actress_id ON download_candidates(actress_id)",
+        "CREATE INDEX IF NOT EXISTS idx_download_candidates_content_id ON download_candidates(content_id)",
     ]
     for sql in indexes:
         try:
