@@ -469,6 +469,20 @@ class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(job["result"]["missing"], 1)
         self.assertEqual(job["result"]["candidates"], 1)
 
+    async def test_inventory_actor_detail_includes_mapping_status(self):
+        from database import confirm_actor_mapping, upsert_inventory_actor
+        from routers import inventory
+
+        upsert_inventory_actor(901, "Emby Actor")
+        actor = await inventory.get_actor(901)
+        self.assertEqual(actor["mapping_status"], "unmapped")
+        self.assertIsNone(actor["actor_mapping"])
+
+        confirm_actor_mapping("901", "Emby Actor", 123, "Jav Actress")
+        actor = await inventory.get_actor(901)
+        self.assertEqual(actor["mapping_status"], "confirmed")
+        self.assertEqual(actor["actor_mapping"]["javinfo_actress_id"], 123)
+
 
 class InventoryFillRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_fill_video_creates_candidate_instead_of_download_task(self):

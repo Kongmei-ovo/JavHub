@@ -272,6 +272,8 @@ async def get_actor(actress_id: int):
     missing = get_missing_videos(actress_id)
     canon_id = get_canonical_actress_id(actress_id)
     primary = get_actor_primary_name(canon_id)
+    from database import get_confirmed_actor_mapping
+    mapping = get_confirmed_actor_mapping(actress_id)
 
     # 获取 Emby 配置（用于前端构造图片 URL）
     from config import config
@@ -313,6 +315,8 @@ async def get_actor(actress_id: int):
         "display_name": primary or actor["actress_name"],
         "videos": videos,
         "missing_videos": missing,
+        "mapping_status": "confirmed" if mapping else "unmapped",
+        "actor_mapping": mapping,
         "avatar_url": avatar_url,
         "_emby_api_url": emby_api_url,
         "_emby_web_url": emby_web_url,

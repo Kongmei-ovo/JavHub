@@ -7,6 +7,13 @@
       <div class="stats">
         Emby {{ embyVideos.length }} 部 / 缺失 {{ missingVideos.length }} 部
       </div>
+      <div class="mapping-banner" :class="{ unmapped: actor.mapping_status !== 'confirmed' }">
+        <span v-if="actor.mapping_status === 'confirmed'">
+          已映射到 JavInfo：{{ actor.actor_mapping?.javinfo_actress_name || actor.actor_mapping?.javinfo_actress_id }}
+        </span>
+        <span v-else>未映射到 JavInfo，库存对比会跳过这个演员</span>
+        <button class="mapping-link" @click="$router.push('/normalize')">处理映射</button>
+      </div>
     </div>
 
     <!-- Tab 切换 -->
@@ -282,6 +289,30 @@ onMounted(async () => {
   color: #1890ff; cursor: pointer; font-size: 14px;
 }
 .stats { color: #666; font-size: 14px; }
+.mapping-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(680px, 100%);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(82, 196, 26, 0.28);
+  background: rgba(82, 196, 26, 0.08);
+  color: #52c41a;
+  font-size: 13px;
+}
+.mapping-banner.unmapped {
+  border-color: rgba(250, 140, 22, 0.28);
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+}
+.mapping-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 /* Tab 样式 */
 .tab-bar {

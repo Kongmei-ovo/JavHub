@@ -43,6 +43,8 @@ test('inventory page shows mapping coverage and candidate handoff', () => {
   assert.match(inventoryActor, /转为候选/)
   assert.match(inventoryActor, /createDownloadCandidate/)
   assert.match(inventoryActor, /查看库存下载候选/)
+  assert.match(inventoryActor, /已映射到 JavInfo/)
+  assert.match(inventoryActor, /未映射到 JavInfo/)
 })
 
 test('download page exposes candidate approval workflow', () => {
