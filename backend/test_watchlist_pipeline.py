@@ -43,6 +43,23 @@ class DownloadCandidateDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(rows[0]["title"], "Second")
 
+    def test_candidate_upsert_preserves_failed_status(self):
+        from database import list_download_candidates, set_download_candidate_status, upsert_download_candidate
+
+        candidate = upsert_download_candidate(content_id="SIVR-438", source="subscription")
+        set_download_candidate_status(candidate["id"], "failed", error_msg="openlist timeout")
+
+        refreshed = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Refreshed",
+            source="subscription",
+            status="candidate",
+        )
+
+        self.assertEqual(refreshed["status"], "failed")
+        rows = list_download_candidates(source="subscription")
+        self.assertEqual(rows[0]["status"], "failed")
+
 
 class ActorMappingDatabaseTest(TempDbMixin, unittest.TestCase):
     def test_confirm_ignore_and_delete_mapping(self):
@@ -100,7 +117,7 @@ class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
 class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_approve_candidate_requires_magnet_and_creates_download_task(self):
-        from database import update_download_candidate_magnet, upsert_download_candidate
+        from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
         from routers import downloads
 
         candidate = upsert_download_candidate(content_id="SIVR-438", title="Title")
@@ -124,6 +141,33 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
             await downloads.reject_candidate(candidate["id"])
         self.assertEqual(reject_sent.exception.status_code, 409)
 
+    async def test_approve_candidate_records_failure_and_can_retry(self):
+        from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
+        from routers import downloads
+
+        candidate = upsert_download_candidate(content_id="SIVR-438", title="Title")
+        update_download_candidate_magnet(candidate["id"], "magnet:?xt=urn:btih:bad")
+
+        with patch.object(downloads.downloader_service, "create_download_task", new_callable=AsyncMock) as create_task:
+            create_task.side_effect = RuntimeError("openlist timeout")
+            with self.assertRaises(Exception) as failed:
+                await downloads.approve_candidate(candidate["id"])
+
+        self.assertEqual(failed.exception.status_code, 500)
+        stored = get_download_candidate(candidate["id"])
+        self.assertEqual(stored["status"], "failed")
+        self.assertIn("openlist timeout", stored["error_msg"])
+
+        update_download_candidate_magnet(candidate["id"], "magnet:?xt=urn:btih:good")
+        self.assertIsNone(get_download_candidate(candidate["id"])["error_msg"])
+
+        with patch.object(downloads.downloader_service, "create_download_task", new_callable=AsyncMock) as create_task:
+            create_task.return_value = 43
+            result = await downloads.approve_candidate(candidate["id"])
+
+        self.assertEqual(result["candidate"]["status"], "sent")
+        self.assertEqual(result["download_task_id"], 43)
+
     async def test_list_candidates_filters_status(self):
         from database import upsert_download_candidate
         from routers import downloads
@@ -136,6 +180,16 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
 
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
+
+    async def test_get_candidate_returns_single_row(self):
+        from database import upsert_download_candidate
+        from routers import downloads
+
+        candidate = upsert_download_candidate(content_id="SIVR-438", source="subscription", status="candidate")
+        result = await downloads.get_candidate(candidate["id"])
+
+        self.assertEqual(result["data"]["id"], candidate["id"])
+        self.assertEqual(result["data"]["source"], "subscription")
 
 
 class ActorMappingRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):

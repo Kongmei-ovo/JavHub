@@ -433,6 +433,7 @@ test('download candidate APIs send expected requests', async (t) => {
 
   const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
   await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true })
+  await api.getDownloadCandidate(7)
   await api.createDownloadCandidate({ content_id: 'SIVR-438', title: 'Title' })
   await api.updateDownloadCandidateMagnet(7, 'magnet:?xt=urn:btih:abc')
   await api.approveDownloadCandidate(7)
@@ -440,11 +441,12 @@ test('download candidate APIs send expected requests', async (t) => {
 
   assert.equal(calls[0].url, '/v1/downloads/candidates')
   assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true })
-  assert.equal(calls[1].method, 'post')
-  assert.equal(calls[1].url, '/v1/downloads/candidates')
-  assert.deepEqual(JSON.parse(calls[2].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
-  assert.equal(calls[3].url, '/v1/downloads/candidates/7/approve')
-  assert.equal(calls[4].url, '/v1/downloads/candidates/8/reject')
+  assert.equal(calls[1].url, '/v1/downloads/candidates/7')
+  assert.equal(calls[2].method, 'post')
+  assert.equal(calls[2].url, '/v1/downloads/candidates')
+  assert.deepEqual(JSON.parse(calls[3].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
+  assert.equal(calls[4].url, '/v1/downloads/candidates/7/approve')
+  assert.equal(calls[5].url, '/v1/downloads/candidates/8/reject')
 })
 
 test('actor mapping APIs send expected requests', async (t) => {

@@ -158,6 +158,10 @@ export default {
     return api.get('/v1/downloads/candidates', { params })
   },
 
+  getDownloadCandidate(candidateId) {
+    return api.get(`/v1/downloads/candidates/${candidateId}`)
+  },
+
   createDownloadCandidate(data) {
     return api.post('/v1/downloads/candidates', data)
   },

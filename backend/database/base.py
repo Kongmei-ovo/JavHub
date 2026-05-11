@@ -257,10 +257,15 @@ def init_db():
             magnet TEXT,
             magnet_source TEXT,
             download_task_id INTEGER,
+            error_msg TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
         )
     ''')
+    try:
+        cursor.execute("ALTER TABLE download_candidates ADD COLUMN error_msg TEXT")
+    except Exception:
+        pass
     cursor.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_download_candidates_content_source
         ON download_candidates(content_id, source)

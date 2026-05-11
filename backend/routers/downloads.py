@@ -84,6 +84,14 @@ async def list_candidates(
     return {"data": rows, "total": len(rows), "stats": download_candidate_stats()}
 
 
+@router.get("/candidates/{candidate_id}")
+async def get_candidate(candidate_id: int) -> Dict[str, Any]:
+    candidate = get_download_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return {"data": candidate}
+
+
 @router.post("/candidates")
 async def create_candidate(req: CreateCandidateRequest) -> Dict[str, Any]:
     candidate = upsert_download_candidate(
@@ -133,7 +141,7 @@ async def approve_candidate(candidate_id: int) -> Dict[str, Any]:
             path="",
         )
     except Exception as exc:
-        set_download_candidate_status(candidate_id, "failed")
+        set_download_candidate_status(candidate_id, "failed", error_msg=str(exc))
         raise HTTPException(status_code=500, detail=f"下载任务创建失败: {exc}") from exc
 
     updated = set_download_candidate_status(candidate_id, "sent", download_task_id=task_id)

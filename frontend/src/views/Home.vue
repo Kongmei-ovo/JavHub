@@ -210,11 +210,23 @@
             <div class="candidate-magnet" :class="{ empty: !candidate.magnet }">
               {{ candidate.magnet ? '已有 magnet' : '待补磁力' }}
             </div>
+            <div v-if="candidate.reason" class="candidate-reason" :title="candidate.reason">
+              {{ candidate.reason }}
+            </div>
+            <div v-if="candidate.download_task_id" class="candidate-task-link">
+              已关联任务 #{{ candidate.download_task_id }}
+              <span v-if="candidate.download_task?.status">· {{ statusLabel(candidate.download_task.status) }}</span>
+            </div>
+            <div v-if="candidate.error_msg" class="task-error" :title="candidate.error_msg">
+              {{ candidate.error_msg }}
+            </div>
           </div>
 
           <div class="task-actions">
-            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" @click="editCandidateMagnet(candidate)">填磁力</button>
-            <button v-if="candidate.status === 'candidate'" class="btn btn-primary" @click="approveCandidate(candidate)">批准</button>
+            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-ghost" @click="editCandidateMagnet(candidate)">填磁力</button>
+            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" @click="approveCandidate(candidate)">
+              {{ candidate.status === 'failed' ? '重试' : '批准' }}
+            </button>
             <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" @click="rejectCandidate(candidate)">拒绝</button>
           </div>
         </div>
@@ -546,7 +558,9 @@ export default {
   display: block;
 }
 .candidate-subtitle,
-.candidate-magnet {
+.candidate-magnet,
+.candidate-reason,
+.candidate-task-link {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-muted);
@@ -555,6 +569,8 @@ export default {
   white-space: nowrap;
 }
 .candidate-magnet.empty { color: #fa8c16; }
+.candidate-reason { color: var(--text-secondary); }
+.candidate-task-link { color: #52c41a; }
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {

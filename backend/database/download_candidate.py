@@ -63,7 +63,7 @@ def upsert_download_candidate(
                 release_date = COALESCE(excluded.release_date, download_candidates.release_date),
                 reason = COALESCE(excluded.reason, download_candidates.reason),
                 status = CASE
-                    WHEN download_candidates.status IN ('rejected', 'sent') THEN download_candidates.status
+                    WHEN download_candidates.status IN ('rejected', 'sent', 'failed') THEN download_candidates.status
                     ELSE excluded.status
                 END,
                 magnet = COALESCE(download_candidates.magnet, excluded.magnet),
@@ -114,6 +114,25 @@ def upsert_candidate_from_video(
     )
 
 
+def _enrich_candidate_rows(rows: list[dict]) -> list[dict]:
+    task_ids = [row.get("download_task_id") for row in rows if row.get("download_task_id")]
+    if not task_ids:
+        return rows
+    placeholders = ",".join("?" for _ in task_ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT id, status, error_msg, path, created_at, updated_at FROM download_tasks WHERE id IN ({placeholders})",
+            task_ids,
+        )
+        tasks = {row["id"]: dict(row) for row in cursor.fetchall()}
+    for row in rows:
+        task_id = row.get("download_task_id")
+        if task_id and task_id in tasks:
+            row["download_task"] = tasks[task_id]
+    return rows
+
+
 def list_download_candidates(
     status: str | None = None,
     actress_id: int | None = None,
@@ -161,7 +180,8 @@ def list_download_candidates(
             ''',
             params + [limit],
         )
-        return [dict(row) for row in cursor.fetchall()]
+        rows = [dict(row) for row in cursor.fetchall()]
+    return _enrich_candidate_rows(rows)
 
 
 def get_download_candidate(candidate_id: int) -> Optional[dict]:
@@ -169,7 +189,9 @@ def get_download_candidate(candidate_id: int) -> Optional[dict]:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        rows = [dict(row)] if row else []
+    enriched = _enrich_candidate_rows(rows)
+    return enriched[0] if enriched else None
 
 
 def update_download_candidate_magnet(
@@ -182,7 +204,7 @@ def update_download_candidate_magnet(
         cursor.execute(
             '''
             UPDATE download_candidates
-            SET magnet = ?, magnet_source = ?, updated_at = CURRENT_TIMESTAMP
+            SET magnet = ?, magnet_source = ?, error_msg = NULL, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             ''',
             (magnet, magnet_source, candidate_id),
@@ -196,6 +218,7 @@ def set_download_candidate_status(
     candidate_id: int,
     status: str,
     download_task_id: int | None = None,
+    error_msg: str | None = None,
 ) -> Optional[dict]:
     if status not in VALID_CANDIDATE_STATUSES:
         raise ValueError(f"invalid download candidate status: {status}")
@@ -204,10 +227,13 @@ def set_download_candidate_status(
         cursor.execute(
             '''
             UPDATE download_candidates
-            SET status = ?, download_task_id = COALESCE(?, download_task_id), updated_at = CURRENT_TIMESTAMP
+            SET status = ?,
+                download_task_id = COALESCE(?, download_task_id),
+                error_msg = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             ''',
-            (status, download_task_id, candidate_id),
+            (status, download_task_id, error_msg, candidate_id),
         )
         cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
         row = cursor.fetchone()
