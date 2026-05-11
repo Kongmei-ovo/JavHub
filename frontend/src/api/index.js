@@ -237,6 +237,10 @@ export default {
     return api.get('/inventory/actor-mappings/unmapped', { params })
   },
 
+  generateActorMappingCandidates(params = {}) {
+    return api.post('/inventory/actor-mappings/candidates/generate', null, { params })
+  },
+
   confirmActorMapping(data) {
     return api.post('/inventory/actor-mappings/confirm', data)
   },

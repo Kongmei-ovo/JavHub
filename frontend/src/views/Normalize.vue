@@ -25,6 +25,7 @@
 
     <div class="tab-bar">
       <button class="tab-btn" :class="{ active: activeTab === 'unmapped' }" @click="activeTab = 'unmapped'">未映射演员</button>
+      <button class="tab-btn" :class="{ active: activeTab === 'candidate' }" @click="activeTab = 'candidate'">建议候选</button>
       <button class="tab-btn" :class="{ active: activeTab === 'confirmed' }" @click="activeTab = 'confirmed'">已确认映射</button>
       <button class="tab-btn" :class="{ active: activeTab === 'ignored' }" @click="activeTab = 'ignored'">已忽略</button>
     </div>
@@ -33,6 +34,9 @@
       <div class="filter-bar">
         <input v-model="search" class="search-input" placeholder="搜索 Emby 演员" @keyup.enter="loadUnmapped" />
         <button class="btn-secondary" @click="loadUnmapped">搜索</button>
+        <button class="btn-primary" :disabled="generatingCandidates" @click="generateCandidates">
+          {{ generatingCandidates ? '生成中...' : '生成建议' }}
+        </button>
       </div>
 
       <div v-if="loading" class="empty">加载中...</div>
@@ -59,6 +63,19 @@
               />
               <button class="btn-secondary" @click="searchJavInfo(actor)">查找</button>
               <button class="btn-ghost" @click="ignoreActor(actor)">忽略</button>
+            </div>
+            <div v-if="suggestedMappings(actor).length" class="suggestion-block">
+              <div class="suggestion-title">名称匹配建议</div>
+              <div
+                v-for="candidate in suggestedMappings(actor)"
+                :key="candidate.id"
+                class="javinfo-row"
+              >
+                <span>{{ candidate.javinfo_actress_name || candidate.javinfo_actress_id }}</span>
+                <small>ID {{ candidate.javinfo_actress_id }} · 置信 {{ confidenceText(candidate.confidence) }}</small>
+                <button class="btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
+                <button class="btn-ghost" @click="ignoreCandidate(actor, candidate)">忽略</button>
+              </div>
             </div>
             <div v-if="candidateResults[actor.emby_actor_id]?.length" class="javinfo-results">
               <div
@@ -105,6 +122,7 @@ import api from '../api'
 const activeTab = ref('unmapped')
 const search = ref('')
 const loading = ref(false)
+const generatingCandidates = ref(false)
 const mappingSummary = ref({})
 const unmappedActors = ref([])
 const mappings = ref([])
@@ -113,6 +131,15 @@ const candidateResults = ref({})
 
 const coverageText = computed(() => `${Math.round((mappingSummary.value.coverage || 0) * 100)}%`)
 const currentMappings = computed(() => mappings.value.filter(m => m.status === activeTab.value))
+const candidateMappingsByActor = computed(() => {
+  const grouped = {}
+  for (const mapping of mappings.value.filter(m => m.status === 'candidate')) {
+    const key = String(mapping.emby_actor_id)
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(mapping)
+  }
+  return grouped
+})
 
 async function loadSummary() {
   const resp = await api.getActorMappingSummary()
@@ -139,6 +166,14 @@ async function loadMappings() {
   mappings.value = resp.data.data || []
 }
 
+function suggestedMappings(actor) {
+  return candidateMappingsByActor.value[String(actor.emby_actor_id)] || []
+}
+
+function confidenceText(value) {
+  return `${Math.round((Number(value) || 0) * 100)}%`
+}
+
 async function searchJavInfo(actor) {
   const q = candidateQuery.value[actor.emby_actor_id] || actor.emby_actor_name
   const resp = await api.searchActors(q)
@@ -149,14 +184,29 @@ async function searchJavInfo(actor) {
 }
 
 async function confirmMapping(actor, candidate) {
+  const javinfoId = candidate.id || candidate.javinfo_actress_id
+  const javinfoName = candidate.name_kanji || candidate.name_romaji || candidate.name || candidate.javinfo_actress_name || ''
   await api.confirmActorMapping({
     emby_actor_id: actor.emby_actor_id,
     emby_actor_name: actor.emby_actor_name,
-    javinfo_actress_id: candidate.id,
-    javinfo_actress_name: candidate.name_kanji || candidate.name_romaji || candidate.name || '',
+    javinfo_actress_id: javinfoId,
+    javinfo_actress_name: javinfoName,
+    confidence: candidate.confidence || 1,
     source: 'manual'
   })
   ElMessage.success('映射已确认')
+  await reloadAll()
+}
+
+async function ignoreCandidate(actor, candidate) {
+  await api.ignoreActorMapping({
+    emby_actor_id: actor.emby_actor_id,
+    emby_actor_name: actor.emby_actor_name,
+    javinfo_actress_id: candidate.javinfo_actress_id,
+    javinfo_actress_name: candidate.javinfo_actress_name,
+    source: 'manual'
+  })
+  ElMessage.success('候选已忽略')
   await reloadAll()
 }
 
@@ -178,6 +228,22 @@ async function deleteMapping(id) {
 
 async function reloadAll() {
   await Promise.all([loadSummary(), loadUnmapped(), loadMappings()])
+}
+
+async function generateCandidates() {
+  generatingCandidates.value = true
+  try {
+    const resp = await api.generateActorMappingCandidates({
+      search: search.value || undefined,
+      limit: 50,
+      per_actor: 3,
+      min_confidence: 0.55
+    })
+    ElMessage.success(`已检查 ${resp.data.checked || 0} 个演员，生成 ${resp.data.created || 0} 个建议`)
+    await reloadAll()
+  } finally {
+    generatingCandidates.value = false
+  }
 }
 
 onMounted(reloadAll)

@@ -85,6 +85,102 @@ class ActorMappingDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertTrue(delete_actor_mapping(mapping_id))
         self.assertIsNone(get_confirmed_actor_mapping("emby-1"))
 
+    def test_candidate_upsert_does_not_overwrite_manual_decision(self):
+        from database import confirm_actor_mapping, list_actor_mappings, upsert_actor_mapping
+
+        confirm_actor_mapping("emby-1", "Emby Name", 123, "Jav Name")
+        upsert_actor_mapping(
+            "emby-1",
+            "Emby Name",
+            123,
+            "Jav Name",
+            confidence=0.6,
+            status="candidate",
+            source="name_match",
+        )
+
+        rows = list_actor_mappings(emby_actor_id="emby-1")
+        self.assertEqual(rows[0]["status"], "confirmed")
+        self.assertEqual(rows[0]["source"], "manual")
+
+
+class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_generate_name_match_candidates_for_unmapped_actor(self):
+        from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import generate_actor_mapping_candidates
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99},
+                {"id": 456, "name_kanji": "別人", "movie_count": 1},
+            ]
+        }
+
+        result = await generate_actor_mapping_candidates(info_client=info_client)
+        rows = list_actor_mappings(status="candidate")
+
+        self.assertEqual(result["checked"], 1)
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["emby_actor_id"], "901")
+        self.assertEqual(rows[0]["javinfo_actress_id"], 123)
+        self.assertEqual(rows[0]["source"], "name_match")
+
+    async def test_generate_candidates_skips_confirmed_actor(self):
+        from database import (
+            confirm_actor_mapping,
+            create_snapshot_key,
+            list_actor_mappings,
+            save_emby_actors_snapshot,
+        )
+        from services.actor_mapping_candidates import generate_actor_mapping_candidates
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+        confirm_actor_mapping("901", "糸井瑠花", 123, "糸井瑠花")
+
+        info_client = AsyncMock()
+        result = await generate_actor_mapping_candidates(info_client=info_client)
+
+        self.assertEqual(result["checked"], 0)
+        info_client.list_actresses.assert_not_called()
+        self.assertEqual(len(list_actor_mappings(status="candidate")), 0)
+
+    async def test_generate_candidates_keeps_actor_with_only_ignored_candidate_visible(self):
+        from database import (
+            create_snapshot_key,
+            ignore_actor_mapping,
+            list_actor_mappings,
+            save_emby_actors_snapshot,
+        )
+        from routers import inventory
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+        ignore_actor_mapping("901", "糸井瑠花", 456, "別人")
+
+        result = await inventory.list_unmapped_actor_mappings()
+
+        self.assertEqual(len(list_actor_mappings(status="ignored")), 1)
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["data"][0]["emby_actor_id"], "901")
+
 
 class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_subscription_pipeline_creates_candidate_for_missing_movie(self):

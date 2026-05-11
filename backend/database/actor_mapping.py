@@ -34,9 +34,21 @@ def upsert_actor_mapping(
             ON CONFLICT(emby_actor_id, javinfo_actress_id) DO UPDATE SET
                 emby_actor_name = excluded.emby_actor_name,
                 javinfo_actress_name = COALESCE(excluded.javinfo_actress_name, actor_mappings.javinfo_actress_name),
-                confidence = excluded.confidence,
-                status = excluded.status,
-                source = excluded.source,
+                confidence = CASE
+                    WHEN excluded.status = 'candidate' AND actor_mappings.status IN ('confirmed', 'ignored')
+                    THEN actor_mappings.confidence
+                    ELSE excluded.confidence
+                END,
+                status = CASE
+                    WHEN excluded.status = 'candidate' AND actor_mappings.status IN ('confirmed', 'ignored')
+                    THEN actor_mappings.status
+                    ELSE excluded.status
+                END,
+                source = CASE
+                    WHEN excluded.status = 'candidate' AND actor_mappings.status IN ('confirmed', 'ignored')
+                    THEN actor_mappings.source
+                    ELSE excluded.source
+                END,
                 updated_at = CURRENT_TIMESTAMP
             ''',
             (

@@ -169,12 +169,16 @@ async def list_unmapped_actor_mappings(search: Optional[str] = None, limit: int 
     decisions = {
         str(row["emby_actor_id"]): row
         for row in list_actor_mappings(limit=100000)
-        if row.get("status") in ("confirmed", "ignored")
+        if row.get("status") in ("confirmed", "ignored") and row.get("javinfo_actress_id") is None
+    }
+    confirmed_actor_ids = {
+        str(row["emby_actor_id"])
+        for row in list_actor_mappings(status="confirmed", limit=100000)
     }
     data = []
     for actor in actors:
         actor_id = str(actor.get("actress_id"))
-        if actor_id in decisions:
+        if actor_id in decisions or actor_id in confirmed_actor_ids:
             continue
         image_tag = actor.get("image_tag", "")
         data.append({
@@ -186,6 +190,23 @@ async def list_unmapped_actor_mappings(search: Optional[str] = None, limit: int 
         if len(data) >= limit:
             break
     return {"data": data, "total": len(data), "snapshot_key": snapshot_key}
+
+
+@router.post("/actor-mappings/candidates/generate")
+async def generate_mapping_candidates(
+    search: Optional[str] = None,
+    limit: int = 50,
+    per_actor: int = 3,
+    min_confidence: float = 0.55,
+):
+    """按 Emby 演员名搜索 JavInfo，生成待确认映射候选。"""
+    from services.actor_mapping_candidates import generate_actor_mapping_candidates
+    return await generate_actor_mapping_candidates(
+        search=search,
+        limit=limit,
+        per_actor=per_actor,
+        min_confidence=min_confidence,
+    )
 
 
 @router.post("/actor-mappings/confirm")
