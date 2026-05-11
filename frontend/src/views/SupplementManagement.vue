@@ -276,6 +276,135 @@
           <p>在作品字段列表中点击“诊断”，可查看该影片的字段来源、源身份、详情来源和匹配候选。</p>
         </div>
       </section>
+
+      <section v-if="activeWorkspaceSegment === 'sourceHealth'" class="workspace-panel apple-surface">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Health</p>
+            <h2>来源状态</h2>
+          </div>
+          <div class="source-health-toolbar">
+            <button class="btn btn-ghost btn-sm" type="button" @click="loadSourceHealth">刷新</button>
+            <button class="btn btn-primary btn-sm" type="button" :disabled="providerSmokeLoading" @click="runProviderSmoke">
+              {{ providerSmokeLoading ? '诊断中...' : '运行诊断' }}
+            </button>
+          </div>
+        </div>
+        <div class="provider-smoke-controls">
+          <select v-model="providerSmokeForm.source" class="filter-select" @change="loadProviderSmokeRuns">
+            <option value="">默认样本</option>
+            <option
+              v-for="source in sourceHealthRows"
+              :key="source.source"
+              :value="source.source"
+            >{{ source.display_name || source.source }}</option>
+          </select>
+          <input
+            v-model="providerSmokeForm.sourceMovieId"
+            class="filter-input"
+            placeholder="source_movie_id"
+            @keyup.enter="runProviderSmoke"
+          />
+          <button
+            v-if="providerSmokeReport"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            @click="providerSmokeReport = null"
+          >清除结果</button>
+        </div>
+        <div v-if="providerSmokeReport" class="provider-smoke-panel">
+          <div class="provider-smoke-summary">
+            <div>
+              <strong>{{ providerSmokeReport.ok }} / {{ providerSmokeReport.total }}</strong>
+              <span>诊断通过</span>
+            </div>
+            <div>
+              <strong>{{ providerSmokeReport.failed }}</strong>
+              <span>失败样本</span>
+            </div>
+            <small>{{ formatActionTime(providerSmokeReport.generated_at) }}</small>
+          </div>
+          <div class="provider-smoke-grid">
+            <article
+              v-for="report in providerSmokeReport.reports || []"
+              :key="`${report.source}:${report.source_movie_id}`"
+              class="provider-smoke-card"
+              :class="{ failed: !report.ok }"
+            >
+              <div class="provider-smoke-card-head">
+                <strong>{{ report.name || report.source_movie_id }}</strong>
+                <span class="status-pill" :class="report.ok ? 'health-healthy' : 'health-degraded'">
+                  {{ report.ok ? '通过' : '异常' }}
+                </span>
+              </div>
+              <p>{{ report.source }} · {{ report.source_movie_id }} · {{ report.duration_ms || 0 }}ms</p>
+              <small>字段分 {{ report.quality?.score ?? 0 }} / {{ report.quality?.max_score ?? 0 }}</small>
+              <small v-if="report.quality?.missing?.length">缺失 {{ report.quality.missing.join(', ') }}</small>
+              <small v-if="report.quality?.warnings?.length">警告 {{ report.quality.warnings.join(', ') }}</small>
+              <small v-if="report.error">{{ report.error_type || 'error' }} · {{ report.error }}</small>
+              <div v-if="report.detail?.title" class="provider-smoke-detail">
+                <span>{{ report.detail.display_number || report.detail.normalized_number }}</span>
+                <strong>{{ report.detail.title }}</strong>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="provider-smoke-history">
+          <div class="provider-smoke-history-head">
+            <strong>最近诊断</strong>
+            <button class="btn btn-ghost btn-xs" type="button" @click="loadProviderSmokeRuns">刷新历史</button>
+          </div>
+          <div v-if="providerSmokeRuns.length" class="provider-smoke-run-list">
+            <button
+              v-for="run in providerSmokeRuns"
+              :key="run.id"
+              type="button"
+              class="provider-smoke-run"
+              @click="providerSmokeReport = run.response"
+            >
+              <span>{{ formatActionTime(run.generated_at || run.created_at) }}</span>
+              <strong>{{ run.ok }} / {{ run.total }}</strong>
+              <small>{{ smokeRunLabel(run) }}</small>
+            </button>
+          </div>
+          <small v-else class="empty-inline">暂无诊断历史</small>
+        </div>
+        <div v-if="sourceHealthLoading" class="loading-wrap"><div class="spinner-large"></div></div>
+        <div v-else class="source-health-grid">
+          <article v-for="source in sourceHealthRows" :key="source.source" class="source-health-card">
+            <div>
+              <strong>{{ source.display_name || source.source }}</strong>
+              <span>{{ source.source }}</span>
+            </div>
+            <span class="status-pill" :class="`health-${source.runtime_status}`">{{ sourceHealthLabel(source.runtime_status) }}</span>
+            <div class="source-budget-meter">
+              <div>
+                <strong>{{ source.budget?.local_active ?? 0 }} / {{ source.budget?.local_limit ?? '—' }}</strong>
+                <span>当前预算</span>
+              </div>
+              <small>{{ sourceBudgetLabel(source.budget) }}</small>
+            </div>
+            <p>{{ source.last_error_type || '暂无错误' }}</p>
+            <small>{{ sourceHealthDetail(source) }}</small>
+            <div class="source-health-actions">
+              <button
+                v-if="source.runtime_status === 'paused'"
+                class="btn btn-primary btn-xs"
+                type="button"
+                :disabled="sourceActionLoading === source.source"
+                @click="resumeSource(source.source)"
+              >恢复</button>
+              <button
+                v-else
+                class="btn btn-ghost btn-xs"
+                type="button"
+                :disabled="sourceActionLoading === source.source"
+                @click="pauseSource(source.source)"
+              >暂停 24h</button>
+            </div>
+          </article>
+        </div>
+      </section>
     </section>
 
     <section v-else-if="showGlobalQueue" class="global-queue-view">
@@ -364,19 +493,45 @@
           </section>
           <section class="diagnostics-section">
             <h3>匹配候选</h3>
+            <div class="manual-match-bar">
+              <input
+                v-model="manualContentId"
+                placeholder="输入 content_id 人工确认"
+                class="filter-input"
+                @keyup.enter="manualMatchMovie()"
+              />
+              <button class="btn btn-primary btn-sm" type="button" :disabled="manualActionLoading || !manualContentId.trim()" @click="manualMatchMovie()">确认匹配</button>
+              <button class="btn btn-ghost btn-sm" type="button" :disabled="manualActionLoading" @click="manualUnmatchMovie">解除匹配</button>
+              <button class="btn btn-ghost btn-sm danger" type="button" :disabled="manualActionLoading" @click="manualIgnoreMovie">忽略</button>
+            </div>
             <div v-if="sourceDiagnostics.match_candidates?.length" class="diagnostics-table">
-              <div class="diagnostics-row diagnostics-row-head">
+              <div class="diagnostics-row diagnostics-row-head diagnostics-row-candidates">
                 <span>content_id</span>
                 <span>分数</span>
                 <span>状态</span>
+                <span>操作</span>
               </div>
-              <div v-for="candidate in sourceDiagnostics.match_candidates" :key="candidate.candidate_content_id" class="diagnostics-row">
+              <div v-for="candidate in sourceDiagnostics.match_candidates" :key="candidate.candidate_content_id" class="diagnostics-row diagnostics-row-candidates">
                 <span>{{ candidate.candidate_content_id }}</span>
                 <span>{{ candidate.score }}</span>
                 <span>{{ candidate.status }}</span>
+                <span>
+                  <button class="btn btn-ghost btn-xs" type="button" :disabled="manualActionLoading" @click="manualMatchMovie(candidate.candidate_content_id)">确认</button>
+                </span>
               </div>
             </div>
             <div v-else class="empty-inline">暂无匹配候选</div>
+          </section>
+          <section class="diagnostics-section">
+            <h3>人工校正记录</h3>
+            <div v-if="sourceDiagnostics.manual_actions?.length" class="manual-action-list">
+              <div v-for="action in sourceDiagnostics.manual_actions" :key="`${action.action}-${action.created_at}`" class="manual-action-item">
+                <strong>{{ manualActionLabel(action.action) }}</strong>
+                <span>{{ action.content_id || action.previous_content_id || '无 content_id' }}</span>
+                <small>{{ action.reason || '未填写原因' }} · {{ formatActionTime(action.created_at) }}</small>
+              </div>
+            </div>
+            <div v-else class="empty-inline">暂无人工校正记录</div>
           </section>
         </div>
       </div>
@@ -401,6 +556,19 @@ const JobList = {
     statusLabel: { type: Function, required: true },
   },
   emits: ['retry', 'cancel', 'actor'],
+  methods: {
+    jobAttemptMeta(job) {
+      const pieces = []
+      if (job.attempt_count) pieces.push(`尝试 ${job.attempt_count}/3`)
+      if (job.status === 'queued' && job.next_run_at) {
+        const next = new Date(job.next_run_at)
+        if (!Number.isNaN(next.getTime()) && next.getTime() > Date.now() + 1000) {
+          pieces.push(`下次 ${next.toLocaleTimeString()}`)
+        }
+      }
+      return pieces.join(' · ')
+    },
+  },
   render() {
     if (this.loading) {
       return h('div', { class: 'loading-wrap' }, [h('div', { class: 'spinner-large' })])
@@ -414,6 +582,7 @@ const JobList = {
         h('div', { class: 'job-copy' }, [
           h('strong', this.jobLabel(job)),
           h('span', `#${job.id} · ${job.created_at ? new Date(job.created_at).toLocaleString() : ''}`),
+          this.jobAttemptMeta(job) ? h('small', { class: 'job-meta' }, this.jobAttemptMeta(job)) : null,
           job.last_error ? h('small', { class: job.status === 'failed' ? 'job-error' : 'job-warning' }, job.last_error) : null,
         ]),
       ]),
@@ -455,6 +624,7 @@ export default {
         { key: 'movies', label: '作品字段' },
         { key: 'jobs', label: '任务队列' },
         { key: 'diagnostics', label: '来源诊断' },
+        { key: 'sourceHealth', label: '来源状态' },
       ],
       supplementStatus: null,
       supplementPolling: null,
@@ -470,6 +640,16 @@ export default {
       sourceDiagnosticsOpen: false,
       sourceDiagnosticsLoading: false,
       sourceDiagnostics: null,
+      manualContentId: '',
+      manualActionLoading: false,
+      sourceHealth: [],
+      sourceBudgets: [],
+      sourceHealthLoading: false,
+      sourceActionLoading: '',
+      providerSmokeLoading: false,
+      providerSmokeReport: null,
+      providerSmokeForm: { source: '', sourceMovieId: '' },
+      providerSmokeRuns: [],
     }
   },
   computed: {
@@ -511,6 +691,13 @@ export default {
       const movie = this.sourceDiagnostics?.movie
       return movie?.title || movie?.matched_content_id || ''
     },
+    sourceHealthRows() {
+      const budgets = new Map((this.sourceBudgets || []).map(item => [item.source, item]))
+      return (this.sourceHealth || []).map(source => ({
+        ...source,
+        budget: budgets.get(source.source) || null,
+      }))
+    },
   },
   watch: {
     '$route.query': {
@@ -538,6 +725,7 @@ export default {
         await this.applyActorContext(actressId)
         if (this.activeWorkspaceSegment === 'jobs') await this.loadJobs()
         if (this.activeWorkspaceSegment === 'movies') await this.loadMovies()
+        if (this.activeWorkspaceSegment === 'sourceHealth') await this.loadSourceHealth()
         return
       }
       this.actorContext = null
@@ -553,11 +741,13 @@ export default {
     segmentFromTab(tab) {
       if (tab === 'jobs') return 'jobs'
       if (tab === 'stats') return 'diagnostics'
+      if (tab === 'sources') return 'sourceHealth'
       return 'movies'
     },
     tabFromSegment(segment) {
       if (segment === 'jobs') return 'jobs'
       if (segment === 'diagnostics') return 'stats'
+      if (segment === 'sourceHealth') return 'sources'
       return 'movies'
     },
     setWorkspaceSegment(segment) {
@@ -565,6 +755,7 @@ export default {
       this.$router.replace({ path: '/supplement', query: { tab: this.tabFromSegment(segment), actress_id: this.actorContext?.id } })
       if (segment === 'jobs') this.loadJobs()
       if (segment === 'movies') this.loadMovies()
+      if (segment === 'sourceHealth') this.loadSourceHealth()
     },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
@@ -784,6 +975,7 @@ export default {
     closeMovieSources() {
       this.sourceDiagnosticsOpen = false
       this.sourceDiagnostics = null
+      this.manualContentId = ''
     },
     async openMovieSources(movie) {
       if (!movie?.id) return
@@ -794,10 +986,167 @@ export default {
       try {
         const resp = await api.getSupplementMovieSources(movie.id)
         this.sourceDiagnostics = resp.data || resp
+        this.manualContentId = this.sourceDiagnostics?.movie?.matched_content_id || ''
       } catch (e) {
         console.error('Load movie sources failed:', e)
       } finally {
         this.sourceDiagnosticsLoading = false
+      }
+    },
+    async manualMatchMovie(candidateContentId = '') {
+      const movieId = this.sourceDiagnostics?.movie?.id
+      const contentId = String(candidateContentId || this.manualContentId || '').trim()
+      if (!movieId || !contentId || this.manualActionLoading) return
+      this.manualActionLoading = true
+      try {
+        await api.matchSupplementMovie(movieId, contentId, '人工确认匹配')
+        ElMessage.success('已确认匹配')
+        await this.reloadCurrentDiagnostics()
+      } catch (e) {
+        console.error('Manual match failed:', e)
+      } finally {
+        this.manualActionLoading = false
+      }
+    },
+    async manualIgnoreMovie() {
+      const movieId = this.sourceDiagnostics?.movie?.id
+      if (!movieId || this.manualActionLoading) return
+      this.manualActionLoading = true
+      try {
+        await api.ignoreSupplementMovie(movieId, '人工忽略')
+        ElMessage.success('已忽略该补全影片')
+        await this.reloadCurrentDiagnostics()
+      } catch (e) {
+        console.error('Manual ignore failed:', e)
+      } finally {
+        this.manualActionLoading = false
+      }
+    },
+    async manualUnmatchMovie() {
+      const movieId = this.sourceDiagnostics?.movie?.id
+      if (!movieId || this.manualActionLoading) return
+      this.manualActionLoading = true
+      try {
+        await api.unmatchSupplementMovie(movieId, '人工解除匹配')
+        ElMessage.success('已解除匹配')
+        await this.reloadCurrentDiagnostics()
+      } catch (e) {
+        console.error('Manual unmatch failed:', e)
+      } finally {
+        this.manualActionLoading = false
+      }
+    },
+    async reloadCurrentDiagnostics() {
+      const movieId = this.sourceDiagnostics?.movie?.id
+      if (!movieId) return
+      const resp = await api.getSupplementMovieSources(movieId)
+      this.sourceDiagnostics = resp.data || resp
+      this.manualContentId = this.sourceDiagnostics?.movie?.matched_content_id || ''
+      await this.loadMovies()
+      await this.loadSupplementStatus()
+    },
+    sourceHealthLabel(status) {
+      const map = { healthy: '健康', degraded: '降级', cooling_down: '冷却中', paused: '已暂停', unknown: '未检测' }
+      return map[status] || status || '未检测'
+    },
+    sourceHealthDetail(source) {
+      if (!source) return ''
+      const failures = source.consecutive_failures ? `连续失败 ${source.consecutive_failures}` : '无连续失败'
+      if (source.cooldown_until) return `${failures} · 冷却至 ${new Date(source.cooldown_until).toLocaleTimeString()}`
+      return `${failures} · 成功 ${source.success_count || 0} / 失败 ${source.failure_count || 0}`
+    },
+    sourceBudgetLabel(budget) {
+      if (!budget) return '预算状态未加载'
+      const lock = budget.global_lock_enabled ? '全局锁已启用' : '仅本进程'
+      return `${lock} · 本进程 ${budget.local_active || 0} 个请求`
+    },
+    smokeRunLabel(run) {
+      const req = run?.request || {}
+      if (req.source_movie_id) return `${req.source || 'source'} · ${req.source_movie_id}`
+      if (req.source) return `${req.source} 默认样本`
+      if (req.samples?.length) return `${req.samples.length} 个样本`
+      return '默认样本'
+    },
+    manualActionLabel(action) {
+      const map = { match: '确认匹配', ignore: '忽略', unmatch: '解除匹配' }
+      return map[action] || action || '人工操作'
+    },
+    formatActionTime(value) {
+      if (!value) return ''
+      return new Date(value).toLocaleString()
+    },
+    async loadSourceHealth() {
+      this.sourceHealthLoading = true
+      try {
+        const [healthResp, budgetResp, smokeRunsResp] = await Promise.all([
+          api.listSupplementSourcesHealth(),
+          api.listSupplementSourcesBudgets(),
+          api.listSupplementProviderSmokeRuns(5, this.providerSmokeForm.source),
+        ])
+        this.sourceHealth = healthResp.data || healthResp || []
+        this.sourceBudgets = budgetResp.data || budgetResp || []
+        this.providerSmokeRuns = smokeRunsResp.data || smokeRunsResp || []
+      } catch (e) {
+        console.error('Load source health failed:', e)
+      } finally {
+        this.sourceHealthLoading = false
+      }
+    },
+    async loadProviderSmokeRuns() {
+      try {
+        const resp = await api.listSupplementProviderSmokeRuns(5, this.providerSmokeForm.source)
+        this.providerSmokeRuns = resp.data || resp || []
+      } catch (e) {
+        console.error('Load provider smoke history failed:', e)
+      }
+    },
+    async runProviderSmoke() {
+      if (this.providerSmokeLoading) return
+      const source = (this.providerSmokeForm.source || '').trim()
+      const sourceMovieId = (this.providerSmokeForm.sourceMovieId || '').trim()
+      if (sourceMovieId && !source) {
+        ElMessage.warning('自定义样本需要先选择来源')
+        return
+      }
+      const payload = {}
+      if (source) payload.source = source
+      if (sourceMovieId) {
+        payload.source_movie_id = sourceMovieId
+        payload.name = `${source} ${sourceMovieId}`
+      }
+      this.providerSmokeLoading = true
+      try {
+        const resp = await api.runSupplementProviderSmoke(payload)
+        this.providerSmokeReport = resp.data || resp
+        await this.loadProviderSmokeRuns()
+      } catch (e) {
+        console.error('Run provider smoke failed:', e)
+      } finally {
+        this.providerSmokeLoading = false
+      }
+    },
+    async pauseSource(source) {
+      if (!source || this.sourceActionLoading) return
+      this.sourceActionLoading = source
+      try {
+        await api.pauseSupplementSource(source, 'manual pause from supplement management', 24 * 60)
+        await this.loadSourceHealth()
+      } catch (e) {
+        console.error('Pause source failed:', e)
+      } finally {
+        this.sourceActionLoading = ''
+      }
+    },
+    async resumeSource(source) {
+      if (!source || this.sourceActionLoading) return
+      this.sourceActionLoading = source
+      try {
+        await api.resumeSupplementSource(source)
+        await this.loadSourceHealth()
+      } catch (e) {
+        console.error('Resume source failed:', e)
+      } finally {
+        this.sourceActionLoading = ''
       }
     },
     async loadStats() {
@@ -1690,6 +2039,10 @@ p {
   font-size: 12px;
 }
 
+.diagnostics-row-candidates {
+  grid-template-columns: minmax(120px, 1fr) 80px 110px 90px;
+}
+
 .diagnostics-row-head {
   color: var(--text-primary);
   font-weight: 700;
@@ -1727,6 +2080,283 @@ p {
   color: var(--text-primary);
 }
 
+.manual-match-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.btn-xs {
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+.btn.danger {
+  color: #ff6b87;
+  border-color: rgba(255, 107, 135, 0.28);
+}
+
+.source-health-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.provider-smoke-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.provider-smoke-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(180px, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.provider-smoke-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.provider-smoke-summary div {
+  display: grid;
+  gap: 2px;
+}
+
+.provider-smoke-summary strong {
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.provider-smoke-summary span,
+.provider-smoke-summary small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.provider-smoke-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.provider-smoke-history {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.provider-smoke-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-smoke-history-head strong {
+  color: var(--text-primary);
+}
+
+.provider-smoke-run-list {
+  display: grid;
+  gap: 8px;
+}
+
+.provider-smoke-run {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(120px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.provider-smoke-run span,
+.provider-smoke-run small {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.provider-smoke-run strong {
+  color: var(--text-primary);
+}
+
+.provider-smoke-card {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.provider-smoke-card.failed {
+  border-color: rgba(255, 107, 135, 0.3);
+}
+
+.provider-smoke-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-smoke-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.provider-smoke-card p,
+.provider-smoke-card small {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.provider-smoke-detail {
+  display: grid;
+  gap: 3px;
+  padding-top: 4px;
+}
+
+.provider-smoke-detail span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.source-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.source-health-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.source-health-card strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.source-health-card span,
+.source-health-card p,
+.source-health-card small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.source-budget-meter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.source-budget-meter strong {
+  font-size: 18px;
+}
+
+.source-budget-meter span,
+.source-budget-meter small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.source-budget-meter small {
+  text-align: right;
+}
+
+.source-health-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.manual-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-action-item {
+  display: grid;
+  grid-template-columns: 120px minmax(120px, 1fr) minmax(180px, 2fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.manual-action-item strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.manual-action-item span,
+.manual-action-item small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.health-healthy {
+  color: #6ee7a8;
+  background: rgba(52, 199, 89, 0.12);
+}
+
+.health-degraded {
+  color: #ffd166;
+  background: rgba(255, 204, 0, 0.12);
+}
+
+.health-cooling_down {
+  color: #ff6b87;
+  background: rgba(255, 107, 135, 0.12);
+}
+
+.health-paused {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.health-unknown {
+  color: var(--text-muted);
+}
+
 @media (max-width: 860px) {
   .supplement-page {
     padding: 20px 16px 36px;
@@ -1760,7 +2390,7 @@ p {
   .segmented-control {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .segmented-control button {
@@ -1778,6 +2408,14 @@ p {
   .movie-row-actions,
   .job-actions {
     width: 100%;
+  }
+
+  .manual-match-bar,
+  .provider-smoke-controls,
+  .provider-smoke-run,
+  .diagnostics-row-candidates,
+  .manual-action-item {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -280,6 +280,113 @@ test('listSupplementSources sends GET to sources path', async (t) => {
   assert.equal(capturedConfig.method, 'get')
 })
 
+test('listSupplementSourcesHealth sends GET to source health path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-source-health-${Date.now()}`)
+  await api.listSupplementSourcesHealth()
+
+  assert.equal(capturedConfig.url, '/v1/supplement/sources/health')
+  assert.equal(capturedConfig.method, 'get')
+})
+
+test('listSupplementSourcesBudgets sends GET to source budgets path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-source-budgets-${Date.now()}`)
+  await api.listSupplementSourcesBudgets()
+
+  assert.equal(capturedConfig.url, '/v1/supplement/sources/budgets')
+  assert.equal(capturedConfig.method, 'get')
+})
+
+test('runSupplementProviderSmoke posts payload to provider smoke path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { reports: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-provider-smoke-${Date.now()}`)
+  await api.runSupplementProviderSmoke({ source: 'fc2', source_movie_id: 'FC2-PPV-4897640' })
+
+  assert.equal(capturedConfig.url, '/v1/supplement/providers/smoke')
+  assert.equal(capturedConfig.method, 'post')
+  assert.deepEqual(JSON.parse(capturedConfig.data), { source: 'fc2', source_movie_id: 'FC2-PPV-4897640' })
+})
+
+test('listSupplementProviderSmokeRuns sends GET with limit and source', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-provider-smoke-runs-${Date.now()}`)
+  await api.listSupplementProviderSmokeRuns(3, 'fc2')
+
+  assert.equal(capturedConfig.url, '/v1/supplement/providers/smoke/runs')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, { limit: 3, source: 'fc2' })
+})
+
+test('source health actions post expected payloads', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-source-actions-${Date.now()}`)
+  await api.pauseSupplementSource('javbus', 'maintenance', 60)
+  await api.resumeSupplementSource('javbus')
+
+  assert.equal(calls[0].url, '/v1/supplement/sources/javbus/pause')
+  assert.deepEqual(JSON.parse(calls[0].data), { reason: 'maintenance', duration_minutes: 60 })
+  assert.equal(calls[1].url, '/v1/supplement/sources/javbus/resume')
+  assert.equal(calls[1].method, 'post')
+})
+
+test('manual supplement movie actions post expected payloads', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-manual-actions-${Date.now()}`)
+  await api.matchSupplementMovie(12, 'umd1010', '人工确认')
+  await api.ignoreSupplementMovie(12, '跳过')
+  await api.unmatchSupplementMovie(12, '解除')
+
+  assert.equal(calls[0].url, '/v1/supplement/movies/12/match')
+  assert.deepEqual(JSON.parse(calls[0].data), { content_id: 'umd1010', reason: '人工确认' })
+  assert.equal(calls[1].url, '/v1/supplement/movies/12/ignore')
+  assert.deepEqual(JSON.parse(calls[1].data), { reason: '跳过' })
+  assert.equal(calls[2].url, '/v1/supplement/movies/12/unmatch')
+  assert.deepEqual(JSON.parse(calls[2].data), { reason: '解除' })
+})
+
 test('startSupplementMovieDetailBatchJobs sends POST with filters', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null

@@ -155,10 +155,72 @@ async def get_movie_sources(movie_id: int) -> dict[str, Any]:
     return await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
 
 
+@router.post("/movies/{movie_id}/match")
+async def match_movie(movie_id: int, body: dict[str, Any]) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post(f"/api/v1/supplement/movies/{movie_id}/match", json_body=body)
+
+
+@router.post("/movies/{movie_id}/ignore")
+async def ignore_movie(movie_id: int, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post(f"/api/v1/supplement/movies/{movie_id}/ignore", json_body=body or {})
+
+
+@router.post("/movies/{movie_id}/unmatch")
+async def unmatch_movie(movie_id: int, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post(f"/api/v1/supplement/movies/{movie_id}/unmatch", json_body=body or {})
+
+
 @router.get("/sources")
 async def list_sources() -> list[dict[str, Any]]:
     client = get_info_client()
     return await client.proxy_get("/api/v1/supplement/sources", params=None)
+
+
+@router.get("/sources/health")
+async def list_sources_health() -> list[dict[str, Any]]:
+    client = get_info_client()
+    return await client.proxy_get("/api/v1/supplement/sources/health", params=None)
+
+
+@router.get("/sources/budgets")
+async def list_sources_budgets() -> list[dict[str, Any]]:
+    client = get_info_client()
+    return await client.proxy_get("/api/v1/supplement/sources/budgets", params=None)
+
+
+@router.post("/providers/smoke")
+async def run_provider_smoke(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post("/api/v1/supplement/providers/smoke", json_body=body or {})
+
+
+@router.get("/providers/smoke/runs")
+async def list_provider_smoke_runs(
+    limit: int = Query(10, ge=1, le=50),
+    source: str | None = Query(None),
+) -> list[dict[str, Any]]:
+    client = get_info_client()
+    lim = limit.default if hasattr(limit, "default") else limit
+    src = source.default if hasattr(source, "default") else source
+    params: dict[str, Any] = {"limit": lim}
+    if src:
+        params["source"] = src
+    return await client.proxy_get("/api/v1/supplement/providers/smoke/runs", params=params)
+
+
+@router.post("/sources/{source}/pause")
+async def pause_source(source: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post(f"/api/v1/supplement/sources/{source}/pause", json_body=body or {})
+
+
+@router.post("/sources/{source}/resume")
+async def resume_source(source: str) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post(f"/api/v1/supplement/sources/{source}/resume")
 
 
 @router.post("/movies/detail")

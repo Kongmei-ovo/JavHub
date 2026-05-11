@@ -276,6 +276,77 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
 
         mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/sources", params=None)
 
+    async def test_list_sources_health(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = [{"source": "avbase", "runtime_status": "healthy"}]
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_sources_health()
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/sources/health", params=None)
+
+    async def test_source_health_actions(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"source": "javbus", "status": "paused"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.pause_source(source="javbus", body={"reason": "maintenance"})
+            await supplement.resume_source(source="javbus")
+
+        self.assertEqual(mock_client.proxy_post.await_args_list[0].args[0], "/api/v1/supplement/sources/javbus/pause")
+        self.assertEqual(mock_client.proxy_post.await_args_list[0].kwargs["json_body"], {"reason": "maintenance"})
+        self.assertEqual(mock_client.proxy_post.await_args_list[1].args[0], "/api/v1/supplement/sources/javbus/resume")
+
+    async def test_list_source_budgets_proxy(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = [{"source": "fanza", "local_active": 1}]
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_sources_budgets()
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/sources/budgets", params=None)
+
+    async def test_run_provider_smoke_proxy(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"total": 1, "ok": 1, "failed": 0, "reports": []}
+        body = {"source": "fc2", "source_movie_id": "FC2-PPV-4897640"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.run_provider_smoke(body=body)
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/providers/smoke",
+            json_body=body,
+        )
+
+    async def test_list_provider_smoke_runs_proxy(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = [{"id": 1, "ok": 1, "failed": 0}]
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_provider_smoke_runs(limit=5, source="fc2")
+
+        mock_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/providers/smoke/runs",
+            params={"limit": 5, "source": "fc2"},
+        )
+
+    async def test_manual_movie_actions_proxy_json_body(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"supplement_movie_id": 12}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.match_movie(movie_id=12, body={"content_id": "umd1010"})
+            await supplement.ignore_movie(movie_id=12, body={"reason": "skip"})
+            await supplement.unmatch_movie(movie_id=12, body={"reason": "undo"})
+
+        self.assertEqual(mock_client.proxy_post.await_args_list[0].args[0], "/api/v1/supplement/movies/12/match")
+        self.assertEqual(mock_client.proxy_post.await_args_list[0].kwargs["json_body"], {"content_id": "umd1010"})
+        self.assertEqual(mock_client.proxy_post.await_args_list[1].args[0], "/api/v1/supplement/movies/12/ignore")
+        self.assertEqual(mock_client.proxy_post.await_args_list[1].kwargs["json_body"], {"reason": "skip"})
+        self.assertEqual(mock_client.proxy_post.await_args_list[2].args[0], "/api/v1/supplement/movies/12/unmatch")
+        self.assertEqual(mock_client.proxy_post.await_args_list[2].kwargs["json_body"], {"reason": "undo"})
+
     async def test_enrich_movie_detail_passes_source_movie_id(self):
         mock_client = AsyncMock()
         mock_client.proxy_post.return_value = {"source": "avbase", "source_movie_id": "prestige:SIVR-438"}

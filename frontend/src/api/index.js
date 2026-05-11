@@ -330,8 +330,46 @@ export default {
     return api.get(`/v1/supplement/movies/${movieId}/sources`)
   },
 
+  matchSupplementMovie(movieId, contentId, reason = '') {
+    return api.post(`/v1/supplement/movies/${movieId}/match`, { content_id: contentId, reason })
+  },
+
+  ignoreSupplementMovie(movieId, reason = '') {
+    return api.post(`/v1/supplement/movies/${movieId}/ignore`, { reason })
+  },
+
+  unmatchSupplementMovie(movieId, reason = '') {
+    return api.post(`/v1/supplement/movies/${movieId}/unmatch`, { reason })
+  },
+
   listSupplementSources() {
     return api.get('/v1/supplement/sources')
+  },
+
+  listSupplementSourcesHealth() {
+    return api.get('/v1/supplement/sources/health')
+  },
+
+  listSupplementSourcesBudgets() {
+    return api.get('/v1/supplement/sources/budgets')
+  },
+
+  runSupplementProviderSmoke(payload = {}) {
+    return api.post('/v1/supplement/providers/smoke', payload)
+  },
+
+  listSupplementProviderSmokeRuns(limit = 5, source = '') {
+    const params = { limit }
+    if (source) params.source = source
+    return api.get('/v1/supplement/providers/smoke/runs', { params })
+  },
+
+  pauseSupplementSource(source, reason = '', durationMinutes = 1440) {
+    return api.post(`/v1/supplement/sources/${source}/pause`, { reason, duration_minutes: durationMinutes })
+  },
+
+  resumeSupplementSource(source) {
+    return api.post(`/v1/supplement/sources/${source}/resume`)
   },
 
   enrichSupplementMovieDetail(sourceMovieId, source = 'all') {
