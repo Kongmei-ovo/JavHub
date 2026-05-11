@@ -185,6 +185,13 @@
         <button class="chip" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
         <button class="chip" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
+        <button class="chip" :class="{ active: candidateFilter.source === 'subscription' }" @click="setCandidateSource('subscription')">
+          订阅 {{ candidateStats.by_source?.subscription || 0 }}
+        </button>
+        <button class="chip" :class="{ active: candidateFilter.source === 'inventory' }" @click="setCandidateSource('inventory')">
+          库存 {{ candidateStats.by_source?.inventory || 0 }}
+        </button>
+        <button class="chip" :class="{ active: !candidateFilter.source }" @click="setCandidateSource('')">全部来源</button>
         <button class="chip" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
           {{ selectingCandidates ? '退出选择' : '选择' }}
         </button>
@@ -292,7 +299,7 @@ export default {
       tasks: [],
       candidates: [],
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
-      candidateStats: { candidate: 0, approved: 0, rejected: 0, sent: 0, failed: 0, needs_magnet: 0 },
+      candidateStats: { candidate: 0, approved: 0, rejected: 0, sent: 0, failed: 0, needs_magnet: 0, by_source: {} },
       filterStatus: null,
       candidateFilter: {
         status: this.$route.query.status || 'candidate',
@@ -377,6 +384,10 @@ export default {
     setNeedsMagnet(needs) {
       this.candidateFilter.status = 'candidate'
       this.candidateFilter.needs_magnet = needs
+      this.loadCandidates()
+    },
+    setCandidateSource(source) {
+      this.candidateFilter.source = source
       this.loadCandidates()
     },
     toggleCandidateSelection() {

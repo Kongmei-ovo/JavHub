@@ -55,6 +55,8 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /批量恢复/)
   assert.match(home, /搜索番号、标题、演员/)
   assert.match(home, /syncCandidateRoute/)
+  assert.match(home, /by_source/)
+  assert.match(home, /全部来源/)
   assert.match(home, /error_msg/)
   assert.match(home, /已关联任务/)
   assert.match(home, /重试/)

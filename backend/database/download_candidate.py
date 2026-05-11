@@ -283,12 +283,15 @@ def download_candidate_stats() -> dict:
         cursor = conn.cursor()
         cursor.execute("SELECT status, COUNT(*) AS count FROM download_candidates GROUP BY status")
         counts = {row["status"]: row["count"] for row in cursor.fetchall()}
+        cursor.execute("SELECT source, COUNT(*) AS count FROM download_candidates GROUP BY source")
+        source_counts = {row["source"] or "manual": row["count"] for row in cursor.fetchall()}
     return {
         "candidate": counts.get("candidate", 0),
         "approved": counts.get("approved", 0),
         "rejected": counts.get("rejected", 0),
         "sent": counts.get("sent", 0),
         "failed": counts.get("failed", 0),
+        "by_source": source_counts,
         "needs_magnet": sum(
             1 for row in list_download_candidates(status="candidate", limit=100000)
             if not row.get("magnet")

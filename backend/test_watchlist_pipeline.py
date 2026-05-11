@@ -285,6 +285,8 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
 
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
+        self.assertEqual(result["stats"]["by_source"]["subscription"], 2)
+        self.assertEqual(result["stats"]["by_source"]["inventory"], 1)
 
     async def test_get_candidate_returns_single_row(self):
         from database import upsert_download_candidate
