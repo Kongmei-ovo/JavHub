@@ -33,6 +33,8 @@ test('inventory page shows mapping coverage and candidate handoff', () => {
   assert.match(inventory, /处理未映射演员/)
   assert.match(inventory, /source: 'inventory'/)
   assert.match(inventory, /getActorMappingSummary/)
+  assert.match(inventory, /job\.result\.unmapped/)
+  assert.match(inventory, /候选/)
   assert.match(inventoryActor, /转为候选/)
   assert.match(inventoryActor, /createDownloadCandidate/)
   assert.match(inventoryActor, /查看库存下载候选/)

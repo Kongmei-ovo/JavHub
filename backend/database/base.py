@@ -143,6 +143,7 @@ def init_db():
             snapshot_key TEXT,
             status TEXT DEFAULT 'pending',
             error_msg TEXT,
+            result_json TEXT,
             progress INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
@@ -154,6 +155,10 @@ def init_db():
         pass
     try:
         cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN progress INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN result_json TEXT")
     except Exception:
         pass
 

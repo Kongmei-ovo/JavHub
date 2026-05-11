@@ -355,6 +355,8 @@ class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(job["status"], "completed")
         self.assertIn("unmapped=1", job["error_msg"])
+        self.assertEqual(job["result"]["unmapped"], 1)
+        self.assertEqual(job["result"]["candidates"], 0)
 
     async def test_actor_compare_for_confirmed_mapping_creates_inventory_candidate(self):
         from database import (
@@ -392,6 +394,9 @@ class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(job["status"], "completed")
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0]["dvd_id"], "SIVR-438")
+        self.assertEqual(job["result"]["mapped"], 1)
+        self.assertEqual(job["result"]["missing"], 1)
+        self.assertEqual(job["result"]["candidates"], 1)
 
 
 class InventoryFillRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):

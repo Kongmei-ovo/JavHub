@@ -102,7 +102,16 @@ async def run_collect_job(job_id: int):
 
         update_inventory_progress(job_id, 95)
         # 更新作业，关联快照key
-        update_inventory_job(job_id, "completed", snapshot_key=snapshot_key)
+        update_inventory_job(
+            job_id,
+            "completed",
+            snapshot_key=snapshot_key,
+            result={
+                "snapshot_key": snapshot_key,
+                "actors": len(actors_data),
+                "videos": total,
+            },
+        )
         update_inventory_progress(job_id, 100)
         print(f"[Inventory] Collection job {job_id} completed. Snapshot: {snapshot_key}")
 
@@ -131,6 +140,8 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
         scanned = 0
         missing_total = 0
         unmapped = 0
+        failed = 0
+        mapped = 0
         pipeline = WatchlistPipeline()
 
         for actor in actors:
@@ -149,12 +160,15 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             except Exception as e:
                 print(f"[Inventory] Fetch failed for mapped actor {emby_actor_id}->{javinfo_actress_id}: {e}")
                 update_inventory_actor_stats(emby_actor_id, -1, -1)
+                failed += 1
                 continue
 
             if not javinfo_videos:
                 update_inventory_actor_stats(emby_actor_id, -1, -1)
+                failed += 1
                 continue
 
+            mapped += 1
             snapshot_videos = get_snapshot_videos(snapshot_key, emby_actor_id)
             total = 0
             missing = 0
@@ -194,7 +208,17 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
 
             update_inventory_actor_stats(emby_actor_id, total, missing)
 
-        update_inventory_job(job_id, "completed", error_msg=f"unmapped={unmapped}; missing={missing_total}")
+        result = {
+            "snapshot_key": snapshot_key,
+            "actors": len(actors),
+            "mapped": mapped,
+            "unmapped": unmapped,
+            "failed": failed,
+            "scanned": scanned,
+            "missing": missing_total,
+            "candidates": missing_total,
+        }
+        update_inventory_job(job_id, "completed", error_msg=f"unmapped={unmapped}; missing={missing_total}", result=result)
         print(f"[Inventory] Compare job {job_id} completed. Scanned: {scanned}, Missing: {missing_total}, Unmapped: {unmapped}")
 
     except Exception as e:
@@ -218,7 +242,21 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
         mapping = get_confirmed_actor_mapping(actress_id)
         if not mapping:
             update_inventory_actor_stats(actress_id, 0, 0)
-            update_inventory_job(job_id, "completed", "unmapped=1; missing=0")
+            update_inventory_job(
+                job_id,
+                "completed",
+                "unmapped=1; missing=0",
+                result={
+                    "snapshot_key": snapshot_key,
+                    "actors": 1,
+                    "mapped": 0,
+                    "unmapped": 1,
+                    "failed": 0,
+                    "scanned": 0,
+                    "missing": 0,
+                    "candidates": 0,
+                },
+            )
             print(f"[Inventory] Actor compare skipped unmapped Emby actor {actress_id}")
             return
 
@@ -264,7 +302,20 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                 missing += 1
 
         update_inventory_actor_stats(actress_id, total, missing)
-        update_inventory_job(job_id, "completed")
+        update_inventory_job(
+            job_id,
+            "completed",
+            result={
+                "snapshot_key": snapshot_key,
+                "actors": 1,
+                "mapped": 1,
+                "unmapped": 0,
+                "failed": 0,
+                "scanned": total,
+                "missing": missing,
+                "candidates": missing,
+            },
+        )
         print(f"[Inventory] Actor compare job {job_id} completed. Total: {total}, Missing: {missing}")
 
     except Exception as e:

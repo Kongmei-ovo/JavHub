@@ -207,7 +207,12 @@
             <div class="job-stats" v-if="job.result">
               <span v-if="job.result.scanned">已扫描 {{ job.result.scanned }}</span>
               <span v-if="job.result.missing" class="missing-tag">缺失 {{ job.result.missing }}</span>
+              <span v-if="job.result.candidates">候选 {{ job.result.candidates }}</span>
+              <span v-if="job.result.unmapped" class="unmapped-tag">未映射 {{ job.result.unmapped }}</span>
+              <span v-if="job.result.failed" class="failed-tag">失败 {{ job.result.failed }}</span>
+              <span v-if="job.result.actors && !job.result.scanned">演员 {{ job.result.actors }}</span>
             </div>
+            <div v-else-if="job.error_msg" class="job-error">{{ job.error_msg }}</div>
           </div>
         </div>
         <div v-if="!loadingJobs && jobs.length === 0" class="empty">暂无作业记录</div>
@@ -634,6 +639,10 @@ const fetchJobs = async () => {
   color: #999;
 }
 .missing-tag { color: #ff4d4f; }
+.unmapped-tag { color: #fa8c16; }
+.failed-tag,
+.job-error { color: #ff4d4f; }
+.job-error { font-size: 12px; margin-top: 4px; }
 .loading, .error, .empty { text-align: center; padding: 40px; color: #666; }
 .error { color: #ff4d4f; }
 

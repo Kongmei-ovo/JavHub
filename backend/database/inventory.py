@@ -1,4 +1,5 @@
 """库存对比数据库层"""
+import json
 from typing import Optional
 from database.base import get_db
 
@@ -39,13 +40,45 @@ def add_inventory_job(job_type: str, actor_id: Optional[int] = None, snapshot_ke
         )
         return cursor.lastrowid
 
-def update_inventory_job(job_id: int, status: str, error_msg: Optional[str] = None, snapshot_key: Optional[str] = None):
+def _decode_inventory_job(row) -> Optional[dict]:
+    if not row:
+        return None
+    data = dict(row)
+    raw_result = data.pop("result_json", None)
+    if raw_result:
+        try:
+            data["result"] = json.loads(raw_result)
+        except Exception:
+            data["result"] = None
+    else:
+        data["result"] = None
+    return data
+
+
+def update_inventory_job(
+    job_id: int,
+    status: str,
+    error_msg: Optional[str] = None,
+    snapshot_key: Optional[str] = None,
+    result: Optional[dict] = None,
+):
+    result_json = json.dumps(result, ensure_ascii=False) if result is not None else None
     with get_db() as conn:
         cursor = conn.cursor()
-        if snapshot_key is not None:
+        if snapshot_key is not None and result is not None:
+            cursor.execute(
+                "UPDATE inventory_jobs SET status = ?, error_msg = ?, snapshot_key = ?, result_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (status, error_msg, snapshot_key, result_json, job_id)
+            )
+        elif snapshot_key is not None:
             cursor.execute(
                 "UPDATE inventory_jobs SET status = ?, error_msg = ?, snapshot_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (status, error_msg, snapshot_key, job_id)
+            )
+        elif result is not None:
+            cursor.execute(
+                "UPDATE inventory_jobs SET status = ?, error_msg = ?, result_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (status, error_msg, result_json, job_id)
             )
         elif error_msg:
             cursor.execute(
@@ -71,14 +104,14 @@ def get_inventory_jobs(limit: int = 50) -> list:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM inventory_jobs ORDER BY created_at DESC LIMIT ?", (limit,))
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [_decode_inventory_job(row) for row in rows]
 
 def get_inventory_job(job_id: int) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM inventory_jobs WHERE id = ?", (job_id,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return _decode_inventory_job(row)
 
 # === Inventory Actors ===
 
