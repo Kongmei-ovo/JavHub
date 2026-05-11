@@ -171,6 +171,13 @@
 
     <div v-else-if="activeTab === 'candidates'" class="candidate-panel">
       <div class="candidate-toolbar">
+        <input
+          v-model="candidateFilter.q"
+          class="candidate-search-input"
+          placeholder="搜索番号、标题、演员"
+          @keyup.enter="loadCandidates"
+        />
+        <button class="chip" @click="loadCandidates">搜索</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
@@ -291,6 +298,7 @@ export default {
         status: this.$route.query.status || 'candidate',
         source: this.$route.query.source || '',
         actress_id: this.$route.query.actress_id || '',
+        q: this.$route.query.q || '',
         needs_magnet: this.$route.query.needs_magnet === '1' ? true : null
       },
       timer: null,
@@ -338,13 +346,27 @@ export default {
         if (this.candidateFilter.status) params.status = this.candidateFilter.status
         if (this.candidateFilter.source) params.source = this.candidateFilter.source
         if (this.candidateFilter.actress_id) params.actress_id = this.candidateFilter.actress_id
+        if (this.candidateFilter.q) params.q = this.candidateFilter.q
         if (this.candidateFilter.needs_magnet !== null) params.needs_magnet = this.candidateFilter.needs_magnet
         const resp = await api.listDownloadCandidates(params)
         this.candidates = resp.data.data || []
         this.candidateStats = resp.data.stats || this.candidateStats
         this.selectedCandidateIds = this.selectedCandidateIds.filter(id => this.candidates.some(c => c.id === id))
+        this.syncCandidateRoute()
       } catch (e) {
         console.error('Failed to load candidates:', e)
+      }
+    },
+    syncCandidateRoute() {
+      if (this.activeTab !== 'candidates') return
+      const query = { tab: 'candidates' }
+      if (this.candidateFilter.status) query.status = this.candidateFilter.status
+      if (this.candidateFilter.source) query.source = this.candidateFilter.source
+      if (this.candidateFilter.actress_id) query.actress_id = this.candidateFilter.actress_id
+      if (this.candidateFilter.q) query.q = this.candidateFilter.q
+      if (this.candidateFilter.needs_magnet === true) query.needs_magnet = '1'
+      if (JSON.stringify(query) !== JSON.stringify(this.$route.query)) {
+        this.$router.replace({ query }).catch(() => {})
       }
     },
     setCandidateStatus(status) {
@@ -589,6 +611,19 @@ export default {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
+}
+.candidate-search-input {
+  min-width: min(260px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.candidate-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 .bulk-toolbar {
   display: flex;
