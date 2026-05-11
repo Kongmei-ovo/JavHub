@@ -252,6 +252,13 @@ export default {
     this._stopSupplementPolling()
     if (this._yearObserver) this._yearObserver.disconnect()
   },
+  watch: {
+    actressId(newId, oldId) {
+      if (newId && newId !== oldId) {
+        this.loadSupplementStatus()
+      }
+    },
+  },
   methods: {
     async loadActressInfo() {
       try {

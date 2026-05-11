@@ -88,7 +88,7 @@
             <div class="job-main">
               <div class="job-info">
                 <span class="job-id">#{{ job.id }}</span>
-                <span class="job-actor">{{ job.source_actor_name || `演员 ${job.local_actress_id}` }}</span>
+                <span class="job-actor">{{ jobLabel(job) }}</span>
                 <span
                   class="job-status"
                   :class="`status-${job.status}`"
@@ -103,7 +103,11 @@
                 {{ job.created_at ? new Date(job.created_at).toLocaleString() : '' }}
               </div>
             </div>
-            <div v-if="job.last_error && job.status === 'failed'" class="job-error">
+            <div
+              v-if="job.last_error"
+              class="job-message"
+              :class="job.status === 'failed' ? 'job-error' : 'job-warning'"
+            >
               {{ job.last_error }}
             </div>
             <div class="job-actions">
@@ -176,9 +180,10 @@
               <span class="movie-date">{{ movie.release_date || '' }}</span>
               <span
                 class="movie-match"
-                :class="{ 'matched': movie.matched_content_id }"
+                :class="movieMatchClass(movie)"
+                :title="movie.match_reason || ''"
               >
-                {{ movie.matched_content_id ? `已匹配 ${movie.matched_content_id}` : '未匹配' }}
+                {{ movieMatchLabel(movie) }}
               </span>
             </div>
             <div class="movie-actions">
@@ -188,6 +193,10 @@
                 :disabled="enrichingMovies[movie.id]"
                 @click="enrichMovie(movie)"
               >{{ enrichingMovies[movie.id] ? '排队中...' : '补详情' }}</button>
+              <button
+                class="btn btn-ghost btn-sm"
+                @click="openMovieSources(movie)"
+              >诊断</button>
               <a
                 v-if="movie.matched_content_id"
                 :href="`/search?q=${movie.matched_content_id}`"
@@ -211,11 +220,95 @@
         </div>
       </div>
     </div>
+
+    <div v-if="sourceDiagnosticsOpen" class="diagnostics-overlay" @click.self="closeMovieSources">
+      <div class="diagnostics-panel">
+        <div class="diagnostics-header">
+          <div>
+            <h2>{{ diagnosticsMovieTitle }}</h2>
+            <p>{{ diagnosticsMovieSubtitle }}</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" @click="closeMovieSources">关闭</button>
+        </div>
+        <div v-if="sourceDiagnosticsLoading" class="loading-wrap"><div class="spinner-large"></div></div>
+        <div v-else-if="sourceDiagnostics" class="diagnostics-body">
+          <section class="diagnostics-section">
+            <h3>选中字段</h3>
+            <div v-if="sourceDiagnostics.chosen_fields?.length" class="diagnostics-table">
+              <div class="diagnostics-row diagnostics-row-head">
+                <span>字段</span>
+                <span>来源</span>
+                <span>值</span>
+              </div>
+              <div v-for="field in sourceDiagnostics.chosen_fields" :key="`chosen-${field.field_name}`" class="diagnostics-row">
+                <span>{{ fieldLabel(field.field_name) }}</span>
+                <span>{{ field.source }}</span>
+                <span class="diagnostics-value">{{ fieldValuePreview(field.field_value) }}</span>
+              </div>
+            </div>
+            <div v-else class="empty-state-mini">暂无字段来源</div>
+          </section>
+
+          <section class="diagnostics-section">
+            <h3>源身份</h3>
+            <div v-if="sourceDiagnostics.identities?.length" class="identity-list">
+              <a
+                v-for="identity in sourceDiagnostics.identities"
+                :key="`${identity.source}-${identity.source_movie_id}`"
+                :href="identity.source_url || '#'"
+                class="identity-chip"
+                target="_blank"
+              >
+                {{ identity.source }}: {{ identity.source_movie_id }}
+              </a>
+            </div>
+            <div v-else class="empty-state-mini">暂无源身份</div>
+          </section>
+
+          <section class="diagnostics-section">
+            <h3>详情来源</h3>
+            <div v-if="sourceDiagnostics.details?.length" class="detail-source-list">
+              <div v-for="detail in sourceDiagnostics.details" :key="`${detail.source}-${detail.source_movie_id}`" class="detail-source-item">
+                <div class="detail-source-title">
+                  <span>{{ detail.source }}</span>
+                  <span>{{ detail.source_movie_id }}</span>
+                </div>
+                <div class="detail-source-meta">
+                  <span v-if="detail.runtime_mins">{{ detail.runtime_mins }} 分钟</span>
+                  <span v-if="detail.maker_name">{{ detail.maker_name }}</span>
+                  <span v-if="detail.label_name">{{ detail.label_name }}</span>
+                  <span v-if="detail.genres?.length">{{ detail.genres.slice(0, 4).join(' / ') }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state-mini">暂无详情来源</div>
+          </section>
+
+          <section class="diagnostics-section">
+            <h3>匹配候选</h3>
+            <div v-if="sourceDiagnostics.match_candidates?.length" class="diagnostics-table">
+              <div class="diagnostics-row diagnostics-row-head">
+                <span>content_id</span>
+                <span>分数</span>
+                <span>状态</span>
+              </div>
+              <div v-for="candidate in sourceDiagnostics.match_candidates" :key="candidate.candidate_content_id" class="diagnostics-row">
+                <span>{{ candidate.candidate_content_id }}</span>
+                <span>{{ candidate.score }}</span>
+                <span>{{ candidate.status }}</span>
+              </div>
+            </div>
+            <div v-else class="empty-state-mini">暂无匹配候选</div>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import api from '../api'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'SupplementManagement',
@@ -247,6 +340,9 @@ export default {
       moviesTotalCount: 0,
       moviesTotalPages: 1,
       movieFilters: { matched: false, quality: '', actress_id: '', q: '' },
+      sourceDiagnosticsOpen: false,
+      sourceDiagnosticsLoading: false,
+      sourceDiagnostics: null,
     }
   },
   watch: {
@@ -272,6 +368,74 @@ export default {
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }
       return map[status] || status || '未知'
+    },
+    jobLabel(job) {
+      if (job.job_type === 'movie_detail') {
+        return job.source_movie_id ? `影片 ${job.source_movie_id}` : '影片详情'
+      }
+      return job.source_actor_name || (job.local_actress_id ? `演员 ${job.local_actress_id}` : '演员任务')
+    },
+    movieMatchState(movie) {
+      if (movie?.matched_content_id) return 'matched'
+      if (movie?.match_status === 'manual_ignored') return 'ignored'
+      if (movie?.match_status === 'candidate' || (movie?.match_candidate_count ?? 0) > 0) return 'candidate'
+      return 'supplement-only'
+    },
+    movieMatchClass(movie) {
+      return this.movieMatchState(movie)
+    },
+    movieMatchLabel(movie) {
+      const state = this.movieMatchState(movie)
+      if (state === 'matched') return `已匹配 ${movie.matched_content_id}`
+      if (state === 'candidate') {
+        const count = movie.match_candidate_count ?? 0
+        return count > 0 ? `待确认 ${count}` : '待确认'
+      }
+      if (state === 'ignored') return '已忽略'
+      return '仅补全'
+    },
+    fieldLabel(fieldName) {
+      const map = {
+        title: '标题',
+        release_date: '发行日',
+        runtime_mins: '时长',
+        cover_url: '封面',
+        cover_thumb_url: '缩略图',
+        maker_name: '厂商',
+        label_name: '厂牌',
+        series_name: '系列',
+        category_names: '分类',
+        actor_names: '演员',
+        sample_image_urls: '样张',
+        sample_movie_url: '预告',
+        source_url: '来源链接',
+        display_number: '展示番号',
+        normalized_number: '规范番号',
+      }
+      return map[fieldName] || fieldName
+    },
+    fieldValuePreview(value) {
+      if (!value) return ''
+      const text = String(value)
+      return text.length > 140 ? `${text.slice(0, 140)}...` : text
+    },
+    closeMovieSources() {
+      this.sourceDiagnosticsOpen = false
+      this.sourceDiagnostics = null
+    },
+    async openMovieSources(movie) {
+      if (!movie?.id) return
+      this.sourceDiagnosticsOpen = true
+      this.sourceDiagnosticsLoading = true
+      this.sourceDiagnostics = null
+      try {
+        const resp = await api.getSupplementMovieSources(movie.id)
+        this.sourceDiagnostics = resp.data || resp
+      } catch (e) {
+        console.error('Load movie sources failed:', e)
+      } finally {
+        this.sourceDiagnosticsLoading = false
+      }
     },
     async loadStats() {
       this.statsLoading = true
@@ -357,7 +521,10 @@ export default {
       if (!movie?.source_movie_id || this.enrichingMovies[movie.id]) return
       this.enrichingMovies = { ...this.enrichingMovies, [movie.id]: true }
       try {
-        await api.startSupplementMovieDetailJob(movie.source_movie_id, movie.source || 'avbase')
+        await api.startSupplementMovieDetailJob(movie.source_movie_id, 'all', movie.local_actress_id)
+        ElMessage.success('已加入详情任务队列')
+        this.activeTab = 'jobs'
+        this.jobPage = 1
         await this.loadJobs()
       } catch (e) {
         console.error('Start movie detail job failed:', e)
@@ -371,7 +538,7 @@ export default {
       if (this.batchEnriching) return
       this.batchEnriching = true
       try {
-        const params = { source: 'avbase', limit: 20 }
+        const params = { source: 'all', limit: 20 }
         if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
         if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
         if (this.movieFilters.q) params.q = this.movieFilters.q
@@ -381,12 +548,25 @@ export default {
         if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
         if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
         await api.startSupplementMovieDetailBatchJobs(params)
+        ElMessage.success('已批量加入详情任务队列')
+        this.activeTab = 'jobs'
+        this.jobPage = 1
         await this.loadJobs()
       } catch (e) {
         console.error('Start batch movie detail jobs failed:', e)
       } finally {
         this.batchEnriching = false
       }
+    },
+  },
+  computed: {
+    diagnosticsMovieTitle() {
+      const movie = this.sourceDiagnostics?.movie
+      return movie?.dvd_id || movie?.canonical_number || '来源诊断'
+    },
+    diagnosticsMovieSubtitle() {
+      const movie = this.sourceDiagnostics?.movie
+      return movie?.title || movie?.matched_content_id || ''
     },
   },
 }
@@ -588,13 +768,22 @@ export default {
   color: var(--text-muted);
 }
 
-.job-error {
+.job-message {
   margin-top: 8px;
   padding: 6px 10px;
-  background: rgba(239, 68, 68, 0.08);
   border-radius: 6px;
   font-size: 12px;
+  line-height: 1.5;
+}
+
+.job-error {
+  background: rgba(239, 68, 68, 0.08);
   color: #f87171;
+}
+
+.job-warning {
+  background: rgba(251, 191, 36, 0.10);
+  color: #fbbf24;
 }
 
 .job-actions {
@@ -662,8 +851,8 @@ export default {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
   white-space: nowrap;
 }
 
@@ -672,9 +861,160 @@ export default {
   color: #4ade80;
 }
 
+.movie-match.candidate {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.movie-match.supplement-only {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+.movie-match.ignored {
+  background: rgba(100, 116, 139, 0.14);
+  color: #94a3b8;
+}
+
 .movie-actions {
   display: flex;
   gap: 6px;
+}
+
+.diagnostics-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 56px 24px;
+  background: rgba(0, 0, 0, 0.52);
+  overflow: auto;
+}
+
+.diagnostics-panel {
+  width: min(960px, 100%);
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+.diagnostics-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.diagnostics-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.diagnostics-header p {
+  margin: 4px 0 0;
+  max-width: 720px;
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostics-body {
+  display: grid;
+  gap: 18px;
+  padding: 18px 22px 24px;
+}
+
+.diagnostics-section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.diagnostics-table {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.diagnostics-row {
+  display: grid;
+  grid-template-columns: 140px 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--bg-secondary);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.diagnostics-row-head {
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.diagnostics-value {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.identity-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.identity-chip {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.detail-source-list {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-source-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.detail-source-title,
+.detail-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.detail-source-title {
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-source-meta {
+  color: var(--text-muted);
 }
 
 /* Pagination */

@@ -149,6 +149,18 @@ async def list_supplement_movies(
     return await client.proxy_get("/api/v1/supplement/movies", params=params)
 
 
+@router.get("/movies/{movie_id}/sources")
+async def get_movie_sources(movie_id: int) -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
+
+
+@router.get("/sources")
+async def list_sources() -> list[dict[str, Any]]:
+    client = get_info_client()
+    return await client.proxy_get("/api/v1/supplement/sources", params=None)
+
+
 @router.post("/movies/detail")
 async def enrich_movie_detail(
     source_movie_id: str = Query(...),
@@ -167,13 +179,18 @@ async def enrich_movie_detail(
 async def create_movie_detail_job(
     source_movie_id: str = Query(...),
     source: str = Query("avbase"),
+    actress_id: int | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
     smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
     src = source.default if hasattr(source, "default") else source
+    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
+    params: dict[str, Any] = {"source": src, "source_movie_id": smid}
+    if aid is not None:
+        params["actress_id"] = aid
     return await client.proxy_post(
         "/api/v1/supplement/movies/detail/jobs",
-        params={"source": src, "source_movie_id": smid},
+        params=params,
     )
 
 

@@ -326,15 +326,25 @@ export default {
     return api.get('/v1/supplement/movies', { params })
   },
 
-  enrichSupplementMovieDetail(sourceMovieId, source = 'avbase') {
+  getSupplementMovieSources(movieId) {
+    return api.get(`/v1/supplement/movies/${movieId}/sources`)
+  },
+
+  listSupplementSources() {
+    return api.get('/v1/supplement/sources')
+  },
+
+  enrichSupplementMovieDetail(sourceMovieId, source = 'all') {
     return api.post('/v1/supplement/movies/detail', null, {
       params: { source, source_movie_id: sourceMovieId },
     })
   },
 
-  startSupplementMovieDetailJob(sourceMovieId, source = 'avbase') {
+  startSupplementMovieDetailJob(sourceMovieId, source = 'all', actressId = null) {
+    const params = { source, source_movie_id: sourceMovieId }
+    if (actressId) params.actress_id = actressId
     return api.post('/v1/supplement/movies/detail/jobs', null, {
-      params: { source, source_movie_id: sourceMovieId },
+      params,
     })
   },
 

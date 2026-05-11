@@ -53,3 +53,91 @@ test('openVideoModal keeps modal usable when metadata request fails', async () =
 
   resetModal()
 })
+
+test('openVideoModal does not request primary detail APIs for supplement-only videos', async () => {
+  resetModal()
+  let getVideoCalls = 0
+  let getVideoMetadataCalls = 0
+  const api = {
+    getVideo: () => {
+      getVideoCalls += 1
+      return Promise.resolve({ data: { title_ja: 'Unexpected primary detail' } })
+    },
+    getVideoMetadata: () => {
+      getVideoMetadataCalls += 1
+      return Promise.resolve({ data: { title_ja: 'Unexpected metadata' } })
+    },
+  }
+
+  openVideoModal({
+    content_id: 'supp:1',
+    resolved_id: 'supp:1',
+    data_origin: 'supplement',
+    dvd_id: 'UMD-1010',
+    title_ja: 'Supplement title',
+  }, '/actor/糸井瑠花', api)
+  await Promise.resolve()
+  await nextTick()
+
+  assert.equal(modalState.visible, true)
+  assert.equal(modalState.selectedVideo.title_ja, 'Supplement title')
+  assert.equal(modalState.selectedVideo._loading.javinfo, false)
+  assert.equal(modalState.selectedVideo._loading.metatube, false)
+  assert.equal(getVideoCalls, 0)
+  assert.equal(getVideoMetadataCalls, 0)
+
+  resetModal()
+})
+
+test('openVideoModal enriches supplement-only videos from chosen supplement fields', async () => {
+  resetModal()
+  let supplementSourcesId = null
+  const api = {
+    getVideo: () => Promise.reject(new Error('primary detail should not be requested')),
+    getVideoMetadata: () => Promise.reject(new Error('metadata should not be requested')),
+    getSupplementMovieSources: (movieId) => {
+      supplementSourcesId = movieId
+      return Promise.resolve({
+        data: {
+          chosen_fields: [
+            { field_name: 'maker_name', field_value: 'LEO' },
+            { field_name: 'label_name', field_value: 'LEO' },
+            { field_name: 'series_name', field_value: '----' },
+            { field_name: 'category_names', field_value: '["姉・妹"]' },
+            { field_name: 'actor_names', field_value: '["糸井瑠花","凰華りん"]' },
+            { field_name: 'cover_url', field_value: 'https://example.test/pl.jpg' },
+            { field_name: 'cover_thumb_url', field_value: 'https://example.test/ps.jpg' },
+            { field_name: 'sample_movie_url', field_value: 'https://example.test/sample.mp4' },
+          ],
+        },
+      })
+    },
+  }
+
+  openVideoModal({
+    content_id: 'supp:1',
+    resolved_id: 'supp:1',
+    data_origin: 'supplement',
+    dvd_id: 'UMD-1010',
+    title_ja: 'Supplement title',
+  }, '/actor/糸井瑠花', api)
+  await Promise.resolve()
+  await Promise.resolve()
+  await nextTick()
+
+  assert.equal(supplementSourcesId, 1)
+  assert.deepEqual(modalState.selectedVideo.maker, { name_ja: 'LEO', name_en: 'LEO' })
+  assert.deepEqual(modalState.selectedVideo.label, { name_ja: 'LEO', name_en: 'LEO' })
+  assert.equal(modalState.selectedVideo.series, undefined)
+  assert.deepEqual(modalState.selectedVideo.categories, [{ id: '姉・妹', name_ja: '姉・妹', name_en: '姉・妹' }])
+  assert.deepEqual(modalState.selectedVideo.actresses, [
+    { id: '糸井瑠花', name_kanji: '糸井瑠花', name_romaji: '糸井瑠花' },
+    { id: '凰華りん', name_kanji: '凰華りん', name_romaji: '凰華りん' },
+  ])
+  assert.equal(modalState.selectedVideo.jacket_full_url, 'https://example.test/pl.jpg')
+  assert.equal(modalState.selectedVideo.jacket_thumb_url, 'https://example.test/ps.jpg')
+  assert.equal(modalState.selectedVideo.sample_url, 'https://example.test/sample.mp4')
+  assert.equal(modalState.selectedVideo._loading.supplement, false)
+
+  resetModal()
+})

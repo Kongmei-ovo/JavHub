@@ -10,6 +10,14 @@ function metadataLoadedFor(video) {
   return metadataLoaded.call({ video })
 }
 
+function galleryThumbsFor(video) {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const match = source.match(/galleryThumbs\(\) \{([\s\S]*?)\n    \},\n  \},/)
+  assert.ok(match, 'galleryThumbs computed property should be present')
+  const galleryThumbs = new Function(`return function galleryThumbs() {${match[1]}\n}`)()
+  return galleryThumbs.call({ video })
+}
+
 test('metadataLoaded resolves when MetaTube loading finishes with empty metadata', () => {
   assert.equal(metadataLoadedFor({
     content_id: 'MIAA-784',
@@ -22,4 +30,11 @@ test('metadataLoaded remains true when legacy callers provide metadata fields', 
     content_id: 'MIAA-784',
     summary: 'Metadata summary',
   }), true)
+})
+
+test('galleryThumbs uses supplement sample image urls when present', () => {
+  assert.deepEqual(galleryThumbsFor({
+    content_id: 'supp:1',
+    sample_image_urls: ['https://example.test/1.jpg', 'https://example.test/2.jpg'],
+  }), ['https://example.test/1.jpg', 'https://example.test/2.jpg'])
 })

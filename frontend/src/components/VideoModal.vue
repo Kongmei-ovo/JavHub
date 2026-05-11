@@ -406,6 +406,9 @@ export default {
     },
     galleryThumbs() {
       if (!this.video) return []
+      if (Array.isArray(this.video.sample_image_urls) && this.video.sample_image_urls.length) {
+        return this.video.sample_image_urls
+      }
       const first = this.video.gallery_thumb_first
       const last = this.video.gallery_thumb_last
       if (!first || !last) return []

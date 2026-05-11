@@ -258,6 +258,24 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_get_movie_sources(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = {"movie": {"id": 12}, "field_values": []}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.get_movie_sources(movie_id=12)
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/movies/12/sources")
+
+    async def test_list_sources(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_get.return_value = [{"source": "avbase"}]
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.list_sources()
+
+        mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/sources", params=None)
+
     async def test_enrich_movie_detail_passes_source_movie_id(self):
         mock_client = AsyncMock()
         mock_client.proxy_post.return_value = {"source": "avbase", "source_movie_id": "prestige:SIVR-438"}
@@ -280,6 +298,22 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
         mock_client.proxy_post.assert_awaited_once_with(
             "/api/v1/supplement/movies/detail/jobs",
             params={"source": "avbase", "source_movie_id": "prestige:SIVR-438"},
+        )
+
+    async def test_create_movie_detail_job_passes_actress_id(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 3, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.create_movie_detail_job(
+                source_movie_id="prestige:SIVR-438",
+                source="all",
+                actress_id=1098399,
+            )
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/movies/detail/jobs",
+            params={"source": "all", "source_movie_id": "prestige:SIVR-438", "actress_id": 1098399},
         )
 
     async def test_create_movie_detail_batch_jobs_passes_filters(self):

@@ -199,6 +199,87 @@ test('startSupplementMovieDetailJob sends POST with source movie id', async (t) 
   assert.equal(capturedConfig.params.source_movie_id, 'prestige:SIVR-438')
 })
 
+test('startSupplementMovieDetailJob defaults to all sources', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-job-default-${Date.now()}`)
+  await api.startSupplementMovieDetailJob('SIVR-397')
+
+  assert.equal(capturedConfig.params.source, 'all')
+  assert.equal(capturedConfig.params.source_movie_id, 'SIVR-397')
+})
+
+test('startSupplementMovieDetailJob forwards actress id when provided', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-job-actress-${Date.now()}`)
+  await api.startSupplementMovieDetailJob('SIVR-397', 'all', 1098399)
+
+  assert.equal(capturedConfig.params.source, 'all')
+  assert.equal(capturedConfig.params.source_movie_id, 'SIVR-397')
+  assert.equal(capturedConfig.params.actress_id, 1098399)
+})
+
+test('enrichSupplementMovieDetail defaults to all sources', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { source: 'all' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-detail-default-${Date.now()}`)
+  await api.enrichSupplementMovieDetail('SIVR-397')
+
+  assert.equal(capturedConfig.params.source, 'all')
+  assert.equal(capturedConfig.params.source_movie_id, 'SIVR-397')
+})
+
+test('getSupplementMovieSources sends GET to movie sources path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { movie: { id: 12 } } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-movie-sources-${Date.now()}`)
+  await api.getSupplementMovieSources(12)
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies/12/sources')
+  assert.equal(capturedConfig.method, 'get')
+})
+
+test('listSupplementSources sends GET to sources path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-sources-${Date.now()}`)
+  await api.listSupplementSources()
+
+  assert.equal(capturedConfig.url, '/v1/supplement/sources')
+  assert.equal(capturedConfig.method, 'get')
+})
+
 test('startSupplementMovieDetailBatchJobs sends POST with filters', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
