@@ -49,6 +49,8 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /approveDownloadCandidate/)
   assert.match(home, /rejectDownloadCandidate/)
   assert.match(home, /updateDownloadCandidateMagnet/)
+  assert.match(home, /bulkRejectDownloadCandidates/)
+  assert.match(home, /批量恢复/)
   assert.match(home, /error_msg/)
   assert.match(home, /已关联任务/)
   assert.match(home, /重试/)

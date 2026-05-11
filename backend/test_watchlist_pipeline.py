@@ -296,6 +296,28 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["data"]["id"], candidate["id"])
         self.assertEqual(result["data"]["source"], "subscription")
 
+    async def test_bulk_candidate_actions_skip_sent_rows(self):
+        from database import get_download_candidate, upsert_download_candidate
+        from routers import downloads
+
+        candidate = upsert_download_candidate(content_id="SIVR-438", status="candidate")
+        failed = upsert_download_candidate(content_id="ABP-588", status="failed")
+        sent = upsert_download_candidate(content_id="MIAA-999", status="sent")
+
+        rejected = await downloads.bulk_reject_candidates(downloads.BulkCandidateRequest(
+            ids=[candidate["id"], failed["id"], sent["id"]],
+        ))
+        self.assertEqual(rejected["updated"], 2)
+        self.assertEqual(rejected["skipped"], 1)
+        self.assertEqual(get_download_candidate(sent["id"])["status"], "sent")
+
+        restored = await downloads.bulk_restore_candidates(downloads.BulkCandidateRequest(
+            ids=[candidate["id"], failed["id"], sent["id"]],
+        ))
+        self.assertEqual(restored["updated"], 2)
+        self.assertEqual(get_download_candidate(candidate["id"])["status"], "candidate")
+        self.assertEqual(get_download_candidate(failed["id"])["status"], "candidate")
+
 
 class ActorMappingRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_confirm_ignore_and_list_mapping_api(self):

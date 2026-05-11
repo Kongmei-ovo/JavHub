@@ -240,6 +240,44 @@ def set_download_candidate_status(
         return dict(row) if row else None
 
 
+def bulk_set_download_candidate_status(
+    candidate_ids: list[int],
+    status: str,
+    allowed_current_statuses: set[str] | None = None,
+) -> dict:
+    if status not in VALID_CANDIDATE_STATUSES:
+        raise ValueError(f"invalid download candidate status: {status}")
+    ids = [int(candidate_id) for candidate_id in candidate_ids if int(candidate_id) > 0]
+    if not ids:
+        return {"updated": 0, "skipped": 0, "ids": []}
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join("?" for _ in ids)
+        cursor.execute(f"SELECT id, status FROM download_candidates WHERE id IN ({placeholders})", ids)
+        rows = [dict(row) for row in cursor.fetchall()]
+        allowed_ids = [
+            row["id"]
+            for row in rows
+            if allowed_current_statuses is None or row.get("status") in allowed_current_statuses
+        ]
+        if allowed_ids:
+            update_placeholders = ",".join("?" for _ in allowed_ids)
+            cursor.execute(
+                f'''
+                UPDATE download_candidates
+                SET status = ?, error_msg = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id IN ({update_placeholders})
+                ''',
+                [status, *allowed_ids],
+            )
+        return {
+            "updated": len(allowed_ids),
+            "skipped": max(len(ids) - len(allowed_ids), 0),
+            "ids": allowed_ids,
+        }
+
+
 def download_candidate_stats() -> dict:
     with get_db() as conn:
         cursor = conn.cursor()

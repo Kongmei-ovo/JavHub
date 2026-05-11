@@ -178,6 +178,17 @@
         <button class="chip" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
         <button class="chip" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
+        <button class="chip" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
+          {{ selectingCandidates ? '退出选择' : '选择' }}
+        </button>
+      </div>
+
+      <div v-if="selectingCandidates" class="bulk-toolbar">
+        <span>已选 {{ selectedCandidateIds.length }} 个</span>
+        <button class="btn btn-ghost" @click="selectAllVisibleCandidates">选择当前页</button>
+        <button class="btn btn-ghost" @click="clearCandidateSelection">清空</button>
+        <button class="btn btn-ghost" :disabled="selectedCandidateIds.length === 0" @click="bulkRejectCandidates">批量拒绝</button>
+        <button class="btn btn-primary" :disabled="selectedCandidateIds.length === 0" @click="bulkRestoreCandidates">批量恢复</button>
       </div>
 
       <div v-if="filteredCandidates.length > 0" class="tasks-grid">
@@ -186,6 +197,13 @@
           :key="candidate.id"
           class="task-card av-card candidate-card"
         >
+          <label v-if="selectingCandidates" class="candidate-select" @click.stop>
+            <input
+              type="checkbox"
+              :checked="selectedCandidateIds.includes(candidate.id)"
+              @change="toggleCandidateSelected(candidate.id)"
+            />
+          </label>
           <div class="task-cover">
             <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" />
             <div v-else class="cover-placeholder">
@@ -276,6 +294,8 @@ export default {
         needs_magnet: this.$route.query.needs_magnet === '1' ? true : null
       },
       timer: null,
+      selectingCandidates: false,
+      selectedCandidateIds: [],
       statsLoaded: false
     }
   },
@@ -322,6 +342,7 @@ export default {
         const resp = await api.listDownloadCandidates(params)
         this.candidates = resp.data.data || []
         this.candidateStats = resp.data.stats || this.candidateStats
+        this.selectedCandidateIds = this.selectedCandidateIds.filter(id => this.candidates.some(c => c.id === id))
       } catch (e) {
         console.error('Failed to load candidates:', e)
       }
@@ -335,6 +356,36 @@ export default {
       this.candidateFilter.status = 'candidate'
       this.candidateFilter.needs_magnet = needs
       this.loadCandidates()
+    },
+    toggleCandidateSelection() {
+      this.selectingCandidates = !this.selectingCandidates
+      if (!this.selectingCandidates) this.selectedCandidateIds = []
+    },
+    toggleCandidateSelected(id) {
+      if (this.selectedCandidateIds.includes(id)) {
+        this.selectedCandidateIds = this.selectedCandidateIds.filter(item => item !== id)
+      } else {
+        this.selectedCandidateIds = [...this.selectedCandidateIds, id]
+      }
+    },
+    selectAllVisibleCandidates() {
+      this.selectedCandidateIds = [...new Set([...this.selectedCandidateIds, ...this.candidates.map(c => c.id)])]
+    },
+    clearCandidateSelection() {
+      this.selectedCandidateIds = []
+    },
+    async bulkRejectCandidates() {
+      if (this.selectedCandidateIds.length === 0) return
+      if (!window.confirm(`拒绝 ${this.selectedCandidateIds.length} 个下载候选？`)) return
+      await api.bulkRejectDownloadCandidates(this.selectedCandidateIds)
+      this.selectedCandidateIds = []
+      await this.loadCandidates()
+    },
+    async bulkRestoreCandidates() {
+      if (this.selectedCandidateIds.length === 0) return
+      await api.bulkRestoreDownloadCandidates(this.selectedCandidateIds)
+      this.selectedCandidateIds = []
+      await this.loadCandidates()
     },
     async editCandidateMagnet(candidate) {
       const magnet = window.prompt('输入 magnet 链接', candidate.magnet || '')
@@ -539,6 +590,20 @@ export default {
   gap: 8px;
   margin-bottom: 16px;
 }
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
 .chip {
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -557,6 +622,22 @@ export default {
   object-fit: cover;
   display: block;
 }
+.candidate-card { position: relative; }
+.candidate-select {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.candidate-select input { width: 16px; height: 16px; accent-color: var(--accent); }
 .candidate-subtitle,
 .candidate-magnet,
 .candidate-reason,

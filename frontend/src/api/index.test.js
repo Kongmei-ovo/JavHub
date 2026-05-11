@@ -438,6 +438,8 @@ test('download candidate APIs send expected requests', async (t) => {
   await api.updateDownloadCandidateMagnet(7, 'magnet:?xt=urn:btih:abc')
   await api.approveDownloadCandidate(7)
   await api.rejectDownloadCandidate(8)
+  await api.bulkRejectDownloadCandidates([7, 8])
+  await api.bulkRestoreDownloadCandidates([9])
 
   assert.equal(calls[0].url, '/v1/downloads/candidates')
   assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true })
@@ -447,6 +449,10 @@ test('download candidate APIs send expected requests', async (t) => {
   assert.deepEqual(JSON.parse(calls[3].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
   assert.equal(calls[4].url, '/v1/downloads/candidates/7/approve')
   assert.equal(calls[5].url, '/v1/downloads/candidates/8/reject')
+  assert.equal(calls[6].url, '/v1/downloads/candidates/bulk/reject')
+  assert.deepEqual(JSON.parse(calls[6].data), { ids: [7, 8] })
+  assert.equal(calls[7].url, '/v1/downloads/candidates/bulk/restore')
+  assert.deepEqual(JSON.parse(calls[7].data), { ids: [9] })
 })
 
 test('actor mapping APIs send expected requests', async (t) => {

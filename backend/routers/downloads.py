@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional, Dict
 from database import (
+    bulk_set_download_candidate_status,
     get_download_candidate,
     get_download_tasks,
     delete_download_task,
@@ -38,6 +39,10 @@ class CreateCandidateRequest(BaseModel):
 class UpdateCandidateMagnetRequest(BaseModel):
     magnet: str
     magnet_source: str = "manual"
+
+
+class BulkCandidateRequest(BaseModel):
+    ids: list[int]
 
 @router.post("")
 async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
@@ -118,6 +123,26 @@ async def update_candidate_magnet(candidate_id: int, req: UpdateCandidateMagnetR
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return {"status": "ok", "candidate": candidate}
+
+
+@router.post("/candidates/bulk/reject")
+async def bulk_reject_candidates(req: BulkCandidateRequest) -> Dict[str, Any]:
+    result = bulk_set_download_candidate_status(
+        req.ids,
+        "rejected",
+        allowed_current_statuses={"candidate", "failed"},
+    )
+    return {"status": "ok", **result}
+
+
+@router.post("/candidates/bulk/restore")
+async def bulk_restore_candidates(req: BulkCandidateRequest) -> Dict[str, Any]:
+    result = bulk_set_download_candidate_status(
+        req.ids,
+        "candidate",
+        allowed_current_statuses={"failed", "rejected"},
+    )
+    return {"status": "ok", **result}
 
 
 @router.post("/candidates/{candidate_id}/approve")

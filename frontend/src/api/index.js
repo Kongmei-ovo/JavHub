@@ -181,6 +181,14 @@ export default {
     return api.post(`/v1/downloads/candidates/${candidateId}/reject`)
   },
 
+  bulkRejectDownloadCandidates(ids = []) {
+    return api.post('/v1/downloads/candidates/bulk/reject', { ids })
+  },
+
+  bulkRestoreDownloadCandidates(ids = []) {
+    return api.post('/v1/downloads/candidates/bulk/restore', { ids })
+  },
+
   // ========== 订阅管理 ==========
 
   getSubscriptions() {
