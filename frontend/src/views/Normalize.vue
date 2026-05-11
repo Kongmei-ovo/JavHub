@@ -18,6 +18,10 @@
         <span>未映射</span>
       </div>
       <div class="summary-card">
+        <strong>{{ mappingSummary.candidate || 0 }}</strong>
+        <span>建议候选</span>
+      </div>
+      <div class="summary-card">
         <strong>{{ coverageText }}</strong>
         <span>映射覆盖率</span>
       </div>
@@ -261,7 +265,7 @@ onMounted(reloadAll)
 .page-header p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; }
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }

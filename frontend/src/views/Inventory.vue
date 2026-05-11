@@ -41,6 +41,7 @@
       <span v-if="mappingSummary.total">
         · 映射覆盖率 {{ mappingCoverageText }}
         · 未映射 {{ mappingSummary.unmapped || 0 }}
+        · 映射建议 {{ mappingSummary.candidate || 0 }}
         · 候选 {{ candidateStats.candidate || 0 }}
       </span>
       <button class="inline-link" @click="$router.push('/normalize')">处理未映射演员</button>

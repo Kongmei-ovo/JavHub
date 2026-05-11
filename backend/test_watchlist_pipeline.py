@@ -103,6 +103,15 @@ class ActorMappingDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(rows[0]["status"], "confirmed")
         self.assertEqual(rows[0]["source"], "manual")
 
+    def test_mapping_summary_counts_candidates(self):
+        from database import mapping_summary, upsert_actor_mapping
+
+        upsert_actor_mapping("emby-1", "Emby Name", 123, "Jav Name", status="candidate", source="name_match")
+        summary = mapping_summary([{"actress_id": "emby-1"}, {"actress_id": "emby-2"}])
+
+        self.assertEqual(summary["candidate"], 1)
+        self.assertEqual(summary["unmapped"], 2)
+
 
 class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_generate_name_match_candidates_for_unmapped_actor(self):

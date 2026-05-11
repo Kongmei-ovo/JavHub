@@ -194,6 +194,7 @@ def mapping_summary(snapshot_actors: list[dict] | None = None) -> dict:
     total = len(snapshot_actors or [])
     confirmed = 0
     ignored = 0
+    candidate_count = 0
     if snapshot_actors:
         ids = [str(a.get("actress_id")) for a in snapshot_actors]
         placeholders = ",".join("?" for _ in ids)
@@ -207,12 +208,21 @@ def mapping_summary(snapshot_actors: list[dict] | None = None) -> dict:
                 ids,
             )
             by_actor = {row["emby_actor_id"]: row["status"] for row in cursor.fetchall()}
+            cursor.execute(
+                f'''
+                SELECT COUNT(*) AS count FROM actor_mappings
+                WHERE emby_actor_id IN ({placeholders}) AND status = 'candidate'
+                ''',
+                ids,
+            )
+            candidate_count = cursor.fetchone()["count"]
         confirmed = sum(1 for aid in ids if by_actor.get(aid) == "confirmed")
         ignored = sum(1 for aid in ids if by_actor.get(aid) == "ignored")
     return {
         "total": total,
         "confirmed": confirmed,
         "ignored": ignored,
+        "candidate": candidate_count,
         "unmapped": max(total - confirmed - ignored, 0),
         "coverage": (confirmed / total) if total else 0,
     }

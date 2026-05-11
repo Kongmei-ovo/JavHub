@@ -33,6 +33,7 @@ test('subscription routes missing movies into download candidates', () => {
 test('inventory page shows mapping coverage and candidate handoff', () => {
   assert.match(inventory, /映射覆盖率/)
   assert.match(inventory, /处理未映射演员/)
+  assert.match(inventory, /映射建议/)
   assert.match(inventory, /source: 'inventory'/)
   assert.match(inventory, /getActorMappingSummary/)
   assert.match(inventory, /job\.result\.unmapped/)
