@@ -109,8 +109,11 @@
           <div>
             <strong>{{ mapping.javinfo_actress_name || '已忽略' }}</strong>
             <small v-if="mapping.javinfo_actress_id">JavInfo ID {{ mapping.javinfo_actress_id }}</small>
+            <small v-if="mapping.status === 'candidate'">置信 {{ confidenceText(mapping.confidence) }} · {{ mapping.source }}</small>
           </div>
           <span class="status-pill">{{ mapping.status }}</span>
+          <button v-if="mapping.status === 'candidate'" class="btn-primary" @click="confirmMapping(mappingActor(mapping), mapping)">确认</button>
+          <button v-if="mapping.status === 'candidate'" class="btn-ghost" @click="ignoreCandidate(mappingActor(mapping), mapping)">忽略</button>
           <button class="btn-ghost" @click="deleteMapping(mapping.id)">解除</button>
         </div>
       </div>
@@ -176,6 +179,13 @@ function suggestedMappings(actor) {
 
 function confidenceText(value) {
   return `${Math.round((Number(value) || 0) * 100)}%`
+}
+
+function mappingActor(mapping) {
+  return {
+    emby_actor_id: mapping.emby_actor_id,
+    emby_actor_name: mapping.emby_actor_name,
+  }
 }
 
 async function searchJavInfo(actor) {
@@ -334,7 +344,7 @@ onMounted(reloadAll)
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
 }
-.mapping-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto; margin-bottom: 8px; }
+.mapping-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto auto auto; margin-bottom: 8px; }
 .javinfo-row small { color: var(--text-muted); }
 .arrow { color: var(--accent); font-weight: 700; }
 .status-pill {

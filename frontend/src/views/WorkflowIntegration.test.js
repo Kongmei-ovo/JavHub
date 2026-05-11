@@ -17,6 +17,8 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(normalize, /confirmActorMapping/)
   assert.match(normalize, /ignoreActorMapping/)
   assert.match(normalize, /getActorMappingSummary/)
+  assert.match(normalize, /mappingActor/)
+  assert.match(normalize, /置信/)
 })
 
 test('subscription routes missing movies into download candidates', () => {
