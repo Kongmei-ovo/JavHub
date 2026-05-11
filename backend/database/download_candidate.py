@@ -133,6 +133,39 @@ def _enrich_candidate_rows(rows: list[dict]) -> list[dict]:
     return rows
 
 
+def add_download_candidate_event(
+    candidate_id: int,
+    action: str,
+    detail: str | None = None,
+    operator: str = "system",
+) -> int:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO download_candidate_events (candidate_id, action, detail, operator, created_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''',
+            (candidate_id, action, detail, operator),
+        )
+        return cursor.lastrowid
+
+
+def list_download_candidate_events(candidate_id: int, limit: int = 50) -> list[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT * FROM download_candidate_events
+            WHERE candidate_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            ''',
+            (candidate_id, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
 def list_download_candidates(
     status: str | None = None,
     actress_id: int | None = None,
@@ -191,7 +224,10 @@ def get_download_candidate(candidate_id: int) -> Optional[dict]:
         row = cursor.fetchone()
         rows = [dict(row)] if row else []
     enriched = _enrich_candidate_rows(rows)
-    return enriched[0] if enriched else None
+    if not enriched:
+        return None
+    enriched[0]["events"] = list_download_candidate_events(candidate_id)
+    return enriched[0]
 
 
 def update_download_candidate_magnet(

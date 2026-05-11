@@ -252,6 +252,9 @@
             <div v-if="candidate.error_msg" class="task-error" :title="candidate.error_msg">
               {{ candidate.error_msg }}
             </div>
+            <div v-if="candidate.events?.length" class="candidate-event">
+              最近动作 {{ candidate.events[0].action }}
+            </div>
           </div>
 
           <div class="task-actions">
@@ -687,7 +690,8 @@ export default {
 .candidate-subtitle,
 .candidate-magnet,
 .candidate-reason,
-.candidate-task-link {
+.candidate-task-link,
+.candidate-event {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-muted);
@@ -698,6 +702,7 @@ export default {
 .candidate-magnet.empty { color: #fa8c16; }
 .candidate-reason { color: var(--text-secondary); }
 .candidate-task-link { color: #52c41a; }
+.candidate-event { color: var(--accent); }
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {

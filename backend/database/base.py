@@ -275,6 +275,20 @@ def init_db():
         CREATE UNIQUE INDEX IF NOT EXISTS idx_download_candidates_content_source
         ON download_candidates(content_id, source)
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS download_candidate_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            detail TEXT,
+            operator TEXT DEFAULT 'system',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_download_candidate_events_candidate
+        ON download_candidate_events(candidate_id, created_at DESC)
+    ''')
 
     # Emby snapshots (movies)
     cursor.execute('''

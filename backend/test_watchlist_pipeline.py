@@ -247,7 +247,7 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(reject_sent.exception.status_code, 409)
 
     async def test_approve_candidate_records_failure_and_can_retry(self):
-        from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
+        from database import get_download_candidate, list_download_candidate_events, update_download_candidate_magnet, upsert_download_candidate
         from routers import downloads
 
         candidate = upsert_download_candidate(content_id="SIVR-438", title="Title")
@@ -262,6 +262,7 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         stored = get_download_candidate(candidate["id"])
         self.assertEqual(stored["status"], "failed")
         self.assertIn("openlist timeout", stored["error_msg"])
+        self.assertEqual(stored["events"][0]["action"], "approve_failed")
 
         update_download_candidate_magnet(candidate["id"], "magnet:?xt=urn:btih:good")
         self.assertIsNone(get_download_candidate(candidate["id"])["error_msg"])
@@ -272,6 +273,9 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
 
         self.assertEqual(result["candidate"]["status"], "sent")
         self.assertEqual(result["download_task_id"], 43)
+        actions = [event["action"] for event in list_download_candidate_events(candidate["id"])]
+        self.assertIn("approved", actions)
+        self.assertIn("approve_failed", actions)
 
     async def test_list_candidates_filters_status(self):
         from database import upsert_download_candidate
@@ -297,6 +301,7 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
 
         self.assertEqual(result["data"]["id"], candidate["id"])
         self.assertEqual(result["data"]["source"], "subscription")
+        self.assertEqual(result["data"]["events"], [])
 
     async def test_bulk_candidate_actions_skip_sent_rows(self):
         from database import get_download_candidate, upsert_download_candidate
@@ -312,6 +317,7 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(rejected["updated"], 2)
         self.assertEqual(rejected["skipped"], 1)
         self.assertEqual(get_download_candidate(sent["id"])["status"], "sent")
+        self.assertEqual(get_download_candidate(candidate["id"])["events"][0]["action"], "bulk_rejected")
 
         restored = await downloads.bulk_restore_candidates(downloads.BulkCandidateRequest(
             ids=[candidate["id"], failed["id"], sent["id"]],

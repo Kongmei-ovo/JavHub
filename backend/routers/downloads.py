@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional, Dict
 from database import (
+    add_download_candidate_event,
     bulk_set_download_candidate_status,
     get_download_candidate,
     get_download_tasks,
@@ -112,6 +113,7 @@ async def create_candidate(req: CreateCandidateRequest) -> Dict[str, Any]:
         magnet=req.magnet,
         magnet_source="manual" if req.magnet else None,
     )
+    add_download_candidate_event(candidate["id"], "upsert", req.reason or req.source, "manual")
     return {"status": "ok", "candidate": candidate}
 
 
@@ -122,6 +124,7 @@ async def update_candidate_magnet(candidate_id: int, req: UpdateCandidateMagnetR
     candidate = update_download_candidate_magnet(candidate_id, req.magnet.strip(), req.magnet_source)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    add_download_candidate_event(candidate_id, "magnet_updated", req.magnet_source, "manual")
     return {"status": "ok", "candidate": candidate}
 
 
@@ -132,6 +135,8 @@ async def bulk_reject_candidates(req: BulkCandidateRequest) -> Dict[str, Any]:
         "rejected",
         allowed_current_statuses={"candidate", "failed"},
     )
+    for candidate_id in result["ids"]:
+        add_download_candidate_event(candidate_id, "bulk_rejected", "bulk action", "manual")
     return {"status": "ok", **result}
 
 
@@ -142,6 +147,8 @@ async def bulk_restore_candidates(req: BulkCandidateRequest) -> Dict[str, Any]:
         "candidate",
         allowed_current_statuses={"failed", "rejected"},
     )
+    for candidate_id in result["ids"]:
+        add_download_candidate_event(candidate_id, "bulk_restored", "bulk action", "manual")
     return {"status": "ok", **result}
 
 
@@ -167,9 +174,11 @@ async def approve_candidate(candidate_id: int) -> Dict[str, Any]:
         )
     except Exception as exc:
         set_download_candidate_status(candidate_id, "failed", error_msg=str(exc))
+        add_download_candidate_event(candidate_id, "approve_failed", str(exc), "manual")
         raise HTTPException(status_code=500, detail=f"下载任务创建失败: {exc}") from exc
 
     updated = set_download_candidate_status(candidate_id, "sent", download_task_id=task_id)
+    add_download_candidate_event(candidate_id, "approved", f"download_task_id={task_id}", "manual")
     return {"status": "ok", "candidate": updated, "download_task_id": task_id}
 
 
@@ -181,4 +190,5 @@ async def reject_candidate(candidate_id: int) -> Dict[str, Any]:
     if existing.get("status") == "sent":
         raise HTTPException(status_code=409, detail="候选已下发，不能拒绝")
     candidate = set_download_candidate_status(candidate_id, "rejected")
+    add_download_candidate_event(candidate_id, "rejected", "single action", "manual")
     return {"status": "ok", "candidate": candidate}
