@@ -432,14 +432,14 @@ test('download candidate APIs send expected requests', async (t) => {
   t.after(() => { axios.defaults.adapter = originalAdapter })
 
   const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
-  await api.listDownloadCandidates({ status: 'candidate', source: 'subscription' })
+  await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true })
   await api.createDownloadCandidate({ content_id: 'SIVR-438', title: 'Title' })
   await api.updateDownloadCandidateMagnet(7, 'magnet:?xt=urn:btih:abc')
   await api.approveDownloadCandidate(7)
   await api.rejectDownloadCandidate(8)
 
   assert.equal(calls[0].url, '/v1/downloads/candidates')
-  assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription' })
+  assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true })
   assert.equal(calls[1].method, 'post')
   assert.equal(calls[1].url, '/v1/downloads/candidates')
   assert.deepEqual(JSON.parse(calls[2].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })

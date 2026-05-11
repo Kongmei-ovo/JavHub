@@ -69,6 +69,7 @@ async def list_candidates(
     actress_id: Optional[int] = None,
     source: Optional[str] = None,
     q: Optional[str] = None,
+    needs_magnet: Optional[bool] = None,
     limit: int = 200,
 ) -> Dict[str, Any]:
     """下载候选列表。候选是人工确认前的安全队列。"""
@@ -77,6 +78,7 @@ async def list_candidates(
         actress_id=actress_id,
         source=source,
         q=q,
+        needs_magnet=needs_magnet,
         limit=limit,
     )
     return {"data": rows, "total": len(rows), "stats": download_candidate_stats()}

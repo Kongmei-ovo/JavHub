@@ -409,37 +409,70 @@ async def set_primary_name(actress_id: int, req: PrimaryNameRequest):
 
 @router.post("/fill/{content_id}")
 async def fill_video(content_id: str):
-    """补全单个缺失影片"""
-    from services.downloader import create_download_task
+    """将单个缺失影片转为下载候选，不直接下发下载。"""
+    from database import upsert_download_candidate
     info = get_info_client()
+    candidate = None
     try:
         video = await info.get_video(content_id)
-        magnets = video.get("magnets", [])
-        if magnets:
-            magnet = magnets[0].get("magnet", "")
-            create_download_task(content_id, video.get("title_en", ""), magnet)
+        candidate = upsert_download_candidate(
+            content_id=video.get("content_id") or video.get("dvd_id") or content_id,
+            dvd_id=video.get("dvd_id") or content_id,
+            title=video.get("title_ja") or video.get("title_en") or video.get("title") or "",
+            actress_id=None,
+            actress_name=None,
+            jacket_thumb_url=video.get("jacket_thumb_url") or video.get("jacket_full_url"),
+            release_date=video.get("release_date"),
+            source="inventory",
+            reason="inventory_fill",
+        )
         delete_missing_video(content_id)
     except Exception:
-        pass
-    delete_missing_video(content_id)
-    return {"success": True}
+        candidate = upsert_download_candidate(
+            content_id=content_id,
+            dvd_id=content_id,
+            title=content_id,
+            source="inventory",
+            reason="inventory_fill_fallback",
+        )
+        delete_missing_video(content_id)
+    return {"success": True, "candidate": candidate}
 
 @router.post("/fill-all")
 async def fill_all_videos():
-    """一键补全所有缺失影片"""
-    from services.downloader import create_download_task
+    """将所有缺失影片转为下载候选，不直接下发下载。"""
+    from database import upsert_download_candidate
     missing = get_all_missing_videos()
     info = get_info_client()
     count = 0
+    candidates = []
     for v in missing:
+        content_id = v["content_id"]
         try:
-            video = await info.get_video(v["content_id"])
-            magnets = video.get("magnets", [])
-            if magnets:
-                magnet = magnets[0].get("magnet", "")
-                create_download_task(v["content_id"], video.get("title_en", ""), magnet)
+            video = await info.get_video(content_id)
+            candidate = upsert_download_candidate(
+                content_id=video.get("content_id") or video.get("dvd_id") or content_id,
+                dvd_id=video.get("dvd_id") or content_id,
+                title=video.get("title_ja") or video.get("title_en") or video.get("title") or v.get("title") or "",
+                actress_id=v.get("actress_id"),
+                actress_name=None,
+                jacket_thumb_url=video.get("jacket_thumb_url") or video.get("jacket_full_url") or v.get("jacket_thumb_url"),
+                release_date=video.get("release_date") or v.get("release_date"),
+                source="inventory",
+                reason="inventory_fill_all",
+            )
         except Exception:
-            pass
-        delete_missing_video(v["content_id"])
+            candidate = upsert_download_candidate(
+                content_id=content_id,
+                dvd_id=content_id,
+                title=v.get("title") or content_id,
+                actress_id=v.get("actress_id"),
+                jacket_thumb_url=v.get("jacket_thumb_url"),
+                release_date=v.get("release_date"),
+                source="inventory",
+                reason="inventory_fill_all_fallback",
+            )
+        candidates.append(candidate)
+        delete_missing_video(content_id)
         count += 1
-    return {"success": True, "count": count}
+    return {"success": True, "count": count, "candidates": candidates}

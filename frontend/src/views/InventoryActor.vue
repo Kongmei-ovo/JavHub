@@ -70,20 +70,26 @@
       <div v-for="(groupVideos, year) in groupedMissingByYear" :key="year" class="year-section">
         <h3 class="year-title">{{ year }}</h3>
         <div class="videos-grid">
-          <VideoCard
-            v-for="video in groupVideos"
-            :key="video.content_id"
-            :contentId="video.content_id"
-            :title="video.title"
-            :coverUrl="video.jacket_thumb_url || ''"
-            :actressNames="actor.display_name || actor.actress_name"
-            :releaseDate="video.release_date || ''"
-            @click="showDetail(video)"
-          />
+          <div v-for="video in groupVideos" :key="video.content_id" class="missing-card-wrap">
+            <VideoCard
+              :contentId="video.content_id"
+              :title="video.title"
+              :coverUrl="video.jacket_thumb_url || ''"
+              :actressNames="actor.display_name || actor.actress_name"
+              :releaseDate="video.release_date || ''"
+              @click="showDetail(video)"
+            />
+            <button class="candidate-btn" @click.stop="createCandidate(video)">
+              转为候选
+            </button>
+          </div>
         </div>
       </div>
       <div v-if="!loading && Object.keys(groupedMissingByYear).length === 0" class="empty">
         暂无缺失影片
+      </div>
+      <div v-else class="candidate-link">
+        <button class="back-btn" @click="viewInventoryCandidates">查看库存下载候选</button>
       </div>
     </template>
   </div>
@@ -99,9 +105,11 @@ export default {
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'
+import api from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -233,6 +241,29 @@ const showDetail = (video) => {
   openVideoModal(video)
 }
 
+const createCandidate = async (video) => {
+  try {
+    await api.createDownloadCandidate({
+      content_id: video.content_id,
+      dvd_id: video.dvd_id || video.content_id,
+      title: video.title || video.content_id,
+      actress_id: actorId,
+      actress_name: actor.value.display_name || actor.value.actress_name || '',
+      jacket_thumb_url: video.jacket_thumb_url || '',
+      release_date: video.release_date || '',
+      source: 'inventory',
+      reason: 'inventory_actor_manual_pick'
+    })
+    ElMessage.success('已加入下载候选')
+  } catch (e) {
+    ElMessage.error('加入候选失败')
+  }
+}
+
+const viewInventoryCandidates = () => {
+  router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory', status: 'candidate' } })
+}
+
 onMounted(async () => {
   await fetchActor()
   // 同时加载 Emby 数据以显示统计
@@ -302,6 +333,19 @@ onMounted(async () => {
   text-overflow: ellipsis; white-space: nowrap;
 }
 .video-meta { font-size: 11px; color: var(--text-muted); }
+.missing-card-wrap { position: relative; }
+.candidate-btn {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.candidate-link { text-align: center; margin: 20px 0; }
 
 .loading, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }
 </style>

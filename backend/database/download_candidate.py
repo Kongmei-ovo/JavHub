@@ -119,6 +119,7 @@ def list_download_candidates(
     actress_id: int | None = None,
     source: str | None = None,
     q: str | None = None,
+    needs_magnet: bool | None = None,
     limit: int = 200,
 ) -> list[dict]:
     with get_db() as conn:
@@ -137,6 +138,10 @@ def list_download_candidates(
         if q:
             where.append("(content_id LIKE ? OR dvd_id LIKE ? OR title LIKE ? OR actress_name LIKE ?)")
             params.extend([f"%{q}%"] * 4)
+        if needs_magnet is True:
+            where.append("(magnet IS NULL OR magnet = '')")
+        elif needs_magnet is False:
+            where.append("(magnet IS NOT NULL AND magnet != '')")
         where_clause = f"WHERE {' AND '.join(where)}" if where else ""
         cursor.execute(
             f'''

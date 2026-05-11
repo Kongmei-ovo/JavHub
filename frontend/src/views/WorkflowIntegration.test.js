@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 const subscription = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
 const normalize = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
 const inventory = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
+const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
@@ -30,6 +31,9 @@ test('inventory page shows mapping coverage and candidate handoff', () => {
   assert.match(inventory, /处理未映射演员/)
   assert.match(inventory, /source: 'inventory'/)
   assert.match(inventory, /getActorMappingSummary/)
+  assert.match(inventoryActor, /转为候选/)
+  assert.match(inventoryActor, /createDownloadCandidate/)
+  assert.match(inventoryActor, /查看库存下载候选/)
 })
 
 test('download page exposes candidate approval workflow', () => {

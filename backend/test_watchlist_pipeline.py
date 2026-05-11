@@ -121,9 +121,10 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         from routers import downloads
 
         upsert_download_candidate(content_id="SIVR-438", source="subscription", status="candidate")
-        upsert_download_candidate(content_id="ABP-588", source="inventory", status="rejected")
+        upsert_download_candidate(content_id="ABP-588", source="subscription", status="candidate", magnet="magnet:?x")
+        upsert_download_candidate(content_id="MIAA-999", source="inventory", status="rejected")
 
-        result = await downloads.list_candidates(status="candidate")
+        result = await downloads.list_candidates(status="candidate", needs_magnet=True)
 
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
@@ -176,3 +177,61 @@ class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(job["status"], "completed")
         self.assertIn("unmapped=1", job["error_msg"])
+
+    async def test_actor_compare_for_confirmed_mapping_creates_inventory_candidate(self):
+        from database import (
+            add_inventory_job,
+            confirm_actor_mapping,
+            create_snapshot_key,
+            list_download_candidates,
+            save_emby_actors_snapshot,
+            update_inventory_actor_stats,
+            get_inventory_job,
+        )
+        from scheduler.inventory_tasks import run_actor_compare_job
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "Emby Actor",
+            "video_count": 1,
+        }])
+        confirm_actor_mapping("901", "Emby Actor", 123, "Jav Actress")
+        job_id = add_inventory_job("actor", actor_id=901, snapshot_key=snapshot_key)
+
+        fake_pipeline = AsyncMock()
+        fake_pipeline.fetch_actress_videos.return_value = [{
+            "content_id": "sivr438",
+            "dvd_id": "SIVR-438",
+            "title_ja": "Mapped Missing",
+            "release_date": "2026-05-01",
+        }]
+        with patch("scheduler.inventory_tasks.WatchlistPipeline", return_value=fake_pipeline):
+            await run_actor_compare_job(job_id, 901, snapshot_key)
+
+        candidates = list_download_candidates(source="inventory")
+        job = get_inventory_job(job_id)
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["dvd_id"], "SIVR-438")
+
+
+class InventoryFillRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_fill_video_creates_candidate_instead_of_download_task(self):
+        from database import add_missing_video, list_download_candidates, get_download_tasks
+        from routers import inventory
+
+        add_missing_video("SIVR-438", 1, "Missing", "2026-05-01", "")
+        fake_info = AsyncMock()
+        fake_info.get_video.return_value = {
+            "content_id": "sivr438",
+            "dvd_id": "SIVR-438",
+            "title_ja": "Filled Candidate",
+            "jacket_thumb_url": "cover.jpg",
+        }
+        with patch("routers.inventory.get_info_client", return_value=fake_info):
+            result = await inventory.fill_video("SIVR-438")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(len(list_download_candidates(source="inventory")), 1)
+        self.assertEqual(get_download_tasks(), [])

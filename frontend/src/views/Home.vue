@@ -172,6 +172,8 @@
     <div v-else-if="activeTab === 'candidates'" class="candidate-panel">
       <div class="candidate-toolbar">
         <button class="chip" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
+        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
+        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'sent' }" @click="setCandidateStatus('sent')">已下发</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
         <button class="chip" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
@@ -258,7 +260,8 @@ export default {
       candidateFilter: {
         status: this.$route.query.status || 'candidate',
         source: this.$route.query.source || '',
-        actress_id: this.$route.query.actress_id || ''
+        actress_id: this.$route.query.actress_id || '',
+        needs_magnet: this.$route.query.needs_magnet === '1' ? true : null
       },
       timer: null,
       statsLoaded: false
@@ -303,6 +306,7 @@ export default {
         if (this.candidateFilter.status) params.status = this.candidateFilter.status
         if (this.candidateFilter.source) params.source = this.candidateFilter.source
         if (this.candidateFilter.actress_id) params.actress_id = this.candidateFilter.actress_id
+        if (this.candidateFilter.needs_magnet !== null) params.needs_magnet = this.candidateFilter.needs_magnet
         const resp = await api.listDownloadCandidates(params)
         this.candidates = resp.data.data || []
         this.candidateStats = resp.data.stats || this.candidateStats
@@ -312,6 +316,12 @@ export default {
     },
     setCandidateStatus(status) {
       this.candidateFilter.status = status
+      this.candidateFilter.needs_magnet = null
+      this.loadCandidates()
+    },
+    setNeedsMagnet(needs) {
+      this.candidateFilter.status = 'candidate'
+      this.candidateFilter.needs_magnet = needs
       this.loadCandidates()
     },
     async editCandidateMagnet(candidate) {
