@@ -116,6 +116,14 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["download_task_id"], 42)
         self.assertEqual(result["candidate"]["status"], "sent")
 
+        with self.assertRaises(Exception) as duplicate:
+            await downloads.approve_candidate(candidate["id"])
+        self.assertEqual(duplicate.exception.status_code, 409)
+
+        with self.assertRaises(Exception) as reject_sent:
+            await downloads.reject_candidate(candidate["id"])
+        self.assertEqual(reject_sent.exception.status_code, 409)
+
     async def test_list_candidates_filters_status(self):
         from database import upsert_download_candidate
         from routers import downloads

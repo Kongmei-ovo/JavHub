@@ -117,6 +117,10 @@ async def approve_candidate(candidate_id: int) -> Dict[str, Any]:
     candidate = get_download_candidate(candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    if candidate.get("status") == "sent":
+        raise HTTPException(status_code=409, detail="候选已下发，不能重复批准")
+    if candidate.get("status") == "rejected":
+        raise HTTPException(status_code=409, detail="候选已拒绝，不能批准")
     magnet = (candidate.get("magnet") or "").strip()
     if not magnet:
         raise HTTPException(status_code=400, detail="候选缺少 magnet，不能下发下载")
@@ -138,7 +142,10 @@ async def approve_candidate(candidate_id: int) -> Dict[str, Any]:
 
 @router.post("/candidates/{candidate_id}/reject")
 async def reject_candidate(candidate_id: int) -> Dict[str, Any]:
-    candidate = set_download_candidate_status(candidate_id, "rejected")
-    if not candidate:
+    existing = get_download_candidate(candidate_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    if existing.get("status") == "sent":
+        raise HTTPException(status_code=409, detail="候选已下发，不能拒绝")
+    candidate = set_download_candidate_status(candidate_id, "rejected")
     return {"status": "ok", "candidate": candidate}
