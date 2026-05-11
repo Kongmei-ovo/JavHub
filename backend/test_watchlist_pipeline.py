@@ -330,6 +330,38 @@ class SubscriptionRouterCandidateStatsTest(TempDbMixin, unittest.IsolatedAsyncio
         self.assertEqual(result["data"][0]["needs_magnet_count"], 1)
         self.assertEqual(result["data"][0]["mapping_status"], "javinfo")
 
+    async def test_check_subscriptions_returns_structured_report(self):
+        from database import add_subscription
+        from routers import subscriptions
+
+        add_subscription(123, "Actor")
+
+        with patch("services.subscription.WatchlistPipeline") as pipeline_cls:
+            pipeline = pipeline_cls.return_value
+            pipeline.generate_candidates_for_actress = AsyncMock(return_value={
+                "checked": 3,
+                "created": 1,
+                "existing": 1,
+                "skipped": 0,
+                "skipped_exempt": 0,
+                "in_library": 1,
+                "candidate_count": 2,
+                "new_movies": [
+                    {"candidate_id": 7, "dvd_id": "SIVR-438", "code": "SIVR-438"},
+                    {"candidate_id": 8, "dvd_id": "ABP-588", "code": "ABP-588"},
+                ],
+            })
+            result = await subscriptions.check_subscriptions()
+
+        self.assertEqual(result["subscriptions_checked"], 1)
+        self.assertEqual(result["checked"], 3)
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["existing"], 1)
+        self.assertEqual(result["in_library"], 1)
+        self.assertEqual(result["candidate_count"], 2)
+        self.assertEqual(result["new_found"], 2)
+        self.assertEqual(result["results"][0]["actress_id"], 123)
+
 
 class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_actor_compare_skips_unmapped_emby_actor(self):

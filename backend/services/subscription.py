@@ -51,6 +51,73 @@ async def check_all_subscriptions() -> List[dict]:
     return new_movies
 
 
+async def check_all_subscriptions_report() -> dict:
+    """Check all subscriptions and return structured candidate pipeline stats."""
+    subscriptions = get_subscriptions()
+    pipeline = WatchlistPipeline()
+    results = []
+    movies = []
+    totals = {
+        "subscriptions_checked": 0,
+        "checked": 0,
+        "created": 0,
+        "existing": 0,
+        "skipped": 0,
+        "skipped_exempt": 0,
+        "in_library": 0,
+        "candidate_count": 0,
+    }
+
+    for sub in subscriptions:
+        if not sub.get("enabled"):
+            continue
+
+        actress_id = sub.get("actress_id")
+        actress_name = sub.get("actress_name", "")
+        if not actress_id or not actress_name:
+            continue
+
+        try:
+            result = await pipeline.generate_candidates_for_actress(
+                actress_id=actress_id,
+                actress_name=actress_name,
+                trigger_source="subscription",
+                reason="subscription_check",
+            )
+            for movie in result.get("new_movies", []):
+                movie["actress_name"] = actress_name
+                movie["subscription_id"] = sub["id"]
+            latest = result.get("new_movies", [{}])[0].get("dvd_id", "") if result.get("new_movies") else ""
+            update_last_check(sub["id"], latest)
+
+            totals["subscriptions_checked"] += 1
+            for key in ("checked", "created", "existing", "skipped", "skipped_exempt", "in_library", "candidate_count"):
+                totals[key] += int(result.get(key) or 0)
+            movies.extend(result.get("new_movies", []))
+            results.append({
+                "subscription_id": sub["id"],
+                "actress_id": actress_id,
+                "actress_name": actress_name,
+                **result,
+            })
+        except Exception as e:
+            logger.error(f"检查订阅失败 {actress_name}: {e}")
+            results.append({
+                "subscription_id": sub["id"],
+                "actress_id": actress_id,
+                "actress_name": actress_name,
+                "error": str(e),
+            })
+
+    return {
+        "status": "ok",
+        **totals,
+        "new_found": len(movies),
+        "movies": movies,
+        "results": results,
+    }
+
+
 async def check_single_subscription(subscription_id: int) -> Optional[dict]:
     """检查单条订阅"""
     subs = get_subscriptions()

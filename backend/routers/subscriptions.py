@@ -85,16 +85,8 @@ async def subscription_status(actress_id: int) -> dict[str, Any]:
 @router.post("/check")
 async def check_subscriptions() -> dict[str, Any]:
     """手动检查订阅更新"""
-    from services.subscription import check_all_subscriptions
-    new_movies = await check_all_subscriptions()
-    created = sum(1 for movie in new_movies if movie.get("candidate_id"))
-    return {
-        "status": "ok",
-        "new_found": len(new_movies),
-        "created": created,
-        "candidate_count": len(new_movies),
-        "movies": new_movies,
-    }
+    from services.subscription import check_all_subscriptions_report
+    return await check_all_subscriptions_report()
 
 @router.get("/new_movies")
 async def get_new_movies() -> dict[str, Any]:

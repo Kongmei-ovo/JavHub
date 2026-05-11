@@ -24,6 +24,8 @@ test('subscription routes missing movies into download candidates', () => {
   assert.match(subscription, /查看候选/)
   assert.match(subscription, /candidate_count/)
   assert.match(subscription, /待补磁力/)
+  assert.match(subscription, /新增/)
+  assert.match(subscription, /existing/)
   assert.match(subscription, /include_supplement: '1'/)
   assert.doesNotMatch(subscription, /api\.createDownload\(\{ code:/)
 })

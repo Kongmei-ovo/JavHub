@@ -214,6 +214,7 @@ const subscribing = ref(false)
 
 const newMovieMap = ref({})
 const actressMetaMap = ref({})
+const lastCheckReport = ref(null)
 
 const totalNewMovies = computed(() => {
   let c = 0
@@ -344,8 +345,13 @@ async function checkNow(sub) {
   checkingId.value = sub.id
   try {
     const r = await api.checkSubscription(sub.id)
-    if (r.data.new_movies_count > 0) ElMessage.success(`已生成/刷新 ${r.data.new_movies_count} 个下载候选`)
-    else ElMessage.info('暂无缺失候选')
+    lastCheckReport.value = r.data
+    const created = r.data.created || 0
+    const existing = r.data.existing || 0
+    const inLibrary = r.data.in_library || 0
+    if (created > 0) ElMessage.success(`新增 ${created} 个候选，已有 ${existing} 个，已在库 ${inLibrary} 个`)
+    else if (existing > 0) ElMessage.info(`没有新增候选，已有 ${existing} 个待处理`)
+    else ElMessage.info(`暂无缺失候选，已在库 ${inLibrary} 个`)
     await loadSubs(); await loadNewMovieBadges()
   } catch (e) { ElMessage.error('检查失败') } finally { checkingId.value = null }
 }
