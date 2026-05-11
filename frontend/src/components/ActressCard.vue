@@ -19,6 +19,7 @@
       <span v-if="subscribed" class="cover-heart">
         <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#FF375F"/></svg>
       </span>
+      <span v-if="candidateCount > 0" class="candidate-badge">{{ candidateCount }}</span>
     </div>
     <!-- Info -->
     <div class="card-info">
@@ -33,6 +34,9 @@
           <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           已订阅
         </span>
+        <span v-if="candidateCount > 0" class="meta-item meta-candidate">
+          {{ candidateCount }} 候选
+        </span>
       </div>
     </div>
   </div>
@@ -44,7 +48,8 @@ defineProps({
   name: { type: String, default: '未知' },
   originalName: { type: String, default: '' },
   totalCount: { type: Number, default: null },
-  subscribed: { type: Boolean, default: false }
+  subscribed: { type: Boolean, default: false },
+  candidateCount: { type: Number, default: 0 }
 })
 
 defineEmits(['click'])
@@ -132,6 +137,24 @@ const handleImgError = (e) => {
   pointer-events: none;
 }
 
+.candidate-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff9f0a;
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
 /* ===== Info ===== */
 .card-info {
   padding: 10px 12px 14px;
@@ -174,5 +197,9 @@ const handleImgError = (e) => {
 
 .meta-subscribed {
   color: #FF375F;
+}
+
+.meta-candidate {
+  color: #ff9f0a;
 }
 </style>

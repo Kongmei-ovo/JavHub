@@ -13,6 +13,24 @@ class CreateSubscriptionRequest(BaseModel):
 @router.get("")
 async def list_subscriptions() -> dict[str, Any]:
     subscriptions = get_subscriptions()
+    from database import list_download_candidates
+    for sub in subscriptions:
+        actress_id = sub.get("actress_id")
+        if not actress_id:
+            sub["candidate_count"] = 0
+            sub["needs_magnet_count"] = 0
+            sub["mapping_status"] = "javinfo"
+            continue
+        rows = list_download_candidates(
+            status="candidate",
+            actress_id=actress_id,
+            source="subscription",
+            limit=100000,
+        )
+        sub["candidate_count"] = len(rows)
+        sub["needs_magnet_count"] = sum(1 for row in rows if not row.get("magnet"))
+        # 订阅本身 already uses JavInfo actress id, so it is mapped by definition.
+        sub["mapping_status"] = "javinfo"
     return {"data": subscriptions, "total": len(subscriptions)}
 
 @router.post("")

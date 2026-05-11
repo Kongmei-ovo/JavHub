@@ -153,6 +153,26 @@ class ActorMappingRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(ignored["data"]), 1)
 
 
+class SubscriptionRouterCandidateStatsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_list_subscriptions_includes_candidate_counts(self):
+        from database import add_subscription, upsert_download_candidate
+        from routers import subscriptions
+
+        add_subscription(123, "Actor")
+        upsert_download_candidate(
+            content_id="SIVR-438",
+            actress_id=123,
+            source="subscription",
+            status="candidate",
+        )
+
+        result = await subscriptions.list_subscriptions()
+
+        self.assertEqual(result["data"][0]["candidate_count"], 1)
+        self.assertEqual(result["data"][0]["needs_magnet_count"], 1)
+        self.assertEqual(result["data"][0]["mapping_status"], "javinfo")
+
+
 class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_actor_compare_skips_unmapped_emby_actor(self):
         from database import (

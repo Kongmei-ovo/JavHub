@@ -71,6 +71,7 @@
           :originalName="subOriginalName(sub)"
           :totalCount="subMeta(sub)?.movie_count ?? null"
           :subscribed="true"
+          :candidateCount="sub.candidate_count || newMovieCount(sub.actress_id)"
           @click="openSubSheet(sub)"
         />
       </div>
@@ -124,6 +125,9 @@
             <!-- Stats -->
             <div v-if="sheetActor.movie_count != null" class="sheet-stat-line">
               {{ sheetActor.movie_count.toLocaleString() }} 部作品
+            </div>
+            <div v-if="sheetSub" class="sheet-stat-line">
+              待处理候选 {{ sheetSub.candidate_count || newMovieCount(sheetSub.actress_id) }} · 待补磁力 {{ sheetSub.needs_magnet_count || 0 }}
             </div>
 
             <!-- Toggle Pills + 全部作品 -->
