@@ -77,8 +77,8 @@
           {{ isSupplementRunning ? '补全中...' : '补全作品' }}
         </button>
         <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新 resolved</button>
-        <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">查看补全影片</button>
-        <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">查看任务</button>
+        <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">字段管理</button>
+        <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">任务队列</button>
       </div>
     </div>
 
@@ -93,12 +93,6 @@
       <div class="section-header">
         <h2>全部作品</h2>
         <div class="header-right">
-          <div class="supplement-toggle">
-            <label class="toggle-label">
-              <input type="checkbox" v-model="includeSupplement" @change="onSupplementToggle" />
-              <span>包含补全</span>
-            </label>
-          </div>
           <div v-if="variantCount > 0" class="variant-switch">
             <button
               class="switch-btn"
@@ -131,7 +125,7 @@
               :contentId="movie.code || movie.id"
               :coverUrl="cardImageUrl(movie)"
               :title="movie.title || ''"
-              :serviceCode="movie._raw?.service_code || ''"
+              :serviceCode="displayServiceCode(movie)"
               :releaseDate="movie.date || ''"
               :runtimeMins="movie._raw?.runtime_mins || ''"
               :sampleUrl="movie._raw?.sample_url || ''"
@@ -195,7 +189,6 @@ export default {
       loading: false,
       activeYear: null,
       showVariants: false,
-      includeSupplement: false,
       supplementStatus: null,
       supplementLoading: false,
       supplementPolling: null,
@@ -302,7 +295,7 @@ export default {
         let allMovies = []
         let totalCount = 0
 
-        if (this.includeSupplement && this.actressId) {
+        if (this.actressId) {
           const fetchPage = async (page) => {
             const resp = await api.getActressVideos(this.actressId, page, pageSize, { include_supplement: '1' })
             return resp.data
@@ -375,6 +368,10 @@ export default {
     cardImageUrl(movie) {
       return jacketHdUrl(movie.cover_url) || movie.cover_url || ''
     },
+    displayServiceCode(movie) {
+      if (movie._raw?.data_origin === 'supplement') return ''
+      return movie._raw?.service_code || ''
+    },
     handleAvatarError(e) {
       e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="%23333" width="120" height="120" rx="60"/><text x="50%" y="55%" text-anchor="middle" dy=".3em" fill="%23999" font-size="40">?</text></svg>'
     },
@@ -430,9 +427,6 @@ export default {
         clearInterval(this.supplementPolling)
         this.supplementPolling = null
       }
-    },
-    async onSupplementToggle() {
-      await this.loadActorMovies()
     },
   }
 }
@@ -800,25 +794,6 @@ export default {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.supplement-toggle {
-  display: flex;
-  align-items: center;
-}
-
-.toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.toggle-label input[type="checkbox"] {
-  accent-color: var(--accent);
 }
 
 .btn-sm {
