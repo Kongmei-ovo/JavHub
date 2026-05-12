@@ -155,7 +155,10 @@ def get_translation_count(mapping_type: str) -> int:
             col = f"{mapping_type}_json"
             if col not in _VALID_COLUMNS:
                 return 0
-            cursor.execute(f"SELECT {col} FROM translation_mappings WHERE content_id LIKE '{mapping_type}:%'")
+            cursor.execute(
+                f"SELECT {col} FROM translation_mappings WHERE content_id LIKE ?",
+                (f"{mapping_type}:%",),
+            )
             rows = cursor.fetchall()
             return sum(len(json.loads(row[col] or "{}")) for row in rows)
         else:

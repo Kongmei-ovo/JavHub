@@ -3,12 +3,12 @@
     <h1>日志查看</h1>
 
     <div class="toolbar">
-      <select v-model="filterLevel" @change="loadLogs">
-        <option value="">全部</option>
-        <option value="INFO">INFO</option>
-        <option value="WARNING">WARNING</option>
-        <option value="ERROR">ERROR</option>
-      </select>
+      <GlassSelect
+        v-model="filterLevel"
+        :options="levelOptions"
+        aria-label="日志等级"
+        @change="loadLogs"
+      />
       <input v-model="searchText" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
       <button @click="loadLogs">刷新</button>
       <button class="danger" @click="clearLogs">清空</button>
@@ -39,14 +39,22 @@
 <script>
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import GlassSelect from '../components/GlassSelect.vue'
 
 export default {
   name: 'Logs',
+  components: { GlassSelect },
   data() {
     return {
       logs: [],
       loading: false,
       filterLevel: '',
+      levelOptions: [
+        { value: '', label: '全部' },
+        { value: 'INFO', label: 'INFO' },
+        { value: 'WARNING', label: 'WARNING' },
+        { value: 'ERROR', label: 'ERROR' },
+      ],
       searchText: '',
       total: 0,
       limit: 100
@@ -106,7 +114,8 @@ export default {
 }
 .logs h1 { margin: 0; font-size: 28px; line-height: 1.2; }
 .toolbar { margin: 20px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.toolbar select, .toolbar input {
+.toolbar .glass-select { width: 132px; }
+.toolbar input {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--border);
@@ -140,7 +149,7 @@ export default {
     align-items: stretch;
   }
 
-  .toolbar select,
+  .toolbar .glass-select,
   .toolbar input,
   .toolbar button {
     width: 100%;

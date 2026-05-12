@@ -69,23 +69,24 @@
       <div class="filter-controls">
         <div class="sort-control">
           <label>排序：</label>
-          <select v-model="sortBy" @change="doSearch" class="filter-select">
-            <option value="actress_name">名称 A→Z</option>
-            <option value="actress_name_desc">名称 Z→A</option>
-            <option value="total_videos">影片数 多→少</option>
-            <option value="total_videos_asc">影片数 少→多</option>
-            <option value="missing_count">缺失 多→少</option>
-            <option value="missing_count_asc">缺失 少→多</option>
-          </select>
+          <GlassSelect
+            v-model="sortBy"
+            :options="sortOptions"
+            size="regular"
+            aria-label="库存演员排序"
+            @change="doSearch"
+          />
         </div>
         <div class="page-size-control">
           <label>每页：</label>
-          <select v-model="pageSize" @change="onPageSizeChange" class="filter-select">
-            <option :value="24">24</option>
-            <option :value="48">48</option>
-            <option :value="72">72</option>
-            <option :value="100">100</option>
-          </select>
+          <GlassSelect
+            v-model="pageSize"
+            :options="pageSizeOptions"
+            size="regular"
+            placement="right"
+            aria-label="库存每页数量"
+            @change="onPageSizeChange"
+          />
         </div>
       </div>
     </div>
@@ -228,6 +229,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import GlassSelect from '../components/GlassSelect.vue'
 
 const showJobs = ref(false)
 
@@ -252,6 +254,17 @@ const total = ref(0)
 const totalPages = ref(1)
 const jumpPage = ref(null)
 let searchTimer = null
+
+const sortOptions = [
+  { value: 'actress_name', label: '名称 A→Z' },
+  { value: 'actress_name_desc', label: '名称 Z→A' },
+  { value: 'total_videos', label: '影片数 多→少' },
+  { value: 'total_videos_asc', label: '影片数 少→多' },
+  { value: 'missing_count', label: '缺失 多→少' },
+  { value: 'missing_count_asc', label: '缺失 少→多' },
+]
+
+const pageSizeOptions = [24, 48, 72, 100].map(size => ({ value: size, label: String(size) }))
 
 const fetchActors = async () => {
   loadingActors.value = true
@@ -561,6 +574,7 @@ const fetchJobs = async () => {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 .sort-control label,
 .page-size-control label {
@@ -568,20 +582,12 @@ const fetchJobs = async () => {
   color: var(--text-secondary);
   white-space: nowrap;
 }
-.filter-select {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
+.sort-control .glass-select {
+  width: 176px;
 }
-.filter-select:focus {
-  outline: none;
-  border-color: var(--accent);
+.page-size-control .glass-select {
+  width: 104px;
 }
-.filter-select,
 .search-input,
 .search-clear {
   min-height: 44px;
@@ -830,7 +836,18 @@ const fetchJobs = async () => {
     max-width: none;
   }
   .filter-controls {
-    justify-content: space-between;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sort-control,
+  .page-size-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .sort-control .glass-select,
+  .page-size-control .glass-select {
+    width: 100%;
   }
   .inline-link {
     display: inline-flex;

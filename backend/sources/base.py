@@ -9,6 +9,10 @@ class MagnetSource(Protocol):
 
     name: str
 
+    def is_implemented(self) -> bool:
+        """源是否已实现真实抓取逻辑；未提供该方法的旧源默认可注册。"""
+        ...
+
     async def search(self, keyword: str) -> list:
         """搜索磁力链接"""
         ...

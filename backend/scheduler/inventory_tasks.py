@@ -12,6 +12,7 @@ from database import (
     get_latest_snapshot_key, get_snapshot_actors, get_snapshot_videos,
     get_snapshot_filenames, get_db_orig, get_confirmed_actor_mapping
 )
+from config import config
 from modules.emby_client import get_emby_client
 from modules.info_client import get_info_client
 from services.watchlist_pipeline import WatchlistPipeline, video_in_snapshot, video_code
@@ -100,6 +101,36 @@ async def run_collect_job(job_id: int):
         for actor in actors_data:
             upsert_inventory_actor(actor["actress_id"], actor["actress_name"])
 
+        actor_mapping_result = {
+            "enabled": config.actor_mapping_auto_match_after_collect,
+            "checked": 0,
+            "auto_confirmed": 0,
+            "candidates_created": 0,
+            "ambiguous": 0,
+            "skipped": 0,
+            "errors": [],
+        }
+        if config.actor_mapping_auto_match_after_collect:
+            try:
+                from services.actor_mapping_candidates import auto_match_actor_mappings
+
+                actor_mapping_result = await auto_match_actor_mappings(snapshot_key=snapshot_key)
+                actor_mapping_result["enabled"] = True
+                print(
+                    "[Inventory] Actor auto-match completed. "
+                    f"Checked: {actor_mapping_result.get('checked', 0)}, "
+                    f"Confirmed: {actor_mapping_result.get('auto_confirmed', 0)}, "
+                    f"Candidates: {actor_mapping_result.get('candidates_created', 0)}"
+                )
+            except Exception as e:
+                actor_mapping_result = {
+                    **actor_mapping_result,
+                    "enabled": True,
+                    "failed": True,
+                    "error": str(e),
+                }
+                print(f"[Inventory] Actor auto-match failed after collect: {e}")
+
         update_inventory_progress(job_id, 95)
         # 更新作业，关联快照key
         update_inventory_job(
@@ -110,6 +141,7 @@ async def run_collect_job(job_id: int):
                 "snapshot_key": snapshot_key,
                 "actors": len(actors_data),
                 "videos": total,
+                "actor_mapping": actor_mapping_result,
             },
         )
         update_inventory_progress(job_id, 100)

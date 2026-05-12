@@ -66,7 +66,10 @@ async def operations_overview() -> dict[str, Any]:
             "snapshot_key": snapshot_key,
             "actor_count": len(snapshot_actors),
         },
-        "mapping": mapping_summary(snapshot_actors),
+        "mapping": {
+            **mapping_summary(snapshot_actors),
+            "auto_match": config.actor_mapping,
+        },
         "missing": {
             "total": len(missing),
             "top_actresses": _top_missing_actresses(missing),

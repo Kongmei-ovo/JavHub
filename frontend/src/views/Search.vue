@@ -85,18 +85,15 @@
             </button>
           </div>
           <div class="sort-strip-right">
-            <div class="filter-item custom-select" :class="{ active: serviceCode }" @click.stop="versionDropdownOpen = !versionDropdownOpen">
-              <span class="select-label">{{ currentVersionLabel }}</span>
-              <svg class="select-arrow" :class="{ open: versionDropdownOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-              <transition name="dropdown-fade">
-                <div v-if="versionDropdownOpen" class="select-dropdown" @mousedown.stop>
-                  <button class="select-option" type="button" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
-                  <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" type="button" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
-                </div>
-              </transition>
-            </div>
+            <GlassSelect
+              v-model="serviceCode"
+              :options="versionOptions"
+              size="compact"
+              placement="right"
+              aria-label="版本筛选"
+              class="version-filter"
+              @change="doSearch"
+            />
             <div class="bar-divider"></div>
             <button class="filter-item toggle" type="button" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
@@ -236,17 +233,35 @@
 <script>
 import api from '../api'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
-import { useRoute } from 'vue-router'
 import { openVideoModal } from '../utils/modalState'
 import favoriteState from '../utils/favoriteState'
 import { createRequestSequence } from '../utils/requestSequence.js'
+import { loadSearchPreferences } from '../utils/searchPreferences.js'
 import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import GlassSelect from '../components/GlassSelect.vue'
+
+function sortStateFromPreference(defaultSort = 'random') {
+  const state = {
+    release_date: null,
+    title_ja: null,
+    runtime_mins: null,
+    random: false,
+  }
+  if (defaultSort === 'random') {
+    state.random = true
+    return state
+  }
+  if (!defaultSort || defaultSort === 'none') return state
+  const match = defaultSort.match(/^(release_date|title_ja|runtime_mins)_(asc|desc)$/)
+  if (match) state[match[1]] = match[2]
+  return state
+}
 
 export default {
   name: 'Search',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect },
   data() {
     return {
       keyword: '',
@@ -272,9 +287,6 @@ export default {
         { value: 'ebook', label: '写真' },
       ],
 
-      // 版本下拉
-      versionDropdownOpen: false,
-
       // 折叠更多筛选
       showMoreFilters: false,
 
@@ -299,6 +311,9 @@ export default {
       jumpPage: null,
       isSearchFocused: false,
       isComposing: false,
+      searchSettingsReady: false,
+      appliedSearchPrefsKey: '',
+      appliedConfigPageSize: null,
       searchSequence: createRequestSequence()
     }
   },
@@ -309,19 +324,12 @@ export default {
     hasSort() {
       return Object.values(this.sortState).some(v => v !== null && v !== false)
     },
-    currentVersionLabel() {
-      if (!this.serviceCode) return '全部版本'
-      const found = this.serviceCodeOptions.find(o => o.value === this.serviceCode)
-      return found ? found.label : this.serviceCode
+    versionOptions() {
+      return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     }
   },
-  mounted() {
+  async mounted() {
     document.addEventListener('mousedown', this._onDocumentClick = (e) => {
-      // 关闭版本下拉
-      if (this.versionDropdownOpen) {
-        const sel = this.$el?.querySelector('.custom-select')
-        if (!sel || !sel.contains(e.target)) this.versionDropdownOpen = false
-      }
       // 关闭高级筛选
       if (this.showMoreFilters) {
         const panel = this.$el?.querySelector('.advanced-panel')
@@ -332,50 +340,21 @@ export default {
       }
     })
 
-    const route = useRoute()
-    const q = route.query
-    if (q.actress) {
-      this.actressName = q.actress
-    }
-    if (q.maker) {
-      this.makerName = q.maker
-    }
-    if (q.series) {
-      this.seriesName = q.series
-    }
-    if (q.keyword || q.q) {
-      this.keyword = q.keyword || q.q
-    }
-    // 从设置加载 page_size
-    api.getConfig().then(resp => {
-      const ps = resp.data?.javinfo?.page_size
-      if (ps) this.pageSize = ps
-    }).catch(() => {})
+    this.applySearchPreferences({ force: true })
+    await this.loadConfiguredPageSize()
 
+    this.syncRouteQuery(this.$route.query)
+    this.searchSettingsReady = true
     if (this.hasFilters) {
       this.doSearch()
     }
   },
-  activated() {
-    // 检查是否有新的查询参数
-    const q = this.$route.query
-    let changed = false
-    if (q.actress !== undefined && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
-    if (q.maker !== undefined && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
-    if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
-    if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
-    if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
-    
-    // 处理题材标签
-    if (q.category_name !== undefined) {
-      const tags = q.category_name.split(' ').filter(t => t)
-      if (JSON.stringify(tags) !== JSON.stringify(this.categoryTags)) {
-        this.categoryTags = tags
-        changed = true
-      }
-    }
-
-    if (changed) {
+  async activated() {
+    if (!this.searchSettingsReady) return
+    const preferencesChanged = this.applySearchPreferences()
+    const pageSizeChanged = await this.loadConfiguredPageSize()
+    const routeChanged = this.syncRouteQuery(this.$route.query)
+    if (routeChanged || ((preferencesChanged || pageSizeChanged) && (this.hasFilters || this.searched))) {
       this.doSearch()
     }
   },
@@ -385,13 +364,39 @@ export default {
   },
   watch: {
     '$route.query'(q) {
+      if (this.syncRouteQuery(q)) this.doSearch()
+    }
+  },
+  methods: {
+    applySearchPreferences({ force = false } = {}) {
+      const prefs = loadSearchPreferences()
+      const prefsKey = JSON.stringify(prefs)
+      if (!force && prefsKey === this.appliedSearchPrefsKey) return false
+      this.sortState = sortStateFromPreference(prefs.defaultSort)
+      this.serviceCode = prefs.defaultServiceCode
+      this.appliedSearchPrefsKey = prefsKey
+      return true
+    },
+    async loadConfiguredPageSize() {
+      try {
+        const resp = await api.getConfig()
+        const ps = Number(resp.data?.javinfo?.page_size)
+        if (ps && ps !== this.appliedConfigPageSize) {
+          this.pageSize = ps
+          this.appliedConfigPageSize = ps
+          return true
+        }
+      } catch {}
+      return false
+    },
+    syncRouteQuery(q = {}) {
       let changed = false
       if (q.actress !== undefined && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
       if (q.maker !== undefined && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
       if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
       if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
       if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
-      
+
       if (q.category_name !== undefined) {
         const tags = q.category_name.split(' ').filter(t => t)
         if (JSON.stringify(tags) !== JSON.stringify(this.categoryTags)) {
@@ -399,13 +404,8 @@ export default {
           changed = true
         }
       }
-
-      if (changed) {
-        this.doSearch()
-      }
-    }
-  },
-  methods: {
+      return changed
+    },
     isFavorited(type, id) {
       return favoriteState.isFavorited(type, id)
     },
@@ -431,7 +431,7 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.clearSort({ search: false })
+      this.applySearchPreferences({ force: true })
       this.results = []
       this.searched = false
     },
@@ -456,11 +456,6 @@ export default {
     },
     removeCategoryTag(idx) {
       this.categoryTags.splice(idx, 1)
-      this.doSearch()
-    },
-    selectVersion(val) {
-      this.serviceCode = val
-      this.versionDropdownOpen = false
       this.doSearch()
     },
     applyFilters() {
@@ -866,86 +861,8 @@ export default {
   color: var(--accent);
 }
 
-/* 自定义版本下拉 */
-.custom-select {
-  position: relative;
-  user-select: none;
-}
-
-.custom-select.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-light);
-}
-
-.select-label {
-  white-space: nowrap;
-  white-space: nowrap;
-}
-
-.select-arrow {
-  flex-shrink: 0;
-  transition: transform 0.25s var(--ease-pro);
-  opacity: 0.5;
-}
-
-.select-arrow.open {
-  transform: rotate(180deg);
-}
-
-.select-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 100%;
-  background: rgba(30, 30, 36, 0.95);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 4px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  z-index: 200;
-  overflow: hidden;
-}
-
-.select-option {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 10px;
-  text-align: left;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.select-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-}
-
-.select-option.selected {
-  background: rgba(212, 175, 55, 0.12);
-  color: #fcf6ba;
-  font-weight: 600;
-}
-
-.dropdown-fade-enter-active {
-  transition: all 0.2s var(--ease-pro);
-}
-
-.dropdown-fade-leave-active {
-  transition: all 0.12s cubic-bezier(0.4, 0, 1, 1);
-}
-
-.dropdown-fade-enter-from,
-.dropdown-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-6px) scale(0.97);
+.version-filter {
+  width: 116px;
 }
 
 /* 高级面板 (Advanced Panel) - 绝对定位消除重排 */
@@ -1291,6 +1208,9 @@ export default {
   }
   .sort-strip-left, .sort-strip-right {
     justify-content: center;
+  }
+  .sort-strip-right .version-filter {
+    width: min(160px, 46vw);
   }
   .sort-strip-left {
     align-items: center;

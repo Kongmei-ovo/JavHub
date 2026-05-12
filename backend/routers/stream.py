@@ -7,6 +7,7 @@ import ipaddress
 import httpx
 import re
 import logging
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -19,39 +20,95 @@ ALLOWED_STREAM_DOMAINS = {
     "kanav.info", "hohoj.tv",
 }
 
-BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"}
+MAX_REDIRECTS = 5
 
 
-def _validate_proxy_url(url: str):
-    """校验代理 URL，防止 SSRF（仅拦截私有/环路/链路本地 IP）"""
+def _is_allowed_stream_domain(hostname: str) -> bool:
+    return any(
+        hostname == domain or hostname.endswith(f".{domain}")
+        for domain in ALLOWED_STREAM_DOMAINS
+    )
+
+
+def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_unspecified
+        or ip.is_multicast
+    )
+
+
+def _resolve_host_ips(hostname: str) -> set[ipaddress._BaseAddress]:
+    try:
+        return {ipaddress.ip_address(hostname)}
+    except ValueError:
+        pass
+
+    try:
+        infos = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise HTTPException(400, "无法解析 URL 主机")
+
+    addresses = set()
+    for info in infos:
+        sockaddr = info[4]
+        if not sockaddr:
+            continue
+        try:
+            addresses.add(ipaddress.ip_address(sockaddr[0]))
+        except ValueError:
+            continue
+    if not addresses:
+        raise HTTPException(400, "无法解析 URL 主机")
+    return addresses
+
+
+def _validate_proxy_url(url: str) -> str:
+    """校验代理 URL，防止 SSRF。"""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(400, "仅允许 http/https 协议")
     hostname = (parsed.hostname or "").lower()
     if not hostname:
         raise HTTPException(400, "无效的 URL")
-    if hostname in BLOCKED_HOSTS:
-        raise HTTPException(403, "不允许访问内部地址")
-    try:
-        ip = ipaddress.ip_address(hostname)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+    hostname = hostname.rstrip(".")
+    if not _is_allowed_stream_domain(hostname):
+        raise HTTPException(403, "URL 域名不在允许列表")
+    for ip in _resolve_host_ips(hostname):
+        if _is_blocked_ip(ip):
             raise HTTPException(403, "不允许访问私有网络")
-    except ValueError:
-        pass  # 域名而非 IP
+    return parsed.geturl()
+
+
+async def _fetch_validated_url(client: httpx.AsyncClient, url: str, headers: dict[str, str]) -> httpx.Response:
+    current_url = _validate_proxy_url(url)
+    for _ in range(MAX_REDIRECTS + 1):
+        resp = await client.get(current_url, headers=headers, follow_redirects=False)
+        if resp.is_redirect:
+            location = resp.headers.get("location")
+            if not location:
+                raise HTTPException(status_code=502, detail="上游重定向无效")
+            current_url = _validate_proxy_url(urljoin(str(resp.url), location))
+            continue
+        return resp
+    raise HTTPException(status_code=502, detail="上游重定向次数过多")
 
 
 @router.get("/proxy")
 async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts URL")):
     """代理 m3u8 和 ts，m3u8 内容中的相对 URL 会被改写为代理地址"""
-    _validate_proxy_url(url)
+    url = _validate_proxy_url(url)
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "*/*",
         "Referer": "/".join(url.split("/")[:3]) + "/",
     }
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            resp = await client.get(url, headers=headers)
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await _fetch_validated_url(client, url, headers)
             if resp.status_code != 200:
                 raise HTTPException(status_code=resp.status_code, detail="上游请求失败")
 

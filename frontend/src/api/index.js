@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { attachApiKey } from '../utils/apiKey.js'
 
 const api = axios.create({
   baseURL: '/api'
@@ -7,6 +8,15 @@ const api = axios.create({
 
 const ERROR_TOAST_COOLDOWN_MS = 3000
 let lastErrorToast = { key: '', ts: 0 }
+
+api.interceptors.request.use(config => attachApiKey(config))
+
+axios.interceptors.request.use(config => {
+  if (config?.url && String(config.url).startsWith('/api')) {
+    return attachApiKey(config)
+  }
+  return config
+})
 
 // ========== 全局错误拦截 ==========
 api.interceptors.response.use(
@@ -275,6 +285,10 @@ export default {
 
   generateActorMappingCandidates(params = {}) {
     return api.post('/inventory/actor-mappings/candidates/generate', null, { params })
+  },
+
+  autoMatchActorMappings(params = {}) {
+    return api.post('/inventory/actor-mappings/auto-match', null, { params })
   },
 
   confirmActorMapping(data) {

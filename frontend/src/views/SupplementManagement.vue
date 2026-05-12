@@ -189,19 +189,20 @@
           </button>
         </div>
         <div class="filter-bar">
-          <select v-model="movieFilters.matched" @change="applyMovieFilters" class="filter-select">
-            <option :value="null">全部</option>
-            <option :value="false">未匹配</option>
-            <option :value="true">已匹配</option>
-          </select>
-          <select v-model="movieFilters.quality" @change="applyMovieFilters" class="filter-select">
-            <option value="">全部质量</option>
-            <option value="missing_cover">缺封面</option>
-            <option value="missing_runtime">缺时长</option>
-            <option value="missing_maker">缺厂商</option>
-            <option value="missing_categories">缺分类</option>
-            <option value="low_completeness">低完整度</option>
-          </select>
+          <GlassSelect
+            v-model="movieFilters.matched"
+            :options="matchFilterOptions"
+            size="compact"
+            aria-label="影片匹配状态"
+            @change="applyMovieFilters"
+          />
+          <GlassSelect
+            v-model="movieFilters.quality"
+            :options="qualityFilterOptions"
+            size="compact"
+            aria-label="影片质量筛选"
+            @change="applyMovieFilters"
+          />
           <input
             v-model="movieFilters.q"
             placeholder="搜索番号/标题"
@@ -246,13 +247,13 @@
             <h2>任务队列</h2>
           </div>
           <div class="filter-bar compact">
-            <select v-model="jobFilters.status" @change="applyJobFilters" class="filter-select">
-              <option value="">全部状态</option>
-              <option value="queued">排队中</option>
-              <option value="running">运行中</option>
-              <option value="succeeded">已完成</option>
-              <option value="failed">失败</option>
-            </select>
+            <GlassSelect
+              v-model="jobFilters.status"
+              :options="jobStatusOptions"
+              size="compact"
+              aria-label="任务状态筛选"
+              @change="applyJobFilters"
+            />
             <button class="btn btn-ghost btn-sm" type="button" @click="applyJobFilters">刷新</button>
           </div>
         </div>
@@ -300,14 +301,13 @@
           </div>
         </div>
         <div class="provider-smoke-controls">
-          <select v-model="providerSmokeForm.source" class="filter-select" @change="loadProviderSmokeRuns">
-            <option value="">默认样本</option>
-            <option
-              v-for="source in sourceHealthRows"
-              :key="source.source"
-              :value="source.source"
-            >{{ source.display_name || source.source }}</option>
-          </select>
+          <GlassSelect
+            v-model="providerSmokeForm.source"
+            :options="providerSourceOptions"
+            size="compact"
+            aria-label="诊断来源"
+            @change="loadProviderSmokeRuns"
+          />
           <input
             v-model="providerSmokeForm.sourceMovieId"
             class="filter-input"
@@ -424,13 +424,13 @@
             <h2>全局队列</h2>
           </div>
           <div class="filter-bar compact">
-            <select v-model="jobFilters.status" @change="loadJobs" class="filter-select">
-              <option value="">全部状态</option>
-              <option value="queued">排队中</option>
-              <option value="running">运行中</option>
-              <option value="succeeded">已完成</option>
-              <option value="failed">失败</option>
-            </select>
+            <GlassSelect
+              v-model="jobFilters.status"
+              :options="jobStatusOptions"
+              size="compact"
+              aria-label="全局队列状态筛选"
+              @change="loadJobs"
+            />
             <button class="btn btn-ghost btn-sm" type="button" :disabled="recovering" @click="recoverStale">
               {{ recovering ? '恢复中...' : '恢复卡住任务' }}
             </button>
@@ -554,6 +554,7 @@ import api from '../api'
 import { ElMessage } from 'element-plus'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
+import GlassSelect from '../components/GlassSelect.vue'
 
 const JobList = {
   name: 'JobList',
@@ -607,7 +608,7 @@ const JobList = {
 
 export default {
   name: 'SupplementManagement',
-  components: { JobList },
+  components: { JobList, GlassSelect },
   data() {
     return {
       stats: null,
@@ -635,6 +636,26 @@ export default {
         { key: 'jobs', label: '任务队列' },
         { key: 'diagnostics', label: '来源诊断' },
         { key: 'sourceHealth', label: '来源状态' },
+      ],
+      matchFilterOptions: [
+        { value: null, label: '全部' },
+        { value: false, label: '未匹配' },
+        { value: true, label: '已匹配' },
+      ],
+      qualityFilterOptions: [
+        { value: '', label: '全部质量' },
+        { value: 'missing_cover', label: '缺封面' },
+        { value: 'missing_runtime', label: '缺时长' },
+        { value: 'missing_maker', label: '缺厂商' },
+        { value: 'missing_categories', label: '缺分类' },
+        { value: 'low_completeness', label: '低完整度' },
+      ],
+      jobStatusOptions: [
+        { value: '', label: '全部状态' },
+        { value: 'queued', label: '排队中' },
+        { value: 'running', label: '运行中' },
+        { value: 'succeeded', label: '已完成' },
+        { value: 'failed', label: '失败' },
       ],
       supplementStatus: null,
       supplementPolling: null,
@@ -713,6 +734,15 @@ export default {
         ...source,
         budget: budgets.get(source.source) || null,
       }))
+    },
+    providerSourceOptions() {
+      return [
+        { value: '', label: '默认样本' },
+        ...this.sourceHealthRows.map(source => ({
+          value: source.source,
+          label: source.display_name || source.source,
+        })),
+      ]
     },
   },
   watch: {
@@ -1546,8 +1576,7 @@ p {
 }
 
 .search-shell input,
-.filter-input,
-.filter-select {
+.filter-input {
   min-height: 44px;
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.045);
@@ -1565,14 +1594,12 @@ p {
   font-size: 15px;
 }
 
-.filter-input,
-.filter-select {
+.filter-input {
   padding: 0 14px;
   font-size: 13px;
 }
 
-.filter-input:focus,
-.filter-select:focus {
+.filter-input:focus {
   border-color: var(--border-light);
   background: rgba(255, 255, 255, 0.07);
 }
@@ -1860,6 +1887,10 @@ p {
 
 .filter-bar.compact {
   margin-bottom: 0;
+}
+
+.filter-bar .glass-select {
+  min-width: 132px;
 }
 
 .ios-list {
@@ -2247,6 +2278,10 @@ p {
   margin-bottom: 14px;
 }
 
+.provider-smoke-controls .glass-select {
+  width: 100%;
+}
+
 .provider-smoke-summary {
   display: flex;
   flex-wrap: wrap;
@@ -2536,6 +2571,11 @@ p {
 
   .movie-row-actions,
   .job-actions {
+    width: 100%;
+  }
+
+  .filter-bar,
+  .filter-bar .glass-select {
     width: 100%;
   }
 

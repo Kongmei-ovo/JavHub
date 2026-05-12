@@ -12,6 +12,12 @@ const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'u
 const config = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
 const search = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
+const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
+const supplement = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
+const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
+const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
+const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
@@ -26,6 +32,9 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(normalize, /getActorMappingSummary/)
   assert.match(normalize, /mappingActor/)
   assert.match(normalize, /置信/)
+  assert.match(normalize, /autoMatchActorMappings/)
+  assert.match(normalize, /自动匹配预演/)
+  assert.match(normalize, /精确但歧义/)
 })
 
 test('subscription routes missing movies into download candidates', () => {
@@ -219,6 +228,8 @@ test('operations overview exposes candidate automation controls', () => {
   assert.match(operations, /scheduleStatusLabel/)
   assert.match(operations, /下一次/)
   assert.match(operations, /候选处理正在运行/)
+  assert.match(operations, /采集后自动匹配/)
+  assert.match(operations, /保守唯一/)
 })
 
 test('settings page blocks saving until remote config has loaded', () => {
@@ -235,13 +246,105 @@ test('settings page blocks saving until remote config has loaded', () => {
   assert.match(config, /@retry="loadConfig"/)
   assert.match(config, /max_auto_downloads_per_run/)
   assert.match(config, /max_auto_downloads_per_24h/)
+  assert.match(config, /actor_mapping/)
+  assert.match(config, /auto_match_after_collect/)
 })
 
 test('interactive filters avoid stale actions and stale pagination', () => {
-  assert.match(search, /this\.clearSort\(\{ search: false \}\)/)
+  assert.match(search, /this\.applySearchPreferences\(\)/)
   assert.match(search, /clearSort\(\{ search = true \} = \{\}\)/)
+  assert.match(search, /async activated\(\)[\s\S]*this\.applySearchPreferences\(\)[\s\S]*await this\.loadConfiguredPageSize\(\)[\s\S]*this\.syncRouteQuery\(this\.\$route\.query\)[\s\S]*this\.doSearch\(\)/)
   assert.match(genres, /this\.categoryError = ''[\s\S]*this\.displayedTags = this\.shuffledTags/)
   assert.match(genres, /if \(!this\.categories\.length && !this\.loading\) this\.categoryError = 'stats_failed'/)
+})
+
+test('appearance settings are grouped by scope and persist discovery preferences', () => {
+  const globalSection = config.slice(config.indexOf('<h3>全局偏好</h3>'), config.indexOf('<h3>影片检索</h3>'))
+  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>个性推荐</h3>'))
+  const discoverySection = config.slice(config.indexOf('<h3>个性推荐</h3>'), config.indexOf('</template>'))
+  assert.match(globalSection, /<span class="setting-title">显示语言<\/span>/)
+  assert.match(searchSection, /<span class="setting-title">检索页数量<\/span>/)
+  assert.match(searchSection, /<span class="setting-title">默认排序<\/span>/)
+  assert.match(searchSection, /<span class="setting-title">默认版本筛选<\/span>/)
+  assert.match(discoverySection, /<span class="setting-title">演员头像<\/span>/)
+  assert.match(discoverySection, /<span class="setting-title">演员每批数量<\/span>/)
+  assert.match(discoverySection, /<span class="setting-title">系列每批数量<\/span>/)
+  assert.match(config, /<span class="setting-title">题材 \/ 系列气泡视觉<\/span>/)
+  assert.doesNotMatch(searchSection, /演员头像/)
+  assert.doesNotMatch(discoverySection, /检索页数量/)
+  assert.match(config, /defaultTab: 'genre'/)
+  assert.match(config, /actressPageSize: 36/)
+  assert.match(config, /seriesPageSize: 60/)
+  assert.match(config, /seriesPageSizeOptions: \[30, 60, 90, 100\]/)
+  assert.match(config, /localStorage\.setItem\('genres_bubble_cfg', JSON\.stringify\(this\.bubbleCfg\)\)/)
+})
+
+test('global dropdowns use the unified glass select control', () => {
+  for (const [name, source] of Object.entries({
+    config,
+    inventory,
+    supplement,
+    logs,
+    search,
+    discoveryDetail,
+  })) {
+    assert.doesNotMatch(source, /<select\b/, `${name} should not use native select controls`)
+  }
+
+  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>个性推荐</h3>'))
+  const visualSection = config.slice(config.indexOf('<span class="setting-title">色系预设</span>'), config.indexOf(`<template v-if="bubbleCfg.colorMode === 'legendary'">`))
+  const translationSection = config.slice(config.indexOf('<label>映射类型</label>'), config.indexOf('<div v-if="transStats[translationType]'))
+
+  assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultSort"/)
+  assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultServiceCode"/)
+  assert.match(visualSection, /<GlassSelect[\s\S]*v-model="bubbleCfg\.palette"/)
+  assert.match(translationSection, /<GlassSelect[\s\S]*v-model="translationType"/)
+
+  assert.match(inventory, /import GlassSelect/)
+  assert.match(inventory, /v-model="sortBy"[\s\S]*@change="doSearch"/)
+  assert.match(inventory, /v-model="pageSize"[\s\S]*@change="onPageSizeChange"/)
+  assert.match(supplement, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
+  assert.match(supplement, /value: false, label: '未匹配'/)
+  assert.match(supplement, /providerSourceOptions\(\)/)
+  assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)
+  assert.match(search, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
+  assert.match(discoveryDetail, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
+
+  assert.match(glassSelect, /aria-haspopup="listbox"/)
+  assert.match(glassSelect, /event\.key === 'ArrowDown'/)
+  assert.match(glassSelect, /event\.key === 'Escape'/)
+  assert.match(glassSelect, /emit\('update:modelValue', option\.value\)/)
+  assert.match(mainCss, /\.glass-select--compact[\s\S]*--glass-select-height: 38px/)
+  assert.match(mainCss, /\.glass-select__button[\s\S]*min-height: var\(--glass-select-height\)/)
+  assert.match(mainCss, /\.glass-select__menu[\s\S]*backdrop-filter: blur/)
+})
+
+test('search preferences drive initial search params', () => {
+  assert.match(searchPreferences, /SEARCH_PREFERENCES_KEY = 'javhub_search_preferences'/)
+  assert.match(searchPreferences, /defaultSort: 'random'/)
+  assert.match(searchPreferences, /defaultServiceCode: ''/)
+  assert.match(searchPreferences, /normalizeSearchPreferences/)
+  assert.match(config, /loadSearchPreferences/)
+  assert.match(config, /saveSearchPreferences/)
+  assert.match(search, /import \{ loadSearchPreferences \} from '\.\.\/utils\/searchPreferences\.js'/)
+  assert.match(search, /function sortStateFromPreference\(defaultSort = 'random'\)/)
+  assert.match(search, /async mounted\(\)[\s\S]*this\.applySearchPreferences\(\{ force: true \}\)[\s\S]*await this\.loadConfiguredPageSize\(\)/)
+  assert.match(search, /async loadConfiguredPageSize\(\)[\s\S]*await api\.getConfig\(\)/)
+  assert.match(search, /buildSearchParams\(page\)[\s\S]*page_size: this\.pageSize[\s\S]*params\.service_code = this\.serviceCode/)
+  assert.match(search, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'/)
+  assert.match(search, /params\.sort_by = sortParts\.join\(','\)/)
+})
+
+test('genres page applies series and actor preference settings separately', () => {
+  assert.match(genres, /defaultTab: 'genre'/)
+  assert.match(genres, /actressAvatarSize: 'medium'/)
+  assert.match(genres, /actressPageSize: 36/)
+  assert.match(genres, /seriesPageSize: 60/)
+  assert.match(genres, /this\.activeTab = this\.tabs\.some\(tab => tab\.key === this\.cfg\.defaultTab\)/)
+  assert.match(genres, /actressPageSize\(\)[\s\S]*this\.cfg\.actressPageSize/)
+  assert.match(genres, /seriesPageSize\(\)[\s\S]*this\.cfg\.seriesPageSize/)
+  assert.match(genres, /const pageSize = this\.seriesPageSize[\s\S]*api\.listSeries\(page, pageSize\)/)
+  assert.match(genres, /legendaryBubbleClass\(tag\)[\s\S]*if \(this\.activeTab === 'series'\) return ''/)
 })
 
 test('download mutations are guarded by in-flight state', () => {

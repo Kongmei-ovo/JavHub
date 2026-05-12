@@ -46,7 +46,10 @@
         <button class="metric-card" type="button" @click="$router.push('/normalize')">
           <span>{{ coverageText }}</span>
           <strong>映射覆盖率</strong>
-          <small>未映射 {{ overview.mapping?.unmapped || 0 }} · 建议 {{ overview.mapping?.candidate || 0 }}</small>
+          <small>
+            未映射 {{ overview.mapping?.unmapped || 0 }} · 待审核 {{ overview.mapping?.candidate || 0 }}
+            · {{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}
+          </small>
         </button>
         <button class="metric-card urgent" type="button" @click="$router.push('/inventory')">
           <span>{{ overview.missing?.total || 0 }}</span>
@@ -105,6 +108,36 @@
               <span>{{ job.status }} · {{ formatTime(job.created_at) }}</span>
             </div>
             <small v-if="!recentJobs.length">暂无作业记录</small>
+          </div>
+        </article>
+
+        <article class="workflow-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Mapping</p>
+              <h2>演员映射</h2>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/normalize')">打开映射</button>
+          </div>
+          <div class="automation-status">
+            <div>
+              <span>自动匹配</span>
+              <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后执行' : '手动执行' }}</strong>
+            </div>
+            <div>
+              <span>确认策略</span>
+              <strong>保守唯一</strong>
+            </div>
+          </div>
+          <div class="mapping-actions">
+            <button class="source-row" type="button" @click="$router.push('/normalize')">
+              <span>待审核候选</span>
+              <strong>{{ overview.mapping?.candidate || 0 }}</strong>
+            </button>
+            <button class="source-row" type="button" @click="$router.push('/normalize')">
+              <span>未映射演员</span>
+              <strong>{{ overview.mapping?.unmapped || 0 }}</strong>
+            </button>
           </div>
         </article>
 
@@ -396,6 +429,7 @@ export default {
   font-size: 18px;
 }
 .source-bars,
+.mapping-actions,
 .job-list,
 .missing-list,
 .run-list {

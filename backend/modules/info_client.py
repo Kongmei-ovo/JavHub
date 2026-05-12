@@ -147,6 +147,7 @@ class InfoClient:
         response = await client.patch(
             f"{self.api_url}{path}",
             json=json_body,
+            headers=self._auth_headers(),
         )
         response.raise_for_status()
         return response.json()

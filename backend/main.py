@@ -5,6 +5,13 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from database import init_db
+from config import config as _cfg
+from security_helpers import (
+    AUTH_EXEMPT_PATHS,
+    auth_error,
+    path_matches,
+    requires_auth_config,
+)
 
 # 配置日志
 logging.basicConfig(
@@ -79,41 +86,41 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 # CORS - 默认仅允许本地开发前端，部署时通过配置覆盖
-_frontend_origin = "http://localhost:5173"  # Vite dev server
-try:
-    from config import config as _cfg
-    _origin = getattr(_cfg, 'frontend_origin', None)
-    if _origin:
-        _frontend_origin = _origin
-except Exception:
-    pass
+_frontend_origin = _cfg.frontend_origin
+if _frontend_origin == "*":
+    raise RuntimeError("server.frontend_origin cannot be '*' while credentials are enabled")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[_frontend_origin],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
-
-# API Key 认证中间件（配置了 api_key 时生效）
-_AUTH_EXEMPT_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
-    if _cfg.api_key and request.method != "OPTIONS":
-        path = request.url.path
-        if not any(path.startswith(p) for p in _AUTH_EXEMPT_PATHS):
-            key = request.headers.get("X-API-Key", "")
-            if key != _cfg.api_key:
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "未授权：请提供有效的 API Key", "code": "ERR_UNAUTHORIZED"},
-                )
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    path = request.url.path
+    if path_matches(path, AUTH_EXEMPT_PATHS):
+        return await call_next(request)
+    if _cfg.auth_disabled:
+        return await call_next(request)
+    if _cfg.api_key:
+        key = request.headers.get("X-API-Key", "")
+        if key != _cfg.api_key:
+            return auth_error(401, "未授权：请提供有效的 API Key")
+        return await call_next(request)
+    if requires_auth_config(path, request.method):
+        return auth_error(
+            403,
+            "API Key 未配置：请设置 server.api_key/API_KEY，或显式设置 server.auth_disabled/AUTH_DISABLED",
+            "ERR_FORBIDDEN",
+        )
     return await call_next(request)
 
 # 速率限制中间件
-from config import config as _cfg
 if _cfg.rate_limit_enabled:
     from middlewares.rate_limit import init_limiter, get_limiter
     init_limiter(requests_per_minute=_cfg.rate_limit_rpm, burst=_cfg.rate_limit_burst)

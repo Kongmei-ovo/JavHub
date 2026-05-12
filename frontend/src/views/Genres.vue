@@ -383,6 +383,10 @@ const DEFAULT_CFG = {
   customGradients: [],    // for custom palette
   goldLegend: true,       // enable gold legend mode
   bubbleCount: 36,        // 每页显示的气泡数量
+  defaultTab: 'genre',
+  actressAvatarSize: 'medium',
+  actressPageSize: 36,
+  seriesPageSize: 60,
   rarityThresholds: { legendary: 5, epic: 20, rare: 50 }, // 百分比阈值（0-100）
 }
 
@@ -393,7 +397,7 @@ export default {
   components: { AppleSkeleton, AppleErrorState },
   data() {
     return {
-      activeTab: 'genre',
+      activeTab: DEFAULT_CFG.defaultTab,
       tabs: TABS,
       categories: [],
       shuffledTags: [],
@@ -443,9 +447,10 @@ export default {
       }
     },
     actressPageSize() {
-      const size = this.cfg.actressAvatarSize || 'medium'
-      const map = { small: 48, medium: 36, large: 20 }
-      return map[size] || 36
+      return Number(this.cfg.actressPageSize) || DEFAULT_CFG.actressPageSize
+    },
+    seriesPageSize() {
+      return Number(this.cfg.seriesPageSize) || DEFAULT_CFG.seriesPageSize
     },
   },
   watch: {
@@ -454,12 +459,18 @@ export default {
       this.displayedTags = this.shuffledTags.slice(0, newVal)
     },
     'cfg.actressAvatarSize'() {
-      // page_size 变了，total_pages 也变，重新取第一页
       this.loadActresses(1)
+    },
+    'cfg.actressPageSize'() {
+      this.loadActresses(1)
+    },
+    'cfg.seriesPageSize'() {
+      this.loadSeries(1)
     },
   },
   async mounted() {
     this.loadCfg()
+    this.activeTab = this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre'
     await Promise.all([
       this.loadCategories(),
       this.loadActresses(),
@@ -481,7 +492,12 @@ export default {
       try {
         const saved = localStorage.getItem(LS_KEY)
         if (saved) {
-          this.cfg = { ...DEFAULT_CFG, ...JSON.parse(saved) }
+          const parsed = JSON.parse(saved)
+          const fallbackPageSize = { small: 48, medium: 36, large: 20 }
+          this.cfg = { ...DEFAULT_CFG, ...parsed }
+          if (!parsed.actressPageSize && parsed.actressAvatarSize) {
+            this.cfg.actressPageSize = fallbackPageSize[parsed.actressAvatarSize] || DEFAULT_CFG.actressPageSize
+          }
         }
       } catch {}
     },
@@ -765,7 +781,7 @@ export default {
       this.seriesLoading = true
       this.seriesError = ''
       try {
-        const pageSize = 60
+        const pageSize = this.seriesPageSize
         const resp = await api.listSeries(page, pageSize)
         const raw = resp.data
         this.seriesRawPage = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : [])
@@ -794,6 +810,7 @@ export default {
       this.$router.push({ name: 'DiscoveryDetail', params: { type: 'series', value: name } })
     },
     legendaryBubbleClass(tag) {
+      if (this.activeTab === 'series') return ''
       if (this.cfg.colorMode !== 'legendary' || !this.cfg.goldLegend) return ''
       const rarity = this.rarityMap[tag.id] || 'common'
       if (rarity === 'legendary') return 'rarity-legendary'

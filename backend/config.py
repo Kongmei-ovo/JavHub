@@ -8,6 +8,13 @@ def _env(key: str, default: str = '') -> str:
     """读取环境变量，环境变量有值时优先于配置文件"""
     return os.getenv(key) or default
 
+
+def _env_bool(key: str, default: bool = False) -> bool:
+    value = os.getenv(key)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 class Config:
     _instance: Optional['Config'] = None
     _config: dict = {}
@@ -39,6 +46,14 @@ class Config:
     @property
     def api_key(self) -> str:
         return _env('API_KEY', self._config.get('server', {}).get('api_key', ''))
+
+    @property
+    def auth_disabled(self) -> bool:
+        return _env_bool('AUTH_DISABLED', bool(self._config.get('server', {}).get('auth_disabled', False)))
+
+    @property
+    def frontend_origin(self) -> str:
+        return self._config.get('server', {}).get('frontend_origin', 'http://localhost:5173')
 
     @property
     def openlist_api_url(self) -> str:
@@ -150,6 +165,61 @@ class Config:
             value = 100
         return max(0, value)
 
+    # Actor mapping automation settings
+    @property
+    def actor_mapping(self) -> dict:
+        defaults = {
+            'auto_match_after_collect': True,
+            'auto_confirm_policy': 'conservative',
+            'candidate_per_actor': 3,
+            'candidate_min_confidence': 0.55,
+            'auto_confirm_confidence': 0.98,
+            'auto_confirm_gap': 0.08,
+        }
+        cfg = self._config.get('actor_mapping', {}) or {}
+        return {**defaults, **cfg}
+
+    @property
+    def actor_mapping_auto_match_after_collect(self) -> bool:
+        return bool(self.actor_mapping.get('auto_match_after_collect', True))
+
+    @property
+    def actor_mapping_auto_confirm_policy(self) -> str:
+        policy = str(self.actor_mapping.get('auto_confirm_policy') or 'conservative').lower()
+        return policy if policy in {'conservative'} else 'conservative'
+
+    @property
+    def actor_mapping_candidate_per_actor(self) -> int:
+        try:
+            value = int(self.actor_mapping.get('candidate_per_actor', 3))
+        except Exception:
+            value = 3
+        return max(1, min(value, 10))
+
+    @property
+    def actor_mapping_candidate_min_confidence(self) -> float:
+        try:
+            value = float(self.actor_mapping.get('candidate_min_confidence', 0.55))
+        except Exception:
+            value = 0.55
+        return max(0.0, min(value, 1.0))
+
+    @property
+    def actor_mapping_auto_confirm_confidence(self) -> float:
+        try:
+            value = float(self.actor_mapping.get('auto_confirm_confidence', 0.98))
+        except Exception:
+            value = 0.98
+        return max(0.0, min(value, 1.0))
+
+    @property
+    def actor_mapping_auto_confirm_gap(self) -> float:
+        try:
+            value = float(self.actor_mapping.get('auto_confirm_gap', 0.08))
+        except Exception:
+            value = 0.08
+        return max(0.0, min(value, 1.0))
+
     # JavInfo API settings
     @property
     def javinfo(self) -> dict:
@@ -243,10 +313,20 @@ class Config:
     def get_all(self) -> dict:
         cfg = self._config.copy()
         cfg['automation'] = self.automation
+        cfg['actor_mapping'] = self.actor_mapping
         return cfg
 
+    def _merge_config(self, current: dict, incoming: dict) -> dict:
+        merged = current.copy()
+        for key, value in incoming.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = self._merge_config(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
+
     def update(self, new_config: dict):
-        self._config.update(new_config)
+        self._config = self._merge_config(self._config, new_config)
         config_path = Path(__file__).parent.parent / "config.yaml"
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(self._config, f, allow_unicode=True, default_flow_style=False)

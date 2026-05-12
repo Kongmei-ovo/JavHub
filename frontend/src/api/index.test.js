@@ -27,6 +27,64 @@ test('getVideoMetadata failure does not show global error toast', async (t) => {
   assert.equal(errorMock.mock.callCount(), 0)
 })
 
+test('api client injects stored JavHub API key', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const originalLocalStorage = globalThis.localStorage
+  let capturedConfig = null
+
+  globalThis.localStorage = {
+    getItem: key => key === 'javhub_api_key' ? 'secret-key' : null,
+    setItem: () => {},
+    removeItem: () => {},
+  }
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => {
+    axios.defaults.adapter = originalAdapter
+    if (originalLocalStorage === undefined) {
+      delete globalThis.localStorage
+    } else {
+      globalThis.localStorage = originalLocalStorage
+    }
+  })
+
+  const { default: api } = await import(`./index.js?api-key-inject-${Date.now()}`)
+  await api.getConfig()
+
+  assert.equal(capturedConfig.headers['X-API-Key'], 'secret-key')
+})
+
+test('global axios /api requests inject stored JavHub API key', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const originalLocalStorage = globalThis.localStorage
+  let capturedConfig = null
+
+  globalThis.localStorage = {
+    getItem: key => key === 'javhub_api_key' ? 'secret-key' : null,
+    setItem: () => {},
+    removeItem: () => {},
+  }
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => {
+    axios.defaults.adapter = originalAdapter
+    if (originalLocalStorage === undefined) {
+      delete globalThis.localStorage
+    } else {
+      globalThis.localStorage = originalLocalStorage
+    }
+  })
+
+  await import(`./index.js?global-api-key-inject-${Date.now()}`)
+  await axios.get('/api/inventory/jobs')
+
+  assert.equal(capturedConfig.headers['X-API-Key'], 'secret-key')
+})
+
 test('main path API failure still shows global error toast', async (t) => {
   installRejectingAdapter(t, 500, '服务器内部错误')
   const errorMock = t.mock.method(ElMessage, 'error', () => {})
@@ -552,6 +610,7 @@ test('actor mapping APIs send expected requests', async (t) => {
   await api.getActorMappingSummary()
   await api.listUnmappedActors({ search: '瑠花' })
   await api.generateActorMappingCandidates({ search: '瑠花', limit: 10, per_actor: 2 })
+  await api.autoMatchActorMappings({ dry_run: true, limit: 20 })
   await api.confirmActorMapping({ emby_actor_id: '1', javinfo_actress_id: 2 })
   await api.ignoreActorMapping({ emby_actor_id: '3', emby_actor_name: 'Ignored' })
   await api.deleteActorMapping(9)
@@ -564,10 +623,13 @@ test('actor mapping APIs send expected requests', async (t) => {
   assert.equal(calls[3].url, '/inventory/actor-mappings/candidates/generate')
   assert.equal(calls[3].method, 'post')
   assert.deepEqual(calls[3].params, { search: '瑠花', limit: 10, per_actor: 2 })
-  assert.equal(calls[4].url, '/inventory/actor-mappings/confirm')
-  assert.equal(calls[5].url, '/inventory/actor-mappings/ignore')
-  assert.equal(calls[6].url, '/inventory/actor-mappings/9')
-  assert.equal(calls[6].method, 'delete')
+  assert.equal(calls[4].url, '/inventory/actor-mappings/auto-match')
+  assert.equal(calls[4].method, 'post')
+  assert.deepEqual(calls[4].params, { dry_run: true, limit: 20 })
+  assert.equal(calls[5].url, '/inventory/actor-mappings/confirm')
+  assert.equal(calls[6].url, '/inventory/actor-mappings/ignore')
+  assert.equal(calls[7].url, '/inventory/actor-mappings/9')
+  assert.equal(calls[7].method, 'delete')
 })
 
 test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {

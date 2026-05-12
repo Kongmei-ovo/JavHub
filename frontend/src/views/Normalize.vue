@@ -3,9 +3,17 @@
     <div class="page-header">
       <div>
         <h1>演员映射</h1>
-        <p>把 Emby 演员确认到 JavInfo 演员，库存对比只使用已确认映射。</p>
+        <p>保守自动确认精确唯一匹配，歧义和相似匹配保留人工审核。</p>
       </div>
-      <button type="button" class="btn btn-primary" @click="reloadAll">刷新</button>
+      <div class="header-actions">
+        <button type="button" class="btn btn-ghost" :disabled="autoMatching" @click="previewAutoMatch">
+          {{ autoMatching ? '预演中...' : '自动匹配预演' }}
+        </button>
+        <button type="button" class="btn btn-primary" :disabled="autoMatching" @click="runAutoMatch">
+          {{ autoMatching ? '执行中...' : '执行自动匹配' }}
+        </button>
+        <button type="button" class="btn btn-ghost" @click="reloadAll">刷新</button>
+      </div>
     </div>
 
     <div class="summary-row">
@@ -25,6 +33,26 @@
         <strong>{{ coverageText }}</strong>
         <span>映射覆盖率</span>
       </div>
+      <div class="summary-card">
+        <strong>{{ lastAutoMatch?.auto_confirmed || 0 }}</strong>
+        <span>本次自动确认</span>
+      </div>
+      <div class="summary-card">
+        <strong>{{ lastAutoMatch?.ambiguous || 0 }}</strong>
+        <span>本次歧义</span>
+      </div>
+    </div>
+
+    <div v-if="lastAutoMatch" class="auto-match-panel">
+      <div>
+        <strong>{{ lastAutoMatch.dry_run ? '自动匹配预演' : '自动匹配结果' }}</strong>
+        <span>
+          检查 {{ lastAutoMatch.checked || 0 }} · 自动确认 {{ lastAutoMatch.auto_confirmed || 0 }}
+          · 待审候选 {{ lastAutoMatch.candidates_created || 0 }} · 歧义 {{ lastAutoMatch.ambiguous || 0 }}
+          · 跳过 {{ lastAutoMatch.skipped || 0 }}
+        </span>
+      </div>
+      <small v-if="(lastAutoMatch.errors || []).length">错误 {{ lastAutoMatch.errors.length }} 个，已保留人工处理</small>
     </div>
 
     <div class="tab-bar">
@@ -76,7 +104,10 @@
                 class="javinfo-row"
               >
                 <span>{{ candidate.javinfo_actress_name || candidate.javinfo_actress_id }}</span>
-                <small>ID {{ candidate.javinfo_actress_id }} · 置信 {{ confidenceText(candidate.confidence) }}</small>
+                <small>
+                  ID {{ candidate.javinfo_actress_id }} · 置信 {{ confidenceText(candidate.confidence) }}
+                  <span class="reason-pill">{{ mappingReasonLabel(candidate) }}</span>
+                </small>
                 <button type="button" class="btn btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
                 <button type="button" class="btn btn-ghost" @click="ignoreCandidate(actor, candidate)">忽略</button>
               </div>
@@ -109,7 +140,11 @@
           <div>
             <strong>{{ mapping.javinfo_actress_name || '已忽略' }}</strong>
             <small v-if="mapping.javinfo_actress_id">JavInfo ID {{ mapping.javinfo_actress_id }}</small>
-            <small v-if="mapping.status === 'candidate'">置信 {{ confidenceText(mapping.confidence) }} · {{ mapping.source }}</small>
+            <small v-if="mapping.status === 'candidate'">
+              置信 {{ confidenceText(mapping.confidence) }}
+              <span class="reason-pill">{{ mappingReasonLabel(mapping) }}</span>
+            </small>
+            <small v-else-if="mapping.source">来源 {{ mapping.source }}</small>
           </div>
           <span class="status-pill">{{ mapping.status }}</span>
           <button v-if="mapping.status === 'candidate'" type="button" class="btn btn-primary" @click="confirmMapping(mappingActor(mapping), mapping)">确认</button>
@@ -130,11 +165,13 @@ const activeTab = ref('unmapped')
 const search = ref('')
 const loading = ref(false)
 const generatingCandidates = ref(false)
+const autoMatching = ref(false)
 const mappingSummary = ref({})
 const unmappedActors = ref([])
 const mappings = ref([])
 const candidateQuery = ref({})
 const candidateResults = ref({})
+const lastAutoMatch = ref(null)
 
 const coverageText = computed(() => `${Math.round((mappingSummary.value.coverage || 0) * 100)}%`)
 const currentMappings = computed(() => mappings.value.filter(m => m.status === activeTab.value))
@@ -179,6 +216,21 @@ function suggestedMappings(actor) {
 
 function confidenceText(value) {
   return `${Math.round((Number(value) || 0) * 100)}%`
+}
+
+function mappingReasonLabel(mapping) {
+  const source = mapping.reason || mapping.source || mapping.match_type || ''
+  const labels = {
+    auto_confirmed_exact_unique: '精确唯一',
+    exact_ambiguous: '精确但歧义',
+    exact_review: '精确待审',
+    contains_match: '包含匹配',
+    similar_match: '相似匹配',
+    name_match: '名称匹配',
+    auto_match: '自动确认',
+    manual: '人工',
+  }
+  return labels[source] || source || '待审核'
 }
 
 function mappingActor(mapping) {
@@ -260,6 +312,30 @@ async function generateCandidates() {
   }
 }
 
+async function runAutoMatchRequest(dryRun) {
+  autoMatching.value = true
+  try {
+    const resp = await api.autoMatchActorMappings({
+      dry_run: dryRun,
+      limit: 100000,
+    })
+    lastAutoMatch.value = resp.data || {}
+    const action = dryRun ? '预演完成' : '自动匹配完成'
+    ElMessage.success(`${action}：确认 ${lastAutoMatch.value.auto_confirmed || 0}，待审 ${lastAutoMatch.value.candidates_created || 0}`)
+    if (!dryRun) await reloadAll()
+  } finally {
+    autoMatching.value = false
+  }
+}
+
+async function previewAutoMatch() {
+  await runAutoMatchRequest(true)
+}
+
+async function runAutoMatch() {
+  await runAutoMatchRequest(false)
+}
+
 onMounted(reloadAll)
 </script>
 
@@ -277,9 +353,16 @@ onMounted(reloadAll)
 }
 .page-header h1 { margin: 0; font-size: 30px; line-height: 1.1; }
 .page-header p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; }
+.header-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -291,6 +374,26 @@ onMounted(reloadAll)
 }
 .summary-card strong { display: block; font-size: 24px; color: var(--text-primary); }
 .summary-card span { color: var(--text-secondary); font-size: 13px; }
+.auto-match-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.auto-match-panel strong,
+.auto-match-panel span {
+  display: block;
+}
+.auto-match-panel span,
+.auto-match-panel small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
 .tab-bar { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
 .tab-btn {
   border: 0;
@@ -358,6 +461,16 @@ onMounted(reloadAll)
   color: var(--text-secondary);
   font-size: 12px;
 }
+.reason-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  color: var(--accent);
+  font-size: 11px;
+}
 .btn {
   padding: 8px 12px;
   white-space: nowrap;
@@ -366,8 +479,16 @@ onMounted(reloadAll)
 .empty { padding: 40px 12px; text-align: center; color: var(--text-secondary); }
 @media (max-width: 760px) {
   .mapping-page { padding: 20px 16px 40px; }
+  .page-header,
+  .auto-match-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .summary-row,
   .mapping-card { grid-template-columns: 1fr; }
+  .header-actions {
+    justify-content: flex-start;
+  }
   .candidate-search,
   .filter-bar { flex-direction: column; }
   .mapping-row { grid-template-columns: 1fr; }

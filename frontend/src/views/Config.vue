@@ -101,6 +101,34 @@
               <div class="card-content">
                 <div class="settings-card-header">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78z"/>
+                    <path d="M15 7l-3.5 3.5"/>
+                    <path d="M19 4l-7.5 7.5"/>
+                  </svg>
+                  <h2>JavHub API Key</h2>
+                </div>
+                <div class="form-slot">
+                  <div class="form-group">
+                    <label>本机访问密钥</label>
+                    <div class="input-password-wrap">
+                      <input class="input" :type="showLocalApiKey ? 'text' : 'password'" v-model="localApiKey" autocomplete="off" />
+                      <button class="input-eye-btn" type="button" @click="showLocalApiKey = !showLocalApiKey" :title="showLocalApiKey ? '隐藏' : '显示'">
+                        <svg v-if="!showLocalApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <button class="btn btn-secondary" type="button" @click="saveLocalApiKey">
+                    保存本机密钥
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                     <line x1="8" y1="21" x2="16" y2="21"/>
                     <line x1="12" y1="17" x2="12" y2="21"/>
@@ -343,55 +371,83 @@
           <div v-if="activeGroup === 'appearance'" class="config-section appearance-section">
             <div class="section-header">
               <h2>界面与外观</h2>
-              <p>统一主题、检索密度和题材视觉偏好。</p>
+              <p>按作用范围整理全局显示、影片检索和个性推荐偏好。</p>
             </div>
 
-            <div class="appearance-board">
-              <section class="appearance-panel appearance-theme-panel apple-surface">
-                <div class="appearance-panel-header">
+            <div class="preference-stack">
+              <section class="preference-section apple-surface">
+                <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Theme</p>
-                    <h3>全局主题</h3>
+                    <p class="eyebrow">Global</p>
+                    <h3>全局偏好</h3>
                   </div>
-                  <span class="appearance-chip">{{ currentThemeConfig.labelEn }}</span>
+                  <span class="appearance-chip">{{ displayLangLabel }} · {{ currentThemeConfig.labelEn }}</span>
                 </div>
 
-                <div class="theme-option-grid">
-                  <button
-                    v-for="(theme, key) in themes"
-                    :key="key"
-                    class="theme-option"
-                    type="button"
-                    :class="{ active: currentTheme === key }"
-                    :aria-pressed="currentTheme === key"
-                    @click="switchTheme(key)"
-                  >
-                    <span
-                      class="theme-card-preview theme-swatch"
-                      :style="themeSwatchStyle(theme)"
-                    >
-                      <span class="theme-swatch-card"></span>
-                      <span class="theme-swatch-line"></span>
-                    </span>
-                    <span class="theme-option-copy">
-                      <span class="theme-label">{{ theme.label }}</span>
-                      <span class="theme-label-en">{{ theme.labelEn }}</span>
-                    </span>
-                    <span v-if="currentTheme === key" class="theme-check">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    </span>
-                  </button>
+                <div class="appearance-scope-grid">
+                  <div class="scope-card">
+                    <div class="scope-card-header">
+                      <span class="setting-title">全局主题</span>
+                      <span class="setting-note">{{ currentThemeConfig.labelEn }}</span>
+                    </div>
+                    <div class="theme-option-grid">
+                      <button
+                        v-for="(theme, key) in themes"
+                        :key="key"
+                        class="theme-option"
+                        type="button"
+                        :class="{ active: currentTheme === key }"
+                        :aria-pressed="currentTheme === key"
+                        @click="switchTheme(key)"
+                      >
+                        <span
+                          class="theme-card-preview theme-swatch"
+                          :style="themeSwatchStyle(theme)"
+                        >
+                          <span class="theme-swatch-card"></span>
+                          <span class="theme-swatch-line"></span>
+                        </span>
+                        <span class="theme-option-copy">
+                          <span class="theme-label">{{ theme.label }}</span>
+                          <span class="theme-label-en">{{ theme.labelEn }}</span>
+                        </span>
+                        <span v-if="currentTheme === key" class="theme-check">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="scope-card compact-card">
+                    <div class="appearance-setting-row">
+                      <div class="setting-copy">
+                        <span class="setting-title">显示语言</span>
+                        <span class="setting-note">{{ displayLangLabel }}</span>
+                      </div>
+                      <div class="segmented-mini" aria-label="显示语言">
+                        <button
+                          v-for="option in displayLangOptions"
+                          :key="option.value"
+                          type="button"
+                          :class="{ active: displayLangVal === option.value }"
+                          :aria-pressed="displayLangVal === option.value"
+                          @click="setDisplayLang(option.value)"
+                        >{{ option.label }}</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
 
-              <section class="appearance-panel apple-surface">
-                <div class="appearance-panel-header">
+              <section class="preference-section apple-surface">
+                <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Density</p>
-                    <h3>界面密度</h3>
+                    <p class="eyebrow">Search</p>
+                    <h3>影片检索</h3>
                   </div>
+                  <span class="appearance-chip">{{ config.javinfo.page_size }} 条 / 页</span>
                 </div>
 
                 <div class="appearance-setting-list">
@@ -414,60 +470,154 @@
 
                   <div class="appearance-setting-row">
                     <div class="setting-copy">
-                      <span class="setting-title">演员头像</span>
-                      <span class="setting-note">{{ avatarSizeHint }}</span>
+                      <span class="setting-title">默认排序</span>
+                      <span class="setting-note">{{ searchSortLabel }}</span>
                     </div>
-                    <div class="segmented-mini" aria-label="演员头像尺寸">
-                      <button
-                        v-for="option in avatarSizeOptions"
-                        :key="option.value"
-                        type="button"
-                        :class="{ active: bubbleCfg.actressAvatarSize === option.value }"
-                        :aria-pressed="bubbleCfg.actressAvatarSize === option.value"
-                        @click="bubbleCfg.actressAvatarSize = option.value"
-                      >{{ option.label }}</button>
-                    </div>
+                    <GlassSelect
+                      v-model="searchPrefs.defaultSort"
+                      :options="searchSortOptions"
+                      class="glass-select-control glass-select-control--wide"
+                      placement="right"
+                      aria-label="影片检索默认排序"
+                    />
                   </div>
 
                   <div class="appearance-setting-row">
                     <div class="setting-copy">
-                      <span class="setting-title">显示语言</span>
-                      <span class="setting-note">{{ displayLangLabel }}</span>
+                      <span class="setting-title">默认版本筛选</span>
+                      <span class="setting-note">{{ searchServiceLabel }}</span>
                     </div>
-                    <div class="segmented-mini" aria-label="显示语言">
-                      <button
-                        v-for="option in displayLangOptions"
-                        :key="option.value"
-                        type="button"
-                        :class="{ active: displayLangVal === option.value }"
-                        :aria-pressed="displayLangVal === option.value"
-                        @click="setDisplayLang(option.value)"
-                      >{{ option.label }}</button>
-                    </div>
+                    <GlassSelect
+                      v-model="searchPrefs.defaultServiceCode"
+                      :options="searchServiceOptions"
+                      class="glass-select-control glass-select-control--wide"
+                      placement="right"
+                      aria-label="影片检索默认版本筛选"
+                    />
                   </div>
                 </div>
               </section>
 
-              <section class="appearance-panel appearance-aura-panel apple-surface">
-                <div class="appearance-panel-header">
+              <section class="preference-section apple-surface">
+                <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Aura Tags</p>
-                    <h3>题材视觉</h3>
+                    <p class="eyebrow">Discovery</p>
+                    <h3>个性推荐</h3>
                   </div>
                   <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
                 </div>
 
-                <div class="aura-preview" :style="auraPreviewStyle">
-                  <span
-                    v-for="(tag, index) in previewTags"
-                    :key="tag"
-                    class="preview-bubble"
-                    :class="previewBubbleClass(index)"
-                    :style="previewBubbleStyle(index)"
-                  >{{ tag }}</span>
+                <div class="discovery-preference-grid">
+                  <section class="scope-card">
+                    <div class="scope-card-header">
+                      <span class="setting-title">推荐入口</span>
+                      <span class="setting-note">默认打开 {{ defaultTabLabel }}</span>
+                    </div>
+                    <div class="appearance-setting-row">
+                      <div class="setting-copy">
+                        <span class="setting-title">默认页签</span>
+                        <span class="setting-note">{{ defaultTabLabel }}</span>
+                      </div>
+                      <div class="segmented-mini" aria-label="个性推荐默认页签">
+                        <button
+                          v-for="option in defaultTabOptions"
+                          :key="option.value"
+                          type="button"
+                          :class="{ active: bubbleCfg.defaultTab === option.value }"
+                          :aria-pressed="bubbleCfg.defaultTab === option.value"
+                          @click="bubbleCfg.defaultTab = option.value"
+                        >{{ option.label }}</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="scope-card">
+                    <div class="scope-card-header">
+                      <span class="setting-title">演员</span>
+                      <span class="setting-note">{{ avatarSizeHint }} · 每批 {{ bubbleCfg.actressPageSize }}</span>
+                    </div>
+                    <div class="appearance-setting-list">
+                      <div class="appearance-setting-row">
+                        <div class="setting-copy">
+                          <span class="setting-title">演员头像</span>
+                          <span class="setting-note">{{ avatarSizeHint }}</span>
+                        </div>
+                        <div class="segmented-mini" aria-label="演员头像尺寸">
+                          <button
+                            v-for="option in avatarSizeOptions"
+                            :key="option.value"
+                            type="button"
+                            :class="{ active: bubbleCfg.actressAvatarSize === option.value }"
+                            :aria-pressed="bubbleCfg.actressAvatarSize === option.value"
+                            @click="bubbleCfg.actressAvatarSize = option.value"
+                          >{{ option.label }}</button>
+                        </div>
+                      </div>
+
+                      <div class="appearance-setting-row">
+                        <div class="setting-copy">
+                          <span class="setting-title">演员每批数量</span>
+                          <span class="setting-note">{{ bubbleCfg.actressPageSize }} 位 / 批</span>
+                        </div>
+                        <div class="segmented-mini" aria-label="演员每批数量">
+                          <button
+                            v-for="size in actressPageSizeOptions"
+                            :key="size"
+                            type="button"
+                            :class="{ active: bubbleCfg.actressPageSize === size }"
+                            :aria-pressed="bubbleCfg.actressPageSize === size"
+                            @click="bubbleCfg.actressPageSize = size"
+                          >{{ size }}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="scope-card">
+                    <div class="scope-card-header">
+                      <span class="setting-title">系列</span>
+                      <span class="setting-note">每批 {{ bubbleCfg.seriesPageSize }} 个</span>
+                    </div>
+                    <div class="appearance-setting-row">
+                      <div class="setting-copy">
+                        <span class="setting-title">系列每批数量</span>
+                        <span class="setting-note">{{ bubbleCfg.seriesPageSize }} 个 / 批</span>
+                      </div>
+                      <div class="segmented-mini" aria-label="系列每批数量">
+                        <button
+                          v-for="size in seriesPageSizeOptions"
+                          :key="size"
+                          type="button"
+                          :class="{ active: bubbleCfg.seriesPageSize === size }"
+                          :aria-pressed="bubbleCfg.seriesPageSize === size"
+                          @click="bubbleCfg.seriesPageSize = size"
+                        >{{ size }}</button>
+                      </div>
+                    </div>
+                  </section>
                 </div>
 
-                <div class="appearance-setting-list">
+                <section class="scope-card visual-card">
+                  <div class="scope-card-header">
+                    <div>
+                      <span class="setting-title">题材 / 系列气泡视觉</span>
+                      <span class="setting-note">系列只复用颜色、尺寸和间距，不参与题材稀有度分层</span>
+                    </div>
+                    <span class="appearance-chip">{{ bubbleCfg.colorMode === 'legendary' ? 'Rarity' : 'Palette' }}</span>
+                  </div>
+
+                  <div class="aura-preview" :style="auraPreviewStyle">
+                    <span
+                      v-for="(tag, index) in previewTags"
+                      :key="tag"
+                      class="preview-bubble"
+                      :class="previewBubbleClass(index)"
+                      :style="previewBubbleStyle(index)"
+                    >
+                    {{ tag }}</span>
+                  </div>
+
+                  <div class="appearance-setting-list">
                   <div class="appearance-setting-row">
                     <div class="setting-copy">
                       <span class="setting-title">视觉风格</span>
@@ -496,17 +646,13 @@
                         <span class="setting-note">{{ paletteLabel }}</span>
                       </div>
                       <div class="palette-select-wrap">
-                        <select class="palette-select" v-model="bubbleCfg.palette">
-                          <option value="__all__">艺术随机</option>
-                          <option
-                            v-for="p in palettes"
-                            :key="p.key"
-                            :value="p.key"
-                          >
-                            {{ p.label }}
-                          </option>
-                          <option value="__custom__">自定义材质</option>
-                        </select>
+                        <GlassSelect
+                          v-model="bubbleCfg.palette"
+                          :options="paletteOptions"
+                          class="glass-select-control glass-select-control--wide"
+                          placement="right"
+                          aria-label="题材色系预设"
+                        />
                         <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
                       </div>
                     </div>
@@ -584,7 +730,8 @@
                       />
                     </div>
                   </div>
-                </div>
+                  </div>
+                </section>
               </section>
             </div>
           </div>
@@ -614,12 +761,12 @@
                   <div class="form-group">
                     <label>映射类型</label>
                     <div class="form-row">
-                      <select class="input translation-type-select" v-model="translationType">
-                        <option value="actress">演员</option>
-                        <option value="category">题材</option>
-                        <option value="series">系列</option>
-                        <option value="title">标题</option>
-                      </select>
+                      <GlassSelect
+                        v-model="translationType"
+                        :options="translationTypeOptions"
+                        class="translation-type-select"
+                        aria-label="翻译映射类型"
+                      />
                       <button class="btn btn-ghost trans-refresh-btn" type="button" @click="loadTransStats" title="刷新">↻</button>
                     </div>
                   </div>
@@ -663,6 +810,53 @@
                   <div class="form-group">
                     <label>HTTPS 代理</label>
                     <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- API 访问控制 -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                  <h2>API 访问控制</h2>
+                </div>
+                <div class="form-slot">
+                  <div class="form-group">
+                    <label>服务端 API Key</label>
+                    <div class="input-password-wrap">
+                      <input class="input" :type="showServerApiKey ? 'text' : 'password'" v-model="config.server.api_key" autocomplete="off" />
+                      <button class="input-eye-btn" type="button" @click="showServerApiKey = !showServerApiKey">
+                        <svg v-if="!showServerApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="authDisabled" v-model="config.server.auth_disabled" />
+                    <label for="authDisabled">显式禁用 API 认证</label>
+                  </div>
+                  <div class="form-group">
+                    <label>前端 Origin</label>
+                    <input class="input" v-model="config.server.frontend_origin" placeholder="http://localhost:5173" />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group checkbox">
+                      <input type="checkbox" id="rateLimitEnabled" v-model="config.rate_limit.enabled" />
+                      <label for="rateLimitEnabled">启用速率限制</label>
+                    </div>
+                    <div class="form-group">
+                      <label>每分钟补充令牌</label>
+                      <input class="input" v-model.number="config.rate_limit.requests_per_minute" type="number" min="1" />
+                    </div>
+                    <div class="form-group">
+                      <label>突发容量</label>
+                      <input class="input" v-model.number="config.rate_limit.burst" type="number" min="1" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -723,7 +917,10 @@
 import api from '../api'
 import { THEMES, applyTheme, resolveThemeKey } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
+import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
+import { getStoredApiKey, saveStoredApiKey } from '../utils/apiKey.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
+import GlassSelect from '../components/GlassSelect.vue'
 
 const DEFAULT_CONFIG = {
   openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
@@ -739,10 +936,20 @@ const DEFAULT_CONFIG = {
     max_auto_downloads_per_run: 20,
     max_auto_downloads_per_24h: 100,
   },
+  actor_mapping: {
+    auto_match_after_collect: true,
+    auto_confirm_policy: 'conservative',
+    candidate_per_actor: 3,
+    candidate_min_confidence: 0.55,
+    auto_confirm_confidence: 0.98,
+    auto_confirm_gap: 0.08,
+  },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
   metatube: { host: 'localhost', port: 8081, token: '' },
   proxy: { enabled: false, http_url: '', https_url: '' },
+  server: { frontend_origin: 'http://localhost:5173', auth_disabled: false, api_key: '' },
+  rate_limit: { enabled: false, requests_per_minute: 60, burst: 10 },
 }
 
 const DEFAULT_BUBBLE_CFG = {
@@ -750,8 +957,11 @@ const DEFAULT_BUBBLE_CFG = {
   colorMode: 'legendary', palette: 'monet',
   customGradients: [], customGradientsText: '',
   bubbleCount: 36,
+  defaultTab: 'genre',
   rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
   actressAvatarSize: 'medium', // 'small' | 'medium' | 'large'
+  actressPageSize: 36,
+  seriesPageSize: 60,
   rarityColors: {
     legendary: '#c89a30',
     epic: '#7040a0',
@@ -788,7 +998,7 @@ function parseGradientList(value = '') {
 
 export default {
   name: 'Config',
-  components: { AppleErrorState },
+  components: { AppleErrorState, GlassSelect },
   data() {
     return {
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
@@ -809,6 +1019,9 @@ export default {
       showOpenlistPwd: false,
       showEmbyKey: false,
       showMetatubeToken: false,
+      showLocalApiKey: false,
+      showServerApiKey: false,
+      localApiKey: getStoredApiKey(),
       themes: THEMES,
       currentTheme: resolveThemeKey(localStorage.getItem('javhub_theme')),
       navGroups: [
@@ -819,16 +1032,41 @@ export default {
       ],
       activeGroup: 'services',
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
+      searchPrefs: { ...DEFAULT_SEARCH_PREFERENCES },
       pageSizeOptions: [15, 30, 50, 100],
       avatarSizeOptions: [
-        { value: 'small', label: '小', hint: '4 行 · 约 48 个' },
-        { value: 'medium', label: '中', hint: '3 行 · 约 36 个' },
-        { value: 'large', label: '大', hint: '2 行 · 约 24 个' },
+        { value: 'small', label: '小', hint: '头像 60px' },
+        { value: 'medium', label: '中', hint: '头像 80px' },
+        { value: 'large', label: '大', hint: '头像 100px' },
+      ],
+      actressPageSizeOptions: [24, 36, 48, 60],
+      seriesPageSizeOptions: [30, 60, 90, 100],
+      defaultTabOptions: [
+        { value: 'genre', label: '题材' },
+        { value: 'actress', label: '演员' },
+        { value: 'series', label: '系列' },
       ],
       displayLangOptions: [
         { value: 'ja', label: '日文' },
         { value: 'zh', label: '中文' },
         { value: 'en', label: '英文' },
+      ],
+      searchSortOptions: [
+        { value: 'random', label: '随机' },
+        { value: 'none', label: '无排序' },
+        { value: 'release_date_desc', label: '发行日新到旧' },
+        { value: 'release_date_asc', label: '发行日旧到新' },
+        { value: 'title_ja_asc', label: '标题 A-Z' },
+        { value: 'title_ja_desc', label: '标题 Z-A' },
+        { value: 'runtime_mins_desc', label: '时长长到短' },
+        { value: 'runtime_mins_asc', label: '时长短到长' },
+      ],
+      searchServiceOptions: [
+        { value: '', label: '全部版本' },
+        { value: 'digital', label: '数字版' },
+        { value: 'mono', label: '单体版' },
+        { value: 'rental', label: '租赁版' },
+        { value: 'ebook', label: '写真' },
       ],
       downloadPolicyOptions: [
         { value: 'manual', label: '人工批准', hint: '只生成候选，下载必须手动批准。' },
@@ -887,6 +1125,15 @@ export default {
     avatarSizeHint() {
       return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
     },
+    defaultTabLabel() {
+      return this.defaultTabOptions.find(option => option.value === this.bubbleCfg.defaultTab)?.label || '题材'
+    },
+    searchSortLabel() {
+      return this.searchSortOptions.find(option => option.value === this.searchPrefs.defaultSort)?.label || '随机'
+    },
+    searchServiceLabel() {
+      return this.searchServiceOptions.find(option => option.value === this.searchPrefs.defaultServiceCode)?.label || '全部版本'
+    },
     displayLangLabel() {
       return this.displayLangOptions.find(option => option.value === this.displayLangVal)?.label || '日文'
     },
@@ -918,6 +1165,20 @@ export default {
       const [c1, c2] = p.colors
       return c1
     },
+    paletteOptions() {
+      return [
+        { value: '__all__', label: '艺术随机', color: 'var(--accent)' },
+        ...this.palettes.map(palette => ({
+          value: palette.key,
+          label: palette.label,
+          color: palette.colors?.[0],
+        })),
+        { value: '__custom__', label: '自定义材质', color: 'var(--text-muted)' },
+      ]
+    },
+    translationTypeOptions() {
+      return Object.entries(this.translationTypeLabels).map(([value, label]) => ({ value, label }))
+    },
   },
   watch: {
     'bubbleCfg.palette'(newVal) {
@@ -932,6 +1193,7 @@ export default {
   async mounted() {
     await this.loadConfig()
     this.loadBubbleCfg()
+    this.loadSearchPrefs()
     this.loadTransStats()
   },
   methods: {
@@ -975,9 +1237,11 @@ export default {
       }
       this.saving = true
       try {
+        this.saveLocalApiKey({ silent: true })
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
         await api.updateConfig(this.config)
         this.saveBubbleCfg()
+        this.saveSearchPrefs()
         this.$message.success('配置已保存')
       } catch (e) {
         console.error('Failed to save config:', e)
@@ -1039,6 +1303,10 @@ export default {
               ...JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
               ...parsed,
             }
+            if (!parsed.actressPageSize && parsed.actressAvatarSize) {
+              const fallbackPageSize = { small: 48, medium: 36, large: 20 }
+              this.bubbleCfg.actressPageSize = fallbackPageSize[parsed.actressAvatarSize] || DEFAULT_BUBBLE_CFG.actressPageSize
+            }
             if (Array.isArray(parsed.customGradients)) {
               this.bubbleCfg.customGradients = parsed.customGradients
               this.bubbleCfg.customGradientsText = parsed.customGradients.join(',')
@@ -1052,6 +1320,16 @@ export default {
     saveBubbleCfg() {
       this.bubbleCfg.customGradients = parseGradientList(this.bubbleCfg.customGradientsText)
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
+    },
+    loadSearchPrefs() {
+      this.searchPrefs = loadSearchPreferences()
+    },
+    saveSearchPrefs() {
+      this.searchPrefs = saveSearchPreferences(this.searchPrefs)
+    },
+    saveLocalApiKey({ silent = false } = {}) {
+      this.localApiKey = saveStoredApiKey(this.localApiKey)
+      if (!silent) this.$message.success('本机 API Key 已保存')
     },
     resetBubbleCfg() {
       this.bubbleCfg = JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG))
@@ -1150,8 +1428,9 @@ export default {
 
 <style scoped>
 .settings {
-  width: min(100%, 1280px);
-  padding: 36px clamp(32px, 4vw, 56px);
+  width: 100%;
+  max-width: 1400px;
+  padding: 28px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
@@ -1159,7 +1438,7 @@ export default {
 }
 
 .settings-header {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .settings-header h1 { 
@@ -1345,8 +1624,8 @@ export default {
 
 .footer-content {
   width: 100%;
-  max-width: 1280px;
-  padding: 0 clamp(32px, 4vw, 56px);
+  max-width: 1400px;
+  padding: 0 28px;
   display: flex;
   justify-content: flex-end;
 }
@@ -1456,26 +1735,19 @@ export default {
   margin-bottom: 22px;
 }
 
-.appearance-board {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1fr);
-  grid-template-areas:
-    "theme aura"
-    "density aura";
-  gap: 14px;
-  align-items: start;
+.preference-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.appearance-panel {
+.preference-section {
   padding: 16px;
   border-radius: 18px;
 }
 
-.appearance-theme-panel { grid-area: theme; }
-.appearance-aura-panel { grid-area: aura; }
-.appearance-board > .appearance-panel:nth-child(2) { grid-area: density; }
-
-.appearance-panel-header {
+.preference-section-header,
+.scope-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1492,11 +1764,57 @@ export default {
   text-transform: uppercase;
 }
 
-.appearance-panel-header h3 {
+.preference-section-header h3 {
   margin: 0;
   color: var(--text-primary);
   font-size: 17px;
   letter-spacing: 0;
+}
+
+.appearance-scope-grid,
+.discovery-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.discovery-preference-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.scope-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--material-glass-subtle);
+}
+
+.scope-card.compact-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scope-card-header {
+  align-items: flex-start;
+}
+
+.scope-card-header > div,
+.scope-card-header .setting-title,
+.scope-card-header .setting-note {
+  min-width: 0;
+}
+
+.scope-card-header .setting-title,
+.scope-card-header .setting-note {
+  display: block;
+}
+
+.visual-card {
+  margin-top: 12px;
 }
 
 .appearance-chip {
@@ -1639,7 +1957,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--material-glass-subtle);
+  background: rgba(255, 255, 255, 0.026);
 }
 
 .appearance-setting-row.vertical {
@@ -1701,49 +2019,20 @@ export default {
 .palette-select-wrap {
   position: relative;
   flex: 0 0 214px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--material-glass-subtle);
-}
-
-.palette-select {
-  width: 100%;
-  min-height: 38px;
-  padding: 8px 34px 12px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.palette-select:focus {
-  outline: none;
-}
-
-.palette-select-wrap::after {
-  content: '';
-  position: absolute;
-  right: 12px;
-  top: 15px;
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--text-muted);
-  pointer-events: none;
+  min-width: 0;
 }
 
 .palette-color-bar {
-  position: absolute;
+  position: relative;
+  z-index: 1;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: 4px;
+  bottom: 3px;
+  width: calc(100% - 24px);
+  height: 3px;
+  margin: -7px 12px 0;
+  border-radius: 999px;
+  pointer-events: none;
 }
 
 .aura-preview {
@@ -1902,22 +2191,20 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .appearance-board {
+  .appearance-scope-grid,
+  .discovery-preference-grid {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "theme"
-      "density"
-      "aura";
   }
 }
 
 @media (max-width: 640px) {
-  .appearance-panel {
+  .preference-section {
     padding: 14px;
     border-radius: 18px;
   }
 
-  .appearance-panel-header {
+  .preference-section-header,
+  .scope-card-header {
     align-items: center;
   }
 
@@ -1963,6 +2250,7 @@ export default {
   .segmented-mini.wide,
   .palette-select-wrap {
     width: 100%;
+    flex-basis: auto;
     min-width: 0;
   }
 

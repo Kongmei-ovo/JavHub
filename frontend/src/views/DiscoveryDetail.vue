@@ -68,18 +68,15 @@
         </div>
       </div>
       <div class="result-bar-right">
-        <div class="custom-select" @click.stop="versionDropdownOpen = !versionDropdownOpen">
-          <span class="select-label">{{ currentVersionLabel }}</span>
-          <svg class="select-arrow" :class="{ open: versionDropdownOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-          <transition name="dropdown-fade">
-            <div v-if="versionDropdownOpen" class="select-dropdown" @mousedown.stop>
-              <button class="select-option" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
-              <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
-            </div>
-          </transition>
-        </div>
+        <GlassSelect
+          v-model="serviceCode"
+          :options="versionOptions"
+          size="compact"
+          placement="right"
+          aria-label="版本筛选"
+          class="version-filter"
+          @change="doSearch"
+        />
         <div class="bar-divider"></div>
         <button class="chronicle-btn" type="button" :class="{ active: chronicleMode }" @click="toggleChronicle" title="年份编年视图">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
@@ -168,12 +165,13 @@ import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import GlassSelect from '../components/GlassSelect.vue'
 
 const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -191,7 +189,6 @@ export default {
       ],
       chronicleMode: false,
       serviceCode: '',
-      versionDropdownOpen: false,
       serviceCodeOptions: [
         { value: 'digital', label: '数字版' },
         { value: 'mono', label: '单体版' },
@@ -207,15 +204,7 @@ export default {
       searchSequence: createRequestSequence()
     }
   },
-  mounted() {
-    document.addEventListener('mousedown', this._onDocClick = (e) => {
-      if (!this.versionDropdownOpen) return
-      const sel = this.$el?.querySelector('.custom-select')
-      if (!sel || !sel.contains(e.target)) this.versionDropdownOpen = false
-    })
-  },
   beforeUnmount() {
-    document.removeEventListener('mousedown', this._onDocClick)
     this.searchSequence.invalidate()
   },
   computed: {
@@ -235,10 +224,8 @@ export default {
       // 其他类型直接显示 value (名称)
       return this.value
     },
-    currentVersionLabel() {
-      if (!this.serviceCode) return '全部版本'
-      const found = this.serviceCodeOptions.find(o => o.value === this.serviceCode)
-      return found ? found.label : this.serviceCode
+    versionOptions() {
+      return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     },
     isChronicle() {
       return this.chronicleMode
@@ -283,11 +270,6 @@ export default {
     }
   },
   methods: {
-    selectVersion(val) {
-      this.serviceCode = val
-      this.versionDropdownOpen = false
-      this.doSearch()
-    },
     cycleSort(key) {
       if (key === 'random') {
         this.sortState.random = !this.sortState.random
@@ -487,64 +469,7 @@ export default {
 .chronicle-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
 .chronicle-btn.active { background: rgba(100,200,255,0.12); border-color: rgba(100,200,255,0.4); color: #80d4ff; }
 .result-count { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.custom-select {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 44px;
-  padding: 6px 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: var(--transition-pro);
-  backdrop-filter: blur(10px);
-  user-select: none;
-}
-.custom-select:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-light);
-}
-.select-label { white-space: nowrap; }
-.select-arrow { flex-shrink: 0; transition: transform 0.25s var(--ease-pro); opacity: 0.5; }
-.select-arrow.open { transform: rotate(180deg); }
-.select-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 100%;
-  background: rgba(30, 30, 36, 0.95);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 4px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  z-index: 200;
-  overflow: hidden;
-}
-.select-option {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 10px;
-  text-align: left;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.select-option:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary); }
-.select-option.selected { background: rgba(212, 175, 55, 0.12); color: #fcf6ba; font-weight: 600; }
-.dropdown-fade-enter-active { transition: all 0.2s var(--ease-pro); }
-.dropdown-fade-leave-active { transition: all 0.12s cubic-bezier(0.4, 0, 1, 1); }
-.dropdown-fade-enter-from, .dropdown-fade-leave-to { opacity: 0; transform: translateY(-6px) scale(0.97); }
+.version-filter { width: 116px; }
 .shuffle-btn { 
   display: flex; 
   align-items: center; 
@@ -590,4 +515,26 @@ export default {
 .year-section { margin-bottom: 8px; }
 .year-header { font-size: 13px; font-weight: 700; color: var(--accent-light); padding: 12px 20px 8px; max-width: 1400px; margin: 0 auto; letter-spacing: 0.05em; border-left: 3px solid var(--accent); padding-left: 12px; margin-left: 20px; margin-right: 20px; font-family: var(--font-mono); }
 .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px !important; padding: 0 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+@media (max-width: 768px) {
+  .toolbar-left {
+    flex-wrap: wrap;
+  }
+  .result-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .result-bar-left,
+  .result-bar-right {
+    justify-content: center;
+  }
+  .sort-pills {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .result-bar-right .version-filter {
+    width: min(160px, 46vw);
+  }
+}
 </style>

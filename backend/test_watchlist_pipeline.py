@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 
 class TempDbMixin:
@@ -189,6 +189,166 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(list_actor_mappings(status="ignored")), 1)
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["data"][0]["emby_actor_id"], "901")
+
+    async def test_auto_match_confirms_exact_unique_candidate(self):
+        from database import create_snapshot_key, get_confirmed_actor_mapping, list_actor_mappings, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99},
+                {"id": 456, "name_kanji": "糸井瑠", "movie_count": 80},
+            ]
+        }
+
+        result = await auto_match_actor_mappings(info_client=info_client)
+        confirmed = get_confirmed_actor_mapping("901")
+
+        self.assertEqual(result["checked"], 1)
+        self.assertEqual(result["auto_confirmed"], 1)
+        self.assertEqual(result["candidates_created"], 0)
+        self.assertEqual(confirmed["javinfo_actress_id"], 123)
+        self.assertEqual(confirmed["source"], "auto_match")
+        self.assertEqual(len(list_actor_mappings(status="candidate")), 0)
+
+    async def test_auto_match_keeps_ambiguous_exact_candidates_for_review(self):
+        from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "Rio",
+            "video_count": 12,
+        }])
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 123, "name_romaji": "Rio", "movie_count": 99},
+                {"id": 456, "name_en": "RIO", "movie_count": 80},
+            ]
+        }
+
+        result = await auto_match_actor_mappings(info_client=info_client)
+        rows = list_actor_mappings(status="candidate")
+
+        self.assertEqual(result["auto_confirmed"], 0)
+        self.assertEqual(result["ambiguous"], 1)
+        self.assertEqual(result["candidates_created"], 2)
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(row["source"] == "exact_ambiguous" for row in rows))
+
+    async def test_auto_match_does_not_confirm_similarity_only_match(self):
+        from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 123, "name_kanji": "糸井瑠花改", "movie_count": 99},
+            ]
+        }
+
+        result = await auto_match_actor_mappings(info_client=info_client)
+        rows = list_actor_mappings(status="candidate")
+
+        self.assertEqual(result["auto_confirmed"], 0)
+        self.assertEqual(result["candidates_created"], 1)
+        self.assertEqual(rows[0]["status"], "candidate")
+        self.assertEqual(rows[0]["source"], "contains_match")
+
+    async def test_auto_match_respects_decisions_and_ignored_candidate(self):
+        from database import (
+            confirm_actor_mapping,
+            create_snapshot_key,
+            ignore_actor_mapping,
+            list_actor_mappings,
+            save_emby_actors_snapshot,
+        )
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [
+            {"actress_id": 901, "actress_name": "Confirmed", "video_count": 1},
+            {"actress_id": 902, "actress_name": "IgnoredPair", "video_count": 1},
+            {"actress_id": 903, "actress_name": "IgnoredActor", "video_count": 1},
+        ])
+        confirm_actor_mapping("901", "Confirmed", 1, "Confirmed")
+        ignore_actor_mapping("902", "IgnoredPair", 2, "IgnoredPair")
+        ignore_actor_mapping("903", "IgnoredActor")
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 2, "name_kanji": "IgnoredPair", "movie_count": 9},
+            ]
+        }
+
+        result = await auto_match_actor_mappings(info_client=info_client)
+        rows = list_actor_mappings()
+
+        self.assertEqual(result["checked"], 1)
+        self.assertEqual(result["auto_confirmed"], 0)
+        self.assertEqual(result["candidates_created"], 0)
+        self.assertEqual(result["skipped"], 3)
+        self.assertEqual(len([row for row in rows if row["status"] == "confirmed"]), 1)
+        self.assertEqual(len([row for row in rows if row["status"] == "ignored"]), 2)
+
+    async def test_auto_match_dry_run_does_not_write_database(self):
+        from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [{"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99}]
+        }
+
+        result = await auto_match_actor_mappings(dry_run=True, info_client=info_client)
+
+        self.assertEqual(result["auto_confirmed"], 1)
+        self.assertEqual(len(list_actor_mappings()), 0)
+
+    async def test_auto_match_collects_query_errors(self):
+        from database import create_snapshot_key, save_emby_actors_snapshot
+        from services.actor_mapping_candidates import auto_match_actor_mappings
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+        info_client = AsyncMock()
+        info_client.list_actresses.side_effect = RuntimeError("javinfo down")
+
+        result = await auto_match_actor_mappings(info_client=info_client)
+
+        self.assertEqual(result["checked"], 1)
+        self.assertEqual(result["auto_confirmed"], 0)
+        self.assertEqual(len(result["errors"]), 1)
+        self.assertIn("javinfo down", result["errors"][0]["error"])
 
 
 class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
@@ -499,6 +659,43 @@ class SubscriptionRouterCandidateStatsTest(TempDbMixin, unittest.IsolatedAsyncio
 
 
 class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_collect_job_runs_actor_auto_match_and_records_summary(self):
+        from database import add_inventory_job, get_inventory_job
+        from scheduler.inventory_tasks import run_collect_job
+
+        job_id = add_inventory_job("collect")
+        fake_emby = AsyncMock()
+        fake_emby.collect_all_movies_with_actors.return_value = (
+            [{
+                "actress_id": 901,
+                "actress_name": "糸井瑠花",
+                "video_count": 1,
+                "items": [],
+            }],
+            1,
+        )
+        auto_match_result = {
+            "snapshot_key": "snapshot",
+            "checked": 1,
+            "auto_confirmed": 1,
+            "candidates_created": 0,
+            "ambiguous": 0,
+            "skipped": 0,
+            "errors": [],
+        }
+
+        with (
+            patch("scheduler.inventory_tasks.get_emby_client", return_value=fake_emby),
+            patch("config.Config.actor_mapping_auto_match_after_collect", new_callable=PropertyMock, return_value=True),
+            patch("services.actor_mapping_candidates.auto_match_actor_mappings", new=AsyncMock(return_value=auto_match_result)),
+        ):
+            await run_collect_job(job_id)
+
+        job = get_inventory_job(job_id)
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["result"]["actor_mapping"]["auto_confirmed"], 1)
+        self.assertTrue(job["result"]["actor_mapping"]["enabled"])
+
     async def test_actor_compare_skips_unmapped_emby_actor(self):
         from database import (
             add_inventory_job,

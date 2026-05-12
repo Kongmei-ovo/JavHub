@@ -1,3 +1,8 @@
+server:
+  api_key: ""
+  auth_disabled: false
+  frontend_origin: "http://localhost:5173"
+
 openlist:
   api_url: "https://fox.oplist.org"
   username: ""
@@ -36,3 +41,8 @@ notification:
   auto_download_notify: true
   download_complete_notify: true
   new_movie_notify: true
+
+rate_limit:
+  enabled: false
+  requests_per_minute: 60
+  burst: 10

@@ -15,6 +15,9 @@ class SourceRegistry:
     @classmethod
     def register(cls, source: MagnetSource) -> None:
         """注册下载源"""
+        is_implemented = getattr(source, "is_implemented", None)
+        if callable(is_implemented) and not is_implemented():
+            return
         cls._sources[source.name] = source
         if source.name not in cls._priority:
             cls._priority.append(source.name)

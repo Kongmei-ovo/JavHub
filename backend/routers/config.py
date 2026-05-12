@@ -1,10 +1,23 @@
 import logging
 from fastapi import APIRouter
+from urllib.parse import urlparse, urlunparse
 from config import config
 from services import cache
 from .proxy import _get_httpx_proxies
 
 logger = logging.getLogger(__name__)
+
+
+def _mask_url_credentials(url: str) -> str:
+    if not url:
+        return url
+    parsed = urlparse(url)
+    if not parsed.username and not parsed.password:
+        return url
+    netloc = parsed.hostname or ""
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse(parsed._replace(netloc=netloc))
 
 
 async def _push_proxy_to_javinfo():
@@ -16,7 +29,7 @@ async def _push_proxy_to_javinfo():
         if config.proxy_enabled:
             proxy_url = config.proxy_http_url or config.proxy_https_url
         await client.push_proxy_config(proxy_url)
-        logger.info(f"Pushed proxy config to JavInfoApi: {proxy_url or '(none)'}")
+        logger.info("Pushed proxy config to JavInfoApi: %s", _mask_url_credentials(proxy_url) or "(none)")
     except Exception as e:
         logger.warning(f"Failed to push proxy config to JavInfoApi: {e}")
 
@@ -24,8 +37,19 @@ router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'metatube', 'notification', 'scheduler',
-                  'automation',
+                  'automation', 'actor_mapping',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.lower()
+    return (
+        normalized in _SENSITIVE_KEYS
+        or normalized.endswith('_token')
+        or normalized.endswith('_secret')
+        or normalized.endswith('_password')
+        or normalized.endswith('_api_key')
+    )
 
 
 def _sanitize_config(cfg: dict) -> dict:
@@ -33,8 +57,21 @@ def _sanitize_config(cfg: dict) -> dict:
     result = {}
     for k, v in cfg.items():
         if isinstance(v, dict):
-            result[k] = {sk: sv for sk, sv in v.items() if sk not in _SENSITIVE_KEYS}
-        elif k not in _SENSITIVE_KEYS:
+            result[k] = _sanitize_config(v)
+        elif not _is_sensitive_key(k):
+            result[k] = v
+    return result
+
+
+def _strip_blank_sensitive_values(cfg: dict) -> dict:
+    """保存配置时，空白敏感字段表示前端未修改，不覆盖现有密钥。"""
+    result = {}
+    for k, v in cfg.items():
+        if isinstance(v, dict):
+            result[k] = _strip_blank_sensitive_values(v)
+        elif _is_sensitive_key(k) and (v is None or v == ""):
+            continue
+        else:
             result[k] = v
     return result
 
@@ -48,6 +85,7 @@ async def get_config():
 async def update_config(new_config: dict):
     # 只允许更新白名单内的顶层 key
     sanitized = {k: v for k, v in new_config.items() if k in _WRITABLE_KEYS}
+    sanitized = _strip_blank_sensitive_values(sanitized)
     config.update(sanitized)
     # JavInfoApi URL 变更后立即生效
     if "javinfo" in sanitized:

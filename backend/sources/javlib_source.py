@@ -15,6 +15,9 @@ class JavLibSource:
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         }
 
+    def is_implemented(self) -> bool:
+        return False
+
     async def search(self, keyword: str) -> list[MagnetInfo]:
         """搜索磁力链接"""
         # TODO: 实现 JavLib API 调用

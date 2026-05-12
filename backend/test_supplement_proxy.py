@@ -1,6 +1,7 @@
 from __future__ import annotations
+import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class SupplementConfigTest(unittest.TestCase):
@@ -28,10 +29,59 @@ class SupplementConfigTest(unittest.TestCase):
         os.environ.pop('SUPPLEMENT_ADMIN_TOKEN', None)
         self.assertEqual(cfg.supplement_admin_token, '')
 
+    def test_update_deep_merges_nested_config_without_clearing_secrets(self):
+        from config import Config
+        from routers.config import _strip_blank_sensitive_values
+        cfg = Config.__new__(Config)
+        cfg._config = {
+            'emby': {'api_url': 'http://emby', 'api_key': 'secret-key'},
+            'openlist': {'username': 'user', 'password': 'secret-password', 'default_path': '/old'},
+            'javinfo': {'api_url': 'http://old:8080', 'page_size': 30, 'supplement_admin_token': 'admin-token'},
+        }
 
-import os
-import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+        with patch('config.Path') as path_mock, patch('config.yaml.dump') as dump_mock:
+            fake_path = MagicMock()
+            fake_path.__truediv__.return_value = fake_path
+            fake_path.parent.parent = fake_path
+            fake_path.exists.return_value = True
+            fake_path.open = MagicMock()
+            path_mock.return_value = fake_path
+            with patch('builtins.open', MagicMock()):
+                cfg.update(_strip_blank_sensitive_values({
+                    'emby': {'api_url': 'http://new-emby'},
+                    'openlist': {'password': '', 'default_path': '/new'},
+                    'javinfo': {'page_size': 50, 'supplement_admin_token': ''},
+                }))
+
+        self.assertEqual(cfg._config['emby']['api_key'], 'secret-key')
+        self.assertEqual(cfg._config['emby']['api_url'], 'http://new-emby')
+        self.assertEqual(cfg._config['openlist']['password'], 'secret-password')
+        self.assertEqual(cfg._config['openlist']['default_path'], '/new')
+        self.assertEqual(cfg._config['javinfo']['supplement_admin_token'], 'admin-token')
+        self.assertEqual(cfg._config['javinfo']['page_size'], 50)
+        dump_mock.assert_called_once()
+
+    def test_blank_sensitive_values_are_ignored_but_new_values_are_kept(self):
+        from routers.config import _strip_blank_sensitive_values
+        payload = _strip_blank_sensitive_values({
+            'emby': {'api_key': '', 'api_url': 'http://emby'},
+            'telegram': {'bot_token': 'new-token'},
+            'openlist': {'password': None, 'username': 'user'},
+        })
+        self.assertNotIn('api_key', payload['emby'])
+        self.assertNotIn('password', payload['openlist'])
+        self.assertEqual(payload['telegram']['bot_token'], 'new-token')
+
+    def test_config_sanitization_treats_suffixed_secrets_as_sensitive(self):
+        from routers.config import _sanitize_config
+        payload = _sanitize_config({
+            'javinfo': {'api_url': 'http://old:8080', 'supplement_admin_token': 'admin-token'},
+            'nested': {'custom_secret': 'hidden', 'visible': 'ok'},
+        })
+        self.assertNotIn('supplement_admin_token', payload['javinfo'])
+        self.assertNotIn('custom_secret', payload['nested'])
+        self.assertEqual(payload['nested']['visible'], 'ok')
+
 
 from modules.info_client import InfoClient
 
@@ -92,6 +142,26 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
             result = await client.proxy_post("/api/v1/supplement/actresses/1/filmography/jobs")
 
         call_args = mock_client.post.call_args
+        headers = call_args.kwargs.get("headers", {})
+        self.assertEqual(headers.get("Authorization"), "Bearer my-secret")
+        self.assertEqual(result, fake_response)
+
+    async def test_proxy_patch_injects_bearer_token(self):
+        client = InfoClient()
+        fake_response = {"success": True}
+
+        with patch.dict('os.environ', {'SUPPLEMENT_ADMIN_TOKEN': 'my-secret'}, clear=False), \
+             patch.object(client, "_get_client", new_callable=AsyncMock) as get_client:
+            mock_client = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = fake_response
+            mock_client.patch.return_value = mock_response
+            get_client.return_value = mock_client
+
+            result = await client.proxy_patch("/api/v1/config", {"proxy_url": "http://proxy"})
+
+        call_args = mock_client.patch.call_args
         headers = call_args.kwargs.get("headers", {})
         self.assertEqual(headers.get("Authorization"), "Bearer my-secret")
         self.assertEqual(result, fake_response)

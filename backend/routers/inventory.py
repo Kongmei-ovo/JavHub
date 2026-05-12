@@ -209,6 +209,21 @@ async def generate_mapping_candidates(
     )
 
 
+@router.post("/actor-mappings/auto-match")
+async def auto_match_mappings(
+    search: Optional[str] = None,
+    limit: int = 100000,
+    dry_run: bool = False,
+):
+    """保守自动匹配 Emby 演员到 JavInfo 演员。"""
+    from services.actor_mapping_candidates import auto_match_actor_mappings
+    return await auto_match_actor_mappings(
+        search=search,
+        limit=limit,
+        dry_run=dry_run,
+    )
+
+
 @router.post("/actor-mappings/confirm")
 async def confirm_mapping(req: ActorMappingRequest):
     """确认 Emby 演员映射到 JavInfo 演员。"""
