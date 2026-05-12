@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const actorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
+const jobList = readFileSync(new URL('../features/supplement/SupplementJobList.vue', import.meta.url), 'utf8')
+const sourceHealthPanel = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
+const supplementFeatureSource = [source, actorPicker, jobList, sourceHealthPanel].join('\n')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
 test('supplement management shows and controls actor context when routed from an actor', () => {
@@ -22,24 +26,24 @@ test('supplement management keeps jobs and movies scoped to actor context', () =
 })
 
 test('supplement management lets users search and select an actor instead of typing ids', () => {
-  assert.match(source, /class="actor-picker-card"/)
-  assert.match(source, /v-model="actorSearchKeyword"/)
+  assert.match(actorPicker, /class="actor-picker-card"/)
+  assert.match(source, /v-model:keyword="actorSearchKeyword"/)
   assert.match(source, /searchActorContext\(\)/)
-  assert.match(source, /selectActorContext\(actor\)/)
+  assert.match(source, /selectActorContext/)
   assert.match(source, /api\.searchActors\(keyword\)/)
-  assert.match(source, /v-for="actor in actorChoiceCards"/)
+  assert.match(actorPicker, /v-for="actor in actors"/)
   assert.match(source, /actorChoiceCards/)
-  assert.match(source, /class="actor-choice-card apple-surface"/)
-  assert.match(source, /class="select-orb"/)
-  assert.match(source, />选择</)
-  assert.doesNotMatch(source, /placeholder="演员 ID"/)
+  assert.match(actorPicker, /class="actor-choice-card apple-surface"/)
+  assert.match(actorPicker, /class="select-orb"/)
+  assert.match(actorPicker, />选择</)
+  assert.doesNotMatch(supplementFeatureSource, /placeholder="演员 ID"/)
 })
 
 test('supplement management defaults to an actor-first selection view', () => {
   assert.match(source, /补全演员/)
   assert.match(source, /v-if="showActorPicker"/)
-  assert.match(source, /class="supplement-hero apple-surface"/)
-  assert.match(source, /class="actor-filter-bar apple-surface"/)
+  assert.match(actorPicker, /class="supplement-hero apple-surface"/)
+  assert.match(actorPicker, /class="actor-filter-bar apple-surface"/)
   assert.match(source, /recentActorJobs/)
 })
 
@@ -50,9 +54,9 @@ test('supplement management uses an actor workspace with segmented panels', () =
   assert.match(source, /作品字段/)
   assert.match(source, /任务队列/)
   assert.match(source, /来源诊断/)
-  assert.match(source, /来源状态/)
-  assert.match(source, /jobAttemptMeta/)
-  assert.match(source, /next_run_at/)
+  assert.match(sourceHealthPanel, /来源状态/)
+  assert.match(jobList, /jobAttemptMeta/)
+  assert.match(jobList, /next_run_at/)
   assert.match(source, /getSupplementActressStatus\(normalized\)/)
   assert.match(source, /startSupplementFilmographyJob\(this\.actorContext\.id\)/)
   assert.match(source, /refreshSupplementActressResolved\(this\.actorContext\.id\)/)
@@ -67,7 +71,7 @@ test('supplement management exposes source health and manual correction controls
   assert.match(source, /api\.listSupplementSourcesHealth\(\)/)
   assert.match(source, /api\.listSupplementSourcesBudgets\(\)/)
   assert.match(source, /sourceHealthRows/)
-  assert.match(source, /当前预算/)
+  assert.match(sourceHealthPanel, /当前预算/)
   assert.match(source, /api\.pauseSupplementSource/)
   assert.match(source, /api\.resumeSupplementSource/)
   assert.match(source, /已暂停/)
@@ -81,17 +85,17 @@ test('supplement management exposes source health and manual correction controls
 })
 
 test('supplement management exposes provider smoke diagnostics', () => {
-  assert.match(source, /运行诊断/)
+  assert.match(sourceHealthPanel, /运行诊断/)
   assert.match(source, /runProviderSmoke/)
   assert.match(source, /api\.runSupplementProviderSmoke\(payload\)/)
   assert.match(source, /providerSmokeForm/)
-  assert.match(source, /source_movie_id/)
+  assert.match(sourceHealthPanel, /source_movie_id/)
   assert.match(source, /自定义样本需要先选择来源/)
-  assert.match(source, /最近诊断/)
+  assert.match(sourceHealthPanel, /最近诊断/)
   assert.match(source, /api\.listSupplementProviderSmokeRuns\(5, this\.providerSmokeForm\.source\)/)
-  assert.match(source, /smokeRunLabel/)
+  assert.match(supplementFeatureSource, /smokeRunLabel/)
   assert.match(source, /providerSmokeReport/)
-  assert.match(source, /字段分/)
+  assert.match(sourceHealthPanel, /字段分/)
 })
 
 test('supplement management preserves a global queue entry point', () => {

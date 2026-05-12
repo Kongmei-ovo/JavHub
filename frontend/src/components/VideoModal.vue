@@ -211,49 +211,18 @@
             </div>
           </div>
 
-          <!-- 剧照画廊 -->
-          <div v-if="galleryThumbs.length" class="modal-section">
-            <h4 class="section-title">剧照</h4>
-            <div class="gallery-grid">
-              <div v-for="(thumb, idx) in galleryThumbs" :key="idx" class="gallery-item" @click="openGalleryViewer(idx)">
-                <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" @error="onGalleryError" />
-              </div>
-            </div>
-          </div>
-          <div v-else-if="!videoLoaded" class="modal-section">
-            <h4 class="section-title">剧照</h4>
-            <div class="gallery-grid">
-              <div v-for="n in 6" :key="n" class="gallery-item skeleton"></div>
-            </div>
-          </div>
+          <VideoGallerySection
+            :thumbs="galleryThumbs"
+            :video-loaded="videoLoaded"
+            @open="openGalleryViewer"
+          />
 
-          <!-- 磁力链接 -->
-          <div v-if="magnets.length" class="modal-section">
-            <h4 class="section-title">磁力链接</h4>
-            <div class="magnets-list">
-              <div v-for="(mag, idx) in magnets" :key="idx" class="magnet-item">
-                <div class="magnet-info">
-                  <span v-if="mag.quality || mag.resolution" class="magnet-badge">{{ mag.quality || mag.resolution }}</span>
-                  <span v-if="mag.hd" class="magnet-badge hd">HD</span>
-                  <span v-if="mag.subtitle" class="magnet-badge sub">字幕</span>
-                  <span class="magnet-size">{{ mag.size }}</span>
-                </div>
-                <div class="magnet-actions">
-                  <button class="btn-copy" @click="copyMagnet(mag)" title="复制磁链">复制</button>
-                  <button class="btn-download" @click="$emit('download', mag)">下载</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-else-if="!videoLoaded" class="modal-section">
-             <h4 class="section-title">磁力链接</h4>
-             <div class="magnets-list">
-               <div v-for="n in 2" :key="n" class="magnet-item skeleton" style="height: 44px"></div>
-             </div>
-          </div>
-          <div v-else class="no-magnets">
-            <span>暂无磁力链接</span>
-          </div>
+          <VideoMagnetSection
+            :magnets="magnets"
+            :video-loaded="videoLoaded"
+            @copy="copyMagnet"
+            @download="$emit('download', $event)"
+          />
 
           <!-- m3u8 下载 -->
           <div class="stream-actions" v-if="video">
@@ -287,59 +256,28 @@
 
     <!-- 视频预览弹窗 -->
     <teleport to="body">
-      <div
-        v-if="videoPlayerVisible && video.sample_url"
-        class="vp-overlay"
-        @click.self="closeVideoPlayer"
-        @keydown.esc="closeVideoPlayer"
-        @keydown.left.prevent="seekBackward"
-        @keydown.right.prevent="seekForward"
-        tabindex="0"
-        ref="vpOverlay"
-      >
-        <div class="vp-container">
-          <button class="vp-close" @click="closeVideoPlayer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-          <div class="vp-player-wrap">
-            <video ref="videoEl" :src="video.sample_url" class="vp-video" controls autoplay playsinline @keydown.left.prevent="seekBackward" @keydown.right.prevent="seekForward"></video>
-          </div>
-          <div class="vp-info">
-            <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
-            <div class="vp-speed-ctrl">
-              <button v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]" :key="s" :class="['vp-speed-btn', { active: videoSpeed === s }]" @click="setSpeed(s)">{{ s === 1 ? '1x' : s + 'x' }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <VideoPlayerOverlay
+        v-if="video.sample_url"
+        ref="previewPlayer"
+        :visible="videoPlayerVisible"
+        :src="video.sample_url"
+        :title="video.dvd_id || video.content_id"
+        :speed="videoSpeed"
+        @close="closeVideoPlayer"
+        @speed="setSpeed"
+        @seek-backward="seekBackward"
+        @seek-forward="seekForward"
+      />
 
       <!-- m3u8 在线播放弹窗 -->
-      <div
-        v-if="streamPlayerVisible"
-        class="vp-overlay"
-        @click.self="closeStreamPlayer"
-        @keydown.esc="closeStreamPlayer"
-        tabindex="0"
-      >
-        <div class="vp-container">
-          <button class="vp-close" @click="closeStreamPlayer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-          <div class="vp-player-wrap">
-            <video ref="streamVideoEl" class="vp-video" controls autoplay playsinline></video>
-          </div>
-          <div class="vp-info">
-            <span class="vp-title">{{ video.dvd_id || video.content_id }}</span>
-            <div class="vp-speed-ctrl">
-              <button v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]" :key="s" :class="['vp-speed-btn', { active: streamSpeed === s }]" @click="setStreamSpeed(s)">{{ s === 1 ? '1x' : s + 'x' }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <HlsPlayerOverlay
+        ref="streamPlayer"
+        :visible="streamPlayerVisible"
+        :title="video.dvd_id || video.content_id"
+        :speed="streamSpeed"
+        @close="closeStreamPlayer"
+        @speed="setStreamSpeed"
+      />
     </teleport>
   </div>
 </template>
@@ -350,9 +288,14 @@ import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUr
 import favoriteState from '../utils/favoriteState'
 import Hls from 'hls.js'
 import api from '../api'
+import VideoGallerySection from '../features/video/VideoGallerySection.vue'
+import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
+import VideoPlayerOverlay from '../features/video/VideoPlayerOverlay.vue'
+import HlsPlayerOverlay from '../features/video/HlsPlayerOverlay.vue'
 
 export default {
   name: 'VideoModal',
+  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
   props: {
     visible: { type: Boolean, default: false },
     video: { type: Object, default: () => ({}) }
@@ -486,7 +429,6 @@ export default {
       span.textContent = name[0]
       e.target.parentNode.replaceChild(span, e.target)
     },
-    onGalleryError(e) { e.target.style.display = 'none' },
     formatAvatarUrl(url) {
       if (!url) return null
       if (url.startsWith('http')) return url
@@ -494,9 +436,15 @@ export default {
     },
     formatGalleryUrl(path) { return galleryFullUrl(path) || galleryThumbUrl(path) || null },
     closeVideoPlayer() { this.videoPlayerVisible = false },
-    setSpeed(speed) { this.videoSpeed = speed; if (this.$refs.videoEl) this.$refs.videoEl.playbackRate = speed },
-    seekForward() { if (this.$refs.videoEl) this.$refs.videoEl.currentTime += 10 },
-    seekBackward() { if (this.$refs.videoEl) this.$refs.videoEl.currentTime -= 10 },
+    previewVideoEl() {
+      return this.$refs.previewPlayer?.mediaElement?.()
+    },
+    streamVideoEl() {
+      return this.$refs.streamPlayer?.mediaElement?.()
+    },
+    setSpeed(speed) { this.videoSpeed = speed; const video = this.previewVideoEl(); if (video) video.playbackRate = speed },
+    seekForward() { const video = this.previewVideoEl(); if (video) video.currentTime += 10 },
+    seekBackward() { const video = this.previewVideoEl(); if (video) video.currentTime -= 10 },
     async copyMagnet(mag) {
       try {
         await navigator.clipboard.writeText(mag.magnet || mag)
@@ -531,7 +479,7 @@ export default {
       }
     },
     initHlsPlayer() {
-      const video = this.$refs.streamVideoEl
+      const video = this.streamVideoEl()
       if (!video) return
       if (this.hlsInstance) {
         this.hlsInstance.destroy()
@@ -576,7 +524,8 @@ export default {
     },
     setStreamSpeed(speed) {
       this.streamSpeed = speed
-      if (this.$refs.streamVideoEl) this.$refs.streamVideoEl.playbackRate = speed
+      const video = this.streamVideoEl()
+      if (video) video.playbackRate = speed
     },
     async downloadStream() {
       const code = this.video?.dvd_id || this.video?.content_id
@@ -723,28 +672,9 @@ export default {
 .actress-avatar-item:hover .actress-name { color: #ffffff; }
 .actress-tag { padding: 8px 18px; background: rgba(255, 255, 255, 0.08); border-radius: 40px; font-size: 13px; color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition-pro); }
 .actress-tag:hover { border-color: rgba(255, 255, 255, 0.4); color: white; background: rgba(255, 255, 255, 0.15); }
-.magnets-list { display: flex; flex-direction: column; gap: 12px; }
-.magnet-item { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-lg); border: 1px solid rgba(255, 255, 255, 0.08); transition: var(--transition-pro); }
-.magnet-item:hover { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); }
-.magnet-info { display: flex; align-items: center; gap: 12px; }
-.magnet-badge { padding: 4px 10px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.15); font-size: 11px; font-weight: 700; border-radius: 6px; }
-.magnet-badge.hd { background: rgba(50, 215, 75, 0.15); color: #32D74B; border-color: rgba(50, 215, 75, 0.3); }
-.magnet-badge.sub { background: rgba(255, 159, 10, 0.15); color: #FF9F0A; border-color: rgba(255, 159, 10, 0.3); }
-.magnet-size { font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: var(--font-mono); }
-.magnet-actions { display: flex; gap: 12px; }
-.btn-copy { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 18px; border-radius: 40px; cursor: pointer; color: rgba(255, 255, 255, 0.8); font-size: 13px; transition: var(--transition-pro); }
-.btn-copy:hover { border-color: white; color: white; background: rgba(255, 255, 255, 0.1); }
-.btn-download { background: rgba(255, 255, 255, 0.9); color: #000; border: none; padding: 8px 24px; border-radius: 40px; cursor: pointer; font-size: 14px; font-weight: 600; transition: var(--transition-pro); }
-.btn-download:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2); }
-.no-magnets { text-align: center; padding: 32px; color: rgba(255, 255, 255, 0.3); font-size: 15px; border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: var(--radius-lg); }
 .meta-provider { font-size: 12px; color: rgba(255, 255, 255, 0.4); margin-left: 4px; }
 .summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.08); }
 .summary-text--empty { color: rgba(255, 255, 255, 0.3); font-style: italic; }
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-.gallery-item { aspect-ratio: 16/9; overflow: hidden; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); transition: var(--transition-pro); }
-.gallery-item:hover { border-color: rgba(255, 255, 255, 0.3); transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: var(--transition-pro); }
-.gallery-item:hover img { filter: saturate(1.2); }
 .skeleton { background: rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; border-radius: 8px; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
@@ -764,18 +694,6 @@ export default {
 .lightbox-prev:hover, .lightbox-next:hover { background: rgba(255,255,255,0.15); }
 .lightbox-prev:disabled, .lightbox-next:disabled { opacity: 0.1; cursor: not-allowed; }
 .lightbox-counter { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 15px; letter-spacing: 0.1em; font-family: var(--font-mono); }
-.vp-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); animation: fadeIn 0.4s var(--ease-pro); }
-.vp-container { position: relative; width: 90vw; max-width: 1080px; display: flex; flex-direction: column; gap: 24px; }
-.vp-close { position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.08); border: var(--stroke-pro) solid rgba(255,255,255,0.12); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7); cursor: pointer; transition: var(--transition-pro); }
-.vp-close:hover { background: rgba(255,255,255,0.15); color: #fff; transform: rotate(90deg); }
-.vp-player-wrap { border-radius: 20px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.8); background: #000; border: var(--stroke-pro) solid rgba(255,255,255,0.1); }
-.vp-video { display: block; width: 100%; border-radius: 20px; background: #000; }
-.vp-info { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
-.vp-title { font-size: 14px; color: rgba(255,255,255,0.5); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); }
-.vp-speed-ctrl { display: flex; align-items: center; gap: 8px; }
-.vp-speed-btn { font-size: 13px; padding: 5px 14px; background: rgba(255,255,255,0.07); border: var(--stroke-pro) solid rgba(255,255,255,0.1); border-radius: 40px; color: rgba(255,255,255,0.5); cursor: pointer; transition: var(--transition-pro); }
-.vp-speed-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
-.vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 700; }
 .stream-actions { margin-top: 12px; }
 .stream-download-btn {
   width: 100%;

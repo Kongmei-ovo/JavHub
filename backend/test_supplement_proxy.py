@@ -111,7 +111,7 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
         client = InfoClient()
         fake_response = {"data": []}
 
-        with patch.dict('os.environ', {}, clear=False):
+        with patch.dict('os.environ', {}, clear=False), patch('config.config._config', {}):
             os.environ.pop('SUPPLEMENT_ADMIN_TOKEN', None)
             with patch.object(client, "_get_client", new_callable=AsyncMock) as get_client:
                 mock_client = AsyncMock()

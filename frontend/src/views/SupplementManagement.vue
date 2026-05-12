@@ -20,93 +20,21 @@
       </div>
     </header>
 
-    <section v-if="showActorPicker" class="actor-picker-view">
-      <div class="supplement-hero apple-surface">
-        <div class="hero-copy">
-          <p class="eyebrow">Actor First</p>
-          <h2>选择一位演员开始补全</h2>
-          <p>选择演员后处理作品字段、任务队列和来源诊断。</p>
-        </div>
-      </div>
-
-      <section class="section-block">
-        <div class="section-title-row">
-          <div>
-            <p class="eyebrow">{{ actorSearched ? 'Filtered' : 'Recent' }}</p>
-            <h2>选择补全演员</h2>
-          </div>
-          <span class="soft-count">{{ actorChoiceCards.length }} 位演员</span>
-        </div>
-
-        <div class="actor-picker-card">
-          <div class="actor-filter-bar apple-surface">
-            <div class="search-shell compact-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <circle cx="11" cy="11" r="7"></circle>
-                <path d="M16.5 16.5 21 21"></path>
-              </svg>
-              <input
-                v-model="actorSearchKeyword"
-                placeholder="输入演员名筛选卡片"
-                @keyup.enter="searchActorContext"
-              />
-              <button
-                class="btn btn-ghost btn-sm"
-                type="button"
-                :disabled="actorSearching || !actorSearchKeyword.trim()"
-                @click="searchActorContext"
-              >{{ actorSearching ? '筛选中...' : '筛选' }}</button>
-              <button
-                v-if="actorSearched"
-                class="btn btn-ghost btn-sm"
-                type="button"
-                @click="clearActorSearch"
-              >清除</button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="actorChoiceCards.length" class="actor-choice-grid">
-          <button
-            v-for="actor in actorChoiceCards"
-            :key="actor.id"
-            class="actor-choice-card apple-surface"
-            type="button"
-            @click="selectActorContext(actor)"
-          >
-            <span class="select-orb" aria-hidden="true">
-              <img
-                v-if="actorAvatar(actor)"
-                :src="actorAvatar(actor)"
-                :alt="actorDisplayName(actor)"
-                @error="$event.target.style.display = 'none'"
-              />
-              <span v-else>{{ actorDisplayName(actor).slice(0, 1) || '?' }}</span>
-            </span>
-            <span class="actor-card-copy">
-              <strong>{{ actorDisplayName(actor) }}</strong>
-              <span>ID {{ actor.id }}</span>
-              <small>{{ actorChoiceStatus(actor) }}</small>
-            </span>
-            <span class="actor-card-action">选择</span>
-          </button>
-        </div>
-        <div v-else-if="actorSearched && !actorSearching" class="empty-panel apple-surface">
-          <h3>没有匹配演员</h3>
-          <p>换一个日文名、罗马音或关键词再试。</p>
-        </div>
-        <div v-else class="empty-panel apple-surface">
-          <h3>{{ actorPickerError ? '补全队列不可用' : '暂无可选演员' }}</h3>
-          <p>{{ actorPickerError ? 'JavInfoApi 暂时无法连接，可稍后重试。' : '搜索演员后会出现可选择的演员卡片。' }}</p>
-          <button
-            v-if="actorPickerError"
-            class="btn btn-ghost btn-sm"
-            type="button"
-            @click="loadRecentActorJobs"
-          >重试</button>
-        </div>
-      </section>
-    </section>
+    <ActorPickerView
+      v-if="showActorPicker"
+      v-model:keyword="actorSearchKeyword"
+      :actors="actorChoiceCards"
+      :searched="actorSearched"
+      :searching="actorSearching"
+      :error="actorPickerError"
+      :actor-avatar="actorAvatar"
+      :actor-display-name="actorDisplayName"
+      :actor-choice-status="actorChoiceStatus"
+      @search="searchActorContext"
+      @clear-search="clearActorSearch"
+      @select="selectActorContext"
+      @retry="loadRecentActorJobs"
+    />
 
     <section v-else-if="actorContext" class="workspace-view">
       <div class="actor-workspace-hero apple-surface">
@@ -287,133 +215,27 @@
         </div>
       </section>
 
-      <section v-if="activeWorkspaceSegment === 'sourceHealth'" class="workspace-panel apple-surface">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Health</p>
-            <h2>来源状态</h2>
-          </div>
-          <div class="source-health-toolbar">
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadSourceHealth">刷新</button>
-            <button class="btn btn-primary btn-sm" type="button" :disabled="providerSmokeLoading" @click="runProviderSmoke">
-              {{ providerSmokeLoading ? '诊断中...' : '运行诊断' }}
-            </button>
-          </div>
-        </div>
-        <div class="provider-smoke-controls">
-          <GlassSelect
-            v-model="providerSmokeForm.source"
-            :options="providerSourceOptions"
-            size="compact"
-            aria-label="诊断来源"
-            @change="loadProviderSmokeRuns"
-          />
-          <input
-            v-model="providerSmokeForm.sourceMovieId"
-            class="filter-input"
-            placeholder="source_movie_id"
-            @keyup.enter="runProviderSmoke"
-          />
-          <button
-            v-if="providerSmokeReport"
-            class="btn btn-ghost btn-sm"
-            type="button"
-            @click="providerSmokeReport = null"
-          >清除结果</button>
-        </div>
-        <div v-if="providerSmokeReport" class="provider-smoke-panel">
-          <div class="provider-smoke-summary">
-            <div>
-              <strong>{{ providerSmokeReport.ok }} / {{ providerSmokeReport.total }}</strong>
-              <span>诊断通过</span>
-            </div>
-            <div>
-              <strong>{{ providerSmokeReport.failed }}</strong>
-              <span>失败样本</span>
-            </div>
-            <small>{{ formatActionTime(providerSmokeReport.generated_at) }}</small>
-          </div>
-          <div class="provider-smoke-grid">
-            <article
-              v-for="report in providerSmokeReport.reports || []"
-              :key="`${report.source}:${report.source_movie_id}`"
-              class="provider-smoke-card"
-              :class="{ failed: !report.ok }"
-            >
-              <div class="provider-smoke-card-head">
-                <strong>{{ report.name || report.source_movie_id }}</strong>
-                <span class="status-pill" :class="report.ok ? 'health-healthy' : 'health-degraded'">
-                  {{ report.ok ? '通过' : '异常' }}
-                </span>
-              </div>
-              <p>{{ report.source }} · {{ report.source_movie_id }} · {{ report.duration_ms || 0 }}ms</p>
-              <small>字段分 {{ report.quality?.score ?? 0 }} / {{ report.quality?.max_score ?? 0 }}</small>
-              <small v-if="report.quality?.missing?.length">缺失 {{ report.quality.missing.join(', ') }}</small>
-              <small v-if="report.quality?.warnings?.length">警告 {{ report.quality.warnings.join(', ') }}</small>
-              <small v-if="report.error">{{ report.error_type || 'error' }} · {{ report.error }}</small>
-              <div v-if="report.detail?.title" class="provider-smoke-detail">
-                <span>{{ report.detail.display_number || report.detail.normalized_number }}</span>
-                <strong>{{ report.detail.title }}</strong>
-              </div>
-            </article>
-          </div>
-        </div>
-        <div class="provider-smoke-history">
-          <div class="provider-smoke-history-head">
-            <strong>最近诊断</strong>
-            <button class="btn btn-ghost btn-xs" type="button" @click="loadProviderSmokeRuns">刷新历史</button>
-          </div>
-          <div v-if="providerSmokeRuns.length" class="provider-smoke-run-list">
-            <button
-              v-for="run in providerSmokeRuns"
-              :key="run.id"
-              type="button"
-              class="provider-smoke-run"
-              @click="providerSmokeReport = run.response"
-            >
-              <span>{{ formatActionTime(run.generated_at || run.created_at) }}</span>
-              <strong>{{ run.ok }} / {{ run.total }}</strong>
-              <small>{{ smokeRunLabel(run) }}</small>
-            </button>
-          </div>
-          <small v-else class="empty-inline">暂无诊断历史</small>
-        </div>
-        <div v-if="sourceHealthLoading" class="loading-wrap"><div class="spinner-large"></div></div>
-        <div v-else class="source-health-grid">
-          <article v-for="source in sourceHealthRows" :key="source.source" class="source-health-card">
-            <div>
-              <strong>{{ source.display_name || source.source }}</strong>
-              <span>{{ source.source }}</span>
-            </div>
-            <span class="status-pill" :class="`health-${source.runtime_status}`">{{ sourceHealthLabel(source.runtime_status) }}</span>
-            <div class="source-budget-meter">
-              <div>
-                <strong>{{ source.budget?.local_active ?? 0 }} / {{ source.budget?.local_limit ?? '—' }}</strong>
-                <span>当前预算</span>
-              </div>
-              <small>{{ sourceBudgetLabel(source.budget) }}</small>
-            </div>
-            <p>{{ source.last_error_type || '暂无错误' }}</p>
-            <small>{{ sourceHealthDetail(source) }}</small>
-            <div class="source-health-actions">
-              <button
-                v-if="source.runtime_status === 'paused'"
-                class="btn btn-primary btn-xs"
-                type="button"
-                :disabled="sourceActionLoading === source.source"
-                @click="resumeSource(source.source)"
-              >恢复</button>
-              <button
-                v-else
-                class="btn btn-ghost btn-xs"
-                type="button"
-                :disabled="sourceActionLoading === source.source"
-                @click="pauseSource(source.source)"
-              >暂停 24h</button>
-            </div>
-          </article>
-        </div>
-      </section>
+      <SourceHealthPanel
+        v-if="activeWorkspaceSegment === 'sourceHealth'"
+        v-model:provider-smoke-form="providerSmokeForm"
+        v-model:provider-smoke-report="providerSmokeReport"
+        :provider-source-options="providerSourceOptions"
+        :provider-smoke-loading="providerSmokeLoading"
+        :provider-smoke-runs="providerSmokeRuns"
+        :source-health-loading="sourceHealthLoading"
+        :source-health-rows="sourceHealthRows"
+        :source-action-loading="sourceActionLoading"
+        :format-action-time="formatActionTime"
+        :smoke-run-label="smokeRunLabel"
+        :source-health-label="sourceHealthLabel"
+        :source-budget-label="sourceBudgetLabel"
+        :source-health-detail="sourceHealthDetail"
+        @refresh-health="loadSourceHealth"
+        @run-smoke="runProviderSmoke"
+        @load-smoke-runs="loadProviderSmokeRuns"
+        @pause-source="pauseSource"
+        @resume-source="resumeSource"
+      />
     </section>
 
     <section v-else-if="showGlobalQueue" class="global-queue-view">
@@ -549,66 +371,18 @@
 </template>
 
 <script>
-import { h } from 'vue'
 import api from '../api'
 import { ElMessage } from 'element-plus'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import GlassSelect from '../components/GlassSelect.vue'
-
-const JobList = {
-  name: 'JobList',
-  props: {
-    jobs: { type: Array, default: () => [] },
-    loading: { type: Boolean, default: false },
-    actorContext: { type: Object, default: null },
-    jobLabel: { type: Function, required: true },
-    statusLabel: { type: Function, required: true },
-  },
-  emits: ['retry', 'cancel', 'actor'],
-  methods: {
-    jobAttemptMeta(job) {
-      const pieces = []
-      if (job.attempt_count) pieces.push(`尝试 ${job.attempt_count}/3`)
-      if (job.status === 'queued' && job.next_run_at) {
-        const next = new Date(job.next_run_at)
-        if (!Number.isNaN(next.getTime()) && next.getTime() > Date.now() + 1000) {
-          pieces.push(`下次 ${next.toLocaleTimeString()}`)
-        }
-      }
-      return pieces.join(' · ')
-    },
-  },
-  render() {
-    if (this.loading) {
-      return h('div', { class: 'loading-wrap' }, [h('div', { class: 'spinner-large' })])
-    }
-    if (!this.jobs.length) {
-      return h('div', { class: 'empty-inline' }, '暂无任务')
-    }
-    return h('div', { class: 'ios-list job-list' }, this.jobs.map(job => h('article', { class: 'ios-row job-row', key: job.id }, [
-      h('div', { class: 'job-main' }, [
-        h('div', { class: 'job-avatar' }, job.source_actor_name?.slice(0, 1) || String(job.local_actress_id || '?').slice(0, 1)),
-        h('div', { class: 'job-copy' }, [
-          h('strong', this.jobLabel(job)),
-          h('span', `#${job.id} · ${job.created_at ? new Date(job.created_at).toLocaleString() : ''}`),
-          this.jobAttemptMeta(job) ? h('small', { class: 'job-meta' }, this.jobAttemptMeta(job)) : null,
-          job.last_error ? h('small', { class: job.status === 'failed' ? 'job-error' : 'job-warning' }, job.last_error) : null,
-        ]),
-      ]),
-      h('div', { class: 'job-actions' }, [
-        h('span', { class: ['status-pill', `status-${job.status}`] }, this.statusLabel(job.status)),
-        job.local_actress_id && !this.actorContext ? h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => this.$emit('actor', job) }, '查看演员') : null,
-        job.status === 'failed' ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', onClick: () => this.$emit('retry', job.id) }, '重试') : null,
-        job.status === 'queued' || job.status === 'running' ? h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => this.$emit('cancel', job.id) }, '取消') : null,
-      ]),
-    ])))
-  },
-}
+import JobList from '../features/supplement/SupplementJobList.vue'
+import ActorPickerView from '../features/supplement/ActorPickerView.vue'
+import SourceHealthPanel from '../features/supplement/SourceHealthPanel.vue'
 
 export default {
   name: 'SupplementManagement',
-  components: { JobList, GlassSelect },
+  components: { ActorPickerView, JobList, SourceHealthPanel, GlassSelect },
   data() {
     return {
       stats: null,

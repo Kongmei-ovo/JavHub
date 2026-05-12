@@ -10,10 +10,17 @@ const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.
 const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
 const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
 const config = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
+const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
 const search = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
 const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
 const supplement = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
+const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
+const candidateRunPanel = readFileSync(new URL('../features/candidates/CandidateRunPanel.vue', import.meta.url), 'utf8')
+const homeFeatureSource = [home, candidateRunPanel].join('\n')
+const configFeatureSource = [config, configDefaults].join('\n')
+const supplementFeatureSource = [supplement, supplementActorPicker, supplementSourceHealth].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
@@ -111,8 +118,8 @@ test('inline style cleanup keeps only dynamic previews in settings and genres', 
 test('appearance controls keep compact state and robust custom material parsing', () => {
   assert.match(config, /class="theme-option"[\s\S]*:aria-pressed="currentTheme === key"/)
   assert.match(config, /class="segmented-mini"[\s\S]*:aria-pressed="config\.javinfo\.page_size === size"/)
-  assert.match(config, /function parseGradientList/)
-  assert.match(config, /char === ',' && depth === 0/)
+  assert.match(configDefaults, /function parseGradientList/)
+  assert.match(configDefaults, /char === ',' && depth === 0/)
   assert.match(config, /this\.bubbleCfg\.customGradients = parseGradientList\(this\.bubbleCfg\.customGradientsText\)/)
   assert.doesNotMatch(config, /customGradientsText[\s\S]{0,120}\.split\(',/)
 })
@@ -204,14 +211,14 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /goCandidateActor/)
   assert.match(home, /goCandidateSupplement/)
   assert.match(home, /最近动作/)
-  assert.match(home, /最近处理/)
+  assert.match(candidateRunPanel, /最近处理/)
   assert.match(home, /loadCandidateRuns/)
   assert.match(home, /applyCandidateRunFilters/)
   assert.match(home, /retryFailedCandidateRun/)
   assert.match(home, /retryDownloadCandidateRunFailed/)
   assert.match(home, /listDownloadCandidateRuns/)
-  assert.match(home, /失败队列/)
-  assert.match(home, /重试失败/)
+  assert.match(candidateRunPanel, /失败队列/)
+  assert.match(candidateRunPanel, /重试失败/)
   assert.match(home, /dry_run: true/)
   assert.match(home, /processPreviewMessage/)
   assert.match(home, /processPreviewDetails/)
@@ -244,10 +251,10 @@ test('settings page blocks saving until remote config has loaded', () => {
   assert.match(config, /if \(!this\.canSaveConfig\)[\s\S]*已阻止保存/)
   assert.match(config, /:disabled="testingTelegram \|\| !canSaveConfig \|\| !config\.telegram\.bot_token"/)
   assert.match(config, /@retry="loadConfig"/)
-  assert.match(config, /max_auto_downloads_per_run/)
-  assert.match(config, /max_auto_downloads_per_24h/)
-  assert.match(config, /actor_mapping/)
-  assert.match(config, /auto_match_after_collect/)
+  assert.match(configFeatureSource, /max_auto_downloads_per_run/)
+  assert.match(configFeatureSource, /max_auto_downloads_per_24h/)
+  assert.match(configFeatureSource, /actor_mapping/)
+  assert.match(configFeatureSource, /auto_match_after_collect/)
 })
 
 test('interactive filters avoid stale actions and stale pagination', () => {
@@ -272,9 +279,9 @@ test('appearance settings are grouped by scope and persist discovery preferences
   assert.match(config, /<span class="setting-title">题材 \/ 系列气泡视觉<\/span>/)
   assert.doesNotMatch(searchSection, /演员头像/)
   assert.doesNotMatch(discoverySection, /检索页数量/)
-  assert.match(config, /defaultTab: 'genre'/)
-  assert.match(config, /actressPageSize: 36/)
-  assert.match(config, /seriesPageSize: 60/)
+  assert.match(configDefaults, /defaultTab: 'genre'/)
+  assert.match(configDefaults, /actressPageSize: 36/)
+  assert.match(configDefaults, /seriesPageSize: 60/)
   assert.match(config, /seriesPageSizeOptions: \[30, 60, 90, 100\]/)
   assert.match(config, /localStorage\.setItem\('genres_bubble_cfg', JSON\.stringify\(this\.bubbleCfg\)\)/)
 })
@@ -283,7 +290,7 @@ test('global dropdowns use the unified glass select control', () => {
   for (const [name, source] of Object.entries({
     config,
     inventory,
-    supplement,
+    supplementFeatureSource,
     logs,
     search,
     discoveryDetail,

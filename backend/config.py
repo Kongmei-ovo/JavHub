@@ -76,6 +76,10 @@ class Config:
         return self._config.get('openlist', {}).get('default_path', '/115/AV')
 
     @property
+    def crawler_request_interval(self) -> int:
+        return self._config.get('crawler', {}).get('request_interval', 3)
+
+    @property
     def emby_api_url(self) -> str:
         return _env('EMBY_API_URL', self._config.get('emby', {}).get('api_url', ''))
 

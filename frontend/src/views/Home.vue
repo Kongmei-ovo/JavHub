@@ -243,45 +243,15 @@
         <button class="btn btn-primary" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="bulkRestoreCandidates">批量恢复</button>
       </div>
 
-      <div class="candidate-run-panel">
-        <div class="candidate-run-head">
-          <div>
-            <strong>最近处理</strong>
-            <span>复用批处理筛选，快速回收失败项</span>
-          </div>
-          <button class="link-btn" type="button" :disabled="candidateRunsLoading" @click="loadCandidateRuns">
-            {{ candidateRunsLoading ? '刷新中...' : '刷新记录' }}
-          </button>
-        </div>
-        <div v-if="candidateRuns.length" class="candidate-run-list">
-          <div v-for="run in candidateRuns" :key="run.id" class="candidate-run-row">
-            <div class="candidate-run-main">
-              <strong>{{ candidateRunPolicyLabel(run.policy) }}</strong>
-              <span>{{ candidateRunTriggerLabel(run.trigger_source) }} · {{ formatTime(run.created_at) }}</span>
-            </div>
-            <div class="candidate-run-stats">
-              <span>处理 {{ run.total || 0 }}</span>
-              <span>下发 {{ run.sent || 0 }}</span>
-              <span>失败 {{ run.failed || 0 }}</span>
-              <span>跳过 {{ run.skipped || 0 }}</span>
-            </div>
-            <div class="candidate-run-actions">
-              <button class="link-btn" type="button" @click="applyCandidateRunFilters(run)">套用筛选</button>
-              <button v-if="run.failed" class="link-btn danger" type="button" @click="applyCandidateRunFilters(run, { status: 'failed' })">失败队列</button>
-              <button
-                v-if="run.failed"
-                class="link-btn danger"
-                type="button"
-                :disabled="candidateBatchProcessing"
-                @click="retryFailedCandidateRun(run)"
-              >
-                重试失败
-              </button>
-            </div>
-          </div>
-        </div>
-        <small v-else class="candidate-run-empty">暂无处理记录</small>
-      </div>
+      <CandidateRunPanel
+        :runs="candidateRuns"
+        :loading="candidateRunsLoading"
+        :processing="candidateBatchProcessing"
+        @refresh="loadCandidateRuns"
+        @apply="applyCandidateRunFilters"
+        @apply-failed="applyCandidateRunFilters($event, { status: 'failed' })"
+        @retry-failed="retryFailedCandidateRun"
+      />
 
       <div v-if="filteredCandidates.length > 0" class="tasks-grid">
         <div
@@ -447,9 +417,11 @@
 <script>
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import CandidateRunPanel from '../features/candidates/CandidateRunPanel.vue'
 
 export default {
   name: 'Home',
+  components: { CandidateRunPanel },
   data() {
     return {
       activeTab: this.$route.query.tab === 'candidates' ? 'candidates' : 'tasks',
@@ -1192,61 +1164,6 @@ export default {
   font-size: 12px;
 }
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
-.candidate-run-panel {
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-card);
-}
-.candidate-run-head,
-.candidate-run-row,
-.candidate-run-stats,
-.candidate-run-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.candidate-run-head {
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.candidate-run-head strong,
-.candidate-run-main strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 13px;
-}
-.candidate-run-head span,
-.candidate-run-main span,
-.candidate-run-stats span,
-.candidate-run-empty {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-.candidate-run-list {
-  display: grid;
-  gap: 8px;
-}
-.candidate-run-row {
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-}
-.candidate-run-main {
-  min-width: 140px;
-}
-.candidate-run-stats {
-  flex: 1;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.candidate-run-actions {
-  justify-content: flex-end;
-}
 .link-btn.danger {
   color: #ef5350;
 }
