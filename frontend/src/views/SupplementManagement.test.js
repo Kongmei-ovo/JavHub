@@ -55,6 +55,11 @@ test('supplement management uses an actor workspace with segmented panels', () =
   assert.match(source, /getSupplementActressStatus\(normalized\)/)
   assert.match(source, /startSupplementFilmographyJob\(this\.actorContext\.id\)/)
   assert.match(source, /refreshSupplementActressResolved\(this\.actorContext\.id\)/)
+  assert.match(source, /生成下载候选/)
+  assert.match(source, /createDownloadCandidates/)
+  assert.match(source, /api\.createSupplementDownloadCandidates\(params\)/)
+  assert.match(source, /path: '\/downloads'/)
+  assert.match(source, /source: 'supplement'/)
 })
 
 test('supplement management exposes source health and manual correction controls', () => {

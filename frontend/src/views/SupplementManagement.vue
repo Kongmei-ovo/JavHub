@@ -178,6 +178,9 @@
           <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="batchEnrichMovies">
             {{ batchEnriching ? '批量排队中...' : '批量补详情' }}
           </button>
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="candidateImporting" @click="createDownloadCandidates">
+            {{ candidateImporting ? '生成中...' : '生成下载候选' }}
+          </button>
         </div>
         <div class="filter-bar">
           <select v-model="movieFilters.matched" @change="loadMovies" class="filter-select">
@@ -633,6 +636,7 @@ export default {
       moviesLoading: false,
       enrichingMovies: {},
       batchEnriching: false,
+      candidateImporting: false,
       moviePage: 1,
       moviesTotalCount: 0,
       moviesTotalPages: 1,
@@ -1296,6 +1300,33 @@ export default {
         console.error('Start batch movie detail jobs failed:', e)
       } finally {
         this.batchEnriching = false
+      }
+    },
+    async createDownloadCandidates() {
+      if (this.candidateImporting) return
+      this.candidateImporting = true
+      try {
+        const params = { limit: 100 }
+        if (this.actorContext?.id) params.actress_id = this.actorContext.id
+        if (this.actorContextName) params.actress_name = this.actorContextName
+        if (this.movieFilters.q) params.q = this.movieFilters.q
+        const resp = await api.createSupplementDownloadCandidates(params)
+        const data = resp.data || resp
+        ElMessage.success(`已生成 ${data.created || 0} 个下载候选，已有 ${data.existing || 0} 个`)
+        this.$router.push({
+          path: '/downloads',
+          query: {
+            tab: 'candidates',
+            status: 'candidate',
+            source: 'supplement',
+            ...(this.actorContext?.id ? { actress_id: this.actorContext.id } : {}),
+            ...(this.movieFilters.q ? { q: this.movieFilters.q } : {}),
+          },
+        })
+      } catch (e) {
+        console.error('Create supplement download candidates failed:', e)
+      } finally {
+        this.candidateImporting = false
       }
     },
   },

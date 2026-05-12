@@ -67,6 +67,13 @@
           <span class="counter-value">{{ supplementStatus.resolved_videos ?? '—' }}</span>
           <span class="counter-label">可展示</span>
         </div>
+        <div class="counter-item">
+          <span class="counter-value">{{ candidateSummary.candidate }}</span>
+          <span class="counter-label">下载候选</span>
+        </div>
+      </div>
+      <div v-if="candidateSummary.candidate > 0" class="candidate-summary">
+        {{ candidateSummary.needsMagnet }} 个待补磁力，{{ candidateSummary.ready }} 个可批准
       </div>
       <div class="supplement-actions">
         <button
@@ -79,6 +86,7 @@
         <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新 resolved</button>
         <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">字段管理</button>
         <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">任务队列</button>
+        <button class="btn btn-ghost btn-sm" @click="goDownloadCandidates">处理候选</button>
       </div>
     </div>
 
@@ -190,6 +198,7 @@ export default {
       activeYear: null,
       showVariants: false,
       supplementStatus: null,
+      candidateSummary: { candidate: 0, needsMagnet: 0, ready: 0 },
       supplementLoading: false,
       supplementPolling: null,
       _yearObserver: null
@@ -239,6 +248,7 @@ export default {
       this.loadActressInfo()
       this.loadActorMovies()
       this.loadSupplementStatus()
+      this.loadCandidateSummary()
     }
   },
   beforeUnmount() {
@@ -249,6 +259,7 @@ export default {
     actressId(newId, oldId) {
       if (newId && newId !== oldId) {
         this.loadSupplementStatus()
+        this.loadCandidateSummary()
       }
     },
   },
@@ -387,6 +398,25 @@ export default {
         console.warn('Load supplement status failed:', e)
       }
     },
+    async loadCandidateSummary() {
+      if (!this.actressId) return
+      try {
+        const resp = await api.listDownloadCandidates({
+          status: 'candidate',
+          actress_id: this.actressId,
+          limit: 100000,
+        })
+        const rows = resp.data?.data || []
+        const needsMagnet = rows.filter(row => !row.magnet).length
+        this.candidateSummary = {
+          candidate: rows.length,
+          needsMagnet,
+          ready: rows.length - needsMagnet,
+        }
+      } catch (e) {
+        console.warn('Load actor candidate summary failed:', e)
+      }
+    },
     async startSupplement() {
       if (!this.actressId || this.isSupplementRunning) return
       try {
@@ -410,6 +440,16 @@ export default {
     },
     goSupplementJobs() {
       this.$router.push({ path: '/supplement', query: { tab: 'jobs', actress_id: this.actressId } })
+    },
+    goDownloadCandidates() {
+      this.$router.push({
+        path: '/downloads',
+        query: {
+          tab: 'candidates',
+          status: 'candidate',
+          actress_id: this.actressId,
+        },
+      })
     },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }
@@ -788,6 +828,12 @@ export default {
 .counter-label {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.candidate-summary {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .supplement-actions {

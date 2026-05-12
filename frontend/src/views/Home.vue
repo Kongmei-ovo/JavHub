@@ -93,6 +93,33 @@
       </div>
     </div>
 
+    <div class="candidate-overview">
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', source: '' })">
+        <span class="metric-value">{{ candidateStats.candidate || 0 }}</span>
+        <span class="metric-label">待确认候选</span>
+      </button>
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', needs_magnet: true, source: '' })">
+        <span class="metric-value">{{ candidateStats.needs_magnet || 0 }}</span>
+        <span class="metric-label">待补磁力</span>
+      </button>
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', needs_magnet: false, source: '' })">
+        <span class="metric-value">{{ readyCandidateCount }}</span>
+        <span class="metric-label">可批准</span>
+      </button>
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', source: 'subscription' })">
+        <span class="metric-value">{{ candidateStats.candidate_by_source?.subscription || 0 }}</span>
+        <span class="metric-label">订阅发现</span>
+      </button>
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', source: 'inventory' })">
+        <span class="metric-value">{{ candidateStats.candidate_by_source?.inventory || 0 }}</span>
+        <span class="metric-label">库存发现</span>
+      </button>
+      <button class="candidate-metric" type="button" @click="openCandidatePreset({ status: 'candidate', source: 'supplement' })">
+        <span class="metric-value">{{ candidateStats.candidate_by_source?.supplement || 0 }}</span>
+        <span class="metric-label">补全发现</span>
+      </button>
+    </div>
+
     <!-- 任务过滤栏 -->
     <div v-if="filterStatus" class="filter-bar" @click="filterStatus = null">
       <span class="filter-hint">筛选: <strong>{{ filterStatus }}</strong> (点击清除)</span>
@@ -191,6 +218,9 @@
         <button class="chip" :class="{ active: candidateFilter.source === 'inventory' }" @click="setCandidateSource('inventory')">
           库存 {{ candidateStats.by_source?.inventory || 0 }}
         </button>
+        <button class="chip" :class="{ active: candidateFilter.source === 'supplement' }" @click="setCandidateSource('supplement')">
+          补全 {{ candidateStats.by_source?.supplement || 0 }}
+        </button>
         <button class="chip" :class="{ active: !candidateFilter.source }" @click="setCandidateSource('')">全部来源</button>
         <button class="chip" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
           {{ selectingCandidates ? '退出选择' : '选择' }}
@@ -236,7 +266,7 @@
             <h3 class="task-title" :title="candidate.title">{{ candidate.title || candidate.content_id }}</h3>
             <div class="task-meta">
               <span :class="['badge', candidateBadge(candidate.status)]">{{ candidateStatusLabel(candidate.status) }}</span>
-              <span class="task-time">{{ candidate.source }}</span>
+              <span class="task-time">{{ candidateSourceLabel(candidate.source) }}</span>
             </div>
             <div class="candidate-subtitle">{{ candidate.actress_name || '未知演员' }} · {{ candidate.release_date || '日期未知' }}</div>
             <div class="candidate-magnet" :class="{ empty: !candidate.magnet }">
@@ -254,6 +284,10 @@
             </div>
             <div v-if="candidate.events?.length" class="candidate-event">
               最近动作 {{ candidate.events[0].action }}
+            </div>
+            <div class="candidate-context-actions">
+              <button v-if="candidate.actress_id" class="link-btn" type="button" @click="goCandidateActor(candidate)">演员</button>
+              <button v-if="candidate.source === 'supplement' && candidate.actress_id" class="link-btn" type="button" @click="goCandidateSupplement(candidate)">补全</button>
             </div>
           </div>
 
@@ -302,7 +336,16 @@ export default {
       tasks: [],
       candidates: [],
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
-      candidateStats: { candidate: 0, approved: 0, rejected: 0, sent: 0, failed: 0, needs_magnet: 0, by_source: {} },
+      candidateStats: {
+        candidate: 0,
+        approved: 0,
+        rejected: 0,
+        sent: 0,
+        failed: 0,
+        needs_magnet: 0,
+        by_source: {},
+        candidate_by_source: {},
+      },
       filterStatus: null,
       candidateFilter: {
         status: this.$route.query.status || 'candidate',
@@ -324,6 +367,9 @@ export default {
     },
     filteredCandidates() {
       return this.candidates
+    },
+    readyCandidateCount() {
+      return Math.max((this.candidateStats.candidate || 0) - (this.candidateStats.needs_magnet || 0), 0)
     }
   },
   mounted() {
@@ -393,6 +439,13 @@ export default {
       this.candidateFilter.source = source
       this.loadCandidates()
     },
+    openCandidatePreset({ status = 'candidate', source = '', needs_magnet = null } = {}) {
+      this.activeTab = 'candidates'
+      this.candidateFilter.status = status
+      this.candidateFilter.source = source
+      this.candidateFilter.needs_magnet = needs_magnet
+      this.loadCandidates()
+    },
     toggleCandidateSelection() {
       this.selectingCandidates = !this.selectingCandidates
       if (!this.selectingCandidates) this.selectedCandidateIds = []
@@ -443,6 +496,21 @@ export default {
       await api.rejectDownloadCandidate(candidate.id)
       await this.loadCandidates()
     },
+    goCandidateActor(candidate) {
+      if (!candidate.actress_id) return
+      const name = candidate.actress_name || candidate.actress_id
+      this.$router.push({
+        path: `/actor/${encodeURIComponent(name)}`,
+        query: { name, actress_id: candidate.actress_id },
+      })
+    },
+    goCandidateSupplement(candidate) {
+      if (!candidate.actress_id) return
+      this.$router.push({
+        path: '/supplement',
+        query: { tab: 'movies', actress_id: candidate.actress_id, q: candidate.dvd_id || candidate.content_id || '' },
+      })
+    },
     async remove(id) {
       try {
         await api.deleteDownload(id)
@@ -470,6 +538,10 @@ export default {
     candidateStatusLabel(status) {
       const map = { candidate: '待确认', approved: '已批准', sent: '已下发', failed: '失败', rejected: '已拒绝' }
       return map[status] || status
+    },
+    candidateSourceLabel(source) {
+      const map = { subscription: '订阅', inventory: '库存', supplement: '补全', manual: '手动' }
+      return map[source] || source || '未知来源'
     },
     formatTime(time) {
       if (!time) return ''
@@ -569,6 +641,37 @@ export default {
 .stat-card:nth-child(3) .stat-num { animation-delay: 0.15s; }
 .stat-card:nth-child(4) .stat-num { animation-delay: 0.2s; }
 .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+.candidate-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: -8px 0 18px;
+}
+.candidate-metric {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.candidate-metric:hover {
+  border-color: var(--accent);
+}
+.metric-value {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+}
+.metric-label {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
 
 /* ===== Filter Bar ===== */
 .filter-bar {
@@ -703,6 +806,20 @@ export default {
 .candidate-reason { color: var(--text-secondary); }
 .candidate-task-link { color: #52c41a; }
 .candidate-event { color: var(--accent); }
+.candidate-context-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.link-btn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {

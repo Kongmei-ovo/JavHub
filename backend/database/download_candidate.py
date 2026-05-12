@@ -321,6 +321,10 @@ def download_candidate_stats() -> dict:
         counts = {row["status"]: row["count"] for row in cursor.fetchall()}
         cursor.execute("SELECT source, COUNT(*) AS count FROM download_candidates GROUP BY source")
         source_counts = {row["source"] or "manual": row["count"] for row in cursor.fetchall()}
+        cursor.execute(
+            "SELECT source, COUNT(*) AS count FROM download_candidates WHERE status = 'candidate' GROUP BY source"
+        )
+        candidate_source_counts = {row["source"] or "manual": row["count"] for row in cursor.fetchall()}
     return {
         "candidate": counts.get("candidate", 0),
         "approved": counts.get("approved", 0),
@@ -328,6 +332,7 @@ def download_candidate_stats() -> dict:
         "sent": counts.get("sent", 0),
         "failed": counts.get("failed", 0),
         "by_source": source_counts,
+        "candidate_by_source": candidate_source_counts,
         "needs_magnet": sum(
             1 for row in list_download_candidates(status="candidate", limit=100000)
             if not row.get("magnet")

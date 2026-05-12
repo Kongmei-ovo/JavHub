@@ -264,6 +264,23 @@ test('getSupplementMovieSources sends GET to movie sources path', async (t) => {
   assert.equal(capturedConfig.method, 'get')
 })
 
+test('createSupplementDownloadCandidates posts supplement movie filters', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { created: 2 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?supplement-candidates-${Date.now()}`)
+  await api.createSupplementDownloadCandidates({ actress_id: 123, q: 'SIVR' })
+
+  assert.equal(capturedConfig.url, '/v1/supplement/movies/candidates')
+  assert.equal(capturedConfig.method, 'post')
+  assert.deepEqual(capturedConfig.params, { actress_id: 123, q: 'SIVR' })
+})
+
 test('listSupplementSources sends GET to sources path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null

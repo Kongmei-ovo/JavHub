@@ -13,3 +13,13 @@ test('actor page treats supplement as part of the default catalog', () => {
   assert.match(source, /:serviceCode="displayServiceCode\(movie\)"/)
   assert.match(source, /if \(movie\._raw\?\.data_origin === 'supplement'\) return ''/)
 })
+
+test('actor page surfaces download candidate handoff', () => {
+  assert.match(source, /candidateSummary/)
+  assert.match(source, /下载候选/)
+  assert.match(source, /待补磁力/)
+  assert.match(source, /api\.listDownloadCandidates/)
+  assert.match(source, /goDownloadCandidates/)
+  assert.match(source, /path: '\/downloads'/)
+  assert.match(source, /tab: 'candidates'/)
+})

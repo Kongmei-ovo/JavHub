@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, Query
 from modules.info_client import get_info_client
+from services.supplement_candidates import generate_download_candidates_from_supplement
 
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
 
@@ -153,6 +154,29 @@ async def list_supplement_movies(
 async def get_movie_sources(movie_id: int) -> dict[str, Any]:
     client = get_info_client()
     return await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
+
+
+@router.post("/movies/candidates")
+async def create_download_candidates_from_supplement(
+    actress_id: int | None = Query(None),
+    actress_name: str = Query(""),
+    source: str | None = Query(None),
+    q: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=200),
+) -> dict[str, Any]:
+    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
+    name = actress_name.default if hasattr(actress_name, "default") else actress_name
+    src = source.default if hasattr(source, "default") else source
+    qv = q.default if hasattr(q, "default") else q
+    lim = limit.default if hasattr(limit, "default") else limit
+    result = await generate_download_candidates_from_supplement(
+        actress_id=aid,
+        actress_name=name,
+        supplement_source=src,
+        q=qv,
+        limit=lim,
+    )
+    return {"status": "ok", **result}
 
 
 @router.post("/movies/{movie_id}/match")

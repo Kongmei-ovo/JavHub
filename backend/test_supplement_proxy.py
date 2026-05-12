@@ -267,6 +267,30 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
 
         mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/movies/12/sources")
 
+    async def test_create_download_candidates_from_supplement_passes_filters(self):
+        with patch(
+            "routers.supplement.generate_download_candidates_from_supplement",
+            new_callable=AsyncMock,
+        ) as generate:
+            generate.return_value = {"created": 2, "existing": 1, "candidate_count": 3}
+            result = await supplement.create_download_candidates_from_supplement(
+                actress_id=123,
+                actress_name="Actor",
+                source="avbase",
+                q="SIVR",
+                limit=50,
+            )
+
+        generate.assert_awaited_once_with(
+            actress_id=123,
+            actress_name="Actor",
+            supplement_source="avbase",
+            q="SIVR",
+            limit=50,
+        )
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["created"], 2)
+
     async def test_list_sources(self):
         mock_client = AsyncMock()
         mock_client.proxy_get.return_value = [{"source": "avbase"}]

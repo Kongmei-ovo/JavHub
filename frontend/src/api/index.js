@@ -455,6 +455,10 @@ export default {
     return api.post('/v1/supplement/movies/detail/jobs/batch', null, { params })
   },
 
+  createSupplementDownloadCandidates(params = {}) {
+    return api.post('/v1/supplement/movies/candidates', null, { params })
+  },
+
   // ========== 健康检查 ==========
 
   health() {

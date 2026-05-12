@@ -220,6 +220,97 @@ class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(info_client.get_actress_videos.await_args.kwargs["include_supplement"], "1")
 
 
+class SupplementCandidatePipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_supplement_movies_create_download_candidates_for_missing_rows(self):
+        from database import get_download_candidate, list_download_candidates
+        from services.supplement_candidates import generate_download_candidates_from_supplement
+
+        info_client = AsyncMock()
+        info_client.proxy_get.return_value = {
+            "data": [
+                {
+                    "id": 11,
+                    "canonical_number": "SIVR438",
+                    "dvd_id": "SIVR-438",
+                    "title": "Supplement Only",
+                    "release_date": "2026-05-01",
+                    "local_actress_id": 123,
+                    "actress_name": "Actor",
+                },
+                {
+                    "id": 12,
+                    "canonical_number": "ABP588",
+                    "dvd_id": "ABP-588",
+                    "title": "Already In Library",
+                },
+                {
+                    "id": 13,
+                    "canonical_number": "MIAA999",
+                    "dvd_id": "MIAA-999",
+                    "title": "Ignored",
+                    "status": "manual_ignored",
+                    "match_status": "manual_ignored",
+                },
+            ],
+        }
+        emby_client = AsyncMock()
+        emby_client.check_exists.side_effect = lambda code: code == "ABP-588"
+
+        result = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+            actress_id=123,
+            actress_name="Actor",
+        )
+
+        rows = list_download_candidates(source="supplement")
+        self.assertEqual(result["checked"], 2)
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(result["in_library"], 1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["dvd_id"], "SIVR-438")
+        self.assertEqual(rows[0]["reason"], "supplement_only")
+        self.assertEqual(get_download_candidate(rows[0]["id"])["events"][0]["action"], "supplement_imported")
+        info_client.proxy_get.assert_awaited_once_with(
+            "/api/v1/supplement/movies",
+            params={"page": 1, "page_size": 100, "matched": "false", "actress_id": 123},
+        )
+
+    async def test_supplement_candidate_import_counts_existing_candidates(self):
+        from database import get_download_candidate, list_download_candidates
+        from services.supplement_candidates import generate_download_candidates_from_supplement
+
+        info_client = AsyncMock()
+        info_client.proxy_get.return_value = {
+            "data": [{
+                "id": 11,
+                "canonical_number": "SIVR438",
+                "dvd_id": "SIVR-438",
+                "title": "Supplement Only",
+            }],
+        }
+        emby_client = AsyncMock()
+        emby_client.check_exists.return_value = False
+
+        first = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+        )
+        second = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+        )
+
+        self.assertEqual(first["created"], 1)
+        self.assertEqual(second["created"], 0)
+        self.assertEqual(second["existing"], 1)
+        rows = list_download_candidates(source="supplement")
+        self.assertEqual(len(rows), 1)
+        events = get_download_candidate(rows[0]["id"])["events"]
+        self.assertEqual([event["action"] for event in events], ["supplement_imported"])
+
+
 class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_approve_candidate_requires_magnet_and_creates_download_task(self):
         from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
@@ -284,13 +375,18 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         upsert_download_candidate(content_id="SIVR-438", source="subscription", status="candidate")
         upsert_download_candidate(content_id="ABP-588", source="subscription", status="candidate", magnet="magnet:?x")
         upsert_download_candidate(content_id="MIAA-999", source="inventory", status="rejected")
+        upsert_download_candidate(content_id="SUPP-001", source="supplement", status="candidate")
+        upsert_download_candidate(content_id="SUPP-002", source="supplement", status="sent")
 
         result = await downloads.list_candidates(status="candidate", needs_magnet=True)
 
-        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["total"], 2)
         self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
         self.assertEqual(result["stats"]["by_source"]["subscription"], 2)
         self.assertEqual(result["stats"]["by_source"]["inventory"], 1)
+        self.assertEqual(result["stats"]["by_source"]["supplement"], 2)
+        self.assertEqual(result["stats"]["candidate_by_source"]["subscription"], 2)
+        self.assertEqual(result["stats"]["candidate_by_source"]["supplement"], 1)
 
     async def test_get_candidate_returns_single_row(self):
         from database import upsert_download_candidate
