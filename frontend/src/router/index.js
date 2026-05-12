@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   { path: '/', component: () => import('../views/Genres.vue') },
+  { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
   { path: '/downloads', component: () => import('../views/Home.vue') },
   { path: '/search', component: () => import('../views/Search.vue') },
   { path: '/genres', component: () => import('../views/Genres.vue') },

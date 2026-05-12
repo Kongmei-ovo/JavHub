@@ -209,7 +209,9 @@ a:hover { color: var(--accent-light); }
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-height: var(--touch-target);
   padding: 10px 18px;
   border-radius: var(--radius-md);
   font-size: 14px;
@@ -328,6 +330,7 @@ a:hover { color: var(--accent-light); }
 
 .input {
   width: 100%;
+  min-height: var(--touch-target);
   padding: 10px 14px;
   color: var(--text-primary);
   font-size: 14px;

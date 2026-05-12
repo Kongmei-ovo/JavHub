@@ -38,6 +38,7 @@
 
 <script>
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 export default {
   name: 'Logs',
@@ -72,7 +73,14 @@ export default {
       await this.loadLogs()
     },
     async clearLogs() {
-      if (!confirm('确定清空所有日志？')) return
+      const confirmed = await requestConfirm({
+        title: '清空日志',
+        message: '确定清空所有日志？',
+        details: '这个操作会删除当前记录的日志列表。',
+        confirmText: '清空',
+        tone: 'danger'
+      })
+      if (!confirmed) return
       try {
         await api.clearLogs()
         this.logs = []
@@ -90,22 +98,68 @@ export default {
 </script>
 
 <style scoped>
-.toolbar { margin: 20px 0; display: flex; gap: 10px; align-items: center; }
-.toolbar select, .toolbar input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-.toolbar input { flex: 1; max-width: 300px; }
-.toolbar button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; background: #4CAF50; color: white; }
+.logs {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--text-primary);
+}
+.logs h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+.toolbar { margin: 20px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.toolbar select, .toolbar input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+.toolbar input { flex: 1; min-width: 180px; max-width: 300px; }
+.toolbar button { min-height: 44px; padding: 0 18px; border: none; border-radius: 999px; cursor: pointer; background: #4CAF50; color: white; font-weight: 700; }
 .toolbar button.danger { background: #f44336; }
-.logs-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+.logs-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
 .log-list { max-height: 500px; overflow-y: auto; }
-.log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 13px; }
+.log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid var(--border); font-family: monospace; font-size: 13px; min-width: 0; }
 .log-item:last-child { border-bottom: none; }
-.log-time { color: #999; width: 160px; flex-shrink: 0; }
+.log-time { color: var(--text-muted); width: 160px; flex-shrink: 0; }
 .log-level { width: 70px; flex-shrink: 0; font-weight: bold; }
 .level-info { color: #2196f3; }
 .level-warning { color: #ff9800; }
 .level-error { color: #f44336; }
 .log-message { flex: 1; word-break: break-all; }
-.loading, .empty { padding: 40px; text-align: center; color: #666; }
+.loading, .empty { padding: 40px; text-align: center; color: var(--text-secondary); }
 .pagination { margin-top: 20px; text-align: center; }
-.pagination button { padding: 10px 30px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.pagination button { min-height: 44px; padding: 0 30px; background: #4CAF50; color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 700; }
+
+@media (max-width: 768px) {
+  .logs {
+    padding: 20px 16px 40px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbar select,
+  .toolbar input,
+  .toolbar button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .log-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+  }
+
+  .log-time,
+  .log-level {
+    width: auto;
+  }
+
+  .log-message {
+    grid-column: 1 / -1;
+  }
+}
 </style>

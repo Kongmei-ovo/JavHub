@@ -138,7 +138,7 @@
               </button>
               <button v-if="sheetSub" class="toggle-pill" :class="{ on: sheetSub.auto_download }" @click="toggleAutoDownload(sheetSub)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                自动候选
+                自动策略
               </button>
               <button class="toggle-pill" @click="viewAllVideos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
@@ -489,7 +489,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 .search-input {
   flex: 1; border: none; outline: none; background: transparent;
-  padding: 0 10px; font-size: 15px; color: var(--text-primary); height: 100%;
+  padding: 0 10px; font-size: 15px; color: var(--text-primary); min-height: 44px;
 }
 
 .search-input::placeholder { color: var(--text-muted); }
@@ -768,6 +768,12 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   opacity: 1;
 }
 
+@media (hover: none) {
+  .work-dl-btn {
+    opacity: 1;
+  }
+}
+
 .work-dl-btn:hover {
   background: rgba(0, 0, 0, 0.7);
   transform: scale(1.1);
@@ -829,5 +835,20 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   .works-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
   .sheet-translated { font-size: 18px; }
   .name-pill { height: 22px; padding: 0 8px; font-size: 11px; }
+  .segment-item,
+  .clear-btn,
+  .pill-btn,
+  .top-action-btn,
+  .toggle-pill,
+  .work-dl-btn {
+    min-height: 44px;
+  }
+  .clear-btn,
+  .work-dl-btn {
+    min-width: 44px;
+  }
+  .sheet-toggles {
+    flex-wrap: wrap;
+  }
 }
 </style>

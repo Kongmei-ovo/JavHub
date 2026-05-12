@@ -451,7 +451,6 @@ async def fill_video(content_id: str):
             source="inventory",
             reason="inventory_fill",
         )
-        delete_missing_video(content_id)
     except Exception:
         candidate = upsert_download_candidate(
             content_id=content_id,
@@ -460,7 +459,6 @@ async def fill_video(content_id: str):
             source="inventory",
             reason="inventory_fill_fallback",
         )
-        delete_missing_video(content_id)
     return {"success": True, "candidate": candidate}
 
 @router.post("/fill-all")
@@ -498,6 +496,5 @@ async def fill_all_videos():
                 reason="inventory_fill_all_fallback",
             )
         candidates.append(candidate)
-        delete_missing_video(content_id)
         count += 1
     return {"success": True, "count": count, "candidates": candidates}

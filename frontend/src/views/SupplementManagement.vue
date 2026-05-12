@@ -1,5 +1,5 @@
 <template>
-  <div class="supplement-page apple-reveal">
+  <div class="supplement-page">
     <header class="supplement-topbar">
       <div>
         <p class="eyebrow">Supplement Studio</p>
@@ -25,7 +25,7 @@
         <div class="hero-copy">
           <p class="eyebrow">Actor First</p>
           <h2>选择一位演员开始补全</h2>
-          <p>演员卡片是主入口。搜索只是辅助筛选，选中后进入该演员的作品字段、任务队列和来源诊断工作台。</p>
+          <p>选择演员后处理作品字段、任务队列和来源诊断。</p>
         </div>
       </div>
 
@@ -96,8 +96,14 @@
           <p>换一个日文名、罗马音或关键词再试。</p>
         </div>
         <div v-else class="empty-panel apple-surface">
-          <h3>暂无可选演员</h3>
-          <p>搜索演员后会出现可选择的演员卡片。</p>
+          <h3>{{ actorPickerError ? '补全队列不可用' : '暂无可选演员' }}</h3>
+          <p>{{ actorPickerError ? 'JavInfoApi 暂时无法连接，可稍后重试。' : '搜索演员后会出现可选择的演员卡片。' }}</p>
+          <button
+            v-if="actorPickerError"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            @click="loadRecentActorJobs"
+          >重试</button>
         </div>
       </section>
     </section>
@@ -183,12 +189,12 @@
           </button>
         </div>
         <div class="filter-bar">
-          <select v-model="movieFilters.matched" @change="loadMovies" class="filter-select">
+          <select v-model="movieFilters.matched" @change="applyMovieFilters" class="filter-select">
             <option :value="null">全部</option>
             <option :value="false">未匹配</option>
             <option :value="true">已匹配</option>
           </select>
-          <select v-model="movieFilters.quality" @change="loadMovies" class="filter-select">
+          <select v-model="movieFilters.quality" @change="applyMovieFilters" class="filter-select">
             <option value="">全部质量</option>
             <option value="missing_cover">缺封面</option>
             <option value="missing_runtime">缺时长</option>
@@ -200,9 +206,9 @@
             v-model="movieFilters.q"
             placeholder="搜索番号/标题"
             class="filter-input"
-            @keyup.enter="loadMovies"
+            @keyup.enter="applyMovieFilters"
           />
-          <button class="btn btn-ghost btn-sm" type="button" @click="loadMovies">筛选</button>
+          <button class="btn btn-ghost btn-sm" type="button" @click="applyMovieFilters">筛选</button>
         </div>
         <div v-if="moviesLoading" class="loading-wrap"><div class="spinner-large"></div></div>
         <div v-else class="ios-list">
@@ -240,14 +246,14 @@
             <h2>任务队列</h2>
           </div>
           <div class="filter-bar compact">
-            <select v-model="jobFilters.status" @change="loadJobs" class="filter-select">
+            <select v-model="jobFilters.status" @change="applyJobFilters" class="filter-select">
               <option value="">全部状态</option>
               <option value="queued">排队中</option>
               <option value="running">运行中</option>
               <option value="succeeded">已完成</option>
               <option value="failed">失败</option>
             </select>
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadJobs">刷新</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="applyJobFilters">刷新</button>
           </div>
         </div>
         <JobList
@@ -611,6 +617,7 @@ export default {
       recentJobs: [],
       recentActors: [],
       recentJobsLoading: false,
+      actorPickerError: '',
       jobPage: 1,
       jobsTotalCount: 0,
       jobsTotalPages: 1,
@@ -654,6 +661,11 @@ export default {
       providerSmokeReport: null,
       providerSmokeForm: { source: '', sourceMovieId: '' },
       providerSmokeRuns: [],
+      hasInitialized: false,
+      wasDeactivated: false,
+      lastAppliedRouteKey: '',
+      statsLoadedAt: 0,
+      recentActorsLoadedAt: 0,
     }
   },
   computed: {
@@ -704,32 +716,89 @@ export default {
     },
   },
   watch: {
-    '$route.query': {
+    '$route.fullPath': {
       handler() {
+        if (this.$route.path !== '/supplement') return
         this.applyRouteState()
       },
-      deep: true,
     },
   },
   mounted() {
-    this.applyRouteState()
+    this.hasInitialized = true
+    this.applyRouteState({ force: true })
     this.loadStats()
-    this.loadRecentActorJobs()
+    if (!this.$route.query.actress_id && this.$route.query.tab !== 'jobs') {
+      this.loadRecentActorJobs()
+    }
+  },
+  activated() {
+    if (!this.hasInitialized || !this.wasDeactivated || this.$route.path !== '/supplement') return
+    this.wasDeactivated = false
+    this.applyRouteState()
+    const now = Date.now()
+    if (now - this.statsLoadedAt > 60000) this.loadStats({ silent: true })
+    if (this.showActorPicker && now - this.recentActorsLoadedAt > 60000) {
+      this.loadRecentActorJobs({ silent: true })
+    }
+    if (this.isSupplementRunning) this._startSupplementPolling()
+  },
+  deactivated() {
+    this.wasDeactivated = true
+    this._stopSupplementPolling()
   },
   beforeUnmount() {
     this._stopSupplementPolling()
   },
   methods: {
-    async applyRouteState() {
+    supplementQueryKey(query = this.$route.query) {
+      const field = (key) => {
+        const value = query[key]
+        if (Array.isArray(value)) return value[0] ? String(value[0]).trim() : ''
+        return value == null ? '' : String(value).trim()
+      }
+      return JSON.stringify({
+        tab: field('tab'),
+        actress_id: field('actress_id'),
+        q: field('q'),
+      })
+    },
+    buildSupplementQuery(query = {}) {
+      return Object.entries(query).reduce((result, [key, value]) => {
+        if (value === undefined || value === null || value === '') return result
+        result[key] = String(value)
+        return result
+      }, {})
+    },
+    async replaceSupplementRoute(query = {}) {
+      const nextQuery = this.buildSupplementQuery(query)
+      if (this.$route.path === '/supplement' && this.supplementQueryKey(nextQuery) === this.supplementQueryKey()) {
+        return false
+      }
+      await this.$router.replace({ path: '/supplement', query: nextQuery })
+      return true
+    },
+    async loadWorkspaceSegment(segment, options = {}) {
+      if (segment === 'jobs') await this.loadJobs(options)
+      if (segment === 'movies') await this.loadMovies(options)
+      if (segment === 'sourceHealth') await this.loadSourceHealth(options)
+    },
+    async applyRouteState({ force = false } = {}) {
+      if (this.$route.path !== '/supplement') return
+      const routeKey = this.supplementQueryKey()
+      if (!force && routeKey === this.lastAppliedRouteKey) return
+      this.lastAppliedRouteKey = routeKey
       const tab = this.$route.query.tab
       const actressId = this.$route.query.actress_id
+      const q = typeof this.$route.query.q === 'string' ? this.$route.query.q.trim() : ''
+      if (this.movieFilters.q !== q) {
+        this.movieFilters.q = q
+        this.moviePage = 1
+      }
       if (actressId) {
         this.showGlobalQueue = false
         this.activeWorkspaceSegment = this.segmentFromTab(tab)
         await this.applyActorContext(actressId)
-        if (this.activeWorkspaceSegment === 'jobs') await this.loadJobs()
-        if (this.activeWorkspaceSegment === 'movies') await this.loadMovies()
-        if (this.activeWorkspaceSegment === 'sourceHealth') await this.loadSourceHealth()
+        await this.loadWorkspaceSegment(this.activeWorkspaceSegment)
         return
       }
       this.actorContext = null
@@ -754,12 +823,12 @@ export default {
       if (segment === 'sourceHealth') return 'sources'
       return 'movies'
     },
-    setWorkspaceSegment(segment) {
+    async setWorkspaceSegment(segment) {
       this.activeWorkspaceSegment = segment
-      this.$router.replace({ path: '/supplement', query: { tab: this.tabFromSegment(segment), actress_id: this.actorContext?.id } })
-      if (segment === 'jobs') this.loadJobs()
-      if (segment === 'movies') this.loadMovies()
-      if (segment === 'sourceHealth') this.loadSourceHealth()
+      const query = { tab: this.tabFromSegment(segment), actress_id: this.actorContext?.id }
+      if (this.movieFilters.q) query.q = this.movieFilters.q
+      const routeChanged = await this.replaceSupplementRoute(query)
+      if (!routeChanged) await this.loadWorkspaceSegment(segment)
     },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
@@ -830,9 +899,13 @@ export default {
       this.actorSearched = false
       this.jobPage = 1
       this.moviePage = 1
-      await this.$router.replace({ path: '/supplement', query: { tab: this.tabFromSegment(this.activeWorkspaceSegment), actress_id: actor.id } })
-      await this.applyActorContext(actor.id)
-      await this.loadMovies()
+      const query = { tab: this.tabFromSegment(this.activeWorkspaceSegment), actress_id: actor.id }
+      if (this.movieFilters.q) query.q = this.movieFilters.q
+      const routeChanged = await this.replaceSupplementRoute(query)
+      if (!routeChanged) {
+        await this.applyActorContext(actor.id)
+        await this.loadMovies()
+      }
     },
     async applyActorContext(actressId) {
       const normalized = String(actressId || '').trim()
@@ -857,31 +930,34 @@ export default {
       this.moviePage = 1
       const nextSegment = this.showGlobalQueue ? 'jobs' : this.activeWorkspaceSegment
       this.activeWorkspaceSegment = nextSegment
-      await this.$router.replace({ path: '/supplement', query: { tab: this.tabFromSegment(nextSegment), actress_id: job.local_actress_id } })
-      await this.applyActorContext(job.local_actress_id)
-      if (nextSegment === 'jobs') await this.loadJobs()
-      if (nextSegment === 'movies') await this.loadMovies()
+      const routeChanged = await this.replaceSupplementRoute({ tab: this.tabFromSegment(nextSegment), actress_id: job.local_actress_id })
+      if (!routeChanged) {
+        await this.applyActorContext(job.local_actress_id)
+        await this.loadWorkspaceSegment(nextSegment)
+      }
     },
-    clearActorContext() {
+    async clearActorContext() {
       this._stopSupplementPolling()
       this.actorContext = null
       this.supplementStatus = null
       this.jobFilters.actress_id = ''
       this.movieFilters.actress_id = ''
+      this.movieFilters.q = ''
       this.actorSearchKeyword = ''
       this.actorSearchResults = []
       this.actorSearched = false
       this.showGlobalQueue = false
-      this.$router.replace({ path: '/supplement' })
-      this.loadRecentActorJobs()
+      await this.replaceSupplementRoute()
+      this.loadRecentActorJobs({ silent: true })
     },
-    openGlobalQueue() {
+    async openGlobalQueue() {
       this.showGlobalQueue = true
       this.actorContext = null
       this.jobFilters.actress_id = ''
       this.movieFilters.actress_id = ''
-      this.$router.replace({ path: '/supplement', query: { tab: 'jobs' } })
-      this.loadJobs()
+      this.movieFilters.q = ''
+      const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs' })
+      if (!routeChanged) await this.loadJobs()
     },
     goActorContext() {
       if (!this.actorContext) return
@@ -1079,8 +1155,9 @@ export default {
       if (!value) return ''
       return new Date(value).toLocaleString()
     },
-    async loadSourceHealth() {
-      this.sourceHealthLoading = true
+    async loadSourceHealth({ silent = false } = {}) {
+      const showLoading = !silent
+      if (showLoading) this.sourceHealthLoading = true
       try {
         const [healthResp, budgetResp, smokeRunsResp] = await Promise.all([
           api.listSupplementSourcesHealth(),
@@ -1093,7 +1170,7 @@ export default {
       } catch (e) {
         console.error('Load source health failed:', e)
       } finally {
-        this.sourceHealthLoading = false
+        if (showLoading) this.sourceHealthLoading = false
       }
     },
     async loadProviderSmokeRuns() {
@@ -1153,28 +1230,39 @@ export default {
         this.sourceActionLoading = ''
       }
     },
-    async loadStats() {
-      this.statsLoading = true
+    async loadStats({ silent = false } = {}) {
+      const showLoading = !silent
+      if (showLoading) this.statsLoading = true
       try {
         const resp = await api.getSupplementStats()
         this.stats = resp.data || resp
+        this.statsLoadedAt = Date.now()
       } catch (e) {
         console.error('Load supplement stats failed:', e)
       } finally {
-        this.statsLoading = false
+        if (showLoading) this.statsLoading = false
       }
     },
-    async loadRecentActorJobs() {
-      this.recentJobsLoading = true
+    async loadRecentActorJobs({ silent = false } = {}) {
+      const hasCachedData = this.recentJobs.length || this.recentActors.length
+      const showLoading = !silent
+      if (showLoading) this.recentJobsLoading = true
+      this.actorPickerError = ''
       try {
         const resp = await api.listSupplementJobs({ page: 1, page_size: 16 })
         const data = resp.data || resp
         this.recentJobs = data.data || []
         await this.loadRecentActors()
+        this.recentActorsLoadedAt = Date.now()
       } catch (e) {
         console.error('Load recent supplement jobs failed:', e)
+        if (!hasCachedData) {
+          this.recentJobs = []
+          this.recentActors = []
+          this.actorPickerError = 'load_failed'
+        }
       } finally {
-        this.recentJobsLoading = false
+        if (showLoading) this.recentJobsLoading = false
       }
     },
     async loadRecentActors() {
@@ -1194,8 +1282,9 @@ export default {
       }
       this.recentActors = actors
     },
-    async loadJobs() {
-      this.jobsLoading = true
+    async loadJobs({ silent = false } = {}) {
+      const showLoading = !silent
+      if (showLoading) this.jobsLoading = true
       try {
         const params = { page: this.jobPage, page_size: 20 }
         if (this.jobFilters.status) params.status = this.jobFilters.status
@@ -1208,8 +1297,12 @@ export default {
       } catch (e) {
         console.error('Load supplement jobs failed:', e)
       } finally {
-        this.jobsLoading = false
+        if (showLoading) this.jobsLoading = false
       }
+    },
+    async applyJobFilters() {
+      this.jobPage = 1
+      await this.loadJobs()
     },
     async retryJob(jobId) {
       try {
@@ -1238,8 +1331,9 @@ export default {
         this.recovering = false
       }
     },
-    async loadMovies() {
-      this.moviesLoading = true
+    async loadMovies({ silent = false } = {}) {
+      const showLoading = !silent
+      if (showLoading) this.moviesLoading = true
       try {
         const params = { page: this.moviePage, page_size: 20 }
         if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
@@ -1258,8 +1352,12 @@ export default {
       } catch (e) {
         console.error('Load supplement movies failed:', e)
       } finally {
-        this.moviesLoading = false
+        if (showLoading) this.moviesLoading = false
       }
+    },
+    async applyMovieFilters() {
+      this.moviePage = 1
+      await this.loadMovies()
     },
     async enrichMovie(movie) {
       if (!movie?.source_movie_id || this.enrichingMovies[movie.id]) return
@@ -1450,7 +1548,7 @@ p {
 .search-shell input,
 .filter-input,
 .filter-select {
-  min-height: 40px;
+  min-height: 44px;
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid transparent;

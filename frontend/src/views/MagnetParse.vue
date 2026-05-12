@@ -14,7 +14,7 @@
         rows="5"
       ></textarea>
       <div class="parse-actions">
-        <button class="btn btn-primary" @click="parseMagnets" :disabled="loading || !magnetInput.trim()">
+        <button class="btn btn-primary" type="button" @click="parseMagnets" :disabled="loading || !magnetInput.trim()">
           <span v-if="loading" class="spinner"></span>
           <span v-else>批量添加</span>
         </button>
@@ -24,18 +24,18 @@
     <!-- 解析结果 -->
     <div v-if="parsedMagnets.length > 0" class="result-section">
       <div class="magnets-card av-card">
-        <div class="magnets-header" style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div class="magnets-header">
           <span>解析结果 ({{ parsedMagnets.length }} 条)</span>
-          <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" @click="parsedMagnets = []; magnetInput = ''">清空</button>
+          <button class="btn btn-ghost clear-results-btn" type="button" @click="parsedMagnets = []; magnetInput = ''">清空</button>
         </div>
         <div class="magnets-list">
           <div v-for="(mag, idx) in parsedMagnets" :key="idx" class="magnet-row">
-            <div class="magnet-left" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <div class="magnet-left magnet-left-stacked">
               <div class="mag-hash">{{ mag.hash }}</div>
               <div class="mag-name">{{ mag.name || '未知文件' }}</div>
             </div>
             <div class="magnet-right">
-              <button class="btn btn-primary download-btn" @click="downloadMagnet(mag)">
+              <button class="btn btn-primary download-btn" type="button" @click="downloadMagnet(mag)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/>
@@ -73,7 +73,7 @@ export default {
       this.loading = true
       this.parsedMagnets = []
 
-      const magnetRE = /magnet:\?xt=urn:btih:([A-Fa-f0-9]+)(?:&dn=([^&]+))?/gi
+      const magnetRE = /magnet:\?xt=urn:btih:([A-Fa-f0-9]+)(?:&dn=([^&]+))?/i
 
       for (const line of lines) {
         const match = magnetRE.exec(line)
@@ -130,7 +130,17 @@ export default {
 /* Magnets */
 .result-section { animation: slideUp 0.3s ease; }
 .magnets-card { overflow: hidden; }
-.magnets-header { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.magnets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.clear-results-btn { font-size: 12px; padding: 4px 10px; }
 .magnets-list { display: flex; flex-direction: column; }
 .magnet-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -140,6 +150,7 @@ export default {
 .magnet-row:nth-child(even) { background: var(--bg-card); }
 .magnet-row:hover { background: var(--bg-card-hover); }
 .magnet-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.magnet-left-stacked { flex-direction: column; align-items: flex-start; gap: 4px; }
 .mag-hash { font-size: 11px; color: var(--accent); font-family: monospace; }
 .mag-name { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px; }
 .magnet-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
@@ -151,5 +162,16 @@ export default {
 @media (max-width: 768px) {
   .parse-page { padding: 16px; }
   .mag-name { max-width: 200px; }
+  .parse-actions .btn,
+  .clear-results-btn,
+  .download-btn {
+    min-height: 44px;
+  }
+  .parse-actions .btn {
+    min-width: 112px;
+  }
+  .magnet-row {
+    align-items: stretch;
+  }
 }
 </style>

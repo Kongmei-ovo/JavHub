@@ -3,7 +3,7 @@
     <div class="empty-orb"></div>
     <h3>{{ title }}</h3>
     <p>{{ description }}</p>
-    <button v-if="actionLabel" class="empty-action" @click="$emit('action')">{{ actionLabel }}</button>
+    <button v-if="actionLabel" class="empty-action" type="button" @click="$emit('action')">{{ actionLabel }}</button>
   </div>
 </template>
 

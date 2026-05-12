@@ -541,6 +541,7 @@ export default {
 
 .back-btn {
   flex-shrink: 0;
+  min-height: 44px;
 }
 
 /* Loading */
@@ -600,6 +601,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 44px;
   padding: 6px 14px;
   background: transparent;
   border: none;
@@ -843,6 +845,7 @@ export default {
 }
 
 .btn-sm {
+  min-height: 44px;
   padding: 6px 14px;
   font-size: 13px;
 }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
 test('supplement management shows and controls actor context when routed from an actor', () => {
   assert.match(source, /v-if="actorContext"/)
@@ -98,4 +99,25 @@ test('supplement management preserves a global queue entry point', () => {
   assert.match(source, /openGlobalQueue\(\)/)
   assert.match(source, /全局队列/)
   assert.match(source, /applyJobActorContext\(job\)/)
+})
+
+test('supplement management applies routed movie search and resets filtered pages', () => {
+  assert.match(source, /const q = typeof this\.\$route\.query\.q === 'string'/)
+  assert.match(source, /this\.movieFilters\.q = q/)
+  assert.match(source, /this\.moviePage = 1/)
+  assert.match(source, /@change="applyMovieFilters"/)
+  assert.match(source, /@keyup\.enter="applyMovieFilters"/)
+  assert.match(source, /async applyMovieFilters\(\)[\s\S]*this\.moviePage = 1[\s\S]*await this\.loadMovies\(\)/)
+  assert.match(source, /@change="applyJobFilters"/)
+  assert.match(source, /async applyJobFilters\(\)[\s\S]*this\.jobPage = 1[\s\S]*await this\.loadJobs\(\)/)
+  assert.match(source, /if \(this\.movieFilters\.q\) query\.q = this\.movieFilters\.q/)
+})
+
+test('supplement management avoids a remount-style refresh when re-entered', () => {
+  assert.match(app, /'SupplementManagement'/)
+  assert.match(source, /activated\(\)/)
+  assert.match(source, /wasDeactivated/)
+  assert.match(source, /lastAppliedRouteKey/)
+  assert.match(source, /replaceSupplementRoute/)
+  assert.doesNotMatch(source, /class="supplement-page apple-reveal"/)
 })

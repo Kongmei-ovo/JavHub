@@ -289,6 +289,25 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_download_candidate_events_candidate
         ON download_candidate_events(candidate_id, created_at DESC)
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS candidate_process_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trigger_source TEXT DEFAULT 'manual',
+            policy TEXT,
+            status TEXT DEFAULT 'completed',
+            filters_json TEXT,
+            result_json TEXT,
+            total INTEGER DEFAULT 0,
+            sent INTEGER DEFAULT 0,
+            failed INTEGER DEFAULT 0,
+            skipped INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_candidate_process_runs_created
+        ON candidate_process_runs(created_at DESC)
+    ''')
 
     # Emby snapshots (movies)
     cursor.execute('''

@@ -8,12 +8,20 @@ from database import (
     get_download_tasks,
     delete_download_task,
     download_candidate_stats,
+    list_candidate_process_runs,
     list_download_candidates,
     set_download_candidate_status,
     update_download_candidate_magnet,
     upsert_download_candidate,
 )
 from services.downloader import downloader_service
+from services.candidate_processor import (
+    enrich_candidate_magnet,
+    preview_candidates,
+    process_candidate,
+    process_candidates,
+    retry_failed_candidates_from_run,
+)
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["downloads"])
 
@@ -44,6 +52,30 @@ class UpdateCandidateMagnetRequest(BaseModel):
 
 class BulkCandidateRequest(BaseModel):
     ids: list[int]
+
+
+class ProcessCandidateRequest(BaseModel):
+    policy: Optional[str] = None
+    enrich: bool = True
+    force: bool = False
+
+
+class ProcessCandidatesRequest(BaseModel):
+    policy: Optional[str] = None
+    enrich: bool = True
+    force: bool = False
+    dry_run: bool = False
+    status: Optional[str] = "candidate"
+    actress_id: Optional[int] = None
+    source: Optional[str] = None
+    q: Optional[str] = None
+    needs_magnet: Optional[bool] = None
+    limit: int = 50
+
+
+class RetryCandidateRunRequest(BaseModel):
+    enrich: bool = True
+    force: bool = False
 
 @router.post("")
 async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
@@ -88,6 +120,30 @@ async def list_candidates(
         limit=limit,
     )
     return {"data": rows, "total": len(rows), "stats": download_candidate_stats()}
+
+
+@router.get("/candidates/runs")
+async def list_candidate_runs(limit: int = 20) -> Dict[str, Any]:
+    limit = max(1, min(int(limit or 20), 100))
+    rows = list_candidate_process_runs(limit=limit)
+    return {"data": rows, "total": len(rows)}
+
+
+@router.post("/candidates/runs/{run_id}/retry-failed")
+async def retry_candidate_run_failed(
+    run_id: int,
+    req: RetryCandidateRunRequest | None = None,
+) -> Dict[str, Any]:
+    body = req or RetryCandidateRunRequest()
+    result = await retry_failed_candidates_from_run(
+        run_id,
+        enrich=body.enrich,
+        force=body.force,
+        operator="manual",
+    )
+    if result.get("action") == "not_found":
+        raise HTTPException(status_code=404, detail="Candidate process run not found")
+    return result
 
 
 @router.get("/candidates/{candidate_id}")
@@ -180,6 +236,61 @@ async def approve_candidate(candidate_id: int) -> Dict[str, Any]:
     updated = set_download_candidate_status(candidate_id, "sent", download_task_id=task_id)
     add_download_candidate_event(candidate_id, "approved", f"download_task_id={task_id}", "manual")
     return {"status": "ok", "candidate": updated, "download_task_id": task_id}
+
+
+@router.post("/candidates/{candidate_id}/enrich-magnet")
+async def enrich_candidate_magnet_endpoint(candidate_id: int) -> Dict[str, Any]:
+    result = await enrich_candidate_magnet(candidate_id, operator="manual")
+    if result.get("action") == "not_found":
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return result
+
+
+@router.post("/candidates/{candidate_id}/process")
+async def process_candidate_endpoint(
+    candidate_id: int,
+    req: ProcessCandidateRequest | None = None,
+) -> Dict[str, Any]:
+    body = req or ProcessCandidateRequest()
+    result = await process_candidate(
+        candidate_id,
+        policy=body.policy,
+        enrich=body.enrich,
+        force=body.force,
+        operator="manual",
+    )
+    if result.get("action") == "not_found":
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return result
+
+
+@router.post("/candidates/process")
+async def process_candidates_endpoint(req: ProcessCandidatesRequest | None = None) -> Dict[str, Any]:
+    body = req or ProcessCandidatesRequest()
+    limit = max(1, min(int(body.limit or 50), 200))
+    filters = {
+        "status": body.status or "candidate",
+        "actress_id": body.actress_id,
+        "source": body.source,
+        "q": body.q,
+        "needs_magnet": body.needs_magnet,
+    }
+    if body.dry_run:
+        return await preview_candidates(
+            filters=filters,
+            policy=body.policy,
+            enrich=body.enrich,
+            limit=limit,
+            force=body.force,
+        )
+    return await process_candidates(
+        filters=filters,
+        policy=body.policy,
+        enrich=body.enrich,
+        limit=limit,
+        force=body.force,
+        operator="manual",
+    )
 
 
 @router.post("/candidates/{candidate_id}/reject")

@@ -39,7 +39,10 @@ class SourceRegistry:
             source = cls._sources.get(name)
             if source:
                 try:
-                    results.extend(await source.search(keyword))
+                    for item in await source.search(keyword):
+                        row = dict(item)
+                        row.setdefault("source", name)
+                        results.append(row)
                 except Exception:
                     continue
         return results

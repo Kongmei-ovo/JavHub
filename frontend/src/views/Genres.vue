@@ -9,6 +9,7 @@
           v-for="tab in tabs"
           :key="tab.key"
           class="tab-btn"
+          type="button"
           :class="{ active: activeTab === tab.key }"
           @click="switchTab(tab.key)"
         >
@@ -21,7 +22,7 @@
     <div v-if="activeTab === 'genre'" class="tag-cloud-wrap" ref="cloudRef">
       <div class="cloud-header">
         <span class="cloud-hint">共 {{ categories.length }} 个题材</span>
-        <button class="shuffle-btn" @click="reshuffle" :disabled="loading">
+        <button class="shuffle-btn" type="button" @click="reshuffle" :disabled="loading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
@@ -40,6 +41,14 @@
         <div class="spinner-large"></div>
         <p>加载统计中...</p>
       </div>
+
+      <AppleErrorState
+        v-else-if="categoryError"
+        title="题材加载失败"
+        description="JavInfoApi 当前不可用，推荐内容暂时不能刷新。"
+        retry-label="重试"
+        @retry="reloadGenreData"
+      />
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="tag in displayedTags" :key="tag.id">
@@ -64,7 +73,7 @@
     <div v-if="activeTab === 'actress'" class="actress-tab">
       <div class="cloud-header">
         <span class="cloud-hint">第 {{ actressPage }} / {{ actressTotalPages }} 页</span>
-        <button class="shuffle-btn" @click="shuffleActresses" :disabled="actressesLoading">
+        <button class="shuffle-btn" type="button" @click="shuffleActresses" :disabled="actressesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
@@ -77,6 +86,14 @@
       <div v-if="actressesLoading" class="actress-grid" :style="actressGridStyle">
         <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
       </div>
+
+      <AppleErrorState
+        v-else-if="actressError"
+        title="演员加载失败"
+        description="演员数据源暂时不可用。"
+        retry-label="重试"
+        @retry="loadActresses(actressPage)"
+      />
 
       <div v-else class="actress-grid" :style="actressGridStyle">
         <div
@@ -102,7 +119,7 @@
     <div v-if="activeTab === 'series'" class="tag-cloud-wrap">
       <div class="cloud-header">
         <span class="cloud-hint">第 {{ seriesPage }} / {{ seriesTotalPages }} 页</span>
-        <button class="shuffle-btn" @click="reshuffleSeries" :disabled="seriesLoading">
+        <button class="shuffle-btn" type="button" @click="reshuffleSeries" :disabled="seriesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
@@ -116,6 +133,14 @@
         <div class="spinner-large"></div>
         <p>加载系列中...</p>
       </div>
+
+      <AppleErrorState
+        v-else-if="seriesError"
+        title="系列加载失败"
+        description="系列数据源暂时不可用。"
+        retry-label="重试"
+        @retry="loadSeries(seriesPage)"
+      />
 
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="item in displayedSeries" :key="item.id">
@@ -140,6 +165,7 @@
 import gsap from 'gsap'
 import api from '../api'
 import { displayName } from '../utils/displayLang.js'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 // === Color Palettes ===
 const PALETTES = {
@@ -364,7 +390,7 @@ import AppleSkeleton from '../components/AppleSkeleton.vue'
 
 export default {
   name: 'Genres',
-  components: { AppleSkeleton },
+  components: { AppleSkeleton, AppleErrorState },
   data() {
     return {
       activeTab: 'genre',
@@ -374,6 +400,7 @@ export default {
       displayedTags: [],
       loading: false,
       statsLoading: false,
+      categoryError: '',
       cfg: { ...DEFAULT_CFG },
       categoryStats: {},
       rarityMap: {},
@@ -383,12 +410,14 @@ export default {
       actressRawPage: [],       // 后端返回的原始这一页数据
       displayedActresses: [],
       actressesLoading: false,
+      actressError: '',
       actressPage: 1,
       actressTotalPages: 1,
       // 系列
       seriesRawPage: [],
       displayedSeries: [],
       seriesLoading: false,
+      seriesError: '',
       seriesPage: 1,
       seriesTotalPages: 1,
     }
@@ -489,15 +518,18 @@ export default {
     },
     async loadCategories() {
       this.loading = true
+      this.categoryError = ''
       try {
         const resp = await api.listCategories()
         this.categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
         this.shuffledTags = shuffle(this.categories)
         this.displayedTags = this.shuffledTags.slice(0, this.cfg.bubbleCount)
+        this.categoryError = ''
       } catch (e) {
         console.error('Load categories failed:', e)
         this.categories = []
         this.displayedTags = []
+        this.categoryError = 'load_failed'
       } finally {
         this.loading = false
         this.$nextTick(() => this.initGsap())
@@ -514,10 +546,18 @@ export default {
         this.computeRarity(stats)
       } catch (e) {
         console.error('Load category stats failed:', e)
+        if (!this.categories.length && !this.loading) this.categoryError = 'stats_failed'
       } finally {
         this.statsLoading = false
         this.$nextTick(() => this.initGsap())
       }
+    },
+    async reloadGenreData() {
+      this.categoryError = ''
+      await Promise.all([
+        this.loadCategories(),
+        this.cfg.goldLegend ? this.loadCategoryStats() : Promise.resolve(),
+      ])
     },
     computeRarity(stats) {
       // Hearthstone风格分布：legendary(橙)=最少出现, epic(紫), rare(蓝), common(白)=最常出现
@@ -698,6 +738,7 @@ export default {
     },
     async loadActresses(page = 1) {
       this.actressesLoading = true
+      this.actressError = ''
       try {
         const pageSize = this.actressPageSize
         const resp = await api.listActresses(page, pageSize)
@@ -708,6 +749,9 @@ export default {
         this.actressPage = page
       } catch (e) {
         console.error('Load actresses FAILED:', e?.message, 'status:', e?.response?.status, 'data:', e?.response?.data, 'full:', e)
+        this.actressRawPage = []
+        this.displayedActresses = []
+        this.actressError = 'load_failed'
       } finally {
         this.actressesLoading = false
       }
@@ -719,6 +763,7 @@ export default {
     },
     async loadSeries(page = 1) {
       this.seriesLoading = true
+      this.seriesError = ''
       try {
         const pageSize = 60
         const resp = await api.listSeries(page, pageSize)
@@ -729,6 +774,9 @@ export default {
         this.seriesPage = page
       } catch (e) {
         console.error('Load series failed:', e)
+        this.seriesRawPage = []
+        this.displayedSeries = []
+        this.seriesError = 'load_failed'
       } finally {
         this.seriesLoading = false
       }
@@ -954,6 +1002,27 @@ export default {
   background: var(--accent);
   color: var(--bg-primary);
   border-color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .genres-hero {
+    padding: 44px 16px 28px;
+  }
+  .tab-bar {
+    flex-wrap: wrap;
+  }
+  .tab-btn,
+  .shuffle-btn,
+  .bubble {
+    min-height: 44px;
+  }
+  .tag-cloud-wrap,
+  .actress-tab {
+    padding: 20px 16px;
+  }
+  .loading-wrap {
+    padding: 42px 16px;
+  }
 }
 
 </style>

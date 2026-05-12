@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'metatube', 'notification', 'scheduler',
+                  'automation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
 
 
@@ -59,6 +60,13 @@ async def update_config(new_config: dict):
     # 代理配置变更后推送到 JavInfoApi
     if "proxy" in sanitized:
         await _push_proxy_to_javinfo()
+    if "automation" in sanitized:
+        try:
+            from scheduler.tasks import configure_candidate_auto_process_job, scheduler
+            if scheduler.running:
+                configure_candidate_auto_process_job()
+        except Exception as e:
+            logger.warning(f"Failed to refresh candidate automation scheduler: {e}")
     return {"success": True}
 
 @router.post("/notification/telegram/test")

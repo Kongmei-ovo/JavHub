@@ -1,6 +1,7 @@
 """Download candidate database layer."""
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from database.base import get_db
@@ -116,20 +117,42 @@ def upsert_candidate_from_video(
 
 def _enrich_candidate_rows(rows: list[dict]) -> list[dict]:
     task_ids = [row.get("download_task_id") for row in rows if row.get("download_task_id")]
-    if not task_ids:
-        return rows
-    placeholders = ",".join("?" for _ in task_ids)
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT id, status, error_msg, path, created_at, updated_at FROM download_tasks WHERE id IN ({placeholders})",
-            task_ids,
-        )
-        tasks = {row["id"]: dict(row) for row in cursor.fetchall()}
+        tasks = {}
+        if task_ids:
+            placeholders = ",".join("?" for _ in task_ids)
+            cursor.execute(
+                f"SELECT id, status, error_msg, path, created_at, updated_at FROM download_tasks WHERE id IN ({placeholders})",
+                task_ids,
+            )
+            tasks = {row["id"]: dict(row) for row in cursor.fetchall()}
+        candidate_ids = [row.get("id") for row in rows if row.get("id")]
+        latest_events = {}
+        if candidate_ids:
+            event_placeholders = ",".join("?" for _ in candidate_ids)
+            cursor.execute(
+                f'''
+                SELECT e.*
+                FROM download_candidate_events e
+                JOIN (
+                    SELECT candidate_id, MAX(id) AS max_id
+                    FROM download_candidate_events
+                    WHERE candidate_id IN ({event_placeholders})
+                    GROUP BY candidate_id
+                ) latest ON latest.max_id = e.id
+                ''',
+                candidate_ids,
+            )
+            latest_events = {row["candidate_id"]: dict(row) for row in cursor.fetchall()}
     for row in rows:
         task_id = row.get("download_task_id")
         if task_id and task_id in tasks:
             row["download_task"] = tasks[task_id]
+        latest = latest_events.get(row.get("id"))
+        if latest:
+            row["latest_event"] = latest
+            row["events"] = [latest]
     return rows
 
 
@@ -338,3 +361,100 @@ def download_candidate_stats() -> dict:
             if not row.get("magnet")
         ),
     }
+
+
+def add_candidate_process_run(
+    trigger_source: str,
+    policy: str,
+    filters: dict | None,
+    result: dict | None,
+    status: str = "completed",
+) -> int:
+    result = result or {}
+    counts = result.get("counts") or {}
+    failed = sum(count for action, count in counts.items() if str(action).startswith("failed"))
+    skipped = sum(
+        count
+        for action, count in counts.items()
+        if str(action).startswith("skipped") or action == "manual_required"
+    )
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO candidate_process_runs (
+                trigger_source, policy, status, filters_json, result_json,
+                total, sent, failed, skipped, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''',
+            (
+                trigger_source,
+                policy,
+                status,
+                json.dumps(filters or {}, ensure_ascii=False),
+                json.dumps(result, ensure_ascii=False),
+                int(result.get("total") or 0),
+                int(counts.get("sent") or 0),
+                int(failed or 0),
+                int(skipped or 0),
+            ),
+        )
+        return cursor.lastrowid
+
+
+def list_candidate_process_runs(limit: int = 20) -> list[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT * FROM candidate_process_runs
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            ''',
+            (limit,),
+        )
+        rows = []
+        for row in cursor.fetchall():
+            data = dict(row)
+            for src, dst in (("filters_json", "filters"), ("result_json", "result")):
+                raw = data.pop(src, None)
+                try:
+                    data[dst] = json.loads(raw) if raw else {}
+                except Exception:
+                    data[dst] = {}
+            rows.append(data)
+        return rows
+
+
+def count_auto_sent_candidates_since(hours: int = 24) -> int:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT COUNT(*) AS count
+            FROM download_candidate_events
+            WHERE action = 'auto_approved'
+              AND created_at >= datetime('now', ?)
+            ''',
+            (f"-{int(hours)} hours",),
+        )
+        row = cursor.fetchone()
+        return int(row["count"] or 0) if row else 0
+
+
+def get_candidate_process_run(run_id: int) -> Optional[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM candidate_process_runs WHERE id = ?", (run_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        data = dict(row)
+        for src, dst in (("filters_json", "filters"), ("result_json", "result")):
+            raw = data.pop(src, None)
+            try:
+                data[dst] = json.loads(raw) if raw else {}
+            except Exception:
+                data[dst] = {}
+        return data

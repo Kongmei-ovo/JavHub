@@ -4,7 +4,8 @@
     <div class="settings-header">
       <h1>设置</h1>
       <div class="settings-tabs">
-        <button 
+        <button
+          type="button"
           v-for="group in navGroups" 
           :key="group.id"
           class="tab-item"
@@ -33,7 +34,20 @@
 
     <!-- Main Content: Frameless & Wide -->
     <main class="settings-content-wide">
-      <transition name="fade-slide" mode="out-in">
+      <div v-if="configLoading" class="settings-loading apple-surface">
+        <div class="spinner-large"></div>
+        <p>正在加载配置...</p>
+      </div>
+
+      <AppleErrorState
+        v-else-if="configLoadError"
+        title="配置加载失败"
+        description="无法确认当前配置，保存已暂停以避免覆盖现有设置。"
+        retry-label="重新加载"
+        @retry="loadConfig"
+      />
+
+      <transition v-else name="fade-slide" mode="out-in">
         <div :key="activeGroup" class="active-section">
           <!-- Services Section -->
           <div v-if="activeGroup === 'services'" class="config-section">
@@ -203,7 +217,7 @@
                     <input class="input" v-model="telegramUsers" placeholder="123456789,987654321" />
                   </div>
                   <div class="form-group">
-                    <button class="btn btn-secondary" @click="testTelegram" :disabled="testingTelegram || !config.telegram.bot_token">
+                    <button class="btn btn-secondary" type="button" @click="testTelegram" :disabled="testingTelegram || !canSaveConfig || !config.telegram.bot_token">
                       {{ testingTelegram ? '发送中...' : '发送测试信息' }}
                     </button>
                     <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
@@ -216,8 +230,66 @@
           <!-- Automation Section -->
           <div v-if="activeGroup === 'automation'" class="config-section">
             <div class="section-header">
-              <h2>自动化任务</h2>
-              <p>管理后台运行的定时任务与数据抓取频率。</p>
+              <h2>自动化策略</h2>
+              <p>控制候选生成后的处理强度，默认保持人工批准。</p>
+            </div>
+
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M3 3v18h18"/>
+                    <path d="M7 15l3-3 3 2 5-7"/>
+                  </svg>
+                  <h2>下载候选处理</h2>
+                </div>
+                <div class="form-slot">
+                  <div class="form-group">
+                    <label>处理策略</label>
+                    <div class="segmented-mini wide automation-policy-control">
+                      <button
+                        v-for="option in downloadPolicyOptions"
+                        :key="option.value"
+                        type="button"
+                        :class="{ active: config.automation.download_policy === option.value }"
+                        @click="config.automation.download_policy = option.value"
+                      >{{ option.label }}</button>
+                    </div>
+                    <small>{{ currentPolicyHint }}</small>
+                  </div>
+                  <div class="form-group">
+                    <label>允许自动处理的来源</label>
+                    <div class="source-check-grid">
+                      <label v-for="source in candidateSourceOptions" :key="source.value" class="source-check-item">
+                        <input
+                          type="checkbox"
+                          :checked="config.automation.candidate_sources.includes(source.value)"
+                          @change="toggleAutomationSource(source.value)"
+                        />
+                        <span>{{ source.label }}</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="rulesRequireMagnet" v-model="config.automation.rules_require_magnet" />
+                    <label for="rulesRequireMagnet">规则模式只处理已有 magnet 的候选</label>
+                  </div>
+                  <div class="form-group">
+                    <label>自动处理间隔（分钟，0 表示关闭后台自动处理）</label>
+                    <input class="input" v-model.number="config.automation.auto_process_interval_minutes" type="number" min="0" max="1440" />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>单次自动下发上限（0 表示不限）</label>
+                      <input class="input" v-model.number="config.automation.max_auto_downloads_per_run" type="number" min="0" max="500" />
+                    </div>
+                    <div class="form-group">
+                      <label>24 小时自动下发上限（0 表示不限）</label>
+                      <input class="input" v-model.number="config.automation.max_auto_downloads_per_24h" type="number" min="0" max="5000" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 爬虫 -->
@@ -261,112 +333,171 @@
                     <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
                     <small>例：0 2 * * * 表示每天凌晨2点</small>
                   </div>
-                  <button class="btn btn-primary" @click="saveInventoryCron">保存定时任务</button>
+                  <button class="btn btn-primary" type="button" @click="save" :disabled="saving || !canSaveConfig">保存自动化配置</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Appearance Section -->
-          <div v-if="activeGroup === 'appearance'" class="config-section">
+          <div v-if="activeGroup === 'appearance'" class="config-section appearance-section">
             <div class="section-header">
-              <h2>外观设计</h2>
-              <p>自定义界面主题、色彩模式及交互视觉效果。</p>
+              <h2>界面与外观</h2>
+              <p>统一主题、检索密度和题材视觉偏好。</p>
             </div>
 
-            <!-- 页面设计 -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 2a10 10 0 010 20z" fill="currentColor" opacity="0.3"/>
-                  </svg>
-                  <h2>页面设计</h2>
+            <div class="appearance-board">
+              <section class="appearance-panel appearance-theme-panel apple-surface">
+                <div class="appearance-panel-header">
+                  <div>
+                    <p class="eyebrow">Theme</p>
+                    <h3>全局主题</h3>
+                  </div>
+                  <span class="appearance-chip">{{ currentThemeConfig.labelEn }}</span>
                 </div>
 
-                <div class="settings-sub-section">
-                  <div class="settings-sub-header">主题选择</div>
-                  <div class="theme-grid">
-                    <div 
-                      v-for="(theme, key) in themes" 
-                      :key="key"
-                      class="theme-card"
-                      :class="{ active: currentTheme === key }"
-                      @click="switchTheme(key)"
+                <div class="theme-option-grid">
+                  <button
+                    v-for="(theme, key) in themes"
+                    :key="key"
+                    class="theme-option"
+                    type="button"
+                    :class="{ active: currentTheme === key }"
+                    :aria-pressed="currentTheme === key"
+                    @click="switchTheme(key)"
+                  >
+                    <span
+                      class="theme-card-preview theme-swatch"
+                      :style="themeSwatchStyle(theme)"
                     >
-                      <div class="theme-card-preview" :style="{ background: theme.vars['--bg-primary'] }">
-                        <div class="preview-accent" :style="{ background: theme.vars['--accent'] }"></div>
-                        <div class="preview-secondary" :style="{ background: theme.vars['--bg-secondary'] }"></div>
-                      </div>
-                      <div class="theme-card-info">
-                        <div class="theme-icon">{{ theme.icon }}</div>
-                        <div class="theme-names">
-                          <span class="theme-label">{{ theme.label }}</span>
-                          <span class="theme-label-en">{{ theme.labelEn }}</span>
-                        </div>
-                        <div class="theme-check" v-if="currentTheme === key">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
+                      <span class="theme-swatch-card"></span>
+                      <span class="theme-swatch-line"></span>
+                    </span>
+                    <span class="theme-option-copy">
+                      <span class="theme-label">{{ theme.label }}</span>
+                      <span class="theme-label-en">{{ theme.labelEn }}</span>
+                    </span>
+                    <span v-if="currentTheme === key" class="theme-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="appearance-panel apple-surface">
+                <div class="appearance-panel-header">
+                  <div>
+                    <p class="eyebrow">Density</p>
+                    <h3>界面密度</h3>
                   </div>
                 </div>
 
-                <div class="settings-sub-section">
-                  <div class="settings-sub-header">检索页数量</div>
-                  <div class="form-slot">
-                    <div class="form-group">
-                      <select class="input" v-model.number="config.javinfo.page_size">
-                        <option value="15">15</option>
-                        <option value="30">30</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                      </select>
+                <div class="appearance-setting-list">
+                  <div class="appearance-setting-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">检索页数量</span>
+                      <span class="setting-note">{{ config.javinfo.page_size }} 条 / 页</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 灵动标签设置 (Aura Tags) -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                  </svg>
-                  <h2>灵动标签设置</h2>
-                </div>
-
-                <div class="form-slot">
-                  <!-- 颜色模式 -->
-                  <div class="form-group">
-                    <label>视觉风格</label>
-                    <div class="color-mode-tabs">
+                    <div class="segmented-mini" aria-label="检索页数量">
                       <button
-                        class="mode-tab"
+                        v-for="size in pageSizeOptions"
+                        :key="size"
+                        type="button"
+                        :class="{ active: config.javinfo.page_size === size }"
+                        :aria-pressed="config.javinfo.page_size === size"
+                        @click="config.javinfo.page_size = size"
+                      >{{ size }}</button>
+                    </div>
+                  </div>
+
+                  <div class="appearance-setting-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">演员头像</span>
+                      <span class="setting-note">{{ avatarSizeHint }}</span>
+                    </div>
+                    <div class="segmented-mini" aria-label="演员头像尺寸">
+                      <button
+                        v-for="option in avatarSizeOptions"
+                        :key="option.value"
+                        type="button"
+                        :class="{ active: bubbleCfg.actressAvatarSize === option.value }"
+                        :aria-pressed="bubbleCfg.actressAvatarSize === option.value"
+                        @click="bubbleCfg.actressAvatarSize = option.value"
+                      >{{ option.label }}</button>
+                    </div>
+                  </div>
+
+                  <div class="appearance-setting-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">显示语言</span>
+                      <span class="setting-note">{{ displayLangLabel }}</span>
+                    </div>
+                    <div class="segmented-mini" aria-label="显示语言">
+                      <button
+                        v-for="option in displayLangOptions"
+                        :key="option.value"
+                        type="button"
+                        :class="{ active: displayLangVal === option.value }"
+                        :aria-pressed="displayLangVal === option.value"
+                        @click="setDisplayLang(option.value)"
+                      >{{ option.label }}</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="appearance-panel appearance-aura-panel apple-surface">
+                <div class="appearance-panel-header">
+                  <div>
+                    <p class="eyebrow">Aura Tags</p>
+                    <h3>题材视觉</h3>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
+                </div>
+
+                <div class="aura-preview" :style="auraPreviewStyle">
+                  <span
+                    v-for="(tag, index) in previewTags"
+                    :key="tag"
+                    class="preview-bubble"
+                    :class="previewBubbleClass(index)"
+                    :style="previewBubbleStyle(index)"
+                  >{{ tag }}</span>
+                </div>
+
+                <div class="appearance-setting-list">
+                  <div class="appearance-setting-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">视觉风格</span>
+                      <span class="setting-note">{{ bubbleCfg.colorMode === 'legendary' ? '按稀有度分层' : '按色系流动' }}</span>
+                    </div>
+                    <div class="segmented-mini wide" aria-label="题材视觉风格">
+                      <button
+                        type="button"
                         :class="{ active: bubbleCfg.colorMode === 'random' }"
+                        :aria-pressed="bubbleCfg.colorMode === 'random'"
                         @click="bubbleCfg.colorMode = 'random'"
                       >柔和色彩</button>
                       <button
-                        class="mode-tab"
+                        type="button"
                         :class="{ active: bubbleCfg.colorMode === 'legendary' }"
+                        :aria-pressed="bubbleCfg.colorMode === 'legendary'"
                         @click="bubbleCfg.colorMode = 'legendary'"
                       >灵动金传说</button>
                     </div>
                   </div>
 
-                  <!-- 随机颜色：下拉选择色系 -->
                   <template v-if="bubbleCfg.colorMode === 'random'">
-                    <div class="form-group">
-                      <label>色系预设</label>
+                    <div class="appearance-setting-row">
+                      <div class="setting-copy">
+                        <span class="setting-title">色系预设</span>
+                        <span class="setting-note">{{ paletteLabel }}</span>
+                      </div>
                       <div class="palette-select-wrap">
                         <select class="palette-select" v-model="bubbleCfg.palette">
-                          <option value="__all__">🌈 艺术随机（混合全部色系）</option>
+                          <option value="__all__">艺术随机</option>
                           <option
                             v-for="p in palettes"
                             :key="p.key"
@@ -374,135 +505,87 @@
                           >
                             {{ p.label }}
                           </option>
-                          <option value="__custom__">✏️ 自定义材质</option>
+                          <option value="__custom__">自定义材质</option>
                         </select>
                         <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
                       </div>
                     </div>
+
+                    <div v-if="bubbleCfg.palette === '__custom__'" class="appearance-setting-row vertical">
+                      <div class="setting-copy">
+                        <span class="setting-title">自定义材质</span>
+                        <span class="setting-note">用逗号分隔颜色或 linear-gradient</span>
+                      </div>
+                      <textarea
+                        class="input custom-gradients-input"
+                        v-model="bubbleCfg.customGradientsText"
+                        rows="3"
+                        placeholder="#7aaec0,#c4b5d8,linear-gradient(135deg,#111,#777)"
+                      ></textarea>
+                    </div>
                   </template>
 
-                  <!-- 灵动金传说说明 + 颜色自定义 -->
-                  <div v-if="bubbleCfg.colorMode === 'legendary'" class="legendary-hint">
+                  <template v-if="bubbleCfg.colorMode === 'legendary'">
                     <div class="legendary-colors-grid">
-                      <div class="legendary-color-item">
-                        <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
-                        <span>传奇</span>
-                        <input type="color" v-model="bubbleCfg.rarityColors.legendary" class="rarity-color-input" title="传奇颜色" />
-                      </div>
-                      <div class="legendary-color-item">
-                        <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
-                        <span>史诗</span>
-                        <input type="color" v-model="bubbleCfg.rarityColors.epic" class="rarity-color-input" title="史诗颜色" />
-                      </div>
-                      <div class="legendary-color-item">
-                        <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
-                        <span>稀有</span>
-                        <input type="color" v-model="bubbleCfg.rarityColors.rare" class="rarity-color-input" title="稀有颜色" />
-                      </div>
-                      <div class="legendary-color-item">
-                        <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span>
-                        <span>基础</span>
-                        <input type="color" v-model="bubbleCfg.rarityColors.common" class="rarity-color-input" title="基础颜色" />
-                      </div>
-                    </div>
-                    <div class="legendary-hint-text">
-                      <span class="legendary-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span> 传奇 — 极其罕见，香槟金 1px 动态切光与环境氛围光
-                      <br/>
-                      <span class="legendary-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span> 史诗 — 出现较少，紫色磨砂玻璃质感
-                      <br/>
-                      <span class="legendary-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span> 稀有 — 出现一般，深邃蓝微光
-                      <br/>
-                      <span class="legendary-dot common" :style="{ background: bubbleCfg.rarityColors.common }"></span> 基础 — 频繁出现，极简半透明材质
-                    </div>
-                    <div class="rarity-thresholds">
-                      <div class="rarity-threshold-row">
-                        <span class="rarity-dot legendary" :style="{ background: bubbleCfg.rarityColors.legendary }"></span>
-                        <span class="threshold-label">传奇</span>
+                      <label
+                        v-for="rarity in rarityOptions"
+                        :key="rarity.key"
+                        class="legendary-color-item"
+                      >
+                        <span class="legendary-dot" :style="{ background: bubbleCfg.rarityColors[rarity.key] }"></span>
+                        <span>{{ rarity.label }}</span>
                         <input
-                          type="range"
-                          min="1"
-                          max="30"
-                          step="1"
-                          v-model.number="bubbleCfg.rarityThresholds.legendary"
-                          class="threshold-slider"
+                          type="color"
+                          v-model="bubbleCfg.rarityColors[rarity.key]"
+                          class="rarity-color-input"
+                          :title="`${rarity.label}颜色`"
                         />
-                        <span class="threshold-value">{{ bubbleCfg.rarityThresholds.legendary }}%</span>
-                      </div>
-                      <div class="rarity-threshold-row">
-                        <span class="rarity-dot epic" :style="{ background: bubbleCfg.rarityColors.epic }"></span>
-                        <span class="threshold-label">史诗</span>
-                        <input
-                          type="range"
-                          min="5"
-                          max="60"
-                          step="1"
-                          v-model.number="bubbleCfg.rarityThresholds.epic"
-                          class="threshold-slider"
-                        />
-                        <span class="threshold-value">{{ bubbleCfg.rarityThresholds.epic }}%</span>
-                      </div>
-                      <div class="rarity-threshold-row">
-                        <span class="rarity-dot rare" :style="{ background: bubbleCfg.rarityColors.rare }"></span>
-                        <span class="threshold-label">稀有</span>
-                        <input
-                          type="range"
-                          min="20"
-                          max="85"
-                          step="1"
-                          v-model.number="bubbleCfg.rarityThresholds.rare"
-                          class="threshold-slider"
-                        />
-                        <span class="threshold-value">{{ bubbleCfg.rarityThresholds.rare }}%</span>
-                      </div>
+                      </label>
                     </div>
-                  </div>
 
-                  <div class="form-row" style="margin-top: 16px;">
-                    <div class="form-group">
-                      <label>每页显示数量</label>
-                      <input class="input" v-model.number="bubbleCfg.bubbleCount" type="number" min="12" max="120" step="6" />
-                    </div>
-                    <div class="form-group">
-                      <label>基础尺寸（px）</label>
-                      <input class="input" v-model.number="bubbleCfg.baseSize" type="number" min="8" max="48" step="1" />
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>填充间距（%）</label>
-                      <input class="input" v-model.number="bubbleCfg.fillPercent" type="number" min="30" max="200" step="5" />
-                    </div>
-                    <div class="form-group">
-                      <label>标签间距（px）</label>
-                      <input class="input" v-model.number="bubbleCfg.spacing" type="number" min="0" max="48" step="2" />
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group" style="flex:1">
-                      <label>演员头像尺寸</label>
-                      <div class="avatar-size-btns">
-                        <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'small' }" @click="bubbleCfg.actressAvatarSize = 'small'">小</button>
-                        <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'medium' }" @click="bubbleCfg.actressAvatarSize = 'medium'">中</button>
-                        <button class="size-btn" :class="{ active: bubbleCfg.actressAvatarSize === 'large' }" @click="bubbleCfg.actressAvatarSize = 'large'">大</button>
-                      </div>
-                      <div class="size-hint">{{ { small: '4行 · 约48个', medium: '3行 · 约36个', large: '2行 · 约24个' }[bubbleCfg.actressAvatarSize] }}</div>
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group" style="flex:1">
-                      <label>显示语言</label>
-                      <div class="avatar-size-btns">
-                        <button class="size-btn" :class="{ active: displayLangVal === 'ja' }" @click="setDisplayLang('ja')">日文</button>
-                        <button class="size-btn" :class="{ active: displayLangVal === 'zh' }" @click="setDisplayLang('zh')">中文</button>
-                        <button class="size-btn" :class="{ active: displayLangVal === 'en' }" @click="setDisplayLang('en')">英文</button>
+                    <div class="rarity-thresholds">
+                      <div
+                        v-for="rarity in rarityThresholdOptions"
+                        :key="rarity.key"
+                        class="rarity-threshold-row"
+                      >
+                        <span class="rarity-dot" :style="{ background: bubbleCfg.rarityColors[rarity.key] }"></span>
+                        <span class="threshold-label">{{ rarity.label }}</span>
+                        <input
+                          type="range"
+                          :min="rarity.min"
+                          :max="rarity.max"
+                          step="1"
+                          v-model.number="bubbleCfg.rarityThresholds[rarity.key]"
+                          class="threshold-slider"
+                        />
+                        <span class="threshold-value">{{ bubbleCfg.rarityThresholds[rarity.key] }}%</span>
                       </div>
                     </div>
-                  </div>
-                  <div class="form-row">
-                    <button class="btn btn-secondary" @click="resetBubbleCfg">恢复默认设置</button>
+                  </template>
+
+                  <div class="tag-tuning-grid">
+                    <div
+                      v-for="control in tagTuningControls"
+                      :key="control.key"
+                      class="tuning-control"
+                    >
+                      <div class="tuning-copy">
+                        <span>{{ control.label }}</span>
+                        <strong>{{ bubbleCfg[control.key] }}{{ control.unit }}</strong>
+                      </div>
+                      <input
+                        type="range"
+                        :min="control.min"
+                        :max="control.max"
+                        :step="control.step"
+                        v-model.number="bubbleCfg[control.key]"
+                        class="threshold-slider"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
 
@@ -531,25 +614,25 @@
                   <div class="form-group">
                     <label>映射类型</label>
                     <div class="form-row">
-                      <select class="input" v-model="translationType" style="flex:1; min-width:0">
+                      <select class="input translation-type-select" v-model="translationType">
                         <option value="actress">演员</option>
                         <option value="category">题材</option>
                         <option value="series">系列</option>
                         <option value="title">标题</option>
                       </select>
-                      <button class="btn btn-ghost trans-refresh-btn" @click="loadTransStats" title="刷新">↻</button>
+                      <button class="btn btn-ghost trans-refresh-btn" type="button" @click="loadTransStats" title="刷新">↻</button>
                     </div>
                   </div>
                   <div v-if="transStats[translationType] !== undefined" class="trans-stat">
                     当前 {{ translationTypeLabels[translationType] }} 已翻译 <strong>{{ transStats[translationType] }}</strong> 条
                   </div>
                   <div class="trans-actions">
-                    <button class="btn btn-ghost" @click="exportTranslation">
+                    <button class="btn btn-ghost" type="button" @click="exportTranslation">
                       导出 {{ translationTypeLabels[translationType] }}
                     </button>
                     <label class="btn btn-ghost trans-import-btn">
                       导入 {{ translationTypeLabels[translationType] }}
-                      <input type="file" accept=".json" style="display:none" @change="importTranslation" />
+                      <input class="visually-hidden-file" type="file" accept=".json" @change="importTranslation" />
                     </label>
                   </div>
                   <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
@@ -625,10 +708,10 @@
     </main>
 
     <!-- Global Floating Footer for Actions -->
-    <div class="settings-footer">
+    <div v-if="canSaveConfig" class="settings-footer">
       <div class="footer-content">
-        <button class="btn btn-primary" @click="save" :disabled="saving">
-          <span v-if="saving" class="spinner" style="width:16px;height:16px;border-width:2px"></span>
+        <button class="btn btn-primary" type="button" @click="save" :disabled="saving || !canSaveConfig">
+          <span v-if="saving" class="spinner save-spinner"></span>
           <span v-else>保存所有更改</span>
         </button>
       </div>
@@ -638,8 +721,9 @@
 
 <script>
 import api from '../api'
-import { THEMES, applyTheme } from '../assets/themes.js'
+import { THEMES, applyTheme, resolveThemeKey } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 const DEFAULT_CONFIG = {
   openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
@@ -647,6 +731,14 @@ const DEFAULT_CONFIG = {
   telegram: { bot_token: '', allowed_user_ids: [] },
   crawler: { request_interval: 3 },
   scheduler: { subscription_check_hour: 2 },
+  automation: {
+    download_policy: 'manual',
+    candidate_sources: ['subscription', 'inventory', 'supplement'],
+    rules_require_magnet: true,
+    auto_process_interval_minutes: 30,
+    max_auto_downloads_per_run: 20,
+    max_auto_downloads_per_24h: 100,
+  },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
   metatube: { host: 'localhost', port: 8081, token: '' },
@@ -670,8 +762,33 @@ const DEFAULT_BUBBLE_CFG = {
 
 const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', title: '标题' }
 
+function parseGradientList(value = '') {
+  const items = []
+  let depth = 0
+  let current = ''
+
+  for (const char of value) {
+    if (char === '(') depth += 1
+    if (char === ')') depth = Math.max(0, depth - 1)
+
+    if (char === ',' && depth === 0) {
+      const item = current.trim()
+      if (item) items.push(item)
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  const last = current.trim()
+  if (last) items.push(last)
+  return items.filter(item => item.startsWith('linear-gradient') || item.startsWith('#'))
+}
+
 export default {
   name: 'Config',
+  components: { AppleErrorState },
   data() {
     return {
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
@@ -681,6 +798,9 @@ export default {
       transStats: {},
       transMsg: '',
       transMsgType: 'info',
+      configLoading: true,
+      configLoaded: false,
+      configLoadError: '',
       saving: false,
       testingTelegram: false,
       inventoryCron: '',
@@ -690,15 +810,55 @@ export default {
       showEmbyKey: false,
       showMetatubeToken: false,
       themes: THEMES,
-      currentTheme: localStorage.getItem('javhub_theme') || 'midnight',
+      currentTheme: resolveThemeKey(localStorage.getItem('javhub_theme')),
       navGroups: [
         { id: 'services', label: '常规与服务', icon: '🌐' },
-        { id: 'automation', label: '自动化任务', icon: '⚙️' },
+        { id: 'automation', label: '自动化策略', icon: '⚙️' },
         { id: 'appearance', label: '界面与外观', icon: '🎨' },
         { id: 'advanced', label: '高级设置', icon: '🛠️' }
       ],
       activeGroup: 'services',
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
+      pageSizeOptions: [15, 30, 50, 100],
+      avatarSizeOptions: [
+        { value: 'small', label: '小', hint: '4 行 · 约 48 个' },
+        { value: 'medium', label: '中', hint: '3 行 · 约 36 个' },
+        { value: 'large', label: '大', hint: '2 行 · 约 24 个' },
+      ],
+      displayLangOptions: [
+        { value: 'ja', label: '日文' },
+        { value: 'zh', label: '中文' },
+        { value: 'en', label: '英文' },
+      ],
+      downloadPolicyOptions: [
+        { value: 'manual', label: '人工批准', hint: '只生成候选，下载必须手动批准。' },
+        { value: 'rules', label: '规则自动', hint: '自动处理允许来源中符合规则的候选。' },
+        { value: 'auto', label: '全自动', hint: '自动补磁力并下发允许来源中的候选。' },
+      ],
+      candidateSourceOptions: [
+        { value: 'subscription', label: '订阅发现' },
+        { value: 'inventory', label: '库存发现' },
+        { value: 'supplement', label: '补全发现' },
+        { value: 'manual', label: '手动加入' },
+      ],
+      rarityOptions: [
+        { key: 'legendary', label: '传奇' },
+        { key: 'epic', label: '史诗' },
+        { key: 'rare', label: '稀有' },
+        { key: 'common', label: '基础' },
+      ],
+      rarityThresholdOptions: [
+        { key: 'legendary', label: '传奇', min: 1, max: 30 },
+        { key: 'epic', label: '史诗', min: 5, max: 60 },
+        { key: 'rare', label: '稀有', min: 20, max: 85 },
+      ],
+      tagTuningControls: [
+        { key: 'bubbleCount', label: '显示数量', min: 12, max: 120, step: 6, unit: '' },
+        { key: 'baseSize', label: '基础尺寸', min: 8, max: 48, step: 1, unit: 'px' },
+        { key: 'fillPercent', label: '填充间距', min: 30, max: 200, step: 5, unit: '%' },
+        { key: 'spacing', label: '标签间距', min: 0, max: 48, step: 2, unit: 'px' },
+      ],
+      previewTags: ['剧情', '高清', '限定', '新作', '字幕'],
       palettes: [
         { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
         { key: 'sunset',   label: '夕阳',    colors: ['#c89080', '#c87868'] },
@@ -718,6 +878,32 @@ export default {
   },
   computed: {
     displayLangVal() { return displayLang.value },
+    canSaveConfig() {
+      return this.configLoaded && !this.configLoading && !this.configLoadError
+    },
+    currentThemeConfig() {
+      return this.themes[this.currentTheme] || Object.values(this.themes)[0]
+    },
+    avatarSizeHint() {
+      return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
+    },
+    displayLangLabel() {
+      return this.displayLangOptions.find(option => option.value === this.displayLangVal)?.label || '日文'
+    },
+    currentPolicyHint() {
+      return this.downloadPolicyOptions.find(option => option.value === this.config.automation.download_policy)?.hint || ''
+    },
+    paletteLabel() {
+      if (this.bubbleCfg.palette === '__all__') return '艺术随机'
+      if (this.bubbleCfg.palette === '__custom__') return '自定义材质'
+      return this.palettes.find(p => p.key === this.bubbleCfg.palette)?.label || '莫奈'
+    },
+    auraPreviewStyle() {
+      return {
+        '--preview-gap': `${Math.max(4, Math.min(this.bubbleCfg.spacing || 12, 28)) * 0.45}px`,
+        '--preview-font': `${Math.max(11, Math.min(this.bubbleCfg.baseSize || 16, 24))}px`,
+      }
+    },
     // 下拉选中色系的颜色预览条
     currentPalettePreview() {
       if (this.bubbleCfg.palette === '__all__') {
@@ -744,36 +930,50 @@ export default {
     },
   },
   async mounted() {
-    try {
-      const resp = await api.getConfig()
-      const data = resp.data
-      
-      // Merge with DEFAULT_CONFIG to ensure all fields exist
-      this.config = {
-        ...JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
-        ...data
-      }
-      
-      // Handle sub-objects to ensure they are also merged
-      for (const key in DEFAULT_CONFIG) {
-        if (typeof DEFAULT_CONFIG[key] === 'object' && !Array.isArray(DEFAULT_CONFIG[key])) {
-          this.config[key] = {
-            ...JSON.parse(JSON.stringify(DEFAULT_CONFIG[key])),
-            ...(data[key] || {})
-          }
-        }
-      }
-
-      this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
-      this.inventoryCron = data.inventory_cron || ''
-    } catch (e) {
-      console.error('Failed to load config:', e)
-    }
+    await this.loadConfig()
     this.loadBubbleCfg()
     this.loadTransStats()
+  },
+  methods: {
+    async loadConfig() {
+      this.configLoading = true
+      this.configLoadError = ''
+      try {
+        const resp = await api.getConfig()
+        const data = resp.data
+
+        this.config = {
+          ...JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
+          ...data
+        }
+
+        for (const key in DEFAULT_CONFIG) {
+          if (typeof DEFAULT_CONFIG[key] === 'object' && !Array.isArray(DEFAULT_CONFIG[key])) {
+            this.config[key] = {
+              ...JSON.parse(JSON.stringify(DEFAULT_CONFIG[key])),
+              ...(data[key] || {})
+            }
+          }
+        }
+
+        this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
+        this.inventoryCron = data.inventory_cron || ''
+        this.configLoaded = true
+      } catch (e) {
+        console.error('Failed to load config:', e)
+        this.configLoaded = false
+        this.configLoadError = 'load_failed'
+        this.$message?.error?.('配置加载失败，请重试')
+      } finally {
+        this.configLoading = false
+      }
     },
-    methods: {
-    async save() {      this.saving = true
+    async save() {
+      if (!this.canSaveConfig) {
+        this.$message.error('配置未加载成功，已阻止保存')
+        return
+      }
+      this.saving = true
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
         await api.updateConfig(this.config)
@@ -787,6 +987,10 @@ export default {
       }
     },
     async saveInventoryCron() {
+      if (!this.canSaveConfig) {
+        this.$message.error('配置未加载成功，已阻止保存')
+        return
+      }
       try {
         await api.updateConfig({ inventory_cron: this.inventoryCron })
         this.$message.success('库存对比定时任务配置已保存')
@@ -795,7 +999,19 @@ export default {
         this.$message.error('保存失败')
       }
     },
+    toggleAutomationSource(source) {
+      const current = this.config.automation.candidate_sources || []
+      if (current.includes(source)) {
+        this.config.automation.candidate_sources = current.filter(item => item !== source)
+      } else {
+        this.config.automation.candidate_sources = [...current, source]
+      }
+    },
     async testTelegram() {
+      if (!this.canSaveConfig) {
+        this.telegramTestMsg = '配置未加载成功，请先重新加载'
+        return
+      }
       if (!this.config.telegram.bot_token) {
         this.telegramTestMsg = '请先填写 Bot Token'
         return
@@ -834,13 +1050,7 @@ export default {
       }
     },
     saveBubbleCfg() {
-      // Parse custom gradients text into array before saving
-      if (this.bubbleCfg.customGradientsText) {
-        this.bubbleCfg.customGradients = this.bubbleCfg.customGradientsText
-          .split(',')
-          .map(s => s.trim())
-          .filter(s => s.startsWith('linear-gradient') || s.startsWith('#'))
-      }
+      this.bubbleCfg.customGradients = parseGradientList(this.bubbleCfg.customGradientsText)
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     resetBubbleCfg() {
@@ -852,8 +1062,47 @@ export default {
       displayLang.value = lang
     },
     switchTheme(key) {
-      applyTheme(key)
-      this.currentTheme = key
+      this.currentTheme = applyTheme(key)
+    },
+    themeSwatchStyle(theme) {
+      const vars = theme?.vars || {}
+      return {
+        '--theme-bg': vars['--bg-primary'] || '#000',
+        '--theme-surface': vars['--bg-secondary'] || vars['--bg-card'] || '#111',
+        '--theme-card': vars['--bg-card'] || 'rgba(255,255,255,0.08)',
+        '--theme-accent': vars['--accent'] || '#fff',
+      }
+    },
+    previewBubbleClass(index) {
+      if (this.bubbleCfg.colorMode !== 'legendary') return 'soft'
+      return ['legendary', 'epic', 'rare', 'common', 'rare'][index] || 'common'
+    },
+    previewBubbleStyle(index) {
+      const fill = Math.max(0.7, Math.min((this.bubbleCfg.fillPercent || 50) / 100, 1.8))
+      const basePaddingY = Math.round(7 * fill)
+      const basePaddingX = Math.round(12 * fill)
+      if (this.bubbleCfg.colorMode === 'legendary') {
+        const rarity = this.previewBubbleClass(index)
+        return {
+          background: this.bubbleCfg.rarityColors[rarity],
+          padding: `${basePaddingY}px ${basePaddingX}px`,
+        }
+      }
+      const gradients = this.previewGradients()
+      return {
+        background: gradients[index % gradients.length],
+        padding: `${basePaddingY}px ${basePaddingX}px`,
+      }
+    },
+    previewGradients() {
+      if (this.bubbleCfg.palette === '__custom__' && this.bubbleCfg.customGradientsText) {
+        const custom = parseGradientList(this.bubbleCfg.customGradientsText)
+        if (custom.length) return custom
+      }
+      if (this.bubbleCfg.palette === '__all__') {
+        return this.palettes.flatMap(p => p.colors)
+      }
+      return this.palettes.find(p => p.key === this.bubbleCfg.palette)?.colors || this.palettes[0].colors
     },
     async loadTransStats() {
       try {
@@ -900,10 +1149,10 @@ export default {
 </script>
 
 <style scoped>
-.settings { 
-  padding: 40px 60px; 
-  max-width: 1000px; 
-  margin: 0 auto; 
+.settings {
+  width: min(100%, 1280px);
+  padding: 36px clamp(32px, 4vw, 56px);
+  margin: 0 auto;
   min-height: 100vh;
   position: relative;
   padding-bottom: 120px; /* Space for footer */
@@ -925,6 +1174,8 @@ export default {
   gap: 8px; 
   border-bottom: 1px solid var(--border); 
   padding-bottom: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
 }
 
 .tab-item {
@@ -966,6 +1217,25 @@ export default {
 
 .settings-content-wide {
   width: 100%;
+}
+
+.settings-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.spinner-large {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .config-section {
@@ -1048,13 +1318,22 @@ export default {
 .form-group:last-child { margin-bottom: 0; }
 .form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.bubble-control-row { margin-top: 16px; }
+.form-group-fill { flex: 1; }
+.translation-type-select {
+  flex: 1;
+  min-width: 0;
+}
+.visually-hidden-file {
+  display: none;
+}
 
 .settings-footer {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: var(--sidebar-width);
   right: 0;
-  background: var(--bg-primary-transparent);
+  background: var(--material-glass-sheet);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
@@ -1066,28 +1345,69 @@ export default {
 
 .footer-content {
   width: 100%;
-  max-width: 1000px;
-  padding: 0 60px;
+  max-width: 1280px;
+  padding: 0 clamp(32px, 4vw, 56px);
   display: flex;
   justify-content: flex-end;
 }
 
+.save-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
 @media (max-width: 768px) {
-  .settings { padding: 24px 20px 100px; }
+  .settings {
+    width: 100%;
+    padding: 24px 20px 112px;
+  }
   .settings-header h1 { font-size: 28px; }
-  .settings-tabs { overflow-x: auto; padding-bottom: 2px; }
-  .tab-item { padding: 10px 12px; white-space: nowrap; }
+  .settings-tabs {
+    margin: 0 -20px;
+    padding: 0 20px 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab-item {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 12px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
   .form-row { grid-template-columns: 1fr; gap: 16px; }
-  .footer-content { padding: 0 20px; }
+  .card-content,
+  .form-slot {
+    padding: 20px;
+  }
+  .settings-footer {
+    left: 0;
+    bottom: calc(61px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 0;
+    z-index: 90;
+  }
+  .footer-content {
+    max-width: none;
+    padding: 0 20px;
+  }
+  .footer-content .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 }
 
 .trans-refresh-btn { padding: 6px 10px; font-size: 14px; flex-shrink: 0; }
 .input-password-wrap { position: relative; display: flex; align-items: center; }
-.input-password-wrap .input { padding-right: 36px; }
+.input-password-wrap .input { padding-right: 58px; }
 .input-eye-btn {
   position: absolute; right: 8px; background: none; border: none;
   cursor: pointer; color: var(--text-muted); padding: 4px;
   display: flex; align-items: center; justify-content: center;
+  width: 44px;
+  height: 44px;
 }
 .input-eye-btn:hover { color: var(--text-primary); }
 
@@ -1100,87 +1420,316 @@ export default {
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 .form-group.checkbox label { margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.automation-policy-control {
+  width: min(100%, 420px);
+  margin-bottom: 8px;
+}
+.automation-policy-control button {
+  flex: 1;
+  min-width: 88px;
+}
+.source-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+.source-check-item {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  margin: 0 !important;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-primary) !important;
+  cursor: pointer;
+}
+.source-check-item input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
 
-.color-mode-tabs {
+.appearance-section .section-header {
+  margin-bottom: 22px;
+}
+
+.appearance-board {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1fr);
+  grid-template-areas:
+    "theme aura"
+    "density aura";
+  gap: 14px;
+  align-items: start;
+}
+
+.appearance-panel {
+  padding: 16px;
+  border-radius: 18px;
+}
+
+.appearance-theme-panel { grid-area: theme; }
+.appearance-aura-panel { grid-area: aura; }
+.appearance-board > .appearance-panel:nth-child(2) { grid-area: density; }
+
+.appearance-panel-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.appearance-panel-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.appearance-chip {
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--material-glass-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.theme-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.mode-tab {
-  flex: 1;
-  padding: 8px 12px;
-  background: var(--bg-card);
+.theme-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 8px;
   border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
+  color: var(--text-primary);
+  text-align: left;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  transition: border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
 }
 
-.mode-tab.active {
-  background: var(--accent);
+.theme-option:hover {
+  border-color: var(--border-light);
+  background: var(--surface-card-hover);
+}
+
+.theme-option.active {
   border-color: var(--accent);
+  background: var(--material-glass-elevated);
+  box-shadow: inset 0 0 0 1px var(--accent-glow);
+}
+
+.theme-card-preview.theme-swatch {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--theme-bg);
+}
+
+.theme-swatch::before {
+  content: "";
+  position: absolute;
+  inset: 6px 7px auto;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--theme-surface);
+}
+
+.theme-swatch-card {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 6px;
+  height: 14px;
+  border-radius: 6px;
+  background: var(--theme-card);
+}
+
+.theme-swatch-line {
+  position: absolute;
+  left: 14px;
+  right: 30px;
+  bottom: 11px;
+  height: 3px;
+  border-radius: var(--radius-control);
+  background: var(--theme-accent);
+}
+
+.theme-option-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 22px;
+}
+
+.theme-label {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-label-en {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.theme-check {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
   color: var(--bg-primary);
 }
 
-.mode-tab:hover:not(.active) {
-  border-color: var(--accent);
-  color: var(--accent);
+.appearance-setting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* 色系下拉框 */
+.appearance-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
+}
+
+.appearance-setting-row.vertical {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.setting-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.setting-title {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.setting-note {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.segmented-mini {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.segmented-mini.wide {
+  min-width: 230px;
+}
+
+.segmented-mini button {
+  min-width: 38px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+
+.segmented-mini button.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
 .palette-select-wrap {
   position: relative;
-  border-radius: var(--radius-sm);
+  flex: 0 0 214px;
   overflow: hidden;
   border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--material-glass-subtle);
 }
 
 .palette-select {
   width: 100%;
-  padding: 8px 36px 8px 12px;
-  background: var(--bg-card);
-  border: none;
+  min-height: 38px;
+  padding: 8px 34px 12px 12px;
+  border: 0;
+  background: transparent;
   color: var(--text-primary);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
 }
 
-.avatar-size-btns {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.size-btn {
-  flex: 1;
-  padding: 8px 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.size-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-.size-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 600; }
-.size-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-
 .palette-select:focus {
   outline: none;
-  border-color: var(--accent);
 }
 
 .palette-select-wrap::after {
   content: '';
   position: absolute;
   right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 15px;
   width: 0;
   height: 0;
   border-left: 5px solid transparent;
@@ -1189,208 +1738,264 @@ export default {
   pointer-events: none;
 }
 
-/* 下拉选中色的颜色预览条 */
 .palette-color-bar {
-  height: 8px;
-  width: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
 }
 
-.legendary-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.8;
-  padding: 10px 12px;
-  background: var(--bg-card);
+.aura-preview {
+  display: flex;
+  align-items: center;
+  align-content: center;
+  flex-wrap: wrap;
+  gap: var(--preview-gap);
+  min-height: 118px;
+  margin-bottom: 10px;
+  padding: 16px;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.10), transparent 32%),
+    var(--material-glass-subtle);
+}
+
+.preview-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: var(--radius-control);
+  color: #fff;
+  font-size: var(--preview-font);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 12px 28px rgba(0,0,0,0.22);
+}
+
+.preview-bubble.legendary {
+  border-color: rgba(255,255,255,0.34);
 }
 
 .legendary-colors-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .legendary-color-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.legendary-color-item .legendary-dot {
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-
-.rarity-color-input {
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  min-height: 38px;
+  padding: 7px 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-  background: none;
-}
-
-.rarity-color-input::-webkit-color-swatch-wrapper { padding: 2px; }
-.rarity-color-input::-webkit-color-swatch { border: none; border-radius: 2px; }
-
-.legendary-hint-text { line-height: 1.9; }
-
-.rarity-thresholds {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.rarity-threshold-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.rarity-threshold-row .rarity-dot {
-  flex-shrink: 0;
-}
-.threshold-label {
-  width: 36px;
-  font-size: 12px;
+  border-radius: 10px;
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
-}
-.threshold-slider {
-  flex: 1;
-  height: 4px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.threshold-value {
-  width: 32px;
   font-size: 12px;
-  color: var(--text-muted);
-  text-align: right;
+  font-weight: 700;
 }
 
-.legendary-dot {
+.legendary-dot,
+.rarity-dot {
   display: inline-block;
   width: 10px;
   height: 10px;
+  flex-shrink: 0;
   border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
 }
 
-.legendary-dot.legendary { background: #c89a30; }
-.legendary-dot.epic { background: #7040a0; }
-.legendary-dot.rare { background: #3070a8; }
-.legendary-dot.common { background: #607080; }
-
-.custom-gradients-input {
-  resize: vertical;
-  font-family: monospace;
-  font-size: 11px;
-  line-height: 1.5;
-  min-height: 60px;
-}
-
-/* Theme Selection Grid */
-.theme-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.theme-card {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
+.rarity-color-input {
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
   border: 1px solid var(--border);
-  overflow: hidden;
+  border-radius: 8px;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  position: relative;
 }
 
-.theme-card:hover {
-  border-color: var(--accent-light);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
-}
+.rarity-color-input::-webkit-color-swatch-wrapper { padding: 2px; }
+.rarity-color-input::-webkit-color-swatch { border: none; border-radius: 5px; }
 
-.theme-card.active {
-  border-color: var(--accent);
-  border-width: 2px;
-  background: var(--bg-card);
-}
-
-.theme-card-preview {
-  height: 60px;
-  position: relative;
-  border-bottom: 1px solid var(--border);
-  padding: 8px;
+.rarity-thresholds {
   display: flex;
-  gap: 4px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
 }
 
-.preview-accent {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid var(--border-light);
-}
-
-.preview-secondary {
-  width: 40px;
-  height: 8px;
-  border-radius: 4px;
-  opacity: 0.5;
-}
-
-.theme-card-info {
-  padding: 10px 12px;
-  display: flex;
+.rarity-threshold-row {
+  display: grid;
+  grid-template-columns: 10px 38px minmax(0, 1fr) 38px;
   align-items: center;
   gap: 10px;
 }
 
-.theme-icon {
-  font-size: 18px;
+.threshold-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.theme-names {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.threshold-slider {
+  width: 100%;
   min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
-.theme-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.theme-label-en {
-  font-size: 10px;
+.threshold-value {
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.theme-check {
-  width: 20px;
-  height: 20px;
-  background: var(--accent);
-  color: var(--bg-primary);
-  border-radius: 50%;
+.tag-tuning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tuning-control {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
+}
+
+.tuning-copy {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tuning-copy strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-gradients-input {
+  resize: vertical;
+  min-height: 76px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .appearance-board {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "theme"
+      "density"
+      "aura";
+  }
+}
+
+@media (max-width: 640px) {
+  .appearance-panel {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .appearance-panel-header {
+    align-items: center;
+  }
+
+  .theme-option-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .theme-option {
+    min-height: 76px;
+    padding: 7px;
+  }
+
+  .theme-card-preview.theme-swatch {
+    height: 28px;
+  }
+
+  .theme-option-copy {
+    padding-right: 16px;
+  }
+
+  .theme-label {
+    font-size: 11px;
+  }
+
+  .theme-label-en {
+    display: none;
+  }
+
+  .theme-check {
+    right: 7px;
+    bottom: 7px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .appearance-setting-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .segmented-mini,
+  .segmented-mini.wide,
+  .palette-select-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .segmented-mini {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
+
+  .segmented-mini button {
+    min-width: 0;
+    padding: 0 8px;
+  }
+
+  .legendary-colors-grid,
+  .tag-tuning-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .legendary-color-item {
+    min-width: 0;
+  }
+
+  .legendary-color-item span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rarity-threshold-row {
+    grid-template-columns: 10px 34px minmax(0, 1fr) 36px;
+    gap: 8px;
+  }
 }
 
 /* 翻译映射 */

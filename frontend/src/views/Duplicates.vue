@@ -12,12 +12,12 @@
         class="duplicate-item"
       >
         <div class="item-cover">
-          <img :src="item.jacket_thumb_url || '/placeholder.png'" />
+          <img :src="item.jacket_thumb_url || '/placeholder.png'" :alt="item.content_id" />
         </div>
         <div class="item-info">
           <div class="item-code">{{ item.content_id }}</div>
           <div class="item-title">{{ item.javinfo_title }}</div>
-          <div class="item-emby-name">Emby名称: {{ item.emby_name }}</div>
+          <div class="item-emby-name">Emby 名称: {{ item.emby_name }}</div>
           <div class="item-similarity">相似度: {{ (item.similarity * 100).toFixed(0) }}%</div>
           <div class="item-reason">{{ item.reason }}</div>
         </div>
@@ -36,7 +36,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 const duplicates = ref([])
 const loading = ref(false)
@@ -46,7 +48,7 @@ const fetchDuplicates = async () => {
   loading.value = true
   error.value = ''
   try {
-    const res = await axios.get('/api/duplicates')
+    const res = await api.getDuplicates()
     duplicates.value = res.data.data || []
   } catch (e) {
     error.value = '加载失败: ' + e.message
@@ -60,21 +62,28 @@ const rescan = async () => {
 }
 
 const deleteItem = async (item) => {
-  if (!confirm('确定要删除 Emby 中的这个条目吗？')) return
+  const confirmed = await requestConfirm({
+    title: '删除 Emby 条目',
+    message: '确定要删除 Emby 中的这个条目吗？',
+    details: item.emby_name || item.content_id || '',
+    confirmText: '删除',
+    tone: 'danger'
+  })
+  if (!confirmed) return
   try {
-    await axios.post(`/api/duplicates/${item.emby_item_id}/delete`)
+    await api.deleteDuplicate(item.emby_item_id)
     duplicates.value = duplicates.value.filter(d => d.emby_item_id !== item.emby_item_id)
   } catch (e) {
-    alert('删除失败: ' + e.message)
+    ElMessage.error('删除失败: ' + e.message)
   }
 }
 
 const ignoreItem = async (item) => {
   try {
-    await axios.post(`/api/duplicates/${item.emby_item_id}/ignore`)
+    await api.ignoreDuplicate(item.emby_item_id)
     duplicates.value = duplicates.value.filter(d => d.emby_item_id !== item.emby_item_id)
   } catch (e) {
-    alert('忽略失败: ' + e.message)
+    ElMessage.error('忽略失败: ' + e.message)
   }
 }
 
@@ -83,57 +92,77 @@ onMounted(fetchDuplicates)
 
 <style scoped>
 .duplicates-page {
-  padding: 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--text-primary);
 }
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
 }
 .rescan-btn {
-  background: #1890ff;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  min-height: 44px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border: 0;
+  padding: 0 18px;
+  border-radius: 999px;
   cursor: pointer;
+  font-weight: 700;
 }
 .duplicate-item {
   display: flex;
   gap: 16px;
   padding: 16px;
-  background: #fff;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   margin-bottom: 12px;
+  min-width: 0;
 }
 .item-cover img {
   width: 100px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
   border-radius: 4px;
 }
 .item-info {
   flex: 1;
+  min-width: 0;
 }
 .item-code {
   font-weight: bold;
   font-size: 16px;
 }
 .item-title {
-  color: #333;
+  color: var(--text-primary);
   margin: 4px 0;
+  overflow-wrap: anywhere;
 }
 .item-emby-name {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 .item-similarity {
   color: #1890ff;
   font-size: 14px;
 }
 .item-reason {
-  color: #999;
+  color: var(--text-muted);
   font-size: 12px;
   margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 .item-actions {
   display: flex;
@@ -141,18 +170,21 @@ onMounted(fetchDuplicates)
   gap: 8px;
 }
 .action-btn {
-  padding: 8px 16px;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   cursor: pointer;
+  font-weight: 700;
 }
 .action-btn.delete {
   background: #ff4d4f;
   color: #fff;
 }
 .action-btn.ignore {
-  background: #f5f5f5;
-  color: #666;
+  background: var(--white-06);
+  color: var(--text-secondary);
 }
 .loading, .error, .empty {
   text-align: center;
@@ -160,5 +192,30 @@ onMounted(fetchDuplicates)
 }
 .error {
   color: #ff4d4f;
+}
+
+@media (max-width: 768px) {
+  .duplicates-page {
+    padding: 20px 16px 40px;
+  }
+
+  .duplicate-item {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .item-cover img {
+    width: 86px;
+  }
+
+  .item-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+  }
+
+  .action-btn {
+    flex: 1;
+  }
 }
 </style>

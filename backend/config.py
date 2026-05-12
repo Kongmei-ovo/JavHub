@@ -96,6 +96,60 @@ class Config:
     def scheduler_check_hour(self) -> int:
         return self._config.get('scheduler', {}).get('subscription_check_hour', 2)
 
+    # Automation policy settings
+    @property
+    def automation(self) -> dict:
+        defaults = {
+            'download_policy': 'manual',
+            'candidate_sources': ['subscription', 'inventory', 'supplement'],
+            'rules_require_magnet': True,
+            'auto_process_interval_minutes': 30,
+            'max_auto_downloads_per_run': 20,
+            'max_auto_downloads_per_24h': 100,
+        }
+        cfg = self._config.get('automation', {}) or {}
+        return {**defaults, **cfg}
+
+    @property
+    def automation_download_policy(self) -> str:
+        policy = str(self.automation.get('download_policy') or 'manual').lower()
+        return policy if policy in {'manual', 'rules', 'auto'} else 'manual'
+
+    @property
+    def automation_candidate_sources(self) -> list:
+        sources = self.automation.get('candidate_sources')
+        if not isinstance(sources, list):
+            return ['subscription', 'inventory', 'supplement']
+        return [str(source) for source in sources if str(source).strip()]
+
+    @property
+    def automation_rules_require_magnet(self) -> bool:
+        return bool(self.automation.get('rules_require_magnet', True))
+
+    @property
+    def automation_auto_process_interval_minutes(self) -> int:
+        try:
+            value = int(self.automation.get('auto_process_interval_minutes', 30))
+        except Exception:
+            value = 30
+        return max(0, value)
+
+    @property
+    def automation_max_auto_downloads_per_run(self) -> int:
+        try:
+            value = int(self.automation.get('max_auto_downloads_per_run', 20))
+        except Exception:
+            value = 20
+        return max(0, value)
+
+    @property
+    def automation_max_auto_downloads_per_24h(self) -> int:
+        try:
+            value = int(self.automation.get('max_auto_downloads_per_24h', 100))
+        except Exception:
+            value = 100
+        return max(0, value)
+
     # JavInfo API settings
     @property
     def javinfo(self) -> dict:
@@ -187,7 +241,9 @@ class Config:
         return self._config.get('rate_limit', {}).get('burst', 10)
 
     def get_all(self) -> dict:
-        return self._config.copy()
+        cfg = self._config.copy()
+        cfg['automation'] = self.automation
+        return cfg
 
     def update(self, new_config: dict):
         self._config.update(new_config)

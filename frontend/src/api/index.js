@@ -5,6 +5,9 @@ const api = axios.create({
   baseURL: '/api'
 })
 
+const ERROR_TOAST_COOLDOWN_MS = 3000
+let lastErrorToast = { key: '', ts: 0 }
+
 // ========== 全局错误拦截 ==========
 api.interceptors.response.use(
   response => response,
@@ -14,7 +17,12 @@ api.interceptors.response.use(
         || error.response?.data?.message
         || error.message
         || '网络错误'
-      ElMessage.error(errMsg)
+      const key = `${error.response?.status || 'network'}:${errMsg}`
+      const now = Date.now()
+      if (key !== lastErrorToast.key || now - lastErrorToast.ts > ERROR_TOAST_COOLDOWN_MS) {
+        ElMessage.error(errMsg)
+        lastErrorToast = { key, ts: now }
+      }
       console.error('API Error:', error.response?.status, errMsg)
     }
     return Promise.reject(error)
@@ -49,7 +57,7 @@ async function getCategoryStats(forceRefresh = false) {
       }
     } catch {}
   }
-  const request = api.get('/v1/categories/stats')
+  const request = api.get('/v1/categories/stats', { silentError: true })
     .then(resp => {
       const data = Array.isArray(resp.data) ? resp.data : (resp.data || [])
       _cachedStats = data
@@ -162,6 +170,14 @@ export default {
     return api.get(`/v1/downloads/candidates/${candidateId}`)
   },
 
+  listDownloadCandidateRuns(limit = 20) {
+    return api.get('/v1/downloads/candidates/runs', { params: { limit } })
+  },
+
+  retryDownloadCandidateRunFailed(runId, payload = {}) {
+    return api.post(`/v1/downloads/candidates/runs/${runId}/retry-failed`, payload)
+  },
+
   createDownloadCandidate(data) {
     return api.post('/v1/downloads/candidates', data)
   },
@@ -171,6 +187,18 @@ export default {
       magnet,
       magnet_source: magnetSource,
     })
+  },
+
+  enrichDownloadCandidateMagnet(candidateId) {
+    return api.post(`/v1/downloads/candidates/${candidateId}/enrich-magnet`)
+  },
+
+  processDownloadCandidate(candidateId, payload = {}) {
+    return api.post(`/v1/downloads/candidates/${candidateId}/process`, payload)
+  },
+
+  processDownloadCandidates(payload = {}) {
+    return api.post('/v1/downloads/candidates/process', payload)
   },
 
   approveDownloadCandidate(candidateId) {
@@ -293,6 +321,10 @@ export default {
 
   getLogs(limit = 100, level = '') {
     return api.get('/v1/logs', { params: { limit, level } })
+  },
+
+  clearLogs() {
+    return api.delete('/v1/logs')
   },
 
   // ========== 配置 ==========
@@ -473,5 +505,15 @@ export default {
 
   transferToCloud(contentId, data) {
     return api.post(`/v1/stream/${contentId}/transfer`, data)
+  },
+
+  // ========== 运营总览 ==========
+
+  getOperationsOverview() {
+    return api.get('/v1/operations/overview')
+  },
+
+  runCandidateProcessingNow() {
+    return api.post('/v1/operations/candidate-processing/run')
   }
 }

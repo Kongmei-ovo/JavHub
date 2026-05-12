@@ -9,7 +9,7 @@
           </svg>
           <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
         </div>
-        <button class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+        <button class="collapse-btn" type="button" @click="sidebarCollapsed = !sidebarCollapsed">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
             <path v-if="sidebarCollapsed" d="M9 18l6-6-6-6"/>
             <path v-else d="M15 18l-6-6 6-6"/>
@@ -48,13 +48,45 @@
         <component :is="item.icon" />
         <span>{{ item.label }}</span>
       </router-link>
+      <button
+        class="bottom-nav-item bottom-nav-more"
+        type="button"
+        :class="{ active: mobileMoreOpen || isMoreRoute }"
+        aria-haspopup="dialog"
+        :aria-expanded="mobileMoreOpen"
+        @click="mobileMoreOpen = !mobileMoreOpen"
+      >
+        <component :is="IconList" />
+        <span>更多</span>
+      </button>
     </nav>
+
+    <transition name="mobile-more">
+      <div v-if="mobileMoreOpen" class="mobile-more-overlay" @click.self="mobileMoreOpen = false">
+        <div class="mobile-more-sheet" role="dialog" aria-label="更多功能">
+          <div class="mobile-more-grabber"></div>
+          <div class="mobile-more-grid">
+            <router-link
+              v-for="item in mobileMoreItems"
+              :key="item.path"
+              :to="item.path"
+              class="mobile-more-item"
+              :class="{ active: $route.path === item.path }"
+              @click="mobileMoreOpen = false"
+            >
+              <component :is="item.icon" />
+              <span>{{ item.label }}</span>
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- 主内容区 -->
     <main class="main-content">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'DiscoveryDetail', 'InventoryActor']">
+          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'DiscoveryDetail', 'InventoryActor', 'SupplementManagement']">
             <component :is="Component" />
           </keep-alive>
         </transition>
@@ -79,6 +111,8 @@
       @close="toast.visible = false"
       @organize="handleOrganize"
     />
+
+    <ConfirmDialog />
   </div>
 </template>
 
@@ -87,6 +121,7 @@ import { h, ref, defineComponent, watch, onMounted, computed, reactive } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import VideoModal from './components/VideoModal.vue'
 import ToastCapsule from './components/ToastCapsule.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import { modalState, closeVideoModal, openVideoModal, interruptModal, resumeModal } from './utils/modalState'
 import { favoriteState } from './utils/favoriteState'
 import api from './api'
@@ -105,12 +140,14 @@ const IconSettings = defineComponent({ render: () => h('svg', { viewBox: '0 0 24
 const IconInventory = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5' })]) })
 const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' })]) })
 const IconSupplement = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' }), h('circle', { cx: '12', cy: '12', r: '3' })]) })
+const IconOperations = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 3v18h18' }), h('path', { d: 'M7 15l3-3 3 2 5-7' }), h('path', { d: 'M18 7h-4' }), h('path', { d: 'M18 7v4' })]) })
 
 export default {
   name: 'App',
-  components: { VideoModal, ToastCapsule },
+  components: { VideoModal, ToastCapsule, ConfirmDialog },
   setup() {
     const sidebarCollapsed = ref(false)
+    const mobileMoreOpen = ref(false)
     const route = useRoute()
     const router = useRouter()
 
@@ -150,12 +187,14 @@ export default {
 
     // 监听路由变化，处理弹窗恢复
     watch(() => route.path, (newPath) => {
+      mobileMoreOpen.value = false
       if (newPath === modalState.openedOnRoute && modalState.interrupted) {
         resumeModal()
       }
     })
 
     const navItems = computed(() => [
+      { path: '/operations', label: '运营总览', icon: IconOperations },
       { path: '/genres', label: '个性推荐', icon: IconGenres },
       { path: '/search', label: '影片检索', icon: IconSearch },
       { path: '/parse', label: '磁链解析', icon: IconParse },
@@ -169,17 +208,23 @@ export default {
     ])
 
     const bottomNavItems = computed(() => [
+      { path: '/operations', label: '总览', icon: IconOperations },
       { path: '/genres', label: '推荐', icon: IconGenres },
       { path: '/search', label: '检索', icon: IconSearch },
-      { path: '/favorites', label: '收藏', icon: IconHeart },
-      { path: '/parse', label: '解析', icon: IconParse },
-      { path: '/subscription', label: '订阅', icon: IconStar },
-      { path: '/inventory', label: '库存', icon: IconInventory },
-      { path: '/normalize', label: '映射', icon: IconNormalize },
-      { path: '/supplement', label: '补全', icon: IconSupplement },
       { path: '/downloads', label: '下载', icon: IconHome },
-      { path: '/settings', label: '我的', icon: IconSettings },
     ])
+
+    const mobileMoreItems = computed(() => [
+      { path: '/favorites', label: '我的收藏', icon: IconHeart },
+      { path: '/parse', label: '磁链解析', icon: IconParse },
+      { path: '/subscription', label: '订阅演员', icon: IconStar },
+      { path: '/inventory', label: '库存对比', icon: IconInventory },
+      { path: '/normalize', label: '演员映射', icon: IconNormalize },
+      { path: '/supplement', label: '补全管理', icon: IconSupplement },
+      { path: '/settings', label: '设置', icon: IconSettings },
+    ])
+
+    const isMoreRoute = computed(() => mobileMoreItems.value.some(item => route.path === item.path))
 
     const handleDownload = async (magnet) => {
       try {
@@ -238,8 +283,12 @@ export default {
 
     return {
       sidebarCollapsed,
+      mobileMoreOpen,
+      IconList,
       navItems,
       bottomNavItems,
+      mobileMoreItems,
+      isMoreRoute,
       toast,
       modalState,
       closeVideoModal,
@@ -406,13 +455,19 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   color: var(--text-muted);
   text-decoration: none;
   font-size: 10px;
   font-weight: 500;
   padding: 6px 0;
+  min-height: 52px;
   transition: all 0.25s ease;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
 }
 .bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
 .bottom-nav-item:hover { color: var(--text-secondary); }
@@ -420,10 +475,86 @@ export default {
 .bottom-nav-item.active { color: var(--accent-light); }
 .bottom-nav-item.active svg { filter: drop-shadow(0 0 6px var(--accent-glow)); }
 
+.mobile-more-overlay {
+  display: none;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .bottom-nav { display: flex; }
   .main-content { padding-bottom: 70px; }
+  .mobile-more-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: flex-end;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0 12px calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-more-sheet {
+    width: 100%;
+    padding: 10px 10px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 22px;
+    background: var(--material-glass-sheet);
+    box-shadow: var(--shadow-sheet);
+  }
+  .mobile-more-grabber {
+    width: 38px;
+    height: 4px;
+    margin: 0 auto 12px;
+    border-radius: 999px;
+    background: var(--border-light);
+  }
+  .mobile-more-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mobile-more-item {
+    display: flex;
+    min-width: 0;
+    min-height: 72px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--material-glass-subtle);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .mobile-more-item svg {
+    width: 22px;
+    height: 22px;
+  }
+  .mobile-more-item.active {
+    color: var(--accent);
+    border-color: var(--border-light);
+    background: var(--material-glass-elevated);
+  }
+  .mobile-more-enter-active,
+  .mobile-more-leave-active {
+    transition: opacity 180ms var(--ease-pro);
+  }
+  .mobile-more-enter-active .mobile-more-sheet,
+  .mobile-more-leave-active .mobile-more-sheet {
+    transition: transform 220ms var(--ease-pro);
+  }
+  .mobile-more-enter-from,
+  .mobile-more-leave-to {
+    opacity: 0;
+  }
+  .mobile-more-enter-from .mobile-more-sheet,
+  .mobile-more-leave-to .mobile-more-sheet {
+    transform: translateY(16px);
+  }
 }
 </style>

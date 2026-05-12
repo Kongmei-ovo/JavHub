@@ -12,6 +12,7 @@
           v-for="tab in tabs"
           :key="tab.id"
           class="segment-item"
+          type="button"
           :class="{ active: activeTab === tab.id }"
           @click="activeTab = tab.id"
         >
@@ -22,7 +23,7 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="videoLoading" class="favorites-grid" style="opacity: 0.5;">
+    <div v-if="videoLoading" class="favorites-grid favorites-grid-loading">
       <div v-for="n in 8" :key="n" class="skeleton-card">
         <div class="skeleton-cover"></div>
         <div class="skeleton-info">
@@ -64,7 +65,7 @@
           >
             <span class="entity-name">{{ entityDisplayName(item) }}</span>
             <span class="entity-type-tag">{{ typeLabel(item.entity_type) }}</span>
-            <button class="entity-fav-btn" @click.stop="toggleFavorite(item.entity_type, item.entity_id)">
+            <button class="entity-fav-btn" type="button" @click.stop="toggleFavorite(item.entity_type, item.entity_id)">
               <svg viewBox="0 0 24 24" width="12" height="12">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
               </svg>
@@ -82,7 +83,7 @@
         </div>
         <h3>开始你的策展</h3>
         <p>在探索过程中点击心形图标，将喜欢的项目收入此处。</p>
-        <button class="btn-explore" @click="$router.push('/genres')">去探索</button>
+        <button class="btn-explore" type="button" @click="$router.push('/genres')">去探索</button>
       </div>
     </div>
   </div>
@@ -326,6 +327,10 @@ export default {
   margin-bottom: 40px;
 }
 
+.favorites-grid-loading {
+  opacity: 0.5;
+}
+
 /* ===== 非影片收藏区 ===== */
 .entity-section {
   margin-top: 20px;
@@ -486,6 +491,17 @@ export default {
   .favorites-page { padding: 40px 20px; }
   .curate-title { font-size: 32px; }
   .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
-  .segment-item { padding: 6px 14px; font-size: 12px; }
+  .segment-item {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  .entity-bubble {
+    min-height: 44px;
+  }
+  .entity-fav-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

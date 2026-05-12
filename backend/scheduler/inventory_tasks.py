@@ -205,6 +205,11 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
                     )
                     missing += 1
                     missing_total += 1
+                else:
+                    delete_key = video.get("content_id") or video.get("dvd_id") or code
+                    if delete_key:
+                        from database import delete_missing_video
+                        delete_missing_video(delete_key)
 
             update_inventory_actor_stats(emby_actor_id, total, missing)
 
@@ -300,6 +305,9 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                     reason=f"inventory_actor_compare:{snapshot_key}",
                 )
                 missing += 1
+            else:
+                from database import delete_missing_video
+                delete_missing_video(video.get("content_id") or video.get("dvd_id") or content_id)
 
         update_inventory_actor_stats(actress_id, total, missing)
         update_inventory_job(

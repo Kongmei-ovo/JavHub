@@ -2,7 +2,7 @@
   <div class="search-page">
     <!-- 顶部工具栏（仅从详情页跳转来时显示） -->
     <div v-if="$route.query.returnTo === 'video'" class="search-back-toolbar">
-      <button class="back-btn" @click="$router.back()">
+      <button class="back-btn" type="button" @click="$router.back()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
@@ -43,7 +43,7 @@
             />
           </div>
 
-          <button @click="doSearch" :disabled="loading" class="capsule-search-btn" title="开始探索">
+          <button type="button" @click="doSearch" :disabled="loading" class="capsule-search-btn" title="开始探索">
             <span v-if="loading" class="spinner"></span>
             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18">
               <circle cx="11" cy="11" r="8"/>
@@ -59,6 +59,7 @@
             <span v-else class="sort-strip-label">排序</span>
             <div class="sort-pills">
               <button
+                type="button"
                 v-for="pill in sortPills"
                 :key="pill.key"
                 class="sort-pill"
@@ -77,7 +78,7 @@
                 </svg>
               </button>
             </div>
-            <button v-if="hasSort" class="sort-clear-btn" @click="clearSort" title="清除排序">
+            <button v-if="hasSort" class="sort-clear-btn" type="button" @click="clearSort" title="清除排序">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
@@ -91,13 +92,13 @@
               </svg>
               <transition name="dropdown-fade">
                 <div v-if="versionDropdownOpen" class="select-dropdown" @mousedown.stop>
-                  <button class="select-option" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
-                  <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
+                  <button class="select-option" type="button" :class="{ selected: serviceCode === '' }" @click.stop="selectVersion('')">全部版本</button>
+                  <button v-for="sc in serviceCodeOptions" :key="sc.value" class="select-option" type="button" :class="{ selected: serviceCode === sc.value }" @click.stop="selectVersion(sc.value)">{{ sc.label }}</button>
                 </div>
               </transition>
             </div>
             <div class="bar-divider"></div>
-            <button class="filter-item toggle" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
+            <button class="filter-item toggle" type="button" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
                 <path d="M20 7h-9m14 10h-9M5 7h14M5 17h14"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>
               </svg>
@@ -147,8 +148,8 @@
               </div>
             </div>
             <div class="panel-footer">
-              <button class="btn-clear" @click="clearFilters">重置</button>
-              <button class="btn-apply" @click="applyFilters">查看结果</button>
+              <button class="btn-clear" type="button" @click="clearFilters">重置</button>
+              <button class="btn-apply" type="button" @click="applyFilters">查看结果</button>
             </div>
           </div>
         </transition>
@@ -158,11 +159,11 @@
 
     <!-- 分页控制（顶部） -->
     <div v-if="totalPages > 1" class="pagination-bar">
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <button class="page-btn" type="button" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button class="page-btn" type="button" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
         <input
           v-model.number="jumpPage"
@@ -173,7 +174,7 @@
           @keyup.enter="doJumpPage"
           :placeholder="totalPages"
         />
-        <button class="jump-btn" @click="doJumpPage">跳转</button>
+        <button class="jump-btn" type="button" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
@@ -211,11 +212,11 @@
 
     <!-- 分页控制（底部） -->
     <div v-if="totalPages > 1" class="pagination-bar">
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <button class="page-btn" type="button" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button class="page-btn" type="button" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
         <input
           v-model.number="jumpPage"
@@ -226,7 +227,7 @@
           @keyup.enter="doJumpPage"
           :placeholder="totalPages"
         />
-        <button class="jump-btn" @click="doJumpPage">跳转</button>
+        <button class="jump-btn" type="button" @click="doJumpPage">跳转</button>
       </div>
     </div>
   </div>
@@ -430,7 +431,7 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.clearSort()
+      this.clearSort({ search: false })
       this.results = []
       this.searched = false
     },
@@ -560,12 +561,12 @@ export default {
       }
       this.doSearch()
     },
-    clearSort() {
+    clearSort({ search = true } = {}) {
       this.sortState.release_date = null
       this.sortState.title_ja = null
       this.sortState.runtime_mins = null
       this.sortState.random = false
-      this.doSearch()
+      if (search) this.doSearch()
     },
     openModal(video) {
       openVideoModal(video, this.$route.path)
@@ -1121,25 +1122,6 @@ export default {
   color: var(--text-muted);
 }
 
-.btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  transition: var(--transition);
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn-ghost {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
 .spinner {
   display: inline-block;
   width: 16px;
@@ -1238,25 +1220,6 @@ export default {
   color: var(--text-muted);
 }
 
-.btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  transition: var(--transition);
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn-ghost {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
 .spinner {
   display: inline-block;
   width: 16px;
@@ -1273,10 +1236,16 @@ export default {
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
+  .search-hero {
+    padding: 44px 16px 30px;
+  }
+  .search-hero.compact {
+    padding: 20px 16px 18px;
+  }
   .results-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 16px;
-    padding: 20px;
+    padding: 20px 16px;
   }
   .panel-grid {
     grid-template-columns: 1fr;
@@ -1288,10 +1257,32 @@ export default {
     font-size: 32px;
   }
   .command-capsule {
-    padding: 4px 4px 4px 16px;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 24px;
+  }
+  .capsule-main {
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
   }
   .capsule-divider {
-    margin: 0 6px;
+    width: auto;
+    height: 1px;
+    margin: 0 8px;
+  }
+  .capsule-input {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .capsule-search-btn {
+    width: 50px;
+    height: auto;
+    min-height: 96px;
+    flex-shrink: 0;
+    border-radius: 18px;
   }
   .sort-strip {
     flex-direction: column;
@@ -1300,6 +1291,47 @@ export default {
   }
   .sort-strip-left, .sort-strip-right {
     justify-content: center;
+  }
+  .sort-strip-left {
+    align-items: center;
+  }
+  .sort-pills {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .sort-pill,
+  .filter-item,
+  .sort-clear-btn {
+    min-height: 44px;
+  }
+  .sort-clear-btn {
+    width: 44px;
+  }
+  .advanced-panel {
+    position: static;
+    margin-top: 12px;
+    padding: 18px;
+    border-radius: 18px;
+  }
+  .panel-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+  }
+  .btn-clear,
+  .btn-apply {
+    min-height: 44px;
+    flex: 1;
+  }
+  .pagination-bar {
+    flex-wrap: wrap;
+  }
+  .page-btn,
+  .jump-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .jump-input {
+    min-height: 44px;
   }
 }
 </style>

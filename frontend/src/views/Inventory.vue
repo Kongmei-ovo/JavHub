@@ -9,14 +9,14 @@
               class="progress-ring-bg"
               cx="20" cy="20" r="16"
               fill="none"
-              stroke="#eee"
+              stroke="var(--border)"
               stroke-width="3"
             />
             <circle
               class="progress-ring-fill"
               cx="20" cy="20" r="16"
               fill="none"
-              stroke="#1890ff"
+              stroke="var(--accent)"
               stroke-width="3"
               :stroke-dasharray="100"
               :stroke-dashoffset="100 - currentProgress"
@@ -25,13 +25,13 @@
           </svg>
           <span class="progress-text">{{ currentProgress }}%</span>
         </div>
-        <button @click="triggerCollect" class="btn-primary" :disabled="collecting || running">
+        <button type="button" @click="triggerCollect" class="btn btn-primary" :disabled="collecting || running">
           {{ collecting ? '采集中...' : '采集Emby数据' }}
         </button>
-        <button @click="triggerFullJob" class="btn-secondary" :disabled="running || collecting" :class="{ 'btn-disabled': !snapshotKey }">
+        <button type="button" @click="triggerFullJob" class="btn btn-ghost" :disabled="running || collecting" :class="{ 'btn-disabled': !snapshotKey }">
           {{ running ? '对比中...' : '全量对比' }}
         </button>
-        <button @click="showJobs = true; fetchJobs()" class="btn-ghost">作业历史</button>
+        <button type="button" @click="showJobs = true; fetchJobs()" class="btn btn-ghost">作业历史</button>
       </div>
     </div>
 
@@ -44,8 +44,8 @@
         · 映射建议 {{ mappingSummary.candidate || 0 }}
         · 候选 {{ candidateStats.candidate || 0 }}
       </span>
-      <button class="inline-link" @click="$router.push('/normalize')">处理未映射演员</button>
-      <button class="inline-link" @click="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })">查看候选</button>
+      <button type="button" class="inline-link" @click="$router.push('/normalize')">处理未映射演员</button>
+      <button type="button" class="inline-link" @click="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })">查看候选</button>
     </div>
     <div v-else class="snapshot-warn">
       尚未采集 Emby 数据，请先点击「采集Emby数据」
@@ -64,7 +64,7 @@
           class="search-input"
           @input="onSearchInput"
         />
-        <button v-if="searchKeyword" class="search-clear" @click="clearSearch">×</button>
+        <button v-if="searchKeyword" type="button" class="search-clear" @click="clearSearch">×</button>
       </div>
       <div class="filter-controls">
         <div class="sort-control">
@@ -97,11 +97,11 @@
 
     <!-- 顶部分页 -->
     <div v-if="!loadingActors && totalPages > 1" class="pagination-bar pagination-bar-top">
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
         <input
           v-model.number="jumpPage"
@@ -111,7 +111,7 @@
           :max="totalPages"
           @keyup.enter="doJumpPage"
         />
-        <button class="jump-btn" @click="doJumpPage">跳转</button>
+        <button type="button" class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
@@ -164,11 +164,11 @@
 
     <!-- 底部分页 -->
     <div v-if="!loadingActors && totalPages > 1" class="pagination-bar pagination-bar-bottom">
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
-      <button class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+      <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
+      <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
-      <button class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
+      <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
+      <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
         <input
           v-model.number="jumpPage"
@@ -178,7 +178,7 @@
           :max="totalPages"
           @keyup.enter="doJumpPage"
         />
-        <button class="jump-btn" @click="doJumpPage">跳转</button>
+        <button type="button" class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
@@ -225,7 +225,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 const showJobs = ref(false)
 
@@ -319,20 +321,26 @@ const fetchMappingSummary = async () => {
 }
 
 const triggerCollect = async () => {
-  if (!confirm('确定要采集 Emby 数据吗？这会拉取全量媒体库信息。')) return
+  const confirmed = await requestConfirm({
+    title: '采集 Emby 数据',
+    message: '确定要采集 Emby 数据吗？',
+    details: '这会拉取全量媒体库信息，期间库存对比按钮会暂时不可用。',
+    confirmText: '开始采集'
+  })
+  if (!confirmed) return
   collecting.value = true
   try {
     await axios.post('/api/inventory/jobs/trigger', { job_type: 'collect' })
     pollJobStatus('collect')
   } catch (e) {
-    alert('触发失败: ' + e.message)
+    ElMessage.error('触发失败: ' + e.message)
     collecting.value = false
   }
 }
 
 const triggerFullJob = async () => {
   if (!snapshotKey.value) {
-    alert('请先采集 Emby 数据')
+    ElMessage.warning('请先采集 Emby 数据')
     return
   }
   running.value = true
@@ -434,24 +442,21 @@ const fetchJobs = async () => {
 </script>
 
 <style scoped>
-.inventory-page { padding: 16px; }
+.inventory-page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+}
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
 }
-.header-actions { display: flex; gap: 8px; }
-.btn-primary {
-  background: var(--accent); color: #fff; border: none;
-  padding: 8px 16px; border-radius: 4px; cursor: pointer;
-}
-.btn-primary:disabled { background: var(--border); cursor: not-allowed; }
-.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-ghost {
-  background: none; color: var(--text-secondary); border: 1px solid var(--border);
-  padding: 8px 16px; border-radius: 4px; cursor: pointer;
-}
+.page-header h1 { font-size: 30px; line-height: 1.1; }
+.header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .progress-ring-container {
   position: relative;
   width: 40px;
@@ -469,13 +474,17 @@ const fetchJobs = async () => {
   z-index: 1;
   font-size: 9px;
   font-weight: bold;
-  color: #1890ff;
+  color: var(--accent);
 }
 .btn-disabled { opacity: 0.5; cursor: not-allowed; }
 .snapshot-info {
-  background: #f6ffed; border: 1px solid #b7eb8f;
-  padding: 8px 16px; border-radius: 4px; margin-bottom: 16px;
-  font-size: 13px; color: #52c41a;
+  background: var(--badge-success-bg);
+  border: 1px solid var(--badge-success-border);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--badge-success-text);
 }
 .inline-link {
   margin-left: 10px;
@@ -487,9 +496,13 @@ const fetchJobs = async () => {
   text-decoration: underline;
 }
 .snapshot-warn {
-  background: #fff2e8; border: 1px solid #ffbb96;
-  padding: 8px 16px; border-radius: 4px; margin-bottom: 16px;
-  font-size: 13px; color: #fa8c16;
+  background: var(--badge-warning-bg);
+  border: 1px solid var(--badge-warning-border);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--badge-warning-text);
 }
 
 /* 搜索过滤栏 */
@@ -506,7 +519,7 @@ const fetchJobs = async () => {
   align-items: center;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   padding: 0 12px;
   flex: 1;
   max-width: 320px;
@@ -517,7 +530,7 @@ const fetchJobs = async () => {
 .search-icon {
   width: 18px;
   height: 18px;
-  color: #999;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 .search-input {
@@ -532,7 +545,7 @@ const fetchJobs = async () => {
 .search-clear {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 18px;
   padding: 0 4px;
@@ -558,7 +571,7 @@ const fetchJobs = async () => {
 .filter-select {
   padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   color: var(--text-primary);
   font-size: 13px;
@@ -567,6 +580,14 @@ const fetchJobs = async () => {
 .filter-select:focus {
   outline: none;
   border-color: var(--accent);
+}
+.filter-select,
+.search-input,
+.search-clear {
+  min-height: 44px;
+}
+.search-clear {
+  min-width: 44px;
 }
 
 .result-bar {
@@ -587,14 +608,14 @@ const fetchJobs = async () => {
 }
 .actor-card {
   background: var(--bg-card);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .actor-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-card);
 }
 .actor-cover {
   position: relative;
@@ -615,8 +636,9 @@ const fetchJobs = async () => {
   position: absolute;
   top: 6px;
   right: 6px;
-  background: #ff4d4f;
-  color: #fff;
+  background: var(--badge-error-bg);
+  border: 1px solid var(--badge-error-border);
+  color: var(--badge-error-text);
   font-size: 11px;
   font-weight: bold;
   padding: 2px 6px;
@@ -637,15 +659,15 @@ const fetchJobs = async () => {
 }
 .actor-stats {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
 }
-.missing-tag { color: #ff4d4f; }
-.unmapped-tag { color: #fa8c16; }
+.missing-tag { color: var(--badge-error-text); }
+.unmapped-tag { color: var(--badge-warning-text); }
 .failed-tag,
-.job-error { color: #ff4d4f; }
+.job-error { color: var(--badge-error-text); }
 .job-error { font-size: 12px; margin-top: 4px; }
-.loading, .error, .empty { text-align: center; padding: 40px; color: #666; }
-.error { color: #ff4d4f; }
+.loading, .error, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }
+.error { color: var(--badge-error-text); }
 
 /* 骨架屏 */
 .skeleton-cover {
@@ -665,7 +687,7 @@ const fetchJobs = async () => {
 }
 .skeleton-line {
   height: 12px;
-  background: #f0f0f0;
+  background: var(--surface-card-hover);
   border-radius: 6px;
   margin-bottom: 6px;
 }
@@ -692,7 +714,7 @@ const fetchJobs = async () => {
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 5px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
@@ -720,7 +742,7 @@ const fetchJobs = async () => {
   width: 50px;
   padding: 4px 6px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   text-align: center;
   background: var(--bg-card);
@@ -735,7 +757,7 @@ const fetchJobs = async () => {
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
@@ -753,32 +775,53 @@ const fetchJobs = async () => {
   align-items: center;
   padding: 12px 16px;
   background: var(--bg-card);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 .job-type { font-weight: bold; }
-.job-meta { font-size: 12px; color: #999; margin-top: 4px; display: flex; gap: 12px; }
+.job-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 12px; }
 .job-stats { display: flex; gap: 12px; font-size: 13px; }
 
 .dialog-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.62); display: flex; align-items: center; justify-content: center;
   z-index: 1000;
 }
 .jobs-dialog {
-  background: var(--bg-card); border-radius: 8px; width: 600px; max-height: 80vh;
+  background: var(--material-glass-sheet); border: 1px solid var(--border); border-radius: var(--radius-lg); width: min(600px, calc(100vw - 32px)); max-height: 80vh;
   display: flex; flex-direction: column;
 }
 .dialog-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 20px; border-bottom: 1px solid #eee;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
 }
 .dialog-header h3 { margin: 0; }
 .close-btn {
-  background: none; border: none; font-size: 24px; cursor: pointer; color: #999;
+  background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);
 }
 .jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }
 
 @media (max-width: 768px) {
+  .inventory-page { padding: 20px 16px 40px; }
+  .page-header {
+    align-items: flex-start;
+  }
+  .page-header h1 {
+    max-width: 112px;
+    overflow-wrap: anywhere;
+  }
+  .header-actions {
+    flex: 1;
+    justify-content: flex-end;
+  }
+  .header-actions .btn {
+    min-width: 64px;
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+  .snapshot-info,
+  .snapshot-warn {
+    line-height: 1.65;
+  }
   .filter-bar {
     flex-direction: column;
     align-items: stretch;
@@ -788,6 +831,25 @@ const fetchJobs = async () => {
   }
   .filter-controls {
     justify-content: space-between;
+  }
+  .inline-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-left: 0;
+    margin-right: 10px;
+  }
+  .pagination-bar {
+    flex-wrap: wrap;
+  }
+  .page-btn,
+  .jump-btn,
+  .jump-input {
+    min-height: 44px;
+  }
+  .page-btn,
+  .jump-btn {
+    min-width: 44px;
   }
   .actors-grid {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

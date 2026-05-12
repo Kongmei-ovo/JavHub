@@ -19,6 +19,17 @@ crawler:
 scheduler:
   subscription_check_hour: 2
 
+automation:
+  download_policy: manual # manual | rules | auto
+  candidate_sources:
+    - subscription
+    - inventory
+    - supplement
+  rules_require_magnet: true
+  auto_process_interval_minutes: 30
+  max_auto_downloads_per_run: 20
+  max_auto_downloads_per_24h: 100
+
 notification:
   enabled: false
   telegram: true

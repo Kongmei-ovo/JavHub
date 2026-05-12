@@ -3,7 +3,7 @@
     <!-- 顶部工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <button class="back-btn" @click="handleBack">
+        <button class="back-btn" type="button" @click="handleBack">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
@@ -15,6 +15,7 @@
         </h2>
         <button
           class="entity-fav-btn"
+          type="button"
           :class="{ 'is-active': isEntityFavorited }"
           @click="toggleEntityFavorite"
           :title="isEntityFavorited ? '取消收藏' : '收藏'"
@@ -27,6 +28,7 @@
         <button
           v-if="type === 'actress'"
           class="entity-sub-btn"
+          type="button"
           :class="{ 'is-active': isEntitySubscribed }"
           @click="toggleEntitySubscription"
           :title="isEntitySubscribed ? '取消订阅' : '订阅'"
@@ -49,6 +51,7 @@
             :key="pill.key"
             class="sort-pill"
             :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
+            type="button"
             @click="cycleSort(pill.key)"
           >
             <span class="pill-label">{{ pill.label }}</span>
@@ -78,7 +81,7 @@
           </transition>
         </div>
         <div class="bar-divider"></div>
-        <button class="chronicle-btn" :class="{ active: chronicleMode }" @click="toggleChronicle" title="年份编年视图">
+        <button class="chronicle-btn" type="button" :class="{ active: chronicleMode }" @click="toggleChronicle" title="年份编年视图">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
@@ -419,10 +422,10 @@ export default {
 .genre-detail-page { min-height: 100vh; background: var(--bg-primary); }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; max-width: 1400px; margin: 0 auto; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.back-btn { display: flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: var(--transition); flex-shrink: 0; }
+.back-btn { display: flex; align-items: center; gap: 4px; min-height: 44px; background: none; border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: var(--transition); flex-shrink: 0; }
 .back-btn:hover { border-color: var(--accent); color: var(--accent); }
 .entity-fav-btn {
-  width: 32px; height: 32px; border-radius: 50%; background: var(--bg-card);
+  width: 44px; height: 44px; border-radius: 50%; background: var(--bg-card);
   border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
   color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
   flex-shrink: 0; padding: 0;
@@ -435,6 +438,8 @@ export default {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   color: var(--text-muted);
   display: flex;
@@ -455,11 +460,12 @@ export default {
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
 .result-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1400px; margin: 0 auto; position: relative; z-index: 50; }
 .result-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.result-bar-right { display: flex; align-items: center; gap: 10px; }
+.result-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .bar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
 .sort-pills { display: flex; gap: 6px; }
 .sort-pill {
   display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px;
   padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
   border-radius: 20px; color: var(--text-secondary); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.25s cubic-bezier(0.23,1,0.32,1); user-select: none;
@@ -473,6 +479,7 @@ export default {
 .pill-arrow, .pill-check { opacity: 0.8; flex-shrink: 0; }
 .chronicle-btn {
   display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px;
   padding: 6px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
   border-radius: 20px; color: var(--text-muted); font-size: 12px;
   cursor: pointer; transition: all 0.25s; user-select: none;
@@ -485,6 +492,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 44px;
   padding: 6px 10px;
   background: var(--bg-card);
   border: 1px solid var(--border);

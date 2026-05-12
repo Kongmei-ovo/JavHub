@@ -1,7 +1,7 @@
 <template>
   <div class="actor-page">
     <div class="actor-header">
-      <button class="back-btn" @click="$router.back()">← 返回</button>
+      <button class="back-btn" type="button" @click="$router.back()">← 返回</button>
       <ActressAvatar :name="actor.display_name || actor.actress_name" :avatarUrl="actor.avatar_url" :size="100" />
       <h2>{{ actor.display_name || actor.actress_name }}</h2>
       <div class="stats">
@@ -12,7 +12,7 @@
           已映射到 JavInfo：{{ actor.actor_mapping?.javinfo_actress_name || actor.actor_mapping?.javinfo_actress_id }}
         </span>
         <span v-else>未映射到 JavInfo，库存对比会跳过这个演员</span>
-        <button class="mapping-link" @click="$router.push('/normalize')">处理映射</button>
+        <button class="mapping-link" type="button" @click="$router.push('/normalize')">处理映射</button>
       </div>
     </div>
 
@@ -20,6 +20,7 @@
     <div class="tab-bar">
       <button
         class="tab-btn"
+        type="button"
         :class="{ active: activeTab === 'emby' }"
         @click="activeTab = 'emby'; loadEmbyVideos()"
       >
@@ -27,6 +28,7 @@
       </button>
       <button
         class="tab-btn"
+        type="button"
         :class="{ active: activeTab === 'missing' }"
         @click="activeTab = 'missing'"
       >
@@ -86,7 +88,7 @@
               :releaseDate="video.release_date || ''"
               @click="showDetail(video)"
             />
-            <button class="candidate-btn" @click.stop="createCandidate(video)">
+            <button class="candidate-btn" type="button" @click.stop="createCandidate(video)">
               转为候选
             </button>
           </div>
@@ -96,7 +98,7 @@
         暂无缺失影片
       </div>
       <div v-else class="candidate-link">
-        <button class="back-btn" @click="viewInventoryCandidates">查看库存下载候选</button>
+        <button class="back-btn" type="button" @click="viewInventoryCandidates">查看库存下载候选</button>
       </div>
     </template>
   </div>
@@ -285,8 +287,9 @@ onMounted(async () => {
   gap: 12px; margin-bottom: 24px;
 }
 .back-btn {
-  align-self: flex-start; background: none; border: none;
+  align-self: flex-start; min-height: 44px; background: none; border: none;
   color: #1890ff; cursor: pointer; font-size: 14px;
+  padding: 0 8px;
 }
 .stats { color: #666; font-size: 14px; }
 .mapping-banner {
@@ -312,6 +315,8 @@ onMounted(async () => {
   color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
+  min-height: 44px;
+  padding: 0 6px;
 }
 
 /* Tab 样式 */
@@ -320,7 +325,7 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 .tab-btn {
-  padding: 8px 20px; background: none; border: none;
+  min-height: 44px; padding: 8px 20px; background: none; border: none;
   border-bottom: 2px solid transparent; margin-bottom: -2px;
   cursor: pointer; font-size: 14px; color: var(--text-secondary);
   transition: all 0.2s;
@@ -373,6 +378,7 @@ onMounted(async () => {
   background: var(--bg-card);
   color: var(--text-primary);
   padding: 7px 10px;
+  min-height: 44px;
   cursor: pointer;
   font-size: 12px;
 }

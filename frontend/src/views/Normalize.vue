@@ -5,7 +5,7 @@
         <h1>演员映射</h1>
         <p>把 Emby 演员确认到 JavInfo 演员，库存对比只使用已确认映射。</p>
       </div>
-      <button class="btn-primary" @click="reloadAll">刷新</button>
+      <button type="button" class="btn btn-primary" @click="reloadAll">刷新</button>
     </div>
 
     <div class="summary-row">
@@ -28,17 +28,17 @@
     </div>
 
     <div class="tab-bar">
-      <button class="tab-btn" :class="{ active: activeTab === 'unmapped' }" @click="activeTab = 'unmapped'">未映射演员</button>
-      <button class="tab-btn" :class="{ active: activeTab === 'candidate' }" @click="activeTab = 'candidate'">建议候选</button>
-      <button class="tab-btn" :class="{ active: activeTab === 'confirmed' }" @click="activeTab = 'confirmed'">已确认映射</button>
-      <button class="tab-btn" :class="{ active: activeTab === 'ignored' }" @click="activeTab = 'ignored'">已忽略</button>
+      <button type="button" class="tab-btn" :class="{ active: activeTab === 'unmapped' }" @click="activeTab = 'unmapped'">未映射演员</button>
+      <button type="button" class="tab-btn" :class="{ active: activeTab === 'candidate' }" @click="activeTab = 'candidate'">建议候选</button>
+      <button type="button" class="tab-btn" :class="{ active: activeTab === 'confirmed' }" @click="activeTab = 'confirmed'">已确认映射</button>
+      <button type="button" class="tab-btn" :class="{ active: activeTab === 'ignored' }" @click="activeTab = 'ignored'">已忽略</button>
     </div>
 
     <div v-if="activeTab === 'unmapped'" class="panel">
       <div class="filter-bar">
         <input v-model="search" class="search-input" placeholder="搜索 Emby 演员" @keyup.enter="loadUnmapped" />
-        <button class="btn-secondary" @click="loadUnmapped">搜索</button>
-        <button class="btn-primary" :disabled="generatingCandidates" @click="generateCandidates">
+        <button type="button" class="btn btn-ghost" @click="loadUnmapped">搜索</button>
+        <button type="button" class="btn btn-primary" :disabled="generatingCandidates" @click="generateCandidates">
           {{ generatingCandidates ? '生成中...' : '生成建议' }}
         </button>
       </div>
@@ -65,8 +65,8 @@
                 :placeholder="`搜索 JavInfo：${actor.emby_actor_name}`"
                 @keyup.enter="searchJavInfo(actor)"
               />
-              <button class="btn-secondary" @click="searchJavInfo(actor)">查找</button>
-              <button class="btn-ghost" @click="ignoreActor(actor)">忽略</button>
+              <button type="button" class="btn btn-ghost" @click="searchJavInfo(actor)">查找</button>
+              <button type="button" class="btn btn-ghost" @click="ignoreActor(actor)">忽略</button>
             </div>
             <div v-if="suggestedMappings(actor).length" class="suggestion-block">
               <div class="suggestion-title">名称匹配建议</div>
@@ -77,8 +77,8 @@
               >
                 <span>{{ candidate.javinfo_actress_name || candidate.javinfo_actress_id }}</span>
                 <small>ID {{ candidate.javinfo_actress_id }} · 置信 {{ confidenceText(candidate.confidence) }}</small>
-                <button class="btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
-                <button class="btn-ghost" @click="ignoreCandidate(actor, candidate)">忽略</button>
+                <button type="button" class="btn btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
+                <button type="button" class="btn btn-ghost" @click="ignoreCandidate(actor, candidate)">忽略</button>
               </div>
             </div>
             <div v-if="candidateResults[actor.emby_actor_id]?.length" class="javinfo-results">
@@ -89,7 +89,7 @@
               >
                 <span>{{ candidate.name_kanji || candidate.name_romaji || candidate.name || candidate.id }}</span>
                 <small>ID {{ candidate.id }} · {{ candidate.movie_count || 0 }} 部</small>
-                <button class="btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
+                <button type="button" class="btn btn-primary" @click="confirmMapping(actor, candidate)">确认</button>
               </div>
             </div>
           </div>
@@ -112,9 +112,9 @@
             <small v-if="mapping.status === 'candidate'">置信 {{ confidenceText(mapping.confidence) }} · {{ mapping.source }}</small>
           </div>
           <span class="status-pill">{{ mapping.status }}</span>
-          <button v-if="mapping.status === 'candidate'" class="btn-primary" @click="confirmMapping(mappingActor(mapping), mapping)">确认</button>
-          <button v-if="mapping.status === 'candidate'" class="btn-ghost" @click="ignoreCandidate(mappingActor(mapping), mapping)">忽略</button>
-          <button class="btn-ghost" @click="deleteMapping(mapping.id)">解除</button>
+          <button v-if="mapping.status === 'candidate'" type="button" class="btn btn-primary" @click="confirmMapping(mappingActor(mapping), mapping)">确认</button>
+          <button v-if="mapping.status === 'candidate'" type="button" class="btn btn-ghost" @click="ignoreCandidate(mappingActor(mapping), mapping)">忽略</button>
+          <button type="button" class="btn btn-ghost" @click="deleteMapping(mapping.id)">解除</button>
         </div>
       </div>
     </div>
@@ -264,14 +264,18 @@ onMounted(reloadAll)
 </script>
 
 <style scoped>
-.mapping-page { padding: 16px; }
+.mapping-page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+}
 .page-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
 }
-.page-header h1 { margin: 0; font-size: 22px; }
+.page-header h1 { margin: 0; font-size: 30px; line-height: 1.1; }
 .page-header p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; }
 .summary-row {
   display: grid;
@@ -282,12 +286,12 @@ onMounted(reloadAll)
 .summary-card {
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 .summary-card strong { display: block; font-size: 24px; color: var(--text-primary); }
 .summary-card span { color: var(--text-secondary); font-size: 13px; }
-.tab-bar { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tab-bar { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
 .tab-btn {
   border: 0;
   border-bottom: 2px solid transparent;
@@ -303,7 +307,7 @@ onMounted(reloadAll)
   min-width: 0;
   flex: 1;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   color: var(--text-primary);
   padding: 8px 10px;
@@ -315,7 +319,7 @@ onMounted(reloadAll)
   gap: 16px;
   padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 .actor-side { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -324,7 +328,7 @@ onMounted(reloadAll)
   height: 64px;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg-secondary);
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -341,7 +345,7 @@ onMounted(reloadAll)
   align-items: center;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.03);
 }
 .mapping-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto auto auto; margin-bottom: 8px; }
@@ -354,23 +358,22 @@ onMounted(reloadAll)
   color: var(--text-secondary);
   font-size: 12px;
 }
-.btn-primary,
-.btn-secondary,
-.btn-ghost {
-  border-radius: 6px;
+.btn {
   padding: 8px 12px;
-  cursor: pointer;
   white-space: nowrap;
+  min-height: 44px;
 }
-.btn-primary { border: 0; background: var(--accent); color: #fff; }
-.btn-secondary { border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); }
-.btn-ghost { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
 .empty { padding: 40px 12px; text-align: center; color: var(--text-secondary); }
 @media (max-width: 760px) {
+  .mapping-page { padding: 20px 16px 40px; }
   .summary-row,
   .mapping-card { grid-template-columns: 1fr; }
   .candidate-search,
   .filter-bar { flex-direction: column; }
   .mapping-row { grid-template-columns: 1fr; }
+  .tab-btn,
+  .search-input {
+    min-height: 44px;
+  }
 }
 </style>

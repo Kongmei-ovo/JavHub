@@ -4,7 +4,7 @@
       <h3>{{ title }}</h3>
       <p>{{ description }}</p>
     </div>
-    <button v-if="retryLabel" @click="$emit('retry')">{{ retryLabel }}</button>
+    <button v-if="retryLabel" type="button" @click="$emit('retry')">{{ retryLabel }}</button>
   </div>
 </template>
 
@@ -42,7 +42,7 @@ p {
 }
 
 button {
-  min-height: 36px;
+  min-height: var(--touch-target);
   padding: 0 14px;
   border-radius: var(--radius-control);
   border: 1px solid var(--border-light);

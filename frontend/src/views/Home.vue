@@ -15,21 +15,21 @@
         </p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" @click="$router.push('/search')">
+        <button class="btn btn-ghost" type="button" @click="$router.push('/search')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
             <circle cx="11" cy="11" r="8"/>
             <path d="m21 21-4.35-4.35"/>
           </svg>
           搜索影片
         </button>
-        <button class="btn btn-ghost" @click="$router.push('/genres')">
+        <button class="btn btn-ghost" type="button" @click="$router.push('/genres')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
             <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
           </svg>
           浏览分类
         </button>
-        <button class="btn btn-primary" @click="loadTasks">
+        <button class="btn btn-primary" type="button" @click="loadTasks">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
@@ -126,8 +126,8 @@
     </div>
 
     <div class="download-tabs">
-      <button class="tab-btn" :class="{ active: activeTab === 'tasks' }" @click="activeTab = 'tasks'">真实任务</button>
-      <button class="tab-btn" :class="{ active: activeTab === 'candidates' }" @click="activeTab = 'candidates'; loadCandidates()">
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="activeTab = 'tasks'">真实任务</button>
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'candidates' }" @click="openCandidateTab">
         下载候选
         <span v-if="candidateStats.candidate" class="tab-badge">{{ candidateStats.candidate }}</span>
       </button>
@@ -159,7 +159,7 @@
           <!-- 下载进度条 -->
           <div v-if="task.status === 'downloading'" class="progress-overlay">
             <div class="progress-bar">
-              <div class="progress-bar-fill" style="width: 60%"></div>
+              <div class="progress-bar-fill progress-bar-fill-demo"></div>
             </div>
           </div>
         </div>
@@ -177,15 +177,17 @@
           <button
             v-if="task.status === 'failed'"
             class="btn btn-primary"
+            type="button"
+            :disabled="retryingTasks[task.id]"
             @click="retry(task)"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
               <polyline points="23 4 23 10 17 10"/>
               <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
             </svg>
-            重试
+            {{ retryingTasks[task.id] ? '重试中...' : '重试' }}
           </button>
-          <button class="btn btn-ghost" @click="remove(task.id)">
+          <button class="btn btn-ghost" type="button" @click="remove(task.id)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -204,35 +206,81 @@
           placeholder="搜索番号、标题、演员"
           @keyup.enter="loadCandidates"
         />
-        <button class="chip" @click="loadCandidates">搜索</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'sent' }" @click="setCandidateStatus('sent')">已下发</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
-        <button class="chip" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
-        <button class="chip" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
-        <button class="chip" :class="{ active: candidateFilter.source === 'subscription' }" @click="setCandidateSource('subscription')">
+        <button class="chip" type="button" @click="loadCandidates">搜索</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'sent' }" @click="setCandidateStatus('sent')">已下发</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
+        <button class="chip" type="button" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
+        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'subscription' }" @click="setCandidateSource('subscription')">
           订阅 {{ candidateStats.by_source?.subscription || 0 }}
         </button>
-        <button class="chip" :class="{ active: candidateFilter.source === 'inventory' }" @click="setCandidateSource('inventory')">
+        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'inventory' }" @click="setCandidateSource('inventory')">
           库存 {{ candidateStats.by_source?.inventory || 0 }}
         </button>
-        <button class="chip" :class="{ active: candidateFilter.source === 'supplement' }" @click="setCandidateSource('supplement')">
+        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'supplement' }" @click="setCandidateSource('supplement')">
           补全 {{ candidateStats.by_source?.supplement || 0 }}
         </button>
-        <button class="chip" :class="{ active: !candidateFilter.source }" @click="setCandidateSource('')">全部来源</button>
-        <button class="chip" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
+        <button class="chip" type="button" :class="{ active: !candidateFilter.source }" @click="setCandidateSource('')">全部来源</button>
+        <button class="chip" type="button" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
           {{ selectingCandidates ? '退出选择' : '选择' }}
+        </button>
+        <button class="chip action-chip" type="button" :disabled="candidateBatchProcessing" @click="enrichVisibleCandidateMagnets">
+          {{ candidateBatchProcessing === 'enrich' ? '补磁力中...' : '补当前磁力' }}
+        </button>
+        <button class="chip action-chip primary" type="button" :disabled="candidateBatchProcessing" @click="processVisibleCandidates">
+          {{ candidateBatchProcessing === 'dry-run' ? '预演中...' : (candidateBatchProcessing === 'process' ? '处理中...' : '按策略处理当前') }}
         </button>
       </div>
 
       <div v-if="selectingCandidates" class="bulk-toolbar">
         <span>已选 {{ selectedCandidateIds.length }} 个</span>
-        <button class="btn btn-ghost" @click="selectAllVisibleCandidates">选择当前页</button>
-        <button class="btn btn-ghost" @click="clearCandidateSelection">清空</button>
-        <button class="btn btn-ghost" :disabled="selectedCandidateIds.length === 0" @click="bulkRejectCandidates">批量拒绝</button>
-        <button class="btn btn-primary" :disabled="selectedCandidateIds.length === 0" @click="bulkRestoreCandidates">批量恢复</button>
+        <button class="btn btn-ghost" type="button" @click="selectAllVisibleCandidates">选择当前页</button>
+        <button class="btn btn-ghost" type="button" @click="clearCandidateSelection">清空</button>
+        <button class="btn btn-ghost" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="bulkRejectCandidates">批量拒绝</button>
+        <button class="btn btn-primary" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="bulkRestoreCandidates">批量恢复</button>
+      </div>
+
+      <div class="candidate-run-panel">
+        <div class="candidate-run-head">
+          <div>
+            <strong>最近处理</strong>
+            <span>复用批处理筛选，快速回收失败项</span>
+          </div>
+          <button class="link-btn" type="button" :disabled="candidateRunsLoading" @click="loadCandidateRuns">
+            {{ candidateRunsLoading ? '刷新中...' : '刷新记录' }}
+          </button>
+        </div>
+        <div v-if="candidateRuns.length" class="candidate-run-list">
+          <div v-for="run in candidateRuns" :key="run.id" class="candidate-run-row">
+            <div class="candidate-run-main">
+              <strong>{{ candidateRunPolicyLabel(run.policy) }}</strong>
+              <span>{{ candidateRunTriggerLabel(run.trigger_source) }} · {{ formatTime(run.created_at) }}</span>
+            </div>
+            <div class="candidate-run-stats">
+              <span>处理 {{ run.total || 0 }}</span>
+              <span>下发 {{ run.sent || 0 }}</span>
+              <span>失败 {{ run.failed || 0 }}</span>
+              <span>跳过 {{ run.skipped || 0 }}</span>
+            </div>
+            <div class="candidate-run-actions">
+              <button class="link-btn" type="button" @click="applyCandidateRunFilters(run)">套用筛选</button>
+              <button v-if="run.failed" class="link-btn danger" type="button" @click="applyCandidateRunFilters(run, { status: 'failed' })">失败队列</button>
+              <button
+                v-if="run.failed"
+                class="link-btn danger"
+                type="button"
+                :disabled="candidateBatchProcessing"
+                @click="retryFailedCandidateRun(run)"
+              >
+                重试失败
+              </button>
+            </div>
+          </div>
+        </div>
+        <small v-else class="candidate-run-empty">暂无处理记录</small>
       </div>
 
       <div v-if="filteredCandidates.length > 0" class="tasks-grid">
@@ -286,17 +334,24 @@
               最近动作 {{ candidate.events[0].action }}
             </div>
             <div class="candidate-context-actions">
+              <button class="link-btn" type="button" @click="openCandidateDetail(candidate)">详情</button>
               <button v-if="candidate.actress_id" class="link-btn" type="button" @click="goCandidateActor(candidate)">演员</button>
               <button v-if="candidate.source === 'supplement' && candidate.actress_id" class="link-btn" type="button" @click="goCandidateSupplement(candidate)">补全</button>
             </div>
           </div>
 
           <div class="task-actions">
-            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-ghost" @click="editCandidateMagnet(candidate)">填磁力</button>
-            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" @click="approveCandidate(candidate)">
-              {{ candidate.status === 'failed' ? '重试' : '批准' }}
+            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="editCandidateMagnet(candidate)">填磁力</button>
+            <button v-if="(candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="enrichCandidateMagnet(candidate)">
+              {{ candidateMutations[candidate.id] === 'enrich' ? '查找中...' : '补磁力' }}
             </button>
-            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" @click="rejectCandidate(candidate)">拒绝</button>
+            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="approveCandidate(candidate)">
+              {{ candidateMutations[candidate.id] === 'approve' ? '处理中...' : (candidate.status === 'failed' ? '重试' : '批准') }}
+            </button>
+            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="processCandidate(candidate)">
+              {{ candidateMutations[candidate.id] === 'process' ? '处理中...' : '策略处理' }}
+            </button>
+            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="rejectCandidate(candidate)">拒绝</button>
           </div>
         </div>
       </div>
@@ -308,7 +363,7 @@
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         <p>暂无下载候选</p>
-        <p class="text-secondary" style="font-size:13px;margin-top:6px">订阅检查和库存对比会把缺失影片写到这里</p>
+        <p class="text-secondary empty-state-hint">订阅检查和库存对比会把缺失影片写到这里</p>
       </div>
     </div>
 
@@ -320,13 +375,78 @@
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       <p>暂无{{ filterStatus ? statusLabel(filterStatus) : '' }}任务</p>
-      <p class="text-secondary" style="font-size:13px;margin-top:6px">去搜索页面添加下载吧</p>
+      <p class="text-secondary empty-state-hint">去搜索页面添加下载吧</p>
+    </div>
+
+    <div v-if="magnetEditor.open" class="inline-dialog-overlay" @click.self="closeMagnetEditor">
+      <div class="inline-dialog">
+        <div class="inline-dialog-header">
+          <div>
+            <h2>填磁力</h2>
+            <p>{{ magnetEditor.candidate?.dvd_id || magnetEditor.candidate?.content_id || '下载候选' }}</p>
+          </div>
+          <button class="dialog-close-btn" type="button" @click="closeMagnetEditor">×</button>
+        </div>
+        <textarea
+          v-model="magnetEditor.value"
+          class="magnet-editor-input"
+          placeholder="magnet:?xt=urn:btih:..."
+          @keyup.meta.enter="submitMagnetEditor"
+          @keyup.ctrl.enter="submitMagnetEditor"
+        ></textarea>
+        <div class="inline-dialog-actions">
+          <button class="btn btn-ghost" type="button" @click="closeMagnetEditor">取消</button>
+          <button
+            class="btn btn-primary"
+            type="button"
+            :disabled="!magnetEditor.value.trim() || isCandidateMutating(magnetEditor.candidate?.id)"
+            @click="submitMagnetEditor"
+          >
+            {{ isCandidateMutating(magnetEditor.candidate?.id) ? '保存中...' : '保存磁力' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="candidateDetail.open" class="inline-dialog-overlay" @click.self="closeCandidateDetail">
+      <div class="inline-dialog candidate-detail-dialog">
+        <div class="inline-dialog-header">
+          <div>
+            <h2>{{ candidateDetail.data?.dvd_id || candidateDetail.data?.content_id || '候选详情' }}</h2>
+            <p>{{ candidateDetail.data?.title || candidateDetail.data?.actress_name || '' }}</p>
+          </div>
+          <button class="dialog-close-btn" type="button" @click="closeCandidateDetail">×</button>
+        </div>
+        <div v-if="candidateDetail.loading" class="candidate-detail-loading">加载中...</div>
+        <template v-else-if="candidateDetail.data">
+          <div class="candidate-detail-grid">
+            <div><span>状态</span><strong>{{ candidateStatusLabel(candidateDetail.data.status) }}</strong></div>
+            <div><span>来源</span><strong>{{ candidateSourceLabel(candidateDetail.data.source) }}</strong></div>
+            <div><span>磁力</span><strong>{{ candidateDetail.data.magnet ? '已有' : '待补' }}</strong></div>
+            <div><span>下载任务</span><strong>{{ candidateDetail.data.download_task_id || '未下发' }}</strong></div>
+          </div>
+          <div v-if="candidateDetail.data.error_msg" class="candidate-detail-error">{{ candidateDetail.data.error_msg }}</div>
+          <div v-if="candidateDetail.data.magnet" class="candidate-detail-magnet">{{ candidateDetail.data.magnet }}</div>
+          <div class="event-timeline">
+            <div v-for="event in candidateDetail.data.events || []" :key="event.id" class="event-row">
+              <span class="event-dot"></span>
+              <div>
+                <strong>{{ eventActionLabel(event.action) }}</strong>
+                <p>{{ event.detail || '无详情' }}</p>
+                <small>{{ event.operator || 'system' }} · {{ formatTime(event.created_at) }}</small>
+              </div>
+            </div>
+            <small v-if="!(candidateDetail.data.events || []).length">暂无事件记录</small>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 export default {
   name: 'Home',
@@ -352,12 +472,28 @@ export default {
         source: this.$route.query.source || '',
         actress_id: this.$route.query.actress_id || '',
         q: this.$route.query.q || '',
-        needs_magnet: this.$route.query.needs_magnet === '1' ? true : null
+        needs_magnet: this.$route.query.needs_magnet === '1' ? true : (this.$route.query.needs_magnet === '0' ? false : null)
       },
       timer: null,
       selectingCandidates: false,
       selectedCandidateIds: [],
-      statsLoaded: false
+      bulkCandidateLoading: false,
+      candidateBatchProcessing: '',
+      candidateRuns: [],
+      candidateRunsLoading: false,
+      candidateMutations: {},
+      retryingTasks: {},
+      statsLoaded: false,
+      magnetEditor: {
+        open: false,
+        candidate: null,
+        value: ''
+      },
+      candidateDetail: {
+        open: false,
+        loading: false,
+        data: null
+      }
     }
   },
   computed: {
@@ -375,6 +511,7 @@ export default {
   mounted() {
     this.loadTasks()
     this.loadCandidates()
+    if (this.activeTab === 'candidates') this.loadCandidateRuns()
     this.timer = setInterval(this.loadTasks, 30000)
   },
   beforeUnmount() {
@@ -413,6 +550,22 @@ export default {
         console.error('Failed to load candidates:', e)
       }
     },
+    async loadCandidateRuns() {
+      this.candidateRunsLoading = true
+      try {
+        const resp = await api.listDownloadCandidateRuns(5)
+        this.candidateRuns = resp.data.data || []
+      } catch (e) {
+        console.error('Failed to load candidate runs:', e)
+      } finally {
+        this.candidateRunsLoading = false
+      }
+    },
+    openCandidateTab() {
+      this.activeTab = 'candidates'
+      this.loadCandidates()
+      this.loadCandidateRuns()
+    },
     syncCandidateRoute() {
       if (this.activeTab !== 'candidates') return
       const query = { tab: 'candidates' }
@@ -421,6 +574,7 @@ export default {
       if (this.candidateFilter.actress_id) query.actress_id = this.candidateFilter.actress_id
       if (this.candidateFilter.q) query.q = this.candidateFilter.q
       if (this.candidateFilter.needs_magnet === true) query.needs_magnet = '1'
+      if (this.candidateFilter.needs_magnet === false) query.needs_magnet = '0'
       if (JSON.stringify(query) !== JSON.stringify(this.$route.query)) {
         this.$router.replace({ query }).catch(() => {})
       }
@@ -445,6 +599,17 @@ export default {
       this.candidateFilter.source = source
       this.candidateFilter.needs_magnet = needs_magnet
       this.loadCandidates()
+      this.loadCandidateRuns()
+    },
+    applyCandidateRunFilters(run, overrides = {}) {
+      const filters = { ...(run.filters || {}), ...overrides }
+      this.activeTab = 'candidates'
+      this.candidateFilter.status = filters.status || 'candidate'
+      this.candidateFilter.source = filters.source || ''
+      this.candidateFilter.actress_id = filters.actress_id || ''
+      this.candidateFilter.q = filters.q || ''
+      this.candidateFilter.needs_magnet = filters.needs_magnet === undefined ? null : filters.needs_magnet
+      this.loadCandidates()
     },
     toggleCandidateSelection() {
       this.selectingCandidates = !this.selectingCandidates
@@ -463,38 +628,301 @@ export default {
     clearCandidateSelection() {
       this.selectedCandidateIds = []
     },
+    isCandidateMutating(id) {
+      return Boolean(this.candidateMutations[id]) || this.bulkCandidateLoading || Boolean(this.candidateBatchProcessing)
+    },
+    setCandidateMutation(id, action) {
+      this.candidateMutations = { ...this.candidateMutations, [id]: action }
+    },
+    clearCandidateMutation(id) {
+      const next = { ...this.candidateMutations }
+      delete next[id]
+      this.candidateMutations = next
+    },
+    setTaskRetrying(id, loading) {
+      if (loading) {
+        this.retryingTasks = { ...this.retryingTasks, [id]: true }
+        return
+      }
+      const next = { ...this.retryingTasks }
+      delete next[id]
+      this.retryingTasks = next
+    },
     async bulkRejectCandidates() {
-      if (this.selectedCandidateIds.length === 0) return
-      if (!window.confirm(`拒绝 ${this.selectedCandidateIds.length} 个下载候选？`)) return
-      await api.bulkRejectDownloadCandidates(this.selectedCandidateIds)
-      this.selectedCandidateIds = []
-      await this.loadCandidates()
+      if (this.selectedCandidateIds.length === 0 || this.bulkCandidateLoading) return
+      const confirmed = await requestConfirm({
+        title: '批量拒绝候选',
+        message: `确认拒绝 ${this.selectedCandidateIds.length} 个下载候选？`,
+        details: '拒绝后可在已拒绝筛选中批量恢复。',
+        confirmText: '拒绝',
+        tone: 'danger'
+      })
+      if (!confirmed) return
+      this.bulkCandidateLoading = true
+      try {
+        await api.bulkRejectDownloadCandidates(this.selectedCandidateIds)
+        this.selectedCandidateIds = []
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Bulk reject candidates failed:', e)
+      } finally {
+        this.bulkCandidateLoading = false
+      }
     },
     async bulkRestoreCandidates() {
-      if (this.selectedCandidateIds.length === 0) return
-      await api.bulkRestoreDownloadCandidates(this.selectedCandidateIds)
-      this.selectedCandidateIds = []
-      await this.loadCandidates()
+      if (this.selectedCandidateIds.length === 0 || this.bulkCandidateLoading) return
+      this.bulkCandidateLoading = true
+      try {
+        await api.bulkRestoreDownloadCandidates(this.selectedCandidateIds)
+        this.selectedCandidateIds = []
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Bulk restore candidates failed:', e)
+      } finally {
+        this.bulkCandidateLoading = false
+      }
     },
     async editCandidateMagnet(candidate) {
-      const magnet = window.prompt('输入 magnet 链接', candidate.magnet || '')
-      if (!magnet) return
-      await api.updateDownloadCandidateMagnet(candidate.id, magnet)
-      await this.loadCandidates()
+      if (this.isCandidateMutating(candidate.id)) return
+      this.magnetEditor = {
+        open: true,
+        candidate,
+        value: candidate.magnet || ''
+      }
+    },
+    closeMagnetEditor() {
+      if (this.magnetEditor.candidate && this.isCandidateMutating(this.magnetEditor.candidate.id)) return
+      this.magnetEditor = { open: false, candidate: null, value: '' }
+    },
+    async submitMagnetEditor() {
+      const candidate = this.magnetEditor.candidate
+      const magnet = this.magnetEditor.value.trim()
+      if (!candidate || !magnet || this.isCandidateMutating(candidate.id)) return
+      this.setCandidateMutation(candidate.id, 'magnet')
+      try {
+        await api.updateDownloadCandidateMagnet(candidate.id, magnet)
+        this.closeMagnetEditor()
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Update candidate magnet failed:', e)
+      } finally {
+        this.clearCandidateMutation(candidate.id)
+      }
+    },
+    candidateFilterPayload(overrides = {}) {
+      const payload = {
+        status: this.candidateFilter.status || 'candidate',
+        source: this.candidateFilter.source || undefined,
+        actress_id: this.candidateFilter.actress_id ? Number(this.candidateFilter.actress_id) : undefined,
+        q: this.candidateFilter.q || undefined,
+        needs_magnet: this.candidateFilter.needs_magnet,
+        limit: this.candidates.length || 50,
+        ...overrides,
+      }
+      Object.keys(payload).forEach((key) => {
+        if (payload[key] === undefined || payload[key] === '') delete payload[key]
+      })
+      return payload
+    },
+    async enrichCandidateMagnet(candidate) {
+      if (this.isCandidateMutating(candidate.id)) return
+      this.setCandidateMutation(candidate.id, 'enrich')
+      try {
+        const resp = await api.enrichDownloadCandidateMagnet(candidate.id)
+        const action = resp.data?.action
+        if (action === 'magnet_enriched') this.$message?.success?.('已补充 magnet')
+        else if (action === 'magnet_not_found') this.$message?.warning?.('未找到可用 magnet')
+        else if (action === 'already_has_magnet') this.$message?.info?.('候选已有 magnet')
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Enrich candidate magnet failed:', e)
+      } finally {
+        this.clearCandidateMutation(candidate.id)
+      }
+    },
+    async processCandidate(candidate) {
+      if (this.isCandidateMutating(candidate.id)) return
+      this.setCandidateMutation(candidate.id, 'process')
+      try {
+        const resp = await api.processDownloadCandidate(candidate.id, { enrich: true })
+        const action = resp.data?.action
+        if (action === 'sent') this.$message?.success?.('候选已下发下载')
+        else if (action === 'manual_required') this.$message?.info?.('当前为人工批准策略')
+        else if (action?.startsWith('skipped')) this.$message?.info?.('候选未满足策略条件')
+        else if (action?.startsWith('failed')) this.$message?.error?.('候选处理失败')
+        await this.loadCandidates()
+        await this.loadTasks()
+      } catch (e) {
+        console.error('Process candidate failed:', e)
+      } finally {
+        this.clearCandidateMutation(candidate.id)
+      }
+    },
+    async enrichVisibleCandidateMagnets() {
+      if (this.candidateBatchProcessing) return
+      this.candidateBatchProcessing = 'enrich'
+      try {
+        const targets = this.candidates.filter(candidate => (
+          (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet
+        ))
+        let enriched = 0
+        for (const candidate of targets) {
+          const resp = await api.enrichDownloadCandidateMagnet(candidate.id)
+          if (resp.data?.action === 'magnet_enriched') enriched += 1
+        }
+        this.$message?.success?.(`已检查 ${targets.length} 个，补磁力 ${enriched} 个`)
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Batch enrich candidates failed:', e)
+      } finally {
+        this.candidateBatchProcessing = ''
+      }
+    },
+    async processVisibleCandidates() {
+      if (this.candidateBatchProcessing) return
+      this.candidateBatchProcessing = 'dry-run'
+      let preview
+      try {
+        const resp = await api.processDownloadCandidates(this.candidateFilterPayload({ enrich: true, dry_run: true }))
+        preview = resp.data || {}
+      } catch (e) {
+        console.error('Preview candidate processing failed:', e)
+        this.candidateBatchProcessing = ''
+        return
+      }
+      const previewCounts = preview.counts || {}
+      const confirmed = await requestConfirm({
+        title: '按策略处理候选',
+        message: this.processPreviewMessage(preview),
+        details: this.processPreviewDetails(previewCounts, preview.limits || {}),
+        confirmText: '处理',
+      })
+      if (!confirmed) return
+      this.candidateBatchProcessing = 'process'
+      try {
+        const resp = await api.processDownloadCandidates(this.candidateFilterPayload({ enrich: true }))
+        const counts = resp.data?.counts || {}
+        const skipped = (counts.manual_required || 0) + (counts.skipped_source || 0) + (counts.skipped_missing_magnet || 0) + (counts.skipped_status || 0)
+        this.$message?.success?.(`处理 ${resp.data?.total || 0} 个：下发 ${counts.sent || 0}，跳过 ${skipped}`)
+        await this.loadCandidates()
+        await this.loadCandidateRuns()
+        await this.loadTasks()
+      } catch (e) {
+        console.error('Batch process candidates failed:', e)
+      } finally {
+        this.candidateBatchProcessing = ''
+      }
+    },
+    processPreviewMessage(preview = {}) {
+      const counts = preview.counts || {}
+      const wouldSend = counts.would_send || 0
+      const wouldEnrich = counts.would_enrich_magnet || 0
+      const skippedLimit = counts.would_skip_limit || 0
+      return `预演 ${preview.total || 0} 个：可直接下发 ${wouldSend}，需补磁力 ${wouldEnrich}，受上限跳过 ${skippedLimit}。`
+    },
+    processPreviewDetails(counts = {}, limits = {}) {
+      const skipped = Object.entries(counts)
+        .filter(([action]) => action.startsWith('skipped') || action === 'manual_required')
+        .reduce((sum, [, value]) => sum + Number(value || 0), 0)
+      const remaining = limits.remaining === null || limits.remaining === undefined ? '不限' : limits.remaining
+      const perRun = limits.per_run || 0
+      const per24h = limits.per_24h || 0
+      return `策略跳过 ${skipped}。单次上限 ${perRun || '不限'}，24 小时上限 ${per24h || '不限'}，当前剩余额度 ${remaining}。`
+    },
+    async retryFailedCandidateRun(run) {
+      if (!run?.id || this.candidateBatchProcessing) return
+      const confirmed = await requestConfirm({
+        title: '重试失败候选',
+        message: `确认重试本次处理中的 ${run.failed || 0} 个失败候选？`,
+        details: '会复用当时策略并重新补磁力/下发，仍失败的候选会留在失败队列。',
+        confirmText: '重试',
+      })
+      if (!confirmed) return
+      this.candidateBatchProcessing = 'retry-run'
+      try {
+        const resp = await api.retryDownloadCandidateRunFailed(run.id, { enrich: true })
+        const counts = resp.data?.counts || {}
+        this.$message?.success?.(`已重试 ${resp.data?.total || 0} 个：下发 ${counts.sent || 0}，失败 ${counts.failed_downloader || 0}`)
+        await this.loadCandidates()
+        await this.loadCandidateRuns()
+        await this.loadTasks()
+      } catch (e) {
+        console.error('Retry failed candidate run failed:', e)
+      } finally {
+        this.candidateBatchProcessing = ''
+      }
+    },
+    async openCandidateDetail(candidate) {
+      this.candidateDetail = { open: true, loading: true, data: candidate }
+      try {
+        const resp = await api.getDownloadCandidate(candidate.id)
+        this.candidateDetail = { open: true, loading: false, data: resp.data.data }
+      } catch (e) {
+        console.error('Load candidate detail failed:', e)
+        this.candidateDetail = { open: true, loading: false, data: candidate }
+      }
+    },
+    closeCandidateDetail() {
+      this.candidateDetail = { open: false, loading: false, data: null }
+    },
+    eventActionLabel(action) {
+      const map = {
+        upsert: '写入候选',
+        magnet_updated: '手动更新磁力',
+        magnet_enriched: '自动补充磁力',
+        magnet_enrich_failed: '磁力补充失败',
+        magnet_enrich_skipped: '跳过补磁力',
+        policy_skipped: '策略跳过',
+        auto_approved: '自动下发',
+        approved: '人工批准',
+        approve_failed: '批准失败',
+        process_failed: '处理失败',
+        rejected: '拒绝候选',
+        bulk_rejected: '批量拒绝',
+        bulk_restored: '批量恢复',
+      }
+      return map[action] || action
+    },
+    candidateRunPolicyLabel(policy) {
+      const map = { manual: '人工批准', rules: '规则自动', auto: '全自动' }
+      return map[policy] || '人工批准'
+    },
+    candidateRunTriggerLabel(trigger) {
+      const map = { manual: '人工触发', system: '系统触发' }
+      return map[trigger] || trigger || '未知触发'
     },
     async approveCandidate(candidate) {
+      if (this.isCandidateMutating(candidate.id)) return
+      this.setCandidateMutation(candidate.id, 'approve')
       try {
         await api.approveDownloadCandidate(candidate.id)
         await this.loadCandidates()
         await this.loadTasks()
       } catch (e) {
         console.error('Approve candidate failed:', e)
+      } finally {
+        this.clearCandidateMutation(candidate.id)
       }
     },
     async rejectCandidate(candidate) {
-      if (!window.confirm(`拒绝候选 ${candidate.dvd_id || candidate.content_id}？`)) return
-      await api.rejectDownloadCandidate(candidate.id)
-      await this.loadCandidates()
+      if (this.isCandidateMutating(candidate.id)) return
+      const confirmed = await requestConfirm({
+        title: '拒绝下载候选',
+        message: `确认拒绝 ${candidate.dvd_id || candidate.content_id}？`,
+        details: candidate.title || '',
+        confirmText: '拒绝',
+        tone: 'danger'
+      })
+      if (!confirmed) return
+      this.setCandidateMutation(candidate.id, 'reject')
+      try {
+        await api.rejectDownloadCandidate(candidate.id)
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Reject candidate failed:', e)
+      } finally {
+        this.clearCandidateMutation(candidate.id)
+      }
     },
     goCandidateActor(candidate) {
       if (!candidate.actress_id) return
@@ -519,9 +947,17 @@ export default {
         console.error('Failed to delete:', e)
       }
     },
-    retry(task) {
-      api.createDownload({ content_id: task.content_id || task.code, title: task.title, magnet: task.magnet, path: task.path })
-      this.loadTasks()
+    async retry(task) {
+      if (this.retryingTasks[task.id]) return
+      this.setTaskRetrying(task.id, true)
+      try {
+        await api.createDownload({ content_id: task.content_id || task.code, title: task.title, magnet: task.magnet, path: task.path })
+        await this.loadTasks()
+      } catch (e) {
+        console.error('Failed to retry download:', e)
+      } finally {
+        this.setTaskRetrying(task.id, false)
+      }
     },
     statusBadge(status) {
       const map = { pending: 'badge-pending', downloading: 'badge-info', completed: 'badge-success', failed: 'badge-error' }
@@ -756,6 +1192,64 @@ export default {
   font-size: 12px;
 }
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
+.candidate-run-panel {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+.candidate-run-head,
+.candidate-run-row,
+.candidate-run-stats,
+.candidate-run-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.candidate-run-head {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.candidate-run-head strong,
+.candidate-run-main strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.candidate-run-head span,
+.candidate-run-main span,
+.candidate-run-stats span,
+.candidate-run-empty {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.candidate-run-list {
+  display: grid;
+  gap: 8px;
+}
+.candidate-run-row {
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+.candidate-run-main {
+  min-width: 140px;
+}
+.candidate-run-stats {
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.candidate-run-actions {
+  justify-content: flex-end;
+}
+.link-btn.danger {
+  color: #ef5350;
+}
 .chip {
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -767,6 +1261,19 @@ export default {
 .chip.active {
   color: var(--text-primary);
   border-color: var(--accent);
+}
+.chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.action-chip {
+  border-color: rgba(82, 196, 26, 0.35);
+  color: #52c41a;
+}
+.action-chip.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
 }
 .candidate-card .task-cover img {
   width: 100%;
@@ -870,6 +1377,11 @@ export default {
 }
 .progress-overlay .progress-bar { height: 3px; }
 .progress-overlay .progress-bar-fill { animation: progress-pulse 1.5s ease-in-out infinite; }
+.progress-bar-fill-demo { width: 60%; }
+.empty-state-hint {
+  margin-top: 6px;
+  font-size: 13px;
+}
 
 @keyframes progress-pulse {
   0%, 100% { opacity: 1; }
@@ -898,6 +1410,159 @@ export default {
 }
 .task-actions .btn { flex: 1; justify-content: center; font-size: 12px; padding: 6px 10px; }
 
+.inline-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.inline-dialog {
+  width: min(560px, 100%);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: var(--material-glass-sheet);
+  box-shadow: var(--shadow-sheet);
+  padding: 18px;
+}
+.inline-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.inline-dialog-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+.inline-dialog-header p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.dialog-close-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--white-06);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 24px;
+}
+.magnet-editor-input {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+}
+.magnet-editor-input:focus {
+  border-color: var(--accent);
+}
+.inline-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+.inline-dialog-actions .btn {
+  min-height: 44px;
+}
+.candidate-detail-dialog {
+  max-height: min(780px, 86vh);
+  overflow: auto;
+}
+.candidate-detail-loading {
+  padding: 28px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.candidate-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.candidate-detail-grid > div {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--bg-card);
+}
+.candidate-detail-grid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.candidate-detail-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.candidate-detail-error {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(239, 83, 80, 0.1);
+  color: #ef5350;
+  font-size: 12px;
+}
+.candidate-detail-magnet {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.event-timeline {
+  display: grid;
+  gap: 10px;
+}
+.event-row {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 10px;
+}
+.event-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.event-row strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.event-row p {
+  margin: 3px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.event-row small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .home { padding: 16px; }
@@ -906,5 +1571,53 @@ export default {
   .stat-num { font-size: 22px; }
   .stat-icon { width: 40px; height: 40px; }
   .tasks-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .header-actions .btn,
+  .tab-btn,
+  .chip,
+  .task-actions .btn,
+  .candidate-search-input,
+  .bulk-toolbar .btn {
+    min-height: 44px;
+  }
+  .candidate-toolbar {
+    align-items: stretch;
+  }
+  .candidate-run-head,
+  .candidate-run-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .candidate-run-stats,
+  .candidate-run-actions {
+    justify-content: flex-start;
+  }
+  .candidate-search-input {
+    width: 100%;
+    flex: 1 0 100%;
+  }
+  .candidate-select {
+    width: 44px;
+    height: 44px;
+  }
+  .candidate-select input {
+    width: 22px;
+    height: 22px;
+  }
+  .inline-dialog-overlay {
+    padding: 12px 12px calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+  .inline-dialog {
+    border-radius: 22px;
+  }
+  .inline-dialog-actions {
+    flex-direction: column-reverse;
+  }
+  .inline-dialog-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .candidate-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

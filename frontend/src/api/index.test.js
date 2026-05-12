@@ -38,6 +38,17 @@ test('main path API failure still shows global error toast', async (t) => {
   assert.equal(errorMock.mock.calls[0].arguments[0], '服务器内部错误')
 })
 
+test('duplicate API failures are rate limited globally', async (t) => {
+  installRejectingAdapter(t, 500, '服务器内部错误')
+  const errorMock = t.mock.method(ElMessage, 'error', () => {})
+  const { default: api } = await import(`./index.js?error-dedupe-${Date.now()}`)
+
+  await assert.rejects(() => api.getVideo('miaa405'))
+  await assert.rejects(() => api.getVideo('miaa406'))
+
+  assert.equal(errorMock.mock.callCount(), 1)
+})
+
 test('concurrent getCategoryStats calls share one network request', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const originalLocalStorage = globalThis.localStorage
@@ -76,6 +87,25 @@ test('concurrent getCategoryStats calls share one network request', async (t) =>
   assert.deepEqual(first, [{ category_id: 1, count: 12 }])
   assert.deepEqual(second, [{ category_id: 1, count: 12 }])
   assert.equal(requestCount, 1)
+})
+
+test('getCategoryStats suppresses global error toast', async (t) => {
+  installRejectingAdapter(t, 500, '服务器内部错误')
+  const errorMock = t.mock.method(ElMessage, 'error', () => {})
+  const originalLocalStorage = globalThis.localStorage
+  globalThis.localStorage = { getItem: () => null, setItem: () => {} }
+  t.after(() => {
+    if (originalLocalStorage === undefined) {
+      delete globalThis.localStorage
+    } else {
+      globalThis.localStorage = originalLocalStorage
+    }
+  })
+  const { default: api } = await import(`./index.js?category-stats-silent-${Date.now()}`)
+
+  await assert.rejects(() => api.getCategoryStats(true))
+
+  assert.equal(errorMock.mock.callCount(), 0)
 })
 
 test('getActressVideos forwards include_supplement and extra params', async (t) => {
@@ -451,8 +481,14 @@ test('download candidate APIs send expected requests', async (t) => {
   const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
   await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true })
   await api.getDownloadCandidate(7)
+  await api.listDownloadCandidateRuns(10)
+  await api.retryDownloadCandidateRunFailed(11, { enrich: true })
   await api.createDownloadCandidate({ content_id: 'SIVR-438', title: 'Title' })
   await api.updateDownloadCandidateMagnet(7, 'magnet:?xt=urn:btih:abc')
+  await api.enrichDownloadCandidateMagnet(7)
+  await api.processDownloadCandidate(7, { enrich: true })
+  await api.processDownloadCandidates({ status: 'candidate', source: 'inventory', limit: 20 })
+  await api.processDownloadCandidates({ status: 'candidate', dry_run: true, limit: 5 })
   await api.approveDownloadCandidate(7)
   await api.rejectDownloadCandidate(8)
   await api.bulkRejectDownloadCandidates([7, 8])
@@ -461,15 +497,45 @@ test('download candidate APIs send expected requests', async (t) => {
   assert.equal(calls[0].url, '/v1/downloads/candidates')
   assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true })
   assert.equal(calls[1].url, '/v1/downloads/candidates/7')
-  assert.equal(calls[2].method, 'post')
-  assert.equal(calls[2].url, '/v1/downloads/candidates')
-  assert.deepEqual(JSON.parse(calls[3].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
-  assert.equal(calls[4].url, '/v1/downloads/candidates/7/approve')
-  assert.equal(calls[5].url, '/v1/downloads/candidates/8/reject')
-  assert.equal(calls[6].url, '/v1/downloads/candidates/bulk/reject')
-  assert.deepEqual(JSON.parse(calls[6].data), { ids: [7, 8] })
-  assert.equal(calls[7].url, '/v1/downloads/candidates/bulk/restore')
-  assert.deepEqual(JSON.parse(calls[7].data), { ids: [9] })
+  assert.equal(calls[2].url, '/v1/downloads/candidates/runs')
+  assert.deepEqual(calls[2].params, { limit: 10 })
+  assert.equal(calls[3].url, '/v1/downloads/candidates/runs/11/retry-failed')
+  assert.deepEqual(JSON.parse(calls[3].data), { enrich: true })
+  assert.equal(calls[4].method, 'post')
+  assert.equal(calls[4].url, '/v1/downloads/candidates')
+  assert.deepEqual(JSON.parse(calls[5].data), { magnet: 'magnet:?xt=urn:btih:abc', magnet_source: 'manual' })
+  assert.equal(calls[6].url, '/v1/downloads/candidates/7/enrich-magnet')
+  assert.equal(calls[7].url, '/v1/downloads/candidates/7/process')
+  assert.deepEqual(JSON.parse(calls[7].data), { enrich: true })
+  assert.equal(calls[8].url, '/v1/downloads/candidates/process')
+  assert.deepEqual(JSON.parse(calls[8].data), { status: 'candidate', source: 'inventory', limit: 20 })
+  assert.equal(calls[9].url, '/v1/downloads/candidates/process')
+  assert.deepEqual(JSON.parse(calls[9].data), { status: 'candidate', dry_run: true, limit: 5 })
+  assert.equal(calls[10].url, '/v1/downloads/candidates/7/approve')
+  assert.equal(calls[11].url, '/v1/downloads/candidates/8/reject')
+  assert.equal(calls[12].url, '/v1/downloads/candidates/bulk/reject')
+  assert.deepEqual(JSON.parse(calls[12].data), { ids: [7, 8] })
+  assert.equal(calls[13].url, '/v1/downloads/candidates/bulk/restore')
+  assert.deepEqual(JSON.parse(calls[13].data), { ids: [9] })
+})
+
+test('operations overview API sends GET to correct path', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { status: 'ok' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?operations-overview-${Date.now()}`)
+  await api.getOperationsOverview()
+  await api.runCandidateProcessingNow()
+
+  assert.equal(calls[0].url, '/v1/operations/overview')
+  assert.equal(calls[0].method, 'get')
+  assert.equal(calls[1].url, '/v1/operations/candidate-processing/run')
+  assert.equal(calls[1].method, 'post')
 })
 
 test('actor mapping APIs send expected requests', async (t) => {
