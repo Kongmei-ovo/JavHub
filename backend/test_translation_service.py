@@ -119,6 +119,44 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         google_translate.assert_awaited_once()
         ai_translate.assert_not_awaited()
 
+    async def test_allow_network_false_skips_external_providers(self):
+        from translations.providers import GoogleFreeProvider
+
+        service = self.service()
+        with patch.object(GoogleFreeProvider, "translate", new_callable=AsyncMock) as google_translate:
+            translated = await service.translate_text(
+                "原文",
+                scope="title:MIAA-784:title_ja",
+                use_ai=False,
+                provider_order=["cache", "mapping", "google_free"],
+                allow_network=False,
+            )
+
+        self.assertEqual(translated, "原文")
+        google_translate.assert_not_awaited()
+
+    async def test_provider_same_as_source_can_be_cached_for_batch_skip(self):
+        from database import get_cached_translation
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        with patch.object(
+            GoogleFreeProvider,
+            "translate",
+            AsyncMock(return_value=TranslationResult("原文", "google_free")),
+        ):
+            translated = await self.service().translate_text(
+                "原文",
+                scope="title:MIAA-784:title_ja",
+                use_ai=False,
+                provider_order=["google_free"],
+                return_original=False,
+            )
+
+        self.assertEqual(translated, "原文")
+        cached = get_cached_translation("title:MIAA-784:title_ja", "原文")
+        self.assertIsNotNone(cached)
+        self.assertEqual(cached["translated_text"], "原文")
+
 
 if __name__ == "__main__":
     unittest.main()

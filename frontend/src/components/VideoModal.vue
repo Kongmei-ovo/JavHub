@@ -96,7 +96,7 @@
             </div>
             <div class="meta-row">
               <span class="meta-label">厂牌</span>
-              <span v-if="video.label" class="meta-value clickable" @click="$emit('navigate', { type: 'maker', item: video.label })">
+              <span v-if="video.label" class="meta-value clickable" @click="$emit('navigate', { type: 'label', item: video.label })">
                 <span v-html="itemDisplayName(video.label)"></span>
               </span>
               <div v-else-if="!videoLoaded" class="skeleton skeleton-text"></div>

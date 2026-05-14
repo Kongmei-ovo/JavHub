@@ -126,8 +126,15 @@ class OpenAICompatibleProvider:
 class GoogleFreeProvider:
     name = "google_free"
 
-    def __init__(self, settings: dict[str, Any]):
+    def __init__(self, settings: dict[str, Any], *, reuse_client: bool = False):
         self.settings = settings or {}
+        self.reuse_client = reuse_client
+        self._client: httpx.AsyncClient | None = None
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     def supports(self, request: TranslationRequest) -> bool:
         return bool(request.text and self.settings.get("enabled", True))
@@ -148,10 +155,15 @@ class GoogleFreeProvider:
             "q": request.text,
         }
         try:
-            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-                response = await client.get(base_url, params=params)
-                response.raise_for_status()
-                data = response.json()
+            if self.reuse_client:
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=timeout, trust_env=False)
+                response = await self._client.get(base_url, params=params)
+            else:
+                async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                    response = await client.get(base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
         except Exception as exc:
             logger.warning("Google free translation failed for scope=%s: %s", request.scope, exc)
             return None

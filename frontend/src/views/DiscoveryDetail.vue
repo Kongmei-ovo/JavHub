@@ -212,7 +212,7 @@ export default {
     type() { return this.$route.params.type },
     value() { return this.$route.params.value },
     typeLabel() {
-      const map = { category: '题材', maker: '工作室', series: '系列', actress: '演员' }
+      const map = { category: '题材', maker: '工作室', label: '厂牌', series: '系列', actress: '演员' }
       return map[this.type] || '内容'
     },
     displayNameValue() {
@@ -339,6 +339,8 @@ export default {
         if (isNumeric) params.maker_id = parseInt(v); else params.maker_name = v
       } else if (this.type === 'series') {
         if (isNumeric) params.series_id = parseInt(v); else params.series_name = v
+      } else if (this.type === 'label') {
+        if (isNumeric) params.label_id = parseInt(v); else params.label_name = v
       } else if (this.type === 'actress') {
         if (isNumeric) params.actress_id = parseInt(v); else params.actress_name = v
       }

@@ -45,7 +45,7 @@ async def get_favorite_videos():
         content_id = item["entity_id"]
         try:
             data = await client.get_video(content_id)
-            data = await get_translator_service().translate_video(content_id, data)
+            data = await get_translator_service().translate_video(content_id, data, allow_network=False)
             data["_created_at"] = item["created_at"]
             return data
         except Exception as e:

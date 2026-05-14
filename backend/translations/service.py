@@ -61,11 +61,29 @@ def _dump_json_array(values: list[str]) -> str:
     return json.dumps(values, ensure_ascii=False)
 
 
+def _normalize_content_id(value: Any) -> str:
+    return str(value or "").replace("-", "").replace("_", "").lower()
+
+
+def _content_translation(content_id: str) -> dict | None:
+    direct = get_translation(content_id)
+    if direct:
+        return direct
+    normalized = _normalize_content_id(content_id)
+    if normalized and normalized != content_id:
+        return get_translation(normalized)
+    return None
+
+
 class TranslatorService:
-    def __init__(self, settings: dict[str, Any] | None = None):
+    LOCAL_PROVIDERS = {"cache", "mapping"}
+
+    def __init__(self, settings: dict[str, Any] | None = None, *, reuse_clients: bool = False):
         self.settings = settings if settings is not None else config.translation
         self._uses_injected_settings = settings is not None
         self.mapping_provider = MappingProvider()
+        self.reuse_clients = reuse_clients
+        self._provider_cache: dict[str, TranslationProvider] = {}
 
     @property
     def enabled(self) -> bool:
@@ -83,20 +101,34 @@ class TranslatorService:
         return [str(item) for item in order if str(item).strip()]
 
     def _provider(self, name: str) -> TranslationProvider | None:
+        if self.reuse_clients and name in self._provider_cache:
+            return self._provider_cache[name]
         if name == "mapping":
-            return self.mapping_provider
-        if name == "google_free":
-            return GoogleFreeProvider(self.settings.get("google_free", {}) or {})
-        if name == "deepl":
-            return DeepLProvider(self.settings.get("deepl", {}) or {})
-        if name == "microsoft":
-            return MicrosoftTranslatorProvider(self.settings.get("microsoft", {}) or {})
-        if name == "openai_compatible":
+            provider = self.mapping_provider
+        elif name == "google_free":
+            provider = GoogleFreeProvider(self.settings.get("google_free", {}) or {}, reuse_client=self.reuse_clients)
+        elif name == "deepl":
+            provider = DeepLProvider(self.settings.get("deepl", {}) or {})
+        elif name == "microsoft":
+            provider = MicrosoftTranslatorProvider(self.settings.get("microsoft", {}) or {})
+        elif name == "openai_compatible":
             local_settings = self.settings.get("openai_compatible", {}) or {}
             if self._uses_injected_settings and any(local_settings.get(key) for key in ("base_url", "api_key", "model")):
-                return OpenAICompatibleProvider(local_settings)
-            return OpenAICompatibleProvider(config.openai_compatible)
-        return None
+                provider = OpenAICompatibleProvider(local_settings)
+            else:
+                provider = OpenAICompatibleProvider(config.openai_compatible)
+        else:
+            return None
+        if self.reuse_clients:
+            self._provider_cache[name] = provider
+        return provider
+
+    async def close(self) -> None:
+        for provider in self._provider_cache.values():
+            close = getattr(provider, "aclose", None)
+            if close:
+                await close()
+        self._provider_cache.clear()
 
     async def translate_text(
         self,
@@ -108,6 +140,8 @@ class TranslatorService:
         use_ai: bool = True,
         persist_ai: bool = True,
         provider_order: list[str] | None = None,
+        allow_network: bool = True,
+        return_original: bool = True,
     ) -> str | None:
         if not text:
             return text
@@ -130,6 +164,9 @@ class TranslatorService:
                     return cached["translated_text"]
                 continue
 
+            if not allow_network and provider_name not in self.LOCAL_PROVIDERS:
+                continue
+
             if provider_name == "openai_compatible" and not use_ai:
                 continue
 
@@ -140,11 +177,11 @@ class TranslatorService:
             if not result or not result.translated_text:
                 continue
             translated = result.translated_text.strip()
-            if result.cacheable and persist_ai and translated and translated != source:
+            if result.cacheable and persist_ai and translated:
                 upsert_cached_translation(scope, source, translated, result.provider, result.model)
             return translated
 
-        return text
+        return text if return_original else None
 
     async def translate_entities(
         self,
@@ -153,6 +190,7 @@ class TranslatorService:
         entity_type: str,
         keys: list[str],
         use_ai: bool = False,
+        allow_network: bool = True,
     ) -> list[dict]:
         for item in items:
             if not isinstance(item, dict):
@@ -170,16 +208,24 @@ class TranslatorService:
                 context=f"{entity_type} name",
                 use_ai=use_ai,
                 persist_ai=use_ai,
+                allow_network=allow_network,
             )
             if translated and translated != original:
                 item[f"{key}_translated"] = translated
         return items
 
-    async def translate_video(self, content_id: str, data: dict, *, use_ai: bool = False) -> dict:
+    async def translate_video(
+        self,
+        content_id: str,
+        data: dict,
+        *,
+        use_ai: bool = False,
+        allow_network: bool = True,
+    ) -> dict:
         if not content_id or not data:
             return data
         result = dict(data)
-        content_mapping = get_translation(content_id)
+        content_mapping = _content_translation(content_id)
 
         if isinstance(result.get("actresses"), list):
             await self.translate_entities(
@@ -187,6 +233,7 @@ class TranslatorService:
                 entity_type="actress",
                 keys=["name_ja", "name_en", "name_kanji", "name_romaji", "name"],
                 use_ai=use_ai,
+                allow_network=allow_network,
             )
 
         if isinstance(result.get("categories"), list):
@@ -208,6 +255,7 @@ class TranslatorService:
                     context="category name",
                     use_ai=use_ai,
                     persist_ai=use_ai,
+                    allow_network=allow_network,
                 )
                 if translated and translated != original:
                     cat[f"{key}_translated"] = translated
@@ -235,6 +283,7 @@ class TranslatorService:
                 context=f"{entity_type} name",
                 use_ai=use_ai,
                 persist_ai=use_ai,
+                allow_network=allow_network,
             )
             if translated and translated != original:
                 entity[f"{key}_translated"] = translated
@@ -251,6 +300,7 @@ class TranslatorService:
                 context="video title",
                 use_ai=use_ai,
                 persist_ai=use_ai,
+                allow_network=allow_network,
             )
             if translated and translated != original:
                 result[f"{title_key}_translated"] = translated
@@ -263,6 +313,7 @@ class TranslatorService:
                 context="video summary",
                 use_ai=True,
                 persist_ai=True,
+                allow_network=allow_network,
             )
             if translated and translated != summary:
                 result["summary_translated"] = translated

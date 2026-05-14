@@ -5,12 +5,12 @@ from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
 
-async def _apply_translation_to_video(data: dict) -> dict:
+async def _apply_translation_to_video(data: dict, *, allow_network: bool = True) -> dict:
     """对单条影片数据应用翻译"""
     content_id = data.get("content_id") or data.get("dvd_id", "").replace("-", "").replace("_", "").lower()
     if not content_id:
         return data
-    return await get_translator_service().translate_video(content_id, data)
+    return await get_translator_service().translate_video(content_id, data, allow_network=allow_network)
 
 @router.get("/search")
 async def search_videos(
@@ -60,7 +60,7 @@ async def search_videos(
         page=page, page_size=page_size
     )
     if result.get("data"):
-        result["data"] = [await _apply_translation_to_video(item) for item in result["data"]]
+        result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
     return result
 
 @router.get("")
@@ -71,7 +71,7 @@ async def list_videos(
     client = get_info_client()
     result = await client.list_videos(page=page, page_size=page_size)
     if result.get("data"):
-        result["data"] = [await _apply_translation_to_video(item) for item in result["data"]]
+        result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
     return result
 
 @router.get("/{content_id}/metadata")

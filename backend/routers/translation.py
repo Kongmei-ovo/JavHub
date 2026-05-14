@@ -11,6 +11,7 @@ from database import (
     import_translations,
     get_translation_cache_count,
     get_translation_count,
+    get_translation_coverage_counts,
     _get_raw,
     upsert_translation,
 )
@@ -21,6 +22,45 @@ from translations.jobs import create_translation_job, get_job as get_translation
 router = APIRouter(prefix="/api/v1/translations", tags=["translations"])
 
 VALID_TYPES = {"actress", "category", "series", "maker", "label", "title"}
+
+EXPORT_FIELDS = {
+    "actress": ("name_kanji", "name_translated"),
+    "category": ("name_ja", "name_translated"),
+    "series": ("name_ja", "name_translated"),
+    "maker": ("name_ja", "name_translated"),
+    "label": ("name_ja", "name_translated"),
+    "title": ("title_ja", "title_translated"),
+}
+
+TOTAL_ENDPOINTS = {
+    "title": "/api/v1/videos",
+    "actress": "/api/v1/actresses",
+    "category": "/api/v1/categories",
+    "series": "/api/v1/series",
+    "maker": "/api/v1/makers",
+    "label": "/api/v1/labels",
+}
+
+
+def _translation_export_payload(mapping_type: str, data: dict[str, Any]) -> dict[str, Any]:
+    src, dst = EXPORT_FIELDS[mapping_type]
+    return {
+        "_type": mapping_type,
+        "_version": "2",
+        "_src": src,
+        "_dst": dst,
+        "data": data,
+    }
+
+
+def _unwrap_translation_payload(mapping_type: str, data: dict[str, Any]) -> tuple[dict[str, Any], str, str]:
+    default_src, default_dst = EXPORT_FIELDS[mapping_type]
+    src = str(data.get("_src") or default_src)
+    dst = str(data.get("_dst") or default_dst)
+    entries = data.get("data") if isinstance(data.get("data"), dict) else None
+    if entries is None:
+        entries = {k: v for k, v in data.items() if not str(k).startswith("_")}
+    return entries, src, dst
 
 
 async def _fetch_all_actresses_for_export() -> dict[int, dict[str, Any]]:
@@ -163,9 +203,21 @@ async def export_translations(mapping_type: str):
             result[str(entity_id)] = entry
         data = result
     else:
-        data = get_all_translations(mapping_type)
+        title_rows: dict[str, Any] = {}
+        for content_id, mapping in get_all_translations("title").items():
+            if not isinstance(mapping, dict):
+                continue
+            for source, translated in mapping.items():
+                if source and translated:
+                    title_rows[str(content_id)] = {
+                        "content_id": content_id,
+                        "title_ja": source,
+                        "title_translated": translated,
+                    }
+                    break
+        data = title_rows
 
-    content = json.dumps(data, ensure_ascii=False, indent=2)
+    content = json.dumps(_translation_export_payload(mapping_type, data), ensure_ascii=False, indent=2)
     buffer = io.BytesIO(content.encode("utf-8"))
     filename = f"translations_{mapping_type}.json"
     return StreamingResponse(
@@ -188,21 +240,23 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
     if not isinstance(data, dict):
         raise HTTPException(400, "JSON must be an object")
 
+    entries, src_field, dst_field = _unwrap_translation_payload(mapping_type, data)
+
     if mapping_type == "actress":
         # 格式: { actress_id: { name_kanji: "...", name_translated: "..." } }
         # 存储为 actress:{actress_id} → { name_kanji: translated }
         count = 0
-        for key, value in data.items():
+        for key, value in entries.items():
             if not isinstance(value, dict):
                 continue
             try:
                 actress_id = int(key)
             except (ValueError, TypeError):
                 continue
-            name_translated = value.get("name_translated", "")
+            name_translated = value.get(dst_field, "")
             if not name_translated:
                 continue
-            name_kanji = value.get("name_kanji", "")
+            name_kanji = value.get(src_field, "") or value.get("name_kanji", "")
             if not name_kanji:
                 continue
             upsert_translation(f"actress:{actress_id}", {"actress": {name_kanji: name_translated}})
@@ -213,20 +267,35 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
         # 格式: { type_id: { name: "...", name_translated: "..." } }
         # 存储为 {type}:{id} → { name: translated }
         count = 0
-        for key, value in data.items():
+        for key, value in entries.items():
             if not isinstance(value, dict):
                 continue
             try:
                 type_id = int(key)
             except (ValueError, TypeError):
                 continue
-            name_translated = value.get("name_translated", "")
+            name_translated = value.get(dst_field, "")
             if not name_translated:
                 continue
-            orig_name = value.get("name_ja") or value.get("name_en") or value.get("name", "")
+            orig_name = value.get(src_field) or value.get("name_ja") or value.get("name_en") or value.get("name", "")
             if not orig_name:
                 continue
             upsert_translation(f"{mapping_type}:{type_id}", {mapping_type: {orig_name: name_translated}})
+            count += 1
+        return {"success": True, "imported": count, "type": mapping_type}
+
+    is_wrapped_title = isinstance(data.get("data"), dict) or "_src" in data or "_dst" in data
+    if mapping_type == "title" and is_wrapped_title:
+        count = 0
+        for key, value in entries.items():
+            if not isinstance(value, dict):
+                continue
+            content_id = str(value.get("content_id") or key or "").strip()
+            source = str(value.get(src_field) or value.get("title_ja") or value.get("title") or "").strip()
+            translated = str(value.get(dst_field) or value.get("title_translated") or "").strip()
+            if not content_id or not source or not translated:
+                continue
+            upsert_translation(content_id.replace("-", "").replace("_", "").lower(), {"title": {source: translated}})
             count += 1
         return {"success": True, "imported": count, "type": mapping_type}
 
@@ -247,9 +316,34 @@ async def translation_stats(mapping_type: str):
 async def all_stats():
     """获取所有翻译类型的统计"""
     stats = {t: get_translation_count(t) for t in VALID_TYPES}
+    info = get_info_client()
+    totals: dict[str, int] = {}
+    total_results = await asyncio.gather(
+        *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
+        return_exceptions=True,
+    )
+    for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results):
+        totals[mapping_type] = 0 if isinstance(result, Exception) else int(result or 0)
+
+    coverage: dict[str, dict[str, int]] = {}
+    for mapping_type in VALID_TYPES:
+        local = get_translation_coverage_counts(mapping_type)
+        total = totals.get(mapping_type, 0)
+        translated = min(total, int(local.get("translated", 0) or 0)) if total else int(local.get("translated", 0) or 0)
+        item = {
+            "total": total,
+            "translated": translated,
+            "untranslated": max(total - translated, 0),
+        }
+        if mapping_type == "title":
+            item["mapped"] = int(local.get("mapped", 0) or 0)
+            item["cached"] = int(local.get("cached", 0) or 0)
+        coverage[mapping_type] = item
+
     translation_cfg = config.translation
     openai_cfg = config.openai_compatible
     stats["ai_cache"] = get_translation_cache_count()
+    stats["coverage"] = coverage
     stats["providers"] = {
         "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
         "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},

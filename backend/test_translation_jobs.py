@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import unittest
 from pathlib import Path
@@ -172,6 +173,74 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [row["type"] for row in rows],
             ["category", "category", "series", "series", "maker", "label", "actress", "actress"],
+        )
+
+    async def test_title_job_uses_bounded_concurrency_and_keeps_failures_local(self):
+        from database import add_translation_job, get_translation, upsert_cached_translation, upsert_translation
+        from translations.jobs import _translate_titles
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        upsert_translation("skip001", {"title": {"既存": "已有"}})
+        upsert_cached_translation("title:SKIP-002:title_ja", "缓存済み", "缓存译文", "google_free")
+
+        items = [
+            *[
+                {"content_id": f"OK-{idx:03d}", "title_ja": f"タイトル{idx}"}
+                for idx in range(10)
+            ],
+            {"content_id": "FAIL-001", "title_ja": "FAIL"},
+            {"content_id": "SKIP-001", "title_ja": "既存"},
+            {"content_id": "SKIP-002", "title_ja": "缓存済み"},
+        ]
+        active = 0
+        max_active = 0
+
+        async def translate(request):
+            nonlocal active, max_active
+            if request.text == "FAIL":
+                raise RuntimeError("provider exploded")
+            active += 1
+            max_active = max(max_active, active)
+            try:
+                await asyncio.sleep(0.01)
+                return TranslationResult(f"{request.text}中文", "google_free")
+            finally:
+                active -= 1
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+
+        with patch("translations.jobs._batch_concurrency", return_value=4), \
+             patch("translations.jobs.logger.exception"), \
+             patch.object(GoogleFreeProvider, "translate", AsyncMock(side_effect=translate)):
+            await _translate_titles(job_id, items, ["google_free"], counters, force=False)
+
+        self.assertGreater(max_active, 1)
+        self.assertLessEqual(max_active, 4)
+        self.assertEqual(counters, {"processed": 13, "translated": 10, "skipped": 2, "failed": 1})
+        self.assertEqual(get_translation("ok000")["title"]["タイトル0"], "タイトル0中文")
+
+    async def test_title_job_counts_same_text_translation_as_done(self):
+        from database import add_translation_job, get_cached_translation, get_translation
+        from translations.jobs import _translate_titles
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+        items = [{"content_id": "MIAA-784", "title_ja": "MIAA-784"}]
+
+        with patch.object(
+            GoogleFreeProvider,
+            "translate",
+            AsyncMock(return_value=TranslationResult("MIAA-784", "google_free")),
+        ):
+            await _translate_titles(job_id, items, ["google_free"], counters, force=False)
+
+        self.assertEqual(counters, {"processed": 1, "translated": 1, "skipped": 0, "failed": 0})
+        self.assertEqual(get_translation("miaa784")["title"]["MIAA-784"], "MIAA-784")
+        self.assertEqual(
+            get_cached_translation("title:MIAA-784:title_ja", "MIAA-784")["translated_text"],
+            "MIAA-784",
         )
 
 

@@ -906,7 +906,7 @@ export default {
         { value: 'large', label: '大', hint: '头像 100px' },
       ],
       actressPageSizeOptions: [24, 36, 48, 60],
-      seriesPageSizeOptions: [30, 60, 90, 100],
+      seriesPageSizeOptions: [12, 24, 36, 48],
       defaultTabOptions: [
         { value: 'genre', label: '题材' },
         { value: 'actress', label: '演员' },

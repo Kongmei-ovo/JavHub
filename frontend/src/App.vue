@@ -248,39 +248,44 @@ export default {
       interruptModal()
 
       if (type === 'category') {
-        // 题材跳转
-        try {
-          const resp = await api.listCategories()
-          const categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
-          const cat = categories.find(c => (c.name_en || c.name_ja || c.name) === (item.name_en || item.name_ja || item.name))
-          if (cat) {
-            router.push({
-              name: 'DiscoveryDetail',
-              params: { type: 'category', value: cat.id },
-              query: { returnTo: 'video' }
-            })
-          }
-        } catch (e) { console.error(e) }
+        const name = item.name_ja || item.name_en || item.name || ''
+        const value = item.id || name
+        router.push({
+          name: 'DiscoveryDetail',
+          params: { type: 'category', value: String(value) },
+          query: { returnTo: 'video', ...(name ? { name } : {}) }
+        })
       } else if (type === 'actress') {
         const name = item.name_kanji || item.name_romaji || item.name_en || ''
+        const value = item.id || item.actress_id || name
         router.push({
           name: 'DiscoveryDetail',
-          params: { type: 'actress', value: name },
-          query: { returnTo: 'video' }
+          params: { type: 'actress', value: String(value) },
+          query: { returnTo: 'video', ...(name ? { name } : {}) }
         })
       } else if (type === 'maker') {
-        const name = item.name_en || item.name_ja || ''
+        const name = item.name_ja || item.name_en || item.name || ''
+        const value = item.id || name
         router.push({
           name: 'DiscoveryDetail',
-          params: { type: 'maker', value: name },
-          query: { returnTo: 'video' }
+          params: { type: 'maker', value: String(value) },
+          query: { returnTo: 'video', ...(name ? { name } : {}) }
+        })
+      } else if (type === 'label') {
+        const name = item.name_ja || item.name_en || item.name || ''
+        const value = item.id || name
+        router.push({
+          name: 'DiscoveryDetail',
+          params: { type: 'label', value: String(value) },
+          query: { returnTo: 'video', ...(name ? { name } : {}) }
         })
       } else if (type === 'series') {
-        const name = item.name_en || item.name_ja || ''
+        const name = item.name_ja || item.name_en || item.name || ''
+        const value = item.id || name
         router.push({
           name: 'DiscoveryDetail',
-          params: { type: 'series', value: name },
-          query: { returnTo: 'video' }
+          params: { type: 'series', value: String(value) },
+          query: { returnTo: 'video', ...(name ? { name } : {}) }
         })
       }
     }

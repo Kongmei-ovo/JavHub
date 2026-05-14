@@ -36,6 +36,7 @@ from routers.supplement import router as supplement_router
 from routers.directors import router as directors_router
 from routers.actors import router as actors_router
 from routers.authors import router as authors_router
+from routers.labels import router as labels_router
 from routers.operations import router as operations_router
 
 app = FastAPI(title="AV Downloader API")
@@ -140,6 +141,7 @@ app.include_router(supplement_router)
 app.include_router(directors_router)
 app.include_router(actors_router)
 app.include_router(authors_router)
+app.include_router(labels_router)
 app.include_router(operations_router)
 
 

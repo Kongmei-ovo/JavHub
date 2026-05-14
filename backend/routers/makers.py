@@ -15,5 +15,6 @@ async def list_makers():
             items,
             entity_type="maker",
             keys=["name_ja", "name_en", "name"],
+            allow_network=False,
         )
     return makers_list

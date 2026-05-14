@@ -19,6 +19,7 @@ async def list_categories():
             categories,
             entity_type="category",
             keys=["name_ja", "name_en", "name"],
+            allow_network=False,
         )
     return categories
 

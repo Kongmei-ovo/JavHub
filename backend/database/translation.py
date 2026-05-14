@@ -255,6 +255,81 @@ def get_translation_count(mapping_type: str) -> int:
             return sum(1 for row in rows if _valid_mapping(_json_mapping(row["title_json"])))
 
 
+def _title_id_from_scope(scope: str) -> str:
+    if not scope.startswith("title:"):
+        return ""
+    suffix_idx = scope.rfind(":title_")
+    if suffix_idx <= len("title:"):
+        return ""
+    return _normalize_title_id(scope[len("title:"):suffix_idx])
+
+
+def _normalize_title_id(value: str) -> str:
+    return str(value or "").replace("-", "").replace("_", "").lower()
+
+
+def _entity_id_from_scope(scope: str, mapping_type: str) -> str:
+    prefix = f"{mapping_type}:"
+    if not scope.startswith(prefix):
+        return ""
+    entity_id = scope[len(prefix):].strip()
+    return entity_id if entity_id and ":" not in entity_id else ""
+
+
+def get_translation_coverage_counts(mapping_type: str) -> dict:
+    """Return de-duplicated local coverage from formal mappings and realtime cache."""
+    if mapping_type not in ("actress", "category", "series", "maker", "label", "title"):
+        return {"mapped": 0, "cached": 0, "translated": 0}
+
+    mapped_ids: set[str] = set()
+    cached_ids: set[str] = set()
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if mapping_type == "title":
+            cursor.execute(
+                "SELECT content_id, title_json FROM translation_mappings WHERE content_id NOT LIKE '_global:%'"
+            )
+            for row in cursor.fetchall():
+                if _valid_mapping(_json_mapping(row["title_json"])):
+                    mapped_ids.add(_normalize_title_id(str(row["content_id"])))
+
+            cursor.execute(
+                "SELECT scope FROM translation_cache WHERE status = 'completed' AND scope LIKE 'title:%:title_%'"
+            )
+            for row in cursor.fetchall():
+                content_id = _title_id_from_scope(str(row["scope"] or ""))
+                if content_id:
+                    cached_ids.add(content_id)
+        else:
+            col = f"{mapping_type}_json"
+            if col not in _VALID_COLUMNS:
+                return {"mapped": 0, "cached": 0, "translated": 0}
+            cursor.execute(
+                f"SELECT content_id, {col} FROM translation_mappings WHERE content_id LIKE ?",
+                (f"{mapping_type}:%",),
+            )
+            prefix = f"{mapping_type}:"
+            for row in cursor.fetchall():
+                if _valid_mapping(_json_mapping(row[col])):
+                    mapped_ids.add(str(row["content_id"])[len(prefix):])
+
+            cursor.execute(
+                "SELECT scope FROM translation_cache WHERE status = 'completed' AND scope LIKE ?",
+                (f"{mapping_type}:%",),
+            )
+            for row in cursor.fetchall():
+                entity_id = _entity_id_from_scope(str(row["scope"] or ""), mapping_type)
+                if entity_id:
+                    cached_ids.add(entity_id)
+
+    return {
+        "mapped": len(mapped_ids),
+        "cached": len(cached_ids),
+        "translated": len(mapped_ids | cached_ids),
+    }
+
+
 def translation_text_hash(source_text: str) -> str:
     return hashlib.sha256((source_text or "").encode("utf-8")).hexdigest()
 

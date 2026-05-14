@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from fastapi.routing import APIRoute
-from routers.videos import get_video_metadata, router
+from routers.videos import get_video_metadata, router, search_videos
 
 
 class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
@@ -42,6 +42,54 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
             data = await get_video_metadata("MIAA-784")
 
         self.assertEqual(data, {"summary": "Metadata summary"})
+
+    async def test_search_route_uses_cache_only_translation(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [{"content_id": "miaa784", "title_ja": "原文"}],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        translator = AsyncMock()
+        translator.translate_video.return_value = {"content_id": "miaa784", "title_ja": "原文"}
+
+        kwargs = {
+            "q": None,
+            "content_id": None,
+            "dvd_id": None,
+            "maker_id": None,
+            "maker_name": None,
+            "series_id": None,
+            "series_name": None,
+            "actress_id": 26225,
+            "actress_name": None,
+            "category_id": None,
+            "category_name": None,
+            "label_id": None,
+            "label_name": None,
+            "site_id": None,
+            "year": None,
+            "year_from": None,
+            "year_to": None,
+            "runtime_min": None,
+            "runtime_max": None,
+            "release_date_from": None,
+            "release_date_to": None,
+            "service_code": None,
+            "sort_by": None,
+            "sort_order": None,
+            "random": "1",
+            "page": 1,
+            "page_size": 30,
+        }
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            data = await search_videos(**kwargs)
+
+        self.assertEqual(data["total_count"], 1)
+        translator.translate_video.assert_awaited_once()
+        self.assertFalse(translator.translate_video.await_args.kwargs["allow_network"])
 
     async def test_translation_test_route_uses_ai_provider_only(self):
         from routers.translation import test_translation

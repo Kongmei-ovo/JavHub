@@ -271,7 +271,8 @@ class Config:
             'target_language': 'zh-CN',
             'provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
             'batch_provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
-            'realtime_mode': 'sync',
+            'realtime_mode': 'cache_only',
+            'batch_concurrency': 8,
             'google_free': {
                 'enabled': True,
                 'base_url': 'https://translate.googleapis.com/translate_a/single',
@@ -322,6 +323,14 @@ class Config:
         if not isinstance(order, list):
             return ['cache', 'mapping', 'google_free', 'deepl', 'microsoft']
         return [str(item) for item in order if str(item).strip()]
+
+    @property
+    def translation_batch_concurrency(self) -> int:
+        try:
+            value = int(self.translation.get('batch_concurrency', 8) or 8)
+        except Exception:
+            value = 8
+        return max(1, min(value, 64))
 
     @property
     def translation_openai(self) -> dict:

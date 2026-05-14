@@ -37,7 +37,8 @@ export const DEFAULT_CONFIG = {
     target_language: 'zh-CN',
     provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
     batch_provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
-    realtime_mode: 'sync',
+    realtime_mode: 'cache_only',
+    batch_concurrency: 8,
     google_free: {
       enabled: true,
       base_url: 'https://translate.googleapis.com/translate_a/single',
@@ -71,7 +72,7 @@ export const DEFAULT_BUBBLE_CFG = {
   rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
   actressAvatarSize: 'medium',
   actressPageSize: 36,
-  seriesPageSize: 60,
+  seriesPageSize: 24,
   rarityColors: {
     legendary: '#c89a30',
     epic: '#8a7060',

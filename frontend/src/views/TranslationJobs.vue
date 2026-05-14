@@ -14,19 +14,19 @@
 
     <section class="summary-strip apple-surface" aria-label="翻译统计">
       <div class="summary-item">
-        <span>{{ stats.title || 0 }}</span>
-        <strong>有效标题译文</strong>
-        <small>只统计真实标题映射</small>
+        <span>{{ coverageTitle.translated || 0 }}</span>
+        <strong>标题已翻译</strong>
+        <small>{{ coverageTitle.untranslated || 0 }} 未翻译 · {{ coveragePercent(coverageTitle) }}</small>
       </div>
       <div class="summary-item">
-        <span>{{ metadataTotal }}</span>
-        <strong>元数据名称</strong>
-        <small>{{ metadataSummary }}</small>
+        <span>{{ metadataCoverage.translated || 0 }}</span>
+        <strong>元数据已翻译</strong>
+        <small>{{ metadataCoverage.untranslated || 0 }} 未翻译 · {{ metadataSummary }}</small>
       </div>
       <div class="summary-item">
         <span>{{ stats.ai_cache || 0 }}</span>
         <strong>实时缓存</strong>
-        <small>简介和兜底翻译</small>
+        <small>标题缓存 {{ coverageTitle.cached || 0 }} · 正式映射 {{ coverageTitle.mapped || stats.title || 0 }}</small>
       </div>
       <div class="summary-item">
         <span>{{ recentJobLabel }}</span>
@@ -199,6 +199,10 @@
               <span>实时模式</span>
               <input v-model="translationConfig.realtime_mode" class="input" disabled />
             </label>
+            <label class="field">
+              <span>批量并发</span>
+              <input v-model.number="translationConfig.batch_concurrency" class="input" type="number" min="1" max="64" />
+            </label>
           </div>
           <div class="source-settings">
             <label class="check-row boxed">
@@ -269,8 +273,8 @@
           />
         </label>
         <div class="mapping-stat">
-          <strong>{{ stats[translationType] || 0 }}</strong>
-          <span>当前 {{ translationTypeLabels[translationType] }} 已翻译</span>
+          <strong>{{ currentCoverage.translated || stats[translationType] || 0 }}</strong>
+          <span>当前 {{ translationTypeLabels[translationType] }} 已翻译 · 未翻译 {{ currentCoverage.untranslated || 0 }}</span>
         </div>
         <div class="mapping-actions">
           <button class="btn btn-ghost" type="button" @click="exportTranslation">导出 {{ translationTypeLabels[translationType] }}</button>
@@ -399,6 +403,24 @@ export default {
     }
   },
   computed: {
+    coverage() {
+      return this.stats.coverage || {}
+    },
+    coverageTitle() {
+      return this.coverage.title || {}
+    },
+    currentCoverage() {
+      return this.coverage[this.translationType] || {}
+    },
+    metadataCoverage() {
+      return ['actress', 'category', 'series', 'maker', 'label'].reduce((acc, key) => {
+        const item = this.coverage[key] || {}
+        acc.total += item.total || 0
+        acc.translated += item.translated || 0
+        acc.untranslated += item.untranslated || 0
+        return acc
+      }, { total: 0, translated: 0, untranslated: 0 })
+    },
     metadataTotal() {
       return (this.stats.actress || 0) + (this.stats.category || 0) + (this.stats.series || 0)
         + (this.stats.maker || 0) + (this.stats.label || 0)
@@ -474,6 +496,8 @@ export default {
       delete merged.openai_compatible
       if (!Array.isArray(merged.provider_order)) merged.provider_order = [...base.provider_order]
       if (!Array.isArray(merged.batch_provider_order)) merged.batch_provider_order = [...base.batch_provider_order]
+      if (!merged.realtime_mode || merged.realtime_mode === 'sync') merged.realtime_mode = 'cache_only'
+      merged.batch_concurrency = Math.max(1, Math.min(Number(merged.batch_concurrency || 8), 64))
       return merged
     },
     async loadStats() {
@@ -545,7 +569,8 @@ export default {
           ...this.translationConfig,
           provider_order: realtimeOrder,
           batch_provider_order: this.selectedProviderOrder,
-          realtime_mode: 'sync',
+          realtime_mode: this.translationConfig.realtime_mode || 'cache_only',
+          batch_concurrency: Math.max(1, Math.min(Number(this.translationConfig.batch_concurrency || 8), 64)),
         },
       }
       try {
@@ -694,6 +719,11 @@ export default {
     providerOrderLabel(order) {
       const labels = (order || []).map(key => this.providerLabel(key)).filter(Boolean)
       return labels.length ? labels.join(' -> ') : '未记录'
+    },
+    coveragePercent(item = {}) {
+      const total = item.total || 0
+      if (!total) return '0%'
+      return `${Math.round(((item.translated || 0) / total) * 100)}%`
     },
     jobTypeLabel(type) {
       return {

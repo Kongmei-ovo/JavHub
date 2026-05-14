@@ -116,7 +116,7 @@
     </div>
 
     <!-- 系列 Tab：系列气泡云 -->
-    <div v-if="activeTab === 'series'" class="tag-cloud-wrap">
+    <div v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard">
       <div class="cloud-header">
         <span class="cloud-hint">第 {{ seriesPage }} / {{ seriesTotalPages }} 页</span>
         <button class="shuffle-btn" type="button" @click="reshuffleSeries" :disabled="seriesLoading">
@@ -386,7 +386,7 @@ const DEFAULT_CFG = {
   defaultTab: 'genre',
   actressAvatarSize: 'medium',
   actressPageSize: 36,
-  seriesPageSize: 60,
+  seriesPageSize: 24,
   rarityThresholds: { legendary: 5, epic: 20, rare: 50 }, // 百分比阈值（0-100）
 }
 
@@ -731,7 +731,12 @@ export default {
       })
     },
     goGenre(tag) {
-      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'category', value: tag.id } })
+      const name = displayName(tag, 'name_ja', 'name_en') || tag.name || ''
+      this.$router.push({
+        name: 'DiscoveryDetail',
+        params: { type: 'category', value: String(tag.id || name) },
+        query: name ? { name } : {},
+      })
     },
     switchTab(tab) {
       this.activeTab = tab
@@ -803,11 +808,19 @@ export default {
     },
     goActress(actress) {
       const name = actress.name_kanji || actress.name_romaji || actress.name || ''
-      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'actress', value: name } })
+      this.$router.push({
+        name: 'DiscoveryDetail',
+        params: { type: 'actress', value: String(actress.id || name) },
+        query: name ? { name } : {},
+      })
     },
     goSeries(item) {
       const name = item.name_ja || item.name_en || item.name || ''
-      this.$router.push({ name: 'DiscoveryDetail', params: { type: 'series', value: name } })
+      this.$router.push({
+        name: 'DiscoveryDetail',
+        params: { type: 'series', value: String(item.id || name) },
+        query: name ? { name } : {},
+      })
     },
     legendaryBubbleClass(tag) {
       if (this.activeTab === 'series') return ''

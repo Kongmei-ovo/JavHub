@@ -21,6 +21,7 @@ async def list_actresses(
             items,
             entity_type="actress",
             keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
+            allow_network=False,
         )
     return result
 
@@ -40,6 +41,7 @@ async def get_actress(actress_id: int) -> dict[str, Any]:
             [result],
             entity_type="actress",
             keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
+            allow_network=False,
         )
     return result
 
@@ -68,11 +70,11 @@ async def get_actress_videos(
         sort_by=_srt,
     )
     if result.get("data"):
-        result["data"] = [await _apply_translation(item) for item in result["data"]]
+        result["data"] = [await _apply_translation(item, allow_network=False) for item in result["data"]]
     return result
 
-async def _apply_translation(data: dict) -> dict:
+async def _apply_translation(data: dict, *, allow_network: bool = True) -> dict:
     content_id = data.get("content_id") or data.get("dvd_id", "").replace("-", "").replace("_", "").lower()
     if not content_id:
         return data
-    return await get_translator_service().translate_video(content_id, data)
+    return await get_translator_service().translate_video(content_id, data, allow_network=allow_network)

@@ -110,6 +110,16 @@ class InfoClient:
             page += 1
         return all_items
 
+    async def get_total_count(self, path: str) -> int:
+        """Fetch total_count from a paginated JavInfoApi list endpoint."""
+        data = await self._get(path, params={"page": 1, "page_size": 1})
+        if isinstance(data, dict):
+            if data.get("total_count") is not None:
+                return int(data.get("total_count") or 0)
+            items = data.get("data", [])
+            return len(items) if isinstance(items, list) else 0
+        return len(data) if isinstance(data, list) else 0
+
     def _auth_headers(self) -> dict[str, str]:
         """返回补全管理接口认证头（如果 token 已配置）"""
         from config import config

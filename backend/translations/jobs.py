@@ -9,6 +9,7 @@ from config import config
 from database import (
     add_translation_job,
     get_cached_translation,
+    get_translation,
     get_translation_job,
     list_translation_jobs,
     update_translation_job,
@@ -57,6 +58,27 @@ def _batch_order(provider_order: list[str] | None = None) -> list[str]:
     if provider_order:
         return provider_order
     return config.translation_batch_provider_order
+
+
+def _batch_concurrency() -> int:
+    return config.translation_batch_concurrency
+
+
+def _has_title_translation(content_id: str, source: str) -> bool:
+    for candidate in {str(content_id or "").strip(), _normalize_code(content_id)}:
+        if not candidate:
+            continue
+        raw = get_translation(candidate)
+        mapping = raw.get("title", {}) if raw else {}
+        if source and mapping.get(source):
+            return True
+    return False
+
+
+def _has_metadata_translation(entity_type: str, entity_id: Any, source: str) -> bool:
+    raw = get_translation(f"{entity_type}:{entity_id}")
+    mapping = raw.get(entity_type, {}) if raw else {}
+    return bool(source and mapping.get(source))
 
 
 async def create_translation_job(
@@ -217,66 +239,100 @@ async def _collect_metadata_names(entity_types: tuple[str, ...] | None = None, l
 
 
 async def _translate_titles(job_id: int, items: list[dict], provider_order: list[str], counters: dict, *, force: bool) -> None:
-    service = TranslatorService()
-    for item in items:
-        counters["processed"] += 1
+    service = TranslatorService(reuse_clients=True)
+    semaphore = asyncio.Semaphore(_batch_concurrency())
+    lock = asyncio.Lock()
+
+    async def record(field: str) -> None:
+        async with lock:
+            counters["processed"] += 1
+            counters[field] += 1
+            _progress(job_id, counters)
+
+    async def translate_one(item: dict) -> None:
         content_id = _content_id(item)
         source = _title_text(item)
         if not content_id or not source:
-            counters["skipped"] += 1
-            _progress(job_id, counters)
-            continue
+            await record("skipped")
+            return
         scope = f"title:{content_id}:title_ja"
-        if not force and get_cached_translation(scope, source):
-            counters["skipped"] += 1
-            _progress(job_id, counters)
-            continue
-        translated = await service.translate_text(
-            source,
-            scope=scope,
-            context="video title",
-            use_ai=False,
-            persist_ai=True,
-            provider_order=provider_order,
-        )
-        if translated and translated != source:
+        if not force and (_has_title_translation(content_id, source) or get_cached_translation(scope, source)):
+            await record("skipped")
+            return
+        try:
+            async with semaphore:
+                translated = await service.translate_text(
+                    source,
+                    scope=scope,
+                    context="video title",
+                    use_ai=False,
+                    persist_ai=True,
+                    provider_order=provider_order,
+                    return_original=False,
+                )
+        except Exception:
+            logger.exception("Title translation failed for %s", content_id)
+            await record("failed")
+            return
+        if translated:
             upsert_translation(_normalize_code(content_id), {"title": {source: translated}})
-            counters["translated"] += 1
+            await record("translated")
         else:
-            counters["failed"] += 1
-        _progress(job_id, counters)
+            await record("failed")
+
+    try:
+        await asyncio.gather(*(translate_one(item) for item in items))
+    finally:
+        await service.close()
 
 
 async def _translate_metadata_names(job_id: int, items: list[dict], provider_order: list[str], counters: dict, *, force: bool) -> None:
-    service = TranslatorService()
-    for item in items:
-        counters["processed"] += 1
+    service = TranslatorService(reuse_clients=True)
+    semaphore = asyncio.Semaphore(_batch_concurrency())
+    lock = asyncio.Lock()
+
+    async def record(field: str) -> None:
+        async with lock:
+            counters["processed"] += 1
+            counters[field] += 1
+            _progress(job_id, counters)
+
+    async def translate_one(item: dict) -> None:
         entity_type = item.get("type")
         entity_id = item.get("id")
         source = str(item.get("text") or "").strip()
         if not entity_type or not entity_id or not source:
-            counters["skipped"] += 1
-            _progress(job_id, counters)
-            continue
+            await record("skipped")
+            return
         scope = f"{entity_type}:{entity_id}"
-        if not force and get_cached_translation(scope, source):
-            counters["skipped"] += 1
-            _progress(job_id, counters)
-            continue
-        translated = await service.translate_text(
-            source,
-            scope=scope,
-            context=f"{entity_type} name",
-            use_ai=False,
-            persist_ai=True,
-            provider_order=provider_order,
-        )
-        if translated and translated != source:
+        if not force and (_has_metadata_translation(str(entity_type), entity_id, source) or get_cached_translation(scope, source)):
+            await record("skipped")
+            return
+        try:
+            async with semaphore:
+                translated = await service.translate_text(
+                    source,
+                    scope=scope,
+                    context=f"{entity_type} name",
+                    use_ai=False,
+                    persist_ai=True,
+                    provider_order=provider_order,
+                    return_original=False,
+                )
+        except Exception:
+            logger.exception("Metadata translation failed for %s:%s", entity_type, entity_id)
+            await record("failed")
+            return
+        if translated:
             upsert_translation(f"{entity_type}:{entity_id}", {entity_type: {source: translated}})
-            counters["translated"] += 1
+            await record("translated")
         else:
-            counters["failed"] += 1
-        _progress(job_id, counters)
+            await record("failed")
+
+    try:
+        await asyncio.gather(*(translate_one(item) for item in items))
+    finally:
+        await service.close()
 
 
 def _progress(job_id: int, counters: dict) -> None:
