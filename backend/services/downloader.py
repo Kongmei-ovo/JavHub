@@ -1,9 +1,8 @@
 import logging
 import asyncio
-from typing import Optional
 from config import config
 from database import create_download_task, update_task_status, get_download_tasks, add_log
-from services.openlist import openlist_client
+from services.downloaders import create_downloader_client, get_downloader_config, match_remote_task
 from services.notification import notification_service
 
 logger = logging.getLogger(__name__)
@@ -11,16 +10,35 @@ logger = logging.getLogger(__name__)
 class DownloaderService:
     """下载调度服务"""
 
-    async def create_download_task(self, code: str, title: str, magnet: str, path: str = "") -> str:
+    async def create_download_task(
+        self,
+        code: str,
+        title: str,
+        magnet: str,
+        path: str = "",
+        downloader_id: str = "",
+    ) -> int:
+        downloader_config = get_downloader_config(downloader_id)
+        if not downloader_config:
+            raise RuntimeError("未配置可用下载器")
         if not path:
-            path = config.openlist_default_path
+            path = downloader_config.get("default_path") or config.openlist_default_path
 
-        task_id = create_download_task(code, title, magnet, path)
+        task_id = create_download_task(
+            code,
+            title,
+            magnet,
+            path,
+            downloader_id=downloader_config.get("id"),
+            downloader_name=downloader_config.get("name"),
+            downloader_type=downloader_config.get("type"),
+        )
 
-        result = await openlist_client.add_offline_download(path, [magnet])
-        if result:
-            update_task_status(task_id, "downloading")
-            add_log("INFO", f"下载任务已创建: {code}")
+        client = create_downloader_client(downloader_config)
+        result = await client.add_magnet(magnet, path, title)
+        if result.success:
+            update_task_status(task_id, "downloading", remote_task_id=result.remote_task_id)
+            add_log("INFO", f"下载任务已创建: {code} -> {downloader_config.get('name')}")
 
             if config.notification_enabled and config.notification_auto_download:
                 try:
@@ -30,8 +48,9 @@ class DownloaderService:
                 except Exception:
                     pass
         else:
-            update_task_status(task_id, "failed", "OpenList API 调用失败")
-            add_log("ERROR", f"下载任务创建失败: {code}")
+            error_msg = result.message or f"{downloader_config.get('name')} API 调用失败"
+            update_task_status(task_id, "failed", error_msg)
+            add_log("ERROR", f"下载任务创建失败: {code} -> {error_msg}")
 
         return task_id
 
@@ -54,27 +73,17 @@ class DownloaderService:
         hash_match = re.search(r'btih:([a-fA-F0-9]{40}|[a-zA-Z0-9]{32})', magnet)
         info_hash = hash_match.group(1).lower() if hash_match else None
 
-        openlist_tasks = await openlist_client.get_offline_tasks()
+        downloader_config = get_downloader_config(db_task.get("downloader_id"))
+        if not downloader_config:
+            return {"task_id": task_id, "status": db_task.get('status', 'unknown')}
 
-        matched = None
-        if info_hash:
-            matched = next(
-                (t for t in openlist_tasks if t.get('hash', '').lower() == info_hash),
-                None
-            )
+        remote_tasks = await create_downloader_client(downloader_config).list_tasks()
+        matched = match_remote_task(remote_tasks, magnet, db_task.get("remote_task_id") or info_hash or "")
 
         if not matched:
             return {"task_id": task_id, "status": db_task.get('status', 'unknown')}
 
-        state = matched.get('state', -1)
-        if state == 2:
-            status = 'completed'
-        elif state == 7:
-            status = 'failed'
-        elif state in (0, 1):
-            status = 'downloading'
-        else:
-            status = 'unknown'
+        status = matched.get("status") or "unknown"
 
         update_task_status(task_id, status)
         return {"task_id": task_id, "status": status}

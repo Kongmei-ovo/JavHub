@@ -1,7 +1,7 @@
 <template>
-  <div class="actor-page">
+  <div class="actor-page page-bleed">
     <!-- Hero -->
-    <div class="actor-hero">
+    <div class="actor-hero page-rail page-rail--gallery">
       <div class="hero-content">
         <div class="actor-avatar">
           <img
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Supplement Status Card -->
-    <div v-if="actressId && supplementStatus" class="supplement-card">
+    <div v-if="actressId && supplementStatus" class="supplement-card page-rail page-rail--gallery">
       <div class="supplement-header">
         <h3>补全状态</h3>
         <span
@@ -91,13 +91,13 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="loading-wrap">
+    <div v-if="loading" class="loading-wrap page-rail page-rail--standard">
       <div class="spinner-large"></div>
       <p>加载作品集中...</p>
     </div>
 
     <!-- Movies by Year -->
-    <div v-else-if="movies.length > 0" class="movies-section">
+    <div v-else-if="movies.length > 0" class="movies-section page-rail page-rail--gallery">
       <div class="section-header">
         <h2>全部作品</h2>
         <div class="header-right">
@@ -149,7 +149,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else class="empty-state">
+    <div v-else class="empty-state page-rail page-rail--standard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
         <circle cx="9" cy="7" r="4"/>
@@ -474,7 +474,7 @@ export default {
 
 <style scoped>
 .actor-page {
-  padding-bottom: 40px;
+  padding-bottom: var(--page-bottom-space);
 }
 
 /* Hero */
@@ -482,7 +482,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 40px;
+  padding-block: 40px;
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   gap: 24px;
 }
@@ -563,9 +563,7 @@ export default {
 
 /* Movies Section */
 .movies-section {
-  padding: 20px 40px;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding-block: 20px;
 }
 
 .section-header {
@@ -726,7 +724,7 @@ export default {
 
 .year-nav-item.active {
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
 }
 
 .nav-fade-enter-active { transition: opacity 0.3s ease; }
@@ -756,7 +754,8 @@ export default {
 
 /* Supplement Card */
 .supplement-card {
-  margin: 0 40px 20px;
+  margin-top: 0;
+  margin-bottom: 20px;
   padding: 20px 24px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -785,8 +784,8 @@ export default {
 }
 
 .badge-running {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
 }
 
 .badge-failed {
@@ -855,7 +854,7 @@ export default {
   .actor-hero {
     flex-direction: column;
     text-align: center;
-    padding: 24px;
+    padding-block: 24px;
   }
 
   .hero-content {
@@ -863,7 +862,7 @@ export default {
   }
 
   .movies-section {
-    padding: 16px;
+    padding-block: 16px;
   }
 
   .movies-grid {
@@ -887,7 +886,7 @@ export default {
   }
 
   .supplement-card {
-    margin: 0 16px 16px;
+    margin-bottom: 16px;
   }
   .supplement-counters {
     gap: 16px;

@@ -9,12 +9,6 @@ def _env(key: str, default: str = '') -> str:
     return os.getenv(key) or default
 
 
-def _env_bool(key: str, default: bool = False) -> bool:
-    value = os.getenv(key)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
 class Config:
     _instance: Optional['Config'] = None
     _config: dict = {}
@@ -42,14 +36,6 @@ class Config:
     @property
     def server_port(self) -> int:
         return self._config.get('server', {}).get('port', 18090)
-
-    @property
-    def api_key(self) -> str:
-        return _env('API_KEY', self._config.get('server', {}).get('api_key', ''))
-
-    @property
-    def auth_disabled(self) -> bool:
-        return _env_bool('AUTH_DISABLED', bool(self._config.get('server', {}).get('auth_disabled', False)))
 
     @property
     def frontend_origin(self) -> str:
@@ -224,6 +210,97 @@ class Config:
             value = 0.08
         return max(0.0, min(value, 1.0))
 
+    # Shared AI settings
+    @property
+    def ai(self) -> dict:
+        defaults = {
+            'openai_compatible': {
+                'base_url': 'https://api.openai.com/v1',
+                'api_key': '',
+                'model': 'gpt-4o-mini',
+                'timeout': 30,
+            },
+        }
+        cfg = self._config.get('ai', {}) or {}
+        legacy_translation_cfg = self._config.get('translation', {}) or {}
+        legacy_openai_cfg = legacy_translation_cfg.get('openai_compatible', {})
+        merged = {**defaults, **cfg}
+        merged['openai_compatible'] = {
+            **defaults['openai_compatible'],
+            **(legacy_openai_cfg if isinstance(legacy_openai_cfg, dict) else {}),
+            **(cfg.get('openai_compatible', {}) if isinstance(cfg.get('openai_compatible'), dict) else {}),
+        }
+        return merged
+
+    @property
+    def openai_compatible(self) -> dict:
+        cfg = self.ai.get('openai_compatible', {})
+        return cfg if isinstance(cfg, dict) else {}
+
+    # Translation settings
+    @property
+    def translation(self) -> dict:
+        defaults = {
+            'enabled': True,
+            'target_language': 'zh-CN',
+            'provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
+            'batch_provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
+            'realtime_mode': 'sync',
+            'google_free': {
+                'enabled': True,
+                'base_url': 'https://translate.googleapis.com/translate_a/single',
+                'timeout': 10,
+            },
+            'deepl': {
+                'enabled': False,
+                'api_key': '',
+                'free_api': True,
+                'timeout': 15,
+            },
+            'microsoft': {
+                'enabled': False,
+                'api_key': '',
+                'region': '',
+                'endpoint': 'https://api.cognitive.microsofttranslator.com',
+                'timeout': 15,
+            },
+        }
+        cfg = self._config.get('translation', {}) or {}
+        merged = {**defaults, **cfg}
+        for nested_key in ('google_free', 'deepl', 'microsoft'):
+            merged[nested_key] = {
+                **defaults[nested_key],
+                **(cfg.get(nested_key, {}) if isinstance(cfg.get(nested_key), dict) else {}),
+            }
+        merged.pop('openai_compatible', None)
+        return merged
+
+    @property
+    def translation_enabled(self) -> bool:
+        return bool(self.translation.get('enabled', True))
+
+    @property
+    def translation_target_language(self) -> str:
+        return str(self.translation.get('target_language') or 'zh-CN')
+
+    @property
+    def translation_provider_order(self) -> list:
+        order = self.translation.get('provider_order')
+        if not isinstance(order, list):
+            return ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible']
+        return [str(item) for item in order if str(item).strip()]
+
+    @property
+    def translation_batch_provider_order(self) -> list:
+        order = self.translation.get('batch_provider_order')
+        if not isinstance(order, list):
+            return ['cache', 'mapping', 'google_free', 'deepl', 'microsoft']
+        return [str(item) for item in order if str(item).strip()]
+
+    @property
+    def translation_openai(self) -> dict:
+        return self.openai_compatible
+
     # JavInfo API settings
     @property
     def javinfo(self) -> dict:
@@ -231,7 +308,7 @@ class Config:
 
     @property
     def javinfo_api_url(self) -> str:
-        return _env('JAVINFO_API_URL', self._config.get('javinfo', {}).get('api_url', 'http://localhost:8080'))
+        return _env('JAVINFO_API_URL', self._config.get('javinfo', {}).get('api_url', 'http://localhost:18080'))
 
     @property
     def javinfo_timeout(self) -> int:
@@ -262,6 +339,10 @@ class Config:
     @property
     def sources(self) -> dict:
         return self._config.get('sources', {})
+
+    @property
+    def downloaders(self) -> dict:
+        return self._config.get('downloaders', {})
 
     # Proxy settings
     @property
@@ -316,8 +397,10 @@ class Config:
 
     def get_all(self) -> dict:
         cfg = self._config.copy()
+        cfg['ai'] = self.ai
         cfg['automation'] = self.automation
         cfg['actor_mapping'] = self.actor_mapping
+        cfg['translation'] = self.translation
         return cfg
 
     def _merge_config(self, current: dict, incoming: dict) -> dict:
@@ -330,7 +413,28 @@ class Config:
         return merged
 
     def update(self, new_config: dict):
-        self._config = self._merge_config(self._config, new_config)
+        incoming = self._merge_config({}, new_config)
+        if isinstance(incoming.get('ai'), dict):
+            incoming_openai = incoming['ai'].get('openai_compatible')
+            if isinstance(incoming_openai, dict) and not incoming_openai.get('api_key'):
+                current_ai = self._config.get('ai', {}) or {}
+                current_openai = current_ai.get('openai_compatible', {}) if isinstance(current_ai, dict) else {}
+                legacy_translation = self._config.get('translation', {}) or {}
+                legacy_openai = (
+                    legacy_translation.get('openai_compatible', {})
+                    if isinstance(legacy_translation, dict)
+                    else {}
+                )
+                existing_api_key = (
+                    current_openai.get('api_key') if isinstance(current_openai, dict) else ''
+                ) or (
+                    legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
+                )
+                if existing_api_key:
+                    incoming_openai['api_key'] = existing_api_key
+        self._config = self._merge_config(self._config, incoming)
+        if 'ai' in incoming and isinstance(self._config.get('translation'), dict):
+            self._config['translation'].pop('openai_compatible', None)
         config_path = Path(__file__).parent.parent / "config.yaml"
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(self._config, f, allow_unicode=True, default_flow_style=False)

@@ -1,6 +1,7 @@
 """Emby actor -> JavInfo actress mapping database layer."""
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from database.base import get_db
@@ -17,20 +18,29 @@ def upsert_actor_mapping(
     confidence: float = 0,
     status: str = "candidate",
     source: str = "manual",
+    javinfo_avatar_url: str | None = None,
+    movie_count: int | None = None,
+    confidence_breakdown: dict | None = None,
+    confidence_label: str | None = None,
+    risk_flags: list[str] | None = None,
 ) -> int:
     """Create or update a mapping candidate/decision."""
     if status not in VALID_MAPPING_STATUSES:
         raise ValueError(f"invalid actor mapping status: {status}")
     emby_actor_id = str(emby_actor_id)
+    confidence_breakdown_json = json.dumps(confidence_breakdown or {}, ensure_ascii=False) if confidence_breakdown else None
+    risk_flags_json = json.dumps(risk_flags or [], ensure_ascii=False) if risk_flags is not None else None
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             '''
             INSERT INTO actor_mappings (
                 emby_actor_id, emby_actor_name, javinfo_actress_id, javinfo_actress_name,
-                confidence, status, source, created_at, updated_at
+                confidence, status, source, javinfo_avatar_url, movie_count,
+                confidence_breakdown_json, confidence_label, risk_flags_json,
+                created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(emby_actor_id, javinfo_actress_id) DO UPDATE SET
                 emby_actor_name = excluded.emby_actor_name,
                 javinfo_actress_name = COALESCE(excluded.javinfo_actress_name, actor_mappings.javinfo_actress_name),
@@ -49,6 +59,11 @@ def upsert_actor_mapping(
                     THEN actor_mappings.source
                     ELSE excluded.source
                 END,
+                javinfo_avatar_url = COALESCE(excluded.javinfo_avatar_url, actor_mappings.javinfo_avatar_url),
+                movie_count = COALESCE(excluded.movie_count, actor_mappings.movie_count),
+                confidence_breakdown_json = COALESCE(excluded.confidence_breakdown_json, actor_mappings.confidence_breakdown_json),
+                confidence_label = COALESCE(excluded.confidence_label, actor_mappings.confidence_label),
+                risk_flags_json = COALESCE(excluded.risk_flags_json, actor_mappings.risk_flags_json),
                 updated_at = CURRENT_TIMESTAMP
             ''',
             (
@@ -59,6 +74,11 @@ def upsert_actor_mapping(
                 confidence,
                 status,
                 source,
+                javinfo_avatar_url,
+                movie_count,
+                confidence_breakdown_json,
+                confidence_label,
+                risk_flags_json,
             ),
         )
         if cursor.lastrowid:
@@ -71,6 +91,37 @@ def upsert_actor_mapping(
         return row["id"] if row else 0
 
 
+def update_actor_mapping_ai_review(
+    emby_actor_id: str | int,
+    javinfo_actress_id: int,
+    ai_decision: str,
+    ai_confidence: float,
+    ai_reason: str,
+    ai_model: str,
+) -> int:
+    """Persist AI review metadata for an existing or newly-created candidate pair."""
+    emby_actor_id = str(emby_actor_id)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            UPDATE actor_mappings
+            SET ai_decision = ?, ai_confidence = ?, ai_reason = ?, ai_model = ?,
+                ai_reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE emby_actor_id = ? AND javinfo_actress_id = ?
+            ''',
+            (ai_decision, ai_confidence, ai_reason, ai_model, emby_actor_id, javinfo_actress_id),
+        )
+        if cursor.rowcount:
+            cursor.execute(
+                "SELECT id FROM actor_mappings WHERE emby_actor_id = ? AND javinfo_actress_id = ?",
+                (emby_actor_id, javinfo_actress_id),
+            )
+            row = cursor.fetchone()
+            return row["id"] if row else 0
+        return 0
+
+
 def confirm_actor_mapping(
     emby_actor_id: str | int,
     emby_actor_name: str,
@@ -78,6 +129,11 @@ def confirm_actor_mapping(
     javinfo_actress_name: str,
     confidence: float = 1.0,
     source: str = "manual",
+    javinfo_avatar_url: str | None = None,
+    movie_count: int | None = None,
+    confidence_breakdown: dict | None = None,
+    confidence_label: str | None = None,
+    risk_flags: list[str] | None = None,
 ) -> int:
     return upsert_actor_mapping(
         emby_actor_id=emby_actor_id,
@@ -87,6 +143,11 @@ def confirm_actor_mapping(
         confidence=confidence,
         status="confirmed",
         source=source,
+        javinfo_avatar_url=javinfo_avatar_url,
+        movie_count=movie_count,
+        confidence_breakdown=confidence_breakdown,
+        confidence_label=confidence_label,
+        risk_flags=risk_flags,
     )
 
 
@@ -96,6 +157,11 @@ def ignore_actor_mapping(
     javinfo_actress_id: int | None = None,
     javinfo_actress_name: str | None = None,
     source: str = "manual",
+    javinfo_avatar_url: str | None = None,
+    movie_count: int | None = None,
+    confidence_breakdown: dict | None = None,
+    confidence_label: str | None = None,
+    risk_flags: list[str] | None = None,
 ) -> int:
     if javinfo_actress_id is None:
         emby_actor_id = str(emby_actor_id)
@@ -128,7 +194,39 @@ def ignore_actor_mapping(
         confidence=0,
         status="ignored",
         source=source,
+        javinfo_avatar_url=javinfo_avatar_url,
+        movie_count=movie_count,
+        confidence_breakdown=confidence_breakdown,
+        confidence_label=confidence_label,
+        risk_flags=risk_flags,
     )
+
+
+def _json_object(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw)
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _json_list(raw: str | None) -> list:
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except Exception:
+        return []
+    return value if isinstance(value, list) else []
+
+
+def _hydrate_mapping_row(row) -> dict:
+    data = dict(row)
+    data["confidence_breakdown"] = _json_object(data.pop("confidence_breakdown_json", None))
+    data["risk_flags"] = _json_list(data.pop("risk_flags_json", None))
+    return data
 
 
 def list_actor_mappings(
@@ -163,7 +261,7 @@ def list_actor_mappings(
             ''',
             params + [limit],
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return [_hydrate_mapping_row(row) for row in cursor.fetchall()]
 
 
 def get_confirmed_actor_mapping(emby_actor_id: str | int) -> Optional[dict]:
@@ -179,7 +277,7 @@ def get_confirmed_actor_mapping(emby_actor_id: str | int) -> Optional[dict]:
             (str(emby_actor_id),),
         )
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return _hydrate_mapping_row(row) if row else None
 
 
 def delete_actor_mapping(mapping_id: int) -> bool:

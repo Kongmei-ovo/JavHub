@@ -32,17 +32,17 @@ defineEmits(['close', 'organize'])
   bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  z-index: var(--z-toast);
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 10px 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--material-glass-sheet);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-light);
   border-radius: 100px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-sheet);
   min-width: 240px;
   max-width: 90vw;
 }
@@ -58,7 +58,7 @@ defineEmits(['close', 'organize'])
 .toast-message {
   font-size: 14px;
   font-weight: 500;
-  color: white;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -66,7 +66,7 @@ defineEmits(['close', 'organize'])
 
 .toast-action {
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
   border: none;
   padding: 6px 14px;
   border-radius: 100px;
@@ -85,9 +85,9 @@ defineEmits(['close', 'organize'])
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-control);
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,8 +96,8 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-close:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  background: var(--surface-control-hover);
+  color: var(--text-primary);
 }
 
 /* Animations */

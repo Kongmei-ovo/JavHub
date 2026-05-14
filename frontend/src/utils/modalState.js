@@ -83,9 +83,13 @@ function arrayField(value) {
 
 function supplementSourcesToVideo(data = {}) {
   const fields = {}
+  const translatedFields = {}
   for (const field of data.chosen_fields || []) {
     if (!field?.field_name) continue
     fields[field.field_name] = field.field_value
+    if (field.field_value_translated) {
+      translatedFields[field.field_name] = field.field_value_translated
+    }
   }
 
   const categories = arrayField(fields.category_names).map(name => ({
@@ -93,13 +97,30 @@ function supplementSourcesToVideo(data = {}) {
     name_ja: name,
     name_en: name,
   }))
+  const translatedCategories = arrayField(translatedFields.category_names)
+  categories.forEach((category, index) => {
+    if (translatedCategories[index] && translatedCategories[index] !== category.name_ja) {
+      category.name_ja_translated = translatedCategories[index]
+      category.name_en_translated = translatedCategories[index]
+    }
+  })
   const actresses = arrayField(fields.actor_names).map(name => ({
     id: name,
     name_kanji: name,
     name_romaji: name,
   }))
+  const translatedActresses = arrayField(translatedFields.actor_names)
+  actresses.forEach((actress, index) => {
+    if (translatedActresses[index] && translatedActresses[index] !== actress.name_kanji) {
+      actress.name_kanji_translated = translatedActresses[index]
+      actress.name_romaji_translated = translatedActresses[index]
+    }
+  })
   const patch = {
     title_ja: fields.title,
+    title_ja_translated: translatedFields.title,
+    summary: fields.summary || fields.description,
+    summary_translated: translatedFields.summary || translatedFields.description,
     dvd_id: fields.display_number || fields.raw_number,
     release_date: fields.release_date,
     runtime_mins: fields.runtime_mins ? Number(fields.runtime_mins) : undefined,
@@ -113,6 +134,13 @@ function supplementSourcesToVideo(data = {}) {
     sample_url: fields.sample_movie_url,
     sample_image_urls: arrayField(fields.sample_image_urls),
     _supplementSources: data,
+  }
+  for (const [key, fieldName] of [['maker', 'maker_name'], ['label', 'label_name'], ['series', 'series_name']]) {
+    if (patch[key] && translatedFields[fieldName]) {
+      patch[key].name_ja_translated = translatedFields[fieldName]
+      patch[key].name_en_translated = translatedFields[fieldName]
+      patch[key].name_translated = translatedFields[fieldName]
+    }
   }
   for (const key of Object.keys(patch)) {
     if (patch[key] === undefined || patch[key] === '') {

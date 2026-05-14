@@ -20,7 +20,7 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
-            
+
             <div class="modal-actions">
               <button
                 v-if="video.sample_url"
@@ -134,7 +134,7 @@
           <!-- 简介 -->
           <div class="modal-section">
             <h4 class="section-title">简介</h4>
-            <p v-if="video.summary" class="summary-text">{{ video.summary }}</p>
+            <p v-if="summaryDisplay" class="summary-text">{{ summaryDisplay }}</p>
             <div v-else-if="!metadataLoaded" class="skeleton-summary">
               <div class="skeleton skeleton-line"></div>
               <div class="skeleton skeleton-line"></div>
@@ -336,6 +336,9 @@ export default {
     authorsDisplay() {
       if (!this.video?.authors?.length) return ''
       return this.video.authors.map(a => a.name_kanji || a.name_kana).filter(Boolean).join('、')
+    },
+    summaryDisplay() {
+      return this.video?.summary_translated || this.video?.summary || ''
     },
     magnets() { return this.video?.magnets || [] },
     coverImageUrl() {
@@ -564,60 +567,60 @@ export default {
 </script>
 
 <style scoped>
-.modal-overlay { 
-  position: fixed; 
-  inset: 0; 
-  background: rgba(0, 0, 0, 0.05); 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  z-index: 1000; 
-  padding: 40px; 
-  transition: all 0.4s var(--ease-pro); 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: 40px;
+  transition: all 0.4s var(--ease-pro);
 }
 
-.modal-container { 
-  background: rgba(255, 255, 255, 0.01); 
-  backdrop-filter: blur(80px) saturate(240%) brightness(1.2); 
-  -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(1.2); 
-  border-radius: var(--radius-pro); 
-  border: 1px solid rgba(255, 255, 255, 0.25); 
-  width: 100%; 
-  max-width: 900px; 
-  max-height: 90vh; 
-  overflow: hidden; 
-  position: relative; 
-  box-shadow: 0 50px 150px rgba(0, 0, 0, 0.4); 
+.modal-container {
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(80px) saturate(240%) brightness(1.2);
+  -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(1.2);
+  border-radius: var(--radius-pro);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 50px 150px rgba(0, 0, 0, 0.4);
 }
 
-.modal-close { 
-  position: absolute; 
-  top: 20px; 
-  right: 20px; 
-  background: rgba(255, 255, 255, 0.1); 
-  border: 1px solid rgba(255, 255, 255, 0.1); 
-  width: 44px; 
-  height: 44px; 
-  border-radius: 50%; 
-  font-size: 24px; 
-  cursor: pointer; 
-  color: white; 
-  z-index: 10; 
-  transition: var(--transition-pro); 
-  backdrop-filter: blur(20px); 
-  -webkit-backdrop-filter: blur(20px); 
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+  z-index: 10;
+  transition: var(--transition-pro);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-.modal-close:hover { 
-  background: rgba(255, 255, 255, 0.2); 
-  transform: scale(1.1) rotate(90deg); 
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1) rotate(90deg);
 }
 
-.modal-body { 
-  display: flex; 
-  flex-direction: column; 
-  max-height: 90vh; 
-  overflow-y: auto; 
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow-y: auto;
   background: transparent;
 }
 
@@ -642,8 +645,8 @@ export default {
 .stream-btn svg { width: 16px; height: 16px; }
 .favorite-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border-radius: 40px; font-size: 14px; font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.15); cursor: pointer; }
 .favorite-btn:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.2); }
-.favorite-btn.is-active { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.5); color: #FFD60A; }
-.favorite-btn.is-active:hover { background: rgba(212, 175, 55, 0.3); }
+.favorite-btn.is-active { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.42); color: #ffffff; }
+.favorite-btn.is-active:hover { background: rgba(255, 255, 255, 0.28); }
 .favorite-btn svg { width: 16px; height: 16px; transition: transform 0.3s var(--ease-pro); }
 .favorite-btn:active svg { transform: scale(0.8); }
 .modal-title-block { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 16px; }
@@ -657,7 +660,7 @@ export default {
 .meta-value { color: #ffffff; font-size: 14px; font-family: var(--font-mono); font-weight: 500; }
 .meta-value--empty { color: rgba(255, 255, 255, 0.2); font-style: italic; }
 .clickable { color: #ffffff; cursor: pointer; transition: color 0.2s; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 4px; }
-.clickable:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.clickable:hover { color: #ffffff; text-decoration-color: rgba(255,255,255,0.72); }
 .modal-section { margin-top: 0; }
 .section-title { font-size: 12px; font-weight: 700; margin-bottom: 20px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.12em; }
 .actress-list { display: flex; flex-wrap: wrap; gap: 20px; }
@@ -683,7 +686,7 @@ export default {
 .skeleton-line { height: 16px; margin-bottom: 12px; width: 100%; }
 .w-60 { width: 60% !important; }
 .w-80 { width: 80% !important; }
-.gallery-lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); display: flex; align-items: center; justify-content: center; z-index: 1001; animation: lightbox-in 0.3s var(--ease-pro); backdrop-filter: blur(20px); }
+.gallery-lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); display: flex; align-items: center; justify-content: center; z-index: var(--z-lightbox); animation: lightbox-in 0.3s var(--ease-pro); backdrop-filter: blur(20px); }
 @keyframes lightbox-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; backdrop-filter: blur(20px); } }
 .lightbox-img-wrap { max-width: 95vw; max-height: 90vh; display: flex; align-items: center; justify-content: center; }
 .lightbox-img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); }

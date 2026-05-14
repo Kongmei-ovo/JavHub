@@ -4,7 +4,7 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite
 from modules.info_client import get_info_client
-from services.translation import apply_translation
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/favorites", tags=["Favorites"])
 
@@ -45,7 +45,7 @@ async def get_favorite_videos():
         content_id = item["entity_id"]
         try:
             data = await client.get_video(content_id)
-            data = apply_translation(content_id, data)
+            data = await get_translator_service().translate_video(content_id, data)
             data["_created_at"] = item["created_at"]
             return data
         except Exception as e:

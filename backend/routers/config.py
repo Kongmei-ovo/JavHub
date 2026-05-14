@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter
+import time
+from fastapi import APIRouter, HTTPException
 from urllib.parse import urlparse, urlunparse
 from config import config
 from services import cache
@@ -37,7 +38,8 @@ router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'metatube', 'notification', 'scheduler',
-                  'automation', 'actor_mapping',
+                  'ai',
+                  'automation', 'actor_mapping', 'translation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
 
 
@@ -58,6 +60,11 @@ def _sanitize_config(cfg: dict) -> dict:
     for k, v in cfg.items():
         if isinstance(v, dict):
             result[k] = _sanitize_config(v)
+        elif isinstance(v, list):
+            result[k] = [
+                _sanitize_config(item) if isinstance(item, dict) else item
+                for item in v
+            ]
         elif not _is_sensitive_key(k):
             result[k] = v
     return result
@@ -69,6 +76,11 @@ def _strip_blank_sensitive_values(cfg: dict) -> dict:
     for k, v in cfg.items():
         if isinstance(v, dict):
             result[k] = _strip_blank_sensitive_values(v)
+        elif isinstance(v, list):
+            result[k] = [
+                _strip_blank_sensitive_values(item) if isinstance(item, dict) else item
+                for item in v
+            ]
         elif _is_sensitive_key(k) and (v is None or v == ""):
             continue
         else:
@@ -106,6 +118,63 @@ async def update_config(new_config: dict):
         except Exception as e:
             logger.warning(f"Failed to refresh candidate automation scheduler: {e}")
     return {"success": True}
+
+
+@router.post("/ai/test")
+async def test_ai_model(body: dict | None = None):
+    """测试公共 OpenAI 兼容模型配置。"""
+    import httpx
+
+    body = body or {}
+    incoming = body.get("openai_compatible") if isinstance(body.get("openai_compatible"), dict) else body
+    saved = config.openai_compatible
+    openai_cfg = {**saved, **(incoming or {})}
+    if not openai_cfg.get("api_key"):
+        openai_cfg["api_key"] = saved.get("api_key", "")
+
+    base_url = str(openai_cfg.get("base_url") or "").rstrip("/")
+    api_key = str(openai_cfg.get("api_key") or "")
+    model = str(openai_cfg.get("model") or "")
+    if not base_url or not api_key or not model:
+        raise HTTPException(400, "请先填写 AI API 地址、API Key 和模型")
+    try:
+        timeout = float(openai_cfg.get("timeout", 30))
+    except Exception:
+        timeout = 30.0
+
+    started = time.perf_counter()
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "Return only the exact text: ok"},
+            {"role": "user", "content": "health check"},
+        ],
+        "temperature": 0,
+        "max_tokens": 8,
+    }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    try:
+        async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+            response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:300] if exc.response is not None else str(exc)
+        raise HTTPException(exc.response.status_code if exc.response is not None else 502, f"AI 测试失败: {detail}") from exc
+    except Exception as exc:
+        raise HTTPException(502, f"AI 测试失败: {exc}") from exc
+
+    try:
+        content = str(data["choices"][0]["message"]["content"]).strip()
+    except Exception as exc:
+        raise HTTPException(502, "AI 返回格式异常") from exc
+
+    return {
+        "success": True,
+        "model": model,
+        "reply": content,
+        "latency_ms": round((time.perf_counter() - started) * 1000),
+    }
 
 @router.post("/notification/telegram/test")
 async def test_telegram(token: str):

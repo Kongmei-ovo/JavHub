@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 from modules.info_client import get_info_client
-from database import get_translation
-from services.translation import _translate_item
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/makers", tags=["makers"])
 
@@ -12,15 +11,9 @@ async def list_makers():
     # 为每个 maker 注入翻译字段
     items = makers_list if isinstance(makers_list, list) else (makers_list.get("data", []) if isinstance(makers_list, dict) else [])
     if isinstance(items, list):
-        for maker in items:
-            maker_id = maker.get("id")
-            if maker_id:
-                trans = get_translation(f"maker:{maker_id}")
-                if trans:
-                    maker_map = trans.get("maker", {})
-                    for name_key in ["name_ja", "name_en", "name"]:
-                        orig = maker.get(name_key)
-                        if orig:
-                            maker[f"{name_key}_translated"] = _translate_item(orig, maker_map)
-                            break
+        await get_translator_service().translate_entities(
+            items,
+            entity_type="maker",
+            keys=["name_ja", "name_en", "name"],
+        )
     return makers_list

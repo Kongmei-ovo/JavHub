@@ -1,6 +1,4 @@
 server:
-  api_key: ""
-  auth_disabled: false
   frontend_origin: "http://localhost:5173"
 
 openlist:
@@ -8,6 +6,88 @@ openlist:
   username: ""
   password: ""
   default_path: "/115/AV"
+
+downloaders:
+  default_id: "openlist"
+  clients:
+    - id: "openlist"
+      type: "openlist" # openlist | qbittorrent | transmission | synology | aria2 | deluge | flood | rutorrent | utorrent
+      name: "OpenList / 115"
+      enabled: true
+      address: "https://fox.oplist.org"
+      username: ""
+      password: ""
+      token: ""
+      default_path: "/115/AV"
+    - id: "qb"
+      type: "qbittorrent"
+      name: "qBittorrent"
+      enabled: false
+      address: "http://localhost:8080"
+      username: ""
+      password: ""
+      default_path: "/downloads"
+      category: ""
+      tags: "javhub"
+    - id: "tr"
+      type: "transmission"
+      name: "Transmission"
+      enabled: false
+      address: "http://localhost:9091"
+      username: ""
+      password: ""
+      default_path: "/downloads"
+      tags: "javhub"
+    - id: "synology"
+      type: "synology"
+      name: "Synology Download Station"
+      enabled: false
+      address: "http://nas:5000"
+      username: ""
+      password: ""
+      default_path: "video/downloads"
+    - id: "aria2"
+      type: "aria2"
+      name: "Aria2"
+      enabled: false
+      address: "http://localhost:6800"
+      token: ""
+      default_path: "/downloads"
+    - id: "deluge"
+      type: "deluge"
+      name: "Deluge"
+      enabled: false
+      address: "http://localhost:8112"
+      password: ""
+      default_path: "/downloads"
+      tags: "javhub"
+    - id: "flood"
+      type: "flood"
+      name: "Flood"
+      enabled: false
+      address: "http://localhost:3000"
+      username: ""
+      password: ""
+      default_path: "/downloads"
+      tags: "javhub"
+    - id: "rutorrent"
+      type: "rutorrent"
+      name: "ruTorrent"
+      enabled: false
+      address: "https://myrut.com/rutorrent"
+      username: ""
+      password: ""
+      default_path: "/downloads"
+      tags: "javhub"
+    - id: "utorrent"
+      type: "utorrent"
+      name: "µTorrent"
+      enabled: false
+      address: "http://127.0.0.1:8080/gui/"
+      username: "admin"
+      password: ""
+      default_path: ""
+      tags: "javhub"
 
 emby:
   api_url: ""
@@ -23,6 +103,46 @@ crawler:
 
 scheduler:
   subscription_check_hour: 2
+
+ai:
+  openai_compatible:
+    base_url: "https://api.openai.com/v1"
+    api_key: ""
+    model: "gpt-4o-mini"
+    timeout: 30
+
+translation:
+  enabled: true
+  target_language: "zh-CN"
+  provider_order:
+    - cache
+    - mapping
+    - google_free
+    - deepl
+    - microsoft
+    - openai_compatible
+  batch_provider_order:
+    - cache
+    - mapping
+    - google_free
+    - deepl
+    - microsoft
+  realtime_mode: sync
+  google_free:
+    enabled: true
+    base_url: "https://translate.googleapis.com/translate_a/single"
+    timeout: 10
+  deepl:
+    enabled: false
+    api_key: ""
+    free_api: true
+    timeout: 15
+  microsoft:
+    enabled: false
+    api_key: ""
+    region: ""
+    endpoint: "https://api.cognitive.microsofttranslator.com"
+    timeout: 15
 
 automation:
   download_policy: manual # manual | rules | auto

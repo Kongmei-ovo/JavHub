@@ -1,5 +1,5 @@
 <template>
-  <div class="actor-page">
+  <div class="actor-page page-shell page-shell--workspace">
     <div class="actor-header">
       <button class="back-btn" type="button" @click="$router.back()">← 返回</button>
       <ActressAvatar :name="actor.display_name || actor.actress_name" :avatarUrl="actor.avatar_url" :size="100" />
@@ -281,14 +281,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.actor-page { padding: 16px; }
+.actor-page {}
 .actor-header {
   display: flex; flex-direction: column; align-items: center;
   gap: 12px; margin-bottom: 24px;
 }
 .back-btn {
   align-self: flex-start; min-height: 44px; background: none; border: none;
-  color: #1890ff; cursor: pointer; font-size: 14px;
+  color: var(--text-primary); cursor: pointer; font-size: 14px;
   padding: 0 8px;
 }
 .stats { color: #666; font-size: 14px; }
@@ -312,9 +312,11 @@ onMounted(async () => {
 .mapping-link {
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link-text);
   cursor: pointer;
   text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 3px;
   min-height: 44px;
   padding: 0 6px;
 }
@@ -332,7 +334,7 @@ onMounted(async () => {
 }
 .tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active {
-  color: var(--accent, #1890ff); border-bottom-color: var(--accent, #1890ff); font-weight: 600;
+  color: var(--text-primary); border-bottom-color: var(--active-indicator); font-weight: 600;
 }
 
 /* 影片卡片 */
@@ -361,7 +363,7 @@ onMounted(async () => {
 }
 .video-info { padding: 8px; }
 .video-code {
-  font-size: 12px; font-weight: bold; color: var(--accent, #1890ff);
+  font-size: 12px; font-weight: bold; color: var(--text-primary);
   margin-bottom: 4px;
 }
 .video-title {

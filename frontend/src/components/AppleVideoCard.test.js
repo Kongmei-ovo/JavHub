@@ -46,7 +46,7 @@ function runSetup(propsOverride = {}) {
     // `props` is injected as a parameter, matching what defineProps() would provide.
     const fn = new Function(
       'computed', 'ref', 'normalizeVideo', 'props',
-      `${body}\nreturn { imageError, wideImage, normalized, coverUrl, titleText, fallbackText, serviceLabel, onImageLoad }`
+      `${body}\nreturn { imageError, wideImage, normalized, coverUrl, titleText, displayCode, fallbackText, serviceLabel, onImageLoad }`
     )
     return fn(computed, ref, normalizeVideo, props)
   })
@@ -80,6 +80,12 @@ test('AppleVideoCard uses fallback title when no title fields', async () => {
 test('AppleVideoCard shows fallback text when no cover image', async () => {
   const r = await runSetup({ video: { content_id: 'NOIMG-01' } })
   assert.equal(r.fallbackText.value, 'NOIMG-01')
+})
+
+test('AppleVideoCard displays dvd_id before internal content_id', async () => {
+  const r = await runSetup({ video: { content_id: 'cid-12345', dvd_id: 'MIAA-784' } })
+  assert.equal(r.displayCode.value, 'MIAA-784')
+  assert.equal(r.fallbackText.value, 'MIAA-784')
 })
 
 test('AppleVideoCard shows service badge for known service codes', async () => {

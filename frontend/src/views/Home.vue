@@ -1,5 +1,5 @@
 <template>
-  <div class="home">
+  <div class="home page-shell page-shell--workspace">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
@@ -131,6 +131,10 @@
         下载候选
         <span v-if="candidateStats.candidate" class="tab-badge">{{ candidateStats.candidate }}</span>
       </button>
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'downloaders' }" @click="openDownloaderTab">
+        下载源
+        <span v-if="enabledDownloaderCount" class="tab-badge subtle">{{ enabledDownloaderCount }}</span>
+      </button>
     </div>
 
     <!-- 任务卡片网格 -->
@@ -170,6 +174,7 @@
             <span :class="['badge', statusBadge(task.status)]">{{ statusLabel(task.status) }}</span>
             <span class="task-time">{{ formatTime(task.created_at) }}</span>
           </div>
+          <div class="task-downloader">{{ task.downloader_name || downloaderTypeLabel(task.downloader_type) || '默认下载源' }}</div>
           <div v-if="task.error_msg" class="task-error">{{ task.error_msg }}</div>
         </div>
 
@@ -296,6 +301,7 @@
             <div v-if="candidate.download_task_id" class="candidate-task-link">
               已关联任务 #{{ candidate.download_task_id }}
               <span v-if="candidate.download_task?.status">· {{ statusLabel(candidate.download_task.status) }}</span>
+              <span v-if="candidate.download_task?.downloader_name">· {{ candidate.download_task.downloader_name }}</span>
             </div>
             <div v-if="candidate.error_msg" class="task-error" :title="candidate.error_msg">
               {{ candidate.error_msg }}
@@ -334,6 +340,206 @@
         </svg>
         <p>暂无下载候选</p>
         <p class="text-secondary empty-state-hint">订阅检查和库存对比会把缺失影片写到这里</p>
+      </div>
+    </div>
+
+    <div v-else-if="activeTab === 'downloaders'" class="downloaders-panel apple-reveal">
+      <div class="downloader-toolbar apple-surface">
+        <div class="downloader-toolbar-copy">
+          <strong>下载源</strong>
+          <span>默认 {{ defaultDownloaderLabel }} · {{ enabledDownloaderCount }} 个已启用</span>
+        </div>
+        <div class="downloader-toolbar-actions">
+          <button class="icon-action" type="button" title="刷新下载源" aria-label="刷新下载源" @click="loadDownloaders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+          <button class="icon-action primary" type="button" title="新增下载源" aria-label="新增下载源" @click="openNewDownloader">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="downloaders-list apple-surface">
+        <article
+          v-for="client in downloaderClients"
+          :key="client.id"
+          class="downloader-row"
+          :class="{ disabled: !client.enabled, default: client.id === downloaders.default_id }"
+          role="button"
+          tabindex="0"
+          @click="editDownloader(client)"
+          @keyup.enter="editDownloader(client)"
+        >
+          <div class="downloader-row-main">
+            <div class="downloader-avatar" :class="{ muted: !client.enabled }">
+              {{ downloaderTypeMark(client.type) }}
+            </div>
+            <div class="downloader-copy">
+              <div class="downloader-title-line">
+                <strong>{{ client.name || downloaderTypeLabel(client.type) }}</strong>
+                <span>{{ downloaderTypeLabel(client.type) }}</span>
+              </div>
+              <div class="downloader-summary">
+                <span :title="client.address || ''">{{ shortDownloaderAddress(client.address) || '未配置地址' }}</span>
+                <span :title="client.default_path || ''">{{ downloaderPathSummary(client) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="downloader-status-group">
+            <span v-if="client.id === downloaders.default_id" class="downloader-pill default">默认</span>
+            <span class="downloader-pill" :class="client.enabled ? 'enabled' : 'muted'">{{ client.enabled ? '启用' : '停用' }}</span>
+            <span
+              v-if="downloaderTestMessages[client.id]"
+              class="downloader-pill test"
+              :class="{ ok: downloaderTestMessages[client.id].ok }"
+              :title="downloaderTestMessages[client.id].message"
+            >
+              {{ downloaderTestMessages[client.id].ok ? '已连接' : '失败' }}
+            </span>
+          </div>
+
+          <label class="switch-mini switch-apple" title="启用下载源" @click.stop>
+            <input type="checkbox" v-model="client.enabled" />
+            <span></span>
+          </label>
+
+          <div class="downloader-row-actions" @click.stop>
+            <button class="icon-action compact" type="button" :disabled="testingDownloaderId === client.id" title="测试连接" aria-label="测试连接" @click="testDownloader(client)">
+              <svg v-if="testingDownloaderId !== client.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M22 12h-4l-3 8-6-16-3 8H2"/>
+              </svg>
+              <svg v-else class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 12a9 9 0 11-6.2-8.56"/>
+              </svg>
+            </button>
+            <button class="icon-action compact" type="button" :disabled="client.id === downloaders.default_id" title="设为默认" aria-label="设为默认" @click="setDefaultDownloader(client.id)">
+              <svg viewBox="0 0 24 24" :fill="client.id === downloaders.default_id ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.7">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+            <button class="icon-action compact" type="button" title="编辑" aria-label="编辑" @click="editDownloader(client)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/>
+              </svg>
+            </button>
+            <button class="icon-action compact danger" type="button" :disabled="downloaderClients.length <= 1" title="删除" aria-label="删除" @click="removeDownloader(client.id)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
+                <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </article>
+
+        <div v-if="downloaderClients.length === 0" class="downloaders-empty">
+          <strong>还没有下载源</strong>
+          <span>添加一个下载器后就可以作为默认下载目标。</span>
+        </div>
+      </div>
+
+      <div class="downloaders-footer apple-surface">
+        <span>{{ downloaderClients.length }} 个下载源 · {{ enabledDownloaderCount }} 个启用</span>
+        <button class="btn btn-primary" type="button" :disabled="savingDownloaders" @click="saveDownloaders">
+          {{ savingDownloaders ? '保存中...' : '保存更改' }}
+        </button>
+      </div>
+
+      <div v-if="downloaderEditor.open" class="inline-dialog-overlay downloader-sheet-overlay" @click.self="closeDownloaderEditor">
+        <div class="inline-dialog downloader-sheet">
+          <div class="inline-dialog-header">
+            <div>
+              <h2>{{ downloaderEditor.mode === 'new' ? '新增下载源' : '编辑下载源' }}</h2>
+              <p>{{ downloaderEditor.draft?.name || downloaderTypeLabel(downloaderEditor.draft?.type) }}</p>
+            </div>
+            <button class="dialog-close-btn" type="button" aria-label="关闭" @click="closeDownloaderEditor">×</button>
+          </div>
+
+          <div v-if="downloaderEditor.draft" class="downloader-sheet-body">
+            <section class="downloader-sheet-section">
+              <div class="sheet-section-title">
+                <strong>基础信息</strong>
+                <span>名称、类型、地址、路径</span>
+              </div>
+              <div class="downloader-sheet-grid">
+                <label>
+                  名称
+                  <input class="input" v-model="downloaderEditor.draft.name" placeholder="家庭 qBittorrent" />
+                </label>
+                <label>
+                  类型
+                  <select class="input" v-model="downloaderEditor.draft.type" @change="syncDownloaderDraftDefaults">
+                    <option v-for="type in downloaderTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
+                  </select>
+                </label>
+                <label class="wide-field">
+                  地址
+                  <input class="input" v-model="downloaderEditor.draft.address" :placeholder="downloaderAddressPlaceholder(downloaderEditor.draft.type)" />
+                </label>
+                <label class="wide-field">
+                  下载路径
+                  <input class="input" v-model="downloaderEditor.draft.default_path" :placeholder="downloaderPathPlaceholder(downloaderEditor.draft.type)" />
+                </label>
+              </div>
+            </section>
+
+            <section class="downloader-sheet-section">
+              <div class="sheet-section-title">
+                <strong>连接与选项</strong>
+                <span>凭据、标签、超时、偏好</span>
+              </div>
+              <div class="downloader-sheet-grid">
+                <label>
+                  用户名
+                  <input class="input" v-model="downloaderEditor.draft.username" autocomplete="off" />
+                </label>
+                <label>
+                  密码
+                  <input class="input" type="password" v-model="downloaderEditor.draft.password" autocomplete="new-password" :placeholder="downloaderEditor.draft.password_configured ? '留空不覆盖已有密码' : ''" />
+                </label>
+                <label v-if="downloaderEditor.draft.type === 'openlist' || downloaderEditor.draft.type === 'aria2'">
+                  Token
+                  <input class="input" type="password" v-model="downloaderEditor.draft.token" autocomplete="new-password" :placeholder="downloaderEditor.draft.token_configured ? '留空不覆盖已有 Token' : tokenPlaceholder(downloaderEditor.draft.type)" />
+                </label>
+                <label v-if="downloaderEditor.draft.type === 'qbittorrent'">
+                  分类
+                  <input class="input" v-model="downloaderEditor.draft.category" placeholder="可选" />
+                </label>
+                <label v-if="supportsDownloaderTags(downloaderEditor.draft.type)">
+                  标签
+                  <input class="input" v-model="downloaderEditor.draft.tags" placeholder="javhub,auto" />
+                </label>
+                <label>
+                  超时
+                  <input class="input" type="number" min="1" v-model.number="downloaderEditor.draft.timeout" />
+                </label>
+              </div>
+              <div class="downloader-sheet-options">
+                <label>
+                  <input type="checkbox" v-model="downloaderEditor.draft.enabled" />
+                  启用
+                </label>
+                <label>
+                  <input type="checkbox" v-model="downloaderEditor.draft.paused" />
+                  添加后暂停
+                </label>
+              </div>
+            </section>
+          </div>
+
+          <div class="inline-dialog-actions">
+            <button class="btn btn-ghost" type="button" @click="closeDownloaderEditor">取消</button>
+            <button class="btn btn-primary" type="button" @click="applyDownloaderEditor">完成</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -424,9 +630,24 @@ export default {
   components: { CandidateRunPanel },
   data() {
     return {
-      activeTab: this.$route.query.tab === 'candidates' ? 'candidates' : 'tasks',
+      activeTab: ['candidates', 'downloaders'].includes(this.$route.query.tab) ? this.$route.query.tab : 'tasks',
       tasks: [],
       candidates: [],
+      downloaders: { default_id: '', clients: [], types: [] },
+      downloaderTypes: [
+        { value: 'openlist', label: 'OpenList / 115' },
+        { value: 'qbittorrent', label: 'qBittorrent' },
+        { value: 'transmission', label: 'Transmission' },
+        { value: 'synology', label: 'Synology Download Station' },
+        { value: 'aria2', label: 'Aria2' },
+        { value: 'deluge', label: 'Deluge' },
+        { value: 'flood', label: 'Flood' },
+        { value: 'rutorrent', label: 'ruTorrent' },
+        { value: 'utorrent', label: 'µTorrent / uTorrent' },
+      ],
+      savingDownloaders: false,
+      testingDownloaderId: '',
+      downloaderTestMessages: {},
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
       candidateStats: {
         candidate: 0,
@@ -465,7 +686,15 @@ export default {
         open: false,
         loading: false,
         data: null
-      }
+      },
+      downloaderEditor: {
+        open: false,
+        mode: 'new',
+        originalId: '',
+        draft: null,
+        previousType: ''
+      },
+      downloaderIdSeed: 1
     }
   },
   computed: {
@@ -478,12 +707,23 @@ export default {
     },
     readyCandidateCount() {
       return Math.max((this.candidateStats.candidate || 0) - (this.candidateStats.needs_magnet || 0), 0)
+    },
+    downloaderClients() {
+      return this.downloaders.clients || []
+    },
+    enabledDownloaderCount() {
+      return this.downloaderClients.filter(client => client.enabled).length
+    },
+    defaultDownloaderLabel() {
+      const client = this.downloaderClients.find(item => item.id === this.downloaders.default_id)
+      return client?.name || this.downloaderTypeLabel(client?.type) || '未设置'
     }
   },
   mounted() {
     this.loadTasks()
     this.loadCandidates()
     if (this.activeTab === 'candidates') this.loadCandidateRuns()
+    if (this.activeTab === 'downloaders') this.loadDownloaders()
     this.timer = setInterval(this.loadTasks, 30000)
   },
   beforeUnmount() {
@@ -537,6 +777,247 @@ export default {
       this.activeTab = 'candidates'
       this.loadCandidates()
       this.loadCandidateRuns()
+    },
+    openDownloaderTab() {
+      this.activeTab = 'downloaders'
+      this.loadDownloaders()
+      if (this.$route.query.tab !== 'downloaders') {
+        this.$router.replace({ query: { tab: 'downloaders' } }).catch(() => {})
+      }
+    },
+    async loadDownloaders() {
+      try {
+        const resp = await api.listDownloaders()
+        const data = resp.data || {}
+        this.downloaders = {
+          default_id: data.default_id || '',
+          clients: (data.clients || []).map(client => ({ ...client })),
+          types: data.types || this.downloaderTypes,
+        }
+        this.downloaderTypes = this.downloaders.types.length ? this.downloaders.types : this.downloaderTypes
+        if (!this.downloaders.default_id && this.downloaders.clients[0]) {
+          this.downloaders.default_id = this.downloaders.clients[0].id
+        }
+      } catch (e) {
+        console.error('Failed to load downloaders:', e)
+      }
+    },
+    makeDownloaderId(type = 'qbittorrent') {
+      let id = `${type}-${this.downloaderIdSeed++}`
+      while (this.downloaderClients.some(client => client.id === id)) {
+        id = `${type}-${this.downloaderIdSeed++}`
+      }
+      return id
+    },
+    createDownloaderDraft(type = 'qbittorrent') {
+      return {
+        id: this.makeDownloaderId(type),
+        type,
+        name: this.downloaderTypeLabel(type),
+        enabled: true,
+        address: this.downloaderAddressPlaceholder(type),
+        username: '',
+        password: '',
+        token: '',
+        default_path: '',
+        category: '',
+        tags: '',
+        paused: false,
+        timeout: 30,
+      }
+    },
+    normalizeDownloaderDraft(draft) {
+      return {
+        id: draft.id,
+        type: draft.type || 'qbittorrent',
+        name: draft.name || this.downloaderTypeLabel(draft.type),
+        enabled: Boolean(draft.enabled),
+        address: draft.address || '',
+        username: draft.username || '',
+        password: draft.password || '',
+        token: draft.token || '',
+        default_path: draft.default_path || '',
+        category: draft.category || '',
+        tags: draft.tags || '',
+        paused: Boolean(draft.paused),
+        timeout: Number(draft.timeout || 30),
+        password_configured: Boolean(draft.password_configured),
+        token_configured: Boolean(draft.token_configured),
+      }
+    },
+    openNewDownloader() {
+      this.downloaderEditor = {
+        open: true,
+        mode: 'new',
+        originalId: '',
+        draft: this.createDownloaderDraft('qbittorrent'),
+        previousType: 'qbittorrent'
+      }
+    },
+    editDownloader(client) {
+      this.downloaderEditor = {
+        open: true,
+        mode: 'edit',
+        originalId: client.id,
+        draft: this.normalizeDownloaderDraft({ ...client }),
+        previousType: client.type
+      }
+    },
+    closeDownloaderEditor() {
+      this.downloaderEditor = { open: false, mode: 'new', originalId: '', draft: null, previousType: '' }
+    },
+    applyDownloaderEditor() {
+      const draft = this.downloaderEditor.draft
+      if (!draft) return
+      const client = this.normalizeDownloaderDraft(draft)
+      if (this.downloaderEditor.mode === 'new') {
+        this.downloaders.clients = [...this.downloaderClients, client]
+        if (!this.downloaders.default_id) this.downloaders.default_id = client.id
+      } else {
+        this.downloaders.clients = this.downloaderClients.map(item => (
+          item.id === this.downloaderEditor.originalId ? client : item
+        ))
+        if (this.downloaders.default_id === this.downloaderEditor.originalId) {
+          this.downloaders.default_id = client.id
+        }
+      }
+      this.closeDownloaderEditor()
+    },
+    syncDownloaderDraftDefaults() {
+      const draft = this.downloaderEditor.draft
+      if (!draft) return
+      const previousType = this.downloaderEditor.previousType
+      const previousPlaceholder = this.downloaderAddressPlaceholder(previousType)
+      if (!draft.name || this.downloaderTypes.some(type => type.label === draft.name)) {
+        draft.name = this.downloaderTypeLabel(draft.type)
+      }
+      if (!draft.address || draft.address === previousPlaceholder) {
+        draft.address = this.downloaderAddressPlaceholder(draft.type)
+      }
+      this.downloaderEditor.previousType = draft.type
+    },
+    removeDownloader(id) {
+      this.downloaders.clients = this.downloaderClients.filter(client => client.id !== id)
+      if (this.downloaders.default_id === id) {
+        this.downloaders.default_id = this.downloaderClients[0]?.id || ''
+      }
+    },
+    setDefaultDownloader(id) {
+      this.downloaders.default_id = id
+    },
+    downloaderTypeLabel(type) {
+      return this.downloaderTypes.find(item => item.value === type)?.label || type || '下载器'
+    },
+    downloaderTypeMark(type) {
+      const map = {
+        openlist: '115',
+        qbittorrent: 'QB',
+        transmission: 'TR',
+        synology: 'SY',
+        aria2: 'A2',
+        deluge: 'DE',
+        flood: 'FL',
+        rutorrent: 'RU',
+        utorrent: 'µT',
+      }
+      return map[type] || String(type || 'DL').slice(0, 2).toUpperCase()
+    },
+    downloaderAddressPlaceholder(type) {
+      const map = {
+        openlist: 'https://fox.oplist.org',
+        qbittorrent: 'http://localhost:8080',
+        transmission: 'http://localhost:9091',
+        synology: 'http://nas:5000',
+        aria2: 'http://localhost:6800',
+        deluge: 'http://localhost:8112',
+        flood: 'http://localhost:3000',
+        rutorrent: 'https://myrut.com/rutorrent',
+        utorrent: 'http://127.0.0.1:8080/gui/',
+      }
+      return map[type] || 'http://localhost'
+    },
+    downloaderPathPlaceholder(type) {
+      if (type === 'synology') return 'video/downloads'
+      if (type === 'qbittorrent') return '/downloads 或 category:Movies'
+      if (type === 'openlist') return '/115/AV'
+      if (type === 'utorrent') return 'movie\\ 或留空'
+      return '/downloads'
+    },
+    supportsDownloaderTags(type) {
+      return ['qbittorrent', 'transmission', 'deluge', 'flood', 'rutorrent', 'utorrent'].includes(type)
+    },
+    shortDownloaderAddress(address) {
+      const value = String(address || '').trim()
+      if (!value) return ''
+      try {
+        const url = new URL(value)
+        return `${url.host}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/$/, '')
+      } catch (_) {
+        return value.replace(/^https?:\/\//, '').replace(/\/$/, '')
+      }
+    },
+    downloaderPathSummary(client) {
+      if (client.default_path) return client.default_path
+      if (client.category) return `分类 ${client.category}`
+      return '默认路径'
+    },
+    tokenPlaceholder(type) {
+      return type === 'aria2' ? 'rpc-secret，可选' : '可选'
+    },
+    normalizedDownloaderPayload() {
+      return {
+        default_id: this.downloaders.default_id,
+        clients: this.downloaderClients.map(client => ({
+          id: client.id,
+          type: client.type,
+          name: client.name,
+          enabled: Boolean(client.enabled),
+          address: client.address || '',
+          username: client.username || '',
+          password: client.password || '',
+          token: client.token || '',
+          default_path: client.default_path || '',
+          category: client.category || '',
+          tags: client.tags || '',
+          paused: Boolean(client.paused),
+          timeout: Number(client.timeout || 30),
+        }))
+      }
+    },
+    async saveDownloaders() {
+      if (this.savingDownloaders) return
+      this.savingDownloaders = true
+      try {
+        const resp = await api.updateDownloaders(this.normalizedDownloaderPayload())
+        this.downloaders = {
+          default_id: resp.data.default_id || '',
+          clients: (resp.data.clients || []).map(client => ({ ...client })),
+          types: resp.data.types || this.downloaderTypes,
+        }
+        this.$message?.success?.('下载源已保存')
+      } catch (e) {
+        console.error('Save downloaders failed:', e)
+      } finally {
+        this.savingDownloaders = false
+      }
+    },
+    async testDownloader(client) {
+      if (this.testingDownloaderId) return
+      this.testingDownloaderId = client.id
+      try {
+        const resp = await api.testDownloader(client)
+        this.downloaderTestMessages = {
+          ...this.downloaderTestMessages,
+          [client.id]: { ok: Boolean(resp.data.ok), message: resp.data.ok ? `连接正常：${resp.data.message || 'OK'}` : `连接失败：${resp.data.message || '未知错误'}` }
+        }
+      } catch (e) {
+        this.downloaderTestMessages = {
+          ...this.downloaderTestMessages,
+          [client.id]: { ok: false, message: `连接失败：${e.response?.data?.detail || e.message}` }
+        }
+      } finally {
+        this.testingDownloaderId = ''
+      }
     },
     syncCandidateRoute() {
       if (this.activeTab !== 'candidates') return
@@ -923,7 +1404,13 @@ export default {
       if (this.retryingTasks[task.id]) return
       this.setTaskRetrying(task.id, true)
       try {
-        await api.createDownload({ content_id: task.content_id || task.code, title: task.title, magnet: task.magnet, path: task.path })
+        await api.createDownload({
+          content_id: task.content_id || task.code,
+          title: task.title,
+          magnet: task.magnet,
+          path: task.path,
+          downloader_id: task.downloader_id || ''
+        })
         await this.loadTasks()
       } catch (e) {
         console.error('Failed to retry download:', e)
@@ -961,7 +1448,7 @@ export default {
 </script>
 
 <style scoped>
-.home { padding: 24px; max-width: 1400px; margin: 0 auto; }
+.home {}
 
 /* ===== Header ===== */
 .page-header {
@@ -975,7 +1462,7 @@ export default {
 .header-left { display: flex; flex-direction: column; gap: 4px; }
 .page-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); }
 .header-subtitle { font-size: 13px; color: var(--text-muted); }
-.downloading-hint { color: #42A5F5; }
+.downloading-hint { color: var(--text-secondary); }
 .header-actions { display: flex; gap: 8px; }
 .header-actions .btn { gap: 6px; }
 
@@ -1012,7 +1499,7 @@ export default {
 }
 .stat-card:hover {
   transform: translateY(-4px) !important;
-  border-color: var(--accent);
+  border-color: var(--border-light);
 }
 
 .stat-icon {
@@ -1066,7 +1553,8 @@ export default {
   cursor: pointer;
 }
 .candidate-metric:hover {
-  border-color: var(--accent);
+  border-color: var(--border-light);
+  background: var(--surface-control-hover);
 }
 .metric-value {
   display: block;
@@ -1083,8 +1571,8 @@ export default {
 
 /* ===== Filter Bar ===== */
 .filter-bar {
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--surface-control);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 10px 16px;
   margin-bottom: 16px;
@@ -1092,11 +1580,11 @@ export default {
   transition: var(--transition);
 }
 .filter-bar:hover {
-  background: rgba(99, 102, 241, 0.14);
-  border-color: rgba(99, 102, 241, 0.35);
+  background: var(--surface-control-hover);
+  border-color: var(--border-light);
 }
 .filter-hint { font-size: 13px; color: var(--text-secondary); }
-.filter-hint strong { color: var(--accent-light); }
+.filter-hint strong { color: var(--text-primary); }
 
 .download-tabs {
   display: inline-flex;
@@ -1130,6 +1618,10 @@ export default {
   color: #fff;
   font-size: 11px;
   font-weight: 700;
+}
+.tab-badge.subtle {
+  background: rgba(82, 196, 26, 0.18);
+  color: #52c41a;
 }
 .candidate-toolbar {
   display: flex;
@@ -1177,7 +1669,9 @@ export default {
 }
 .chip.active {
   color: var(--text-primary);
-  border-color: var(--accent);
+  border-color: var(--active-border);
+  background: var(--active-bg);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 .chip:disabled {
   opacity: 0.55;
@@ -1190,7 +1684,7 @@ export default {
 .action-chip.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
 }
 .candidate-card .task-cover img {
   width: 100%;
@@ -1229,7 +1723,15 @@ export default {
 .candidate-magnet.empty { color: #fa8c16; }
 .candidate-reason { color: var(--text-secondary); }
 .candidate-task-link { color: #52c41a; }
-.candidate-event { color: var(--accent); }
+.candidate-event { color: var(--text-secondary); }
+.task-downloader {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .candidate-context-actions {
   display: flex;
   gap: 8px;
@@ -1239,11 +1741,356 @@ export default {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link-text);
   font-size: 12px;
   cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 3px;
 }
-.link-btn:hover { text-decoration: underline; }
+.link-btn:hover { text-decoration-color: var(--link-underline-hover); }
+
+.downloaders-panel {
+  display: grid;
+  gap: 16px;
+}
+.downloader-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+.downloader-toolbar-copy strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.downloader-toolbar-copy span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.downloader-toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), opacity var(--motion-fast);
+}
+.icon-action svg {
+  width: 17px;
+  height: 17px;
+}
+.icon-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--border-light);
+  background: rgba(255, 255, 255, 0.09);
+}
+.icon-action.primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: var(--accent);
+}
+.icon-action.compact {
+  width: 38px;
+  height: 38px;
+  background: transparent;
+}
+.icon-action.danger {
+  color: var(--badge-error-text);
+}
+.icon-action:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.downloaders-list {
+  display: grid;
+  overflow: hidden;
+}
+.downloader-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 86px;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--motion-fast), opacity var(--motion-fast);
+}
+.downloader-row:last-child {
+  border-bottom: 0;
+}
+.downloader-row:hover,
+.downloader-row:focus-visible {
+  background: rgba(255, 255, 255, 0.045);
+  outline: none;
+}
+.downloader-row.disabled {
+  opacity: 0.68;
+}
+.downloader-row-main {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.downloader-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  border: 1px solid var(--border-light);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18), transparent 36%),
+    rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.downloader-avatar.muted {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.035);
+}
+.downloader-copy {
+  min-width: 0;
+}
+.downloader-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.downloader-title-line strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.downloader-title-line span {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.downloader-summary {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.downloader-summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.downloader-summary span + span::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin: 0 9px 2px 0;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.downloader-status-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.downloader-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--badge-pending-border);
+  border-radius: 999px;
+  background: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.downloader-pill.default,
+.downloader-pill.enabled,
+.downloader-pill.test.ok {
+  border-color: var(--badge-success-border);
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+.downloader-pill.test {
+  max-width: 88px;
+  border-color: var(--badge-error-border);
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.downloaders-empty {
+  display: grid;
+  gap: 6px;
+  padding: 34px 18px;
+  text-align: center;
+}
+.downloaders-empty strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+.downloaders-empty span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.switch-mini {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+}
+.switch-mini input {
+  position: absolute;
+  opacity: 0;
+}
+.switch-mini span {
+  position: absolute;
+  inset: 9px 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+.switch-mini span::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform 160ms ease, background 160ms ease;
+}
+.switch-mini input:checked + span {
+  border-color: var(--badge-success-border);
+  background: var(--badge-success-bg);
+}
+.switch-mini input:checked + span::after {
+  transform: translateX(20px);
+  background: var(--badge-success-text);
+}
+.switch-apple {
+  align-self: center;
+}
+.downloader-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.downloaders-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.downloaders-footer span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.downloader-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(820px, calc(100vh - 48px));
+}
+.downloader-sheet-body {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+.downloader-sheet-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+.sheet-section-title strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.sheet-section-title span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.downloader-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.downloader-sheet-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.downloader-sheet-grid .wide-field {
+  grid-column: 1 / -1;
+}
+.downloader-sheet-grid .input {
+  width: 100%;
+  min-height: 44px;
+}
+.downloader-sheet-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.downloader-sheet-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.spin-icon {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {
@@ -1482,7 +2329,6 @@ export default {
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .home { padding: 16px; }
   .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-card { padding: 14px; gap: 12px; }
   .stat-num { font-size: 22px; }
@@ -1535,6 +2381,46 @@ export default {
   }
   .candidate-detail-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .downloader-toolbar,
+  .downloaders-footer,
+  .downloader-toolbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .downloader-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 118px;
+    align-items: start;
+  }
+  .downloader-row-main {
+    grid-column: 1 / -1;
+  }
+  .downloader-status-group {
+    justify-content: flex-start;
+  }
+  .switch-apple {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .downloader-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .downloaders-footer .btn {
+    width: 100%;
+  }
+  .downloader-sheet {
+    width: 100%;
+    max-height: calc(100vh - 96px);
+  }
+  .downloader-sheet-grid {
+    grid-template-columns: 1fr;
+  }
+  .downloader-sheet-grid .wide-field {
+    grid-column: auto;
   }
 }
 </style>

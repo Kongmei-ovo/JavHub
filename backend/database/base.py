@@ -48,6 +48,10 @@ def _migrate_download_tasks():
                     title TEXT,
                     magnet TEXT,
                     path TEXT,
+                    downloader_id TEXT,
+                    downloader_name TEXT,
+                    downloader_type TEXT,
+                    remote_task_id TEXT,
                     status TEXT DEFAULT 'pending',
                     error_msg TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -85,12 +89,26 @@ def init_db():
             title TEXT,
             magnet TEXT,
             path TEXT,
+            downloader_id TEXT,
+            downloader_name TEXT,
+            downloader_type TEXT,
+            remote_task_id TEXT,
             status TEXT DEFAULT 'pending',
             error_msg TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
         )
     ''')
+    for sql in (
+        "ALTER TABLE download_tasks ADD COLUMN downloader_id TEXT",
+        "ALTER TABLE download_tasks ADD COLUMN downloader_name TEXT",
+        "ALTER TABLE download_tasks ADD COLUMN downloader_type TEXT",
+        "ALTER TABLE download_tasks ADD COLUMN remote_task_id TEXT",
+    ):
+        try:
+            cursor.execute(sql)
+        except Exception:
+            pass
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS subscriptions (
@@ -236,10 +254,36 @@ def init_db():
             confidence REAL DEFAULT 0,
             status TEXT DEFAULT 'candidate',
             source TEXT DEFAULT 'manual',
+            javinfo_avatar_url TEXT,
+            movie_count INTEGER,
+            confidence_breakdown_json TEXT,
+            confidence_label TEXT,
+            risk_flags_json TEXT,
+            ai_decision TEXT,
+            ai_confidence REAL,
+            ai_reason TEXT,
+            ai_model TEXT,
+            ai_reviewed_at TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT
         )
     ''')
+    for sql in (
+        "ALTER TABLE actor_mappings ADD COLUMN javinfo_avatar_url TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN movie_count INTEGER",
+        "ALTER TABLE actor_mappings ADD COLUMN confidence_breakdown_json TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN confidence_label TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN risk_flags_json TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN ai_decision TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN ai_confidence REAL",
+        "ALTER TABLE actor_mappings ADD COLUMN ai_reason TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN ai_model TEXT",
+        "ALTER TABLE actor_mappings ADD COLUMN ai_reviewed_at TEXT",
+    ):
+        try:
+            cursor.execute(sql)
+        except Exception:
+            pass
     cursor.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_actor_mappings_pair
         ON actor_mappings(emby_actor_id, javinfo_actress_id)

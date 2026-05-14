@@ -1,7 +1,7 @@
 <template>
-  <div class="search-page">
+  <div class="search-page page-bleed">
     <!-- 顶部工具栏（仅从详情页跳转来时显示） -->
-    <div v-if="$route.query.returnTo === 'video'" class="search-back-toolbar">
+    <div v-if="$route.query.returnTo === 'video'" class="search-back-toolbar page-rail page-rail--gallery">
       <button class="back-btn" type="button" @click="$router.back()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
           <polyline points="15 18 9 12 15 6"/>
@@ -19,13 +19,13 @@
         </div>
       </transition>
 
-      <div class="command-capsule-container">
+      <div class="command-capsule-container page-rail page-rail--standard">
         <!-- 主指令胶囊 -->
         <div class="command-capsule" :class="{ focused: isSearchFocused }">
           <div class="capsule-main">
-            <input 
-              v-model="contentId" 
-              placeholder="搜索番号" 
+            <input
+              v-model="contentId"
+              placeholder="搜索番号"
               @focus="isSearchFocused = true"
               @blur="isSearchFocused = false"
               @keyup.enter="doSearch"
@@ -33,9 +33,9 @@
               class="capsule-input primary"
             />
             <div class="capsule-divider"></div>
-            <input 
-              v-model="keyword" 
-              placeholder="或输入标题关键词" 
+            <input
+              v-model="keyword"
+              placeholder="或输入标题关键词"
               @focus="isSearchFocused = true"
               @blur="isSearchFocused = false"
               @keyup.enter="doSearch"
@@ -110,19 +110,19 @@
             <div class="panel-grid">
               <div class="panel-field">
                 <label>工作室</label>
-                <input v-model="makerName" placeholder="Maker Name" class="panel-input" @keyup.enter="doSearch" />
+                <input v-model="makerName" placeholder="输入工作室名称" class="panel-input" @keyup.enter="doSearch" />
               </div>
               <div class="panel-field">
                 <label>演员</label>
-                <input v-model="actressName" placeholder="Actress Name" class="panel-input" @keyup.enter="doSearch" />
+                <input v-model="actressName" placeholder="输入演员名称" class="panel-input" @keyup.enter="doSearch" />
               </div>
               <div class="panel-field">
                 <label>系列</label>
-                <input v-model="seriesName" placeholder="Series Name" class="panel-input" @keyup.enter="doSearch" />
+                <input v-model="seriesName" placeholder="输入系列名称" class="panel-input" @keyup.enter="doSearch" />
               </div>
               <div class="panel-field">
                 <label>年份</label>
-                <input v-model.number="year" placeholder="YYYY" type="number" class="panel-input" @keyup.enter="doSearch" />
+                <input v-model.number="year" placeholder="输入年份" type="number" class="panel-input" @keyup.enter="doSearch" />
               </div>
               <div class="panel-field full">
                 <label>题材标签</label>
@@ -132,14 +132,14 @@
                       {{ tag }}<b @click="removeCategoryTag(idx)">×</b>
                     </span>
                   </div>
-                  <input 
-                    v-model="categoryInput" 
-                    placeholder="输入题材并按空格或回车..." 
+                  <input
+                    v-model="categoryInput"
+                    placeholder="输入题材并按空格或回车..."
                     @compositionstart="isComposing = true"
                     @compositionend="handleCompositionEnd"
                     @keydown.space="handleCategoryKeydown"
                     @keydown.enter="handleCategoryKeydown"
-                    class="panel-input" 
+                    class="panel-input"
                   />
                 </div>
               </div>
@@ -155,7 +155,7 @@
 
 
     <!-- 分页控制（顶部） -->
-    <div v-if="totalPages > 1" class="pagination-bar">
+    <div v-if="totalPages > 1" class="pagination-bar page-rail page-rail--gallery">
       <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
@@ -176,12 +176,12 @@
     </div>
 
     <!-- 加载骨架屏 -->
-    <div v-if="loading" class="skeleton-grid">
+    <div v-if="loading" class="skeleton-grid page-rail page-rail--gallery">
       <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
     <!-- 搜索结果网格 -->
-    <div v-else-if="results.length > 0" class="results-grid">
+    <div v-else-if="results.length > 0" class="results-grid page-rail page-rail--gallery">
       <MovieCard
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
@@ -201,6 +201,7 @@
     <!-- 空状态 -->
     <AppleEmptyState
       v-else-if="searched"
+      class="page-rail page-rail--standard"
       title="未找到相关影片"
       description="尝试其他关键词、番号或筛选条件。"
       action-label="重置筛选"
@@ -208,7 +209,7 @@
     />
 
     <!-- 分页控制（底部） -->
-    <div v-if="totalPages > 1" class="pagination-bar">
+    <div v-if="totalPages > 1" class="pagination-bar page-rail page-rail--gallery">
       <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button class="page-btn" type="button" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
       <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
@@ -579,14 +580,14 @@ export default {
    ================================================ */
 
 .search-hero {
-  padding: 60px 20px 40px;
-  background: var(--bg-primary);
+  padding: 76px 0 48px;
+  background: var(--hero-background);
   text-align: center;
   transition: padding 0.3s ease;
 }
 
 .search-hero.compact {
-  padding: 24px 20px 20px;
+  padding: 24px 0 20px;
 }
 
 .hero-intro {
@@ -594,20 +595,19 @@ export default {
 }
 
 .hero-title {
-  font-size: 48px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin-bottom: 8px;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+  font-size: clamp(48px, 7vw, 96px);
+  font-weight: 650;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  margin-bottom: 12px;
 }
 
 .hero-subtitle {
-  font-size: 15px;
-  color: var(--text-muted);
-  margin-bottom: 40px;
-  letter-spacing: 0.02em;
+  font-size: 20px;
+  color: var(--text-secondary);
+  margin-bottom: 44px;
+  letter-spacing: -0.01em;
 }
 
 .hero-fade-enter-active { transition: all 0.3s ease; }
@@ -615,8 +615,7 @@ export default {
 .hero-fade-enter-from, .hero-fade-leave-to { opacity: 0; transform: translateY(-10px); }
 
 .command-capsule-container {
-  max-width: 800px;
-  margin: 0 auto;
+  --page-max: 800px;
   position: relative;
   z-index: 10;
 }
@@ -625,21 +624,21 @@ export default {
 .command-capsule {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  background: var(--material-glass-sheet);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--border-light);
-  border-radius: 30px;
+  border-radius: 999px;
   padding: 6px 6px 6px 24px;
   transition: all 0.5s var(--ease-pro);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-floating);
 }
 
 .command-capsule.focused {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-input-focus);
   border-color: var(--accent);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.03);
-  transform: scale(1.01);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12), var(--shadow-floating);
+  transform: translateY(-1px);
 }
 
 .capsule-main {
@@ -674,8 +673,8 @@ export default {
 }
 
 .capsule-search-btn {
-  background: var(--text-primary);
-  color: var(--bg-primary);
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 50%;
   width: 44px;
@@ -686,13 +685,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .capsule-search-btn:hover {
-  background: var(--accent);
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 0 20px var(--accent-glow);
+  background: var(--accent-light);
+  transform: scale(1.04);
+  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
 }
 
 .capsule-search-btn:active {
@@ -702,6 +701,9 @@ export default {
 /* 筛选盘 (Filter Tray) */
 /* ===== 排序 + 筛选条 ===== */
 .sort-strip {
+  --filter-control-height: 32px;
+  --filter-control-radius: 16px;
+  --filter-control-width: 112px;
   margin-top: 16px;
   display: flex;
   align-items: center;
@@ -755,11 +757,14 @@ export default {
 .sort-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.04);
+  min-height: var(--filter-control-height);
+  width: 72px;
+  padding: 0 12px;
+  background: var(--surface-control);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--filter-control-radius);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -769,33 +774,33 @@ export default {
 }
 
 .sort-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-control-hover);
   border-color: var(--border-light);
   color: var(--text-primary);
 }
 
 .sort-pill.active {
-  background: rgba(212, 175, 55, 0.12);
-  border-color: rgba(212, 175, 55, 0.4);
-  color: #fcf6ba;
-  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.1);
+  background: var(--active-bg);
+  border-color: var(--active-border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 .sort-pill.active:hover {
-  background: rgba(212, 175, 55, 0.18);
-  border-color: rgba(212, 175, 55, 0.6);
+  background: var(--surface-control-hover);
+  border-color: var(--active-border);
 }
 
 .sort-pill.random.active {
-  background: rgba(130, 100, 255, 0.12);
-  border-color: rgba(130, 100, 255, 0.4);
-  color: #c8b8ff;
-  box-shadow: 0 2px 12px rgba(130, 100, 255, 0.1);
+  background: var(--active-bg);
+  border-color: var(--active-border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 .sort-pill.random.active:hover {
-  background: rgba(130, 100, 255, 0.18);
-  border-color: rgba(130, 100, 255, 0.6);
+  background: var(--surface-control-hover);
+  border-color: var(--active-border);
 }
 
 .pill-label {
@@ -816,7 +821,7 @@ export default {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-control);
   border: 1px solid var(--border);
   color: var(--text-muted);
   display: flex;
@@ -839,30 +844,39 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  width: var(--filter-control-width);
+  min-height: var(--filter-control-height);
+  background: var(--surface-control);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 5px 12px;
+  border-radius: var(--filter-control-radius);
+  padding: 0 12px;
   color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s var(--ease-pro);
   white-space: nowrap;
 }
 
 .filter-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-control-hover);
   border-color: var(--border-light);
 }
 
 .filter-item.toggle.active {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--active-bg);
+  border-color: var(--active-border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 .version-filter {
-  width: 116px;
+  width: var(--filter-control-width);
+  min-width: var(--filter-control-width);
+  --glass-select-height: var(--filter-control-height);
+  --glass-select-padding: 0 12px;
+  --glass-select-font: 12px;
+  --glass-select-radius: var(--filter-control-radius);
 }
 
 /* 高级面板 (Advanced Panel) - 绝对定位消除重排 */
@@ -872,14 +886,14 @@ export default {
   left: 0;
   right: 0;
   margin-top: 16px;
-  background: var(--bg-card);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  background: var(--material-glass-sheet);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--border-light);
-  border-radius: 24px;
+  border-radius: var(--radius-card);
   padding: 32px;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
-  z-index: 100;
+  box-shadow: var(--shadow-sheet);
+  z-index: var(--z-sheet);
   transform: translateZ(0);
   animation: panelEntry 0.5s var(--ease-pro) both;
 }
@@ -914,7 +928,7 @@ export default {
 }
 
 .panel-input {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-input);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 16px;
@@ -925,7 +939,7 @@ export default {
 
 .panel-input:focus {
   border-color: var(--accent);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-input-focus);
   outline: none;
 }
 
@@ -942,7 +956,7 @@ export default {
 }
 
 .tray-tag {
-  background: var(--white-10);
+  background: var(--surface-control);
   border: 1px solid var(--border-light);
   color: var(--text-primary);
   padding: 4px 12px;
@@ -970,9 +984,9 @@ export default {
 }
 
 .btn-clear {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  background: var(--surface-control);
+  border: 1px solid transparent;
+  color: var(--text-primary);
   padding: 10px 24px;
   border-radius: 12px;
   cursor: pointer;
@@ -981,27 +995,27 @@ export default {
 }
 
 .btn-clear:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-control-hover);
   color: var(--text-primary);
 }
 
 .btn-apply {
-  background: linear-gradient(135deg, #fcf6ba 0%, #d4af37 100%);
-  color: #121212;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   padding: 10px 36px;
-  border-radius: 12px;
-  font-weight: 700;
+  border-radius: var(--radius-control);
+  font-weight: 650;
   cursor: pointer;
   font-size: 14px;
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
+  box-shadow: none;
   transition: all 0.3s var(--ease-pro);
 }
 
 .btn-apply:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4);
-  filter: brightness(1.1);
+  transform: translateY(-1px);
+  background: var(--accent-light);
+  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
 }
 
 /* 极速响应动效 */
@@ -1014,10 +1028,10 @@ export default {
   pointer-events: none;
 }
 
-.tray-slide-enter-from, 
-.tray-slide-leave-to { 
-  opacity: 0; 
-  transform: translateY(-16px) scale(0.99) translateZ(0); 
+.tray-slide-enter-from,
+.tray-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-16px) scale(0.99) translateZ(0);
 }
 
 /* 结果网格样式同步 2.0 */
@@ -1025,32 +1039,16 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 30px;
-  padding: 40px 20px;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding-block: 40px;
 }
 
 .pagination-bar {
-  padding: 12px 20px;
+  padding-block: 12px;
 }
 
 .page-info {
   font-size: 13px;
   color: var(--text-muted);
-}
-
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 .empty-state {
@@ -1072,26 +1070,24 @@ export default {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding-block: 16px;
 }
 
 .page-btn {
-  background: var(--bg-card);
+  background: var(--surface-card);
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 6px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 13px;
   transition: var(--transition-pro);
   backdrop-filter: blur(10px);
 }
-.page-btn:hover:not(:disabled) { 
-  border-color: var(--accent); 
-  color: var(--accent); 
-  background: var(--bg-card-hover);
+.page-btn:hover:not(:disabled) {
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background: var(--surface-control-hover);
 }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -1099,36 +1095,36 @@ export default {
 
 .jump-wrap { display: flex; align-items: center; gap: 4px; margin-left: 12px; }
 .jump-input {
-  width: 56px; 
-  padding: 6px 8px; 
+  width: 56px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md); 
-  background: var(--bg-card); 
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
   color: var(--text-primary);
-  font-size: 12px; 
+  font-size: 12px;
   text-align: center;
   transition: var(--transition-pro);
 }
 .jump-input:focus {
   outline: none;
   border-color: var(--accent);
-  background: var(--bg-card-hover);
+  background: var(--surface-input-focus);
 }
 .jump-input::-webkit-inner-spin-button,
 .jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 .jump-btn {
-  background: var(--bg-secondary); 
+  background: var(--surface-control);
   border: 1px solid var(--border);
-  color: var(--text-primary); 
-  padding: 6px 14px; 
-  border-radius: var(--radius-md);
-  cursor: pointer; 
-  font-size: 12px; 
+  color: var(--text-primary);
+  padding: 6px 14px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-size: 12px;
   transition: var(--transition-pro);
 }
-.jump-btn:hover { 
-  border-color: var(--accent); 
-  color: var(--accent); 
+.jump-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text-primary);
   background: var(--bg-card-hover);
 }
 
@@ -1141,8 +1137,8 @@ export default {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: var(--text-on-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1154,15 +1150,15 @@ export default {
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
   .search-hero {
-    padding: 44px 16px 30px;
+    padding: 44px 0 30px;
   }
   .search-hero.compact {
-    padding: 20px 16px 18px;
+    padding: 20px 0 18px;
   }
   .results-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 16px;
-    padding: 20px 16px;
+    padding-block: 20px;
   }
   .panel-grid {
     grid-template-columns: 1fr;
@@ -1202,6 +1198,9 @@ export default {
     border-radius: 18px;
   }
   .sort-strip {
+    --filter-control-height: 44px;
+    --filter-control-radius: 18px;
+    --filter-control-width: min(160px, 46vw);
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
@@ -1210,7 +1209,9 @@ export default {
     justify-content: center;
   }
   .sort-strip-right .version-filter {
-    width: min(160px, 46vw);
+    width: var(--filter-control-width);
+    min-width: var(--filter-control-width);
+    --glass-select-padding: 0 12px;
   }
   .sort-strip-left {
     align-items: center;

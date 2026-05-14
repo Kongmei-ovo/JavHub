@@ -66,7 +66,7 @@ export default {
 </script>
 
 <style scoped>
-.vp-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); animation: fadeIn 0.4s var(--ease-pro); }
+.vp-overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); animation: fadeIn 0.4s var(--ease-pro); }
 .vp-container { position: relative; width: 90vw; max-width: 1080px; display: flex; flex-direction: column; gap: 24px; }
 .vp-close { position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.08); border: var(--stroke-pro) solid rgba(255,255,255,0.12); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7); cursor: pointer; transition: var(--transition-pro); }
 .vp-close:hover { background: rgba(255,255,255,0.15); color: #fff; transform: rotate(90deg); }
@@ -77,5 +77,5 @@ export default {
 .vp-speed-ctrl { display: flex; align-items: center; gap: 8px; }
 .vp-speed-btn { font-size: 13px; padding: 5px 14px; background: rgba(255,255,255,0.07); border: var(--stroke-pro) solid rgba(255,255,255,0.1); border-radius: 40px; color: rgba(255,255,255,0.5); cursor: pointer; transition: var(--transition-pro); }
 .vp-speed-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
-.vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); font-weight: 700; }
+.vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); font-weight: 700; }
 </style>

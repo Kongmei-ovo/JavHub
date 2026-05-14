@@ -1,5 +1,5 @@
 <template>
-  <div class="inventory-page">
+  <div class="inventory-page page-shell page-shell--workspace">
     <div class="page-header">
       <h1>库存对比</h1>
       <div class="header-actions">
@@ -455,11 +455,7 @@ const fetchJobs = async () => {
 </script>
 
 <style scoped>
-.inventory-page {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 24px 28px 48px;
-}
+.inventory-page {}
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -487,7 +483,7 @@ const fetchJobs = async () => {
   z-index: 1;
   font-size: 9px;
   font-weight: bold;
-  color: var(--accent);
+  color: var(--text-primary);
 }
 .btn-disabled { opacity: 0.5; cursor: not-allowed; }
 .snapshot-info {
@@ -503,10 +499,12 @@ const fetchJobs = async () => {
   margin-left: 10px;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link-text);
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 3px;
 }
 .snapshot-warn {
   background: var(--badge-warning-bg);
@@ -726,8 +724,9 @@ const fetchJobs = async () => {
   transition: all 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background: var(--surface-control-hover);
 }
 .page-btn:disabled {
   opacity: 0.4;
@@ -769,8 +768,9 @@ const fetchJobs = async () => {
   transition: all 0.2s;
 }
 .jump-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  background: var(--surface-control-hover);
 }
 
 /* 作业历史 */
@@ -807,7 +807,6 @@ const fetchJobs = async () => {
 .jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }
 
 @media (max-width: 768px) {
-  .inventory-page { padding: 20px 16px 40px; }
   .page-header {
     align-items: flex-start;
   }

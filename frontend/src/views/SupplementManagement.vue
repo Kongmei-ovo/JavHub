@@ -1,8 +1,7 @@
 <template>
-  <div class="supplement-page">
+  <div class="supplement-page page-shell page-shell--workspace">
     <header class="supplement-topbar">
       <div>
-        <p class="eyebrow">Supplement Studio</p>
         <h1>补全演员</h1>
       </div>
       <div class="topbar-actions">
@@ -50,9 +49,8 @@
             <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
           </div>
           <div class="workspace-title">
-            <p class="eyebrow">当前演员上下文</p>
             <h2>{{ actorContextName }}</h2>
-            <p>ID {{ actorContext.id }}</p>
+            <p>编号 {{ actorContext.id }}</p>
           </div>
         </div>
         </div>
@@ -106,7 +104,6 @@
       <section v-if="activeWorkspaceSegment === 'movies'" class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Fields</p>
             <h2>作品字段</h2>
           </div>
           <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="batchEnrichMovies">
@@ -171,7 +168,6 @@
       <section v-if="activeWorkspaceSegment === 'jobs'" class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Queue</p>
             <h2>任务队列</h2>
           </div>
           <div class="filter-bar compact">
@@ -205,7 +201,6 @@
       <section v-if="activeWorkspaceSegment === 'diagnostics'" class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Sources</p>
             <h2>来源诊断</h2>
           </div>
         </div>
@@ -242,7 +237,6 @@
       <div class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Global Queue</p>
             <h2>全局队列</h2>
           </div>
           <div class="filter-bar compact">
@@ -275,7 +269,6 @@
       <div class="diagnostics-panel apple-surface">
         <div class="diagnostics-header">
           <div>
-            <p class="eyebrow">Diagnostics</p>
             <h2>{{ diagnosticsMovieTitle }}</h2>
             <p>{{ diagnosticsMovieSubtitle }}</p>
           </div>
@@ -327,7 +320,7 @@
             <div class="manual-match-bar">
               <input
                 v-model="manualContentId"
-                placeholder="输入 content_id 人工确认"
+                placeholder="输入内容编号人工确认"
                 class="filter-input"
                 @keyup.enter="manualMatchMovie()"
               />
@@ -337,7 +330,7 @@
             </div>
             <div v-if="sourceDiagnostics.match_candidates?.length" class="diagnostics-table">
               <div class="diagnostics-row diagnostics-row-head diagnostics-row-candidates">
-                <span>content_id</span>
+                <span>内容编号</span>
                 <span>分数</span>
                 <span>状态</span>
                 <span>操作</span>
@@ -358,7 +351,7 @@
             <div v-if="sourceDiagnostics.manual_actions?.length" class="manual-action-list">
               <div v-for="action in sourceDiagnostics.manual_actions" :key="`${action.action}-${action.created_at}`" class="manual-action-item">
                 <strong>{{ manualActionLabel(action.action) }}</strong>
-                <span>{{ action.content_id || action.previous_content_id || '无 content_id' }}</span>
+                <span>{{ action.content_id || action.previous_content_id || '无内容编号' }}</span>
                 <small>{{ action.reason || '未填写原因' }} · {{ formatActionTime(action.created_at) }}</small>
               </div>
             </div>
@@ -946,7 +939,7 @@ export default {
     },
     smokeRunLabel(run) {
       const req = run?.request || {}
-      if (req.source_movie_id) return `${req.source || 'source'} · ${req.source_movie_id}`
+      if (req.source_movie_id) return `${req.source || '来源'} · ${req.source_movie_id}`
       if (req.source) return `${req.source} 默认样本`
       if (req.samples?.length) return `${req.samples.length} 个样本`
       return '默认样本'
@@ -1236,11 +1229,7 @@ export default {
 </script>
 
 <style scoped>
-.supplement-page {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 28px 40px 48px;
-}
+.supplement-page {}
 
 .supplement-topbar,
 .section-title-row,
@@ -1510,7 +1499,7 @@ p {
   margin-top: 2px;
   border-radius: 999px;
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1642,8 +1631,9 @@ p {
 }
 
 .segmented-control button.active {
-  color: var(--bg-primary);
-  background: var(--accent);
+  color: var(--text-primary);
+  background: var(--active-bg);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 .workspace-panel {
@@ -1656,6 +1646,7 @@ p {
 }
 
 .filter-bar {
+  --supplement-filter-radius: 16px;
   margin-bottom: 14px;
 }
 
@@ -1665,6 +1656,21 @@ p {
 
 .filter-bar .glass-select {
   min-width: 132px;
+}
+
+.filter-bar .glass-select {
+  --radius-control: var(--supplement-filter-radius);
+}
+
+.filter-bar .btn,
+.filter-bar .filter-input {
+  min-height: 38px;
+  border-radius: var(--supplement-filter-radius);
+}
+
+.filter-bar .btn {
+  min-width: 72px;
+  padding: 8px 14px;
 }
 
 .ios-list {
@@ -1784,7 +1790,7 @@ p {
 
 .movie-row-main strong {
   font-family: var(--font-mono);
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 .status-pill {
@@ -2296,10 +2302,6 @@ p {
 }
 
 @media (max-width: 860px) {
-  .supplement-page {
-    padding: 20px 16px 36px;
-  }
-
   .supplement-topbar,
   .actor-workspace-hero,
   .panel-header,

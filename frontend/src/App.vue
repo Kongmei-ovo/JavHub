@@ -1,11 +1,12 @@
 <template>
   <div class="app-layout">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     <!-- 左侧边栏 -->
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
       <div class="sidebar-header">
         <div class="logo">
           <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
         </div>
@@ -83,7 +84,7 @@
     </transition>
 
     <!-- 主内容区 -->
-    <main class="main-content">
+    <main id="main-content" class="main-content" tabindex="-1">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'DiscoveryDetail', 'InventoryActor', 'SupplementManagement']">
@@ -139,6 +140,7 @@ const IconHeart = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24
 const IconSettings = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('circle', { cx: '12', cy: '12', r: '3' }), h('path', { d: 'M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z' })]) })
 const IconInventory = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5' })]) })
 const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' })]) })
+const IconTranslate = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M5 8l6 6' }), h('path', { d: 'M4 14l6-6 2-2' }), h('path', { d: 'M2 5h12' }), h('path', { d: 'M7 2v3' }), h('path', { d: 'M22 22l-5-10-5 10' }), h('path', { d: 'M14 18h6' })]) })
 const IconSupplement = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' }), h('circle', { cx: '12', cy: '12', r: '3' })]) })
 const IconOperations = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 3v18h18' }), h('path', { d: 'M7 15l3-3 3 2 5-7' }), h('path', { d: 'M18 7h-4' }), h('path', { d: 'M18 7v4' })]) })
 
@@ -202,6 +204,7 @@ export default {
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员映射', icon: IconNormalize },
+      { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
       { path: '/downloads', label: '下载管理', icon: IconHome },
       { path: '/settings', label: '设置', icon: IconSettings },
@@ -220,6 +223,7 @@ export default {
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员映射', icon: IconNormalize },
+      { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
       { path: '/settings', label: '设置', icon: IconSettings },
     ])
@@ -303,23 +307,24 @@ export default {
 <style scoped>
 .app-layout {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   width: 100%;
   overflow: hidden;
+  background: var(--bg-primary);
 }
 
 /* ===== Sidebar ===== */
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  background: var(--bg-secondary);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-right: 1px solid var(--border);
+  background: var(--surface-nav);
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  border-right: 1px solid var(--surface-nav-border);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease, min-width 0.3s ease, background 0.3s ease;
-  z-index: 100;
+  z-index: var(--z-nav);
   flex-shrink: 0;
 }
 
@@ -333,7 +338,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 20px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--surface-nav-border);
   min-height: 72px;
 }
 
@@ -342,29 +347,31 @@ export default {
   align-items: center;
   gap: 10px;
   overflow: hidden;
+  color: var(--text-primary);
 }
 
 .logo-text {
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 650;
   color: var(--text-primary);
   white-space: nowrap;
   letter-spacing: -0.02em;
 }
 
 .collapse-btn {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   transition: var(--transition);
   flex-shrink: 0;
 }
-.collapse-btn:hover { color: var(--text-primary); background: var(--white-06); }
+.collapse-btn:hover { color: var(--text-primary); background: var(--surface-control-hover); }
+.collapse-btn:focus-visible { outline: 3px solid rgba(var(--accent-rgb), 0.18); outline-offset: 2px; }
 
 .sidebar-nav {
   flex: 1;
@@ -380,7 +387,7 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 11px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
@@ -391,13 +398,13 @@ export default {
   position: relative;
 }
 .nav-item:hover {
-  background: var(--white-06);
+  background: var(--surface-control-hover);
   color: var(--text-primary);
 }
 .nav-item.active {
-  background: var(--white-10);
-  color: var(--accent);
-  border: 1px solid var(--border-light);
+  background: var(--nav-active-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--active-border);
 }
 .nav-item.active::before {
   display: none;
@@ -408,12 +415,17 @@ export default {
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
-.nav-item.active svg { filter: drop-shadow(0 0 8px var(--accent-glow)); }
+.nav-item.active svg { filter: none; }
+.nav-item:focus-visible {
+  outline: 3px solid rgba(var(--accent-rgb), 0.18);
+  outline-offset: 2px;
+}
 
 .nav-badge {
   margin-left: auto;
-  background: var(--accent);
-  color: var(--bg-primary);
+  background: var(--surface-control-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
@@ -423,7 +435,7 @@ export default {
 }
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--surface-nav-border);
 }
 .version { font-size: 11px; color: var(--text-muted); text-align: center; }
 
@@ -433,6 +445,11 @@ export default {
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
+  background: var(--bg-primary);
+}
+
+.main-content:focus {
+  outline: none;
 }
 
 /* ===== Bottom Nav (Mobile) ===== */
@@ -442,11 +459,11 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(22, 27, 34, 0.85);
+  background: var(--surface-nav);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid var(--border);
-  z-index: 100;
+  border-top: 1px solid var(--border-light);
+  z-index: var(--z-nav);
   padding: 8px 0 env(safe-area-inset-bottom, 8px);
 }
 
@@ -470,10 +487,10 @@ export default {
   cursor: pointer;
 }
 .bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
-.bottom-nav-item:hover { color: var(--text-secondary); }
-.bottom-nav-item:hover svg { transform: scale(1.15); }
-.bottom-nav-item.active { color: var(--accent-light); }
-.bottom-nav-item.active svg { filter: drop-shadow(0 0 6px var(--accent-glow)); }
+.bottom-nav-item:hover { color: var(--text-primary); }
+.bottom-nav-item:hover svg { transform: translateY(-1px); }
+.bottom-nav-item.active { color: var(--text-primary); }
+.bottom-nav-item.active svg { filter: none; }
 
 .mobile-more-overlay {
   display: none;
@@ -483,14 +500,13 @@ export default {
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .bottom-nav { display: flex; }
-  .main-content { padding-bottom: 70px; }
   .mobile-more-overlay {
     position: fixed;
     inset: 0;
-    z-index: 120;
+    z-index: var(--z-sheet);
     display: flex;
     align-items: flex-end;
-    background: rgba(0, 0, 0, 0.42);
+    background: var(--surface-scrim);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     padding: 0 12px calc(74px + env(safe-area-inset-bottom, 0px));
@@ -536,7 +552,7 @@ export default {
     height: 22px;
   }
   .mobile-more-item.active {
-    color: var(--accent);
+    color: var(--text-primary);
     border-color: var(--border-light);
     background: var(--material-glass-elevated);
   }

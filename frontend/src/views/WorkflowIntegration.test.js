@@ -9,6 +9,8 @@ const inventory = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf
 const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
 const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
+const favorites = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
+const actor = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
 const config = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
@@ -22,12 +24,16 @@ const homeFeatureSource = [home, candidateRunPanel].join('\n')
 const configFeatureSource = [config, configDefaults].join('\n')
 const supplementFeatureSource = [supplement, supplementActorPicker, supplementSourceHealth].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
+const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
+const duplicates = readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8')
 const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
+const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
+const translationJobs = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
 
 test('navigation and actor page use actor mapping language', () => {
   assert.match(app, /演员映射/)
@@ -37,11 +43,31 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(normalize, /confirmActorMapping/)
   assert.match(normalize, /ignoreActorMapping/)
   assert.match(normalize, /getActorMappingSummary/)
-  assert.match(normalize, /mappingActor/)
+  assert.match(normalize, /待映射审核/)
+  assert.doesNotMatch(normalize, />建议候选</)
+  assert.match(normalize, /JavInfo 库/)
+  assert.match(normalize, /Emby 库/)
+  assert.match(normalize, /candidate-compare/)
+  assert.match(normalize, /searchActorMappingCandidates/)
+  assert.match(normalize, /reviewActorMappingWithAi/)
+  assert.match(normalize, /candidateAvatar/)
+  assert.match(normalize, /AI 判断/)
+  assert.match(normalize, /AI判断/)
+  assert.match(normalize, /aiDecisionLabel/)
+  assert.match(normalize, /reviewFilterOptions/)
   assert.match(normalize, /置信/)
   assert.match(normalize, /autoMatchActorMappings/)
   assert.match(normalize, /自动匹配预演/)
   assert.match(normalize, /精确但歧义/)
+  assert.match(normalize, /statuses = \['confirmed', 'ignored'\]/)
+  assert.match(normalize, /actor\.candidates/)
+  assert.match(normalize, /loadingMappings/)
+})
+
+test('favorites video cards display dvd numbers instead of internal ids', () => {
+  assert.match(favorites, /:contentId="item\.metadata\?\.content_id \|\| item\.entity_id"/)
+  assert.match(favorites, /:dvdId="movieDisplayCode\(item\)"/)
+  assert.match(favorites, /metadata\.dvd_id \|\| metadata\.canonical_number \|\| metadata\.content_id \|\| item\?\.entity_id/)
 })
 
 test('subscription routes missing movies into download candidates', () => {
@@ -96,6 +122,68 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.match(config, /footer-content \.btn[\s\S]*width: 100%/)
 })
 
+test('primary pages use unified breathing rails', () => {
+  assert.match(mainCss, /--page-gutter:\s*clamp\(16px, 2\.8vw, 40px\)/)
+  assert.match(mainCss, /--page-max-standard:\s*1180px/)
+  assert.match(mainCss, /--page-max-workspace:\s*1360px/)
+  assert.match(mainCss, /--page-max-gallery:\s*1600px/)
+  assert.match(mainCss, /\.page-shell\s*\{[\s\S]*width: min\(var\(--page-max\), calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)\)/)
+  assert.match(mainCss, /\.page-rail\s*\{[\s\S]*width: min\(var\(--page-max\), calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)\)/)
+
+  const mainContentBlock = app.match(/\.main-content\s*\{[^}]*\}/)?.[0] || ''
+  assert.doesNotMatch(mainContentBlock, /padding/)
+  assert.doesNotMatch(app, /\.main-content\s*\{\s*padding/)
+
+  for (const [name, source] of Object.entries({
+    home,
+    operations,
+    inventory,
+    normalize,
+    supplement,
+    translationJobs,
+    inventoryActor,
+  })) {
+    assert.match(source, /page-shell page-shell--workspace/, `${name} should use the workspace page shell`)
+  }
+
+  for (const [name, source] of Object.entries({
+    config,
+    magnetParse,
+    logs,
+    library,
+    duplicates,
+    subscription,
+  })) {
+    assert.match(source, /page-shell page-shell--standard/, `${name} should use the standard page shell`)
+  }
+
+  assert.match(favorites, /page-shell page-shell--gallery/)
+  assert.match(search, /class="search-page page-bleed"/)
+  assert.match(search, /page-rail page-rail--gallery/)
+  assert.match(genres, /class="genres-page page-bleed"/)
+  assert.match(genres, /page-rail page-rail--standard/)
+  assert.match(discoveryDetail, /class="genre-detail-page page-bleed"/)
+  assert.match(discoveryDetail, /page-rail page-rail--gallery/)
+  assert.match(actor, /class="actor-page page-bleed"/)
+  assert.match(actor, /page-rail page-rail--gallery/)
+
+  for (const [name, source] of Object.entries({
+    home,
+    operations,
+    inventory,
+    normalize,
+    supplement,
+    translationJobs,
+    config,
+    magnetParse,
+    logs,
+    duplicates,
+  })) {
+    const topWrapper = source.match(/\.(home|operations-page|inventory-page|mapping-page|supplement-page|translation-page|settings|parse-page|logs|duplicates-page)\s*\{[^}]*\}/)?.[0] || ''
+    assert.doesNotMatch(topWrapper, /max-width|margin:\s*0 auto|padding:\s*(?:\d|0)/, `${name} should not own page-level rail spacing`)
+  }
+})
+
 test('external data failures render page-level retry states', () => {
   assert.match(genres, /AppleErrorState/)
   assert.match(genres, /categoryError/)
@@ -125,16 +213,22 @@ test('appearance controls keep compact state and robust custom material parsing'
 })
 
 test('theme presets stay curated and complete', () => {
-  assert.deepEqual(THEME_KEYS, ['midnight', 'studio-silver', 'oled', 'deep-space', 'graphite-gold'])
+  assert.deepEqual(THEME_KEYS, ['apple-espana', 'apple-pro-dark', 'midnight', 'studio-silver', 'oled', 'deep-space', 'graphite-gold'])
 
-  const baselineTokens = Object.keys(THEMES.midnight.vars).sort()
+  const baselineTokens = Object.keys(THEMES['apple-espana'].vars).sort()
   for (const [key, theme] of Object.entries(THEMES)) {
-    assert.deepEqual(Object.keys(theme.vars).sort(), baselineTokens, `${key} token coverage should match midnight`)
-    assert.match(theme.vars['--font-body'], /Inter/)
+    assert.deepEqual(Object.keys(theme.vars).sort(), baselineTokens, `${key} token coverage should match apple-espana`)
+    assert.match(theme.vars['--font-body'], /SF Pro Text/)
     assert.match(theme.vars['--font-body'], /-apple-system/)
-    assert.doesNotMatch(theme.vars['--font-body'], /Cormorant|Noto|Space Grotesk|Nunito/i)
+    assert.doesNotMatch(theme.vars['--font-body'], /Inter|Cormorant|Noto|Space Grotesk|Nunito/i)
     assert.doesNotMatch(theme.vars['--font-body'], /(^|,\s*)'?serif'?($|,)/i)
+    assert.ok(theme.vars['--surface-nav'], `${key} should define semantic navigation material`)
   }
+
+  assert.equal(THEMES['apple-espana'].vars['--bg-primary'], '#FFFFFF')
+  assert.equal(THEMES['apple-pro-dark'].vars['--bg-primary'], '#000000')
+  assert.match(app, /background: var\(--surface-nav\)/)
+  assert.doesNotMatch(app, /background:\s*rgba\(245,\s*245,\s*247,\s*0\.86\)/)
 
   for (const removed of ['forest', 'tokyo', 'aurora', 'rose']) {
     assert.equal(THEMES[removed], undefined)
@@ -146,7 +240,7 @@ test('legacy saved theme values resolve to curated themes', () => {
   assert.equal(resolveThemeKey('tokyo'), 'deep-space')
   assert.equal(resolveThemeKey('aurora'), 'deep-space')
   assert.equal(resolveThemeKey('rose'), 'graphite-gold')
-  assert.equal(resolveThemeKey('missing-theme'), 'midnight')
+  assert.equal(resolveThemeKey('missing-theme'), 'apple-espana')
 
   const writes = []
   const originalDocument = globalThis.document
@@ -239,6 +333,44 @@ test('operations overview exposes candidate automation controls', () => {
   assert.match(operations, /保守唯一/)
 })
 
+test('translation jobs has a standalone navigation page and settings no longer owns translation UI', () => {
+  assert.match(app, /label: '翻译作业'/)
+  assert.match(app, /path: '\/translations'/)
+  assert.match(router, /path: '\/translations'/)
+  assert.match(router, /TranslationJobs/)
+  assert.doesNotMatch(config, /<h2>翻译映射<\/h2>/)
+  assert.doesNotMatch(config, /<h2>翻译源<\/h2>/)
+  assert.match(translationJobs, /name: 'TranslationJobs'/)
+  assert.match(translationJobs, /class="segmented-control apple-surface"/)
+  assert.match(translationJobs, /有效标题译文/)
+  for (const label of ['总览', '创建作业', '翻译源', '映射导入', '历史记录']) {
+    assert.match(translationJobs, new RegExp(`label: '${label}'`))
+  }
+  assert.match(translationJobs, /低成本批量源/)
+  assert.match(translationJobs, /AI 实时 \/ 兜底/)
+  assert.match(translationJobs, /公共 AI 参数在设置页维护/)
+  assert.match(translationJobs, /批量作业默认不使用 AI/)
+  assert.match(translationJobs, /job_type/)
+  assert.match(translationJobs, /library_titles/)
+  assert.match(translationJobs, /metadata_names/)
+  for (const jobType of ['metadata_categories', 'metadata_series', 'metadata_makers', 'metadata_labels', 'metadata_actresses']) {
+    assert.match(translationJobs, new RegExp(jobType))
+  }
+  for (const label of ['题材名称', '系列名称', '厂商名称', '厂牌名称', '演员名称', '全部元数据名称']) {
+    assert.match(translationJobs, new RegExp(label))
+  }
+  assert.match(translationJobs, /progress_percent/)
+  assert.match(translationJobs, /startTranslationJob/)
+  assert.match(translationJobs, /listTranslationJobs/)
+  assert.match(translationJobs, /getTranslationJob/)
+  assert.match(translationJobs, /moveProvider/)
+  assert.match(translationJobs, /上移/)
+  assert.match(translationJobs, /下移/)
+  assert.match(translationJobs, /setInterval\(\(\) => this\.refreshCurrentJob\(jobId\), 2000\)/)
+  assert.match(translationJobs, /\['cache', 'mapping'\]/)
+  assert.doesNotMatch(translationJobs, /openai_compatible[\s\S]{0,120}selectedProviderOrder/)
+})
+
 test('settings page blocks saving until remote config has loaded', () => {
   assert.match(config, /configLoading: true/)
   assert.match(config, /configLoaded: false/)
@@ -255,6 +387,24 @@ test('settings page blocks saving until remote config has loaded', () => {
   assert.match(configFeatureSource, /max_auto_downloads_per_24h/)
   assert.match(configFeatureSource, /actor_mapping/)
   assert.match(configFeatureSource, /auto_match_after_collect/)
+  assert.match(configFeatureSource, /ai/)
+  assert.match(config, /<h2>公共 AI<\/h2>/)
+  assert.match(config, /config\.ai\.openai_compatible/)
+  assert.match(config, /测试模型调用/)
+  assert.match(config, /testAIModel/)
+  assert.match(apiSource, /testAiModel/)
+})
+
+test('settings page keeps downloaders out and gives Telegram its own section', () => {
+  assert.match(config, /activeGroup === 'telegram'/)
+  assert.match(config, /label: 'Telegram 通知'/)
+  assert.match(config, /<h2>Bot 连接<\/h2>/)
+  assert.match(config, /<h2>通知事件<\/h2>/)
+  assert.match(config, /const \{ downloaders, openlist, \.\.\.configPayload \} = this\.config/)
+  assert.doesNotMatch(config, /OpenList \/ 115云盘/)
+  assert.doesNotMatch(config, /管理下载源/)
+  assert.doesNotMatch(config, /config\.openlist/)
+  assert.doesNotMatch(config, /系统通知/)
 })
 
 test('interactive filters avoid stale actions and stale pagination', () => {
@@ -291,6 +441,7 @@ test('global dropdowns use the unified glass select control', () => {
     config,
     inventory,
     supplementFeatureSource,
+    translationJobs,
     logs,
     search,
     discoveryDetail,
@@ -300,12 +451,10 @@ test('global dropdowns use the unified glass select control', () => {
 
   const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>个性推荐</h3>'))
   const visualSection = config.slice(config.indexOf('<span class="setting-title">色系预设</span>'), config.indexOf(`<template v-if="bubbleCfg.colorMode === 'legendary'">`))
-  const translationSection = config.slice(config.indexOf('<label>映射类型</label>'), config.indexOf('<div v-if="transStats[translationType]'))
 
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultSort"/)
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultServiceCode"/)
   assert.match(visualSection, /<GlassSelect[\s\S]*v-model="bubbleCfg\.palette"/)
-  assert.match(translationSection, /<GlassSelect[\s\S]*v-model="translationType"/)
 
   assert.match(inventory, /import GlassSelect/)
   assert.match(inventory, /v-model="sortBy"[\s\S]*@change="doSearch"/)
@@ -316,13 +465,23 @@ test('global dropdowns use the unified glass select control', () => {
   assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)
   assert.match(search, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
   assert.match(discoveryDetail, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
+  assert.match(search, /\.sort-strip[\s\S]*--filter-control-height: 32px/)
+  assert.match(search, /\.version-filter[\s\S]*--glass-select-height: var\(--filter-control-height\)/)
+  assert.match(search, /\.sort-strip[\s\S]*--filter-control-height: 44px/)
+  assert.match(discoveryDetail, /\.chronicle-btn[\s\S]*width: var\(--filter-control-width\)/)
 
   assert.match(glassSelect, /aria-haspopup="listbox"/)
   assert.match(glassSelect, /event\.key === 'ArrowDown'/)
   assert.match(glassSelect, /event\.key === 'Escape'/)
   assert.match(glassSelect, /emit\('update:modelValue', option\.value\)/)
+  assert.match(glassSelect, /<Teleport to="body">/)
+  assert.match(glassSelect, /window\.visualViewport\?\.addEventListener\('resize', requestMenuPlacement\)/)
+  assert.match(glassSelect, /menuNaturalHeight\(\)/)
+  assert.doesNotMatch(glassSelect, /Math\.min\(menuRef\.value\.scrollHeight[\s\S]*360\)/)
   assert.match(mainCss, /\.glass-select--compact[\s\S]*--glass-select-height: 38px/)
   assert.match(mainCss, /\.glass-select__button[\s\S]*min-height: var\(--glass-select-height\)/)
+  assert.match(mainCss, /\.glass-select__button[\s\S]*background: var\(--glass-control-bg, rgba\(255, 255, 255, 0\.05\)\)/)
+  assert.match(mainCss, /\.glass-select__menu[\s\S]*border-radius: var\(--glass-select-menu-radius, var\(--radius-lg\)\)/)
   assert.match(mainCss, /\.glass-select__menu[\s\S]*backdrop-filter: blur/)
 })
 

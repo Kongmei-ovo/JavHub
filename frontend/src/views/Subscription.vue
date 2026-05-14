@@ -1,5 +1,5 @@
 <template>
-  <div class="sub-page">
+  <div class="sub-page page-shell page-shell--standard">
     <!-- Hero -->
     <div class="sub-hero">
       <h1 class="hero-title">订阅演员</h1>
@@ -402,10 +402,8 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 <style scoped>
 .sub-page {
-  padding: 0 0 60px;
-  max-width: 960px;
-  margin: 0 auto;
-  min-height: 100vh;
+  --page-max: 960px;
+  min-height: 100dvh;
 }
 
 .sub-hero { text-align: center; padding: 40px 20px 20px; }
@@ -556,7 +554,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 .pill-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
 .pill-btn-primary {
-  background: var(--accent); color: var(--bg-primary); border-color: transparent;
+  background: var(--accent); color: var(--text-on-accent); border-color: transparent;
 }
 
 .pill-btn-primary:hover { background: var(--accent-light); }
@@ -594,7 +592,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
-  z-index: 900;
+  z-index: var(--z-modal);
   display: flex; align-items: flex-end; justify-content: center;
 }
 
@@ -806,7 +804,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .action-btn.primary {
-  background: var(--accent); color: var(--bg-primary); border-color: transparent;
+  background: var(--accent); color: var(--text-on-accent); border-color: transparent;
 }
 
 .action-btn.primary:hover { background: var(--accent-light); }
@@ -826,7 +824,6 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 }
 
 @media (max-width: 768px) {
-  .sub-page { padding: 0 0 80px; }
   .sub-hero { padding: 32px 16px 16px; }
   .hero-title { font-size: 28px; }
   .tab-content { padding: 0 12px; }

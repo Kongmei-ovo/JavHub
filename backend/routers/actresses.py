@@ -2,9 +2,7 @@ from fastapi import APIRouter, Query
 from fastapi.params import Query as QueryParam
 from typing import Any
 from modules.info_client import get_info_client
-from services.translation import apply_translation
-from database import get_translation
-from services.translation import _translate_item
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
 
@@ -19,17 +17,11 @@ async def list_actresses(
     # 为每个 actress 注入翻译字段
     items = result.get("data", []) if isinstance(result, dict) else result
     if isinstance(items, list):
-        for actress in items:
-            actress_id = actress.get("id")
-            if actress_id:
-                trans = get_translation(f"actress:{actress_id}")
-                if trans:
-                    actress_map = trans.get("actress", {})
-                    for name_key in ["name_kanji", "name_romaji", "name_ja", "name_en", "name"]:
-                        orig = actress.get(name_key)
-                        if orig:
-                            actress[f"{name_key}_translated"] = _translate_item(orig, actress_map)
-                            break
+        await get_translator_service().translate_entities(
+            items,
+            entity_type="actress",
+            keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
+        )
     return result
 
 @router.get("/{actress_id}")
@@ -44,14 +36,11 @@ async def get_actress(actress_id: int) -> dict[str, Any]:
                 result["movie_count"] = vids.get("total_count", 0)
             except Exception:
                 pass
-        trans = get_translation(f"actress:{actress_id}")
-        if trans:
-            actress_map = trans.get("actress", {})
-            for name_key in ["name_kanji", "name_romaji", "name_ja", "name_en", "name"]:
-                orig = result.get(name_key)
-                if orig:
-                    result[f"{name_key}_translated"] = _translate_item(orig, actress_map)
-                    break
+        await get_translator_service().translate_entities(
+            [result],
+            entity_type="actress",
+            keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
+        )
     return result
 
 @router.get("/{actress_id}/videos")
@@ -79,11 +68,11 @@ async def get_actress_videos(
         sort_by=_srt,
     )
     if result.get("data"):
-        result["data"] = [_apply_translation(item) for item in result["data"]]
+        result["data"] = [await _apply_translation(item) for item in result["data"]]
     return result
 
-def _apply_translation(data: dict) -> dict:
+async def _apply_translation(data: dict) -> dict:
     content_id = data.get("content_id") or data.get("dvd_id", "").replace("-", "").replace("_", "").lower()
     if not content_id:
         return data
-    return apply_translation(content_id, data)
+    return await get_translator_service().translate_video(content_id, data)

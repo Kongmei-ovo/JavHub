@@ -131,6 +131,15 @@ export function galleryThumbUrl(path) {
  */
 export function actressImgUrl(imageUrl) {
   if (!imageUrl) return null
-  if (imageUrl.startsWith('http')) return imageUrl
-  return `https://awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/${imageUrl.replace(/^\//, '')}`
+  const url = String(imageUrl).trim()
+  if (!url) return null
+  if (/^https?:\/\//i.test(url)) return url
+  const normalized = url.replace(/^\/+/, '')
+  if (normalized.startsWith('pics_dig/')) {
+    return `https://awsimgsrc.dmm.co.jp/${normalized}`
+  }
+  if (normalized.startsWith('mono/actjpgs/')) {
+    return `https://awsimgsrc.dmm.co.jp/pics_dig/${normalized}`
+  }
+  return `https://awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/${normalized}`
 }

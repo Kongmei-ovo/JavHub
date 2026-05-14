@@ -28,25 +28,22 @@ const handleClick = () => {
 .stat-card {
   display: flex;
   align-items: center;
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: var(--stroke-pro) solid var(--border);
-  border-radius: var(--radius-pro);
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
   padding: 24px 32px;
   cursor: pointer;
   transition: var(--transition-pro);
   box-shadow: var(--shadow-card);
 }
 .stat-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent);
+  transform: translateY(-3px);
+  border-color: var(--border-light);
   box-shadow: var(--shadow-hover);
 }
 .stat-icon {
   font-size: 32px;
   margin-right: 20px;
-  filter: drop-shadow(0 0 10px var(--accent-glow));
 }
 .stat-content {
   flex: 1;
@@ -72,7 +69,7 @@ const handleClick = () => {
   transition: var(--transition-pro);
 }
 .stat-card:hover .stat-arrow {
-  color: var(--accent);
+  color: var(--text-primary);
   transform: translate(4px, -4px);
 }
 </style>

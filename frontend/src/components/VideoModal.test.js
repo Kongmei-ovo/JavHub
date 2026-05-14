@@ -18,6 +18,14 @@ function galleryThumbsFor(video) {
   return galleryThumbs.call({ video })
 }
 
+function summaryDisplayFor(video) {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const match = source.match(/summaryDisplay\(\) \{([\s\S]*?)\n    \},\n    magnets/)
+  assert.ok(match, 'summaryDisplay computed property should be present')
+  const summaryDisplay = new Function(`return function summaryDisplay() {${match[1]}\n}`)()
+  return summaryDisplay.call({ video })
+}
+
 test('metadataLoaded resolves when MetaTube loading finishes with empty metadata', () => {
   assert.equal(metadataLoadedFor({
     content_id: 'MIAA-784',
@@ -37,4 +45,14 @@ test('galleryThumbs uses supplement sample image urls when present', () => {
     content_id: 'supp:1',
     sample_image_urls: ['https://example.test/1.jpg', 'https://example.test/2.jpg'],
   }), ['https://example.test/1.jpg', 'https://example.test/2.jpg'])
+})
+
+test('summaryDisplay prefers translated summary', () => {
+  assert.equal(summaryDisplayFor({
+    summary: 'Original summary',
+    summary_translated: '翻译简介',
+  }), '翻译简介')
+  assert.equal(summaryDisplayFor({
+    summary: 'Original summary',
+  }), 'Original summary')
 })

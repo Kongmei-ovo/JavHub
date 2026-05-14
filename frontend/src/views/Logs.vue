@@ -1,5 +1,5 @@
 <template>
-  <div class="logs">
+  <div class="logs page-shell page-shell--standard">
     <h1>日志查看</h1>
 
     <div class="toolbar">
@@ -10,8 +10,8 @@
         @change="loadLogs"
       />
       <input v-model="searchText" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
-      <button @click="loadLogs">刷新</button>
-      <button class="danger" @click="clearLogs">清空</button>
+      <button class="toolbar-btn primary" type="button" @click="loadLogs">刷新</button>
+      <button class="toolbar-btn danger" type="button" @click="clearLogs">清空</button>
     </div>
 
     <div class="logs-container">
@@ -107,9 +107,6 @@ export default {
 
 <style scoped>
 .logs {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 24px;
   color: var(--text-primary);
 }
 .logs h1 { margin: 0; font-size: 28px; line-height: 1.2; }
@@ -117,34 +114,81 @@ export default {
 .toolbar .glass-select { width: 132px; }
 .toolbar input {
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 14px;
   background: var(--bg-card);
   color: var(--text-primary);
+  font: inherit;
+  outline: none;
+  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
+}
+.toolbar input:focus {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
 }
 .toolbar input { flex: 1; min-width: 180px; max-width: 300px; }
-.toolbar button { min-height: 44px; padding: 0 18px; border: none; border-radius: 999px; cursor: pointer; background: #4CAF50; color: white; font-weight: 700; }
-.toolbar button.danger { background: #f44336; }
-.logs-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+.toolbar-btn {
+  min-height: 44px;
+  min-width: 82px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+.toolbar-btn:hover {
+  transform: translateY(-1px);
+}
+.toolbar-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+.toolbar-btn.danger {
+  background: rgba(255, 55, 95, 0.1);
+  border-color: rgba(255, 55, 95, 0.28);
+  color: #FF375F;
+}
+.toolbar-btn.danger:hover {
+  background: rgba(255, 55, 95, 0.16);
+  border-color: rgba(255, 55, 95, 0.42);
+}
+.logs-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
 .log-list { max-height: 500px; overflow-y: auto; }
 .log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid var(--border); font-family: monospace; font-size: 13px; min-width: 0; }
 .log-item:last-child { border-bottom: none; }
 .log-time { color: var(--text-muted); width: 160px; flex-shrink: 0; }
 .log-level { width: 70px; flex-shrink: 0; font-weight: bold; }
-.level-info { color: #2196f3; }
+.level-info { color: var(--text-secondary); }
 .level-warning { color: #ff9800; }
 .level-error { color: #f44336; }
 .log-message { flex: 1; word-break: break-all; }
 .loading, .empty { padding: 40px; text-align: center; color: var(--text-secondary); }
 .pagination { margin-top: 20px; text-align: center; }
-.pagination button { min-height: 44px; padding: 0 30px; background: #4CAF50; color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 700; }
+.pagination button {
+  min-height: 44px;
+  padding: 0 30px;
+  background: var(--accent-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.pagination button:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+}
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 @media (max-width: 768px) {
-  .logs {
-    padding: 20px 16px 40px;
-  }
-
   .toolbar {
     align-items: stretch;
   }

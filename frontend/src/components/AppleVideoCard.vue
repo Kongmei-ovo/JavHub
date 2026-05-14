@@ -4,7 +4,7 @@
       <img
         v-if="coverUrl && !imageError"
         :src="coverUrl"
-        :alt="normalized.content_id || normalized.title_ja || 'video cover'"
+        :alt="displayCode || normalized.title_ja || 'video cover'"
         loading="lazy"
         class="apple-video-card__image"
         @error="imageError = true"
@@ -35,7 +35,7 @@
 
     <div class="apple-video-card__body">
       <div class="apple-video-card__meta-row">
-        <span class="apple-video-card__code">{{ normalized.content_id || normalized.dvd_id }}</span>
+        <span class="apple-video-card__code">{{ displayCode }}</span>
         <span v-if="serviceLabel" class="apple-video-card__badge">{{ serviceLabel }}</span>
       </div>
       <h3 class="apple-video-card__title" :title="titleText">{{ titleText }}</h3>
@@ -65,7 +65,8 @@ const wideImage = ref(false)
 const normalized = computed(() => normalizeVideo(props.video))
 const coverUrl = computed(() => props.coverUrl || normalized.value.jacket_thumb_url || normalized.value.jacket_full_url || '')
 const titleText = computed(() => normalized.value.title_ja || normalized.value.title_en || normalized.value.title || 'Untitled')
-const fallbackText = computed(() => (normalized.value.content_id || normalized.value.dvd_id || '?').slice(0, 12))
+const displayCode = computed(() => normalized.value.dvd_id || normalized.value.content_id || '')
+const fallbackText = computed(() => (displayCode.value || '?').slice(0, 12))
 const serviceLabel = computed(() => {
   const map = { mono: 'DVD', digital: '数字', rental: '租赁', ebook: '写真', download: '下载', streaming: '流媒体', subscription: '订阅' }
   return map[normalized.value.service_code] || normalized.value.service_code || ''
@@ -86,7 +87,7 @@ function onImageLoad(event) {
 }
 
 .apple-video-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: var(--border-light);
   background: var(--surface-card-hover);
   box-shadow: var(--shadow-floating);
@@ -100,7 +101,7 @@ function onImageLoad(event) {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--surface-control);
 }
 
 .apple-video-card__image,
@@ -132,7 +133,9 @@ function onImageLoad(event) {
   justify-content: center;
   padding: 18px;
   color: var(--text-muted);
-  background: radial-gradient(circle at 35% 20%, rgba(255,255,255,0.12), rgba(255,255,255,0.025));
+  background:
+    radial-gradient(circle at 35% 20%, rgba(var(--accent-rgb), 0.16), transparent 42%),
+    var(--surface-control);
   text-align: center;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -156,7 +159,7 @@ function onImageLoad(event) {
   height: 28px;
   border-radius: var(--radius-control);
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.36);
+  background: var(--material-glass-sheet);
 }
 
 .apple-video-card__favorite {
@@ -165,8 +168,8 @@ function onImageLoad(event) {
   width: var(--touch-target);
   height: var(--touch-target);
   border-radius: 50%;
-  color: rgba(255,255,255,0.88);
-  background: rgba(0, 0, 0, 0.28);
+  color: var(--text-primary);
+  background: var(--material-glass-sheet);
   cursor: pointer;
   opacity: 0;
   transform: scale(0.86);
@@ -180,7 +183,7 @@ function onImageLoad(event) {
 }
 
 .apple-video-card__favorite:hover {
-  background: rgba(0, 0, 0, 0.42);
+  background: var(--material-glass-elevated);
   transform: scale(1.06);
 }
 
@@ -195,7 +198,7 @@ function onImageLoad(event) {
 }
 
 .apple-video-card__body {
-  padding: 13px 14px 15px;
+  padding: 14px 15px 16px;
 }
 
 .apple-video-card__meta-row {
@@ -211,7 +214,7 @@ function onImageLoad(event) {
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,7 +235,7 @@ function onImageLoad(event) {
 .apple-video-card__title {
   margin: 0 0 8px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.45;
   display: -webkit-box;

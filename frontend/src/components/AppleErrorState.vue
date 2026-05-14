@@ -45,9 +45,15 @@ button {
   min-height: var(--touch-target);
   padding: 0 14px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--border-light);
-  background: var(--material-glass-elevated);
-  color: var(--text-primary);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--text-on-accent);
   cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast);
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: var(--accent-light);
 }
 </style>

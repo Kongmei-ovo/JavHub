@@ -128,7 +128,7 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         info_client = AsyncMock()
         info_client.list_actresses.return_value = {
             "data": [
-                {"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99},
+                {"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99, "image_url": "itoi.jpg"},
                 {"id": 456, "name_kanji": "別人", "movie_count": 1},
             ]
         }
@@ -141,7 +141,136 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["emby_actor_id"], "901")
         self.assertEqual(rows[0]["javinfo_actress_id"], 123)
-        self.assertEqual(rows[0]["source"], "name_match")
+        self.assertEqual(rows[0]["source"], "exact_review")
+        self.assertEqual(rows[0]["javinfo_avatar_url"], "itoi.jpg")
+        self.assertEqual(rows[0]["movie_count"], 99)
+        self.assertIn("name_score", rows[0]["confidence_breakdown"])
+        self.assertEqual(rows[0]["confidence_label"], "高置信")
+        self.assertEqual(rows[0]["risk_flags"], [])
+        self.assertEqual(result["candidates"][0]["javinfo_avatar_url"], "itoi.jpg")
+
+    async def test_unmapped_api_groups_candidates_with_cached_ai_metadata(self):
+        from database import create_snapshot_key, save_emby_actors_snapshot, update_actor_mapping_ai_review, upsert_actor_mapping
+        from routers import inventory
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+            "image_tag": "emby-image",
+        }])
+        upsert_actor_mapping(
+            "901",
+            "糸井瑠花",
+            123,
+            "糸井瑠花",
+            confidence=0.96,
+            status="candidate",
+            source="exact_review",
+            javinfo_avatar_url="itoi.jpg",
+            movie_count=99,
+            confidence_breakdown={"name_score": 1.0, "signals": ["名称精确一致"]},
+            confidence_label="高置信",
+            risk_flags=[],
+        )
+        update_actor_mapping_ai_review("901", 123, "same_person", 0.94, "名称一致且作品数充足", "gpt-test")
+
+        result = await inventory.list_unmapped_actor_mappings()
+
+        self.assertEqual(result["total"], 1)
+        actor = result["data"][0]
+        self.assertTrue(actor["avatar_url"].endswith("tag=emby-image"))
+        self.assertEqual(actor["candidate_count"], 1)
+        candidate = actor["candidates"][0]
+        self.assertEqual(candidate["javinfo_avatar_url"], "itoi.jpg")
+        self.assertEqual(candidate["movie_count"], 99)
+        self.assertEqual(candidate["confidence_breakdown"]["name_score"], 1.0)
+        self.assertEqual(candidate["confidence_label"], "高置信")
+        self.assertEqual(candidate["ai_decision"], "same_person")
+        self.assertEqual(candidate["ai_confidence"], 0.94)
+        self.assertEqual(candidate["ai_reason"], "名称一致且作品数充足")
+
+    async def test_mapping_search_returns_normalized_candidates(self):
+        from services.actor_mapping_candidates import search_actor_mapping_candidates
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {
+            "data": [
+                {"id": 123, "name_kanji": "糸井瑠花", "movie_count": 99, "image_url": "itoi.jpg"},
+            ]
+        }
+
+        result = await search_actor_mapping_candidates("901", "糸井瑠花", q="瑠花", info_client=info_client)
+
+        self.assertEqual(result["total"], 1)
+        candidate = result["data"][0]
+        self.assertEqual(candidate["emby_actor_id"], "901")
+        self.assertEqual(candidate["javinfo_actress_id"], 123)
+        self.assertEqual(candidate["javinfo_avatar_url"], "itoi.jpg")
+        self.assertIn("name_score", candidate["confidence_breakdown"])
+
+    async def test_ai_review_persists_without_confirming_mapping(self):
+        from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot, upsert_actor_mapping
+        from routers import inventory
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [{
+            "actress_id": 901,
+            "actress_name": "糸井瑠花",
+            "video_count": 12,
+        }])
+        upsert_actor_mapping(
+            "901",
+            "糸井瑠花",
+            123,
+            "糸井瑠花",
+            confidence=0.96,
+            status="candidate",
+            source="exact_review",
+        )
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"choices": [{"message": {"content": '{"decision":"same_person","confidence":0.93,"reason":"名称一致"}'}}]}
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return None
+
+            async def post(self, *args, **kwargs):
+                return FakeResponse()
+
+        with patch("config.Config.openai_compatible", new_callable=PropertyMock, return_value={
+            "base_url": "https://ai.example/v1",
+            "api_key": "token",
+            "model": "gpt-test",
+            "timeout": 1,
+        }), patch("services.actor_mapping_candidates.httpx.AsyncClient", FakeAsyncClient):
+            result = await inventory.ai_review_mapping(inventory.ActorMappingAiReviewRequest(
+                emby_actor_id="901",
+                emby_actor_name="糸井瑠花",
+                javinfo_actress_id=123,
+                javinfo_actress_name="糸井瑠花",
+                confidence=0.96,
+                source="exact_review",
+            ))
+
+        rows = list_actor_mappings(status="candidate")
+        self.assertTrue(result["success"])
+        self.assertEqual(result["ai_decision"], "same_person")
+        self.assertEqual(rows[0]["status"], "candidate")
+        self.assertEqual(rows[0]["ai_decision"], "same_person")
+        self.assertEqual(rows[0]["ai_reason"], "名称一致")
 
     async def test_generate_candidates_skips_confirmed_actor(self):
         from database import (

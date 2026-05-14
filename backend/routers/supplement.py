@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 from modules.info_client import get_info_client
 from services.supplement_candidates import generate_download_candidates_from_supplement
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
 
@@ -153,7 +154,8 @@ async def list_supplement_movies(
 @router.get("/movies/{movie_id}/sources")
 async def get_movie_sources(movie_id: int) -> dict[str, Any]:
     client = get_info_client()
-    return await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
+    data = await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
+    return await get_translator_service().translate_supplement_sources(data)
 
 
 @router.post("/movies/candidates")

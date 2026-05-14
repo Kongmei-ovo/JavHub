@@ -67,3 +67,153 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+}
+
+.spinner-large {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--white-20);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.empty-inline {
+  padding: 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.ios-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ios-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.job-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.job-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.job-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.job-copy strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.job-copy span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.job-copy small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.job-copy small.job-error {
+  color: var(--badge-error-text);
+}
+
+.job-copy small.job-warning {
+  color: var(--badge-warning-text);
+}
+
+.job-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--badge-info-border);
+  border-radius: 999px;
+  color: var(--badge-info-text);
+  background: var(--badge-info-bg);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-succeeded {
+  color: var(--badge-success-text);
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+}
+
+.status-running,
+.status-queued {
+  color: var(--badge-warning-text);
+  background: var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
+}
+
+.status-failed {
+  color: var(--badge-error-text);
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .ios-row,
+  .job-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .job-actions {
+    width: 100%;
+  }
+}
+</style>

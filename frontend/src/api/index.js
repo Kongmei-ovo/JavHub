@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { attachApiKey } from '../utils/apiKey.js'
 
 const api = axios.create({
   baseURL: '/api'
@@ -8,15 +7,6 @@ const api = axios.create({
 
 const ERROR_TOAST_COOLDOWN_MS = 3000
 let lastErrorToast = { key: '', ts: 0 }
-
-api.interceptors.request.use(config => attachApiKey(config))
-
-axios.interceptors.request.use(config => {
-  if (config?.url && String(config.url).startsWith('/api')) {
-    return attachApiKey(config)
-  }
-  return config
-})
 
 // ========== 全局错误拦截 ==========
 api.interceptors.response.use(
@@ -172,6 +162,18 @@ export default {
     return api.delete(`/v1/downloads/${taskId}`)
   },
 
+  listDownloaders() {
+    return api.get('/v1/downloads/downloaders')
+  },
+
+  updateDownloaders(data) {
+    return api.put('/v1/downloads/downloaders', data)
+  },
+
+  testDownloader(data) {
+    return api.post('/v1/downloads/downloaders/test', data)
+  },
+
   listDownloadCandidates(params = {}) {
     return api.get('/v1/downloads/candidates', { params })
   },
@@ -283,6 +285,14 @@ export default {
     return api.get('/inventory/actor-mappings/unmapped', { params })
   },
 
+  searchActorMappingCandidates(params = {}) {
+    return api.get('/inventory/actor-mappings/search', { params })
+  },
+
+  reviewActorMappingWithAi(data) {
+    return api.post('/inventory/actor-mappings/ai-review', data)
+  },
+
   generateActorMappingCandidates(params = {}) {
     return api.post('/inventory/actor-mappings/candidates/generate', null, { params })
   },
@@ -355,6 +365,10 @@ export default {
     return api.post('/v1/notification/telegram/test', null, { params: { token } })
   },
 
+  testAiModel(openaiCompatible = {}) {
+    return api.post('/v1/ai/test', { openai_compatible: openaiCompatible })
+  },
+
   purgeCache(scope = 'video') {
     return api.post('/v1/cache/purge', null, { params: { scope } })
   },
@@ -375,6 +389,22 @@ export default {
 
   getTranslationStats() {
     return api.get('/v1/translations/stats')
+  },
+
+  testTranslation(text) {
+    return api.post('/v1/translations/test', { text })
+  },
+
+  startTranslationJob(payload = {}) {
+    return api.post('/v1/translations/jobs', payload)
+  },
+
+  listTranslationJobs(limit = 20) {
+    return api.get('/v1/translations/jobs', { params: { limit } })
+  },
+
+  getTranslationJob(jobId) {
+    return api.get(`/v1/translations/jobs/${jobId}`)
   },
 
   // ========== 收藏管理 ==========

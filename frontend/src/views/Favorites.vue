@@ -1,5 +1,5 @@
 <template>
-  <div class="favorites-page">
+  <div class="favorites-page page-shell page-shell--gallery">
     <div class="curate-header">
       <h1 class="curate-title">私人策展</h1>
       <div class="curate-stats">
@@ -40,7 +40,8 @@
         <MovieCard
           v-for="item in displayVideoItems"
           :key="'v-' + item.entity_id"
-          :contentId="item.entity_id"
+          :contentId="item.metadata?.content_id || item.entity_id"
+          :dvdId="movieDisplayCode(item)"
           :coverUrl="cardImageUrl(item.metadata || {})"
           :title="item.metadata?.title_en_translated || item.metadata?.title_ja_translated || item.metadata?.title_en || item.metadata?.title_ja || item.metadata?.title || ''"
           :serviceCode="item.metadata?.service_code || ''"
@@ -215,6 +216,10 @@ export default {
     }
 
     const cardImageUrl = (metadata) => videoCardCoverUrl(metadata)
+    const movieDisplayCode = (item) => {
+      const metadata = item?.metadata || {}
+      return metadata.dvd_id || metadata.canonical_number || metadata.content_id || item?.entity_id || ''
+    }
 
     return {
       state,
@@ -232,7 +237,8 @@ export default {
       openVideo,
       isFavorited,
       toggleFavorite,
-      cardImageUrl
+      cardImageUrl,
+      movieDisplayCode
     }
   }
 }
@@ -240,10 +246,8 @@ export default {
 
 <style scoped>
 .favorites-page {
-  padding: 60px 40px;
-  max-width: 1600px;
-  margin: 0 auto;
-  min-height: 100vh;
+  --page-top-space: 60px;
+  min-height: 100dvh;
 }
 
 .curate-header {
@@ -436,7 +440,7 @@ export default {
 
 .btn-explore {
   background: var(--text-primary);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
   border: none;
   padding: 14px 48px;
   border-radius: 24px;
@@ -488,7 +492,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .favorites-page { padding: 40px 20px; }
+  .favorites-page { --page-top-space: 40px; }
   .curate-title { font-size: 32px; }
   .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
   .segment-item {

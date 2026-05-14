@@ -56,7 +56,7 @@ def _strip_metadata_fields(item: dict) -> dict:
 class InfoClient:
     """JavInfoApi HTTP 客户端"""
 
-    def __init__(self, api_url: str = "http://localhost:8080", timeout: int = 30):
+    def __init__(self, api_url: str = "http://localhost:18080", timeout: int = 30):
         self.api_url = api_url.rstrip("/")
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
@@ -476,7 +476,7 @@ def get_info_client() -> InfoClient:
         from config import config
         javinfo_config = getattr(config, "javinfo", {})
         _info_client = InfoClient(
-            api_url=javinfo_config.get("api_url", "http://localhost:8080"),
+            api_url=javinfo_config.get("api_url", "http://localhost:18080"),
             timeout=javinfo_config.get("timeout", 30),
         )
     return _info_client
@@ -488,5 +488,5 @@ def reset_info_client() -> None:
     if _info_client is not None:
         from config import config
         javinfo_config = getattr(config, "javinfo", {})
-        _info_client.api_url = javinfo_config.get("api_url", "http://localhost:8080")
+        _info_client.api_url = javinfo_config.get("api_url", "http://localhost:18080")
         _info_client.timeout = javinfo_config.get("timeout", 30)

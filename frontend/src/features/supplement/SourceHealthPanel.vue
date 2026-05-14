@@ -2,7 +2,6 @@
   <section class="workspace-panel apple-surface">
     <div class="panel-header">
       <div>
-        <p class="eyebrow">Health</p>
         <h2>来源状态</h2>
       </div>
       <div class="source-health-toolbar">
@@ -24,7 +23,7 @@
       <input
         :value="providerSmokeForm.sourceMovieId"
         class="filter-input"
-        placeholder="source_movie_id"
+        placeholder="源影片编号"
         @input="updateProviderSmokeForm({ sourceMovieId: $event.target.value })"
         @keyup.enter="$emit('run-smoke')"
       />
@@ -60,11 +59,11 @@
               {{ report.ok ? '通过' : '异常' }}
             </span>
           </div>
-          <p>{{ report.source }} · {{ report.source_movie_id }} · {{ report.duration_ms || 0 }}ms</p>
+          <p>{{ report.source }} · {{ report.source_movie_id }} · {{ report.duration_ms || 0 }} 毫秒</p>
           <small>字段分 {{ report.quality?.score ?? 0 }} / {{ report.quality?.max_score ?? 0 }}</small>
           <small v-if="report.quality?.missing?.length">缺失 {{ report.quality.missing.join(', ') }}</small>
           <small v-if="report.quality?.warnings?.length">警告 {{ report.quality.warnings.join(', ') }}</small>
-          <small v-if="report.error">{{ report.error_type || 'error' }} · {{ report.error }}</small>
+          <small v-if="report.error">{{ report.error_type || '错误' }} · {{ report.error }}</small>
           <div v-if="report.detail?.title" class="provider-smoke-detail">
             <span>{{ report.detail.display_number || report.detail.normalized_number }}</span>
             <strong>{{ report.detail.title }}</strong>
@@ -167,3 +166,345 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.workspace-panel {
+  padding: 18px;
+  border-radius: var(--radius-card);
+}
+
+.workspace-panel h2,
+.workspace-panel p {
+  margin: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.panel-header h2 {
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.source-health-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.provider-smoke-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(180px, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.provider-smoke-controls .glass-select {
+  width: 100%;
+}
+
+.filter-input {
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  outline: none;
+  font-size: 13px;
+}
+
+.filter-input:focus {
+  border-color: var(--border-light);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.provider-smoke-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.provider-smoke-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.provider-smoke-summary div {
+  display: grid;
+  gap: 2px;
+}
+
+.provider-smoke-summary strong {
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.provider-smoke-summary span,
+.provider-smoke-summary small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.provider-smoke-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.provider-smoke-card {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.provider-smoke-card.failed {
+  border-color: rgba(255, 107, 135, 0.3);
+}
+
+.provider-smoke-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-smoke-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.provider-smoke-card p,
+.provider-smoke-card small {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.provider-smoke-detail {
+  display: grid;
+  gap: 3px;
+  padding-top: 4px;
+}
+
+.provider-smoke-detail span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.provider-smoke-history {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.provider-smoke-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-smoke-history-head strong {
+  color: var(--text-primary);
+}
+
+.provider-smoke-run-list {
+  display: grid;
+  gap: 8px;
+}
+
+.provider-smoke-run {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(120px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.provider-smoke-run span,
+.provider-smoke-run small {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.provider-smoke-run strong {
+  color: var(--text-primary);
+}
+
+.source-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.source-health-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.source-health-card strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.source-health-card span,
+.source-health-card p,
+.source-health-card small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.source-budget-meter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.source-budget-meter strong {
+  font-size: 18px;
+}
+
+.source-budget-meter span,
+.source-budget-meter small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.source-budget-meter small {
+  text-align: right;
+}
+
+.source-health-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--badge-info-border);
+  border-radius: 999px;
+  color: var(--badge-info-text);
+  background: var(--badge-info-bg);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.health-healthy {
+  color: #6ee7a8;
+  background: rgba(52, 199, 89, 0.12);
+}
+
+.health-degraded {
+  color: #ffd166;
+  background: rgba(255, 204, 0, 0.12);
+}
+
+.health-cooling_down {
+  color: #ff6b87;
+  background: rgba(255, 107, 135, 0.12);
+}
+
+.health-paused {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.health-unknown {
+  color: var(--text-muted);
+}
+
+.loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+}
+
+.spinner-large {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--white-20);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.empty-inline {
+  padding: 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.btn-xs {
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .source-health-toolbar {
+    justify-content: flex-start;
+  }
+
+  .provider-smoke-controls,
+  .provider-smoke-run {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

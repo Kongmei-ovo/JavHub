@@ -15,6 +15,7 @@ import AppleVideoCard from './AppleVideoCard.vue'
 
 const props = defineProps({
   contentId: { type: String, required: true },
+  dvdId: { type: String, default: '' },
   coverUrl: { type: String, default: '' },
   title: { type: String, default: '' },
   serviceCode: { type: String, default: '' },
@@ -28,7 +29,7 @@ defineEmits(['click', 'toggle-favorite'])
 
 const video = computed(() => ({
   content_id: props.contentId,
-  dvd_id: props.contentId,
+  dvd_id: props.dvdId || props.contentId,
   title_ja: props.title,
   jacket_thumb_url: props.coverUrl,
   service_code: props.serviceCode,

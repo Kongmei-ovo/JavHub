@@ -140,13 +140,27 @@ class ActorMappingRequest(BaseModel):
     javinfo_actress_name: Optional[str] = None
     confidence: float = 1.0
     source: str = "manual"
+    javinfo_avatar_url: Optional[str] = None
+    movie_count: Optional[int] = None
+    confidence_breakdown: Optional[dict] = None
+    confidence_label: Optional[str] = None
+    risk_flags: Optional[list[str]] = None
+
+
+class ActorMappingAiReviewRequest(ActorMappingRequest):
+    pass
 
 
 @router.get("/actor-mappings")
-async def list_mappings(status: Optional[str] = None, q: Optional[str] = None, emby_actor_id: Optional[str] = None):
+async def list_mappings(
+    status: Optional[str] = None,
+    q: Optional[str] = None,
+    emby_actor_id: Optional[str] = None,
+    limit: int = 200,
+):
     """获取 Emby actor -> JavInfo actress 映射。"""
     from database import list_actor_mappings
-    return {"data": list_actor_mappings(status=status, q=q, emby_actor_id=emby_actor_id)}
+    return {"data": list_actor_mappings(status=status, q=q, emby_actor_id=emby_actor_id, limit=limit)}
 
 
 @router.get("/actor-mappings/summary")
@@ -160,12 +174,20 @@ async def actor_mapping_summary():
 
 @router.get("/actor-mappings/unmapped")
 async def list_unmapped_actor_mappings(search: Optional[str] = None, limit: int = 200):
-    """列出最新快照中尚未确认/忽略的 Emby 演员。"""
+    """列出最新快照中尚未确认/忽略的 Emby 演员，并附带待审候选。"""
     from database import list_actor_mappings
+    from services.actor_mapping_candidates import mapping_candidate_from_row
     snapshot_key = get_latest_snapshot_key()
     if not snapshot_key:
         return {"data": [], "total": 0, "snapshot_key": None}
     actors = get_snapshot_actors(snapshot_key, search=search, page_size=100000).get("data", [])
+    candidate_rows = list_actor_mappings(status="candidate", limit=100000)
+    candidates_by_actor = {}
+    for row in candidate_rows:
+        key = str(row.get("emby_actor_id") or "")
+        if not key:
+            continue
+        candidates_by_actor.setdefault(key, []).append(mapping_candidate_from_row(row))
     decisions = {
         str(row["emby_actor_id"]): row
         for row in list_actor_mappings(limit=100000)
@@ -186,10 +208,67 @@ async def list_unmapped_actor_mappings(search: Optional[str] = None, limit: int 
             "emby_actor_name": actor.get("actress_name", ""),
             "total_videos": actor.get("total_videos", 0),
             "avatar_url": _emby_image_url(actor_id, image_tag),
+            "candidates": candidates_by_actor.get(actor_id, []),
+            "candidate_count": len(candidates_by_actor.get(actor_id, [])),
         })
         if len(data) >= limit:
             break
     return {"data": data, "total": len(data), "snapshot_key": snapshot_key}
+
+
+@router.get("/actor-mappings/search")
+async def search_mapping_candidates(
+    emby_actor_id: str,
+    emby_actor_name: str,
+    q: Optional[str] = None,
+    limit: int = 10,
+):
+    """映射专用 JavInfo 查找，返回统一候选结构。"""
+    from services.actor_mapping_candidates import search_actor_mapping_candidates
+    try:
+        return await search_actor_mapping_candidates(
+            emby_actor_id=emby_actor_id,
+            emby_actor_name=emby_actor_name,
+            q=q,
+            limit=max(1, min(limit, 30)),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"JavInfo 演员查找失败: {exc}") from exc
+
+
+@router.post("/actor-mappings/ai-review")
+async def ai_review_mapping(req: ActorMappingAiReviewRequest):
+    """文本 AI 辅助判断 Emby 演员和 JavInfo 演员是否同一人。"""
+    if not req.javinfo_actress_id:
+        raise HTTPException(status_code=400, detail="javinfo_actress_id is required")
+    from database import upsert_actor_mapping
+    from services.actor_mapping_candidates import review_actor_mapping_with_ai
+
+    mapping_id = upsert_actor_mapping(
+        emby_actor_id=req.emby_actor_id,
+        emby_actor_name=req.emby_actor_name,
+        javinfo_actress_id=req.javinfo_actress_id,
+        javinfo_actress_name=req.javinfo_actress_name or "",
+        confidence=req.confidence,
+        status="candidate",
+        source=req.source or "manual_search",
+        javinfo_avatar_url=req.javinfo_avatar_url,
+        movie_count=req.movie_count,
+        confidence_breakdown=req.confidence_breakdown,
+        confidence_label=req.confidence_label,
+        risk_flags=req.risk_flags,
+    )
+    try:
+        result = await review_actor_mapping_with_ai(
+            emby_actor_id=req.emby_actor_id,
+            emby_actor_name=req.emby_actor_name,
+            candidate=req.model_dump(),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI 判断失败: {exc}") from exc
+    return {"success": True, "id": result.get("id") or mapping_id, **result}
 
 
 @router.post("/actor-mappings/candidates/generate")
@@ -237,6 +316,11 @@ async def confirm_mapping(req: ActorMappingRequest):
         javinfo_actress_name=req.javinfo_actress_name or "",
         confidence=req.confidence,
         source=req.source,
+        javinfo_avatar_url=req.javinfo_avatar_url,
+        movie_count=req.movie_count,
+        confidence_breakdown=req.confidence_breakdown,
+        confidence_label=req.confidence_label,
+        risk_flags=req.risk_flags,
     )
     return {"success": True, "id": mapping_id}
 
@@ -251,6 +335,11 @@ async def ignore_mapping(req: ActorMappingRequest):
         javinfo_actress_id=req.javinfo_actress_id,
         javinfo_actress_name=req.javinfo_actress_name,
         source=req.source,
+        javinfo_avatar_url=req.javinfo_avatar_url,
+        movie_count=req.movie_count,
+        confidence_breakdown=req.confidence_breakdown,
+        confidence_label=req.confidence_label,
+        risk_flags=req.risk_flags,
     )
     return {"success": True, "id": mapping_id}
 

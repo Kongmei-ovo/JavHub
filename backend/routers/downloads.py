@@ -15,6 +15,11 @@ from database import (
     upsert_download_candidate,
 )
 from services.downloader import downloader_service
+from services.downloaders import (
+    get_downloaders_config,
+    save_downloaders_config,
+    test_downloader_config,
+)
 from services.candidate_processor import (
     enrich_candidate_magnet,
     preview_candidates,
@@ -30,6 +35,28 @@ class CreateDownloadRequest(BaseModel):
     title: str
     magnet: str
     path: Optional[str] = None
+    downloader_id: Optional[str] = None
+
+
+class DownloaderClientRequest(BaseModel):
+    id: Optional[str] = None
+    type: str = "openlist"
+    name: Optional[str] = None
+    enabled: bool = True
+    address: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    token: Optional[str] = None
+    default_path: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[str] = None
+    paused: bool = False
+    timeout: Optional[int] = None
+
+
+class DownloadersConfigRequest(BaseModel):
+    default_id: Optional[str] = None
+    clients: list[DownloaderClientRequest] = []
 
 
 class CreateCandidateRequest(BaseModel):
@@ -79,12 +106,13 @@ class RetryCandidateRunRequest(BaseModel):
 
 @router.post("")
 async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
-    """创建下载任务并发送到OpenList"""
+    """创建下载任务并发送到默认或指定下载器"""
     task_id = await downloader_service.create_download_task(
         code=req.content_id,
         title=req.title,
         magnet=req.magnet,
         path=req.path or "",
+        downloader_id=req.downloader_id or "",
     )
     return {"id": task_id, "status": "downloading"}
 
@@ -93,6 +121,24 @@ async def list_downloads() -> Dict[str, Any]:
     """获取下载列表"""
     tasks = get_download_tasks()
     return {"data": tasks, "total": len(tasks)}
+
+
+@router.get("/downloaders")
+async def list_downloaders() -> Dict[str, Any]:
+    return get_downloaders_config(include_sensitive=False)
+
+
+@router.put("/downloaders")
+async def update_downloaders(req: DownloadersConfigRequest) -> Dict[str, Any]:
+    data = save_downloaders_config(req.model_dump())
+    return {"status": "ok", **data}
+
+
+@router.post("/downloaders/test")
+async def test_downloader(req: DownloaderClientRequest) -> Dict[str, Any]:
+    result = await test_downloader_config(req.model_dump())
+    return {"ok": result.success, "message": result.message, "remote_task_id": result.remote_task_id}
+
 
 @router.delete("/{task_id}")
 async def remove_download(task_id: int) -> Dict[str, Any]:

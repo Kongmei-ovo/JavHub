@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Query
 from typing import Any, Optional, Dict
 from modules.info_client import get_info_client
-from services.translation import apply_translation
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
 
-def _apply_translation_to_video(data: dict) -> dict:
+async def _apply_translation_to_video(data: dict) -> dict:
     """对单条影片数据应用翻译"""
     content_id = data.get("content_id") or data.get("dvd_id", "").replace("-", "").replace("_", "").lower()
     if not content_id:
         return data
-    return apply_translation(content_id, data)
+    return await get_translator_service().translate_video(content_id, data)
 
 @router.get("/search")
 async def search_videos(
@@ -60,7 +60,7 @@ async def search_videos(
         page=page, page_size=page_size
     )
     if result.get("data"):
-        result["data"] = [_apply_translation_to_video(item) for item in result["data"]]
+        result["data"] = [await _apply_translation_to_video(item) for item in result["data"]]
     return result
 
 @router.get("")
@@ -71,16 +71,17 @@ async def list_videos(
     client = get_info_client()
     result = await client.list_videos(page=page, page_size=page_size)
     if result.get("data"):
-        result["data"] = [_apply_translation_to_video(item) for item in result["data"]]
+        result["data"] = [await _apply_translation_to_video(item) for item in result["data"]]
     return result
 
 @router.get("/{content_id}/metadata")
 async def get_video_metadata(content_id: str) -> Dict[str, Any]:
     client = get_info_client()
-    return await client.get_video_metadata(content_id)
+    data = await client.get_video_metadata(content_id)
+    return await get_translator_service().translate_metadata(content_id, data)
 
 @router.get("/{content_id}")
 async def get_video(content_id: str, service_code: Optional[str] = Query(None)) -> Dict[str, Any]:
     client = get_info_client()
     data = await client.get_video(content_id, service_code=service_code)
-    return _apply_translation_to_video(data)
+    return await _apply_translation_to_video(data)

@@ -1,5 +1,6 @@
 export const DEFAULT_CONFIG = {
   openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
+  downloaders: { default_id: 'openlist', clients: [] },
   emby: { api_url: '', api_key: '' },
   telegram: { bot_token: '', allowed_user_ids: [] },
   crawler: { request_interval: 3 },
@@ -21,10 +22,43 @@ export const DEFAULT_CONFIG = {
     auto_confirm_gap: 0.08,
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-  javinfo: { api_url: 'http://localhost:8080', page_size: 30 },
+  javinfo: { api_url: 'http://localhost:18080', page_size: 30 },
   metatube: { host: 'localhost', port: 8081, token: '' },
+  ai: {
+    openai_compatible: {
+      base_url: 'https://api.openai.com/v1',
+      api_key: '',
+      model: 'gpt-4o-mini',
+      timeout: 30,
+    },
+  },
+  translation: {
+    enabled: true,
+    target_language: 'zh-CN',
+    provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
+    batch_provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
+    realtime_mode: 'sync',
+    google_free: {
+      enabled: true,
+      base_url: 'https://translate.googleapis.com/translate_a/single',
+      timeout: 10,
+    },
+    deepl: {
+      enabled: false,
+      api_key: '',
+      free_api: true,
+      timeout: 15,
+    },
+    microsoft: {
+      enabled: false,
+      api_key: '',
+      region: '',
+      endpoint: 'https://api.cognitive.microsofttranslator.com',
+      timeout: 15,
+    },
+  },
   proxy: { enabled: false, http_url: '', https_url: '' },
-  server: { frontend_origin: 'http://localhost:5173', auth_disabled: false, api_key: '' },
+  server: { frontend_origin: 'http://localhost:5173' },
   rate_limit: { enabled: false, requests_per_minute: 60, burst: 10 },
 }
 
@@ -40,13 +74,13 @@ export const DEFAULT_BUBBLE_CFG = {
   seriesPageSize: 60,
   rarityColors: {
     legendary: '#c89a30',
-    epic: '#7040a0',
-    rare: '#3070a8',
+    epic: '#8a7060',
+    rare: '#9a9690',
     common: '#607080',
   },
 }
 
-export const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', title: '标题' }
+export const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', maker: '厂商', label: '厂牌', title: '标题' }
 
 export function parseGradientList(value = '') {
   const items = []

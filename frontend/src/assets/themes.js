@@ -1,15 +1,21 @@
 // 主题配置：每套主题是一组 CSS 变量
 // 切换本质：applyTheme() 替换 document.documentElement 的变量集，全站自动响应
 
-const SYSTEM_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+export const DEFAULT_THEME_KEY = 'apple-espana'
+
+const SYSTEM_DISPLAY_FONT = "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const SYSTEM_FONT = "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 const MONO_FONT = "'SF Mono', 'JetBrains Mono', monospace"
 
 const SHARED_TOKENS = {
   // 圆角
+  '--radius-xs': '6px',
   '--radius-sm': '8px',
   '--radius-md': '12px',
-  '--radius-lg': '20px',
-  '--radius-card': '22px',
+  '--radius-lg': '16px',
+  '--radius-xl': '20px',
+  '--radius-pro': 'var(--radius-xl)',
+  '--radius-card': '28px',
   '--radius-sheet': '32px',
   '--radius-control': '999px',
   '--touch-target': '44px',
@@ -20,7 +26,36 @@ const SHARED_TOKENS = {
   '--motion-reveal': '420ms var(--ease-pro)',
   // 字体
   '--font-body': SYSTEM_FONT,
+  '--font-display': SYSTEM_DISPLAY_FONT,
   '--font-mono': MONO_FONT,
+  // 层级
+  '--z-base': '0',
+  '--z-raised': '10',
+  '--z-nav': '100',
+  '--z-sheet': '300',
+  '--z-dropdown': '700',
+  '--z-modal': '900',
+  '--z-lightbox': '950',
+  '--z-toast': '1000',
+  '--z-confirm': '1100',
+  // 语义材质
+  '--text-on-accent': '#FFFFFF',
+  '--surface-nav': 'var(--bg-secondary)',
+  '--surface-nav-border': 'var(--border-light)',
+  '--surface-control': 'var(--bg-secondary)',
+  '--surface-control-hover': 'var(--bg-card-hover)',
+  '--surface-input': 'var(--bg-secondary)',
+  '--surface-input-focus': 'var(--bg-card)',
+  '--surface-scrim': 'rgba(29, 29, 31, 0.18)',
+  '--hero-background': 'var(--bg-primary)',
+  '--skeleton-base': 'rgba(112, 112, 112, 0.08)',
+  '--skeleton-highlight': 'rgba(255, 255, 255, 0.9)',
+  '--active-bg': 'var(--surface-control-hover)',
+  '--active-border': 'var(--border-light)',
+  '--active-indicator': 'var(--text-primary)',
+  '--link-text': 'var(--text-primary)',
+  '--link-underline': 'var(--border-light)',
+  '--link-underline-hover': 'rgba(var(--accent-rgb), 0.28)',
 }
 
 const DARK_OVERLAYS = {
@@ -34,6 +69,22 @@ const DARK_OVERLAYS = {
   '--black-40': 'rgba(0,0,0,0.40)',
   '--black-60': 'rgba(0,0,0,0.60)',
   '--black-80': 'rgba(0,0,0,0.80)',
+  '--surface-nav': 'rgba(22, 22, 23, 0.86)',
+  '--surface-nav-border': 'rgba(255,255,255,0.12)',
+  '--surface-control': 'var(--bg-secondary)',
+  '--surface-control-hover': 'var(--bg-card-hover)',
+  '--surface-input': 'var(--bg-secondary)',
+  '--surface-input-focus': 'var(--bg-card)',
+  '--surface-scrim': 'rgba(0,0,0,0.58)',
+  '--hero-background': 'radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.14), transparent 34%), var(--bg-primary)',
+  '--skeleton-base': 'rgba(255,255,255,0.055)',
+  '--skeleton-highlight': 'rgba(255,255,255,0.13)',
+  '--active-bg': 'rgba(255,255,255,0.08)',
+  '--active-border': 'rgba(255,255,255,0.16)',
+  '--active-indicator': '#FFFFFF',
+  '--link-text': 'var(--text-primary)',
+  '--link-underline': 'rgba(255,255,255,0.22)',
+  '--link-underline-hover': 'rgba(255,255,255,0.48)',
 }
 
 const LIGHT_OVERLAYS = {
@@ -47,6 +98,22 @@ const LIGHT_OVERLAYS = {
   '--black-40': 'rgba(0,0,0,0.10)',
   '--black-60': 'rgba(0,0,0,0.15)',
   '--black-80': 'rgba(0,0,0,0.20)',
+  '--surface-nav': 'rgba(245, 245, 247, 0.86)',
+  '--surface-nav-border': '#E8E8ED',
+  '--surface-control': 'var(--bg-secondary)',
+  '--surface-control-hover': 'var(--bg-card)',
+  '--surface-input': 'var(--bg-secondary)',
+  '--surface-input-focus': 'var(--bg-card)',
+  '--surface-scrim': 'rgba(29,29,31,0.18)',
+  '--hero-background': 'radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 34%), var(--bg-primary)',
+  '--skeleton-base': 'rgba(112,112,112,0.08)',
+  '--skeleton-highlight': 'rgba(255,255,255,0.9)',
+  '--active-bg': '#FFFFFF',
+  '--active-border': '#E8E8ED',
+  '--active-indicator': '#1D1D1F',
+  '--link-text': 'var(--text-primary)',
+  '--link-underline': '#D6D6D6',
+  '--link-underline-hover': 'rgba(29, 29, 31, 0.32)',
 }
 
 const DARK_STATUS = {
@@ -100,20 +167,94 @@ function makeTheme(config) {
 }
 
 export const THEMES = {
+  'apple-espana': makeTheme({
+    label: '苹果白',
+    labelEn: 'Apple Espana',
+    icon: '○',
+    light: true,
+    vars: {
+      '--bg-primary': '#FFFFFF',
+      '--bg-secondary': '#F5F5F7',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#F5F5F7',
+      '--accent': '#1D1D1F',
+      '--accent-rgb': '29, 29, 31',
+      '--accent-light': '#000000',
+      '--text-on-accent': '#FFFFFF',
+      '--accent-glow': 'rgba(29, 29, 31, 0.12)',
+      '--accent-bg': 'rgba(29, 29, 31, 0.07)',
+      '--text-primary': '#1D1D1F',
+      '--text-secondary': '#474747',
+      '--text-muted': '#707070',
+      '--border': '#D6D6D6',
+      '--border-light': '#E8E8ED',
+      '--shadow-card': '0 1px 2px rgba(29, 29, 31, 0.04)',
+      '--shadow-hover': '0 12px 30px rgba(29, 29, 31, 0.09)',
+      '--material-glass-subtle': 'rgba(245, 245, 247, 0.78)',
+      '--material-glass-elevated': 'rgba(255, 255, 255, 0.86)',
+      '--material-glass-sheet': 'rgba(255, 255, 255, 0.92)',
+      '--surface-card': '#FFFFFF',
+      '--surface-card-hover': '#F5F5F7',
+      '--shadow-floating': '0 16px 38px rgba(29, 29, 31, 0.10)',
+      '--shadow-sheet': '0 28px 80px rgba(29, 29, 31, 0.16)',
+      '--badge-info-bg': '#F5F5F7',
+      '--badge-info-border': '#E8E8ED',
+      '--badge-info-text': '#474747',
+      '--nav-active-bg': 'rgba(255, 255, 255, 0.78)',
+    },
+  }),
+
+  'apple-pro-dark': makeTheme({
+    label: '苹果黑',
+    labelEn: 'Apple Pro Dark',
+    icon: '●',
+    vars: {
+      '--bg-primary': '#000000',
+      '--bg-secondary': '#161617',
+      '--bg-card': '#1D1D1F',
+      '--bg-card-hover': '#333336',
+      '--accent': '#F5F5F7',
+      '--accent-rgb': '245, 245, 247',
+      '--accent-light': '#FFFFFF',
+      '--text-on-accent': '#000000',
+      '--accent-glow': 'rgba(245, 245, 247, 0.16)',
+      '--accent-bg': 'rgba(245, 245, 247, 0.10)',
+      '--text-primary': '#FFFFFF',
+      '--text-secondary': '#F5F5F7',
+      '--text-muted': '#86868B',
+      '--border': '#333336',
+      '--border-light': '#424245',
+      '--shadow-card': 'none',
+      '--shadow-hover': '0 18px 44px rgba(0, 0, 0, 0.38)',
+      '--material-glass-subtle': 'rgba(22, 22, 23, 0.78)',
+      '--material-glass-elevated': 'rgba(29, 29, 31, 0.88)',
+      '--material-glass-sheet': 'rgba(22, 22, 23, 0.92)',
+      '--surface-card': '#1D1D1F',
+      '--surface-card-hover': '#333336',
+      '--shadow-floating': '0 18px 44px rgba(0, 0, 0, 0.38)',
+      '--shadow-sheet': '0 30px 86px rgba(0, 0, 0, 0.62)',
+      '--badge-info-bg': 'rgba(245, 245, 247, 0.08)',
+      '--badge-info-border': 'rgba(245, 245, 247, 0.16)',
+      '--badge-info-text': '#F5F5F7',
+      '--nav-active-bg': 'rgba(255, 255, 255, 0.08)',
+    },
+  }),
+
   midnight: makeTheme({
     label: '深空暗夜',
     labelEn: 'Midnight',
     icon: '◐',
     vars: {
       // 背景
-      '--bg-primary': '#000000',
-      '--bg-secondary': '#0A0A0A',
+      '--bg-primary': '#08080A',
+      '--bg-secondary': '#101012',
       '--bg-card': 'rgba(255, 255, 255, 0.03)',
       '--bg-card-hover': 'rgba(255, 255, 255, 0.06)',
       // 强调色
       '--accent': '#FFFFFF',
       '--accent-rgb': '255, 255, 255',
       '--accent-light': '#F2F2F7',
+      '--text-on-accent': '#1D1D1F',
       '--accent-glow': 'rgba(255, 255, 255, 0.12)',
       '--accent-bg': 'rgba(255, 255, 255, 0.05)',
       // 文字
@@ -150,6 +291,7 @@ export const THEMES = {
       '--accent': '#1D1F23',
       '--accent-rgb': '29, 31, 35',
       '--accent-light': '#343841',
+      '--text-on-accent': '#FFFFFF',
       '--accent-glow': 'rgba(29, 31, 35, 0.10)',
       '--accent-bg': 'rgba(29, 31, 35, 0.055)',
       '--text-primary': '#1D1D1F',
@@ -175,13 +317,14 @@ export const THEMES = {
     labelEn: 'OLED Glass',
     icon: '●',
     vars: {
-      '--bg-primary': '#000000',
+      '--bg-primary': '#030303',
       '--bg-secondary': '#050505',
       '--bg-card': 'rgba(255, 255, 255, 0.026)',
       '--bg-card-hover': 'rgba(255, 255, 255, 0.055)',
       '--accent': '#E7ECF2',
       '--accent-rgb': '231, 236, 242',
       '--accent-light': '#FFFFFF',
+      '--text-on-accent': '#030303',
       '--accent-glow': 'rgba(231, 236, 242, 0.12)',
       '--accent-bg': 'rgba(231, 236, 242, 0.045)',
       '--text-primary': '#FFFFFF',
@@ -211,11 +354,12 @@ export const THEMES = {
       '--bg-secondary': '#080C12',
       '--bg-card': 'rgba(232, 238, 247, 0.032)',
       '--bg-card-hover': 'rgba(232, 238, 247, 0.064)',
-      '--accent': '#9AAECC',
-      '--accent-rgb': '154, 174, 204',
-      '--accent-light': '#C3D0E2',
-      '--accent-glow': 'rgba(154, 174, 204, 0.14)',
-      '--accent-bg': 'rgba(154, 174, 204, 0.055)',
+      '--accent': '#D8D8DA',
+      '--accent-rgb': '216, 216, 218',
+      '--accent-light': '#F5F5F7',
+      '--text-on-accent': '#03060B',
+      '--accent-glow': 'rgba(216, 216, 218, 0.14)',
+      '--accent-bg': 'rgba(216, 216, 218, 0.055)',
       '--text-primary': '#F8FAFC',
       '--text-secondary': '#A0A7B2',
       '--text-muted': '#646C78',
@@ -230,10 +374,10 @@ export const THEMES = {
       '--surface-card-hover': 'rgba(232, 238, 247, 0.068)',
       '--shadow-floating': '0 24px 64px rgba(0, 0, 0, 0.50)',
       '--shadow-sheet': '0 42px 108px rgba(0, 0, 0, 0.68)',
-      '--badge-info-bg': 'rgba(154, 174, 204, 0.12)',
-      '--badge-info-border': 'rgba(154, 174, 204, 0.25)',
-      '--badge-info-text': '#C3D0E2',
-      '--nav-active-bg': 'rgba(154, 174, 204, 0.10)',
+      '--badge-info-bg': 'rgba(216, 216, 218, 0.12)',
+      '--badge-info-border': 'rgba(216, 216, 218, 0.25)',
+      '--badge-info-text': '#D8D8DA',
+      '--nav-active-bg': 'rgba(216, 216, 218, 0.10)',
     },
   }),
 
@@ -249,6 +393,7 @@ export const THEMES = {
       '--accent': '#D6B66A',
       '--accent-rgb': '214, 182, 106',
       '--accent-light': '#E8D28E',
+      '--text-on-accent': '#090909',
       '--accent-glow': 'rgba(214, 182, 106, 0.13)',
       '--accent-bg': 'rgba(214, 182, 106, 0.052)',
       '--text-primary': '#FFFFFF',
@@ -284,7 +429,7 @@ export const THEME_KEYS = Object.keys(THEMES)
 
 export function resolveThemeKey(themeKey) {
   if (themeKey && THEMES[themeKey]) return themeKey
-  return LEGACY_THEME_MAP[themeKey] || 'midnight'
+  return LEGACY_THEME_MAP[themeKey] || DEFAULT_THEME_KEY
 }
 
 export function applyTheme(themeKey) {
@@ -308,5 +453,5 @@ export function restoreTheme() {
   const saved = typeof localStorage !== 'undefined'
     ? localStorage.getItem('javhub_theme')
     : null
-  return applyTheme(saved || 'midnight')
+  return applyTheme(saved || DEFAULT_THEME_KEY)
 }

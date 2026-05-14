@@ -101,10 +101,11 @@ test('openVideoModal enriches supplement-only videos from chosen supplement fiel
         data: {
           chosen_fields: [
             { field_name: 'maker_name', field_value: 'LEO' },
-            { field_name: 'label_name', field_value: 'LEO' },
+            { field_name: 'label_name', field_value: 'LEO', field_value_translated: '狮子厂牌' },
             { field_name: 'series_name', field_value: '----' },
-            { field_name: 'category_names', field_value: '["姉・妹"]' },
-            { field_name: 'actor_names', field_value: '["糸井瑠花","凰華りん"]' },
+            { field_name: 'summary', field_value: 'Original summary', field_value_translated: '翻译简介' },
+            { field_name: 'category_names', field_value: '["姉・妹"]', field_value_translated: '["姐妹"]' },
+            { field_name: 'actor_names', field_value: '["糸井瑠花","凰華りん"]', field_value_translated: '["糸井瑠花","凰华凛"]' },
             { field_name: 'cover_url', field_value: 'https://example.test/pl.jpg' },
             { field_name: 'cover_thumb_url', field_value: 'https://example.test/ps.jpg' },
             { field_name: 'sample_movie_url', field_value: 'https://example.test/sample.mp4' },
@@ -127,13 +128,33 @@ test('openVideoModal enriches supplement-only videos from chosen supplement fiel
 
   assert.equal(supplementSourcesId, 1)
   assert.deepEqual(modalState.selectedVideo.maker, { name_ja: 'LEO', name_en: 'LEO' })
-  assert.deepEqual(modalState.selectedVideo.label, { name_ja: 'LEO', name_en: 'LEO' })
+  assert.deepEqual(modalState.selectedVideo.label, {
+    name_ja: 'LEO',
+    name_en: 'LEO',
+    name_ja_translated: '狮子厂牌',
+    name_en_translated: '狮子厂牌',
+    name_translated: '狮子厂牌',
+  })
   assert.equal(modalState.selectedVideo.series, undefined)
-  assert.deepEqual(modalState.selectedVideo.categories, [{ id: '姉・妹', name_ja: '姉・妹', name_en: '姉・妹' }])
+  assert.deepEqual(modalState.selectedVideo.categories, [{
+    id: '姉・妹',
+    name_ja: '姉・妹',
+    name_en: '姉・妹',
+    name_ja_translated: '姐妹',
+    name_en_translated: '姐妹',
+  }])
   assert.deepEqual(modalState.selectedVideo.actresses, [
     { id: '糸井瑠花', name_kanji: '糸井瑠花', name_romaji: '糸井瑠花' },
-    { id: '凰華りん', name_kanji: '凰華りん', name_romaji: '凰華りん' },
+    {
+      id: '凰華りん',
+      name_kanji: '凰華りん',
+      name_romaji: '凰華りん',
+      name_kanji_translated: '凰华凛',
+      name_romaji_translated: '凰华凛',
+    },
   ])
+  assert.equal(modalState.selectedVideo.summary, 'Original summary')
+  assert.equal(modalState.selectedVideo.summary_translated, '翻译简介')
   assert.equal(modalState.selectedVideo.jacket_full_url, 'https://example.test/pl.jpg')
   assert.equal(modalState.selectedVideo.jacket_thumb_url, 'https://example.test/ps.jpg')
   assert.equal(modalState.selectedVideo.sample_url, 'https://example.test/sample.mp4')

@@ -1,5 +1,5 @@
 <template>
-  <div class="duplicates-page">
+  <div class="duplicates-page page-shell page-shell--standard">
     <div class="page-header">
       <h1>去重管理</h1>
       <button @click="rescan" class="rescan-btn">重新扫描</button>
@@ -92,9 +92,6 @@ onMounted(fetchDuplicates)
 
 <style scoped>
 .duplicates-page {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 24px;
   color: var(--text-primary);
 }
 .page-header {
@@ -113,7 +110,7 @@ onMounted(fetchDuplicates)
 .rescan-btn {
   min-height: 44px;
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
   border: 0;
   padding: 0 18px;
   border-radius: 999px;
@@ -155,7 +152,7 @@ onMounted(fetchDuplicates)
   overflow-wrap: anywhere;
 }
 .item-similarity {
-  color: #1890ff;
+  color: var(--text-primary);
   font-size: 14px;
 }
 .item-reason {
@@ -195,10 +192,6 @@ onMounted(fetchDuplicates)
 }
 
 @media (max-width: 768px) {
-  .duplicates-page {
-    padding: 20px 16px 40px;
-  }
-
   .duplicate-item {
     display: grid;
     grid-template-columns: 86px minmax(0, 1fr);

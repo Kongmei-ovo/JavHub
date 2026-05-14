@@ -1,14 +1,13 @@
 <template>
-  <div class="operations-page">
+  <div class="operations-page page-shell page-shell--workspace">
     <header class="operations-header">
-      <div>
-        <p class="eyebrow">Operations</p>
+      <div class="header-copy">
         <h1>运营总览</h1>
-        <p>库存、映射、补全和下载候选的闭环状态。</p>
+        <p>{{ operationsSummary }}</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" type="button" @click="$router.push('/settings')">策略设置</button>
-        <button class="btn btn-primary" type="button" :disabled="loading" @click="loadOverview">
+        <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
+        <button class="btn btn-primary btn-sm" type="button" :disabled="loading" @click="loadOverview">
           {{ loading ? '刷新中...' : '刷新' }}
         </button>
       </div>
@@ -22,168 +21,27 @@
     </div>
 
     <template v-else-if="overview">
-      <section class="policy-strip">
-        <div>
-          <span>当前策略</span>
-          <strong>{{ policyLabel(overview.automation?.download_policy) }}</strong>
-        </div>
-        <div>
-          <span>允许来源</span>
-          <strong>{{ sourceListLabel(overview.automation?.candidate_sources) }}</strong>
-        </div>
-        <div>
-          <span>自动处理间隔</span>
-          <strong>{{ overview.automation?.auto_process_interval_minutes || 0 }} 分钟</strong>
-        </div>
-      </section>
-
-      <section class="metric-grid">
-        <button class="metric-card" type="button" @click="$router.push('/inventory')">
-          <span>{{ overview.snapshot?.actor_count || 0 }}</span>
-          <strong>快照演员</strong>
-          <small>{{ overview.snapshot?.snapshot_key || '尚未采集' }}</small>
-        </button>
-        <button class="metric-card" type="button" @click="$router.push('/normalize')">
-          <span>{{ coverageText }}</span>
-          <strong>映射覆盖率</strong>
-          <small>
-            未映射 {{ overview.mapping?.unmapped || 0 }} · 待审核 {{ overview.mapping?.candidate || 0 }}
-            · {{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}
-          </small>
-        </button>
-        <button class="metric-card urgent" type="button" @click="$router.push('/inventory')">
-          <span>{{ overview.missing?.total || 0 }}</span>
-          <strong>库存缺口</strong>
-          <small>由库存对比确认</small>
-        </button>
-        <button class="metric-card" type="button" @click="goCandidates({ status: 'candidate' })">
-          <span>{{ overview.candidates?.candidate || 0 }}</span>
-          <strong>待确认候选</strong>
-          <small>可批准 {{ overview.candidates?.ready || 0 }} · 待补磁力 {{ overview.candidates?.needs_magnet || 0 }}</small>
+      <section class="status-strip" aria-label="运营待处理状态">
+        <button
+          v-for="metric in statusMetrics"
+          :key="metric.key"
+          class="status-cell"
+          :class="{ urgent: metric.urgent }"
+          type="button"
+          @click="openStatusMetric(metric.key)"
+        >
+          <span class="status-value">{{ metric.value }}</span>
+          <span class="status-label">{{ metric.label }}</span>
+          <small>{{ metric.hint }}</small>
         </button>
       </section>
 
-      <section class="workflow-grid">
-        <article class="workflow-panel">
+      <section class="operations-workbench">
+        <article class="workbench-panel workbench-primary">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Queue</p>
-              <h2>下载候选</h2>
-            </div>
-            <button class="btn btn-ghost btn-sm" type="button" @click="goCandidates({ status: 'candidate' })">打开队列</button>
-          </div>
-          <div class="source-bars">
-            <button
-              v-for="source in candidateSources"
-              :key="source.key"
-              class="source-row"
-              type="button"
-              @click="goCandidates({ status: 'candidate', source: source.key })"
-            >
-              <span>{{ source.label }}</span>
-              <strong>{{ source.count }}</strong>
-            </button>
-          </div>
-          <div class="quick-actions">
-            <button class="btn btn-ghost" type="button" @click="goCandidates({ status: 'candidate', needs_magnet: true })">处理待补磁力</button>
-            <button class="btn btn-primary" type="button" @click="goCandidates({ status: 'candidate', needs_magnet: false })">处理可批准</button>
-          </div>
-        </article>
-
-        <article class="workflow-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Inventory</p>
-              <h2>库存任务</h2>
-            </div>
-            <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/inventory')">库存对比</button>
-          </div>
-          <div class="job-summary">
-            <span>运行中 {{ overview.inventory_jobs?.running || 0 }}</span>
-            <span>失败 {{ overview.inventory_jobs?.failed || 0 }}</span>
-          </div>
-          <div class="job-list">
-            <div v-for="job in recentJobs" :key="job.id" class="job-row">
-              <strong>{{ job.job_type }}</strong>
-              <span>{{ job.status }} · {{ formatTime(job.created_at) }}</span>
-            </div>
-            <small v-if="!recentJobs.length">暂无作业记录</small>
-          </div>
-        </article>
-
-        <article class="workflow-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Mapping</p>
-              <h2>演员映射</h2>
-            </div>
-            <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/normalize')">打开映射</button>
-          </div>
-          <div class="automation-status">
-            <div>
-              <span>自动匹配</span>
-              <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后执行' : '手动执行' }}</strong>
-            </div>
-            <div>
-              <span>确认策略</span>
-              <strong>保守唯一</strong>
-            </div>
-          </div>
-          <div class="mapping-actions">
-            <button class="source-row" type="button" @click="$router.push('/normalize')">
-              <span>待审核候选</span>
-              <strong>{{ overview.mapping?.candidate || 0 }}</strong>
-            </button>
-            <button class="source-row" type="button" @click="$router.push('/normalize')">
-              <span>未映射演员</span>
-              <strong>{{ overview.mapping?.unmapped || 0 }}</strong>
-            </button>
-          </div>
-        </article>
-
-        <article class="workflow-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Supplement</p>
-              <h2>补全状态</h2>
-            </div>
-            <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/supplement')">补全管理</button>
-          </div>
-          <div v-if="overview.supplement?.available" class="supplement-stats">
-            <div><strong>{{ overview.supplement.queued || 0 }}</strong><span>排队</span></div>
-            <div><strong>{{ overview.supplement.running || 0 }}</strong><span>运行</span></div>
-            <div><strong>{{ overview.supplement.failed || 0 }}</strong><span>失败</span></div>
-          </div>
-          <p v-else class="muted">补全服务暂不可用：{{ overview.supplement?.error || '未连接' }}</p>
-        </article>
-
-        <article class="workflow-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Missing</p>
-              <h2>缺口演员</h2>
-            </div>
-          </div>
-          <div class="missing-list">
-            <button
-              v-for="actor in overview.missing?.top_actresses || []"
-              :key="actor.actress_id"
-              class="missing-row"
-              type="button"
-              @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
-            >
-              <span>{{ actor.actress_name || `ID ${actor.actress_id}` }}</span>
-              <strong>{{ actor.missing_count }}</strong>
-            </button>
-            <small v-if="!(overview.missing?.top_actresses || []).length">暂无缺口记录</small>
-          </div>
-        </article>
-
-        <article class="workflow-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Automation</p>
-              <h2>最近候选处理</h2>
+              <h2>待处理队列</h2>
+              <p>候选、缺口和可执行动作放在首屏处理。</p>
             </div>
             <div class="panel-actions">
               <button class="btn btn-ghost btn-sm" type="button" @click="goCandidates({ status: 'candidate' })">候选队列</button>
@@ -192,27 +50,156 @@
               </button>
             </div>
           </div>
-          <div class="automation-status">
-            <div>
-              <span>调度</span>
-              <strong>{{ scheduleStatusLabel }}</strong>
-            </div>
-            <div>
-              <span>下一次</span>
-              <strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong>
+
+          <div class="queue-overview">
+            <button class="queue-focus" type="button" @click="goCandidates({ status: 'candidate' })">
+              <span>待确认候选</span>
+              <strong>{{ overview.candidates?.candidate || 0 }}</strong>
+              <small>可批准 {{ overview.candidates?.ready || 0 }} · 待补磁力 {{ overview.candidates?.needs_magnet || 0 }}</small>
+            </button>
+            <div class="quick-actions">
+              <button class="btn btn-ghost btn-sm" type="button" @click="goCandidates({ status: 'candidate', needs_magnet: true })">处理待补磁力</button>
+              <button class="btn btn-primary btn-sm" type="button" @click="goCandidates({ status: 'candidate', needs_magnet: false })">处理可批准</button>
             </div>
           </div>
-          <div class="run-list">
-            <div v-for="run in recentRuns" :key="run.id" class="run-row">
-              <div>
-                <strong>{{ policyLabel(run.policy) }}</strong>
-                <span>{{ run.trigger_source }} · {{ formatTime(run.created_at) }}</span>
+
+          <div class="queue-grid">
+            <div class="list-block">
+              <div class="block-head">
+                <h3>候选来源</h3>
+                <span>{{ sourceListLabel(overview.automation?.candidate_sources) }}</span>
               </div>
-              <small>处理 {{ run.total || 0 }} · 下发 {{ run.sent || 0 }} · 失败 {{ run.failed || 0 }} · 跳过 {{ run.skipped || 0 }}</small>
+              <div class="compact-list">
+                <button
+                  v-for="source in candidateSources"
+                  :key="source.key"
+                  class="compact-row"
+                  type="button"
+                  @click="goCandidates({ status: 'candidate', source: source.key })"
+                >
+                  <span>{{ source.label }}</span>
+                  <strong>{{ source.count }}</strong>
+                </button>
+              </div>
             </div>
-            <small v-if="!recentRuns.length">暂无候选处理记录</small>
+
+            <div class="list-block">
+              <div class="block-head">
+                <h3>缺口演员</h3>
+                <button type="button" @click="$router.push('/inventory')">库存对比</button>
+              </div>
+              <div class="compact-list">
+                <button
+                  v-for="actor in topMissingActors"
+                  :key="actor.actress_id"
+                  class="compact-row"
+                  type="button"
+                  @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
+                >
+                  <span>{{ actor.actress_name || `编号 ${actor.actress_id}` }}</span>
+                  <strong>{{ actor.missing_count }}</strong>
+                </button>
+                <small v-if="!topMissingActors.length" class="empty-line">暂无缺口记录</small>
+              </div>
+            </div>
           </div>
         </article>
+
+        <aside class="side-stack">
+          <article class="workbench-panel">
+            <div class="panel-head">
+              <div>
+                <h2>自动化状态</h2>
+                <p>策略、调度和映射保护。</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
+            </div>
+            <div class="state-grid">
+              <button class="state-item" type="button" @click="$router.push('/settings')">
+                <span>当前策略</span>
+                <strong>{{ policyLabel(overview.automation?.download_policy) }}</strong>
+              </button>
+              <div class="state-item">
+                <span>自动处理间隔</span>
+                <strong>{{ overview.automation?.auto_process_interval_minutes || 0 }} 分钟</strong>
+              </div>
+              <div class="state-item">
+                <span>调度</span>
+                <strong>{{ scheduleStatusLabel }}</strong>
+              </div>
+              <div class="state-item">
+                <span>下一次</span>
+                <strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong>
+              </div>
+              <button class="state-item" type="button" @click="$router.push('/normalize')">
+                <span>自动匹配</span>
+                <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}</strong>
+              </button>
+              <div class="state-item">
+                <span>确认策略</span>
+                <strong>保守唯一</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="workbench-panel">
+            <div class="panel-head">
+              <div>
+                <h2>补全状态</h2>
+                <p>{{ overview.supplement?.available ? '队列状态正常返回。' : '服务当前不可用。' }}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/supplement')">补全管理</button>
+            </div>
+            <div v-if="overview.supplement?.available" class="mini-stats">
+              <div><strong>{{ overview.supplement.queued || 0 }}</strong><span>排队</span></div>
+              <div><strong>{{ overview.supplement.running || 0 }}</strong><span>运行</span></div>
+              <div><strong>{{ overview.supplement.failed || 0 }}</strong><span>失败</span></div>
+            </div>
+            <p v-else class="muted">补全服务暂不可用：{{ overview.supplement?.error || '未连接' }}</p>
+          </article>
+
+          <article class="workbench-panel">
+            <div class="panel-head">
+              <div>
+                <h2>库存任务</h2>
+                <p>运行中 {{ overview.inventory_jobs?.running || 0 }} · 失败 {{ overview.inventory_jobs?.failed || 0 }}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/inventory')">库存对比</button>
+            </div>
+            <div class="compact-list">
+              <div v-for="job in recentJobs" :key="job.id" class="compact-row static-row">
+                <strong>{{ job.job_type }}</strong>
+                <span>{{ job.status }} · {{ formatTime(job.created_at) }}</span>
+              </div>
+              <small v-if="!recentJobs.length" class="empty-line">暂无作业记录</small>
+            </div>
+          </article>
+        </aside>
+      </section>
+
+      <section class="workbench-panel history-panel">
+        <div class="panel-head">
+          <div>
+            <h2>最近候选处理</h2>
+            <p>调度 {{ scheduleStatusLabel }} · 下一次 {{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</p>
+          </div>
+          <div class="panel-actions">
+            <button class="btn btn-ghost btn-sm" type="button" @click="goCandidates({ status: 'candidate' })">候选队列</button>
+            <button class="btn btn-primary btn-sm" type="button" :disabled="processingNow" @click="runCandidateProcessingNow">
+              {{ processingNow ? '处理中...' : '立即运行' }}
+            </button>
+          </div>
+        </div>
+        <div class="run-list">
+          <div v-for="run in recentRuns" :key="run.id" class="run-row">
+            <div>
+              <strong>{{ policyLabel(run.policy) }}</strong>
+              <span>{{ run.trigger_source }} · {{ formatTime(run.created_at) }}</span>
+            </div>
+            <small>处理 {{ run.total || 0 }} · 下发 {{ run.sent || 0 }} · 失败 {{ run.failed || 0 }} · 跳过 {{ run.skipped || 0 }}</small>
+          </div>
+          <small v-if="!recentRuns.length" class="empty-line">暂无候选处理记录</small>
+        </div>
       </section>
     </template>
   </div>
@@ -234,6 +221,60 @@ export default {
   computed: {
     coverageText() {
       return `${Math.round((this.overview?.mapping?.coverage || 0) * 100)}%`
+    },
+    operationsSummary() {
+      if (!this.overview) return '库存、映射、补全和下载候选的闭环状态。'
+      return `候选 ${this.overview.candidates?.candidate || 0} · 缺口 ${this.overview.missing?.total || 0} · 调度 ${this.scheduleStatusLabel}`
+    },
+    statusMetrics() {
+      const candidates = this.overview?.candidates || {}
+      const missing = this.overview?.missing || {}
+      const mapping = this.overview?.mapping || {}
+      const supplement = this.overview?.supplement || {}
+      return [
+        {
+          key: 'candidate',
+          label: '待确认候选',
+          value: candidates.candidate || 0,
+          hint: '打开队列',
+          urgent: (candidates.candidate || 0) > 0,
+        },
+        {
+          key: 'ready',
+          label: '可批准',
+          value: candidates.ready || 0,
+          hint: '已有磁力',
+          urgent: (candidates.ready || 0) > 0,
+        },
+        {
+          key: 'needs_magnet',
+          label: '待补磁力',
+          value: candidates.needs_magnet || 0,
+          hint: '需要补全',
+          urgent: (candidates.needs_magnet || 0) > 0,
+        },
+        {
+          key: 'missing',
+          label: '库存缺口',
+          value: missing.total || 0,
+          hint: '库存对比',
+          urgent: (missing.total || 0) > 0,
+        },
+        {
+          key: 'mapping',
+          label: '映射待审核',
+          value: mapping.candidate || 0,
+          hint: `${this.coverageText} 覆盖`,
+          urgent: (mapping.candidate || 0) > 0,
+        },
+        {
+          key: 'supplement_failed',
+          label: '补全失败',
+          value: supplement.failed || 0,
+          hint: supplement.available ? '补全管理' : '服务不可用',
+          urgent: !supplement.available || (supplement.failed || 0) > 0,
+        },
+      ]
     },
     recentJobs() {
       return this.overview?.inventory_jobs?.recent || []
@@ -257,6 +298,9 @@ export default {
         { key: 'supplement', label: '补全发现', count: counts.supplement || 0 },
         { key: 'manual', label: '手动加入', count: counts.manual || 0 },
       ]
+    },
+    topMissingActors() {
+      return (this.overview?.missing?.top_actresses || []).slice(0, 6)
     },
   },
   mounted() {
@@ -310,6 +354,17 @@ export default {
       if (needs_magnet === false) query.needs_magnet = '0'
       this.$router.push({ path: '/downloads', query })
     },
+    openStatusMetric(key) {
+      const actions = {
+        candidate: () => this.goCandidates({ status: 'candidate' }),
+        ready: () => this.goCandidates({ status: 'candidate', needs_magnet: false }),
+        needs_magnet: () => this.goCandidates({ status: 'candidate', needs_magnet: true }),
+        missing: () => this.$router.push('/inventory'),
+        mapping: () => this.$router.push('/normalize'),
+        supplement_failed: () => this.$router.push('/supplement'),
+      }
+      actions[key]?.()
+    },
     formatTime(value) {
       if (!value) return ''
       const date = new Date(value)
@@ -322,226 +377,582 @@ export default {
 
 <style scoped>
 .operations-page {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 28px;
+  --operations-line: var(--border-light);
 }
+
 .operations-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  min-height: 52px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--operations-line);
 }
+
+.header-copy {
+  min-width: 0;
+}
+
 .operations-header h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: 0;
 }
+
 .operations-header p {
-  margin: 6px 0 0;
-  color: var(--text-secondary);
-}
-.header-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.policy-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.policy-strip > div,
-.metric-card,
-.workflow-panel,
-.loading-panel,
-.empty-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-}
-.policy-strip > div {
-  padding: 12px 14px;
-}
-.policy-strip span,
-.metric-card small,
-.muted {
+  margin: 4px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.policy-strip strong {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-primary);
-}
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.metric-card {
-  padding: 18px;
-  text-align: left;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.metric-card:hover {
-  border-color: var(--accent);
-}
-.metric-card span {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 30px;
-  font-weight: 700;
-}
-.metric-card strong {
-  display: block;
-  margin: 6px 0;
-}
-.metric-card.urgent span {
-  color: #fa8c16;
-}
-.workflow-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.workflow-panel {
-  padding: 16px;
-}
-.panel-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.panel-actions {
+
+.header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+.btn-sm {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.status-cell {
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 0;
+  border-right: 1px solid var(--operations-line);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.status-cell:last-child {
+  border-right: 0;
+}
+
+.status-cell:hover {
+  background: var(--surface-control);
+}
+
+.status-value {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.status-cell.urgent .status-value {
+  color: var(--text-primary);
+}
+
+.status-label {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-cell small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.workbench-panel,
+.loading-panel,
+.empty-panel {
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.workbench-panel {
+  min-width: 0;
+  padding: 12px;
+}
+
+.workbench-primary {
+  min-height: 100%;
+}
+
+.side-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.panel-head > div {
+  min-width: 0;
+}
+
 .panel-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: 0;
 }
-.source-bars,
-.mapping-actions,
-.job-list,
-.missing-list,
+
+.panel-head p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.queue-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+
+.queue-focus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 58px;
+  padding: 9px 12px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.queue-focus:hover,
+.compact-row:hover,
+.state-item:is(button):hover,
+.block-head button:hover {
+  border-color: var(--border);
+  background: var(--surface-card-hover);
+}
+
+.queue-focus span,
+.queue-focus small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-focus span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.queue-focus strong {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.queue-focus small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: flex-end;
+}
+
+.queue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.list-block {
+  min-width: 0;
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  margin-bottom: 6px;
+}
+
+.block-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.block-head span,
+.block-head button {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.block-head button {
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.compact-list,
 .run-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
 }
-.source-row,
-.missing-row,
-.job-row,
+
+.compact-row,
 .run-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  min-height: 44px;
-  background: var(--bg-secondary);
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--operations-line);
+  background: transparent;
   color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
 }
-.source-row,
-.missing-row {
+
+.compact-row:last-child,
+.run-row:last-child {
+  border-bottom: 0;
+}
+
+.compact-row {
   cursor: pointer;
+  transition: background var(--motion-fast);
 }
-.source-row:hover,
-.missing-row:hover {
-  border-color: var(--accent);
+
+.static-row {
+  cursor: default;
 }
-.quick-actions,
-.job-summary,
-.automation-status,
-.supplement-stats {
-  display: flex;
+
+.compact-row span,
+.compact-row strong,
+.run-row span,
+.run-row strong,
+.run-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-row span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.compact-row strong {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.static-row strong {
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.static-row span {
+  color: var(--text-secondary);
+}
+
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 12px;
 }
-.automation-status {
-  margin: 0 0 12px;
+
+.state-item {
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
 }
-.automation-status > div {
-  flex: 1;
-  min-width: 120px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  background: var(--bg-secondary);
+
+button.state-item {
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
 }
-.automation-status span {
+
+.state-item span {
   display: block;
+  overflow: hidden;
   color: var(--text-secondary);
   font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.automation-status strong {
+
+.state-item strong {
   display: block;
   margin-top: 4px;
+  overflow: hidden;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.supplement-stats > div {
-  flex: 1;
-  min-width: 90px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  background: var(--bg-secondary);
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
-.supplement-stats strong {
+
+.mini-stats > div {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-control);
+}
+
+.mini-stats strong {
   display: block;
-  font-size: 22px;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 1;
 }
-.supplement-stats span,
-.job-row span,
+
+.mini-stats span,
+.muted,
+.empty-line,
 .run-row span,
 .run-row small {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
 }
+
+.mini-stats span {
+  display: block;
+  margin-top: 4px;
+}
+
+.muted {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.history-panel {
+  margin-top: 12px;
+}
+
 .run-row {
   align-items: flex-start;
 }
+
 .run-row > div {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
+
+.run-row strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.run-row small {
+  flex: 0 1 auto;
+  text-align: right;
+}
+
+.empty-line {
+  display: block;
+  padding: 10px;
+  line-height: 1.4;
+}
+
 .loading-panel,
 .empty-panel {
-  padding: 30px;
+  padding: 28px;
   text-align: center;
 }
-.eyebrow {
-  margin: 0 0 4px;
-  color: var(--accent);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+
+.empty-panel h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
 }
+
+.empty-panel p {
+  margin: 0 0 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
-  .operations-page { padding: 18px; }
-  .operations-header,
-  .panel-head { flex-direction: column; }
+  .operations-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .operations-header p {
+    white-space: normal;
+  }
+
+  .header-actions,
   .panel-actions {
     justify-content: flex-start;
   }
-  .operations-header .btn,
-  .empty-panel .btn {
-    min-height: 44px;
+
+  .status-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .policy-strip,
-  .metric-grid,
-  .workflow-grid { grid-template-columns: 1fr; }
+
+  .status-cell {
+    border-right: 1px solid var(--operations-line);
+    border-bottom: 1px solid var(--operations-line);
+  }
+
+  .status-cell:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .status-cell:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .operations-workbench,
+  .queue-overview,
+  .queue-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .operations-header .btn,
+  .panel-actions .btn,
+  .quick-actions .btn {
+    min-height: 40px;
+    min-width: 0;
+  }
+
+  .header-actions,
+  .panel-actions,
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .empty-panel .btn {
+    min-height: 40px;
+    width: 100%;
+  }
+
+  .panel-head {
+    flex-direction: column;
+  }
+
+  .state-grid,
+  .mini-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .run-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .run-row small {
+    text-align: left;
+  }
 }
 </style>

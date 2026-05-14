@@ -123,7 +123,7 @@ def _enrich_candidate_rows(rows: list[dict]) -> list[dict]:
         if task_ids:
             placeholders = ",".join("?" for _ in task_ids)
             cursor.execute(
-                f"SELECT id, status, error_msg, path, created_at, updated_at FROM download_tasks WHERE id IN ({placeholders})",
+                f"SELECT id, status, error_msg, path, downloader_id, downloader_name, downloader_type, created_at, updated_at FROM download_tasks WHERE id IN ({placeholders})",
                 task_ids,
             )
             tasks = {row["id"]: dict(row) for row in cursor.fetchall()}

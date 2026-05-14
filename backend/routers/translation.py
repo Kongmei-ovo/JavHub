@@ -5,12 +5,22 @@ import io
 import asyncio
 from typing import Any, Optional
 
-from database import get_all_translations, import_translations, get_translation_count, _get_raw, upsert_translation
+from config import config
+from database import (
+    get_all_translations,
+    import_translations,
+    get_translation_cache_count,
+    get_translation_count,
+    _get_raw,
+    upsert_translation,
+)
 from modules.info_client import get_info_client
+from translations import get_translator_service
+from translations.jobs import create_translation_job, get_job as get_translation_job_status, list_jobs as list_translation_job_statuses
 
 router = APIRouter(prefix="/api/v1/translations", tags=["translations"])
 
-VALID_TYPES = {"actress", "category", "series", "title"}
+VALID_TYPES = {"actress", "category", "series", "maker", "label", "title"}
 
 
 async def _fetch_all_actresses_for_export() -> dict[int, dict[str, Any]]:
@@ -59,23 +69,21 @@ def _lookup_actress_translation_by_id(actress_id: int) -> Optional[str]:
 
 def _lookup_category_translation_by_id(category_id: int) -> Optional[str]:
     """根据 category ID 查找翻译（存储格式：category:{id} → {name_ja: translated}）"""
-    raw = _get_raw(f"category:{category_id}")
-    if not raw:
-        return None
-    cat_json = raw.get("category", {})
-    for k, v in cat_json.items():
-        if isinstance(v, str) and v:
-            return v
-    return None
+    return _lookup_named_translation_by_id("category", category_id)
 
 
 def _lookup_series_translation_by_id(series_id: int) -> Optional[str]:
     """根据 series ID 查找翻译（存储格式：series:{id} → {name: translated}）"""
-    raw = _get_raw(f"series:{series_id}")
+    return _lookup_named_translation_by_id("series", series_id)
+
+
+def _lookup_named_translation_by_id(mapping_type: str, entity_id: int) -> Optional[str]:
+    """根据实体 ID 查找翻译（存储格式：{type}:{id} → {name: translated}）"""
+    raw = _get_raw(f"{mapping_type}:{entity_id}")
     if not raw:
         return None
-    series_json = raw.get("series", {})
-    for k, v in series_json.items():
+    mapping = raw.get(mapping_type, {})
+    for k, v in mapping.items():
         if isinstance(v, str) and v:
             return v
     return None
@@ -133,6 +141,27 @@ async def export_translations(mapping_type: str):
             entry: dict[str, Any] = {"id": series_id, "name_ja": name_ja, "name_en": name_en, "name_translated": translated or ""}
             result[str(series_id)] = entry
         data = result
+    elif mapping_type in ("maker", "label"):
+        info = get_info_client()
+        entities = await (info.list_makers() if mapping_type == "maker" else info.list_labels())
+        result = {}
+        for entity in entities:
+            entity_id = entity.get("id")
+            if not entity_id:
+                continue
+            name_ja = entity.get("name_ja", "")
+            name_en = entity.get("name_en", "")
+            name = entity.get("name", "")
+            translated = _lookup_named_translation_by_id(mapping_type, entity_id)
+            entry: dict[str, Any] = {
+                "id": entity_id,
+                "name_ja": name_ja,
+                "name_en": name_en,
+                "name": name,
+                "name_translated": translated or "",
+            }
+            result[str(entity_id)] = entry
+        data = result
     else:
         data = get_all_translations(mapping_type)
 
@@ -180,7 +209,7 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
             count += 1
         return {"success": True, "imported": count, "type": mapping_type}
 
-    if mapping_type in ("category", "series"):
+    if mapping_type in ("category", "series", "maker", "label"):
         # 格式: { type_id: { name: "...", name_translated: "..." } }
         # 存储为 {type}:{id} → { name: translated }
         count = 0
@@ -217,4 +246,93 @@ async def translation_stats(mapping_type: str):
 @router.get("/stats")
 async def all_stats():
     """获取所有翻译类型的统计"""
-    return {t: get_translation_count(t) for t in VALID_TYPES}
+    stats = {t: get_translation_count(t) for t in VALID_TYPES}
+    translation_cfg = config.translation
+    openai_cfg = config.openai_compatible
+    stats["ai_cache"] = get_translation_cache_count()
+    stats["providers"] = {
+        "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
+        "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
+        "google_free": {
+            "enabled": "google_free" in config.translation_provider_order,
+            "ready": bool((translation_cfg.get("google_free") or {}).get("enabled", True)),
+        },
+        "deepl": {
+            "enabled": "deepl" in config.translation_provider_order,
+            "ready": bool((translation_cfg.get("deepl") or {}).get("enabled") and (translation_cfg.get("deepl") or {}).get("api_key")),
+        },
+        "microsoft": {
+            "enabled": "microsoft" in config.translation_provider_order,
+            "ready": bool((translation_cfg.get("microsoft") or {}).get("enabled") and (translation_cfg.get("microsoft") or {}).get("api_key")),
+        },
+        "openai_compatible": {
+            "enabled": "openai_compatible" in config.translation_provider_order,
+            "ready": bool(openai_cfg.get("api_key") and openai_cfg.get("base_url") and openai_cfg.get("model")),
+            "model": openai_cfg.get("model") or "",
+        },
+    }
+    return stats
+
+
+@router.post("/test")
+async def test_translation(body: dict[str, Any]):
+    """测试当前 AI 翻译配置。"""
+    text = str(body.get("text") or "").strip()
+    if not text:
+        raise HTTPException(400, "text is required")
+    translator = get_translator_service()
+    original_order = translator.settings.get("provider_order")
+    translator.settings["provider_order"] = ["openai_compatible"]
+    try:
+        translated = await translator.translate_text(
+            text,
+            scope="test",
+            context="translation configuration test",
+            use_ai=True,
+            persist_ai=False,
+        )
+    finally:
+        if original_order is None:
+            translator.settings.pop("provider_order", None)
+        else:
+            translator.settings["provider_order"] = original_order
+    if not translated or translated == text:
+        raise HTTPException(502, "No translation provider returned a translated result")
+    return {"text": text, "translated_text": translated}
+
+
+@router.post("/jobs")
+async def start_translation_job(body: dict[str, Any] | None = None):
+    body = body or {}
+    job_type = str(body.get("job_type") or "library_titles")
+    provider_order = body.get("provider_order")
+    if provider_order is not None and not isinstance(provider_order, list):
+        raise HTTPException(400, "provider_order must be a list")
+    try:
+        limit = int(body.get("limit") or 1000)
+    except Exception:
+        limit = 1000
+    limit = max(1, min(limit, 10000))
+    force = bool(body.get("force", False))
+    try:
+        return await create_translation_job(
+            job_type,
+            provider_order=provider_order,
+            limit=limit,
+            force=force,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.get("/jobs")
+async def list_translation_jobs(limit: int = 50):
+    return {"data": list_translation_job_statuses(limit=max(1, min(limit, 100)))}
+
+
+@router.get("/jobs/{job_id}")
+async def get_translation_job(job_id: int):
+    job = get_translation_job_status(job_id)
+    if not job:
+        raise HTTPException(404, "translation job not found")
+    return job

@@ -1,5 +1,5 @@
 <template>
-  <div class="settings">
+  <div class="settings page-shell page-shell--standard">
     <!-- Header Aligned with Main App Rhythm -->
     <div class="settings-header">
       <h1>设置</h1>
@@ -18,6 +18,9 @@
             </svg>
             <svg v-else-if="group.id === 'automation'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <svg v-else-if="group.id === 'telegram'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
             </svg>
             <svg v-else-if="group.id === 'appearance'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
               <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
@@ -53,76 +56,7 @@
           <div v-if="activeGroup === 'services'" class="config-section">
             <div class="section-header">
               <h2>常规与服务</h2>
-              <p>配置基础连接与外部服务集成，包括云盘、媒体服务器及机器人通知。</p>
-            </div>
-
-            <!-- OpenList -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  <h2>OpenList / 115云盘</h2>
-                </div>
-                <div class="form-slot">
-                  <div class="form-group">
-                    <label>API 地址</label>
-                    <input class="input" v-model="config.openlist.api_url" placeholder="https://fox.oplist.org" />
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>用户名</label>
-                      <input class="input" v-model="config.openlist.username" />
-                    </div>
-                    <div class="form-group">
-                      <label>密码</label>
-                      <div class="input-password-wrap">
-                        <input class="input" :type="showOpenlistPwd ? 'text' : 'password'" v-model="config.openlist.password" autocomplete="off" />
-                        <button class="input-eye-btn" type="button" @click="showOpenlistPwd = !showOpenlistPwd">
-                          <svg v-if="!showOpenlistPwd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>默认下载路径</label>
-                    <input class="input" v-model="config.openlist.default_path" placeholder="/115/AV" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Emby -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78z"/>
-                    <path d="M15 7l-3.5 3.5"/>
-                    <path d="M19 4l-7.5 7.5"/>
-                  </svg>
-                  <h2>JavHub API Key</h2>
-                </div>
-                <div class="form-slot">
-                  <div class="form-group">
-                    <label>本机访问密钥</label>
-                    <div class="input-password-wrap">
-                      <input class="input" :type="showLocalApiKey ? 'text' : 'password'" v-model="localApiKey" autocomplete="off" />
-                      <button class="input-eye-btn" type="button" @click="showLocalApiKey = !showLocalApiKey" :title="showLocalApiKey ? '隐藏' : '显示'">
-                        <svg v-if="!showLocalApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                  <button class="btn btn-secondary" type="button" @click="saveLocalApiKey">
-                    保存本机密钥
-                  </button>
-                </div>
-              </div>
+              <p>配置基础连接与外部服务集成，包括媒体服务器和元数据来源。</p>
             </div>
 
             <div class="settings-card">
@@ -141,7 +75,7 @@
                     <input class="input" v-model="config.emby.api_url" placeholder="http://your-emby:8096" />
                   </div>
                   <div class="form-group">
-                    <label>API Key</label>
+                    <label>密钥</label>
                     <div class="input-password-wrap">
                       <input class="input" :type="showEmbyKey ? 'text' : 'password'" v-model="config.emby.api_key" autocomplete="off" />
                       <button class="input-eye-btn" type="button" @click="showEmbyKey = !showEmbyKey">
@@ -168,7 +102,7 @@
                 <div class="form-slot">
                   <div class="form-group">
                     <label>API 地址</label>
-                    <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:8080" />
+                    <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:18080" />
                   </div>
                 </div>
               </div>
@@ -208,15 +142,22 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Telegram -->
+          <!-- Telegram Section -->
+          <div v-if="activeGroup === 'telegram'" class="config-section">
+            <div class="section-header">
+              <h2>Telegram 通知</h2>
+              <p>配置 Telegram Bot、接收用户和通知事件。</p>
+            </div>
+
             <div class="settings-card">
               <div class="card-content">
                 <div class="settings-card-header">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                   </svg>
-                  <h2>Telegram Bot</h2>
+                  <h2>Bot 连接</h2>
                 </div>
                 <div class="form-slot">
                   <div class="form-group">
@@ -241,14 +182,48 @@
                     </div>
                   </div>
                   <div class="form-group">
-                    <label>允许的用户 ID（逗号分隔）</label>
+                    <label>允许的用户编号（逗号分隔）</label>
                     <input class="input" v-model="telegramUsers" placeholder="123456789,987654321" />
                   </div>
-                  <div class="form-group">
+                  <div class="form-group telegram-test-row">
                     <button class="btn btn-secondary" type="button" @click="testTelegram" :disabled="testingTelegram || !canSaveConfig || !config.telegram.bot_token">
                       {{ testingTelegram ? '发送中...' : '发送测试信息' }}
                     </button>
                     <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                  </svg>
+                  <h2>通知事件</h2>
+                </div>
+                <div class="form-slot notification-grid">
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
+                    <label for="notifEnabled">启用通知</label>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" />
+                    <label for="notifTelegram">通过 Telegram 发送通知</label>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" />
+                    <label for="notifAutoDownload">自动下载时通知</label>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" />
+                    <label for="notifComplete">下载完成时通知</label>
+                  </div>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
+                    <label for="notifNewMovie">发现新片时通知</label>
                   </div>
                 </div>
               </div>
@@ -378,7 +353,6 @@
               <section class="preference-section apple-surface">
                 <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Global</p>
                     <h3>全局偏好</h3>
                   </div>
                   <span class="appearance-chip">{{ displayLangLabel }} · {{ currentThemeConfig.labelEn }}</span>
@@ -444,7 +418,6 @@
               <section class="preference-section apple-surface">
                 <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Search</p>
                     <h3>影片检索</h3>
                   </div>
                   <span class="appearance-chip">{{ config.javinfo.page_size }} 条 / 页</span>
@@ -501,7 +474,6 @@
               <section class="preference-section apple-surface">
                 <div class="preference-section-header">
                   <div>
-                    <p class="eyebrow">Discovery</p>
                     <h3>个性推荐</h3>
                   </div>
                   <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
@@ -666,7 +638,7 @@
                         class="input custom-gradients-input"
                         v-model="bubbleCfg.customGradientsText"
                         rows="3"
-                        placeholder="#7aaec0,#c4b5d8,linear-gradient(135deg,#111,#777)"
+                        placeholder="#d8d2cc,#bfb8b2,linear-gradient(135deg,#111,#777)"
                       ></textarea>
                     </div>
                   </template>
@@ -740,49 +712,69 @@
           <div v-if="activeGroup === 'advanced'" class="config-section">
             <div class="section-header">
               <h2>高级配置</h2>
-              <p>进阶功能设置，包括网络代理、数据映射及系统通知。</p>
+              <p>进阶功能设置，包括公共智能模型、网络代理、服务端策略和速率限制。</p>
             </div>
 
-            <!-- 翻译映射 -->
+            <!-- 公共智能模型设置 -->
             <div class="settings-card">
               <div class="card-content">
                 <div class="settings-card-header">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M5 8l6 6"/>
-                    <path d="M4 14l6-6 2-2"/>
-                    <path d="M2 5h12"/>
-                    <path d="M7 2v3"/>
-                    <path d="M22 22l-5-10-5 10"/>
-                    <path d="M14 18h6"/>
+                    <path d="M12 2v4"/>
+                    <path d="M12 18v4"/>
+                    <path d="M4.93 4.93l2.83 2.83"/>
+                    <path d="M16.24 16.24l2.83 2.83"/>
+                    <path d="M2 12h4"/>
+                    <path d="M18 12h4"/>
+                    <path d="M4.93 19.07l2.83-2.83"/>
+                    <path d="M16.24 7.76l2.83-2.83"/>
+                    <circle cx="12" cy="12" r="3"/>
                   </svg>
-                  <h2>翻译映射</h2>
+                  <h2>公共智能模型</h2>
                 </div>
                 <div class="form-slot">
                   <div class="form-group">
-                    <label>映射类型</label>
-                    <div class="form-row">
-                      <GlassSelect
-                        v-model="translationType"
-                        :options="translationTypeOptions"
-                        class="translation-type-select"
-                        aria-label="翻译映射类型"
-                      />
-                      <button class="btn btn-ghost trans-refresh-btn" type="button" @click="loadTransStats" title="刷新">↻</button>
+                    <label>OpenAI 兼容接口地址</label>
+                    <input class="input" v-model="config.ai.openai_compatible.base_url" placeholder="https://api.openai.com/v1" />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>模型</label>
+                      <input class="input" v-model="config.ai.openai_compatible.model" placeholder="gpt-4o-mini" />
+                    </div>
+                    <div class="form-group">
+                      <label>超时（秒）</label>
+                      <input class="input" v-model.number="config.ai.openai_compatible.timeout" type="number" min="1" />
                     </div>
                   </div>
-                  <div v-if="transStats[translationType] !== undefined" class="trans-stat">
-                    当前 {{ translationTypeLabels[translationType] }} 已翻译 <strong>{{ transStats[translationType] }}</strong> 条
+                  <div class="form-group">
+                    <label>密钥</label>
+                    <div class="input-password-wrap">
+                      <input
+                        class="input"
+                        :type="showAIKey ? 'text' : 'password'"
+                        v-model="config.ai.openai_compatible.api_key"
+                        autocomplete="off"
+                        placeholder="空白保存不覆盖现有密钥"
+                      />
+                      <button class="input-eye-btn" type="button" @click="showAIKey = !showAIKey" :title="showAIKey ? '隐藏' : '显示'">
+                        <svg v-if="!showAIKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                    <small>用于智能翻译兜底、演员映射判断等智能功能。</small>
                   </div>
-                  <div class="trans-actions">
-                    <button class="btn btn-ghost" type="button" @click="exportTranslation">
-                      导出 {{ translationTypeLabels[translationType] }}
+                  <div class="form-group ai-test-row">
+                    <button
+                      class="btn btn-secondary"
+                      type="button"
+                      @click="testAIModel"
+                      :disabled="testingAI || !canSaveConfig || !config.ai.openai_compatible.base_url || !config.ai.openai_compatible.model"
+                    >
+                      {{ testingAI ? '测试中...' : '测试模型调用' }}
                     </button>
-                    <label class="btn btn-ghost trans-import-btn">
-                      导入 {{ translationTypeLabels[translationType] }}
-                      <input class="visually-hidden-file" type="file" accept=".json" @change="importTranslation" />
-                    </label>
+                    <span v-if="aiTestMsg" class="ai-test-msg" :class="{ error: aiTestType === 'error' }">{{ aiTestMsg }}</span>
                   </div>
-                  <div v-if="transMsg" class="trans-msg" :class="transMsgType">{{ transMsg }}</div>
                 </div>
               </div>
             </div>
@@ -815,7 +807,7 @@
               </div>
             </div>
 
-            <!-- API 访问控制 -->
+            <!-- 服务端设置 -->
             <div class="settings-card">
               <div class="card-content">
                 <div class="settings-card-header">
@@ -823,23 +815,9 @@
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     <path d="M9 12l2 2 4-4"/>
                   </svg>
-                  <h2>API 访问控制</h2>
+                  <h2>服务端设置</h2>
                 </div>
                 <div class="form-slot">
-                  <div class="form-group">
-                    <label>服务端 API Key</label>
-                    <div class="input-password-wrap">
-                      <input class="input" :type="showServerApiKey ? 'text' : 'password'" v-model="config.server.api_key" autocomplete="off" />
-                      <button class="input-eye-btn" type="button" @click="showServerApiKey = !showServerApiKey">
-                        <svg v-if="!showServerApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="authDisabled" v-model="config.server.auth_disabled" />
-                    <label for="authDisabled">显式禁用 API 认证</label>
-                  </div>
                   <div class="form-group">
                     <label>前端 Origin</label>
                     <input class="input" v-model="config.server.frontend_origin" placeholder="http://localhost:5173" />
@@ -862,40 +840,6 @@
               </div>
             </div>
 
-            <!-- 通知 -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 01-3.46 0"/>
-                  </svg>
-                  <h2>通知设置</h2>
-                </div>
-                <div class="form-slot">
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
-                    <label for="notifEnabled">启用通知</label>
-                  </div>
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" />
-                    <label for="notifTelegram">通过 Telegram 发送通知</label>
-                  </div>
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" />
-                    <label for="notifAutoDownload">自动下载时通知</label>
-                  </div>
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" />
-                    <label for="notifComplete">下载完成时通知</label>
-                  </div>
-                  <div class="form-group checkbox">
-                    <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
-                    <label for="notifNewMovie">发现新片时通知</label>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </transition>
@@ -903,7 +847,7 @@
 
     <!-- Global Floating Footer for Actions -->
     <div v-if="canSaveConfig" class="settings-footer">
-      <div class="footer-content">
+      <div class="footer-content page-rail page-rail--standard">
         <button class="btn btn-primary" type="button" @click="save" :disabled="saving || !canSaveConfig">
           <span v-if="saving" class="spinner save-spinner"></span>
           <span v-else>保存所有更改</span>
@@ -918,10 +862,9 @@ import api from '../api'
 import { THEMES, applyTheme, resolveThemeKey } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
-import { getStoredApiKey, saveStoredApiKey } from '../utils/apiKey.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
-import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS, parseGradientList } from '../features/config/configDefaults.js'
+import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG, parseGradientList } from '../features/config/configDefaults.js'
 
 export default {
   name: 'Config',
@@ -930,32 +873,28 @@ export default {
     return {
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
       telegramUsers: '',
-      translationType: 'actress',
-      translationTypeLabels: TRANSLATION_TYPE_LABELS,
-      transStats: {},
-      transMsg: '',
-      transMsgType: 'info',
       configLoading: true,
       configLoaded: false,
       configLoadError: '',
       saving: false,
       testingTelegram: false,
+      testingAI: false,
       inventoryCron: '',
       telegramTestMsg: '',
+      aiTestMsg: '',
+      aiTestType: 'info',
       showBotToken: false,
-      showOpenlistPwd: false,
       showEmbyKey: false,
       showMetatubeToken: false,
-      showLocalApiKey: false,
-      showServerApiKey: false,
-      localApiKey: getStoredApiKey(),
+      showAIKey: false,
       themes: THEMES,
       currentTheme: resolveThemeKey(localStorage.getItem('javhub_theme')),
       navGroups: [
-        { id: 'services', label: '常规与服务', icon: '🌐' },
-        { id: 'automation', label: '自动化策略', icon: '⚙️' },
-        { id: 'appearance', label: '界面与外观', icon: '🎨' },
-        { id: 'advanced', label: '高级设置', icon: '🛠️' }
+        { id: 'services', label: '常规与服务' },
+        { id: 'automation', label: '自动化策略' },
+        { id: 'telegram', label: 'Telegram 通知' },
+        { id: 'appearance', label: '界面与外观' },
+        { id: 'advanced', label: '高级设置' }
       ],
       activeGroup: 'services',
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
@@ -1025,19 +964,19 @@ export default {
       ],
       previewTags: ['剧情', '高清', '限定', '新作', '字幕'],
       palettes: [
-        { key: 'monet',    label: '莫奈',    colors: ['#c4b5d8', '#d4c4e0'] },
+        { key: 'monet',    label: '莫奈',    colors: ['#d8d2cc', '#d6c8c8'] },
         { key: 'sunset',   label: '夕阳',    colors: ['#c89080', '#c87868'] },
-        { key: 'ocean',   label: '海洋',    colors: ['#7aaec0', '#88c0b0'] },
+        { key: 'ocean',   label: '雾石',    colors: ['#d2d2ce', '#c8c2ba'] },
         { key: 'forest',   label: '森林',    colors: ['#90b898', '#7aa888'] },
         { key: 'gold',    label: '金色',    colors: ['#a88050', '#c89050'] },
-        { key: 'anime',   label: '动漫',    colors: ['#e8a0c8', '#c0a0e0'] },
+        { key: 'anime',   label: '粉陶',    colors: ['#e8a0c8', '#d8a8b8'] },
         { key: 'retro',    label: '复古',    colors: ['#c89050', '#8b7355'] },
-        { key: 'cyber',   label: '赛博',    colors: ['#00c8ff', '#8000ff'] },
-        { key: 'pastel',  label: '马卡龙',  colors: ['#f0b8c0', '#b8d0f0'] },
-        { key: 'nord',    label: 'Nord',    colors: ['#88c0d0', '#a3be8c'] },
+        { key: 'cyber',   label: '石墨',    colors: ['#1d1d1f', '#6e6e73'] },
+        { key: 'pastel',  label: '马卡龙',  colors: ['#f0b8c0', '#e8d4c8'] },
+        { key: 'nord',    label: '北境',    colors: ['#9a9a9a', '#a3be8c'] },
         { key: 'neon',    label: '霓虹',    colors: ['#ff0080', '#00ff80'] },
         { key: 'earth',   label: '大地',    colors: ['#8b7355', '#6b8e5a'] },
-        { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#b8e0ff'] },
+        { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#ffd0c0'] },
       ],
     }
   },
@@ -1082,7 +1021,7 @@ export default {
     currentPalettePreview() {
       if (this.bubbleCfg.palette === '__all__') {
         // 完全随机：展示所有色系的混合渐变
-        return 'var(--accent)'
+        return 'var(--text-primary)'
       }
       if (this.bubbleCfg.palette === '__custom__') {
         return 'var(--text-muted)'
@@ -1094,7 +1033,7 @@ export default {
     },
     paletteOptions() {
       return [
-        { value: '__all__', label: '艺术随机', color: 'var(--accent)' },
+        { value: '__all__', label: '艺术随机', color: 'var(--text-primary)' },
         ...this.palettes.map(palette => ({
           value: palette.key,
           label: palette.label,
@@ -1102,9 +1041,6 @@ export default {
         })),
         { value: '__custom__', label: '自定义材质', color: 'var(--text-muted)' },
       ]
-    },
-    translationTypeOptions() {
-      return Object.entries(this.translationTypeLabels).map(([value, label]) => ({ value, label }))
     },
   },
   watch: {
@@ -1121,7 +1057,6 @@ export default {
     await this.loadConfig()
     this.loadBubbleCfg()
     this.loadSearchPrefs()
-    this.loadTransStats()
   },
   methods: {
     async loadConfig() {
@@ -1164,9 +1099,9 @@ export default {
       }
       this.saving = true
       try {
-        this.saveLocalApiKey({ silent: true })
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
-        await api.updateConfig(this.config)
+        const { downloaders, openlist, ...configPayload } = this.config
+        await api.updateConfig(configPayload)
         this.saveBubbleCfg()
         this.saveSearchPrefs()
         this.$message.success('配置已保存')
@@ -1220,6 +1155,29 @@ export default {
         this.testingTelegram = false
       }
     },
+    async testAIModel() {
+      if (!this.canSaveConfig) {
+        this.aiTestMsg = '配置未加载成功，请先重新加载'
+        this.aiTestType = 'error'
+        return
+      }
+      this.testingAI = true
+      this.aiTestMsg = ''
+      this.aiTestType = 'info'
+      try {
+        const resp = await api.testAiModel(this.config.ai.openai_compatible)
+        const latency = resp.data?.latency_ms ? ` · ${resp.data.latency_ms}ms` : ''
+        const model = resp.data?.model || this.config.ai.openai_compatible.model
+        this.aiTestMsg = `调用成功：${model}${latency}`
+        this.aiTestType = 'success'
+        this.$message.success('模型调用正常')
+      } catch (e) {
+        this.aiTestMsg = e.response?.data?.detail || '模型调用失败'
+        this.aiTestType = 'error'
+      } finally {
+        this.testingAI = false
+      }
+    },
     loadBubbleCfg() {
       try {
         const saved = localStorage.getItem('genres_bubble_cfg')
@@ -1253,10 +1211,6 @@ export default {
     },
     saveSearchPrefs() {
       this.searchPrefs = saveSearchPreferences(this.searchPrefs)
-    },
-    saveLocalApiKey({ silent = false } = {}) {
-      this.localApiKey = saveStoredApiKey(this.localApiKey)
-      if (!silent) this.$message.success('本机 API Key 已保存')
     },
     resetBubbleCfg() {
       this.bubbleCfg = JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG))
@@ -1309,57 +1263,13 @@ export default {
       }
       return this.palettes.find(p => p.key === this.bubbleCfg.palette)?.colors || this.palettes[0].colors
     },
-    async loadTransStats() {
-      try {
-        const resp = await api.getTranslationStats()
-        this.transStats = resp.data
-      } catch (e) {
-        console.error('Failed to load translation stats:', e)
-      }
-    },
-    async exportTranslation() {
-      try {
-        const resp = await api.exportTranslations(this.translationType)
-        const url = window.URL.createObjectURL(new Blob([resp.data]))
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `translations_${this.translationType}.json`
-        a.click()
-        window.URL.revokeObjectURL(url)
-        this.transMsg = `导出成功：translations_${this.translationType}.json`
-        this.transMsgType = 'success'
-      } catch (e) {
-        console.error('Export failed:', e)
-        this.transMsg = '导出失败'
-        this.transMsgType = 'error'
-      }
-    },
-    async importTranslation(event) {
-      const file = event.target.files[0]
-      if (!file) return
-      try {
-        const resp = await api.importTranslations(this.translationType, file)
-        this.transMsg = `导入成功：${resp.data.imported} 条已更新`
-        this.transMsgType = 'success'
-        await this.loadTransStats()
-      } catch (e) {
-        console.error('Import failed:', e)
-        this.transMsg = '导入失败：' + (e.response?.data?.detail || e.message)
-        this.transMsgType = 'error'
-      }
-      event.target.value = ''
-    }
   }
 }
 </script>
 
 <style scoped>
 .settings {
-  width: 100%;
-  max-width: 1400px;
-  padding: 28px;
-  margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   padding-bottom: 120px; /* Space for footer */
 }
@@ -1403,8 +1313,8 @@ export default {
   color: var(--text-primary);
 }
 
-.tab-item.active { 
-  color: var(--accent); 
+.tab-item.active {
+  color: var(--text-primary);
 }
 
 .tab-item.active::after {
@@ -1414,7 +1324,7 @@ export default {
   left: 0; 
   right: 0;
   height: 2px;
-  background: var(--accent);
+  background: var(--active-indicator);
 }
 
 .tab-icon {
@@ -1488,7 +1398,6 @@ export default {
   padding: 24px;
   border: 1px solid var(--border-light);
 }
-
 .settings-card-header {
   display: flex;
   align-items: center;
@@ -1526,14 +1435,6 @@ export default {
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .bubble-control-row { margin-top: 16px; }
 .form-group-fill { flex: 1; }
-.translation-type-select {
-  flex: 1;
-  min-width: 0;
-}
-.visually-hidden-file {
-  display: none;
-}
-
 .settings-footer {
   position: fixed;
   bottom: 0;
@@ -1550,9 +1451,6 @@ export default {
 }
 
 .footer-content {
-  width: 100%;
-  max-width: 1400px;
-  padding: 0 28px;
   display: flex;
   justify-content: flex-end;
 }
@@ -1565,8 +1463,7 @@ export default {
 
 @media (max-width: 768px) {
   .settings {
-    width: 100%;
-    padding: 24px 20px 112px;
+    padding-bottom: 112px;
   }
   .settings-header h1 { font-size: 28px; }
   .settings-tabs {
@@ -1592,11 +1489,10 @@ export default {
     left: 0;
     bottom: calc(61px + env(safe-area-inset-bottom, 0px));
     padding: 10px 0;
-    z-index: 90;
+    z-index: var(--z-nav);
   }
   .footer-content {
-    max-width: none;
-    padding: 0 20px;
+    width: min(var(--page-max-standard), calc(100% - (var(--page-gutter) * 2)));
   }
   .footer-content .btn {
     width: 100%;
@@ -1605,7 +1501,6 @@ export default {
   }
 }
 
-.trans-refresh-btn { padding: 6px 10px; font-size: 14px; flex-shrink: 0; }
 .input-password-wrap { position: relative; display: flex; align-items: center; }
 .input-password-wrap .input { padding-right: 58px; }
 .input-eye-btn {
@@ -1626,6 +1521,29 @@ export default {
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 .form-group.checkbox label { margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.telegram-test-row,
+.ai-test-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.telegram-test-msg,
+.ai-test-msg {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.ai-test-msg.error {
+  color: var(--danger);
+}
+.notification-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 18px;
+}
+.notification-grid .form-group.checkbox {
+  margin: 0;
+  min-height: 44px;
+}
 .automation-policy-control {
   width: min(100%, 420px);
   margin-bottom: 8px;
@@ -1785,9 +1703,9 @@ export default {
 }
 
 .theme-option.active {
-  border-color: var(--accent);
+  border-color: var(--active-border);
   background: var(--material-glass-elevated);
-  box-shadow: inset 0 0 0 1px var(--accent-glow);
+  box-shadow: inset 0 0 0 1px var(--active-border);
 }
 
 .theme-card-preview.theme-swatch {
@@ -1865,7 +1783,7 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--text-primary);
   color: var(--bg-primary);
 }
 
@@ -1939,8 +1857,9 @@ export default {
 }
 
 .segmented-mini button.active {
-  background: var(--accent);
-  color: var(--bg-primary);
+  background: var(--active-bg);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 .palette-select-wrap {
@@ -2211,46 +2130,6 @@ export default {
     grid-template-columns: 10px 34px minmax(0, 1fr) 36px;
     gap: 8px;
   }
-}
-
-/* 翻译映射 */
-.trans-stat {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-.trans-stat strong {
-  color: var(--accent);
-}
-.trans-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.trans-import-btn {
-  cursor: pointer;
-}
-.trans-msg {
-  margin-top: 10px;
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-}
-.trans-msg.success {
-  background: var(--badge-success-bg);
-  color: var(--badge-success-text);
-  border-color: var(--badge-success-border);
-}
-.trans-msg.error {
-  background: var(--badge-error-bg);
-  color: var(--badge-error-text);
-  border-color: var(--badge-error-border);
-}
-.trans-msg.info {
-  background: var(--badge-info-bg);
-  color: var(--badge-info-text);
-  border-color: var(--badge-info-border);
 }
 
 /* Fade Slide Transition */

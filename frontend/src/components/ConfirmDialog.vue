@@ -46,7 +46,7 @@ const confirm = () => resolveConfirm(true)
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-confirm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,7 +81,7 @@ const confirm = () => resolveConfirm(true)
   justify-content: center;
   border-radius: 14px;
   border: 1px solid var(--border);
-  color: var(--accent);
+  color: var(--text-secondary);
   background: var(--white-06);
 }
 
@@ -142,7 +142,7 @@ const confirm = () => resolveConfirm(true)
 .confirm-primary {
   border-color: transparent;
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-on-accent);
 }
 
 .confirm-primary.danger {

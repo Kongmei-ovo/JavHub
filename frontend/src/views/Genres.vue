@@ -1,5 +1,5 @@
 <template>
-  <div class="genres-page">
+  <div class="genres-page page-bleed">
     <!-- 顶部 Tab 栏 -->
     <div class="genres-hero">
       <h1 class="hero-title">个性推荐</h1>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- 题材 Tab：气泡云 -->
-    <div v-if="activeTab === 'genre'" class="tag-cloud-wrap" ref="cloudRef">
+    <div v-if="activeTab === 'genre'" class="tag-cloud-wrap page-rail page-rail--standard" ref="cloudRef">
       <div class="cloud-header">
         <span class="cloud-hint">共 {{ categories.length }} 个题材</span>
         <button class="shuffle-btn" type="button" @click="reshuffle" :disabled="loading">
@@ -45,7 +45,7 @@
       <AppleErrorState
         v-else-if="categoryError"
         title="题材加载失败"
-        description="JavInfoApi 当前不可用，推荐内容暂时不能刷新。"
+        description="数据源当前不可用，推荐内容暂时不能刷新。"
         retry-label="重试"
         @retry="reloadGenreData"
       />
@@ -70,7 +70,7 @@
     </div>
 
     <!-- 演员 Tab：头像卡片 -->
-    <div v-if="activeTab === 'actress'" class="actress-tab">
+    <div v-if="activeTab === 'actress'" class="actress-tab page-rail page-rail--standard">
       <div class="cloud-header">
         <span class="cloud-hint">第 {{ actressPage }} / {{ actressTotalPages }} 页</span>
         <button class="shuffle-btn" type="button" @click="shuffleActresses" :disabled="actressesLoading">
@@ -167,18 +167,18 @@ import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 
-// === Color Palettes ===
+// === Neutral Color Palettes ===
 const PALETTES = {
-  // 莫奈：低饱和粉紫灰调，百合、淡紫、雾霾蓝
+  // 莫奈：低饱和暖灰、粉灰、陶土
   monet: [
-    'linear-gradient(135deg, #c4b5d8, #a5b4c8)',
-    'linear-gradient(135deg, #d4c4e0, #b8c5d6)',
+    'linear-gradient(135deg, #d8d2cc, #bfb8b2)',
+    'linear-gradient(135deg, #d6c8c8, #b9b2ad)',
     'linear-gradient(135deg, #c8d4c0, #a8b8a0)',
-    'linear-gradient(135deg, #d0c0dc, #b0a8c8)',
+    'linear-gradient(135deg, #d0c4bc, #b8aaa0)',
     'linear-gradient(135deg, #e0d0d8, #c8b8c0)',
-    'linear-gradient(135deg, #c0cce0, #a8b8cc)',
-    'linear-gradient(135deg, #d8c8dc, #c0b0cc)',
-    'linear-gradient(135deg, #ccd4d8, #b8c4c8)',
+    'linear-gradient(135deg, #d8d0c4, #b8b0a6)',
+    'linear-gradient(135deg, #d8c8c0, #c0b0a8)',
+    'linear-gradient(135deg, #d2d0cc, #bcb8b2)',
   ],
   // 夕阳：低饱和暖橙褐调，砖红、琥珀、锈橙
   sunset: [
@@ -191,16 +191,16 @@ const PALETTES = {
     'linear-gradient(135deg, #c89880, #d8b090)',
     'linear-gradient(135deg, #d0a888, #c09070)',
   ],
-  // 海洋：低饱和蓝绿灰调，石青、雾蓝、松石绿
+  // 雾石：低饱和石灰、银灰、陶灰
   ocean: [
-    'linear-gradient(135deg, #7aaec0, #8cbcc8)',
-    'linear-gradient(135deg, #88c0b0, #a0d0c0)',
-    'linear-gradient(135deg, #90c8c0, #a8d8d0)',
-    'linear-gradient(135deg, #78b0a8, #90c8c0)',
-    'linear-gradient(135deg, #7ab0c0, #8cc0cc)',
-    'linear-gradient(135deg, #80b8c8, #98c8d8)',
-    'linear-gradient(135deg, #88c0b8, #a0d0c8)',
-    'linear-gradient(135deg, #7ab0b8, #90c0c8)',
+    'linear-gradient(135deg, #d2d2ce, #b8b8b4)',
+    'linear-gradient(135deg, #c8c2ba, #a8a29a)',
+    'linear-gradient(135deg, #d8d0c4, #b8b0a6)',
+    'linear-gradient(135deg, #c6c8c2, #a8aaa4)',
+    'linear-gradient(135deg, #d6cec6, #b8aea6)',
+    'linear-gradient(135deg, #c8c0b8, #aaa29a)',
+    'linear-gradient(135deg, #d0d0ca, #b2b2ac)',
+    'linear-gradient(135deg, #c2beb8, #a6a29c)',
   ],
   // 森林：低饱和苔绿灰调，苔藓绿、橄榄、灰绿
   forest: [
@@ -224,14 +224,14 @@ const PALETTES = {
     'linear-gradient(135deg, #b89058, #c8a870)',
     'linear-gradient(135deg, #a87848, #c09860)',
   ],
-  // 动漫：高饱和粉紫
+  // 粉陶：低饱和粉灰、玫瑰、杏色
   anime: [
     'linear-gradient(135deg, #e8a0c8, #f0b8d8)',
-    'linear-gradient(135deg, #c0a0e0, #d0b0f0)',
+    'linear-gradient(135deg, #d8a8b8, #c898a8)',
     'linear-gradient(135deg, #f0a0b0, #f8c0d0)',
-    'linear-gradient(135deg, #a0c0ff, #b0d8ff)',
+    'linear-gradient(135deg, #e0b0a0, #f0c8b8)',
     'linear-gradient(135deg, #ffa0c0, #ffc0d8)',
-    'linear-gradient(135deg, #c0e0ff, #d0f0ff)',
+    'linear-gradient(135deg, #e8c0a8, #f0d0b8)',
     'linear-gradient(135deg, #e0a0d0, #f0b8e0)',
     'linear-gradient(135deg, #80c0a0, #90d0b0)',
   ],
@@ -246,48 +246,48 @@ const PALETTES = {
     'linear-gradient(135deg, #9a7060, #b08878)',
     'linear-gradient(135deg, #c0a080, #d0b898)',
   ],
-  // 赛博：蓝紫霓虹
+  // 石墨：黑白灰高对比
   cyber: [
-    'linear-gradient(135deg, #00c8ff, #0080ff)',
-    'linear-gradient(135deg, #8000ff, #c000ff)',
-    'linear-gradient(135deg, #00ffcc, #00e0a0)',
-    'linear-gradient(135deg, #ff0080, #ff4000)',
-    'linear-gradient(135deg, #0080ff, #00c8ff)',
-    'linear-gradient(135deg, #ff00ff, #8000ff)',
-    'linear-gradient(135deg, #00ff80, #00c0ff)',
-    'linear-gradient(135deg, #ff8000, #ffcc00)',
+    'linear-gradient(135deg, #1d1d1f, #6e6e73)',
+    'linear-gradient(135deg, #2c2c2e, #8e8e93)',
+    'linear-gradient(135deg, #3a3a3c, #a1a1a6)',
+    'linear-gradient(135deg, #111111, #5f5f64)',
+    'linear-gradient(135deg, #4a4540, #9a9088)',
+    'linear-gradient(135deg, #2a2624, #7a716a)',
+    'linear-gradient(135deg, #1f1f1f, #777777)',
+    'linear-gradient(135deg, #34302c, #8a8178)',
   ],
   // 马卡龙：粉嫩糖果
   pastel: [
     'linear-gradient(135deg, #f0b8c0, #f8d0d8)',
-    'linear-gradient(135deg, #b8d0f0, #c8e0f8)',
-    'linear-gradient(135deg, #d0b8f0, #e0c8f8)',
+    'linear-gradient(135deg, #e8d4c8, #f0e0d4)',
+    'linear-gradient(135deg, #d8c0b8, #e8d4cc)',
     'linear-gradient(135deg, #f8e0c0, #fff0d8)',
     'linear-gradient(135deg, #c0f0d0, #d0f8e0)',
     'linear-gradient(135deg, #f0c0d8, #f8d8e8)',
-    'linear-gradient(135deg, #d8f0f0, #e8f8f8)',
+    'linear-gradient(135deg, #d8ead4, #e8f4e4)',
     'linear-gradient(135deg, #f8d0c0, #ffe0d8)',
   ],
-  // Nord：冷淡北欧风
+  // 北境：冷静灰阶与苔绿，不使用蓝
   nord: [
-    'linear-gradient(135deg, #88c0d0, #81a1c1)',
+    'linear-gradient(135deg, #9a9a9a, #c8c8c8)',
     'linear-gradient(135deg, #a3be8c, #b48ead)',
-    'linear-gradient(135deg, #5e81ac, #81a1c1)',
+    'linear-gradient(135deg, #5f625c, #9a9d95)',
     'linear-gradient(135deg, #bf616a, #d08770)',
-    'linear-gradient(135deg, #8fbcbb, #88c0d0)',
+    'linear-gradient(135deg, #8fa88a, #b0c0a8)',
     'linear-gradient(135deg, #b48ead, #a3be8c)',
     'linear-gradient(135deg, #d8dee9, #eceff4)',
-    'linear-gradient(135deg, #4c566a, #5e81ac)',
+    'linear-gradient(135deg, #4c4c4f, #7a7a7d)',
   ],
-  // 霓虹：荧光撞色
+  // 高亮：红、橙、黄、绿
   neon: [
     'linear-gradient(135deg, #ff0080, #ff4000)',
-    'linear-gradient(135deg, #00ff80, #00c0ff)',
-    'linear-gradient(135deg, #ff00ff, #00ffff)',
+    'linear-gradient(135deg, #00ff80, #80ff00)',
+    'linear-gradient(135deg, #ff00ff, #ff8000)',
     'linear-gradient(135deg, #ffff00, #ff8000)',
     'linear-gradient(135deg, #00ff00, #80ff00)',
     'linear-gradient(135deg, #8000ff, #ff0080)',
-    'linear-gradient(135deg, #00c0ff, #0080ff)',
+    'linear-gradient(135deg, #ff4040, #ffcc00)',
     'linear-gradient(135deg, #ff8000, #ffff00)',
   ],
   // 大地：土褐森绿
@@ -304,10 +304,10 @@ const PALETTES = {
   // 糖果：糖果色
   candy: [
     'linear-gradient(135deg, #ffb8d0, #ffc8e0)',
-    'linear-gradient(135deg, #b8e0ff, #c8f0ff)',
+    'linear-gradient(135deg, #ffd0c0, #ffe0d0)',
     'linear-gradient(135deg, #ffd0a0, #ffe0b8)',
     'linear-gradient(135deg, #d0ffb8, #e0ffc8)',
-    'linear-gradient(135deg, #e0b8ff, #f0c8ff)',
+    'linear-gradient(135deg, #f0c0d8, #ffd0e8)',
     'linear-gradient(135deg, #ffb8b8, #ffc8c8)',
     'linear-gradient(135deg, #b8ffb8, #c8ffc8)',
     'linear-gradient(135deg, #ffffb8, #ffffd0)',
@@ -319,7 +319,7 @@ function getAllGradients() {
   return Object.values(PALETTES).flat()
 }
 
-// Gold legend rarity gradients — legendary(gold) → common(blue) → popular(gray)
+// Neutral rarity gradients — stronger surface contrast marks emphasis.
 const RARITY_GRADIENTS = {
   // 金色传奇：暗色主题友好 - 琥珀、锈金、褐铜
   legendary: [
@@ -328,17 +328,17 @@ const RARITY_GRADIENTS = {
     'linear-gradient(135deg, #a87838, #c09058)',
     'linear-gradient(135deg, #b88848, #d0a068)',
   ],
-  // 稀有：低饱和紫灰
+  // 稀有：低饱和暖灰
   rare: [
-    'linear-gradient(135deg, #9880b8, #b0a0c8)',
-    'linear-gradient(135deg, #b090c8, #a8a0c0)',
-    'linear-gradient(135deg, #c0a8d0, #b8b0c0)',
+    'linear-gradient(135deg, #a89a90, #c0b4aa)',
+    'linear-gradient(135deg, #b8a8a0, #d0c4ba)',
+    'linear-gradient(135deg, #a0a098, #b8b8b0)',
   ],
-  // 普通：低饱和灰蓝
+  // 普通：低饱和中性灰
   common: [
-    'linear-gradient(135deg, #88a8c0, #a0b8c8)',
-    'linear-gradient(135deg, #90c0b0, #a8d0c0)',
-    'linear-gradient(135deg, #88b8c8, #98c0d0)',
+    'linear-gradient(135deg, #a0a0a0, #bebebe)',
+    'linear-gradient(135deg, #9a9690, #b8b2aa)',
+    'linear-gradient(135deg, #a8aca4, #c0c4bc)',
   ],
   // 热门：低饱和灰调
   popular: [
@@ -431,10 +431,10 @@ export default {
       const c = this.cfg.rarityColors || {}
       return {
         gap: `${this.cfg.spacing}px`,
-        '--rarity-legendary': c.legendary || '#c89a30',
-        '--rarity-epic': c.epic || '#7040a0',
-        '--rarity-rare': c.rare || '#3070a8',
-        '--rarity-common': c.common || '#607080',
+        '--rarity-legendary': c.legendary || 'rgba(29, 29, 31, 0.12)',
+        '--rarity-epic': c.epic || 'rgba(29, 29, 31, 0.09)',
+        '--rarity-rare': c.rare || 'rgba(29, 29, 31, 0.06)',
+        '--rarity-common': c.common || 'rgba(112, 112, 112, 0.08)',
       }
     },
     actressGridStyle() {
@@ -625,14 +625,14 @@ export default {
 
       requestAnimationFrame(() => {
         const bubbles = cloud.querySelectorAll('.bubble')
-        
+
         bubbles.forEach(bubble => {
           const r = bubble.getBoundingClientRect()
           const cx = r.left + r.width / 2
           const cy = r.top + r.height / 2
           const dist = Math.hypot(mouseX - cx, mouseY - cy)
           const maxDist = 120
-          
+
           const inLegendaryMode = this.cfg.colorMode === 'legendary' && this.cfg.goldLegend
           const isLegendary = bubble.classList.contains('rarity-legendary')
 
@@ -644,7 +644,7 @@ export default {
               overwrite: 'auto',
             }
 
-            // 仅为金色传说提供极轻微的 3D 倾斜
+            // 仅为重点标签提供极轻微的 3D 倾斜
             if (isLegendary && inLegendaryMode) {
               const maxTilt = 10
               const tx = ((mouseY - cy) / (r.height * 0.5)) * maxTilt
@@ -681,7 +681,7 @@ export default {
         stagger: 0.002
       })
     },
-    // --- Legendary 3D Tilt (GSAP) — delegated from cloud ---
+    // --- Featured tag tilt (GSAP) — delegated from cloud ---
     onLegendaryEnter(e) {
       const bubble = e.target.closest ? e.target.closest('.bubble.rarity-legendary') : null
       if (!bubble) return
@@ -839,81 +839,97 @@ export default {
 </script>
 
 <style scoped>
-.genres-page { min-height: 100vh; background: var(--bg-primary); }
-.genres-hero { text-align: center; padding: 48px 20px 32px; background: var(--bg-secondary); }
-.hero-title { font-size: 36px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; letter-spacing: -0.03em; }
-.hero-subtitle { font-size: 14px; color: var(--text-muted); }
-.tag-cloud-wrap { padding: 20px; max-width: 1200px; margin: 0 auto; }
+.genres-page { min-height: 100dvh; background: var(--bg-primary); }
+.genres-hero {
+  text-align: center;
+  padding: 76px 20px 40px;
+  background: var(--hero-background);
+}
+.hero-title {
+  color: var(--text-primary);
+  font-size: clamp(44px, 6vw, 72px);
+  font-weight: 650;
+  line-height: 1.06;
+  margin-bottom: 10px;
+  letter-spacing: -0.015em;
+}
+.hero-subtitle { font-size: 20px; color: var(--text-secondary); letter-spacing: -0.01em; }
+.tag-cloud-wrap { --page-max: 1200px; padding-block: 20px; }
 .cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 20px; }
 .cloud-hint { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
 .shuffle-btn {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-control);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
+  border: 1px solid transparent;
+  color: var(--text-primary);
   font-size: 13px; font-weight: 500;
   cursor: pointer;
   padding: 7px 16px;
-  border-radius: 20px;
+  border-radius: 999px;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.shuffle-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); color: var(--text-primary); }
+.shuffle-btn:hover:not(:disabled) { background: var(--surface-control-hover); border-color: var(--border-light); color: var(--text-primary); }
 .shuffle-btn:active:not(:disabled) { transform: scale(0.96); }
 .shuffle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-wrap { text-align: center; padding: 60px; color: var(--text-secondary); }
-.spinner-large { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+.spinner-large { width: 40px; height: 40px; border: 3px solid var(--border-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 
 /* Tab Bar */
 .tab-bar { display: flex; gap: 4px; justify-content: center; margin-top: 24px; }
-.tab-btn { padding: 8px 24px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 20px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
-.tab-btn:hover { border-color: var(--accent); color: var(--accent); }
-.tab-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-primary); }
+.tab-btn { padding: 8px 24px; background: var(--surface-control); border: 1px solid transparent; color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 999px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
+.tab-btn:hover { background: var(--surface-control-hover); color: var(--text-primary); }
+.tab-btn.active {
+  background: var(--active-bg);
+  border-color: var(--active-border);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
+}
 
 /* 演员卡片：整个圆形，参照VideoModal */
-.actress-tab { padding: 20px; max-width: 1200px; margin: 0 auto; }
+.actress-tab { --page-max: 1200px; padding-block: 20px; }
 .actress-grid { display: grid; gap: 20px; justify-items: center; }
 .actress-card { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: var(--transition); }
 .actress-card:hover { transform: translateY(-4px); }
-.actress-avatar { width: var(--actress-avatar-size, 80px); height: var(--actress-avatar-size, 80px); border-radius: 50%; overflow: hidden; background: var(--bg-secondary); border: 2px solid var(--border); transition: border-color 0.2s, box-shadow 0.2s; flex-shrink: 0; }
-.actress-card:hover .actress-avatar { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
+.actress-avatar { width: var(--actress-avatar-size, 80px); height: var(--actress-avatar-size, 80px); border-radius: 24px; overflow: hidden; background: var(--surface-control); border: 1px solid var(--border-light); transition: border-color 0.2s, box-shadow 0.2s; flex-shrink: 0; }
+.actress-card:hover .actress-avatar { border-color: var(--border-light); box-shadow: var(--shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
 .actress-card:hover .actress-avatar img { transform: translateY(-2px); }
 .actress-name { font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.tag-cloud { 
-  display: flex; 
-  flex-wrap: wrap; 
-  justify-content: center; 
-  align-items: center; 
-  padding: 30px 10px; 
-  background: var(--bg-primary); 
-  border-radius: 16px; 
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 10px;
+  background: var(--surface-control);
+  border-radius: var(--radius-card);
   gap: 16px;
 }
 
 .bubble {
   position: relative;
   padding: 8px 18px;
-  border-radius: 12px;
+  border-radius: 999px;
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-card);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-light);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
 }
 
 .bubble:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--surface-control-hover);
+  border-color: var(--border-light);
   transform: translateY(-2px);
 }
 
@@ -923,50 +939,33 @@ export default {
 }
 
 /* ================================================
-   ✨ 金色传说 2.0 (Aura Gold) - Apple Pro Design
+   Apple tag emphasis
    ================================================ */
 
 /* 1. 基础稀有度颜色 */
-.bubble.rarity-common { border-color: rgba(255, 255, 255, 0.05); opacity: 0.6; }
-.bubble.rarity-rare { border-color: rgba(48, 112, 168, 0.3); }
-.bubble.rarity-epic { border-color: rgba(112, 64, 160, 0.4); }
+.bubble.rarity-common { opacity: 0.74; }
+.bubble.rarity-rare { background: var(--surface-card); border-color: var(--border-light); }
+.bubble.rarity-epic { background: var(--surface-card); border-color: var(--border-light); }
 
 /* 2. 金色传说核心样式 (Legendary) */
 .bubble.rarity-legendary {
-  background: rgba(212, 175, 55, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow: 0 10px 40px -10px rgba(212, 175, 55, 0.1); /* 极其克制的氛围光 */
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  box-shadow: none;
 }
 
 /* 文字渐变 */
 .rarity-legendary .bubble-content {
-  background: linear-gradient(135deg, #fcf6ba 0%, #d4af37 50%, #aa771c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text-primary);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 /* 3. 极细旋转切光 (1px Edge Light) */
 .bubble.rarity-legendary::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  padding: 1px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 0deg,
-    transparent 60%,
-    rgba(212, 175, 55, 0.8) 80%,
-    #fcf6ba 90%,
-    rgba(212, 175, 55, 0.8) 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: rotateLight 6s linear infinite;
-  pointer-events: none;
+  display: none;
 }
 
 @keyframes rotateLight {
@@ -976,22 +975,7 @@ export default {
 
 /* 4. 微光扫掠 (The Shimmer) */
 .golden-shimmer {
-  position: absolute;
-  top: 0;
-  left: -150%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 30%,
-    rgba(255, 245, 225, 0.1) 50%,
-    rgba(255, 255, 255, 0) 70%,
-    transparent 100%
-  );
-  transform: skewX(-20deg);
-  animation: shimmerMove 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  pointer-events: none;
+  display: none;
 }
 
 @keyframes shimmerMove {
@@ -1001,24 +985,24 @@ export default {
 
 /* 史诗级呼吸感 */
 .bubble.rarity-epic {
-  background: rgba(112, 64, 160, 0.05);
-  box-shadow: 0 10px 30px -10px rgba(112, 64, 160, 0.1);
+  box-shadow: none;
 }
 .bubble.rarity-epic .bubble-content {
-  color: #dcb4ff;
+  color: var(--text-primary);
 }
 
 /* 悬浮反馈 */
 .bubble.rarity-legendary:hover {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: rgba(212, 175, 55, 0.6);
-  box-shadow: 0 15px 50px -10px rgba(212, 175, 55, 0.2);
+  background: var(--surface-control-hover);
+  border-color: var(--border-light);
+  box-shadow: none;
 }
 
 .bubble.active {
-  background: var(--accent);
-  color: var(--bg-primary);
-  border-color: var(--accent);
+  background: var(--active-bg);
+  color: var(--text-primary);
+  border-color: var(--active-border);
+  box-shadow: inset 0 -2px 0 var(--active-indicator);
 }
 
 @media (max-width: 768px) {
@@ -1035,7 +1019,7 @@ export default {
   }
   .tag-cloud-wrap,
   .actress-tab {
-    padding: 20px 16px;
+    padding-block: 20px;
   }
   .loading-wrap {
     padding: 42px 16px;

@@ -19,6 +19,7 @@ const routes = [
   { path: '/inventory', name: 'Inventory', component: () => import('../views/Inventory.vue') },
   { path: '/inventory/actors/:id', name: 'InventoryActor', component: () => import('../views/InventoryActor.vue') },
   { path: '/normalize', name: 'Normalize', component: () => import('../views/Normalize.vue') },
+  { path: '/translations', name: 'TranslationJobs', component: () => import('../views/TranslationJobs.vue') },
   { path: '/supplement', name: 'Supplement', component: () => import('../views/SupplementManagement.vue') },
   { path: '/tasks', redirect: '/downloads' },
   { path: '/:pathMatch(.*)*', redirect: '/' }

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Query
 from modules.info_client import get_info_client
-from database import get_translation
-from services.translation import _translate_item
+from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/series", tags=["series"])
 
@@ -21,17 +20,11 @@ async def list_series(
     page_items = items[start:end]
 
     # 为当前页注入翻译字段
-    for series in page_items:
-        series_id = series.get("id")
-        if series_id:
-            trans = get_translation(f"series:{series_id}")
-            if trans:
-                series_map = trans.get("series", {})
-                for name_key in ["name_ja", "name_en", "name"]:
-                    orig = series.get(name_key)
-                    if orig:
-                        series[f"{name_key}_translated"] = _translate_item(orig, series_map)
-                        break
+    await get_translator_service().translate_entities(
+        page_items,
+        entity_type="series",
+        keys=["name_ja", "name_en", "name"],
+    )
 
     return {
         "data": page_items,

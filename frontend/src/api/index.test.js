@@ -27,64 +27,6 @@ test('getVideoMetadata failure does not show global error toast', async (t) => {
   assert.equal(errorMock.mock.callCount(), 0)
 })
 
-test('api client injects stored JavHub API key', async (t) => {
-  const originalAdapter = axios.defaults.adapter
-  const originalLocalStorage = globalThis.localStorage
-  let capturedConfig = null
-
-  globalThis.localStorage = {
-    getItem: key => key === 'javhub_api_key' ? 'secret-key' : null,
-    setItem: () => {},
-    removeItem: () => {},
-  }
-  axios.defaults.adapter = async (config) => {
-    capturedConfig = config
-    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => {
-    axios.defaults.adapter = originalAdapter
-    if (originalLocalStorage === undefined) {
-      delete globalThis.localStorage
-    } else {
-      globalThis.localStorage = originalLocalStorage
-    }
-  })
-
-  const { default: api } = await import(`./index.js?api-key-inject-${Date.now()}`)
-  await api.getConfig()
-
-  assert.equal(capturedConfig.headers['X-API-Key'], 'secret-key')
-})
-
-test('global axios /api requests inject stored JavHub API key', async (t) => {
-  const originalAdapter = axios.defaults.adapter
-  const originalLocalStorage = globalThis.localStorage
-  let capturedConfig = null
-
-  globalThis.localStorage = {
-    getItem: key => key === 'javhub_api_key' ? 'secret-key' : null,
-    setItem: () => {},
-    removeItem: () => {},
-  }
-  axios.defaults.adapter = async (config) => {
-    capturedConfig = config
-    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => {
-    axios.defaults.adapter = originalAdapter
-    if (originalLocalStorage === undefined) {
-      delete globalThis.localStorage
-    } else {
-      globalThis.localStorage = originalLocalStorage
-    }
-  })
-
-  await import(`./index.js?global-api-key-inject-${Date.now()}`)
-  await axios.get('/api/inventory/jobs')
-
-  assert.equal(capturedConfig.headers['X-API-Key'], 'secret-key')
-})
-
 test('main path API failure still shows global error toast', async (t) => {
   installRejectingAdapter(t, 500, '服务器内部错误')
   const errorMock = t.mock.method(ElMessage, 'error', () => {})
@@ -577,6 +519,29 @@ test('download candidate APIs send expected requests', async (t) => {
   assert.deepEqual(JSON.parse(calls[13].data), { ids: [9] })
 })
 
+test('downloader management APIs send expected requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { clients: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?downloaders-${Date.now()}`)
+  await api.listDownloaders()
+  await api.updateDownloaders({ default_id: 'qb', clients: [{ id: 'qb', type: 'qbittorrent' }] })
+  await api.testDownloader({ id: 'tr', type: 'transmission', address: 'http://tr' })
+
+  assert.equal(calls[0].url, '/v1/downloads/downloaders')
+  assert.equal(calls[0].method, 'get')
+  assert.equal(calls[1].url, '/v1/downloads/downloaders')
+  assert.equal(calls[1].method, 'put')
+  assert.deepEqual(JSON.parse(calls[1].data), { default_id: 'qb', clients: [{ id: 'qb', type: 'qbittorrent' }] })
+  assert.equal(calls[2].url, '/v1/downloads/downloaders/test')
+  assert.deepEqual(JSON.parse(calls[2].data), { id: 'tr', type: 'transmission', address: 'http://tr' })
+})
+
 test('operations overview API sends GET to correct path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []
@@ -609,6 +574,8 @@ test('actor mapping APIs send expected requests', async (t) => {
   await api.listActorMappings({ status: 'confirmed' })
   await api.getActorMappingSummary()
   await api.listUnmappedActors({ search: '瑠花' })
+  await api.searchActorMappingCandidates({ emby_actor_id: '1', emby_actor_name: '瑠花', q: '瑠花' })
+  await api.reviewActorMappingWithAi({ emby_actor_id: '1', emby_actor_name: '瑠花', javinfo_actress_id: 2 })
   await api.generateActorMappingCandidates({ search: '瑠花', limit: 10, per_actor: 2 })
   await api.autoMatchActorMappings({ dry_run: true, limit: 20 })
   await api.confirmActorMapping({ emby_actor_id: '1', javinfo_actress_id: 2 })
@@ -617,19 +584,48 @@ test('actor mapping APIs send expected requests', async (t) => {
 
   assert.equal(calls[0].url, '/inventory/actor-mappings')
   assert.deepEqual(calls[0].params, { status: 'confirmed' })
+  await api.listActorMappings({ status: 'candidate', limit: 100000 })
+  assert.deepEqual(calls.at(-1).params, { status: 'candidate', limit: 100000 })
   assert.equal(calls[1].url, '/inventory/actor-mappings/summary')
   assert.equal(calls[2].url, '/inventory/actor-mappings/unmapped')
   assert.deepEqual(calls[2].params, { search: '瑠花' })
-  assert.equal(calls[3].url, '/inventory/actor-mappings/candidates/generate')
-  assert.equal(calls[3].method, 'post')
-  assert.deepEqual(calls[3].params, { search: '瑠花', limit: 10, per_actor: 2 })
-  assert.equal(calls[4].url, '/inventory/actor-mappings/auto-match')
+  assert.equal(calls[3].url, '/inventory/actor-mappings/search')
+  assert.deepEqual(calls[3].params, { emby_actor_id: '1', emby_actor_name: '瑠花', q: '瑠花' })
+  assert.equal(calls[4].url, '/inventory/actor-mappings/ai-review')
   assert.equal(calls[4].method, 'post')
-  assert.deepEqual(calls[4].params, { dry_run: true, limit: 20 })
-  assert.equal(calls[5].url, '/inventory/actor-mappings/confirm')
-  assert.equal(calls[6].url, '/inventory/actor-mappings/ignore')
-  assert.equal(calls[7].url, '/inventory/actor-mappings/9')
-  assert.equal(calls[7].method, 'delete')
+  assert.equal(calls[5].url, '/inventory/actor-mappings/candidates/generate')
+  assert.equal(calls[5].method, 'post')
+  assert.deepEqual(calls[5].params, { search: '瑠花', limit: 10, per_actor: 2 })
+  assert.equal(calls[6].url, '/inventory/actor-mappings/auto-match')
+  assert.equal(calls[6].method, 'post')
+  assert.deepEqual(calls[6].params, { dry_run: true, limit: 20 })
+  assert.equal(calls[7].url, '/inventory/actor-mappings/confirm')
+  assert.equal(calls[8].url, '/inventory/actor-mappings/ignore')
+  assert.equal(calls[9].url, '/inventory/actor-mappings/9')
+  assert.equal(calls[9].method, 'delete')
+})
+
+test('translation job APIs send expected requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?translation-jobs-${Date.now()}`)
+  await api.startTranslationJob({ job_type: 'library_titles', provider_order: ['cache', 'google_free'], limit: 1000, force: false })
+  await api.listTranslationJobs(10)
+  await api.getTranslationJob(7)
+
+  assert.equal(calls[0].url, '/v1/translations/jobs')
+  assert.equal(calls[0].method, 'post')
+  assert.deepEqual(JSON.parse(calls[0].data), { job_type: 'library_titles', provider_order: ['cache', 'google_free'], limit: 1000, force: false })
+  assert.equal(calls[1].url, '/v1/translations/jobs')
+  assert.equal(calls[1].method, 'get')
+  assert.deepEqual(calls[1].params, { limit: 10 })
+  assert.equal(calls[2].url, '/v1/translations/jobs/7')
 })
 
 test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {

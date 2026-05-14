@@ -1,0 +1,267 @@
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class TranslationRequest:
+    text: str
+    scope: str
+    target_language: str = "zh-CN"
+    source_language: str | None = None
+    context: str | None = None
+    mapping: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class TranslationResult:
+    translated_text: str
+    provider: str
+    model: str | None = None
+    cacheable: bool = True
+
+
+class TranslationProvider(Protocol):
+    name: str
+
+    def supports(self, request: TranslationRequest) -> bool:
+        ...
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        ...
+
+
+class MappingProvider:
+    name = "mapping"
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(request.mapping and request.text in request.mapping)
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+        return TranslationResult(
+            translated_text=request.mapping[request.text],  # type: ignore[index]
+            provider=self.name,
+            cacheable=False,
+        )
+
+
+class OpenAICompatibleProvider:
+    name = "openai_compatible"
+
+    def __init__(self, settings: dict[str, Any]):
+        self.settings = settings or {}
+
+    @property
+    def model(self) -> str:
+        return str(self.settings.get("model") or "gpt-4o-mini")
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(
+            request.text
+            and self.settings.get("api_key")
+            and self.settings.get("base_url")
+            and self.model
+        )
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+
+        base_url = str(self.settings.get("base_url") or "").rstrip("/")
+        api_key = str(self.settings.get("api_key") or "")
+        try:
+            timeout = float(self.settings.get("timeout", 30))
+        except Exception:
+            timeout = 30.0
+
+        system_prompt = (
+            "You are a translation engine for Japanese adult video metadata. "
+            "Translate to natural Simplified Chinese. Preserve names, product codes, "
+            "line breaks, punctuation meaning, and do not add commentary. Return only the translation."
+        )
+        user_prompt = (
+            f"Target language: {request.target_language}\n"
+            f"Context: {request.context or request.scope}\n"
+            f"Text:\n{request.text}"
+        )
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+        }
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+        except Exception as exc:
+            logger.warning("AI translation failed for scope=%s: %s", request.scope, exc)
+            return None
+
+        try:
+            translated = data["choices"][0]["message"]["content"].strip()
+        except Exception:
+            logger.warning("AI translation returned unexpected response for scope=%s", request.scope)
+            return None
+
+        if not translated:
+            return None
+        return TranslationResult(translated_text=translated, provider=self.name, model=self.model)
+
+
+class GoogleFreeProvider:
+    name = "google_free"
+
+    def __init__(self, settings: dict[str, Any]):
+        self.settings = settings or {}
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(request.text and self.settings.get("enabled", True))
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+        base_url = str(self.settings.get("base_url") or "https://translate.googleapis.com/translate_a/single")
+        try:
+            timeout = float(self.settings.get("timeout", 10))
+        except Exception:
+            timeout = 10.0
+        params = {
+            "client": "gtx",
+            "sl": request.source_language or "auto",
+            "tl": _target_lang(request.target_language),
+            "dt": "t",
+            "q": request.text,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                response = await client.get(base_url, params=params)
+                response.raise_for_status()
+                data = response.json()
+        except Exception as exc:
+            logger.warning("Google free translation failed for scope=%s: %s", request.scope, exc)
+            return None
+        try:
+            translated = "".join(part[0] for part in data[0] if part and part[0]).strip()
+        except Exception:
+            logger.warning("Google free translation returned unexpected response for scope=%s", request.scope)
+            return None
+        if not translated:
+            return None
+        return TranslationResult(translated_text=translated, provider=self.name)
+
+
+class DeepLProvider:
+    name = "deepl"
+
+    def __init__(self, settings: dict[str, Any]):
+        self.settings = settings or {}
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(request.text and self.settings.get("enabled") and self.settings.get("api_key"))
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+        free_api = bool(self.settings.get("free_api", True))
+        base_url = str(
+            self.settings.get("base_url")
+            or ("https://api-free.deepl.com/v2/translate" if free_api else "https://api.deepl.com/v2/translate")
+        )
+        try:
+            timeout = float(self.settings.get("timeout", 15))
+        except Exception:
+            timeout = 15.0
+        data = {
+            "auth_key": str(self.settings.get("api_key") or ""),
+            "text": request.text,
+            "target_lang": _deepl_target_lang(request.target_language),
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                response = await client.post(base_url, data=data)
+                response.raise_for_status()
+                payload = response.json()
+        except Exception as exc:
+            logger.warning("DeepL translation failed for scope=%s: %s", request.scope, exc)
+            return None
+        try:
+            translated = payload["translations"][0]["text"].strip()
+        except Exception:
+            logger.warning("DeepL translation returned unexpected response for scope=%s", request.scope)
+            return None
+        return TranslationResult(translated_text=translated, provider=self.name, model="deepl")
+
+
+class MicrosoftTranslatorProvider:
+    name = "microsoft"
+
+    def __init__(self, settings: dict[str, Any]):
+        self.settings = settings or {}
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(request.text and self.settings.get("enabled") and self.settings.get("api_key"))
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+        endpoint = str(self.settings.get("endpoint") or "https://api.cognitive.microsofttranslator.com").rstrip("/")
+        region = str(self.settings.get("region") or "")
+        try:
+            timeout = float(self.settings.get("timeout", 15))
+        except Exception:
+            timeout = 15.0
+        headers = {
+            "Ocp-Apim-Subscription-Key": str(self.settings.get("api_key") or ""),
+            "Content-Type": "application/json",
+        }
+        if region:
+            headers["Ocp-Apim-Subscription-Region"] = region
+        params = {"api-version": "3.0", "to": _target_lang(request.target_language)}
+        body = [{"text": request.text}]
+        try:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                response = await client.post(f"{endpoint}/translate", params=params, headers=headers, json=body)
+                response.raise_for_status()
+                payload = response.json()
+        except Exception as exc:
+            logger.warning("Microsoft translation failed for scope=%s: %s", request.scope, exc)
+            return None
+        try:
+            translated = payload[0]["translations"][0]["text"].strip()
+        except Exception:
+            logger.warning("Microsoft translation returned unexpected response for scope=%s", request.scope)
+            return None
+        return TranslationResult(translated_text=translated, provider=self.name, model="microsoft-translator")
+
+
+def _target_lang(value: str) -> str:
+    normalized = (value or "zh-CN").replace("_", "-").lower()
+    if normalized in {"zh-cn", "zh-hans", "zh"}:
+        return "zh-CN"
+    if normalized in {"zh-tw", "zh-hant"}:
+        return "zh-TW"
+    return normalized
+
+
+def _deepl_target_lang(value: str) -> str:
+    normalized = _target_lang(value).upper()
+    if normalized == "ZH-CN":
+        return "ZH-HANS"
+    if normalized == "ZH-TW":
+        return "ZH-HANT"
+    return normalized

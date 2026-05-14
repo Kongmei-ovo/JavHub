@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import re
+import json
 from difflib import SequenceMatcher
 from typing import Any
+
+import httpx
 
 from config import config
 from database import (
@@ -11,6 +14,7 @@ from database import (
     get_latest_snapshot_key,
     get_snapshot_actors,
     list_actor_mappings,
+    update_actor_mapping_ai_review,
     upsert_actor_mapping,
 )
 from modules.info_client import get_info_client
@@ -108,12 +112,13 @@ def _score_rows(
         if not actress_id:
             continue
         score = score_actor_mapping_candidate(emby_actor_name, row)
-        confidence = score["confidence"]
-        if confidence < min_confidence:
+        name_confidence = score["confidence"]
+        if name_confidence < min_confidence:
             continue
         scored.append({
             "row": row,
-            "confidence": confidence,
+            "confidence": name_confidence,
+            "name_confidence": name_confidence,
             "match_type": score["match_type"],
             "exact": score["exact"],
         })
@@ -125,7 +130,271 @@ def _score_rows(
         ),
         reverse=True,
     )
+    _annotate_confidence(scored)
     return scored
+
+
+def _candidate_avatar_url(candidate: dict[str, Any]) -> str:
+    return str(
+        candidate.get("image_url")
+        or candidate.get("avatar_url")
+        or candidate.get("javinfo_avatar_url")
+        or candidate.get("portrait_url")
+        or ""
+    ).strip()
+
+
+def _safe_movie_count(candidate: dict[str, Any]) -> int:
+    try:
+        return max(0, int(candidate.get("movie_count") or 0))
+    except Exception:
+        return 0
+
+
+def _confidence_label(confidence: float, risk_flags: list[str] | None = None) -> str:
+    risks = risk_flags or []
+    if confidence >= 0.9 and not any("歧义" in risk or "分差" in risk for risk in risks):
+        return "高置信"
+    if confidence >= 0.75:
+        return "中置信"
+    return "低置信"
+
+
+def _annotate_confidence(scored: list[dict[str, Any]]) -> None:
+    if not scored:
+        return
+    total = len(scored)
+    gap_threshold = config.actor_mapping_auto_confirm_gap
+    top_gap = scored[0]["name_confidence"] - scored[1]["name_confidence"] if len(scored) > 1 else None
+    for index, item in enumerate(scored):
+        row = item["row"]
+        name_score = float(item["name_confidence"])
+        movie_count = _safe_movie_count(row)
+        if movie_count >= 20:
+            movie_score = 1.0
+        elif movie_count >= 5:
+            movie_score = 0.85
+        elif movie_count > 0:
+            movie_score = 0.7
+        else:
+            movie_score = 0.5
+
+        if total == 1:
+            uniqueness_score = 1.0
+            gap_score = 1.0
+        else:
+            own_gap = top_gap if index == 0 else max(0.0, scored[index - 1]["name_confidence"] - name_score)
+            gap_score = min(1.0, max(0.0, (own_gap or 0.0) / gap_threshold)) if gap_threshold else 1.0
+            uniqueness_score = 0.95 if gap_score >= 1.0 else (0.65 if index == 0 else 0.55)
+
+        confidence = round(min(1.0, (name_score * 0.78) + (movie_score * 0.07) + (uniqueness_score * 0.10) + (gap_score * 0.05)), 3)
+        risk_flags: list[str] = []
+        signals: list[str] = []
+        if item["match_type"] == "exact":
+            signals.append("名称精确一致")
+        elif item["match_type"] == "contains":
+            signals.append("名称存在包含关系")
+            risk_flags.append("名称不是完全一致")
+        else:
+            signals.append("名称仅相似")
+            risk_flags.append("名称仅相似")
+        if total == 1:
+            signals.append("候选唯一")
+        elif index == 0 and top_gap is not None and top_gap < gap_threshold:
+            risk_flags.append("候选分差小")
+        if movie_count >= 20:
+            signals.append("作品数充足")
+        elif movie_count == 0:
+            risk_flags.append("作品数未知")
+        elif movie_count < 5:
+            risk_flags.append("作品数偏少")
+        if not _candidate_avatar_url(row):
+            risk_flags.append("缺少头像")
+
+        label = _confidence_label(confidence, risk_flags)
+        item["confidence"] = confidence
+        item["movie_count"] = movie_count
+        item["javinfo_avatar_url"] = _candidate_avatar_url(row)
+        item["confidence_label"] = label
+        item["risk_flags"] = risk_flags
+        item["confidence_breakdown"] = {
+            "name_score": round(name_score, 3),
+            "movie_score": round(movie_score, 3),
+            "uniqueness_score": round(uniqueness_score, 3),
+            "gap_score": round(gap_score, 3),
+            "final_score": confidence,
+            "candidate_count": total,
+            "rank": index + 1,
+            "top_gap": round(top_gap, 3) if top_gap is not None else None,
+            "signals": signals,
+        }
+
+
+def mapping_candidate_from_row(row: dict[str, Any]) -> dict[str, Any]:
+    confidence = round(float(row.get("confidence") or 0), 3)
+    risk_flags = row.get("risk_flags") if isinstance(row.get("risk_flags"), list) else []
+    return {
+        **row,
+        "reason": row.get("source") or row.get("reason") or "",
+        "movie_count": row.get("movie_count") or 0,
+        "javinfo_avatar_url": row.get("javinfo_avatar_url") or "",
+        "confidence": confidence,
+        "confidence_breakdown": row.get("confidence_breakdown") if isinstance(row.get("confidence_breakdown"), dict) else {},
+        "confidence_label": row.get("confidence_label") or _confidence_label(confidence, risk_flags),
+        "risk_flags": risk_flags,
+        "ai_decision": row.get("ai_decision") or "",
+        "ai_confidence": row.get("ai_confidence"),
+        "ai_reason": row.get("ai_reason") or "",
+        "ai_model": row.get("ai_model") or "",
+        "ai_reviewed_at": row.get("ai_reviewed_at") or "",
+    }
+
+
+def normalize_actor_mapping_search_candidate(emby_actor_id: str, emby_actor_name: str, item: dict[str, Any]) -> dict[str, Any]:
+    payload = _candidate_payload(
+        emby_actor_id,
+        emby_actor_name,
+        item,
+        reason=_mapping_reason(item),
+    )
+    payload["source"] = payload["reason"]
+    return payload
+
+
+async def search_actor_mapping_candidates(
+    emby_actor_id: str | int,
+    emby_actor_name: str,
+    q: str | None = None,
+    limit: int = 10,
+    min_confidence: float | None = None,
+    info_client=None,
+) -> dict[str, Any]:
+    """Search JavInfo for one Emby actor and return normalized, scored candidates."""
+    emby_actor_id = str(emby_actor_id or "")
+    emby_actor_name = str(emby_actor_name or "").strip()
+    query = str(q or emby_actor_name).strip()
+    if not emby_actor_id or not emby_actor_name or not query:
+        return {"data": [], "total": 0}
+
+    min_confidence = min_confidence if min_confidence is not None else config.actor_mapping_candidate_min_confidence
+    client = info_client or get_info_client()
+    result = await client.list_actresses(q=query, page=1, page_size=max(limit * 2, 10))
+    rows = result.get("data", []) if isinstance(result, dict) else []
+    scored = _score_rows(emby_actor_name, rows, min_confidence=0.0)
+    candidates = [normalize_actor_mapping_search_candidate(emby_actor_id, emby_actor_name, item) for item in scored]
+    candidates = [candidate for candidate in candidates if float(candidate.get("confidence") or 0) >= min_confidence]
+    return {"data": candidates[:limit], "total": len(candidates)}
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    raw = (text or "").strip()
+    if not raw:
+        return {}
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?", "", raw, flags=re.IGNORECASE).strip()
+        raw = re.sub(r"```$", "", raw).strip()
+    try:
+        data = json.loads(raw)
+    except Exception:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            return {}
+        try:
+            data = json.loads(match.group(0))
+        except Exception:
+            return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _ai_review_payload(emby_actor_name: str, candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "emby_actor_name": emby_actor_name,
+        "javinfo_actress_name": candidate.get("javinfo_actress_name") or _candidate_name(candidate),
+        "javinfo_actress_id": candidate.get("javinfo_actress_id") or candidate.get("id"),
+        "movie_count": candidate.get("movie_count") or 0,
+        "rule_confidence": candidate.get("confidence") or 0,
+        "match_type": candidate.get("match_type") or candidate.get("source") or candidate.get("reason") or "",
+        "risk_flags": candidate.get("risk_flags") or [],
+        "signals": (candidate.get("confidence_breakdown") or {}).get("signals", []),
+        "candidate_names": _candidate_names(candidate),
+    }
+
+
+async def review_actor_mapping_with_ai(
+    emby_actor_id: str | int,
+    emby_actor_name: str,
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    """Use configured OpenAI-compatible chat completions for text-only actor mapping review."""
+    openai_cfg = config.openai_compatible
+    base_url = str(openai_cfg.get("base_url") or "").rstrip("/")
+    api_key = str(openai_cfg.get("api_key") or "")
+    model = str(openai_cfg.get("model") or "")
+    if not base_url or not api_key or not model:
+        raise RuntimeError("AI 未配置：请先在设置中配置 AI 的 base_url、api_key 和 model")
+    try:
+        timeout = float(openai_cfg.get("timeout", 30))
+    except Exception:
+        timeout = 30.0
+
+    javinfo_id = candidate.get("javinfo_actress_id") or candidate.get("id")
+    if not javinfo_id:
+        raise ValueError("javinfo_actress_id is required")
+    javinfo_name = candidate.get("javinfo_actress_name") or _candidate_name(candidate)
+    payload_context = _ai_review_payload(str(emby_actor_name or ""), {**candidate, "javinfo_actress_name": javinfo_name})
+    system_prompt = (
+        "You help review whether an Emby actor and a JavInfo actress are the same person. "
+        "Use only the provided text signals. Do not infer from images. "
+        "Return strict JSON with keys decision, confidence, reason. "
+        "decision must be one of same_person, different_person, uncertain. "
+        "confidence must be a number from 0 to 1. reason must be concise Chinese."
+    )
+    user_prompt = json.dumps(payload_context, ensure_ascii=False, indent=2)
+    request_body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+        response = await client.post(f"{base_url}/chat/completions", json=request_body, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+    content = str(data["choices"][0]["message"]["content"]).strip()
+    parsed = _extract_json_object(content)
+    decision = str(parsed.get("decision") or "uncertain").strip()
+    if decision not in {"same_person", "different_person", "uncertain"}:
+        decision = "uncertain"
+    try:
+        ai_confidence = max(0.0, min(float(parsed.get("confidence", 0)), 1.0))
+    except Exception:
+        ai_confidence = 0.0
+    ai_reason = str(parsed.get("reason") or "").strip()[:500]
+    if not ai_reason:
+        ai_reason = "AI 未返回明确理由"
+
+    mapping_id = update_actor_mapping_ai_review(
+        emby_actor_id=emby_actor_id,
+        javinfo_actress_id=int(javinfo_id),
+        ai_decision=decision,
+        ai_confidence=round(ai_confidence, 3),
+        ai_reason=ai_reason,
+        ai_model=model,
+    )
+    return {
+        "id": mapping_id,
+        "emby_actor_id": str(emby_actor_id),
+        "javinfo_actress_id": int(javinfo_id),
+        "ai_decision": decision,
+        "ai_confidence": round(ai_confidence, 3),
+        "ai_reason": ai_reason,
+        "ai_model": model,
+    }
 
 
 def _mapping_reason(
@@ -163,7 +432,11 @@ def _candidate_payload(
         "match_type": item["match_type"],
         "exact": item["exact"],
         "reason": reason,
-        "movie_count": row.get("movie_count", 0),
+        "movie_count": item.get("movie_count", _safe_movie_count(row)),
+        "javinfo_avatar_url": item.get("javinfo_avatar_url", _candidate_avatar_url(row)),
+        "confidence_breakdown": item.get("confidence_breakdown", {}),
+        "confidence_label": item.get("confidence_label") or _confidence_label(item["confidence"], item.get("risk_flags", [])),
+        "risk_flags": item.get("risk_flags", []),
     }
     if mapping_id is not None:
         payload["id"] = mapping_id
@@ -174,11 +447,13 @@ def _is_auto_confirmable(scored: list[dict[str, Any]], auto_confirm_confidence: 
     if not scored:
         return False
     top = scored[0]
-    if not top["exact"] or top["confidence"] < auto_confirm_confidence:
+    top_name_confidence = top.get("name_confidence", top["confidence"])
+    if not top["exact"] or top_name_confidence < auto_confirm_confidence:
         return False
     if len(scored) == 1:
         return True
-    return top["confidence"] - scored[1]["confidence"] >= auto_confirm_gap
+    second_name_confidence = scored[1].get("name_confidence", scored[1]["confidence"])
+    return top_name_confidence - second_name_confidence >= auto_confirm_gap
 
 
 async def generate_actor_mapping_candidates(
@@ -216,6 +491,7 @@ async def generate_actor_mapping_candidates(
 
         for item in scored[:per_actor]:
             row = item["row"]
+            reason = _mapping_reason(item)
             mapping_id = upsert_actor_mapping(
                 emby_actor_id=emby_actor_id,
                 emby_actor_name=emby_actor_name,
@@ -223,10 +499,15 @@ async def generate_actor_mapping_candidates(
                 javinfo_actress_name=_candidate_name(row),
                 confidence=item["confidence"],
                 status="candidate",
-                source="name_match",
+                source=reason,
+                javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                movie_count=item.get("movie_count"),
+                confidence_breakdown=item.get("confidence_breakdown"),
+                confidence_label=item.get("confidence_label"),
+                risk_flags=item.get("risk_flags"),
             )
             created += 1
-            candidates.append(_candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, _mapping_reason(item)))
+            candidates.append(_candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason))
         if checked >= limit:
             break
 
@@ -343,6 +624,11 @@ async def auto_match_actor_mappings(
                         javinfo_actress_name=_candidate_name(row),
                         confidence=item["confidence"],
                         source="auto_match",
+                        javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                        movie_count=item.get("movie_count"),
+                        confidence_breakdown=item.get("confidence_breakdown"),
+                        confidence_label=item.get("confidence_label"),
+                        risk_flags=item.get("risk_flags"),
                     )
                 else:
                     mapping_id = upsert_actor_mapping(
@@ -353,6 +639,11 @@ async def auto_match_actor_mappings(
                         confidence=item["confidence"],
                         status="candidate",
                         source=reason,
+                        javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                        movie_count=item.get("movie_count"),
+                        confidence_breakdown=item.get("confidence_breakdown"),
+                        confidence_label=item.get("confidence_label"),
+                        risk_flags=item.get("risk_flags"),
                     )
             payload = _candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason)
             if is_auto_confirm:

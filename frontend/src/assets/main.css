@@ -5,27 +5,33 @@
   --transition-pro: all 0.5s var(--ease-pro);
   
   /* Materials */
-  --glass-bg: rgba(20, 20, 20, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --ambient-glow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(29, 29, 31, 0.08);
+  --ambient-glow: 0 16px 38px rgba(29, 29, 31, 0.1);
   
   /* Precision Lines */
   --stroke-pro: 1.5px;
-  --radius-pro: 22px;
 
-  --radius-card: 22px;
+  /* Radius - Apple-style fixed, concentric, and capsule scale */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pro: var(--radius-xl);
+  --radius-card: 28px;
   --radius-sheet: 32px;
   --radius-control: 999px;
   --touch-target: 44px;
 
-  --material-glass-subtle: rgba(255, 255, 255, 0.035);
-  --material-glass-elevated: rgba(255, 255, 255, 0.065);
-  --material-glass-sheet: rgba(18, 18, 22, 0.78);
-  --surface-card: rgba(255, 255, 255, 0.035);
-  --surface-card-hover: rgba(255, 255, 255, 0.065);
+  --material-glass-subtle: rgba(245, 245, 247, 0.78);
+  --material-glass-elevated: rgba(255, 255, 255, 0.86);
+  --material-glass-sheet: rgba(255, 255, 255, 0.92);
+  --surface-card: #ffffff;
+  --surface-card-hover: #f5f5f7;
 
-  --shadow-floating: 0 24px 60px rgba(0, 0, 0, 0.45);
-  --shadow-sheet: 0 40px 100px rgba(0, 0, 0, 0.65);
+  --shadow-floating: 0 16px 38px rgba(29, 29, 31, 0.10);
+  --shadow-sheet: 0 28px 80px rgba(29, 29, 31, 0.16);
 
   --motion-fast: 160ms var(--ease-pro);
   --motion-standard: 280ms var(--ease-pro);
@@ -35,43 +41,75 @@
   /* Typo - Retouch */
   --ls-pro: -0.02em;
 
-  /* 背景 - 极致深色 */
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
-  --bg-card: rgba(255, 255, 255, 0.03);
-  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  /* 背景 - Apple Espana */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f5f7;
   
-  /* 强调色 - 纯白高反差 */
-  --accent: #FFFFFF;
-  --accent-rgb: 255, 255, 255;
-  --accent-light: #F2F2F7;
-  --accent-glow: rgba(255, 255, 255, 0.1);
-  --accent-bg: rgba(255, 255, 255, 0.05);
+  /* 强调色 - neutral action */
+  --accent: #1d1d1f;
+  --accent-rgb: 29, 29, 31;
+  --accent-light: #000000;
+  --accent-glow: rgba(29, 29, 31, 0.12);
+  --accent-bg: rgba(29, 29, 31, 0.07);
   
   /* 文字 */
-  --text-primary: #FFFFFF;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
+  --text-primary: #1d1d1f;
+  --text-secondary: #474747;
+  --text-muted: #707070;
   
   /* 边框与高光 */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-light: rgba(255, 255, 255, 0.15);
+  --border: #d6d6d6;
+  --border-light: #e8e8ed;
   
-  /* 阴影 - 深邃悬浮感 */
-  --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.6);
-  --shadow-hover: 0 30px 60px rgba(0, 0, 0, 0.8);
+  /* 阴影 - Apple light */
+  --shadow-card: 0 1px 2px rgba(29, 29, 31, 0.04);
+  --shadow-hover: 0 12px 30px rgba(29, 29, 31, 0.09);
   
-  /* 圆角 - Apple 大圆角 */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  
-  /* 字体 - 接入等宽 */
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  /* 字体 */
+  --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', monospace;
+
+  /* 层级 */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-nav: 100;
+  --z-sheet: 300;
+  --z-dropdown: 700;
+  --z-modal: 900;
+  --z-lightbox: 950;
+  --z-toast: 1000;
+  --z-confirm: 1100;
+  --text-on-accent: #ffffff;
+  --surface-nav: rgba(245, 245, 247, 0.86);
+  --surface-nav-border: #e8e8ed;
+  --surface-control: var(--bg-secondary);
+  --surface-control-hover: var(--bg-card);
+  --surface-input: var(--bg-secondary);
+  --surface-input-focus: var(--bg-card);
+  --surface-scrim: rgba(29, 29, 31, 0.18);
+  --hero-background: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 34%), var(--bg-primary);
+  --skeleton-base: rgba(112, 112, 112, 0.08);
+  --skeleton-highlight: rgba(255, 255, 255, 0.9);
+  --active-bg: #ffffff;
+  --active-border: #e8e8ed;
+  --active-indicator: #1d1d1f;
+  --link-text: var(--text-primary);
+  --link-underline: #d6d6d6;
+  --link-underline-hover: rgba(29, 29, 31, 0.32);
 
   /* 侧边栏宽度 */
   --sidebar-width: 240px;
+  /* 页面呼吸轨道 */
+  --page-gutter: clamp(16px, 2.8vw, 40px);
+  --page-gutter-compact: clamp(12px, 2vw, 24px);
+  --page-max-standard: 1180px;
+  --page-max-workspace: 1360px;
+  --page-max-gallery: 1600px;
+  --page-top-space: 24px;
+  --page-bottom-space: 48px;
   /* 过渡 */
   --transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* 通用白色叠加层 */
@@ -110,7 +148,7 @@
   --el-color-primary-light-3: var(--accent-light);
   --el-color-primary-light-5: var(--accent-glow);
   --el-color-primary-light-7: var(--accent-bg);
-  --el-color-primary-light-9: var(--bg-secondary);
+  --el-color-primary-light-9: var(--accent-bg);
   --el-color-primary-dark-2: var(--accent);
 
   /* ---------------------------------------------------- */
@@ -136,9 +174,9 @@
   /* ---------------------------------------------------- */
   /* 💎 4. 统一圆角和字体 (增加精致感) */
   /* ---------------------------------------------------- */
-  --el-border-radius-base: var(--radius-sm, 8px); /* 按钮、输入框圆角 */
-  --el-border-radius-small: 6px;
-  --el-border-radius-round: 20px;
+  --el-border-radius-base: var(--radius-sm, 8px);
+  --el-border-radius-small: var(--radius-xs, 6px);
+  --el-border-radius-round: var(--radius-control);
   
   --el-font-family: var(--font-body);
   
@@ -160,6 +198,8 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  scroll-behavior: smooth;
 }
 
 #app {
@@ -174,23 +214,75 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
 /* ===== Typography ===== */
-h1, h2, h3 { font-weight: 600; letter-spacing: -0.03em; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
 h4 { font-weight: 600; letter-spacing: -0.01em; }
-a { color: var(--accent); text-decoration: none; }
-a:hover { color: var(--accent-light); }
+a {
+  color: var(--link-text);
+  text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--link-text);
+  text-decoration-color: var(--link-underline-hover);
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: var(--z-toast);
+  padding: 10px 16px;
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  transform: translateY(-140%);
+  transition: transform var(--motion-fast);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: none;
+}
 
 /* ===== Utility Classes ===== */
 .text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-muted); }
-.text-accent { color: var(--accent); }
+.text-accent { color: var(--text-primary); }
+
+/* ===== Page Layout Rails ===== */
+.page-shell {
+  --page-max: var(--page-max-standard);
+  width: min(var(--page-max), calc(100% - var(--page-gutter) - var(--page-gutter)));
+  margin-inline: auto;
+  padding-block: var(--page-top-space) var(--page-bottom-space);
+}
+
+.page-shell--standard { --page-max: var(--page-max-standard); }
+.page-shell--workspace { --page-max: var(--page-max-workspace); }
+.page-shell--gallery { --page-max: var(--page-max-gallery); }
+
+.page-bleed {
+  width: 100%;
+}
+
+.page-rail {
+  --page-max: var(--page-max-standard);
+  width: min(var(--page-max), calc(100% - var(--page-gutter) - var(--page-gutter)));
+  margin-inline: auto;
+}
+
+.page-rail--standard { --page-max: var(--page-max-standard); }
+.page-rail--workspace { --page-max: var(--page-max-workspace); }
+.page-rail--gallery { --page-max: var(--page-max-gallery); }
 
 /* ===== Status Badges ===== */
 .badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 6px; /* Apple uses softer squares for many badges now, or pill. Let's use 6px for a pro look */
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -213,36 +305,39 @@ a:hover { color: var(--accent-light); }
   gap: 6px;
   min-height: var(--touch-target);
   padding: 10px 18px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
-  transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s cubic-bezier(0.2, 0, 0, 1);
   outline: none;
   letter-spacing: -0.01em;
 }
 .btn-primary {
   background: var(--accent);
-  color: var(--bg-primary);
-  box-shadow: 0 4px 12px var(--black-20);
+  color: var(--text-on-accent);
+  box-shadow: none;
 }
 .btn-primary:hover {
   background: var(--accent-light);
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
 }
 .btn-ghost {
-  background: var(--accent-bg);
+  background: var(--surface-control);
   color: var(--text-primary);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid transparent;
 }
 .btn-ghost:hover {
-  background: var(--accent-glow);
+  background: var(--surface-control-hover);
   border-color: var(--border-light);
 }
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16);
+}
+.btn:active { transform: scale(0.985); }
 .btn-icon { padding: 8px; border-radius: 50%; }
 .btn svg { width: 16px; height: 16px; }
 
@@ -251,26 +346,26 @@ a:hover { color: var(--accent-light); }
   --glass-select-height: 44px;
   --glass-select-padding: 0 14px;
   --glass-select-font: 13px;
-  --glass-select-menu-top: calc(100% + 8px);
-  --glass-select-menu-bottom: calc(100% + 8px);
   --glass-select-menu-max-height: 360px;
+  --glass-select-radius: var(--radius-md);
+  --glass-select-menu-radius: var(--radius-lg);
+  --glass-select-option-radius: var(--radius-sm);
   position: relative;
   display: inline-flex;
   min-width: 128px;
   max-width: 100%;
   color: var(--text-primary);
-  isolation: isolate;
 }
 
 .glass-select.is-open {
-  z-index: 6000;
+  z-index: 1;
 }
 
 .glass-select--compact {
   --glass-select-height: 38px;
   --glass-select-padding: 0 12px;
   --glass-select-font: 12px;
-  --glass-select-menu-top: calc(100% + 7px);
+  --glass-select-radius: var(--radius-md);
 }
 
 .glass-select__button {
@@ -284,23 +379,18 @@ a:hover { color: var(--accent-light); }
   min-height: var(--glass-select-height);
   padding: var(--glass-select-padding);
   border: 1px solid var(--glass-control-border, var(--border));
-  border-radius: var(--radius-control);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.035)),
-    var(--glass-control-bg, rgba(255,255,255,0.045));
+  border-radius: var(--glass-select-radius);
+  background: var(--glass-control-bg, rgba(255, 255, 255, 0.05));
   color: inherit;
   font-family: inherit;
   font-size: var(--glass-select-font);
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: 0;
   cursor: pointer;
   outline: none;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(0,0,0,0.22),
-    0 10px 28px rgba(0,0,0,0.22);
-  backdrop-filter: blur(18px) saturate(170%);
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  box-shadow: none;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   transition:
     transform var(--motion-fast),
     color var(--motion-fast),
@@ -312,22 +402,15 @@ a:hover { color: var(--accent-light); }
 .glass-select__button:hover,
 .glass-select.is-open .glass-select__button {
   border-color: var(--glass-control-border-hover, var(--border-light));
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.055)),
-    var(--glass-control-bg-hover, rgba(255,255,255,0.07));
+  background: var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    inset 0 -1px 0 rgba(0,0,0,0.24),
-    0 16px 36px rgba(0,0,0,0.28);
+  box-shadow: 0 1px 2px rgba(29, 29, 31, 0.04);
 }
 
 .glass-select__button:focus-visible {
   border-color: var(--accent);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    0 0 0 3px rgba(var(--accent-rgb), 0.16),
-    0 16px 36px rgba(0,0,0,0.28);
+    0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
 .glass-select__button:active {
@@ -366,9 +449,9 @@ a:hover { color: var(--accent-light); }
 .glass-select__dot {
   width: 9px;
   height: 9px;
-  border: 1px solid rgba(255,255,255,0.24);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  box-shadow: 0 0 16px currentColor;
+  box-shadow: none;
   flex: 0 0 auto;
 }
 
@@ -386,42 +469,20 @@ a:hover { color: var(--accent-light); }
 }
 
 .glass-select__menu {
-  position: absolute;
-  top: var(--glass-select-menu-top);
-  left: 0;
-  min-width: max(100%, 168px);
+  position: fixed;
+  min-width: 168px;
   max-width: min(320px, calc(100vw - 32px));
   max-height: min(var(--glass-select-menu-max-height), 54vh);
-  padding: 6px;
+  padding: 5px;
   overflow: auto;
-  border: 1px solid rgba(255,255,255,0.16);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045)),
-    rgba(19, 19, 23, 0.86);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.16),
-    0 28px 72px rgba(0,0,0,0.58);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--glass-select-menu-radius, var(--radius-lg));
+  background: var(--material-glass-sheet);
+  box-shadow: var(--shadow-sheet);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   transform-origin: top left;
-  z-index: 5000;
-}
-
-.glass-select--up .glass-select__menu {
-  top: auto;
-  bottom: var(--glass-select-menu-bottom);
-  transform-origin: bottom left;
-}
-
-.glass-select--right .glass-select__menu {
-  right: 0;
-  left: auto;
-  transform-origin: top right;
-}
-
-.glass-select--right.glass-select--up .glass-select__menu {
-  transform-origin: bottom right;
+  z-index: var(--z-dropdown);
 }
 
 .glass-select__option {
@@ -432,12 +493,12 @@ a:hover { color: var(--accent-light); }
   min-height: 38px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 13px;
+  border-radius: var(--glass-select-option-radius, var(--radius-sm));
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0;
   text-align: left;
   cursor: pointer;
@@ -446,14 +507,12 @@ a:hover { color: var(--accent-light); }
 
 .glass-select__option:hover,
 .glass-select__option.is-active {
-  background: rgba(255,255,255,0.085);
+  background: var(--surface-control-hover);
   color: var(--text-primary);
 }
 
 .glass-select__option.is-selected {
-  background:
-    linear-gradient(180deg, rgba(var(--accent-rgb),0.20), rgba(var(--accent-rgb),0.10)),
-    rgba(255,255,255,0.08);
+  background: var(--accent-bg);
   color: var(--text-primary);
 }
 
@@ -461,7 +520,7 @@ a:hover { color: var(--accent-light); }
   width: 15px;
   height: 15px;
   margin-left: auto;
-  color: var(--accent);
+  color: var(--text-primary);
   flex: 0 0 auto;
 }
 
@@ -496,25 +555,23 @@ a:hover { color: var(--accent-light); }
   }
 
   .glass-select__menu {
-    min-width: 100%;
+    min-width: 0;
     max-width: calc(100vw - 28px);
   }
 }
 
 /* ===== Cards ===== */
 .av-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-color 0.3s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
 }
 .av-card:hover {
-  transform: translateY(-4px); /* Remove scale(1.02) */
-  border-color: var(--accent);
+  transform: translateY(-3px);
+  border-color: var(--border-light);
   box-shadow: var(--shadow-hover);
 }
 
@@ -523,8 +580,8 @@ a:hover { color: var(--accent-light); }
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .apple-surface-elevated {
@@ -548,7 +605,7 @@ a:hover { color: var(--accent-light); }
 }
 
 .apple-skeleton-block {
-  background: linear-gradient(90deg, rgba(255,255,255,0.045), rgba(255,255,255,0.095), rgba(255,255,255,0.045));
+  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
   background-size: 200% 100%;
   animation: apple-skeleton-shimmer 1.4s ease-in-out infinite;
 }
@@ -570,17 +627,17 @@ a:hover { color: var(--accent-light); }
 
 /* ===== Form Elements ===== */
 .el-input__wrapper, .input {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: var(--surface-input) !important;
   border: 1px solid transparent !important;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.02) !important;
-  border-radius: 12px !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
   transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper.is-focus, .input:focus {
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
 }
 
 .input {
@@ -632,6 +689,23 @@ a:hover { color: var(--accent-light); }
   }
 }
 
+@media (max-width: 768px) {
+  :root {
+    --page-gutter: 16px;
+    --page-gutter-compact: 16px;
+    --page-top-space: 20px;
+    --page-bottom-space: calc(40px + 70px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-shell {
+    width: min(var(--page-max), calc(100% - var(--page-gutter) - var(--page-gutter)));
+  }
+
+  .page-bleed {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .edit-mode .settings-card {
   cursor: grab;
 }
@@ -667,7 +741,7 @@ a:hover { color: var(--accent-light); }
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid var(--white-20);
+  border: 2px solid var(--border-light);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -691,11 +765,11 @@ a:hover { color: var(--accent-light); }
 
 /* 1. 弹窗和卡片：加入毛玻璃效果（因为你的主题里 bg-card 已经是 rgba 了） */
 .el-dialog, .el-card, .el-popover, .el-dropdown-menu {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-light) !important; /* 只保留极细的高光边框 */
-  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  background: var(--material-glass-sheet) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-sheet) !important;
 }
 
 /* 移除卡片默认的无用内部边框 */
@@ -705,21 +779,21 @@ a:hover { color: var(--accent-light); }
 
 /* 2. 输入框和下拉框：使用 Sensing Surfaces 设计 */
 .el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: var(--surface-input) !important;
   border: 1px solid transparent !important;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.02) !important;
-  border-radius: 12px !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
   transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: var(--surface-control-hover) !important;
 }
 
 .el-input__wrapper.is-focus, .el-textarea__inner:focus {
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
 }
 
 /* 3. 按钮：更加果断和纯粹 */
@@ -729,12 +803,12 @@ a:hover { color: var(--accent-light); }
 }
 
 .el-button--default {
-  background-color: var(--white-06) !important;
+  background-color: var(--surface-control) !important;
   color: var(--text-primary) !important;
 }
 
 .el-button--default:hover {
-  background-color: var(--white-15) !important;
+  background-color: var(--surface-control-hover) !important;
 }
 
 /* 4. 表格：去线化，呼吸感 (极简风的重灾区通常是表格) */
@@ -765,6 +839,6 @@ a:hover { color: var(--accent-light); }
   background-color: transparent !important;
 }
 .el-pagination .el-pager li.is-active {
-  color: var(--accent);
+  color: var(--text-primary);
   font-weight: bold;
 }

@@ -6,12 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from database import init_db
 from config import config as _cfg
-from security_helpers import (
-    AUTH_EXEMPT_PATHS,
-    auth_error,
-    path_matches,
-    requires_auth_config,
-)
 
 # 配置日志
 logging.basicConfig(
@@ -95,30 +89,8 @@ app.add_middleware(
     allow_origins=[_frontend_origin],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    allow_headers=["Content-Type", "Authorization"],
 )
-
-@app.middleware("http")
-async def api_key_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        return await call_next(request)
-    path = request.url.path
-    if path_matches(path, AUTH_EXEMPT_PATHS):
-        return await call_next(request)
-    if _cfg.auth_disabled:
-        return await call_next(request)
-    if _cfg.api_key:
-        key = request.headers.get("X-API-Key", "")
-        if key != _cfg.api_key:
-            return auth_error(401, "未授权：请提供有效的 API Key")
-        return await call_next(request)
-    if requires_auth_config(path, request.method):
-        return auth_error(
-            403,
-            "API Key 未配置：请设置 server.api_key/API_KEY，或显式设置 server.auth_disabled/AUTH_DISABLED",
-            "ERR_FORBIDDEN",
-        )
-    return await call_next(request)
 
 # 速率限制中间件
 if _cfg.rate_limit_enabled:

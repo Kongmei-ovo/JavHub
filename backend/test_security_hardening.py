@@ -10,18 +10,6 @@ from fastapi import HTTPException
 from middlewares.rate_limit import RateLimiter
 from routers import stream
 from routers.config import _mask_url_credentials
-from security_helpers import requires_auth_config
-
-
-class AuthPolicyTests(unittest.TestCase):
-    def test_write_and_docs_require_auth_config_without_api_key(self):
-        self.assertTrue(requires_auth_config("/api/v1/config", "PUT"))
-        self.assertTrue(requires_auth_config("/docs", "GET"))
-        self.assertTrue(requires_auth_config("/openapi.json", "GET"))
-
-    def test_read_routes_do_not_require_auth_config_without_api_key(self):
-        self.assertFalse(requires_auth_config("/api/v1/videos", "GET"))
-        self.assertFalse(requires_auth_config("/health", "GET"))
 
 
 class StreamSecurityTests(unittest.TestCase):
