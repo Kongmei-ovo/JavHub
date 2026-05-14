@@ -118,7 +118,7 @@ const handleImgError = (e) => {
   -webkit-backdrop-filter: blur(12px);
   border: 0.5px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.85);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   pointer-events: none;
 }
@@ -150,7 +150,7 @@ const handleImgError = (e) => {
   justify-content: center;
   background: #ff9f0a;
   color: #111;
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 800;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
@@ -161,7 +161,7 @@ const handleImgError = (e) => {
 }
 
 .info-name {
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -171,7 +171,7 @@ const handleImgError = (e) => {
 }
 
 .info-sub {
-  font-size: 11px;
+  font-size: var(--type-micro);
   color: var(--text-muted);
   margin-top: 2px;
   white-space: nowrap;

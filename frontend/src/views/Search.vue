@@ -596,15 +596,15 @@ export default {
 
 .hero-title {
   color: var(--text-primary);
-  font-size: clamp(48px, 7vw, 96px);
-  font-weight: 650;
-  line-height: 1.04;
-  letter-spacing: -0.015em;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: var(--page-title-line);
+  letter-spacing: 0;
   margin-bottom: 12px;
 }
 
 .hero-subtitle {
-  font-size: 20px;
+  font-size: var(--type-section-title);
   color: var(--text-secondary);
   margin-bottom: 44px;
   letter-spacing: -0.01em;
@@ -654,7 +654,7 @@ export default {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   padding: 12px 10px;
   min-width: 0;
 }
@@ -726,7 +726,7 @@ export default {
 }
 
 .sort-strip-label {
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -734,7 +734,7 @@ export default {
 }
 
 .sort-result-count {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--text-muted);
   white-space: nowrap;
   padding-right: 4px;
@@ -766,7 +766,7 @@ export default {
   border: 1px solid var(--border);
   border-radius: var(--filter-control-radius);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
@@ -851,7 +851,7 @@ export default {
   border-radius: var(--filter-control-radius);
   padding: 0 12px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s var(--ease-pro);
@@ -919,7 +919,7 @@ export default {
 .panel-field.full { grid-column: span 2; }
 
 .panel-field label {
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -933,7 +933,7 @@ export default {
   border-radius: 12px;
   padding: 12px 16px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
   transition: all 0.3s var(--ease-pro);
 }
 
@@ -961,7 +961,7 @@ export default {
   color: var(--text-primary);
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--type-caption);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1167,7 +1167,7 @@ export default {
     grid-column: span 1;
   }
   .hero-title {
-    font-size: 32px;
+    font-size: var(--page-title-size-mobile);
   }
   .command-capsule {
     align-items: stretch;

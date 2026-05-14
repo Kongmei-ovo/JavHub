@@ -1,12 +1,36 @@
 import yaml
 import os
 import threading
+import logging
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_JAVINFO_API_URL = "http://localhost:18080"
+LEGACY_JAVINFO_API_URLS = {"http://localhost:8080", "http://127.0.0.1:8080"}
+_warned_legacy_javinfo_urls: set[str] = set()
 
 def _env(key: str, default: str = '') -> str:
     """读取环境变量，环境变量有值时优先于配置文件"""
     return os.getenv(key) or default
+
+
+def _warn_if_legacy_javinfo_url(api_url: str, source: str) -> None:
+    normalized = str(api_url or "").rstrip("/")
+    if normalized not in LEGACY_JAVINFO_API_URLS:
+        return
+    warn_key = f"{source}:{normalized}"
+    if warn_key in _warned_legacy_javinfo_urls:
+        return
+    _warned_legacy_javinfo_urls.add(warn_key)
+    logger.warning(
+        "JavInfoApi URL from %s is %s; default local JavInfoApi port is 18080. "
+        "Use %s or set JAVINFO_API_URL for this environment.",
+        source,
+        normalized,
+        DEFAULT_JAVINFO_API_URL,
+    )
 
 
 class Config:
@@ -29,6 +53,8 @@ class Config:
                 self._config = yaml.safe_load(f) or {}
         else:
             self._config = {}
+        if isinstance(self._config.get('javinfo'), dict):
+            _warn_if_legacy_javinfo_url(self._config['javinfo'].get('api_url', ''), 'config.yaml')
 
     def reload(self):
         self._load()
@@ -308,7 +334,10 @@ class Config:
 
     @property
     def javinfo_api_url(self) -> str:
-        return _env('JAVINFO_API_URL', self._config.get('javinfo', {}).get('api_url', 'http://localhost:18080'))
+        api_url = _env('JAVINFO_API_URL', self._config.get('javinfo', {}).get('api_url', DEFAULT_JAVINFO_API_URL))
+        source = 'JAVINFO_API_URL' if os.getenv('JAVINFO_API_URL') else 'config.yaml'
+        _warn_if_legacy_javinfo_url(api_url, source)
+        return api_url
 
     @property
     def javinfo_timeout(self) -> int:
@@ -401,6 +430,13 @@ class Config:
         cfg['automation'] = self.automation
         cfg['actor_mapping'] = self.actor_mapping
         cfg['translation'] = self.translation
+        javinfo_cfg = cfg.get('javinfo', {}) if isinstance(cfg.get('javinfo'), dict) else {}
+        cfg['javinfo'] = {
+            'page_size': javinfo_cfg.get('page_size', 30),
+            'timeout': self.javinfo_timeout,
+            **javinfo_cfg,
+            'api_url': self.javinfo_api_url,
+        }
         return cfg
 
     def _merge_config(self, current: dict, incoming: dict) -> dict:
@@ -433,6 +469,8 @@ class Config:
                 if existing_api_key:
                     incoming_openai['api_key'] = existing_api_key
         self._config = self._merge_config(self._config, incoming)
+        if isinstance(incoming.get('javinfo'), dict):
+            _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')
         if 'ai' in incoming and isinstance(self._config.get('translation'), dict):
             self._config['translation'].pop('openai_compatible', None)
         config_path = Path(__file__).parent.parent / "config.yaml"

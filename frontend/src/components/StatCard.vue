@@ -42,18 +42,18 @@ const handleClick = () => {
   box-shadow: var(--shadow-hover);
 }
 .stat-icon {
-  font-size: 32px;
+  font-size: var(--type-display-mobile);
   margin-right: 20px;
 }
 .stat-content {
   flex: 1;
 }
 .stat-value {
-  font-size: 28px;
+  font-size: var(--type-entity-title);
   font-weight: 700;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  letter-spacing: var(--ls-pro);
+  letter-spacing: 0;
   margin-bottom: 4px;
 }
 .stat-label {

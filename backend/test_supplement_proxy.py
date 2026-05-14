@@ -82,11 +82,30 @@ class SupplementConfigTest(unittest.TestCase):
         self.assertNotIn('custom_secret', payload['nested'])
         self.assertEqual(payload['nested']['visible'], 'ok')
 
+    def test_get_all_exposes_runtime_javinfo_url_with_env_override(self):
+        from config import Config
+        cfg = Config.__new__(Config)
+        cfg._config = {'javinfo': {'api_url': 'http://localhost:8080', 'page_size': 30}}
+        with patch.dict('os.environ', {'JAVINFO_API_URL': 'http://javinfo.internal:18080'}, clear=False):
+            self.assertEqual(cfg.get_all()['javinfo']['api_url'], 'http://javinfo.internal:18080')
+
 
 from modules.info_client import InfoClient
 
 
 class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
+    async def test_get_info_client_uses_runtime_javinfo_config(self):
+        import modules.info_client as info_client
+
+        with patch.dict('os.environ', {'JAVINFO_API_URL': 'http://javinfo.internal:18080'}, clear=False), \
+             patch('config.config._config', {'javinfo': {'timeout': 12}}):
+            info_client._info_client = None
+            client = info_client.get_info_client()
+
+        self.assertEqual(client.api_url, 'http://javinfo.internal:18080')
+        self.assertEqual(client.timeout, 12)
+        info_client._info_client = None
+
     async def test_proxy_get_injects_bearer_token(self):
         client = InfoClient()
         fake_response = {"data": [], "total_count": 0}

@@ -32,13 +32,14 @@ defineEmits(['retry'])
 h3 {
   margin: 0 0 4px;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
+  letter-spacing: 0;
 }
 
 p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 button {

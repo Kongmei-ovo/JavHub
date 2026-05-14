@@ -397,7 +397,7 @@ export default {
 
 .operations-header h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--type-workbench-title);
   line-height: 1.1;
   font-weight: 650;
   letter-spacing: 0;
@@ -406,7 +406,7 @@ export default {
 .operations-header p {
   margin: 4px 0 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -462,7 +462,7 @@ export default {
   display: block;
   margin-bottom: 4px;
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: var(--type-section-title);
   font-weight: 650;
   line-height: 1;
   color: var(--text-primary);
@@ -539,7 +539,7 @@ export default {
 
 .panel-head h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--type-card-title);
   line-height: 1.2;
   font-weight: 650;
   letter-spacing: 0;
@@ -608,7 +608,7 @@ export default {
   grid-row: 1 / span 2;
   grid-column: 2;
   font-family: var(--font-mono);
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   line-height: 1;
 }
 
@@ -864,7 +864,7 @@ button.state-item {
 
 .empty-panel h2 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: var(--type-panel-title);
 }
 
 .empty-panel p {

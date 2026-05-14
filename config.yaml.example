@@ -93,6 +93,12 @@ emby:
   api_url: ""
   api_key: ""
 
+javinfo:
+  api_url: "http://localhost:18080"
+  page_size: 30
+  timeout: 30
+  supplement_admin_token: ""
+
 telegram:
   bot_token: ""
   allowed_user_ids: []

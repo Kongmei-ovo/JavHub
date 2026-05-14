@@ -255,7 +255,7 @@ export default {
 .hero-kicker {
   margin-bottom: 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -263,15 +263,16 @@ export default {
 
 .parse-hero h1 {
   color: var(--text-primary);
-  font-size: clamp(34px, 6vw, 58px);
-  font-weight: 700;
-  line-height: 1;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: var(--page-title-line);
+  letter-spacing: 0;
   margin-bottom: 14px;
 }
 
 .page-desc {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   line-height: 1.6;
 }
 
@@ -305,14 +306,14 @@ export default {
 .issue-head h2 {
   margin: 0 0 4px;
   color: var(--text-primary);
-  font-size: 17px;
+  font-size: var(--type-panel-title);
   line-height: 1.2;
 }
 
 .console-head p,
 .magnets-header p {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.5;
 }
 
@@ -322,7 +323,7 @@ export default {
 .download-btn {
   min-height: 36px;
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: var(--type-caption);
   white-space: nowrap;
 }
 
@@ -331,7 +332,7 @@ export default {
   min-height: 260px;
   resize: vertical;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.65;
 }
 
@@ -353,7 +354,7 @@ export default {
 .summary-item strong {
   display: block;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: var(--type-section-title);
   line-height: 1;
 }
 
@@ -361,7 +362,7 @@ export default {
   display: block;
   margin-top: 7px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
 }
 
@@ -430,7 +431,7 @@ export default {
   max-width: 100%;
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -449,7 +450,7 @@ export default {
   overflow: hidden;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--type-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -460,7 +461,7 @@ export default {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 700;
 }
 
@@ -487,7 +488,7 @@ export default {
 
 .issue-head span {
   color: var(--badge-warning-text);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
 }
 
@@ -502,7 +503,7 @@ export default {
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 10px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .issue-row strong {
@@ -521,13 +522,17 @@ export default {
   margin-inline: auto;
   padding: 44px 20px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--type-body);
   text-align: center;
 }
 
 @media (max-width: 768px) {
   .parse-hero {
     margin-top: 4px;
+  }
+
+  .parse-hero h1 {
+    font-size: var(--page-title-size-mobile);
   }
 
   .parse-summary {
@@ -539,6 +544,10 @@ export default {
   .magnets-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .parse-textarea {
+    min-height: 160px;
   }
 
   .parse-actions .btn,

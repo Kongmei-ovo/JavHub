@@ -409,9 +409,11 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 .sub-hero { text-align: center; padding: 40px 20px 20px; }
 
 .hero-title {
-  font-size: 34px; font-weight: 700;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: var(--page-title-line);
   color: var(--text-primary);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   margin-bottom: 20px;
 }
 
@@ -429,7 +431,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 .segment-item {
   border: none; background: transparent;
   color: var(--text-secondary);
-  padding: 7px 20px; font-size: 13px; font-weight: 600;
+  padding: 7px 20px; font-size: var(--type-control); font-weight: 600;
   border-radius: 9px; cursor: pointer;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
   display: inline-flex; align-items: center; gap: 6px;
@@ -444,7 +446,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 }
 
 .tab-badge {
-  font-size: 10px; background: #FF375F; color: #fff;
+  font-size: var(--type-badge); background: #FF375F; color: #fff;
   padding: 1px 5px; border-radius: 8px;
   font-weight: 700; min-width: 16px; text-align: center;
 }
@@ -459,7 +461,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   border-radius: 999px;
   background: #ff375f;
   color: #fff;
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 700;
 }
 
@@ -487,7 +489,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 .search-input {
   flex: 1; border: none; outline: none; background: transparent;
-  padding: 0 10px; font-size: 15px; color: var(--text-primary); min-height: 44px;
+  padding: 0 10px; font-size: var(--type-card-title); color: var(--text-primary); min-height: 44px;
 }
 
 .search-input::placeholder { color: var(--text-muted); }
@@ -546,7 +548,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   height: 28px; padding: 0 14px; border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary); font-size: 12px; font-weight: 600;
+  color: var(--text-primary); font-size: var(--type-caption); font-weight: 600;
   cursor: pointer; flex-shrink: 0;
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -567,7 +569,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 }
 
 .empty-state svg { opacity: 0.3; margin-bottom: 8px; }
-.empty-state p { margin: 0; font-size: 15px; }
+.empty-state p { margin: 0; font-size: var(--type-card-title); }
 
 /* ===== Spinners ===== */
 .spinner-small {
@@ -625,7 +627,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
-  font-size: 12px; font-weight: 600;
+  font-size: var(--type-caption); font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -672,9 +674,9 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 /* Translated Name */
 .sheet-translated {
   text-align: center;
-  font-size: 22px; font-weight: 700;
+  font-size: var(--type-section-title); font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   padding: 0 20px 8px;
 }
 
@@ -690,7 +692,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   height: 24px; padding: 0 10px; border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 12px; font-weight: 500;
+  font-size: var(--type-caption); font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -700,7 +702,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 /* Stat Line */
 .sheet-stat-line {
   text-align: center;
-  font-size: 13px; font-weight: 500;
+  font-size: var(--type-control); font-weight: 500;
   color: var(--text-secondary);
   padding: 0 20px 16px;
 }
@@ -716,7 +718,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   height: 36px; padding: 0 18px; border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--text-muted); font-size: 13px; font-weight: 600;
+  color: var(--text-muted); font-size: var(--type-control); font-weight: 600;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -794,7 +796,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   height: 48px; border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary); font-size: 15px; font-weight: 600;
+  color: var(--text-primary); font-size: var(--type-card-title); font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -825,13 +827,13 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 @media (max-width: 768px) {
   .sub-hero { padding: 32px 16px 16px; }
-  .hero-title { font-size: 28px; }
+  .hero-title { font-size: var(--page-title-size-mobile); }
   .tab-content { padding: 0 12px; }
   .card-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .sheet { width: 100vw; max-width: 100%; max-height: 95vh; border-radius: 20px 20px 0 0; }
   .works-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-  .sheet-translated { font-size: 18px; }
-  .name-pill { height: 22px; padding: 0 8px; font-size: 11px; }
+  .sheet-translated { font-size: var(--type-panel-title); }
+  .name-pill { height: 22px; padding: 0 8px; font-size: var(--type-micro); }
   .segment-item,
   .clear-btn,
   .pill-btn,

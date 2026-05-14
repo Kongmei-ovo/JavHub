@@ -58,8 +58,9 @@ export default {
 }
 .library h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--type-page-title);
   line-height: 1.2;
+  letter-spacing: 0;
 }
 .check-form {
   margin: 20px 0;

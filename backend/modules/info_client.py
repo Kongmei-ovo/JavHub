@@ -474,10 +474,9 @@ def get_info_client() -> InfoClient:
     global _info_client
     if _info_client is None:
         from config import config
-        javinfo_config = getattr(config, "javinfo", {})
         _info_client = InfoClient(
-            api_url=javinfo_config.get("api_url", "http://localhost:18080"),
-            timeout=javinfo_config.get("timeout", 30),
+            api_url=config.javinfo_api_url,
+            timeout=config.javinfo_timeout,
         )
     return _info_client
 
@@ -487,6 +486,5 @@ def reset_info_client() -> None:
     global _info_client
     if _info_client is not None:
         from config import config
-        javinfo_config = getattr(config, "javinfo", {})
-        _info_client.api_url = javinfo_config.get("api_url", "http://localhost:18080")
-        _info_client.timeout = javinfo_config.get("timeout", 30)
+        _info_client.api_url = config.javinfo_api_url.rstrip("/")
+        _info_client.timeout = config.javinfo_timeout

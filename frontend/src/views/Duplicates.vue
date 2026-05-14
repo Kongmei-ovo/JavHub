@@ -104,8 +104,9 @@ onMounted(fetchDuplicates)
 }
 .page-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--type-page-title);
   line-height: 1.2;
+  letter-spacing: 0;
 }
 .rescan-btn {
   min-height: 44px;

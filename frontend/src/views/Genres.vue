@@ -847,16 +847,16 @@ export default {
 }
 .hero-title {
   color: var(--text-primary);
-  font-size: clamp(44px, 6vw, 72px);
-  font-weight: 650;
-  line-height: 1.06;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: var(--page-title-line);
   margin-bottom: 10px;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
-.hero-subtitle { font-size: 20px; color: var(--text-secondary); letter-spacing: -0.01em; }
+.hero-subtitle { font-size: var(--type-section-title); color: var(--text-secondary); letter-spacing: 0; }
 .tag-cloud-wrap { --page-max: 1200px; padding-block: 20px; }
 .cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 20px; }
-.cloud-hint { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
+.cloud-hint { font-size: var(--type-control); color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
 .shuffle-btn {
   display: flex; align-items: center; gap: 6px;
   background: var(--surface-control);
@@ -864,7 +864,7 @@ export default {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid transparent;
   color: var(--text-primary);
-  font-size: 13px; font-weight: 500;
+  font-size: var(--type-control); font-weight: 500;
   cursor: pointer;
   padding: 7px 16px;
   border-radius: 999px;
@@ -878,7 +878,7 @@ export default {
 
 /* Tab Bar */
 .tab-bar { display: flex; gap: 4px; justify-content: center; margin-top: 24px; }
-.tab-btn { padding: 8px 24px; background: var(--surface-control); border: 1px solid transparent; color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 999px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
+.tab-btn { padding: 8px 24px; background: var(--surface-control); border: 1px solid transparent; color: var(--text-secondary); font-size: var(--type-body); font-weight: 600; cursor: pointer; border-radius: 999px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
 .tab-btn:hover { background: var(--surface-control-hover); color: var(--text-primary); }
 .tab-btn.active {
   background: var(--active-bg);
@@ -896,7 +896,7 @@ export default {
 .actress-card:hover .actress-avatar { border-color: var(--border-light); box-shadow: var(--shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
 .actress-card:hover .actress-avatar img { transform: translateY(-2px); }
-.actress-name { font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actress-name { font-size: var(--type-caption); font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tag-cloud {
   display: flex;
@@ -914,7 +914,7 @@ export default {
   padding: 8px 18px;
   border-radius: 999px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 500;
   cursor: pointer;
   user-select: none;
@@ -1008,6 +1008,9 @@ export default {
 @media (max-width: 768px) {
   .genres-hero {
     padding: 44px 16px 28px;
+  }
+  .hero-title {
+    font-size: var(--page-title-size-mobile);
   }
   .tab-bar {
     flex-wrap: wrap;

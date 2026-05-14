@@ -768,9 +768,10 @@ export default {
 }
 
 .translation-header h1 {
-  font-size: 40px;
-  line-height: 1.05;
+  font-size: var(--type-page-title);
+  line-height: 1.1;
   font-weight: 600;
+  letter-spacing: 0;
 }
 
 .eyebrow {
@@ -906,9 +907,10 @@ export default {
 }
 
 .panel-header h2 {
-  font-size: 14px;
+  font-size: var(--type-panel-title);
   line-height: 1.25;
   font-weight: 600;
+  letter-spacing: 0;
 }
 
 .overview-grid,
@@ -1429,7 +1431,7 @@ export default {
   }
 
   .translation-header h1 {
-    font-size: 30px;
+    font-size: var(--type-page-title-mobile);
     line-height: 1.1;
   }
 

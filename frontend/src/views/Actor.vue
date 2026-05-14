@@ -514,14 +514,15 @@ export default {
 }
 
 .actor-name {
-  font-size: 28px;
+  font-size: var(--type-entity-title);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
+  letter-spacing: 0;
 }
 
 .actor-name-original {
-  font-size: 14px;
+  font-size: var(--type-body);
   color: var(--text-muted);
   margin: 0 0 8px;
 }
@@ -576,9 +577,10 @@ export default {
 }
 
 .section-header h2 {
-  font-size: 18px;
+  font-size: var(--type-panel-title);
   font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .header-right {
@@ -667,10 +669,10 @@ export default {
 }
 
 .year-label {
-  font-size: 22px;
+  font-size: var(--type-section-title);
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .year-count {

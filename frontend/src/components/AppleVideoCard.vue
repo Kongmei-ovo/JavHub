@@ -138,7 +138,7 @@ function onImageLoad(event) {
     var(--surface-control);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .apple-video-card__preview,
@@ -213,9 +213,9 @@ function onImageLoad(event) {
   min-width: 0;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -235,7 +235,7 @@ function onImageLoad(event) {
 .apple-video-card__title {
   margin: 0 0 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 500;
   line-height: 1.45;
   display: -webkit-box;
@@ -249,7 +249,7 @@ function onImageLoad(event) {
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
 }
 
 @media (hover: none) {

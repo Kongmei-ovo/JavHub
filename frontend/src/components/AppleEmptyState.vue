@@ -41,7 +41,8 @@ defineEmits(['action'])
 h3 {
   margin: 0 0 8px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--type-panel-title);
+  letter-spacing: 0;
 }
 
 p {

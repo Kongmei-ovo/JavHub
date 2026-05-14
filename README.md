@@ -42,6 +42,14 @@ npm install
 npm run dev
 ```
 
+Local development uses three ports by default:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| JavHub frontend | `http://localhost:5173` | Browser entrypoint |
+| JavHub backend | `http://localhost:18090` | Frontend `/api` proxy target |
+| JavInfoApi | `http://localhost:18080` | Metadata API called by JavHub backend |
+
 ## Configuration
 
 Edit `config.yaml`:
@@ -56,6 +64,11 @@ openlist:
 emby:
   api_url: "http://your-emby:8096"
   api_key: "your-api-key"
+
+javinfo:
+  api_url: "http://localhost:18080"
+  page_size: 30
+  supplement_admin_token: ""
 
 telegram:
   bot_token: "123456:ABC-DEF..."

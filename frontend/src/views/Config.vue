@@ -1279,10 +1279,11 @@ export default {
 }
 
 .settings-header h1 { 
-  font-size: 32px; 
+  font-size: var(--type-page-title); 
   font-weight: 700; 
   color: var(--text-primary);
   margin-bottom: 32px; 
+  letter-spacing: 0;
 }
 
 .settings-tabs { 
@@ -1302,7 +1303,7 @@ export default {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 500;
   cursor: pointer;
   position: relative;
@@ -1328,7 +1329,7 @@ export default {
 }
 
 .tab-icon {
-  font-size: 18px;
+  font-size: var(--type-panel-title);
 }
 
 .settings-content-wide {
@@ -1368,14 +1369,15 @@ export default {
 }
 
 .section-header h2 {
-  font-size: 24px;
+  font-size: var(--type-section-title);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
+  letter-spacing: 0;
 }
 
 .section-header p {
-  font-size: 14px;
+  font-size: var(--type-body);
   color: var(--text-muted);
 }
 
@@ -1406,9 +1408,10 @@ export default {
 }
 
 .settings-card-header h2 {
-  font-size: 18px;
+  font-size: var(--type-panel-title);
   font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .settings-sub-section {
@@ -1431,7 +1434,7 @@ export default {
 
 .form-group { margin-bottom: 20px; }
 .form-group:last-child { margin-bottom: 0; }
-.form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.form-group label { display: block; margin-bottom: 8px; font-size: var(--type-control); color: var(--text-secondary); font-weight: 500; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .bubble-control-row { margin-top: 16px; }
 .form-group-fill { flex: 1; }
@@ -1465,7 +1468,7 @@ export default {
   .settings {
     padding-bottom: 112px;
   }
-  .settings-header h1 { font-size: 28px; }
+  .settings-header h1 { font-size: var(--type-page-title-mobile); }
   .settings-tabs {
     margin: 0 -20px;
     padding: 0 20px 8px;
@@ -1520,7 +1523,7 @@ export default {
   cursor: pointer;
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
-.form-group.checkbox label { margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.form-group.checkbox label { margin: 0; font-size: var(--type-body); color: var(--text-primary); cursor: pointer; }
 .telegram-test-row,
 .ai-test-row {
   display: flex;

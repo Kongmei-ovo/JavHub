@@ -71,6 +71,24 @@
   --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', monospace;
+  --type-display: 56px;
+  --type-display-mobile: 32px;
+  --type-page-title: 30px;
+  --type-page-title-mobile: 26px;
+  --type-workbench-title: 24px;
+  --type-entity-title: 28px;
+  --type-section-title: 22px;
+  --type-panel-title: 18px;
+  --type-card-title: 15px;
+  --type-body: 14px;
+  --type-control: 13px;
+  --type-caption: 12px;
+  --type-micro: 11px;
+  --type-badge: 10px;
+  --page-title-size: var(--type-display);
+  --page-title-size-mobile: var(--type-display-mobile);
+  --page-title-line: 1.06;
+  --page-title-weight: 650;
 
   /* 层级 */
   --z-base: 0;
@@ -214,7 +232,7 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
 /* ===== Typography ===== */
-h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: 0; text-wrap: balance; }
 h4 { font-weight: 600; letter-spacing: -0.01em; }
 a {
   color: var(--link-text);
@@ -283,7 +301,7 @@ a:hover {
   align-items: center;
   padding: 4px 10px;
   border-radius: var(--radius-xs);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -306,7 +324,7 @@ a:hover {
   min-height: var(--touch-target);
   padding: 10px 18px;
   border-radius: var(--radius-control);
-  font-size: 14px;
+  font-size: var(--type-control);
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -345,7 +363,7 @@ a:hover {
 .glass-select {
   --glass-select-height: 44px;
   --glass-select-padding: 0 14px;
-  --glass-select-font: 13px;
+  --glass-select-font: var(--type-control);
   --glass-select-menu-max-height: 360px;
   --glass-select-radius: var(--radius-md);
   --glass-select-menu-radius: var(--radius-lg);
@@ -757,7 +775,7 @@ a:hover {
   text-align: center;
 }
 .empty-state svg { width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 16px; opacity: 0.5; }
-.empty-state p { color: var(--text-secondary); font-size: 15px; }
+.empty-state p { color: var(--text-secondary); font-size: var(--type-card-title); }
 
 /* ==========================================
    ✨ 高级感 Element Plus 样式覆盖

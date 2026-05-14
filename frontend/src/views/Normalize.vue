@@ -567,7 +567,7 @@ onMounted(reloadAll)
   gap: 16px;
   margin-bottom: 16px;
 }
-.page-header h1 { margin: 0; font-size: 30px; line-height: 1.1; }
+.page-header h1 { margin: 0; font-size: var(--type-page-title); line-height: 1.1; letter-spacing: 0; }
 .header-actions {
   display: flex;
   align-items: flex-start;
@@ -587,8 +587,8 @@ onMounted(reloadAll)
   border-radius: var(--radius-md);
   background: var(--bg-card);
 }
-.summary-card strong { display: block; font-size: 24px; color: var(--text-primary); }
-.summary-card span { color: var(--text-secondary); font-size: 13px; }
+.summary-card strong { display: block; font-size: var(--type-workbench-title); color: var(--text-primary); }
+.summary-card span { color: var(--text-secondary); font-size: var(--type-control); }
 .auto-match-panel {
   display: flex;
   align-items: center;

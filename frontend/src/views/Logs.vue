@@ -109,7 +109,7 @@ export default {
 .logs {
   color: var(--text-primary);
 }
-.logs h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+.logs h1 { margin: 0; font-size: var(--type-page-title); line-height: 1.2; letter-spacing: 0; }
 .toolbar { margin: 20px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .toolbar .glass-select { width: 132px; }
 .toolbar input {
@@ -159,7 +159,7 @@ export default {
 }
 .logs-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
 .log-list { max-height: 500px; overflow-y: auto; }
-.log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid var(--border); font-family: monospace; font-size: 13px; min-width: 0; }
+.log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid var(--border); font-family: monospace; font-size: var(--type-control); min-width: 0; }
 .log-item:last-child { border-bottom: none; }
 .log-time { color: var(--text-muted); width: 160px; flex-shrink: 0; }
 .log-level { width: 70px; flex-shrink: 0; font-weight: bold; }

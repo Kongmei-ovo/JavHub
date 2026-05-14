@@ -464,7 +464,7 @@ const fetchJobs = async () => {
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
-.page-header h1 { font-size: 30px; line-height: 1.1; }
+.page-header h1 { font-size: var(--type-page-title); line-height: 1.1; letter-spacing: 0; }
 .header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .progress-ring-container {
   position: relative;

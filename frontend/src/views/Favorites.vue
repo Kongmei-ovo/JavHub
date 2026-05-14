@@ -256,15 +256,16 @@ export default {
 }
 
 .curate-title {
-  font-size: 42px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: var(--page-title-line);
+  letter-spacing: 0;
   margin-bottom: 8px;
   color: var(--text-primary);
 }
 
 .curate-stats {
-  font-size: 14px;
+  font-size: var(--type-body);
   color: var(--text-muted);
   margin-bottom: 32px;
 }
@@ -287,7 +288,7 @@ export default {
   background: transparent;
   color: var(--text-secondary);
   padding: 8px 20px;
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 600;
   border-radius: 10px;
   cursor: pointer;
@@ -309,7 +310,7 @@ export default {
 }
 
 .tab-badge {
-  font-size: 10px;
+  font-size: var(--type-badge);
   background: rgba(255, 255, 255, 0.08);
   padding: 1px 6px;
   border-radius: 8px;
@@ -341,7 +342,7 @@ export default {
 }
 
 .section-label {
-  font-size: 13px;
+  font-size: var(--type-control);
   color: var(--text-muted);
   margin-bottom: 16px;
   text-transform: uppercase;
@@ -376,13 +377,13 @@ export default {
 }
 
 .entity-name {
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .entity-type-tag {
-  font-size: 10px;
+  font-size: var(--type-badge);
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.05);
   padding: 2px 6px;
@@ -426,16 +427,17 @@ export default {
 }
 
 .curate-empty h3 {
-  font-size: 22px;
+  font-size: var(--type-section-title);
   font-weight: 700;
   margin-bottom: 12px;
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .curate-empty p {
   color: var(--text-muted);
   margin-bottom: 40px;
-  font-size: 15px;
+  font-size: var(--type-card-title);
 }
 
 .btn-explore {
@@ -493,12 +495,12 @@ export default {
 
 @media (max-width: 768px) {
   .favorites-page { --page-top-space: 40px; }
-  .curate-title { font-size: 32px; }
+  .curate-title { font-size: var(--page-title-size-mobile); }
   .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
   .segment-item {
     min-height: 44px;
     padding: 8px 14px;
-    font-size: 12px;
+    font-size: var(--type-caption);
   }
   .entity-bubble {
     min-height: 44px;

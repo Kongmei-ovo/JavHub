@@ -1262,9 +1262,10 @@ p {
 }
 
 .supplement-topbar h1 {
-  font-size: 30px;
+  font-size: var(--type-page-title);
   line-height: 1.1;
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .topbar-actions,
@@ -1287,16 +1288,17 @@ p {
 
 .hero-copy h2 {
   max-width: 620px;
-  font-size: 34px;
+  font-size: var(--type-page-title);
   line-height: 1.08;
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .hero-copy p:last-child {
   max-width: 560px;
   margin-top: 12px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.7;
 }
 
@@ -1377,8 +1379,9 @@ p {
 
 .section-title-row h2,
 .panel-header h2 {
-  font-size: 20px;
+  font-size: var(--type-panel-title);
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .soft-count {
@@ -1567,13 +1570,14 @@ p {
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
 }
 
 .workspace-title h2 {
   color: var(--text-primary);
-  font-size: 28px;
+  font-size: var(--type-entity-title);
   line-height: 1.1;
+  letter-spacing: 0;
 }
 
 .workspace-title p:last-child {
@@ -2316,7 +2320,7 @@ p {
   }
 
   .hero-copy h2 {
-    font-size: 28px;
+    font-size: var(--type-page-title-mobile);
   }
 
   .workspace-status {

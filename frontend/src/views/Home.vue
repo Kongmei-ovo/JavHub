@@ -1460,8 +1460,8 @@ export default {
   flex-wrap: wrap;
 }
 .header-left { display: flex; flex-direction: column; gap: 4px; }
-.page-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); }
-.header-subtitle { font-size: 13px; color: var(--text-muted); }
+.page-header h1 { font-size: var(--type-workbench-title); font-weight: 700; color: var(--text-primary); letter-spacing: 0; }
+.header-subtitle { font-size: var(--type-control); color: var(--text-muted); }
 .downloading-hint { color: var(--text-secondary); }
 .header-actions { display: flex; gap: 8px; }
 .header-actions .btn { gap: 6px; }
@@ -1519,7 +1519,7 @@ export default {
 .stat-info { min-width: 0; }
 .stat-num {
   font-family: var(--font-mono);
-  font-size: 28px;
+  font-size: var(--type-entity-title);
   letter-spacing: -0.04em;
   font-weight: 600;
   color: var(--text-primary);
@@ -1559,7 +1559,7 @@ export default {
 .metric-value {
   display: block;
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: var(--type-section-title);
   font-weight: 700;
 }
 .metric-label {
@@ -1766,7 +1766,7 @@ export default {
   color: var(--text-primary);
   font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .downloader-toolbar-copy span {
   display: block;
@@ -2203,8 +2203,9 @@ export default {
 }
 .inline-dialog-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--type-panel-title);
   color: var(--text-primary);
+  letter-spacing: 0;
 }
 .inline-dialog-header p {
   margin: 4px 0 0;
@@ -2331,7 +2332,7 @@ export default {
 @media (max-width: 768px) {
   .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-card { padding: 14px; gap: 12px; }
-  .stat-num { font-size: 22px; }
+  .stat-num { font-size: var(--type-section-title); }
   .stat-icon { width: 40px; height: 40px; }
   .tasks-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .header-actions .btn,
