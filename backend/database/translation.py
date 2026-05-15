@@ -825,7 +825,7 @@ def sync_translation_workbench_from_mappings(
     *,
     item_type: str | None = None,
     q: str | None = None,
-    limit: int = 500,
+    limit: int | None = 500,
 ) -> int:
     """Seed workbench rows from authoritative translation_mappings."""
     if item_type and not _valid_workbench_type(item_type):
@@ -833,8 +833,15 @@ def sync_translation_workbench_from_mappings(
     types = [item_type] if item_type else sorted(_VALID_TYPES)
     q_text = str(q or "").strip()
     q_like = f"%{q_text}%" if q_text else ""
-    limit = max(1, min(int(limit or 500), 5000))
+    try:
+        parsed_limit = None if limit is None else int(limit or 500)
+    except Exception:
+        parsed_limit = 500
+    max_entries = None if parsed_limit is None else max(1, min(parsed_limit, 5000))
     entries: list[dict] = []
+
+    def reached_limit() -> bool:
+        return max_entries is not None and len(entries) >= max_entries
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -849,16 +856,17 @@ def sync_translation_workbench_from_mappings(
                 if q_text:
                     clauses.append("(content_id LIKE ? OR title_json LIKE ?)")
                     params.extend([q_like, q_like])
-                cursor.execute(
-                    f'''
+                sql = f'''
                     SELECT content_id, title_json
                     FROM translation_mappings
                     WHERE {' AND '.join(clauses)}
                     ORDER BY updated_at DESC
-                    LIMIT ?
-                    ''',
-                    [*params, limit],
-                )
+                '''
+                query_params = [*params]
+                if max_entries is not None:
+                    sql += " LIMIT ?"
+                    query_params.append(max_entries)
+                cursor.execute(sql, query_params)
                 for row in cursor.fetchall():
                     content_id = str(row["content_id"] or "")
                     for source, translated in _valid_mapping(_json_mapping(row["title_json"])).items():
@@ -873,9 +881,9 @@ def sync_translation_workbench_from_mappings(
                             "provider": "mapping",
                             "scope": _workbench_scope("title", _normalize_title_id(content_id), source),
                         })
-                        if len(entries) >= limit:
+                        if reached_limit():
                             break
-                    if len(entries) >= limit:
+                    if reached_limit():
                         break
                 continue
 
@@ -895,9 +903,9 @@ def sync_translation_workbench_from_mappings(
                 ORDER BY updated_at DESC
             '''
             query_params = [*params]
-            if not q_text:
+            if max_entries is not None and not q_text:
                 sql += " LIMIT ?"
-                query_params.append(limit)
+                query_params.append(max_entries)
             cursor.execute(sql, query_params)
             prefix = f"{current_type}:"
             global_prefix = f"_global:{current_type}:"
@@ -921,11 +929,11 @@ def sync_translation_workbench_from_mappings(
                         "provider": "mapping",
                         "scope": _workbench_scope(current_type, item_id, source),
                     })
-                    if len(entries) >= limit:
+                    if reached_limit():
                         break
-                if len(entries) >= limit:
+                if reached_limit():
                     break
-            if len(entries) >= limit:
+            if reached_limit():
                 break
 
     return bulk_upsert_translation_workbench_items(entries)

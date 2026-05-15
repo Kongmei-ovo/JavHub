@@ -285,7 +285,7 @@
     <section v-else-if="activeSegment === 'review'" class="workspace-panel apple-surface">
       <div class="panel-header">
         <div>
-          <h2>审核工作台</h2>
+          <h2>校对台</h2>
         </div>
         <div class="panel-actions">
           <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewLoading" @click="loadTranslationItems(reviewPage)">
@@ -303,7 +303,7 @@
           <GlassSelect
             v-model="reviewType"
             :options="translationTypeOptions"
-            aria-label="审核类型"
+            aria-label="校对类型"
             @change="loadTranslationItems(1)"
           />
         </label>
@@ -312,7 +312,7 @@
           <GlassSelect
             v-model="reviewStatus"
             :options="reviewStatusOptions"
-            aria-label="审核状态"
+            aria-label="校对状态"
             @change="loadTranslationItems(1)"
           />
         </label>
@@ -332,7 +332,7 @@
         <div><strong>{{ reviewTotal }}</strong><span>索引条目</span></div>
         <div><strong>{{ reviewStatsByStatus.untranslated || 0 }}</strong><span>未翻译</span></div>
         <div><strong>{{ reviewStatsByStatus.failed || 0 }}</strong><span>失败</span></div>
-        <div><strong>{{ reviewUnreviewed }}</strong><span>未审核</span></div>
+        <div><strong>{{ reviewUnreviewed }}</strong><span>待校对</span></div>
       </div>
 
       <div v-if="reviewMessage" class="message-line" :class="reviewMessageType">{{ reviewMessage }}</div>
@@ -361,7 +361,7 @@
           </div>
           <div class="review-actions">
             <button class="btn btn-primary btn-sm" type="button" @click="saveReviewItem(item)">保存</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="markReviewItem(item)">通过</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="markReviewItem(item)">标记已校对</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="showItemHistory(item)">历史</button>
             <button class="btn btn-ghost btn-sm danger" type="button" @click="resetReviewItem(item)">重置</button>
           </div>
@@ -370,7 +370,17 @@
 
       <div class="review-pagination">
         <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage <= 1" @click="loadTranslationItems(reviewPage - 1)">上一页</button>
-        <span>{{ reviewPage }} / {{ reviewTotalPages }}</span>
+        <span>共 {{ reviewTotalCount }} 条 · 第 {{ reviewPage }} / {{ reviewTotalPages }} 页</span>
+        <label class="page-size-field">
+          <span>每页</span>
+          <GlassSelect
+            v-model="reviewPageSize"
+            :options="reviewPageSizeOptions"
+            size="compact"
+            aria-label="校对台每页条数"
+            @change="loadTranslationItems(1)"
+          />
+        </label>
         <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage >= reviewTotalPages" @click="loadTranslationItems(reviewPage + 1)">下一页</button>
       </div>
 
@@ -487,7 +497,7 @@ const WORKBENCH_STATUS_OPTIONS = [
   { value: 'untranslated', label: '未翻译' },
   { value: 'failed', label: '失败' },
   { value: 'machine_translated', label: '机翻' },
-  { value: 'reviewed', label: '已审核' },
+  { value: 'reviewed', label: '已校对' },
   { value: 'manual_edited', label: '人工修改' },
   { value: 'invalid', label: '无效' },
 ]
@@ -511,7 +521,7 @@ export default {
         { key: 'overview', label: '总览' },
         { key: 'create', label: '创建作业' },
         { key: 'sources', label: '翻译源' },
-        { key: 'review', label: '审核工作台' },
+        { key: 'review', label: '校对台' },
         { key: 'mappings', label: '映射导入' },
         { key: 'history', label: '历史记录' },
       ],
@@ -537,6 +547,12 @@ export default {
       reviewQuery: '',
       reviewPage: 1,
       reviewPageSize: 30,
+      reviewPageSizeOptions: [
+        { value: 30, label: '30' },
+        { value: 50, label: '50' },
+        { value: 100, label: '100' },
+        { value: 200, label: '200' },
+      ],
       reviewTotalCount: 0,
       reviewTotalPages: 1,
       reviewItems: [],
@@ -941,7 +957,7 @@ export default {
         this.reviewStats = data.stats || {}
       } catch (error) {
         console.error('Failed to load translation workbench:', error)
-        this.reviewMessage = error.response?.data?.detail || '审核工作台加载失败'
+        this.reviewMessage = error.response?.data?.detail || '校对台加载失败'
         this.reviewMessageType = 'error'
       } finally {
         this.reviewLoading = false
@@ -967,11 +983,11 @@ export default {
     async markReviewItem(item) {
       try {
         const resp = await api.updateTranslationItem(item.item_type, item.item_id, {
-          action: 'review',
+          action: 'proofread',
           source_text: item.source_text,
         })
         Object.assign(item, resp.data || {}, { edit_text: resp.data?.translated_text || item.edit_text })
-        this.reviewMessage = '已标记审核通过'
+        this.reviewMessage = '已标记为已校对'
         this.reviewMessageType = 'success'
         await this.loadTranslationItems(this.reviewPage)
       } catch (error) {
@@ -1101,7 +1117,7 @@ export default {
       return {
         untranslated: '未翻译',
         machine_translated: '机翻',
-        reviewed: '已审核',
+        reviewed: '已校对',
         manual_edited: '人工修改',
         failed: '失败',
         invalid: '无效',
@@ -1825,9 +1841,20 @@ export default {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.page-size-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-size-field :deep(.glass-select) {
+  width: 82px;
 }
 
 .review-history-panel {

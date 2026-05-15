@@ -520,6 +520,17 @@ async def list_translation_items(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
 ):
+    item_type = str(item_type).strip() if isinstance(item_type, str) and item_type.strip() else None
+    q = str(q).strip() if isinstance(q, str) and q.strip() else None
+    status = str(status).strip() if isinstance(status, str) and status.strip() else None
+    try:
+        page = int(page)
+    except Exception:
+        page = 1
+    try:
+        page_size = int(page_size)
+    except Exception:
+        page_size = 50
     if item_type and item_type not in VALID_TYPES:
         raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
     seeded = 0
@@ -527,7 +538,7 @@ async def list_translation_items(
         seeded += sync_translation_workbench_from_mappings(
             item_type=item_type,
             q=q,
-            limit=max(200, min(page_size * 10, 1000)),
+            limit=None,
         )
     if item_type and q:
         try:
@@ -595,7 +606,7 @@ async def update_translation_item(item_type: str, item_id: str, body: dict[str, 
         if not translated_text:
             raise HTTPException(400, "translated_text is required")
         item = save_translation_workbench_manual(item_type, item_id, translated_text, operator=operator)
-    elif action == "review":
+    elif action in {"review", "proofread"}:
         item = review_translation_workbench_item(item_type, item_id, operator=operator)
     elif action == "reset":
         item = reset_translation_workbench_item(
@@ -613,7 +624,7 @@ async def update_translation_item(item_type: str, item_id: str, body: dict[str, 
             raise HTTPException(400, "history_id is required")
         item = restore_translation_workbench_history(item_type, item_id, history_id, operator=operator)
     else:
-        raise HTTPException(400, "action must be save, review, reset, or restore")
+        raise HTTPException(400, "action must be save, proofread, review, reset, or restore")
 
     if not item:
         raise HTTPException(404, "translation workbench item not found")

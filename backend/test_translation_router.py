@@ -209,6 +209,33 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(listed["data"][0]["translated_text"], "三上悠亚")
         self.assertEqual(listed["data"][0]["provider"], "mapping")
 
+    async def test_workbench_list_syncs_all_authoritative_mapping_rows_with_pagination(self):
+        from database import upsert_translation
+        from routers.translation import list_translation_items
+
+        for index in range(0, 1005):
+            upsert_translation(f"category:{index}", {"category": {f"原文{index:04d}": f"译文{index:04d}"}})
+
+        listed = await list_translation_items(item_type="category", page=11, page_size=100)
+
+        self.assertEqual(listed["total_count"], 1005)
+        self.assertEqual(listed["total_pages"], 11)
+        self.assertEqual(len(listed["data"]), 5)
+
+    async def test_workbench_search_syncs_authoritative_mapping_rows_outside_first_page(self):
+        from database import upsert_translation
+        from routers.translation import list_translation_items
+
+        for index in range(0, 1005):
+            translated = "最后一个译文" if index == 1004 else f"译文{index:04d}"
+            upsert_translation(f"category:{index}", {"category": {f"原文{index:04d}": translated}})
+
+        listed = await list_translation_items(item_type="category", q="最后一个译文", page=1, page_size=20)
+
+        self.assertEqual(listed["total_count"], 1)
+        self.assertEqual(listed["data"][0]["item_id"], "1004")
+        self.assertEqual(listed["data"][0]["translated_text"], "最后一个译文")
+
     async def test_workbench_review_and_reset_status(self):
         from database import get_translation, upsert_translation_workbench_item, upsert_translation
         from routers.translation import update_translation_item
@@ -223,7 +250,7 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             provider="google_free",
         )
 
-        reviewed = await update_translation_item("category", "7", {"action": "review"})
+        reviewed = await update_translation_item("category", "7", {"action": "proofread"})
         self.assertEqual(reviewed["status"], "reviewed")
 
         reset = await update_translation_item("category", "7", {"action": "reset"})

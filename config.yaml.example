@@ -1,5 +1,5 @@
 server:
-  frontend_origin: "http://localhost:5173"
+  frontend_origin: "http://localhost:5174"
 
 openlist:
   api_url: "https://fox.oplist.org"

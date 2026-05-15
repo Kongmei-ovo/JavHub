@@ -20,10 +20,11 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
+    port: 5174,
     proxy: {
       '/api': {
         // 端口与 config.yaml 中 server.port 保持一致
-        target: 'http://localhost:18090',
+        target: 'http://127.0.0.1:18090',
         changeOrigin: true
       }
     }

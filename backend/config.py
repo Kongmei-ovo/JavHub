@@ -65,7 +65,7 @@ class Config:
 
     @property
     def frontend_origin(self) -> str:
-        return self._config.get('server', {}).get('frontend_origin', 'http://localhost:5173')
+        return self._config.get('server', {}).get('frontend_origin', 'http://localhost:5174')
 
     @property
     def openlist_api_url(self) -> str:
