@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -176,6 +177,66 @@ class GoogleFreeProvider:
             return None
         return TranslationResult(translated_text=translated, provider=self.name)
 
+    async def translate_many(self, requests: list[TranslationRequest]) -> list[TranslationResult | None]:
+        supported = [request for request in requests if self.supports(request)]
+        if len(supported) != len(requests):
+            return [None for _ in requests]
+        if not requests:
+            return []
+        if len(requests) == 1:
+            return [await self.translate(requests[0])]
+
+        base_url = str(self.settings.get("base_url") or "https://translate.googleapis.com/translate_a/single")
+        try:
+            timeout = float(self.settings.get("timeout", 10))
+        except Exception:
+            timeout = 10.0
+        joined = "\n".join(_one_line(request.text) for request in requests)
+        params = {
+            "client": "gtx",
+            "sl": requests[0].source_language or "auto",
+            "tl": _target_lang(requests[0].target_language),
+            "dt": "t",
+            "q": joined,
+        }
+        try:
+            if self.reuse_client:
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=timeout, trust_env=False)
+                response = await self._client.get(base_url, params=params)
+            else:
+                async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                    response = await client.get(base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            translated = "".join(part[0] for part in data[0] if part and part[0]).strip()
+        except Exception as exc:
+            logger.warning("Google free batch translation failed for %s items: %s", len(requests), exc)
+            return await self._translate_many_split(requests)
+
+        lines = translated.splitlines()
+        if len(lines) != len(requests):
+            logger.warning(
+                "Google free batch translation returned %s lines for %s requests",
+                len(lines),
+                len(requests),
+            )
+            return await self._translate_many_split(requests)
+        return [
+            TranslationResult(translated_text=line.strip(), provider=self.name) if line.strip() else None
+            for line in lines
+        ]
+
+    async def _translate_many_split(self, requests: list[TranslationRequest]) -> list[TranslationResult | None]:
+        if len(requests) <= 1:
+            return [await self.translate(requests[0])] if requests else []
+        middle = max(1, len(requests) // 2)
+        left, right = await asyncio.gather(
+            self.translate_many(requests[:middle]),
+            self.translate_many(requests[middle:]),
+        )
+        return [*left, *right]
+
 
 class DeepLProvider:
     name = "deepl"
@@ -268,6 +329,10 @@ def _target_lang(value: str) -> str:
     if normalized in {"zh-tw", "zh-hant"}:
         return "zh-TW"
     return normalized
+
+
+def _one_line(value: str) -> str:
+    return " ".join(str(value or "").replace("\r", "\n").splitlines()).strip()
 
 
 def _deepl_target_lang(value: str) -> str:

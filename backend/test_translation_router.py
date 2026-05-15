@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from starlette.datastructures import UploadFile
 
@@ -37,7 +37,7 @@ async def _stream_json(response) -> dict:
 
 
 class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
-    async def test_stats_coverage_uses_javinfo_totals_and_dedupes_cache(self):
+    async def test_stats_coverage_uses_mappings_as_authoritative_and_reports_cache_separately(self):
         from database import upsert_cached_translation, upsert_translation
         from routers.translation import all_stats
 
@@ -65,15 +65,15 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(stats["coverage"]["title"], {
             "total": 3,
-            "translated": 2,
-            "untranslated": 1,
+            "translated": 1,
+            "untranslated": 2,
             "mapped": 1,
             "cached": 2,
         })
         self.assertEqual(stats["coverage"]["category"], {
             "total": 3,
-            "translated": 2,
-            "untranslated": 1,
+            "translated": 1,
+            "untranslated": 2,
         })
 
     async def test_import_accepts_self_describing_title_json_and_same_text_translation(self):
@@ -125,6 +125,147 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["_dst"], "title_translated")
         self.assertEqual(payload["data"]["miaa784"]["title_ja"], "タイトル")
         self.assertEqual(payload["data"]["miaa784"]["title_translated"], "标题")
+
+    async def test_start_job_uses_mode_without_limit_cap(self):
+        from routers.translation import start_translation_job
+
+        with patch(
+            "routers.translation.create_translation_job",
+            AsyncMock(return_value={"id": 5, "status": "pending"}),
+        ) as create_job:
+            result = await start_translation_job({
+                "job_type": "library_titles",
+                "provider_order": ["cache", "mapping", "google_free"],
+                "mode": "refresh_all",
+                "limit": 1,
+            })
+
+        self.assertEqual(result["id"], 5)
+        create_job.assert_awaited_once_with(
+            "library_titles",
+            provider_order=["cache", "mapping", "google_free"],
+            mode="refresh_all",
+        )
+
+    async def test_start_job_keeps_legacy_force_compatibility(self):
+        from routers.translation import start_translation_job
+
+        with patch(
+            "routers.translation.create_translation_job",
+            AsyncMock(return_value={"id": 6, "status": "pending"}),
+        ) as create_job:
+            await start_translation_job({"job_type": "metadata_names", "force": True})
+
+        create_job.assert_awaited_once_with(
+            "metadata_names",
+            provider_order=None,
+            mode="refresh_all",
+        )
+
+    async def test_workbench_manual_save_updates_mapping_and_history(self):
+        from database import get_translation, upsert_translation_workbench_item
+        from routers.translation import get_translation_item_history, list_translation_items, update_translation_item
+
+        upsert_translation_workbench_item("actress", 26225, "三上悠亜")
+
+        class Client:
+            async def list_actresses(self, q=None, page=1, page_size=50):
+                return {"data": [], "total_count": 0, "total_pages": 1}
+
+        with patch("routers.translation.get_info_client", return_value=Client()):
+            listed = await list_translation_items(item_type="actress", q="三上", page=1, page_size=20)
+        self.assertEqual(listed["total_count"], 1)
+        self.assertEqual(listed["data"][0]["status"], "untranslated")
+
+        saved = await update_translation_item(
+            "actress",
+            "26225",
+            {"action": "save", "source_text": "三上悠亜", "translated_text": "三上悠亚"},
+        )
+
+        self.assertEqual(saved["status"], "manual_edited")
+        self.assertEqual(saved["translated_text"], "三上悠亚")
+        self.assertEqual(get_translation("actress:26225")["actress"]["三上悠亜"], "三上悠亚")
+
+        history = await get_translation_item_history("actress", "26225")
+        self.assertEqual(len(history["data"]), 1)
+        self.assertEqual(history["data"][0]["new_text"], "三上悠亚")
+
+    async def test_workbench_list_sees_authoritative_mapping_rows(self):
+        from database import upsert_translation
+        from routers.translation import list_translation_items
+
+        upsert_translation("actress:26225", {"actress": {"三上悠亜": "三上悠亚"}})
+
+        class Client:
+            async def list_actresses(self, q=None, page=1, page_size=50):
+                return {"data": [], "total_count": 0, "total_pages": 1}
+
+        with patch("routers.translation.get_info_client", return_value=Client()):
+            listed = await list_translation_items(item_type="actress", q="三上悠亚", page=1, page_size=20)
+
+        self.assertEqual(listed["total_count"], 1)
+        self.assertEqual(listed["data"][0]["source_text"], "三上悠亜")
+        self.assertEqual(listed["data"][0]["translated_text"], "三上悠亚")
+        self.assertEqual(listed["data"][0]["provider"], "mapping")
+
+    async def test_workbench_review_and_reset_status(self):
+        from database import get_translation, upsert_translation_workbench_item, upsert_translation
+        from routers.translation import update_translation_item
+
+        upsert_translation("category:7", {"category": {"ドラマ": "剧情"}})
+        upsert_translation_workbench_item(
+            "category",
+            7,
+            "ドラマ",
+            translated_text="剧情",
+            status="machine_translated",
+            provider="google_free",
+        )
+
+        reviewed = await update_translation_item("category", "7", {"action": "review"})
+        self.assertEqual(reviewed["status"], "reviewed")
+
+        reset = await update_translation_item("category", "7", {"action": "reset"})
+        self.assertEqual(reset["status"], "untranslated")
+        self.assertEqual(reset["translated_text"], "")
+        self.assertFalse(get_translation("category:7")["category"].get("ドラマ"))
+
+    async def test_retry_endpoint_creates_filtered_workbench_job(self):
+        from routers.translation import retry_translation_items
+
+        with patch(
+            "routers.translation.create_translation_retry_job",
+            AsyncMock(return_value={"id": 9, "status": "pending"}),
+        ) as create_job:
+            result = await retry_translation_items({
+                "type": "actress",
+                "status": "failed",
+                "q": "三上",
+                "ids": ["26225"],
+                "provider_order": ["cache", "google_free"],
+            })
+
+        self.assertEqual(result["id"], 9)
+        create_job.assert_awaited_once_with(
+            item_type="actress",
+            status="failed",
+            q="三上",
+            ids=["26225"],
+            provider_order=["cache", "google_free"],
+        )
+
+    async def test_pause_job_endpoint_marks_job_paused(self):
+        from routers.translation import pause_job
+
+        with patch(
+            "routers.translation.pause_translation_job",
+            return_value={"id": 7, "status": "paused"},
+        ) as pause:
+            result = await pause_job(7)
+
+        self.assertEqual(result["status"], "paused")
+        pause.assert_called_once_with(7)
 
 
 if __name__ == "__main__":

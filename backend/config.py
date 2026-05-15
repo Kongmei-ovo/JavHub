@@ -272,7 +272,11 @@ class Config:
             'provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
             'batch_provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
             'realtime_mode': 'cache_only',
-            'batch_concurrency': 8,
+            'batch_concurrency': 32,
+            'batch_size': 200,
+            'batch_char_limit': 24000,
+            'source_page_size': 500,
+            'scan_pages_per_batch': 8,
             'google_free': {
                 'enabled': True,
                 'base_url': 'https://translate.googleapis.com/translate_a/single',
@@ -327,7 +331,39 @@ class Config:
     @property
     def translation_batch_concurrency(self) -> int:
         try:
-            value = int(self.translation.get('batch_concurrency', 8) or 8)
+            value = int(self.translation.get('batch_concurrency', 32) or 32)
+        except Exception:
+            value = 32
+        return max(1, min(value, 64))
+
+    @property
+    def translation_batch_size(self) -> int:
+        try:
+            value = int(self.translation.get('batch_size', 200) or 200)
+        except Exception:
+            value = 200
+        return max(1, min(value, 200))
+
+    @property
+    def translation_batch_char_limit(self) -> int:
+        try:
+            value = int(self.translation.get('batch_char_limit', 24000) or 24000)
+        except Exception:
+            value = 24000
+        return max(500, min(value, 24000))
+
+    @property
+    def translation_source_page_size(self) -> int:
+        try:
+            value = int(self.translation.get('source_page_size', 500) or 500)
+        except Exception:
+            value = 500
+        return max(20, min(value, 1000))
+
+    @property
+    def translation_scan_pages_per_batch(self) -> int:
+        try:
+            value = int(self.translation.get('scan_pages_per_batch', 8) or 8)
         except Exception:
             value = 8
         return max(1, min(value, 64))

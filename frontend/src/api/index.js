@@ -407,6 +407,26 @@ export default {
     return api.get(`/v1/translations/jobs/${jobId}`)
   },
 
+  pauseTranslationJob(jobId) {
+    return api.post(`/v1/translations/jobs/${jobId}/pause`)
+  },
+
+  listTranslationItems(params = {}) {
+    return api.get('/v1/translations/items', { params })
+  },
+
+  updateTranslationItem(type, itemId, payload = {}) {
+    return api.patch(`/v1/translations/items/${type}/${itemId}`, payload)
+  },
+
+  getTranslationItemHistory(type, itemId, limit = 50) {
+    return api.get(`/v1/translations/items/${type}/${itemId}/history`, { params: { limit } })
+  },
+
+  retryTranslationItems(payload = {}) {
+    return api.post('/v1/translations/items/retry', payload)
+  },
+
   // ========== 收藏管理 ==========
 
   getFavorites(entity_type) {

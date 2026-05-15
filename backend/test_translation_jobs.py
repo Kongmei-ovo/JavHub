@@ -176,7 +176,7 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_title_job_uses_bounded_concurrency_and_keeps_failures_local(self):
-        from database import add_translation_job, get_translation, upsert_cached_translation, upsert_translation
+        from database import add_translation_job, get_translation, get_translation_workbench_item, upsert_cached_translation, upsert_translation
         from translations.jobs import _translate_titles
         from translations.providers import GoogleFreeProvider, TranslationResult
 
@@ -195,15 +195,16 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         active = 0
         max_active = 0
 
-        async def translate(request):
+        async def translate_many(requests):
             nonlocal active, max_active
-            if request.text == "FAIL":
-                raise RuntimeError("provider exploded")
             active += 1
             max_active = max(max_active, active)
             try:
                 await asyncio.sleep(0.01)
-                return TranslationResult(f"{request.text}中文", "google_free")
+                return [
+                    None if request.text == "FAIL" else TranslationResult(f"{request.text}中文", "google_free")
+                    for request in requests
+                ]
             finally:
                 active -= 1
 
@@ -211,16 +212,21 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
 
         with patch("translations.jobs._batch_concurrency", return_value=4), \
+             patch("translations.jobs._batch_size", return_value=2), \
              patch("translations.jobs.logger.exception"), \
-             patch.object(GoogleFreeProvider, "translate", AsyncMock(side_effect=translate)):
+             patch.object(GoogleFreeProvider, "translate_many", AsyncMock(side_effect=translate_many)):
             await _translate_titles(job_id, items, ["google_free"], counters, force=False)
 
         self.assertGreater(max_active, 1)
         self.assertLessEqual(max_active, 4)
-        self.assertEqual(counters, {"processed": 13, "translated": 10, "skipped": 2, "failed": 1})
+        self.assertEqual(counters, {"processed": 13, "translated": 11, "skipped": 1, "failed": 1})
         self.assertEqual(get_translation("ok000")["title"]["タイトル0"], "タイトル0中文")
+        self.assertEqual(get_translation("skip002")["title"]["缓存済み"], "缓存済み中文")
+        failed_item = get_translation_workbench_item("title", "FAIL-001")
+        self.assertEqual(failed_item["status"], "failed")
+        self.assertEqual(failed_item["attempts"], 1)
 
-    async def test_title_job_counts_same_text_translation_as_done(self):
+    async def test_title_job_counts_same_text_translation_as_done_without_cache_write(self):
         from database import add_translation_job, get_cached_translation, get_translation
         from translations.jobs import _translate_titles
         from translations.providers import GoogleFreeProvider, TranslationResult
@@ -238,10 +244,184 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(counters, {"processed": 1, "translated": 1, "skipped": 0, "failed": 0})
         self.assertEqual(get_translation("miaa784")["title"]["MIAA-784"], "MIAA-784")
-        self.assertEqual(
-            get_cached_translation("title:MIAA-784:title_ja", "MIAA-784")["translated_text"],
-            "MIAA-784",
+        self.assertIsNone(get_cached_translation("title:MIAA-784:title_ja", "MIAA-784"))
+
+    async def test_refresh_all_bypasses_cache_and_mapping_providers(self):
+        from database import add_translation_job, get_translation, upsert_cached_translation, upsert_translation
+        from translations.jobs import _translate_titles
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        upsert_translation("miaa784", {"title": {"テストタイトル": "旧映射"}})
+        upsert_cached_translation("title:MIAA-784:title_ja", "テストタイトル", "旧缓存", "google_free")
+
+        job_id = add_translation_job("library_titles", provider_order=["cache", "mapping", "google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+
+        with patch.object(
+            GoogleFreeProvider,
+            "translate_many",
+            AsyncMock(return_value=[TranslationResult("新译文", "google_free")]),
+        ) as google_translate:
+            await _translate_titles(
+                job_id,
+                [{"content_id": "MIAA-784", "title_ja": "テストタイトル"}],
+                ["cache", "mapping", "google_free"],
+                counters,
+                force=True,
+            )
+
+        google_translate.assert_awaited_once()
+        self.assertEqual(counters, {"processed": 1, "translated": 1, "skipped": 0, "failed": 0})
+        self.assertEqual(get_translation("miaa784")["title"]["テストタイトル"], "新译文")
+
+    async def test_job_retries_failed_workbench_items_before_page_scan(self):
+        from database import add_translation_job, get_translation, get_translation_job, upsert_translation_workbench_item
+        from translations.jobs import _run_job
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        upsert_translation_workbench_item(
+            "title",
+            "FAIL-001",
+            "失敗タイトル",
+            status="failed",
+            last_error="timeout",
         )
+
+        class Client:
+            async def list_videos(self, page=1, page_size=100):
+                return {"data": [], "total_pages": 1, "total_count": 0}
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+
+        with patch("translations.jobs.get_info_client", return_value=Client()), \
+             patch.object(
+                 GoogleFreeProvider,
+                 "translate_many",
+                 AsyncMock(return_value=[TranslationResult("失败标题", "google_free")]),
+             ):
+            await _run_job(job_id, "library_titles", ["google_free"], force=False)
+
+        job = get_translation_job(job_id)
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["result"]["failed_retry_processed"], 1)
+        self.assertEqual(get_translation("fail001")["title"]["失敗タイトル"], "失败标题")
+
+    async def test_library_title_scan_groups_multiple_source_pages(self):
+        from database import add_translation_job, get_translation_job
+        from translations.jobs import _translate_library_titles_pages
+
+        requested = []
+
+        class Client:
+            async def list_videos(self, page=1, page_size=100):
+                requested.append((page, page_size))
+                pages = {
+                    1: [{"content_id": "AAA-001", "title_ja": "タイトル1"}, {"content_id": "AAA-002", "title_ja": "タイトル2"}],
+                    2: [{"content_id": "AAA-003", "title_ja": "タイトル3"}, {"content_id": "AAA-004", "title_ja": "タイトル4"}],
+                    3: [{"content_id": "AAA-005", "title_ja": "タイトル5"}],
+                }
+                return {"data": pages.get(page, []), "total_pages": 3, "total_count": 5}
+
+        async def fake_translate(job_id, items, provider_order, counters, *, force, source_page=None):
+            counters["processed"] += len(items)
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+        result_state = {}
+
+        with patch("translations.jobs.get_info_client", return_value=Client()), \
+             patch("translations.jobs._source_page_size", return_value=2), \
+             patch("translations.jobs._scan_pages_per_batch", return_value=2), \
+             patch("translations.jobs._translate_titles", AsyncMock(side_effect=fake_translate)) as translate_titles:
+            await _translate_library_titles_pages(
+                job_id,
+                ["google_free"],
+                counters,
+                force=False,
+                result_state=result_state,
+            )
+
+        self.assertEqual(requested, [(1, 2), (2, 2), (3, 2)])
+        self.assertEqual(translate_titles.await_count, 2)
+        first_items = translate_titles.await_args_list[0].args[1]
+        self.assertEqual([item["_source_page"] for item in first_items], [1, 1, 2, 2])
+        self.assertEqual(counters["processed"], 5)
+        job = get_translation_job(job_id)
+        self.assertEqual(job["total"], 5)
+        self.assertEqual(job["result"]["last_page"], 3)
+        self.assertEqual(job["result"]["next_page"], 4)
+
+    async def test_bulk_workbench_upsert_preserves_manual_rows_in_one_call(self):
+        from database import (
+            bulk_upsert_translation_workbench_items,
+            get_translation_workbench_item,
+            upsert_translation_workbench_item,
+        )
+
+        upsert_translation_workbench_item(
+            "actress",
+            26225,
+            "三上悠亜",
+            translated_text="三上悠亚",
+            status="manual_edited",
+            preserve_reviewed=False,
+        )
+
+        written = bulk_upsert_translation_workbench_items([
+            {
+                "item_type": "actress",
+                "item_id": 26225,
+                "source_text": "三上悠亜",
+                "translated_text": "",
+                "status": "untranslated",
+                "provider": "mapping",
+            }
+        ])
+
+        self.assertEqual(written, 1)
+        item = get_translation_workbench_item("actress", 26225)
+        self.assertEqual(item["status"], "manual_edited")
+        self.assertEqual(item["translated_text"], "三上悠亚")
+
+    async def test_pause_running_translation_job_marks_paused(self):
+        from database import add_translation_job, get_translation_job
+        from translations import jobs
+        from translations.jobs import _run_job, pause_translation_job
+
+        class Client:
+            async def list_videos(self, page=1, page_size=100):
+                await asyncio.sleep(10)
+                return {"data": [], "total_pages": 1, "total_count": 0}
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+        with patch("translations.jobs.get_info_client", return_value=Client()):
+            task = asyncio.create_task(_run_job(job_id, "library_titles", ["google_free"], force=False))
+            jobs._running_jobs[job_id] = task
+            try:
+                await asyncio.sleep(0.01)
+                paused = pause_translation_job(job_id)
+                await task
+            finally:
+                jobs._running_jobs.pop(job_id, None)
+                jobs._paused_jobs.discard(job_id)
+
+        self.assertEqual(paused["status"], "paused")
+        self.assertEqual(get_translation_job(job_id)["status"], "paused")
+
+    async def test_list_jobs_marks_orphaned_running_job_paused(self):
+        from database import add_translation_job, get_translation_job, update_translation_job
+        from translations.jobs import list_jobs
+
+        job_id = add_translation_job("library_titles", provider_order=["google_free"])
+        update_translation_job(job_id, status="running", result={"next_page": 42})
+
+        jobs = list_jobs(limit=5)
+
+        job = next(item for item in jobs if item["id"] == job_id)
+        self.assertEqual(job["status"], "paused")
+        self.assertFalse(job["running"])
+        self.assertTrue(job["result"]["orphaned"])
+        self.assertEqual(get_translation_job(job_id)["status"], "paused")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
         <button class="btn btn-ghost" type="button" :disabled="loading" @click="reloadAll">
           {{ loading ? '刷新中...' : '刷新' }}
         </button>
-        <button class="btn btn-primary" type="button" @click="activeSegment = 'create'">创建作业</button>
+        <button class="btn btn-primary" type="button" @click="setActiveSegment('create')">创建作业</button>
       </div>
     </header>
 
@@ -41,7 +41,7 @@
         :key="segment.key"
         type="button"
         :class="{ active: activeSegment === segment.key }"
-        @click="activeSegment = segment.key"
+        @click="setActiveSegment(segment.key)"
       >{{ segment.label }}</button>
     </nav>
 
@@ -50,7 +50,12 @@
         <div>
           <h2>总览</h2>
         </div>
-        <span class="status-pill" :class="jobStatusClass(currentJob?.status)">{{ statusLabel(currentJob?.status) }}</span>
+        <div class="panel-actions">
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="!canPauseCurrentJob || pausingJob" @click="pauseJob">
+            {{ pausingJob ? '暂停中...' : '暂停' }}
+          </button>
+          <span class="status-pill" :class="jobStatusClass(currentJob?.status)">{{ statusLabel(currentJob?.status) }}</span>
+        </div>
       </div>
 
       <div class="overview-grid">
@@ -84,7 +89,7 @@
         <aside class="recent-panel">
           <div class="recent-head">
             <strong>最近作业</strong>
-            <button class="btn btn-ghost btn-sm" type="button" @click="activeSegment = 'history'">查看历史</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="setActiveSegment('history')">查看历史</button>
           </div>
           <button
             v-for="job in jobs.slice(0, 4)"
@@ -111,7 +116,7 @@
 
       <div class="notice-row">
         <strong>批量作业默认不使用智能兜底</strong>
-        <span>默认先查缓存和映射，再走低成本翻译源；简介仍由实时链路处理。</span>
+        <span>默认先查正式映射，再走低成本翻译源；简介仍由实时链路处理。</span>
       </div>
 
       <div class="form-grid">
@@ -124,15 +129,19 @@
           />
         </label>
         <label class="field">
-          <span>数量上限</span>
-          <input v-model.number="jobForm.limit" class="input" type="number" min="1" max="10000" />
+          <span>作业模式</span>
+          <GlassSelect
+            v-model="jobForm.mode"
+            :options="jobModeOptions"
+            aria-label="作业模式"
+          />
         </label>
       </div>
 
-      <label class="check-row standalone">
-        <input v-model="jobForm.force" type="checkbox" />
-        <span>强制重翻，忽略已有缓存</span>
-      </label>
+      <div class="notice-row secondary">
+        <strong>{{ jobModeLabel }}</strong>
+        <span>{{ jobModeHint }}</span>
+      </div>
 
       <div class="provider-list">
         <label
@@ -203,6 +212,22 @@
               <span>批量并发</span>
               <input v-model.number="translationConfig.batch_concurrency" class="input" type="number" min="1" max="64" />
             </label>
+            <label class="field">
+              <span>单批行数</span>
+              <input v-model.number="translationConfig.batch_size" class="input" type="number" min="1" max="200" />
+            </label>
+            <label class="field">
+              <span>单批字符</span>
+              <input v-model.number="translationConfig.batch_char_limit" class="input" type="number" min="500" max="24000" />
+            </label>
+            <label class="field">
+              <span>源页大小</span>
+              <input v-model.number="translationConfig.source_page_size" class="input" type="number" min="20" max="1000" />
+            </label>
+            <label class="field">
+              <span>扫描页组</span>
+              <input v-model.number="translationConfig.scan_pages_per_batch" class="input" type="number" min="1" max="64" />
+            </label>
           </div>
           <div class="source-settings">
             <label class="check-row boxed">
@@ -255,6 +280,115 @@
           </div>
         </section>
       </div>
+    </section>
+
+    <section v-else-if="activeSegment === 'review'" class="workspace-panel apple-surface">
+      <div class="panel-header">
+        <div>
+          <h2>审核工作台</h2>
+        </div>
+        <div class="panel-actions">
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewLoading" @click="loadTranslationItems(reviewPage)">
+            {{ reviewLoading ? '加载中...' : '刷新条目' }}
+          </button>
+          <button class="btn btn-primary btn-sm" type="button" :disabled="retryingItems" @click="retryReviewItems">
+            {{ retryingItems ? '提交中...' : '重试当前筛选' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="review-toolbar">
+        <label class="field">
+          <span>类型</span>
+          <GlassSelect
+            v-model="reviewType"
+            :options="translationTypeOptions"
+            aria-label="审核类型"
+            @change="loadTranslationItems(1)"
+          />
+        </label>
+        <label class="field">
+          <span>状态</span>
+          <GlassSelect
+            v-model="reviewStatus"
+            :options="reviewStatusOptions"
+            aria-label="审核状态"
+            @change="loadTranslationItems(1)"
+          />
+        </label>
+        <label class="field search-field">
+          <span>检索</span>
+          <input
+            v-model="reviewQuery"
+            class="input"
+            placeholder="演员名、日文、中文、番号或标题"
+            @keyup.enter="loadTranslationItems(1)"
+          />
+        </label>
+        <button class="btn btn-ghost review-search-btn" type="button" @click="loadTranslationItems(1)">搜索</button>
+      </div>
+
+      <div class="review-stats">
+        <div><strong>{{ reviewTotal }}</strong><span>索引条目</span></div>
+        <div><strong>{{ reviewStatsByStatus.untranslated || 0 }}</strong><span>未翻译</span></div>
+        <div><strong>{{ reviewStatsByStatus.failed || 0 }}</strong><span>失败</span></div>
+        <div><strong>{{ reviewUnreviewed }}</strong><span>未审核</span></div>
+      </div>
+
+      <div v-if="reviewMessage" class="message-line" :class="reviewMessageType">{{ reviewMessage }}</div>
+
+      <div class="review-table">
+        <div class="review-head">
+          <span>原文</span>
+          <span>当前译文</span>
+          <span>状态</span>
+          <span>来源</span>
+          <span>操作</span>
+        </div>
+        <div v-if="reviewLoading && !reviewItems.length" class="empty-panel compact">加载中...</div>
+        <div v-else-if="!reviewItems.length" class="empty-panel compact">暂无工作台条目</div>
+        <div v-for="item in reviewItems" :key="`${item.item_type}:${item.item_id}`" class="review-row">
+          <div class="review-source">
+            <strong>{{ item.source_text || '—' }}</strong>
+            <small>{{ translationTypeLabels[item.item_type] || item.item_type }} · {{ item.item_id }}</small>
+          </div>
+          <textarea v-model="item.edit_text" class="input review-edit" rows="2"></textarea>
+          <span class="status-pill" :class="workbenchStatusClass(item.status)">{{ workbenchStatusLabel(item.status) }}</span>
+          <div class="review-meta">
+            <span>{{ providerLabel(item.provider) || '本地' }}</span>
+            <small>{{ formatTime(item.updated_at) }}</small>
+            <small v-if="item.last_error" class="error-text">{{ item.last_error }}</small>
+          </div>
+          <div class="review-actions">
+            <button class="btn btn-primary btn-sm" type="button" @click="saveReviewItem(item)">保存</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="markReviewItem(item)">通过</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="showItemHistory(item)">历史</button>
+            <button class="btn btn-ghost btn-sm danger" type="button" @click="resetReviewItem(item)">重置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-pagination">
+        <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage <= 1" @click="loadTranslationItems(reviewPage - 1)">上一页</button>
+        <span>{{ reviewPage }} / {{ reviewTotalPages }}</span>
+        <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage >= reviewTotalPages" @click="loadTranslationItems(reviewPage + 1)">下一页</button>
+      </div>
+
+      <aside v-if="reviewHistoryItem" class="review-history-panel">
+        <div class="recent-head">
+          <strong>{{ reviewHistoryItem.source_text }} 的修改历史</strong>
+          <button class="btn btn-ghost btn-sm" type="button" @click="reviewHistoryItem = null">关闭</button>
+        </div>
+        <div v-if="reviewHistoryLoading" class="empty-panel compact">加载中...</div>
+        <div v-else-if="!reviewHistory.length" class="empty-panel compact">暂无修改历史</div>
+        <div v-for="history in reviewHistory" :key="history.id" class="history-row review-history-row">
+          <div>
+            <strong>{{ history.action }}</strong>
+            <span>{{ history.old_text || '空' }} -> {{ history.new_text || '空' }}</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" @click="restoreHistoryItem(history)">恢复</button>
+        </div>
+      </aside>
     </section>
 
     <section v-else-if="activeSegment === 'mappings'" class="workspace-panel apple-surface">
@@ -339,11 +473,24 @@ const JOB_TYPE_OPTIONS = [
   { value: 'metadata_series', label: '系列名称', hint: '只翻译系列名称。' },
   { value: 'metadata_makers', label: '厂商名称', hint: '只翻译厂商名称。' },
   { value: 'metadata_labels', label: '厂牌名称', hint: '只翻译厂牌名称。' },
-  { value: 'metadata_actresses', label: '演员名称', hint: '只翻译演员名称，可用数量上限控制范围。' },
+  { value: 'metadata_actresses', label: '演员名称', hint: '只翻译演员名称。' },
   { value: 'metadata_names', label: '全部元数据名称', hint: '题材、系列、厂商、厂牌、演员一起处理。' },
+]
+const JOB_MODE_OPTIONS = [
+  { value: 'remaining', label: '补剩余', hint: '跳过已有正式映射，优先处理失败项，适合中断后继续。' },
+  { value: 'refresh_all', label: '全量重翻', hint: '忽略已有译文，用新的翻译结果覆盖。' },
 ]
 const TRANSLATION_TYPE_OPTIONS = Object.entries(TRANSLATION_TYPE_LABELS)
   .map(([value, label]) => ({ value, label }))
+const WORKBENCH_STATUS_OPTIONS = [
+  { value: 'all', label: '全部状态' },
+  { value: 'untranslated', label: '未翻译' },
+  { value: 'failed', label: '失败' },
+  { value: 'machine_translated', label: '机翻' },
+  { value: 'reviewed', label: '已审核' },
+  { value: 'manual_edited', label: '人工修改' },
+  { value: 'invalid', label: '无效' },
+]
 const PROVIDER_META = {
   google_free: { label: 'Google 免费接口', hint: '无密钥，适合标题和短名称批量翻译。' },
   deepl: { label: 'DeepL', hint: '质量更高，需要配置密钥。' },
@@ -364,23 +511,43 @@ export default {
         { key: 'overview', label: '总览' },
         { key: 'create', label: '创建作业' },
         { key: 'sources', label: '翻译源' },
+        { key: 'review', label: '审核工作台' },
         { key: 'mappings', label: '映射导入' },
         { key: 'history', label: '历史记录' },
       ],
       loading: false,
       savingConfig: false,
       startingJob: false,
+      pausingJob: false,
       testingTranslation: false,
       stats: {},
       jobs: [],
       currentJob: null,
       selectedJob: null,
       jobTypeOptions: JOB_TYPE_OPTIONS,
+      jobModeOptions: JOB_MODE_OPTIONS,
       pollTimer: null,
       translationConfig: cloneTranslationConfig(),
       translationType: 'title',
       translationTypeLabels: TRANSLATION_TYPE_LABELS,
       translationTypeOptions: TRANSLATION_TYPE_OPTIONS,
+      reviewType: 'actress',
+      reviewStatus: 'all',
+      reviewStatusOptions: WORKBENCH_STATUS_OPTIONS,
+      reviewQuery: '',
+      reviewPage: 1,
+      reviewPageSize: 30,
+      reviewTotalCount: 0,
+      reviewTotalPages: 1,
+      reviewItems: [],
+      reviewStats: {},
+      reviewLoading: false,
+      retryingItems: false,
+      reviewMessage: '',
+      reviewMessageType: 'info',
+      reviewHistoryItem: null,
+      reviewHistory: [],
+      reviewHistoryLoading: false,
       translationTestText: 'これは翻訳テストです。',
       translationTestMsg: '',
       translationTestType: 'info',
@@ -397,8 +564,7 @@ export default {
       ],
       jobForm: {
         job_type: 'library_titles',
-        limit: 1000,
-        force: false,
+        mode: 'remaining',
       },
     }
   },
@@ -411,6 +577,18 @@ export default {
     },
     currentCoverage() {
       return this.coverage[this.translationType] || {}
+    },
+    workbenchStats() {
+      return this.reviewStats.total !== undefined ? this.reviewStats : (this.stats.workbench || {})
+    },
+    reviewStatsByStatus() {
+      return this.workbenchStats.by_status || {}
+    },
+    reviewTotal() {
+      return this.workbenchStats.total || this.reviewTotalCount || 0
+    },
+    reviewUnreviewed() {
+      return (this.reviewStatsByStatus.machine_translated || 0) + (this.reviewStatsByStatus.untranslated || 0) + (this.reviewStatsByStatus.failed || 0)
     },
     metadataCoverage() {
       return ['actress', 'category', 'series', 'maker', 'label'].reduce((acc, key) => {
@@ -454,10 +632,17 @@ export default {
     selectedProviderOrderLabel() {
       return this.providerOrderLabel(this.selectedProviderOrder)
     },
-  },
-  watch: {
-    'jobForm.job_type'(value) {
-      this.jobForm.limit = String(value || '').startsWith('metadata_') ? 10000 : 1000
+    canPauseCurrentJob() {
+      return Boolean(this.currentJob?.id && ['pending', 'running'].includes(this.currentJob.status))
+    },
+    selectedJobMode() {
+      return JOB_MODE_OPTIONS.find(option => option.value === this.jobForm.mode) || JOB_MODE_OPTIONS[0]
+    },
+    jobModeLabel() {
+      return this.selectedJobMode.label
+    },
+    jobModeHint() {
+      return this.selectedJobMode.hint
     },
   },
   async mounted() {
@@ -467,10 +652,17 @@ export default {
     this.stopPolling()
   },
   methods: {
+    async setActiveSegment(segment) {
+      this.activeSegment = segment
+      if (segment === 'review' && !this.reviewItems.length) {
+        await this.loadTranslationItems(1)
+      }
+    },
     async reloadAll() {
       this.loading = true
       try {
         await Promise.all([this.loadConfig(), this.loadStats(), this.loadJobs()])
+        if (this.activeSegment === 'review') await this.loadTranslationItems(this.reviewPage)
         this.pickCurrentJob()
       } finally {
         this.loading = false
@@ -497,7 +689,11 @@ export default {
       if (!Array.isArray(merged.provider_order)) merged.provider_order = [...base.provider_order]
       if (!Array.isArray(merged.batch_provider_order)) merged.batch_provider_order = [...base.batch_provider_order]
       if (!merged.realtime_mode || merged.realtime_mode === 'sync') merged.realtime_mode = 'cache_only'
-      merged.batch_concurrency = Math.max(1, Math.min(Number(merged.batch_concurrency || 8), 64))
+      merged.batch_concurrency = Math.max(1, Math.min(Number(merged.batch_concurrency || 32), 64))
+      merged.batch_size = Math.max(1, Math.min(Number(merged.batch_size || 200), 200))
+      merged.batch_char_limit = Math.max(500, Math.min(Number(merged.batch_char_limit || 24000), 24000))
+      merged.source_page_size = Math.max(20, Math.min(Number(merged.source_page_size || 500), 1000))
+      merged.scan_pages_per_batch = Math.max(1, Math.min(Number(merged.scan_pages_per_batch || 8), 64))
       return merged
     },
     async loadStats() {
@@ -570,7 +766,11 @@ export default {
           provider_order: realtimeOrder,
           batch_provider_order: this.selectedProviderOrder,
           realtime_mode: this.translationConfig.realtime_mode || 'cache_only',
-          batch_concurrency: Math.max(1, Math.min(Number(this.translationConfig.batch_concurrency || 8), 64)),
+          batch_concurrency: Math.max(1, Math.min(Number(this.translationConfig.batch_concurrency || 32), 64)),
+          batch_size: Math.max(1, Math.min(Number(this.translationConfig.batch_size || 200), 200)),
+          batch_char_limit: Math.max(500, Math.min(Number(this.translationConfig.batch_char_limit || 24000), 24000)),
+          source_page_size: Math.max(20, Math.min(Number(this.translationConfig.source_page_size || 500), 1000)),
+          scan_pages_per_batch: Math.max(1, Math.min(Number(this.translationConfig.scan_pages_per_batch || 8), 64)),
         },
       }
       try {
@@ -592,8 +792,7 @@ export default {
         const resp = await api.startTranslationJob({
           job_type: this.jobForm.job_type,
           provider_order: this.selectedProviderOrder,
-          limit: this.jobForm.limit,
-          force: this.jobForm.force,
+          mode: this.jobForm.mode,
         })
         const job = resp.data || {}
         this.currentJob = job
@@ -623,6 +822,25 @@ export default {
         this.pollTimer = null
       }
     },
+    async pauseJob() {
+      if (!this.canPauseCurrentJob) return
+      this.pausingJob = true
+      try {
+        const resp = await api.pauseTranslationJob(this.currentJob.id)
+        const job = resp.data || {}
+        this.currentJob = job
+        this.selectedJob = job
+        this.jobs = [job, ...this.jobs.filter(item => item.id !== job.id)]
+        this.stopPolling()
+        ElMessage.success('翻译作业已暂停')
+        await Promise.all([this.loadStats(), this.loadJobs()])
+      } catch (error) {
+        console.error('Failed to pause translation job:', error)
+        ElMessage.error(error.response?.data?.detail || '暂停翻译作业失败')
+      } finally {
+        this.pausingJob = false
+      }
+    },
     async refreshCurrentJob(jobId) {
       try {
         const resp = await api.getTranslationJob(jobId)
@@ -631,7 +849,7 @@ export default {
         this.currentJob = job
         this.jobs = [job, ...this.jobs.filter(item => item.id !== job.id)]
         if (this.selectedJob?.id === job.id) this.selectedJob = job
-        if (['completed', 'failed'].includes(job.status)) {
+        if (['completed', 'failed', 'paused'].includes(job.status)) {
           this.stopPolling()
           await Promise.all([this.loadStats(), this.loadJobs()])
           this.pickCurrentJob()
@@ -700,6 +918,145 @@ export default {
         event.target.value = ''
       }
     },
+    async loadTranslationItems(page = 1) {
+      this.reviewLoading = true
+      this.reviewMessage = ''
+      this.reviewPage = Math.max(1, Number(page) || 1)
+      try {
+        const params = {
+          type: this.reviewType,
+          page: this.reviewPage,
+          page_size: this.reviewPageSize,
+        }
+        if (this.reviewStatus && this.reviewStatus !== 'all') params.status = this.reviewStatus
+        if (this.reviewQuery.trim()) params.q = this.reviewQuery.trim()
+        const resp = await api.listTranslationItems(params)
+        const data = resp.data || {}
+        this.reviewItems = (data.data || []).map(item => ({
+          ...item,
+          edit_text: item.translated_text || '',
+        }))
+        this.reviewTotalCount = data.total_count || 0
+        this.reviewTotalPages = data.total_pages || 1
+        this.reviewStats = data.stats || {}
+      } catch (error) {
+        console.error('Failed to load translation workbench:', error)
+        this.reviewMessage = error.response?.data?.detail || '审核工作台加载失败'
+        this.reviewMessageType = 'error'
+      } finally {
+        this.reviewLoading = false
+      }
+    },
+    async saveReviewItem(item) {
+      try {
+        const resp = await api.updateTranslationItem(item.item_type, item.item_id, {
+          action: 'save',
+          source_text: item.source_text,
+          translated_text: item.edit_text,
+        })
+        Object.assign(item, resp.data || {}, { edit_text: resp.data?.translated_text || item.edit_text })
+        this.reviewMessage = '译文已保存'
+        this.reviewMessageType = 'success'
+        await Promise.all([this.loadStats(), this.loadTranslationItems(this.reviewPage)])
+      } catch (error) {
+        console.error('Failed to save translation item:', error)
+        this.reviewMessage = error.response?.data?.detail || '保存失败'
+        this.reviewMessageType = 'error'
+      }
+    },
+    async markReviewItem(item) {
+      try {
+        const resp = await api.updateTranslationItem(item.item_type, item.item_id, {
+          action: 'review',
+          source_text: item.source_text,
+        })
+        Object.assign(item, resp.data || {}, { edit_text: resp.data?.translated_text || item.edit_text })
+        this.reviewMessage = '已标记审核通过'
+        this.reviewMessageType = 'success'
+        await this.loadTranslationItems(this.reviewPage)
+      } catch (error) {
+        console.error('Failed to review translation item:', error)
+        this.reviewMessage = error.response?.data?.detail || '标记失败'
+        this.reviewMessageType = 'error'
+      }
+    },
+    async resetReviewItem(item) {
+      try {
+        const resp = await api.updateTranslationItem(item.item_type, item.item_id, {
+          action: 'reset',
+          source_text: item.source_text,
+          clear_mapping: true,
+        })
+        Object.assign(item, resp.data || {}, { edit_text: '' })
+        this.reviewMessage = '已重置为未翻译'
+        this.reviewMessageType = 'success'
+        await Promise.all([this.loadStats(), this.loadTranslationItems(this.reviewPage)])
+      } catch (error) {
+        console.error('Failed to reset translation item:', error)
+        this.reviewMessage = error.response?.data?.detail || '重置失败'
+        this.reviewMessageType = 'error'
+      }
+    },
+    async showItemHistory(item) {
+      this.reviewHistoryItem = item
+      this.reviewHistoryLoading = true
+      try {
+        const resp = await api.getTranslationItemHistory(item.item_type, item.item_id, 50)
+        this.reviewHistory = resp.data?.data || []
+      } catch (error) {
+        console.error('Failed to load translation item history:', error)
+        this.reviewHistory = []
+        this.reviewMessage = '历史加载失败'
+        this.reviewMessageType = 'error'
+      } finally {
+        this.reviewHistoryLoading = false
+      }
+    },
+    async restoreHistoryItem(history) {
+      if (!this.reviewHistoryItem) return
+      try {
+        await api.updateTranslationItem(this.reviewHistoryItem.item_type, this.reviewHistoryItem.item_id, {
+          action: 'restore',
+          history_id: history.id,
+        })
+        this.reviewMessage = '已恢复历史版本'
+        this.reviewMessageType = 'success'
+        await Promise.all([
+          this.loadStats(),
+          this.loadTranslationItems(this.reviewPage),
+          this.showItemHistory(this.reviewHistoryItem),
+        ])
+      } catch (error) {
+        console.error('Failed to restore translation history:', error)
+        this.reviewMessage = error.response?.data?.detail || '恢复失败'
+        this.reviewMessageType = 'error'
+      }
+    },
+    async retryReviewItems() {
+      this.retryingItems = true
+      try {
+        const payload = {
+          type: this.reviewType,
+          provider_order: this.selectedProviderOrder,
+        }
+        if (this.reviewStatus && this.reviewStatus !== 'all') payload.status = this.reviewStatus
+        if (this.reviewQuery.trim()) payload.q = this.reviewQuery.trim()
+        const resp = await api.retryTranslationItems(payload)
+        const job = resp.data || {}
+        this.currentJob = job
+        this.selectedJob = job
+        this.reviewMessage = `重试作业 #${job.id || ''} 已启动`
+        this.reviewMessageType = 'success'
+        if (job.id) this.startPolling(job.id)
+        await this.loadJobs()
+      } catch (error) {
+        console.error('Failed to retry translation items:', error)
+        this.reviewMessage = error.response?.data?.detail || '重试提交失败'
+        this.reviewMessageType = 'error'
+      } finally {
+        this.retryingItems = false
+      }
+    },
     providerStatusLabel(key) {
       const state = this.stats.providers?.[key]
       if (!state) return '未检测'
@@ -714,6 +1071,9 @@ export default {
         deepl: 'DeepL',
         microsoft: 'Microsoft 翻译',
         openai_compatible: '智能兜底',
+        translation_service: '批量源',
+        import: '导入',
+        manual: '人工',
       }[key] || key || ''
     },
     providerOrderLabel(order) {
@@ -728,6 +1088,7 @@ export default {
     jobTypeLabel(type) {
       return {
         library_titles: '库内影片标题',
+        workbench_retry: '工作台重试',
         metadata_names: '全部元数据名称',
         metadata_categories: '题材名称',
         metadata_series: '系列名称',
@@ -736,10 +1097,24 @@ export default {
         metadata_actresses: '演员名称',
       }[type] || type || '未知作业'
     },
+    workbenchStatusLabel(status) {
+      return {
+        untranslated: '未翻译',
+        machine_translated: '机翻',
+        reviewed: '已审核',
+        manual_edited: '人工修改',
+        failed: '失败',
+        invalid: '无效',
+      }[status] || '未翻译'
+    },
+    workbenchStatusClass(status) {
+      return `status-${status || 'untranslated'}`
+    },
     statusLabel(status) {
       return {
         pending: '等待中',
         running: '运行中',
+        paused: '已暂停',
         completed: '已完成',
         failed: '失败',
         idle: '空闲',
@@ -893,7 +1268,7 @@ export default {
 
 .segmented-control {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
   border-radius: var(--radius-md);
@@ -1205,7 +1580,8 @@ export default {
 }
 
 .status-running,
-.status-pending {
+.status-pending,
+.status-paused {
   color: var(--badge-warning-text);
   background: var(--badge-warning-bg);
   border-color: rgba(245, 181, 80, 0.28);
@@ -1221,6 +1597,28 @@ export default {
   color: #ff6b78;
   background: rgba(255, 80, 90, 0.12);
   border-color: rgba(255, 80, 90, 0.22);
+}
+
+.status-untranslated {
+  color: var(--text-secondary);
+}
+
+.status-machine_translated {
+  color: var(--badge-warning-text);
+  background: var(--badge-warning-bg);
+  border-color: rgba(245, 181, 80, 0.28);
+}
+
+.status-reviewed,
+.status-manual_edited {
+  color: var(--badge-success-text);
+  background: var(--badge-success-bg);
+  border-color: rgba(90, 200, 150, 0.28);
+}
+
+.status-invalid {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .order-actions {
@@ -1312,6 +1710,134 @@ export default {
   grid-template-columns: minmax(220px, 0.8fr) minmax(220px, 1fr) auto;
   align-items: end;
   gap: 14px;
+}
+
+.review-toolbar {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(150px, 0.7fr) minmax(260px, 1.4fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.review-search-btn {
+  min-height: 40px;
+}
+
+.review-stats {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.review-stats div {
+  min-height: 50px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.review-stats strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.review-stats span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.review-table {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.review-head,
+.review-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.4fr) minmax(92px, 0.45fr) minmax(120px, 0.65fr) minmax(250px, 0.9fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.review-head {
+  min-height: 36px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.review-row {
+  min-height: 74px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.review-source {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.review-source strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.review-source small,
+.review-meta small,
+.review-meta span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.review-edit {
+  min-height: 54px;
+  resize: vertical;
+}
+
+.review-meta {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.review-actions .danger {
+  color: #ff6b78;
+}
+
+.review-pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.review-history-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.review-history-row {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .mapping-stat {
@@ -1415,7 +1941,7 @@ export default {
   }
 
   .segmented-control {
-    grid-template-columns: repeat(5, max-content);
+    grid-template-columns: repeat(6, max-content);
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -1433,8 +1959,23 @@ export default {
   .source-layout,
   .history-layout,
   .form-grid,
+  .review-toolbar,
+  .review-head,
+  .review-row,
   .mapping-layout {
     grid-template-columns: 1fr;
+  }
+
+  .review-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-head {
+    display: none;
+  }
+
+  .review-actions {
+    justify-content: flex-start;
   }
 
   .recent-panel,
@@ -1504,6 +2045,7 @@ export default {
   .panel-actions,
   .panel-footer-actions,
   .key-actions,
+  .review-actions,
   .mapping-actions {
     align-items: stretch;
   }
@@ -1512,6 +2054,8 @@ export default {
   .panel-actions .btn,
   .panel-footer-actions .btn,
   .key-actions .btn,
+  .review-actions .btn,
+  .review-search-btn,
   .mapping-actions .btn,
   .mapping-actions .import-button {
     width: 100%;

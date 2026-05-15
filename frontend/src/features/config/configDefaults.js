@@ -38,7 +38,11 @@ export const DEFAULT_CONFIG = {
     provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
     batch_provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
     realtime_mode: 'cache_only',
-    batch_concurrency: 8,
+    batch_concurrency: 32,
+    batch_size: 200,
+    batch_char_limit: 24000,
+    source_page_size: 500,
+    scan_pages_per_batch: 8,
     google_free: {
       enabled: true,
       base_url: 'https://translate.googleapis.com/translate_a/single',

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import json
 import io
@@ -12,12 +12,27 @@ from database import (
     get_translation_cache_count,
     get_translation_count,
     get_translation_coverage_counts,
+    list_translation_workbench_history,
+    list_translation_workbench_items,
+    reset_translation_workbench_item,
+    restore_translation_workbench_history,
+    review_translation_workbench_item,
+    save_translation_workbench_manual,
+    sync_translation_workbench_from_mappings,
+    translation_workbench_stats,
     _get_raw,
     upsert_translation,
+    upsert_translation_workbench_item,
 )
 from modules.info_client import get_info_client
 from translations import get_translator_service
-from translations.jobs import create_translation_job, get_job as get_translation_job_status, list_jobs as list_translation_job_statuses
+from translations.jobs import (
+    create_translation_job,
+    create_translation_retry_job,
+    get_job as get_translation_job_status,
+    list_jobs as list_translation_job_statuses,
+    pause_translation_job,
+)
 
 router = APIRouter(prefix="/api/v1/translations", tags=["translations"])
 
@@ -127,6 +142,105 @@ def _lookup_named_translation_by_id(mapping_type: str, entity_id: int) -> Option
         if isinstance(v, str) and v:
             return v
     return None
+
+
+def _first_text(item: dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _title_source(item: dict[str, Any]) -> str:
+    return _first_text(item, ("title_ja", "title_en", "title"))
+
+
+def _content_id(item: dict[str, Any]) -> str:
+    return str(item.get("content_id") or item.get("dvd_id") or item.get("canonical_number") or "").strip()
+
+
+def _normalize_title_id(value: str) -> str:
+    return str(value or "").replace("-", "").replace("_", "").lower()
+
+
+def _existing_title_translation(content_id: str, source: str) -> str:
+    for candidate in {_normalize_title_id(content_id), content_id}:
+        raw = _get_raw(candidate)
+        mapping = raw.get("title", {}) if raw else {}
+        translated = mapping.get(source) if isinstance(mapping, dict) else ""
+        if translated:
+            return str(translated)
+    return ""
+
+
+async def _seed_workbench_from_javinfo(item_type: str | None, q: str | None) -> int:
+    if not item_type or not q:
+        return 0
+    info = get_info_client()
+    seeded = 0
+    if item_type == "title":
+        result = await info.search_videos(q=q, page=1, page_size=50)
+        for item in result.get("data", []) if isinstance(result, dict) else []:
+            content_id = _content_id(item)
+            source = _title_source(item)
+            if not content_id or not source:
+                continue
+            translated = _existing_title_translation(content_id, source)
+            upsert_translation_workbench_item(
+                "title",
+                _normalize_title_id(content_id),
+                source,
+                translated_text=translated,
+                status="machine_translated" if translated else "untranslated",
+                provider="mapping" if translated else None,
+            )
+            seeded += 1
+        return seeded
+
+    loaders = {
+        "actress": lambda: info.list_actresses(q=q, page=1, page_size=50),
+        "category": lambda: info.list_categories(q=q),
+        "series": lambda: info.list_series(q=q),
+        "maker": lambda: info.list_makers(q=q),
+        "label": lambda: info.list_labels(q=q),
+    }
+    loader = loaders.get(item_type)
+    if not loader:
+        return 0
+    result = await loader()
+    items = result.get("data", []) if isinstance(result, dict) else (result if isinstance(result, list) else [])
+    text_keys = {
+        "actress": ("name_kanji", "name_ja", "name_romaji", "name"),
+        "category": ("name_ja", "name_en", "name"),
+        "series": ("name_ja", "name_en", "name"),
+        "maker": ("name_ja", "name_en", "name"),
+        "label": ("name_ja", "name_en", "name"),
+    }
+    for item in items:
+        entity_id = item.get("id")
+        source = _first_text(item, text_keys.get(item_type, ("name",)))
+        if not entity_id or not source:
+            continue
+        try:
+            numeric_id = int(entity_id)
+        except (TypeError, ValueError):
+            numeric_id = 0
+        translated = (
+            _lookup_actress_translation_by_id(numeric_id)
+            if item_type == "actress"
+            else _lookup_named_translation_by_id(item_type, numeric_id)
+        ) or ""
+        upsert_translation_workbench_item(
+            item_type,
+            entity_id,
+            source,
+            translated_text=translated,
+            status="machine_translated" if translated else "untranslated",
+            provider="mapping" if translated else None,
+        )
+        seeded += 1
+    return seeded
 
 
 @router.get("/export/{mapping_type}")
@@ -260,6 +374,15 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
             if not name_kanji:
                 continue
             upsert_translation(f"actress:{actress_id}", {"actress": {name_kanji: name_translated}})
+            upsert_translation_workbench_item(
+                "actress",
+                actress_id,
+                name_kanji,
+                translated_text=name_translated,
+                status="manual_edited",
+                provider="import",
+                preserve_reviewed=False,
+            )
             count += 1
         return {"success": True, "imported": count, "type": mapping_type}
 
@@ -281,6 +404,15 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
             if not orig_name:
                 continue
             upsert_translation(f"{mapping_type}:{type_id}", {mapping_type: {orig_name: name_translated}})
+            upsert_translation_workbench_item(
+                mapping_type,
+                type_id,
+                orig_name,
+                translated_text=name_translated,
+                status="manual_edited",
+                provider="import",
+                preserve_reviewed=False,
+            )
             count += 1
         return {"success": True, "imported": count, "type": mapping_type}
 
@@ -295,11 +427,22 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
             translated = str(value.get(dst_field) or value.get("title_translated") or "").strip()
             if not content_id or not source or not translated:
                 continue
-            upsert_translation(content_id.replace("-", "").replace("_", "").lower(), {"title": {source: translated}})
+            normalized_id = content_id.replace("-", "").replace("_", "").lower()
+            upsert_translation(normalized_id, {"title": {source: translated}})
+            upsert_translation_workbench_item(
+                "title",
+                normalized_id,
+                source,
+                translated_text=translated,
+                status="manual_edited",
+                provider="import",
+                preserve_reviewed=False,
+            )
             count += 1
         return {"success": True, "imported": count, "type": mapping_type}
 
     count = import_translations(mapping_type, data)
+    sync_translation_workbench_from_mappings(item_type=mapping_type, limit=1000)
     return {"success": True, "imported": count, "type": mapping_type}
 
 
@@ -344,6 +487,7 @@ async def all_stats():
     openai_cfg = config.openai_compatible
     stats["ai_cache"] = get_translation_cache_count()
     stats["coverage"] = coverage
+    stats["workbench"] = translation_workbench_stats()
     stats["providers"] = {
         "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
         "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
@@ -366,6 +510,114 @@ async def all_stats():
         },
     }
     return stats
+
+
+@router.get("/items")
+async def list_translation_items(
+    item_type: str | None = Query(None, alias="type"),
+    q: str | None = Query(None),
+    status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    if item_type and item_type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    seeded = 0
+    if item_type:
+        seeded += sync_translation_workbench_from_mappings(
+            item_type=item_type,
+            q=q,
+            limit=max(200, min(page_size * 10, 1000)),
+        )
+    if item_type and q:
+        try:
+            seeded += await _seed_workbench_from_javinfo(item_type, q.strip())
+        except Exception:
+            pass
+    result = list_translation_workbench_items(
+        item_type=item_type,
+        q=q,
+        status=status if status and status != "all" else None,
+        page=page,
+        page_size=page_size,
+    )
+    result["stats"] = translation_workbench_stats(item_type)
+    result["seeded"] = seeded
+    return result
+
+
+@router.post("/items/retry")
+async def retry_translation_items(body: dict[str, Any] | None = None):
+    body = body or {}
+    item_type = str(body.get("type") or "").strip() or None
+    status = str(body.get("status") or "").strip() or None
+    q = str(body.get("q") or "").strip() or None
+    ids = body.get("ids")
+    provider_order = body.get("provider_order")
+    if item_type and item_type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    if ids is not None and not isinstance(ids, list):
+        raise HTTPException(400, "ids must be a list")
+    if provider_order is not None and not isinstance(provider_order, list):
+        raise HTTPException(400, "provider_order must be a list")
+    try:
+        return await create_translation_retry_job(
+            item_type=item_type,
+            status=status if status and status != "all" else None,
+            q=q,
+            ids=[str(item) for item in ids] if isinstance(ids, list) else None,
+            provider_order=provider_order,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.get("/items/{item_type}/{item_id}/history")
+async def get_translation_item_history(item_type: str, item_id: str, limit: int = 50):
+    if item_type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    return {"data": list_translation_workbench_history(item_type, item_id, limit=max(1, min(int(limit or 50), 200)))}
+
+
+@router.patch("/items/{item_type}/{item_id}")
+async def update_translation_item(item_type: str, item_id: str, body: dict[str, Any] | None = None):
+    if item_type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    body = body or {}
+    action = str(body.get("action") or ("save" if body.get("translated_text") is not None else "review")).strip()
+    operator = str(body.get("operator") or "manual").strip() or "manual"
+    source_text = str(body.get("source_text") or "").strip()
+    if source_text:
+        upsert_translation_workbench_item(item_type, item_id, source_text)
+
+    if action in {"save", "manual_edited"}:
+        translated_text = str(body.get("translated_text") or "").strip()
+        if not translated_text:
+            raise HTTPException(400, "translated_text is required")
+        item = save_translation_workbench_manual(item_type, item_id, translated_text, operator=operator)
+    elif action == "review":
+        item = review_translation_workbench_item(item_type, item_id, operator=operator)
+    elif action == "reset":
+        item = reset_translation_workbench_item(
+            item_type,
+            item_id,
+            operator=operator,
+            clear_mapping=bool(body.get("clear_mapping", True)),
+        )
+    elif action == "restore":
+        try:
+            history_id = int(body.get("history_id") or 0)
+        except Exception:
+            history_id = 0
+        if history_id <= 0:
+            raise HTTPException(400, "history_id is required")
+        item = restore_translation_workbench_history(item_type, item_id, history_id, operator=operator)
+    else:
+        raise HTTPException(400, "action must be save, review, reset, or restore")
+
+    if not item:
+        raise HTTPException(404, "translation workbench item not found")
+    return item
 
 
 @router.post("/test")
@@ -402,18 +654,14 @@ async def start_translation_job(body: dict[str, Any] | None = None):
     provider_order = body.get("provider_order")
     if provider_order is not None and not isinstance(provider_order, list):
         raise HTTPException(400, "provider_order must be a list")
-    try:
-        limit = int(body.get("limit") or 1000)
-    except Exception:
-        limit = 1000
-    limit = max(1, min(limit, 10000))
-    force = bool(body.get("force", False))
+    mode = str(body.get("mode") or "").strip()
+    if not mode:
+        mode = "refresh_all" if bool(body.get("force", False)) else "remaining"
     try:
         return await create_translation_job(
             job_type,
             provider_order=provider_order,
-            limit=limit,
-            force=force,
+            mode=mode,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
@@ -427,6 +675,14 @@ async def list_translation_jobs(limit: int = 50):
 @router.get("/jobs/{job_id}")
 async def get_translation_job(job_id: int):
     job = get_translation_job_status(job_id)
+    if not job:
+        raise HTTPException(404, "translation job not found")
+    return job
+
+
+@router.post("/jobs/{job_id}/pause")
+async def pause_job(job_id: int):
+    job = pause_translation_job(job_id)
     if not job:
         raise HTTPException(404, "translation job not found")
     return job
