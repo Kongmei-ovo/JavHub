@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { THEMES, THEME_KEYS, applyTheme, resolveThemeKey } from '../assets/themes.js'
+import { THEMES, THEME_KEYS, applyTheme, resolveThemeKey, toggleTheme, isDarkTheme } from '../assets/themes.js'
 
 const subscription = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
 const normalize = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
@@ -197,7 +197,6 @@ test('inline style cleanup keeps only dynamic previews in settings and genres', 
   assert.doesNotMatch(magnetParse, /(^|[\s<])style="/)
   assert.doesNotMatch(home, /(^|[\s<])style="/)
   assert.doesNotMatch(config, /(^|[\s<])style="/)
-  assert.match(config, /theme-card-preview theme-swatch[\s\S]*:style="themeSwatchStyle\(theme\)"/)
   assert.match(config, /preview-bubble[\s\S]*:style="previewBubbleStyle\(index\)"/)
   assert.match(config, /legendary-dot" :style/)
   assert.match(genres, /:style="cloudStyle"/)
@@ -205,43 +204,80 @@ test('inline style cleanup keeps only dynamic previews in settings and genres', 
 })
 
 test('appearance controls keep compact state and robust custom material parsing', () => {
-  assert.match(config, /class="theme-option"[\s\S]*:aria-pressed="currentTheme === key"/)
   assert.match(config, /class="segmented-mini"[\s\S]*:aria-pressed="config\.javinfo\.page_size === size"/)
+  assert.doesNotMatch(config, /class="theme-option"/)
+  assert.doesNotMatch(config, /<span class="setting-title">全局主题<\/span>/)
   assert.match(configDefaults, /function parseGradientList/)
   assert.match(configDefaults, /char === ',' && depth === 0/)
   assert.match(config, /this\.bubbleCfg\.customGradients = parseGradientList\(this\.bubbleCfg\.customGradientsText\)/)
   assert.doesNotMatch(config, /customGradientsText[\s\S]{0,120}\.split\(',/)
 })
 
-test('theme presets stay curated and complete', () => {
-  assert.deepEqual(THEME_KEYS, ['apple-espana', 'apple-pro-dark', 'midnight', 'studio-silver', 'oled', 'deep-space', 'graphite-gold'])
+test('theme presets are reduced to Apple light and dark glass modes', () => {
+  assert.deepEqual(THEME_KEYS, ['apple-light', 'apple-dark'])
 
-  const baselineTokens = Object.keys(THEMES['apple-espana'].vars).sort()
+  const baselineTokens = Object.keys(THEMES['apple-light'].vars).sort()
   for (const [key, theme] of Object.entries(THEMES)) {
-    assert.deepEqual(Object.keys(theme.vars).sort(), baselineTokens, `${key} token coverage should match apple-espana`)
+    assert.deepEqual(Object.keys(theme.vars).sort(), baselineTokens, `${key} token coverage should match apple-light`)
     assert.match(theme.vars['--font-body'], /SF Pro Text/)
     assert.match(theme.vars['--font-body'], /-apple-system/)
-    assert.doesNotMatch(theme.vars['--font-body'], /Inter|Cormorant|Noto|Space Grotesk|Nunito/i)
-    assert.doesNotMatch(theme.vars['--font-body'], /(^|,\s*)'?serif'?($|,)/i)
     assert.ok(theme.vars['--surface-nav'], `${key} should define semantic navigation material`)
+    assert.ok(theme.vars['--glass-control-bg'], `${key} should define default glass controls`)
+    assert.ok(theme.vars['--glass-active-bg'], `${key} should define active glass controls`)
   }
 
-  assert.equal(THEMES['apple-espana'].vars['--bg-primary'], '#FFFFFF')
-  assert.equal(THEMES['apple-pro-dark'].vars['--bg-primary'], '#000000')
+  assert.equal(THEMES['apple-light'].vars['--bg-primary'], '#FBFBFD')
+  assert.equal(THEMES['apple-dark'].vars['--bg-primary'], '#050506')
+  assert.match(app, /theme-toggle/)
+  assert.match(app, /toggleAppTheme/)
+  assert.match(mainCss, /--glass-control-bg/)
+  assert.match(mainCss, /--glass-active-bg/)
+  assert.match(mainCss, /--glass-active-shadow/)
+  assert.match(mainCss, /\.btn-ghost[\s\S]*border: 1px solid var\(--glass-control-border/)
   assert.match(app, /background: var\(--surface-nav\)/)
-  assert.doesNotMatch(app, /background:\s*rgba\(245,\s*245,\s*247,\s*0\.86\)/)
+  assert.match(app, /\.theme-toggle[\s\S]*backdrop-filter: blur/)
+  assert.match(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid var\(--glass-control-border\) !important/)
+  assert.doesNotMatch(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid transparent !important/)
 
-  for (const removed of ['forest', 'tokyo', 'aurora', 'rose']) {
+  const genresTabBaseBlock = genres.match(/\.tab-btn\s*\{[^}]*\}/)?.[0] || ''
+  assert.match(genresTabBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(genresTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+
+  const genresTabBlock = genres.match(/\.tab-btn\.active\s*\{[^}]*\}/)?.[0] || ''
+  assert.doesNotMatch(genresTabBlock, /inset 0 -2px/)
+  assert.match(genresTabBlock, /var\(--glass-active-shadow\)/)
+
+  const segmentedBaseBlock = config.match(/\.segmented-mini button\s*\{[^}]*\}/)?.[0] || ''
+  assert.match(segmentedBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(segmentedBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+
+  const segmentedActiveBlock = config.match(/\.segmented-mini button\.active\s*\{[^}]*\}/)?.[0] || ''
+  assert.doesNotMatch(segmentedActiveBlock, /inset 0 -2px/)
+  assert.match(segmentedActiveBlock, /var\(--glass-active-shadow\)/)
+
+  const settingsTabBaseBlock = config.match(/\.tab-item\s*\{[^}]*\}/)?.[0] || ''
+  assert.match(settingsTabBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(settingsTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+
+  const settingsTabActiveBlock = config.match(/\.tab-item\.active\s*\{[^}]*\}/)?.[0] || ''
+  assert.match(settingsTabActiveBlock, /var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(config, /\.tab-item\.active::after/)
+
+  for (const removed of ['apple-espana', 'apple-pro-dark', 'midnight', 'studio-silver', 'oled', 'deep-space', 'graphite-gold']) {
     assert.equal(THEMES[removed], undefined)
   }
 })
 
-test('legacy saved theme values resolve to curated themes', () => {
-  assert.equal(resolveThemeKey('forest'), 'midnight')
-  assert.equal(resolveThemeKey('tokyo'), 'deep-space')
-  assert.equal(resolveThemeKey('aurora'), 'deep-space')
-  assert.equal(resolveThemeKey('rose'), 'graphite-gold')
-  assert.equal(resolveThemeKey('missing-theme'), 'apple-espana')
+test('legacy saved theme values resolve to Apple light and dark modes', () => {
+  for (const key of ['apple-espana', 'studio-silver']) {
+    assert.equal(resolveThemeKey(key), 'apple-light')
+  }
+  for (const key of ['apple-pro-dark', 'midnight', 'oled', 'deep-space', 'graphite-gold', 'forest', 'tokyo', 'aurora', 'rose']) {
+    assert.equal(resolveThemeKey(key), 'apple-dark')
+  }
+  assert.equal(resolveThemeKey('missing-theme'), 'apple-light')
+  assert.equal(isDarkTheme('apple-dark'), true)
+  assert.equal(isDarkTheme('apple-light'), false)
 
   const writes = []
   const originalDocument = globalThis.document
@@ -251,6 +287,7 @@ test('legacy saved theme values resolve to curated themes', () => {
       style: {
         setProperty: () => {},
       },
+      dataset: {},
     },
   }
   globalThis.localStorage = {
@@ -258,8 +295,11 @@ test('legacy saved theme values resolve to curated themes', () => {
   }
 
   try {
-    assert.equal(applyTheme('tokyo'), 'deep-space')
-    assert.deepEqual(writes.at(-1), ['javhub_theme', 'deep-space'])
+    assert.equal(applyTheme('tokyo'), 'apple-dark')
+    assert.deepEqual(writes.at(-1), ['javhub_theme', 'apple-dark'])
+    assert.equal(globalThis.document.documentElement.dataset.theme, 'dark')
+    assert.equal(toggleTheme('apple-dark'), 'apple-light')
+    assert.deepEqual(writes.at(-1), ['javhub_theme', 'apple-light'])
   } finally {
     if (originalDocument === undefined) {
       delete globalThis.document

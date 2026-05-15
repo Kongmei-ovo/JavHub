@@ -10,12 +10,31 @@
           </svg>
           <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
         </div>
-        <button class="collapse-btn" type="button" @click="sidebarCollapsed = !sidebarCollapsed">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
-            <path v-if="sidebarCollapsed" d="M9 18l6-6-6-6"/>
-            <path v-else d="M15 18l-6-6 6-6"/>
-          </svg>
-        </button>
+        <div class="sidebar-header-actions">
+          <button
+            class="theme-toggle"
+            type="button"
+            :aria-label="isDarkMode ? '开灯' : '关灯'"
+            :title="isDarkMode ? '开灯' : '关灯'"
+            @click="toggleAppTheme"
+          >
+            <span class="theme-toggle__orb" :class="{ dark: isDarkMode }">
+              <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+              </svg>
+            </span>
+          </button>
+          <button class="collapse-btn" type="button" @click="sidebarCollapsed = !sidebarCollapsed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+              <path v-if="sidebarCollapsed" d="M9 18l6-6-6-6"/>
+              <path v-else d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <nav class="sidebar-nav">
@@ -66,6 +85,10 @@
       <div v-if="mobileMoreOpen" class="mobile-more-overlay" @click.self="mobileMoreOpen = false">
         <div class="mobile-more-sheet" role="dialog" aria-label="更多功能">
           <div class="mobile-more-grabber"></div>
+          <button class="mobile-theme-toggle" type="button" @click="toggleAppTheme">
+            <span>{{ isDarkMode ? '开灯' : '关灯' }}</span>
+            <span>{{ isDarkMode ? 'Light' : 'Dark' }}</span>
+          </button>
           <div class="mobile-more-grid">
             <router-link
               v-for="item in mobileMoreItems"
@@ -123,10 +146,11 @@ import { useRoute, useRouter } from 'vue-router'
 import VideoModal from './components/VideoModal.vue'
 import ToastCapsule from './components/ToastCapsule.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
-import { modalState, closeVideoModal, openVideoModal, interruptModal, resumeModal } from './utils/modalState'
+import { modalState, closeVideoModal, interruptModal, resumeModal } from './utils/modalState'
 import { favoriteState } from './utils/favoriteState'
 import api from './api'
 import { ElMessage } from 'element-plus'
+import { isDarkTheme, restoreTheme, toggleTheme } from './assets/themes.js'
 
 // Icon components (inline SVG)
 const IconHome = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' }), h('polyline', { points: '9 22 9 12 15 12 15 22' })]) })
@@ -150,8 +174,14 @@ export default {
   setup() {
     const sidebarCollapsed = ref(false)
     const mobileMoreOpen = ref(false)
+    const currentTheme = ref(restoreTheme())
     const route = useRoute()
     const router = useRouter()
+
+    const isDarkMode = computed(() => isDarkTheme(currentTheme.value))
+    const toggleAppTheme = () => {
+      currentTheme.value = toggleTheme(currentTheme.value)
+    }
 
     // Toast state
     const toast = reactive({
@@ -298,6 +328,9 @@ export default {
       bottomNavItems,
       mobileMoreItems,
       isMoreRoute,
+      currentTheme,
+      isDarkMode,
+      toggleAppTheme,
       toast,
       modalState,
       closeVideoModal,
@@ -361,6 +394,55 @@ export default {
   color: var(--text-primary);
   white-space: nowrap;
   letter-spacing: -0.02em;
+}
+
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--glass-control-bg);
+  box-shadow: var(--glass-inner-shadow);
+  color: var(--text-primary);
+  cursor: pointer;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+
+.theme-toggle:hover {
+  background: var(--glass-control-bg-hover);
+  border-color: var(--glass-control-border-hover);
+  transform: translateY(-1px);
+}
+
+.theme-toggle__orb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--glass-active-bg);
+  border: 1px solid var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
+  transform: translateX(-4px);
+  transition: transform var(--motion-standard), background var(--motion-fast), color var(--motion-fast);
+}
+
+.theme-toggle__orb.dark {
+  transform: translateX(4px);
 }
 
 .collapse-btn {
@@ -531,6 +613,28 @@ export default {
     border-radius: 999px;
     background: var(--border-light);
   }
+  .mobile-theme-toggle {
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 10px;
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--glass-control-border);
+    border-radius: 16px;
+    background: var(--glass-control-bg);
+    color: var(--text-primary);
+    box-shadow: var(--glass-inner-shadow);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .mobile-theme-toggle span:last-child {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
   .mobile-more-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -544,9 +648,10 @@ export default {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-control-border);
     border-radius: 16px;
-    background: var(--material-glass-subtle);
+    background: var(--glass-control-bg);
+    box-shadow: var(--glass-inner-shadow);
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 12px;
@@ -558,8 +663,9 @@ export default {
   }
   .mobile-more-item.active {
     color: var(--text-primary);
-    border-color: var(--border-light);
-    background: var(--material-glass-elevated);
+    border-color: var(--glass-active-border);
+    background: var(--glass-active-bg);
+    box-shadow: var(--glass-active-shadow);
   }
   .mobile-more-enter-active,
   .mobile-more-leave-active {

@@ -355,61 +355,24 @@
                   <div>
                     <h3>全局偏好</h3>
                   </div>
-                  <span class="appearance-chip">{{ displayLangLabel }} · {{ currentThemeConfig.labelEn }}</span>
+                  <span class="appearance-chip">{{ displayLangLabel }}</span>
                 </div>
 
-                <div class="appearance-scope-grid">
-                  <div class="scope-card">
-                    <div class="scope-card-header">
-                      <span class="setting-title">全局主题</span>
-                      <span class="setting-note">{{ currentThemeConfig.labelEn }}</span>
+                <div class="appearance-setting-list compact">
+                  <div class="appearance-setting-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">显示语言</span>
+                      <span class="setting-note">{{ displayLangLabel }}</span>
                     </div>
-                    <div class="theme-option-grid">
+                    <div class="segmented-mini" aria-label="显示语言">
                       <button
-                        v-for="(theme, key) in themes"
-                        :key="key"
-                        class="theme-option"
+                        v-for="option in displayLangOptions"
+                        :key="option.value"
                         type="button"
-                        :class="{ active: currentTheme === key }"
-                        :aria-pressed="currentTheme === key"
-                        @click="switchTheme(key)"
-                      >
-                        <span
-                          class="theme-card-preview theme-swatch"
-                          :style="themeSwatchStyle(theme)"
-                        >
-                          <span class="theme-swatch-card"></span>
-                          <span class="theme-swatch-line"></span>
-                        </span>
-                        <span class="theme-option-copy">
-                          <span class="theme-label">{{ theme.label }}</span>
-                          <span class="theme-label-en">{{ theme.labelEn }}</span>
-                        </span>
-                        <span v-if="currentTheme === key" class="theme-check">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="scope-card compact-card">
-                    <div class="appearance-setting-row">
-                      <div class="setting-copy">
-                        <span class="setting-title">显示语言</span>
-                        <span class="setting-note">{{ displayLangLabel }}</span>
-                      </div>
-                      <div class="segmented-mini" aria-label="显示语言">
-                        <button
-                          v-for="option in displayLangOptions"
-                          :key="option.value"
-                          type="button"
-                          :class="{ active: displayLangVal === option.value }"
-                          :aria-pressed="displayLangVal === option.value"
-                          @click="setDisplayLang(option.value)"
-                        >{{ option.label }}</button>
-                      </div>
+                        :class="{ active: displayLangVal === option.value }"
+                        :aria-pressed="displayLangVal === option.value"
+                        @click="setDisplayLang(option.value)"
+                      >{{ option.label }}</button>
                     </div>
                   </div>
                 </div>
@@ -859,7 +822,6 @@
 
 <script>
 import api from '../api'
-import { THEMES, applyTheme, resolveThemeKey } from '../assets/themes.js'
 import { displayLang } from '../utils/displayLang.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
@@ -887,8 +849,6 @@ export default {
       showEmbyKey: false,
       showMetatubeToken: false,
       showAIKey: false,
-      themes: THEMES,
-      currentTheme: resolveThemeKey(localStorage.getItem('javhub_theme')),
       navGroups: [
         { id: 'services', label: '常规与服务' },
         { id: 'automation', label: '自动化策略' },
@@ -984,9 +944,6 @@ export default {
     displayLangVal() { return displayLang.value },
     canSaveConfig() {
       return this.configLoaded && !this.configLoading && !this.configLoadError
-    },
-    currentThemeConfig() {
-      return this.themes[this.currentTheme] || Object.values(this.themes)[0]
     },
     avatarSizeHint() {
       return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
@@ -1220,18 +1177,6 @@ export default {
     setDisplayLang(lang) {
       displayLang.value = lang
     },
-    switchTheme(key) {
-      this.currentTheme = applyTheme(key)
-    },
-    themeSwatchStyle(theme) {
-      const vars = theme?.vars || {}
-      return {
-        '--theme-bg': vars['--bg-primary'] || '#000',
-        '--theme-surface': vars['--bg-secondary'] || vars['--bg-card'] || '#111',
-        '--theme-card': vars['--bg-card'] || 'rgba(255,255,255,0.08)',
-        '--theme-accent': vars['--accent'] || '#fff',
-      }
-    },
     previewBubbleClass(index) {
       if (this.bubbleCfg.colorMode !== 'legendary') return 'soft'
       return ['legendary', 'epic', 'rare', 'common', 'rare'][index] || 'common'
@@ -1286,11 +1231,16 @@ export default {
   letter-spacing: 0;
 }
 
-.settings-tabs { 
-  display: flex; 
-  gap: 8px; 
-  border-bottom: 1px solid var(--border); 
-  padding-bottom: 1px;
+.settings-tabs {
+  display: inline-flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--glass-control-bg);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
   scrollbar-width: thin;
   scrollbar-color: var(--border-light) transparent;
 }
@@ -1299,33 +1249,32 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
+  min-height: 40px;
+  padding: 0 16px;
+  background: var(--glass-subtle-bg);
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
   color: var(--text-secondary);
   font-size: var(--type-body);
-  font-weight: 500;
+  font-weight: 650;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .tab-item:hover {
   color: var(--text-primary);
+  background: var(--glass-control-bg-hover);
+  border-color: var(--glass-control-border-hover);
 }
 
 .tab-item.active {
+  background: var(--glass-active-bg);
+  border-color: var(--glass-active-border);
   color: var(--text-primary);
-}
-
-.tab-item.active::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0; 
-  right: 0;
-  height: 2px;
-  background: var(--active-indicator);
+  box-shadow: var(--glass-active-shadow);
+  transform: translateY(-1px);
 }
 
 .tab-icon {
@@ -1471,7 +1420,8 @@ export default {
   .settings-header h1 { font-size: var(--type-page-title-mobile); }
   .settings-tabs {
     margin: 0 -20px;
-    padding: 0 20px 8px;
+    padding: 5px;
+    max-width: calc(100vw - 40px);
     overflow-x: auto;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
@@ -1590,8 +1540,8 @@ export default {
 }
 
 .preference-section {
-  padding: 16px;
-  border-radius: 18px;
+  padding: 18px;
+  border-radius: 22px;
 }
 
 .preference-section-header,
@@ -1677,119 +1627,6 @@ export default {
   text-transform: uppercase;
 }
 
-.theme-option-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.theme-option {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  min-height: 84px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--material-glass-subtle);
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
-}
-
-.theme-option:hover {
-  border-color: var(--border-light);
-  background: var(--surface-card-hover);
-}
-
-.theme-option.active {
-  border-color: var(--active-border);
-  background: var(--material-glass-elevated);
-  box-shadow: inset 0 0 0 1px var(--active-border);
-}
-
-.theme-card-preview.theme-swatch {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 34px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--theme-bg);
-}
-
-.theme-swatch::before {
-  content: "";
-  position: absolute;
-  inset: 6px 7px auto;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--theme-surface);
-}
-
-.theme-swatch-card {
-  position: absolute;
-  left: 7px;
-  right: 7px;
-  bottom: 6px;
-  height: 14px;
-  border-radius: 6px;
-  background: var(--theme-card);
-}
-
-.theme-swatch-line {
-  position: absolute;
-  left: 14px;
-  right: 30px;
-  bottom: 11px;
-  height: 3px;
-  border-radius: var(--radius-control);
-  background: var(--theme-accent);
-}
-
-.theme-option-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-right: 22px;
-}
-
-.theme-label {
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.theme-label-en {
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.theme-check {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--text-primary);
-  color: var(--bg-primary);
-}
-
 .appearance-setting-list {
   display: flex;
   flex-direction: column;
@@ -1801,11 +1638,14 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 54px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.026);
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background: var(--glass-control-bg);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
 }
 
 .appearance-setting-row.vertical {
@@ -1834,11 +1674,14 @@ export default {
 .segmented-mini {
   display: inline-flex;
   flex: 0 0 auto;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--glass-control-bg);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
 }
 
 .segmented-mini.wide {
@@ -1849,20 +1692,28 @@ export default {
   min-width: 38px;
   min-height: 30px;
   padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--glass-subtle-bg);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: color var(--motion-fast), background var(--motion-fast);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+
+.segmented-mini button:hover {
+  color: var(--text-primary);
+  background: var(--glass-control-bg-hover);
+  border-color: var(--glass-control-border-hover);
 }
 
 .segmented-mini button.active {
-  background: var(--active-bg);
+  background: var(--glass-active-bg);
+  border-color: var(--glass-active-border);
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .palette-select-wrap {
@@ -2055,38 +1906,6 @@ export default {
   .preference-section-header,
   .scope-card-header {
     align-items: center;
-  }
-
-  .theme-option-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .theme-option {
-    min-height: 76px;
-    padding: 7px;
-  }
-
-  .theme-card-preview.theme-swatch {
-    height: 28px;
-  }
-
-  .theme-option-copy {
-    padding-right: 16px;
-  }
-
-  .theme-label {
-    font-size: 11px;
-  }
-
-  .theme-label-en {
-    display: none;
-  }
-
-  .theme-check {
-    right: 7px;
-    bottom: 7px;
-    width: 16px;
-    height: 16px;
   }
 
   .appearance-setting-row {

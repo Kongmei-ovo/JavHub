@@ -8,6 +8,17 @@
   --glass-bg: rgba(255, 255, 255, 0.86);
   --glass-border: rgba(29, 29, 31, 0.08);
   --ambient-glow: 0 16px 38px rgba(29, 29, 31, 0.1);
+  --glass-edge: rgba(29, 29, 31, 0.10);
+  --glass-edge-strong: rgba(29, 29, 31, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.92);
+  --glass-control-bg: rgba(255, 255, 255, 0.40);
+  --glass-control-bg-hover: rgba(255, 255, 255, 0.58);
+  --glass-control-border: rgba(29, 29, 31, 0.10);
+  --glass-control-border-hover: rgba(29, 29, 31, 0.17);
+  --glass-active-bg: rgba(255, 255, 255, 0.82);
+  --glass-active-border: rgba(255, 255, 255, 0.96);
+  --glass-inner-shadow: inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(29,29,31,0.035);
+  --glass-active-shadow: 0 12px 28px rgba(29,29,31,0.13), inset 0 1px 0 rgba(255,255,255,0.95);
   
   /* Precision Lines */
   --stroke-pro: 1.5px;
@@ -24,11 +35,11 @@
   --radius-control: 999px;
   --touch-target: 44px;
 
-  --material-glass-subtle: rgba(245, 245, 247, 0.78);
-  --material-glass-elevated: rgba(255, 255, 255, 0.86);
-  --material-glass-sheet: rgba(255, 255, 255, 0.92);
-  --surface-card: #ffffff;
-  --surface-card-hover: #f5f5f7;
+  --material-glass-subtle: rgba(255, 255, 255, 0.42);
+  --material-glass-elevated: rgba(255, 255, 255, 0.62);
+  --material-glass-sheet: rgba(255, 255, 255, 0.78);
+  --surface-card: rgba(255, 255, 255, 0.62);
+  --surface-card-hover: rgba(255, 255, 255, 0.78);
 
   --shadow-floating: 0 16px 38px rgba(29, 29, 31, 0.10);
   --shadow-sheet: 0 28px 80px rgba(29, 29, 31, 0.16);
@@ -41,11 +52,11 @@
   /* Typo - Retouch */
   --ls-pro: -0.02em;
 
-  /* 背景 - Apple Espana */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f7;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f5f5f7;
+  /* 背景 - Apple Liquid Glass */
+  --bg-primary: #FBFBFD;
+  --bg-secondary: #F2F2F7;
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-card-hover: rgba(255, 255, 255, 0.86);
   
   /* 强调色 - neutral action */
   --accent: #1d1d1f;
@@ -60,8 +71,8 @@
   --text-muted: #707070;
   
   /* 边框与高光 */
-  --border: #d6d6d6;
-  --border-light: #e8e8ed;
+  --border: rgba(29, 29, 31, 0.10);
+  --border-light: rgba(29, 29, 31, 0.15);
   
   /* 阴影 - Apple light */
   --shadow-card: 0 1px 2px rgba(29, 29, 31, 0.04);
@@ -101,18 +112,18 @@
   --z-toast: 1000;
   --z-confirm: 1100;
   --text-on-accent: #ffffff;
-  --surface-nav: rgba(245, 245, 247, 0.86);
-  --surface-nav-border: #e8e8ed;
-  --surface-control: var(--bg-secondary);
-  --surface-control-hover: var(--bg-card);
-  --surface-input: var(--bg-secondary);
-  --surface-input-focus: var(--bg-card);
+  --surface-nav: rgba(246, 246, 248, 0.72);
+  --surface-nav-border: var(--glass-edge);
+  --surface-control: var(--glass-control-bg);
+  --surface-control-hover: var(--glass-control-bg-hover);
+  --surface-input: var(--glass-control-bg);
+  --surface-input-focus: var(--glass-active-bg);
   --surface-scrim: rgba(29, 29, 31, 0.18);
   --hero-background: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 34%), var(--bg-primary);
   --skeleton-base: rgba(112, 112, 112, 0.08);
   --skeleton-highlight: rgba(255, 255, 255, 0.9);
-  --active-bg: #ffffff;
-  --active-border: #e8e8ed;
+  --active-bg: var(--glass-active-bg);
+  --active-border: var(--glass-active-border);
   --active-indicator: #1d1d1f;
   --link-text: var(--text-primary);
   --link-underline: #d6d6d6;
@@ -327,13 +338,14 @@ a:hover {
   font-size: var(--type-control);
   font-weight: 500;
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--glass-control-border);
   transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s cubic-bezier(0.2, 0, 0, 1);
   outline: none;
   letter-spacing: -0.01em;
 }
 .btn-primary {
   background: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.24);
   color: var(--text-on-accent);
   box-shadow: none;
 }
@@ -343,13 +355,17 @@ a:hover {
   box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
 }
 .btn-ghost {
-  background: var(--surface-control);
+  background: var(--glass-control-bg);
   color: var(--text-primary);
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 .btn-ghost:hover {
-  background: var(--surface-control-hover);
-  border-color: var(--border-light);
+  background: var(--glass-control-bg-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-inner-shadow), 0 8px 18px rgba(var(--accent-rgb), 0.08);
 }
 .btn:focus-visible {
   outline: none;
@@ -406,8 +422,8 @@ a:hover {
   letter-spacing: 0;
   cursor: pointer;
   outline: none;
-  box-shadow: none;
-  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   transition:
     transform var(--motion-fast),
@@ -422,7 +438,7 @@ a:hover {
   border-color: var(--glass-control-border-hover, var(--border-light));
   background: var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
-  box-shadow: 0 1px 2px rgba(29, 29, 31, 0.04);
+  box-shadow: var(--glass-inner-shadow), 0 8px 18px rgba(var(--accent-rgb), 0.08);
 }
 
 .glass-select__button:focus-visible {
@@ -493,7 +509,7 @@ a:hover {
   max-height: min(var(--glass-select-menu-max-height), 54vh);
   padding: 5px;
   overflow: auto;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-edge-strong);
   border-radius: var(--glass-select-menu-radius, var(--radius-lg));
   background: var(--material-glass-sheet);
   box-shadow: var(--shadow-sheet);
@@ -530,8 +546,9 @@ a:hover {
 }
 
 .glass-select__option.is-selected {
-  background: var(--accent-bg);
+  background: var(--glass-active-bg);
   color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .glass-select__check {
@@ -582,8 +599,10 @@ a:hover {
 .av-card {
   background: var(--surface-card);
   border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-card), var(--glass-inner-shadow);
+  backdrop-filter: blur(22px) saturate(155%);
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-color 0.3s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
 }
@@ -595,17 +614,17 @@ a:hover {
 
 .apple-surface {
   background: var(--surface-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--shadow-card), var(--glass-inner-shadow);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
 
 .apple-surface-elevated {
   background: var(--material-glass-elevated);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-floating);
+  border: 1px solid var(--glass-edge-strong);
+  box-shadow: var(--shadow-floating), var(--glass-inner-shadow);
 }
 
 .apple-reveal {
@@ -646,10 +665,17 @@ a:hover {
 /* ===== Form Elements ===== */
 .el-input__wrapper, .input {
   background-color: var(--surface-input) !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
+  border: 1px solid var(--glass-control-border) !important;
+  box-shadow: var(--glass-inner-shadow) !important;
   border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
   transition: var(--transition-pro) !important;
+}
+
+.el-input__wrapper:hover, .input:hover {
+  background-color: var(--surface-control-hover) !important;
+  border-color: var(--glass-control-border-hover) !important;
 }
 
 .el-input__wrapper.is-focus, .input:focus {
@@ -798,14 +824,17 @@ a:hover {
 /* 2. 输入框和下拉框：使用 Sensing Surfaces 设计 */
 .el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
   background-color: var(--surface-input) !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
+  border: 1px solid var(--glass-control-border) !important;
+  box-shadow: var(--glass-inner-shadow) !important;
   border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
   transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {
   background-color: var(--surface-control-hover) !important;
+  border-color: var(--glass-control-border-hover) !important;
 }
 
 .el-input__wrapper.is-focus, .el-textarea__inner:focus {
@@ -817,7 +846,10 @@ a:hover {
 /* 3. 按钮：更加果断和纯粹 */
 .el-button {
   font-weight: 500;
-  border: none !important; /* 去掉冗余边框 */
+  border: 1px solid var(--glass-control-border) !important;
+  box-shadow: var(--glass-inner-shadow) !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
 }
 
 .el-button--default {
@@ -827,6 +859,7 @@ a:hover {
 
 .el-button--default:hover {
   background-color: var(--surface-control-hover) !important;
+  border-color: var(--glass-control-border-hover) !important;
 }
 
 /* 4. 表格：去线化，呼吸感 (极简风的重灾区通常是表格) */

@@ -872,10 +872,11 @@ export default {
 .cloud-hint { font-size: var(--type-control); color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
 .shuffle-btn {
   display: flex; align-items: center; gap: 6px;
-  background: var(--surface-control);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid transparent;
+  background: var(--glass-control-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
   color: var(--text-primary);
   font-size: var(--type-control); font-weight: 500;
   cursor: pointer;
@@ -883,21 +884,51 @@ export default {
   border-radius: 999px;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.shuffle-btn:hover:not(:disabled) { background: var(--surface-control-hover); border-color: var(--border-light); color: var(--text-primary); }
+.shuffle-btn:hover:not(:disabled) { background: var(--glass-control-bg-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); }
 .shuffle-btn:active:not(:disabled) { transform: scale(0.96); }
 .shuffle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-wrap { text-align: center; padding: 60px; color: var(--text-secondary); }
 .spinner-large { width: 40px; height: 40px; border: 3px solid var(--border-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 
 /* Tab Bar */
-.tab-bar { display: flex; gap: 4px; justify-content: center; margin-top: 24px; }
-.tab-btn { padding: 8px 24px; background: var(--surface-control); border: 1px solid transparent; color: var(--text-secondary); font-size: var(--type-body); font-weight: 600; cursor: pointer; border-radius: 999px; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
-.tab-btn:hover { background: var(--surface-control-hover); color: var(--text-primary); }
-.tab-btn.active {
-  background: var(--active-bg);
-  border-color: var(--active-border);
+.tab-bar {
+  display: inline-flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 24px;
+  padding: 5px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--glass-control-bg);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+}
+.tab-btn {
+  padding: 8px 24px;
+  background: var(--glass-subtle-bg);
+  border: 1px solid var(--glass-control-border);
+  color: var(--text-secondary);
+  font-size: var(--type-body);
+  font-weight: 650;
+  cursor: pointer;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-btn:hover {
+  background: var(--glass-control-bg-hover);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+}
+.tab-btn.active {
+  background: var(--glass-active-bg);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
 }
 
 /* 演员卡片：整个圆形，参照VideoModal */
@@ -917,8 +948,12 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 30px 10px;
-  background: var(--surface-control);
+  background: var(--glass-control-bg);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
   gap: 16px;
 }
 
@@ -1012,10 +1047,10 @@ export default {
 }
 
 .bubble.active {
-  background: var(--active-bg);
+  background: var(--glass-active-bg);
   color: var(--text-primary);
-  border-color: var(--active-border);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
 }
 
 @media (max-width: 768px) {
