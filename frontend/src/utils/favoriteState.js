@@ -77,8 +77,18 @@ export const favoriteState = {
       
       if (is_favorited) {
         state.registry[type].add(String(id))
+        const exists = state.items.some(item => item.entity_type === type && String(item.entity_id) === String(id))
+        if (!exists) {
+          state.items.unshift({
+            entity_type: type,
+            entity_id: String(id),
+            metadata: {},
+            created_at: new Date().toISOString()
+          })
+        }
       } else {
         state.registry[type].delete(String(id))
+        state.items = state.items.filter(item => !(item.entity_type === type && String(item.entity_id) === String(id)))
       }
 
       // Notify listeners (for Toast)

@@ -28,6 +28,7 @@ const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8')
 const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
 const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8')
+const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
@@ -71,6 +72,19 @@ test('favorites video cards display dvd numbers instead of internal ids', () => 
   assert.match(favorites, /metadata\.dvd_id \|\| metadata\.canonical_number \|\| metadata\.content_id \|\| item\?\.entity_id/)
 })
 
+test('actor portrait cards unify favorites subscriptions and supplement actor picking', () => {
+  assert.match(actorPortraitCard, /actor-portrait-card/)
+  assert.match(favorites, /ActorPortraitCard/)
+  assert.match(subscription, /ActorPortraitCard/)
+  assert.match(supplementActorPicker, /ActorPortraitCard/)
+  assert.match(favorites, /class="actor-favorites-grid"/)
+  assert.match(favorites, /otherEntityItems/)
+  assert.match(favorites, /enrichFavoriteActor/)
+  assert.match(subscription, /density="standard"/)
+  assert.match(supplementActorPicker, /density="compact"/)
+  assert.match(supplementActorPicker, /action-label="选择"/)
+})
+
 test('subscription routes missing movies into download candidates', () => {
   assert.match(subscription, /createDownloadCandidate/)
   assert.match(subscription, /查看候选/)
@@ -80,6 +94,22 @@ test('subscription routes missing movies into download candidates', () => {
   assert.match(subscription, /existing/)
   assert.match(subscription, /include_supplement: '1'/)
   assert.doesNotMatch(subscription, /api\.createDownload\(\{ code:/)
+})
+
+test('subscription page defaults to subscribed management and opens discovery from an action', () => {
+  assert.doesNotMatch(subscription, /activeTab = ref\('discover'\)/)
+  assert.doesNotMatch(subscription, /v-show="activeTab === 'discover'"/)
+  assert.match(subscription, /添加演员/)
+  assert.match(subscription, /discoverOpen/)
+  assert.match(subscription, /api\.searchActors\(q\)/)
+  assert.match(subscription, /getSubscriptions/)
+  assert.match(subscription, /ActorPortraitCard/)
+})
+
+test('subscription discovery sheet keeps the management page legible behind it', () => {
+  assert.match(subscription, /class="[^"]*\bdiscover-overlay\b[^"]*"/)
+  assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*backdrop-filter: none/)
+  assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*-webkit-backdrop-filter: none/)
 })
 
 test('inventory page shows mapping coverage and candidate handoff', () => {
@@ -207,6 +237,9 @@ test('appearance controls keep compact state and robust custom material parsing'
   assert.match(config, /class="segmented-mini"[\s\S]*:aria-pressed="config\.javinfo\.page_size === size"/)
   assert.doesNotMatch(config, /class="theme-option"/)
   assert.doesNotMatch(config, /<span class="setting-title">全局主题<\/span>/)
+  assert.doesNotMatch(config, /class="preference-section apple-surface"/)
+  assert.match(config, /\.preference-stack\s*\{[\s\S]*background: var\(--bg-secondary\)/)
+  assert.match(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--border-light\)/)
   assert.match(configDefaults, /function parseGradientList/)
   assert.match(configDefaults, /char === ',' && depth === 0/)
   assert.match(config, /this\.bubbleCfg\.customGradients = parseGradientList\(this\.bubbleCfg\.customGradientsText\)/)

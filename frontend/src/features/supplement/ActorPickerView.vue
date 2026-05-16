@@ -38,29 +38,18 @@
 
     <section class="actor-results">
       <div v-if="actors.length" class="actor-choice-grid">
-        <button
+        <ActorPortraitCard
           v-for="actor in actors"
           :key="actor.id"
-          class="actor-choice-card apple-surface"
-          type="button"
-          @click="$emit('select', actor)"
-        >
-          <span class="select-orb" aria-hidden="true">
-            <img
-              v-if="actorAvatar(actor)"
-              :src="actorAvatar(actor)"
-              :alt="actorDisplayName(actor)"
-              @error="$event.target.style.display = 'none'"
-            />
-            <span v-else>{{ actorDisplayName(actor).slice(0, 1) || '?' }}</span>
-          </span>
-          <span class="actor-card-copy">
-            <strong>{{ actorDisplayName(actor) }}</strong>
-            <span>编号 {{ actor.id }}</span>
-            <small>{{ actorChoiceStatus(actor) }}</small>
-          </span>
-          <span class="actor-card-action">选择</span>
-        </button>
+          :actor="actor"
+          :name="actorDisplayName(actor)"
+          :subtitle="`编号 ${actor.id}`"
+          :avatar-url="actorAvatar(actor)"
+          :badges="actorBadges(actor)"
+          density="compact"
+          action-label="选择"
+          @open="$emit('select', actor)"
+        />
       </div>
       <div v-else-if="searched && !searching" class="empty-panel apple-surface">
         <h3>没有匹配演员</h3>
@@ -81,8 +70,11 @@
 </template>
 
 <script>
+import ActorPortraitCard from '../../components/ActorPortraitCard.vue'
+
 export default {
   name: 'ActorPickerView',
+  components: { ActorPortraitCard },
   props: {
     actors: { type: Array, default: () => [] },
     keyword: { type: String, default: '' },
@@ -94,6 +86,16 @@ export default {
     actorChoiceStatus: { type: Function, required: true },
   },
   emits: ['update:keyword', 'search', 'clear-search', 'select', 'retry'],
+  methods: {
+    actorBadges(actor) {
+      const status = this.actorChoiceStatus(actor)
+      if (!status) return []
+      const tone = /失败|不可用|failed/i.test(status)
+        ? 'warning'
+        : (/成功|succeeded|已完成/i.test(status) ? 'success' : 'neutral')
+      return [{ label: status, tone }]
+    },
+  },
 }
 </script>
 
@@ -184,96 +186,8 @@ export default {
 
 .actor-choice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 16px;
-}
-
-.actor-choice-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 214px;
-  padding: 20px 16px;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  text-align: center;
-  transition:
-    transform var(--motion-standard),
-    border-color var(--motion-standard),
-    background var(--motion-standard),
-    box-shadow var(--motion-standard);
-}
-
-.actor-choice-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--border-light);
-  background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating);
-}
-
-.select-orb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 92px;
-  height: 92px;
-  overflow: hidden;
-  color: var(--text-secondary);
-  background: var(--bg-secondary);
-  border-radius: 50%;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 18px 36px rgba(0, 0, 0, 0.42);
-  flex-shrink: 0;
-  font-weight: 800;
-}
-
-.select-orb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
-}
-
-.actor-card-copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.actor-card-copy strong {
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.actor-card-copy span,
-.actor-card-copy small {
-  color: var(--text-muted);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actor-card-copy small {
-  max-width: 190px;
-  margin: 0 auto;
-}
-
-.actor-card-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  padding: 0 16px;
-  margin-top: 2px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .empty-panel {
@@ -323,8 +237,8 @@ export default {
     width: 100%;
   }
 
-  .actor-choice-card {
-    min-height: 204px;
+  .actor-choice-grid {
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
   }
 }
 </style>

@@ -189,7 +189,7 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
         client = InfoClient()
 
         with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"data": [], "total_count": 0}
+            mock_get.return_value = {"data": [{"content_id": "abc"}], "total_count": 1}
             await client.get_actress_videos(
                 123, page=1, page_size=20,
                 include_supplement="1", service_code="digital", year=2024,
@@ -203,6 +203,60 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
                 "include_supplement": "1",
                 "service_code": "digital",
                 "year": 2024,
+            },
+        )
+
+    async def test_get_actress_videos_falls_back_when_supplement_result_is_empty(self):
+        client = InfoClient()
+
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.side_effect = [
+                {"data": [], "total_count": 0, "total_pages": 0},
+                {"data": [{"content_id": "mrec00002"}], "total_count": 934, "total_pages": 934},
+            ]
+
+            result = await client.get_actress_videos(1020504, page=1, page_size=20, include_supplement="1")
+
+        self.assertEqual(result["total_count"], 934)
+        self.assertEqual(result["data"][0]["content_id"], "mrec00002")
+        self.assertEqual(mock_get.await_count, 2)
+        mock_get.assert_any_await(
+            "/api/v1/actresses/1020504/videos",
+            params={"page": 1, "page_size": 20, "include_supplement": "1"},
+        )
+        mock_get.assert_any_await(
+            "/api/v1/actresses/1020504/videos",
+            params={"page": 1, "page_size": 20},
+        )
+
+    async def test_get_actress_videos_fallback_preserves_filters(self):
+        client = InfoClient()
+
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.side_effect = [
+                {"data": [], "total_count": 0, "total_pages": 0},
+                {"data": [{"content_id": "mrec00002"}], "total_count": 20, "total_pages": 1},
+            ]
+
+            result = await client.get_actress_videos(
+                1020504,
+                page=1,
+                page_size=20,
+                include_supplement="1",
+                service_code="digital",
+                year=2026,
+                sort_by="release_date:desc",
+            )
+
+        self.assertEqual(result["total_count"], 20)
+        mock_get.assert_any_await(
+            "/api/v1/actresses/1020504/videos",
+            params={
+                "page": 1,
+                "page_size": 20,
+                "service_code": "digital",
+                "year": 2026,
+                "sort_by": "release_date:desc",
             },
         )
 

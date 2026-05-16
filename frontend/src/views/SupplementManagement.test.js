@@ -26,24 +26,25 @@ test('supplement management keeps jobs and movies scoped to actor context', () =
 })
 
 test('supplement management lets users search and select an actor instead of typing ids', () => {
-  assert.match(actorPicker, /class="actor-picker-card"/)
   assert.match(source, /v-model:keyword="actorSearchKeyword"/)
   assert.match(source, /searchActorContext\(\)/)
   assert.match(source, /selectActorContext/)
   assert.match(source, /api\.searchActors\(keyword\)/)
   assert.match(actorPicker, /v-for="actor in actors"/)
   assert.match(source, /actorChoiceCards/)
-  assert.match(actorPicker, /class="actor-choice-card apple-surface"/)
-  assert.match(actorPicker, /class="select-orb"/)
-  assert.match(actorPicker, />选择</)
+  assert.match(actorPicker, /ActorPortraitCard/)
+  assert.match(actorPicker, /density="compact"/)
+  assert.match(actorPicker, /action-label="选择"/)
+  assert.doesNotMatch(actorPicker, /class="actor-choice-card apple-surface"/)
+  assert.doesNotMatch(actorPicker, /class="select-orb"/)
   assert.doesNotMatch(supplementFeatureSource, /placeholder="演员 ID"/)
 })
 
 test('supplement management defaults to an actor-first selection view', () => {
   assert.match(source, /补全演员/)
   assert.match(source, /v-if="showActorPicker"/)
-  assert.match(actorPicker, /class="supplement-hero apple-surface"/)
-  assert.match(actorPicker, /class="actor-filter-bar apple-surface"/)
+  assert.match(actorPicker, /class="actor-search-panel apple-surface"/)
+  assert.match(actorPicker, /class="actor-choice-grid"/)
   assert.match(source, /recentActorJobs/)
 })
 

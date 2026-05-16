@@ -46,6 +46,10 @@ def _transform_video_item(item: dict) -> dict:
     return item
 
 
+def _has_result_items(result: Any) -> bool:
+    return isinstance(result, dict) and bool(result.get("data") or result.get("total_count"))
+
+
 def _strip_metadata_fields(item: dict) -> dict:
     data = dict(item)
     for field in ("summary", "director", "score", "meta_provider"):
@@ -324,6 +328,13 @@ class InfoClient:
             f"/api/v1/actresses/{actress_id}/videos",
             params=params,
         )
+        if include_supplement and not _has_result_items(result):
+            fallback_params = dict(params)
+            fallback_params.pop("include_supplement", None)
+            result = await self._get(
+                f"/api/v1/actresses/{actress_id}/videos",
+                params=fallback_params,
+            )
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]

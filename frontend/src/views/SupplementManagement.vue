@@ -1389,14 +1389,12 @@ p {
   font-size: 13px;
 }
 
-.actor-choice-grid,
 .actor-result-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
 }
 
-.actor-choice-card,
 .actor-result-card,
 .recent-actor-row {
   display: flex;
@@ -1414,7 +1412,6 @@ p {
   transition: transform var(--motion-standard), border-color var(--motion-standard), background var(--motion-standard), box-shadow var(--motion-standard);
 }
 
-.actor-choice-card:hover,
 .actor-result-card:hover,
 .recent-actor-row:hover {
   transform: translateY(-5px);
@@ -1423,7 +1420,6 @@ p {
   box-shadow: var(--shadow-floating);
 }
 
-.select-orb,
 .actor-result-avatar,
 .workspace-avatar,
 .recent-avatar,
@@ -1438,7 +1434,6 @@ p {
   font-weight: 800;
 }
 
-.select-orb,
 .actor-result-avatar {
   width: 92px;
   height: 92px;
@@ -1446,7 +1441,6 @@ p {
   box-shadow: inset 0 1px 1px rgba(255,255,255,0.12), 0 18px 36px rgba(0, 0, 0, 0.42);
 }
 
-.select-orb img,
 .actor-result-avatar img,
 .workspace-avatar img {
   width: 100%;
@@ -1455,7 +1449,6 @@ p {
   object-position: top center;
 }
 
-.actor-card-copy,
 .actor-result-main,
 .recent-main,
 .job-copy,
@@ -1465,7 +1458,6 @@ p {
   min-width: 0;
 }
 
-.actor-card-copy strong,
 .actor-result-main strong,
 .recent-main strong,
 .job-copy strong,
@@ -1474,8 +1466,6 @@ p {
   font-size: 14px;
 }
 
-.actor-card-copy span,
-.actor-card-copy small,
 .actor-result-main span,
 .recent-main span,
 .job-copy span,
@@ -1486,25 +1476,6 @@ p {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.actor-card-copy small {
-  max-width: 190px;
-  margin: 0 auto;
-}
-
-.actor-card-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  padding: 0 16px;
-  margin-top: 2px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .actor-result-status {

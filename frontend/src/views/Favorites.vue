@@ -54,12 +54,34 @@
         />
       </div>
 
+      <!-- 演员收藏：肖像卡片 -->
+      <div v-if="actorFavoriteItems.length > 0" class="entity-section actor-favorites-section">
+        <div v-if="activeTab === 'all'" class="section-label">演员</div>
+        <div class="actor-favorites-grid">
+          <ActorPortraitCard
+            v-for="item in actorFavoriteItems"
+            :key="'a-' + item.entity_id"
+            :actor="item.actor"
+            :name="actorCardName(item)"
+            :subtitle="actorCardSubtitle(item)"
+            :meta="actorCardMeta(item)"
+            :avatar-url="actorCardAvatar(item)"
+            :badges="actorCardBadges(item)"
+            :show-favorite="true"
+            :favorited="true"
+            density="standard"
+            @open="navigateToActor(item)"
+            @favorite="toggleFavorite('actress', item.entity_id)"
+          />
+        </div>
+      </div>
+
       <!-- 非影片收藏：标签云 -->
-      <div v-if="nonVideoItems.length > 0" class="entity-section">
+      <div v-if="otherEntityItems.length > 0" class="entity-section">
         <div v-if="activeTab === 'all'" class="section-label">{{ sectionLabel }}</div>
         <div class="entity-cloud">
           <div
-            v-for="item in nonVideoItems"
+            v-for="item in otherEntityItems"
             :key="item.entity_type + '-' + item.entity_id"
             class="entity-bubble"
             @click="navigateToEntity(item)"
@@ -76,7 +98,7 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="displayVideoItems.length === 0 && nonVideoItems.length === 0" class="curate-empty">
+      <div v-if="displayVideoItems.length === 0 && actorFavoriteItems.length === 0 && otherEntityItems.length === 0" class="curate-empty">
         <div class="empty-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
@@ -91,14 +113,16 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
 import { openVideoModal } from '../utils/modalState'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
+import { actorAvatar, actorName, actorOriginalName, actorRouteTarget } from '../utils/actorDisplay.js'
 import api from '../api'
 import MovieCard from '../components/MovieCard.vue'
+import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 
 const TYPE_LABELS = {
   video: '影片',
@@ -110,12 +134,13 @@ const TYPE_LABELS = {
 
 export default {
   name: 'Favorites',
-  components: { MovieCard },
+  components: { MovieCard, ActorPortraitCard },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
     const videoLoading = ref(false)
     const videoItems = ref([])
+    const actorMetaMap = ref({})
 
     // 动态计算各类型数量
     const typeCounts = computed(() => {
@@ -170,8 +195,22 @@ export default {
       return items.filter(i => i.entity_type === activeTab.value)
     })
 
+    const actorSourceItems = computed(() => state.items.filter(i => i.entity_type === 'actress'))
+    const actorFavoriteItems = computed(() => {
+      if (activeTab.value !== 'all' && activeTab.value !== 'actress') return []
+      return actorSourceItems.value.map(item => {
+        const cached = actorMetaMap.value[String(item.entity_id)]
+        const fallback = {
+          id: item.entity_id,
+          ...(item.metadata || {}),
+        }
+        return { ...item, actor: cached || fallback }
+      })
+    })
+    const otherEntityItems = computed(() => nonVideoItems.value.filter(i => i.entity_type !== 'actress'))
+
     const sectionLabel = computed(() => {
-      const types = [...new Set(nonVideoItems.value.map(i => i.entity_type))]
+      const types = [...new Set(otherEntityItems.value.map(i => i.entity_type))]
       return types.map(t => TYPE_LABELS[t] || t).join('、')
     })
 
@@ -194,6 +233,15 @@ export default {
       } else {
         router.push({ name: 'DiscoveryDetail', params: { type, value: id }, query: { name } })
       }
+    }
+
+    const navigateToActor = (item) => {
+      const target = actorRouteTarget(item.actor, item.entity_id)
+      router.push({
+        name: 'DiscoveryDetail',
+        params: { type: 'actress', value: target.value },
+        query: target.query,
+      })
     }
 
     const openVideo = (item) => {
@@ -221,6 +269,52 @@ export default {
       return metadata.dvd_id || metadata.canonical_number || metadata.content_id || item?.entity_id || ''
     }
 
+    const actorCardName = (item) => actorName(item.actor, entityDisplayName(item) || String(item.entity_id))
+    const actorCardSubtitle = (item) => actorOriginalName(item.actor)
+    const actorCardMeta = (item) => {
+      const count = item.actor?.movie_count
+      return count != null ? `${Number(count).toLocaleString()} 部作品` : ''
+    }
+    const actorCardAvatar = (item) => actorAvatar(item.actor)
+    const actorCardBadges = () => [{ label: '收藏', tone: 'favorite' }]
+
+    const enrichFavoriteActor = async (item) => {
+      const id = String(item.entity_id)
+      if (!id || actorMetaMap.value[id]) return
+      const metadata = item.metadata || {}
+      try {
+        if (/^\d+$/.test(id)) {
+          const resp = await api.getActress(id)
+          actorMetaMap.value = { ...actorMetaMap.value, [id]: resp.data || resp }
+          return
+        }
+        const name = entityDisplayName(item)
+        if (name) {
+          const resp = await api.searchActors(name)
+          const results = resp.data?.data || resp.data || []
+          const match = results.find(actor => actorName(actor) === name) || results[0]
+          if (match) {
+            actorMetaMap.value = { ...actorMetaMap.value, [id]: match }
+            return
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to enrich favorite actor:', err)
+      }
+      actorMetaMap.value = {
+        ...actorMetaMap.value,
+        [id]: { id, ...metadata, name: entityDisplayName(item) || id },
+      }
+    }
+
+    watch(
+      actorSourceItems,
+      (items) => {
+        items.forEach(item => { enrichFavoriteActor(item) })
+      },
+      { immediate: true }
+    )
+
     return {
       state,
       count: favoriteState.count,
@@ -230,15 +324,24 @@ export default {
       videoItems,
       displayVideoItems,
       nonVideoItems,
+      actorFavoriteItems,
+      otherEntityItems,
       sectionLabel,
       typeLabel,
       entityDisplayName,
       navigateToEntity,
+      navigateToActor,
       openVideo,
       isFavorited,
       toggleFavorite,
       cardImageUrl,
-      movieDisplayCode
+      movieDisplayCode,
+      actorCardName,
+      actorCardSubtitle,
+      actorCardMeta,
+      actorCardAvatar,
+      actorCardBadges,
+      enrichFavoriteActor,
     }
   }
 }
@@ -339,6 +442,16 @@ export default {
 /* ===== 非影片收藏区 ===== */
 .entity-section {
   margin-top: 20px;
+}
+
+.actor-favorites-section {
+  margin-bottom: 34px;
+}
+
+.actor-favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px;
 }
 
 .section-label {
@@ -497,6 +610,7 @@ export default {
   .favorites-page { --page-top-space: 40px; }
   .curate-title { font-size: var(--page-title-size-mobile); }
   .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
+  .actor-favorites-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
   .segment-item {
     min-height: 44px;
     padding: 8px 14px;

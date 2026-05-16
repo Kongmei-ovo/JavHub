@@ -63,7 +63,7 @@ export const DEFAULT_CONFIG = {
     },
   },
   proxy: { enabled: false, http_url: '', https_url: '' },
-  server: { frontend_origin: 'http://localhost:5173' },
+  server: { frontend_origin: 'http://localhost:5174' },
   rate_limit: { enabled: false, requests_per_minute: 60, burst: 10 },
 }
 

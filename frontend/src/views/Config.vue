@@ -350,7 +350,7 @@
             </div>
 
             <div class="preference-stack">
-              <section class="preference-section apple-surface">
+              <section class="preference-section">
                 <div class="preference-section-header">
                   <div>
                     <h3>全局偏好</h3>
@@ -378,7 +378,7 @@
                 </div>
               </section>
 
-              <section class="preference-section apple-surface">
+              <section class="preference-section">
                 <div class="preference-section-header">
                   <div>
                     <h3>影片检索</h3>
@@ -434,7 +434,7 @@
                 </div>
               </section>
 
-              <section class="preference-section apple-surface">
+              <section class="preference-section">
                 <div class="preference-section-header">
                   <div>
                     <h3>个性推荐</h3>
@@ -783,7 +783,7 @@
                 <div class="form-slot">
                   <div class="form-group">
                     <label>前端 Origin</label>
-                    <input class="input" v-model="config.server.frontend_origin" placeholder="http://localhost:5173" />
+                    <input class="input" v-model="config.server.frontend_origin" placeholder="http://localhost:5174" />
                   </div>
                   <div class="form-row">
                     <div class="form-group checkbox">
@@ -1537,11 +1537,18 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
 }
 
 .preference-section {
   padding: 18px;
   border-radius: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
 }
 
 .preference-section-header,
@@ -1587,7 +1594,7 @@ export default {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--material-glass-subtle);
+  background: var(--surface-control);
 }
 
 .scope-card.compact-card {
@@ -1620,7 +1627,7 @@ export default {
   padding: 4px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-subtle);
+  background: var(--surface-control);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;

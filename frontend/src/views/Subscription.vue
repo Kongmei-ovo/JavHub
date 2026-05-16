@@ -2,86 +2,113 @@
   <div class="sub-page page-shell page-shell--standard">
     <!-- Hero -->
     <div class="sub-hero">
-      <h1 class="hero-title">订阅演员</h1>
-      <div class="segmented-control">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="segment-item"
-          :class="{ active: activeTab === tab.id }"
-          @click="switchTab(tab.id)"
-        >
-          {{ tab.label }}
-          <span v-if="tab.badge > 0" class="tab-badge">{{ tab.badge }}</span>
+      <div class="hero-copy">
+        <h1 class="hero-title">订阅演员</h1>
+        <div class="hero-metrics" aria-label="订阅概览">
+          <span>{{ subs.length }} 已订阅</span>
+          <span>{{ totalNewMovies }} 候选</span>
+          <span>{{ totalNeedsMagnet }} 待补磁力</span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="top-action-btn" type="button" :disabled="checkingAll || loading" @click="checkAllNow">
+          <span v-if="checkingAll" class="spinner-tiny"></span>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          检查全部
+        </button>
+        <button class="top-action-btn primary" type="button" @click="openDiscover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          添加演员
         </button>
       </div>
     </div>
 
-    <!-- ===== 发现 Tab ===== -->
-    <div v-show="activeTab === 'discover'" class="tab-content">
-      <div class="search-bar-wrap">
-        <div class="search-bar">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input v-model="searchKeyword" placeholder="搜索演员名称" class="search-input" @keyup.enter="doSearch" />
-          <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div v-if="searching" class="card-grid">
-        <div v-for="n in 8" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
-      </div>
-
-      <div v-else-if="searchResults.length > 0" class="card-grid">
-        <ActressCard
-          v-for="actor in searchResults"
-          :key="actor.id"
-          :coverUrl="avatarSrc(actor)"
-          :name="displayName(actor, 'name_kanji', 'name_romaji') || '未知'"
-          :originalName="actor.name_kanji || actor.name_romaji || ''"
-          :totalCount="actor.movie_count"
-          :subscribed="isSubscribed(actor.id)"
-          @click="openActorSheet(actor)"
-        />
-      </div>
-
-      <div v-else-if="searched && searchResults.length === 0" class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
-        <p>未找到相关演员</p>
-      </div>
-    </div>
-
-    <!-- ===== 已订阅 Tab ===== -->
-    <div v-show="activeTab === 'subscribed'" class="tab-content">
+    <!-- ===== 已订阅管理 ===== -->
+    <div class="tab-content subscription-content">
       <div v-if="loading" class="card-grid">
         <div v-for="n in 6" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
       </div>
 
       <div v-else-if="subs.length > 0" class="card-grid">
-        <ActressCard
+        <ActorPortraitCard
           v-for="sub in subs"
           :key="sub.id"
-          :coverUrl="subCoverUrl(sub)"
+          :actor="subActor(sub)"
           :name="subDisplayName(sub)"
-          :originalName="subOriginalName(sub)"
-          :totalCount="subMeta(sub)?.movie_count ?? null"
-          :subscribed="true"
-          :candidateCount="sub.candidate_count || newMovieCount(sub.actress_id)"
-          @click="openSubSheet(sub)"
+          :subtitle="subOriginalName(sub)"
+          :meta="subCardMeta(sub)"
+          :avatar-url="subCoverUrl(sub)"
+          :badges="subCardBadges(sub)"
+          density="standard"
+          @open="openSubSheet(sub)"
         />
       </div>
 
       <div v-else class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <p>还没有订阅任何演员</p>
-        <button class="pill-btn pill-btn-primary" style="margin-top:16px" @click="activeTab = 'discover'">去发现</button>
+        <button class="pill-btn pill-btn-primary empty-action" type="button" @click="openDiscover">添加演员</button>
       </div>
     </div>
+
+    <!-- ===== Discover Sheet ===== -->
+    <teleport to="body">
+      <transition name="sheet">
+        <div v-if="discoverOpen" class="sheet-overlay discover-overlay" @click.self="closeDiscover">
+          <div class="sheet discover-sheet" @click.stop>
+            <div class="sheet-top-bar">
+              <div class="sheet-top-actions">
+                <button class="top-action-btn" type="button" @click="closeDiscover">关闭</button>
+              </div>
+            </div>
+
+            <div class="discover-head">
+              <h2>发现演员</h2>
+            </div>
+
+            <div class="discover-body">
+              <div class="search-bar-wrap">
+                <div class="search-bar">
+                  <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
+                  <input v-model="searchKeyword" placeholder="搜索演员名称" class="search-input" @keyup.enter="doSearch" />
+                  <button v-if="searchKeyword" class="clear-btn" type="button" @click="clearSearch">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                      <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="searching" class="card-grid">
+                <div v-for="n in 8" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
+              </div>
+
+              <div v-else-if="searchResults.length > 0" class="card-grid">
+                <ActorPortraitCard
+                  v-for="actor in searchResults"
+                  :key="actor.id"
+                  :actor="actor"
+                  :name="actorCardName(actor)"
+                  :subtitle="actorCardSubtitle(actor)"
+                  :meta="actorCardMeta(actor)"
+                  :avatar-url="avatarSrc(actor)"
+                  :badges="actorSearchBadges(actor)"
+                  density="standard"
+                  @open="openActorSheet(actor)"
+                />
+              </div>
+
+              <div v-else-if="searched && searchResults.length === 0" class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
+                <p>未找到相关演员</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
 
     <!-- ===== Detail Sheet ===== -->
     <teleport to="body">
@@ -184,19 +211,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
 import { displayName } from '../utils/displayLang.js'
-import ActressCard from '../components/ActressCard.vue'
+import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
+import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import MovieCard from '../components/MovieCard.vue'
 
 const router = useRouter()
 
-const activeTab = ref('discover')
+const discoverOpen = ref(false)
 const searchKeyword = ref('')
 const searchResults = ref([])
 const searching = ref(false)
@@ -204,6 +232,7 @@ const searched = ref(false)
 
 const subs = ref([])
 const loading = ref(false)
+const checkingAll = ref(false)
 const checkingId = ref(null)
 
 const sheetActor = ref(null)
@@ -222,10 +251,10 @@ const totalNewMovies = computed(() => {
   return c
 })
 
-const tabs = computed(() => [
-  { id: 'discover', label: '发现', badge: 0 },
-  { id: 'subscribed', label: '已订阅', badge: totalNewMovies.value },
-])
+const totalNeedsMagnet = computed(() => subs.value.reduce(
+  (sum, sub) => sum + Number(sub.needs_magnet_count || 0),
+  0,
+))
 
 const sheetCoverUrl = computed(() => {
   if (!sheetActor.value) return ''
@@ -241,6 +270,21 @@ function avatarSrc(actor) { return actressImgUrl(actor.image_url) || '' }
 function subCoverUrl(sub) { const m = actressMetaMap.value[sub.actress_id]; return m?.image_url ? actressImgUrl(m.image_url) : '' }
 function subMeta(sub) { return actressMetaMap.value[sub.actress_id] || null }
 function isSubscribed(actressId) { return subs.value.some(s => s.actress_id === actressId) }
+function actorCardName(actor) { return actorName(actor, '未知') }
+function actorCardSubtitle(actor) { return actorOriginalName(actor) }
+function actorCardMeta(actor) { return actor?.movie_count != null ? `${Number(actor.movie_count).toLocaleString()} 部作品` : '' }
+function actorSearchBadges(actor) {
+  return isSubscribed(actor.id) ? [{ label: '已订阅', tone: 'subscribed' }] : []
+}
+function subActor(sub) {
+  const meta = actressMetaMap.value[sub.actress_id] || {}
+  return {
+    id: sub.actress_id,
+    actress_id: sub.actress_id,
+    name: sub.actress_name,
+    ...meta,
+  }
+}
 function subDisplayName(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
   if (meta) { const n = displayName(meta, 'name_kanji', 'name_romaji'); if (n) return n }
@@ -252,6 +296,20 @@ function subOriginalName(sub) {
 }
 function newMovieCount(actressId) { return (newMovieMap.value[actressId] || []).length }
 function movieCoverUrl(movie) { return jacketHdUrl(movie.jacket_thumb_url) || movie.jacket_thumb_url || '' }
+function subCardMeta(sub) {
+  const count = subMeta(sub)?.movie_count
+  const parts = []
+  if (count != null) parts.push(`${Number(count).toLocaleString()} 部作品`)
+  if (sub.needs_magnet_count) parts.push(`待补磁力 ${sub.needs_magnet_count}`)
+  return parts.join(' · ')
+}
+function subCardBadges(sub) {
+  const badges = [{ label: '已订阅', tone: 'subscribed' }]
+  const candidates = sub.candidate_count || newMovieCount(sub.actress_id)
+  if (candidates) badges.push({ label: `${candidates} 候选`, tone: 'warning' })
+  if (sub.auto_download) badges.push({ label: '自动策略', tone: 'success' })
+  return badges
+}
 
 function shuffleArray(arr) {
   const a = [...arr]
@@ -259,7 +317,14 @@ function shuffleArray(arr) {
   return a
 }
 
-function switchTab(tab) { activeTab.value = tab; if (tab === 'subscribed' && subs.value.length) loadNewMovieBadges() }
+function openDiscover() {
+  discoverOpen.value = true
+}
+
+function closeDiscover() {
+  discoverOpen.value = false
+  clearSearch()
+}
 
 // ===== Search =====
 async function doSearch() {
@@ -273,6 +338,7 @@ function clearSearch() { searchKeyword.value = ''; searchResults.value = []; sea
 
 // ===== Sheet =====
 async function openActorSheet(actor) {
+  closeDiscover()
   sheetActor.value = actor; sheetSub.value = null
   sheetMovies.value = []; sheetLoading.value = true
   try {
@@ -283,6 +349,7 @@ async function openActorSheet(actor) {
 }
 
 async function openSubSheet(sub) {
+  discoverOpen.value = false
   const meta = actressMetaMap.value[sub.actress_id]
   sheetActor.value = { id: sub.actress_id, name_kanji: meta?.name_kanji || sub.actress_name || '', image_url: meta?.image_url || '', movie_count: meta?.movie_count, name_romaji: meta?.name_romaji || '', name_kana: meta?.name_kana || '', name_kanji_translated: meta?.name_kanji_translated || '', name_romaji_translated: meta?.name_romaji_translated || '' }
   sheetSub.value = sub
@@ -317,13 +384,18 @@ async function subscribeFromSheet() {
 // ===== Subscriptions =====
 async function loadSubs() {
   loading.value = true
-  try { const r = await api.getSubscriptions(); subs.value = r.data?.data || r.data || []; await enrichActressMeta() }
+  try {
+    const r = await api.getSubscriptions()
+    subs.value = r.data?.data || r.data || []
+    await enrichActressMeta()
+    await loadNewMovieBadges()
+  }
   catch (e) { console.error(e) } finally { loading.value = false }
 }
 
 async function enrichActressMeta() {
   const ids = subs.value.filter(s => s.actress_id).map(s => s.actress_id)
-  if (!ids.length) return
+  if (!ids.length) { actressMetaMap.value = {}; return }
   const map = {}; const sem = { count: 0 }
   const fetchOne = async (id) => {
     while (sem.count >= 8) await new Promise(r => setTimeout(r, 50))
@@ -339,6 +411,27 @@ async function enrichActressMeta() {
 async function loadNewMovieBadges() {
   try { const r = await api.getNewMovies(); newMovieMap.value = r.data?.data || {} }
   catch (e) { console.error(e) }
+}
+
+async function checkAllNow() {
+  checkingAll.value = true
+  try {
+    const r = await api.checkSubscriptions()
+    const data = r.data || {}
+    lastCheckReport.value = data
+    const checked = data.subscriptions_checked || 0
+    const created = data.created || 0
+    const existing = data.existing || 0
+    const inLibrary = data.in_library || 0
+    if (created > 0) ElMessage.success(`已检查 ${checked} 个订阅，新增 ${created} 个候选，已有 ${existing} 个，已在库 ${inLibrary} 个`)
+    else if (existing > 0) ElMessage.info(`已检查 ${checked} 个订阅，没有新增候选，已有 ${existing} 个待处理`)
+    else ElMessage.info(`已检查 ${checked} 个订阅，暂无缺失候选，已在库 ${inLibrary} 个`)
+    await loadSubs()
+  } catch (e) {
+    ElMessage.error('检查失败')
+  } finally {
+    checkingAll.value = false
+  }
 }
 
 async function checkNow(sub) {
@@ -397,7 +490,6 @@ function viewCandidates(sub) {
 }
 
 onMounted(loadSubs)
-watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadNewMovieBadges() })
 </script>
 
 <style scoped>
@@ -406,7 +498,17 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   min-height: 100dvh;
 }
 
-.sub-hero { text-align: center; padding: 40px 20px 20px; }
+.sub-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 40px 20px 24px;
+}
+
+.hero-copy {
+  min-width: 0;
+}
 
 .hero-title {
   font-size: var(--page-title-size);
@@ -414,41 +516,36 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
   line-height: var(--page-title-line);
   color: var(--text-primary);
   letter-spacing: 0;
-  margin-bottom: 20px;
+  margin: 0;
 }
 
-/* ===== Segmented Control ===== */
-.segmented-control {
+.hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hero-metrics span {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 3px;
-  border-radius: 12px;
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.segment-item {
-  border: none; background: transparent;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
-  padding: 7px 20px; font-size: var(--type-control); font-weight: 600;
-  border-radius: 9px; cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
-  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.segment-item:hover { color: var(--text-primary); }
-
-.segment-item.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-}
-
-.tab-badge {
-  font-size: var(--type-badge); background: #FF375F; color: #fff;
-  padding: 1px 5px; border-radius: 8px;
-  font-weight: 700; min-width: 16px; text-align: center;
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .inline-badge {
@@ -466,6 +563,7 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 }
 
 .tab-content { padding: 0 16px; animation: fadeIn 0.2s ease; }
+.subscription-content { padding-bottom: 32px; }
 
 /* ===== Search Bar ===== */
 .search-bar-wrap { margin-bottom: 20px; }
@@ -561,6 +659,10 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 
 .pill-btn-primary:hover { background: var(--accent-light); }
 
+.empty-action {
+  margin-top: 16px;
+}
+
 /* ===== Empty State ===== */
 .empty-state {
   text-align: center; padding: 80px 20px;
@@ -637,6 +739,41 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .top-action-btn.danger { color: #FF375F; border-color: rgba(255, 55, 95, 0.25); }
 .top-action-btn.danger:hover { background: rgba(255, 55, 95, 0.1); }
+.top-action-btn.primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: transparent;
+}
+.top-action-btn.primary:hover {
+  background: var(--accent-light);
+  color: var(--text-on-accent);
+}
+
+.discover-sheet {
+  max-width: 980px;
+}
+
+.discover-overlay {
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.discover-head {
+  padding: 20px 24px 12px;
+  text-align: center;
+}
+
+.discover-head h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-section-title);
+  line-height: 1.2;
+}
+
+.discover-body {
+  padding: 0 20px 28px;
+}
 
 /* Avatar */
 .sheet-avatar-wrap {
@@ -826,15 +963,20 @@ watch(activeTab, (tab) => { if (tab === 'subscribed' && subs.value.length) loadN
 }
 
 @media (max-width: 768px) {
-  .sub-hero { padding: 32px 16px 16px; }
+  .sub-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 32px 16px 16px;
+  }
   .hero-title { font-size: var(--page-title-size-mobile); }
+  .hero-actions { justify-content: flex-start; }
   .tab-content { padding: 0 12px; }
-  .card-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .sheet { width: 100vw; max-width: 100%; max-height: 95vh; border-radius: 20px 20px 0 0; }
+  .discover-body { padding: 0 12px 24px; }
   .works-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
   .sheet-translated { font-size: var(--type-panel-title); }
   .name-pill { height: 22px; padding: 0 8px; font-size: var(--type-micro); }
-  .segment-item,
   .clear-btn,
   .pill-btn,
   .top-action-btn,

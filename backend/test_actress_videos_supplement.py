@@ -8,7 +8,7 @@ from routers import actresses
 class ActressVideosSupplementTest(unittest.IsolatedAsyncioTestCase):
     async def test_passes_include_supplement_to_client(self):
         mock_client = AsyncMock()
-        mock_client.get_actress_videos.return_value = {"data": [], "total_count": 0}
+        mock_client.get_actress_videos.return_value = {"data": [{"content_id": "abc"}], "total_count": 1}
 
         with patch("routers.actresses.get_info_client", return_value=mock_client):
             await actresses.get_actress_videos(
