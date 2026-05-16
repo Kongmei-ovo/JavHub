@@ -465,18 +465,19 @@ export default {
       this.loadActresses(1)
     },
     'cfg.seriesPageSize'() {
-      this.loadSeries(1)
+      if (this.activeTab === 'series') this.loadSeries(1)
     },
   },
   async mounted() {
     this.loadCfg()
     this.activeTab = this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre'
-    await Promise.all([
+    const initialLoads = [
       this.loadCategories(),
       this.loadActresses(),
-      this.loadSeries(),
       this.cfg.goldLegend ? this.loadCategoryStats() : Promise.resolve(),
-    ])
+    ]
+    if (this.activeTab === 'series') initialLoads.push(this.loadSeries())
+    await Promise.all(initialLoads)
     // Delegated legendary listeners — set up once after DOM is ready
     this.$nextTick(() => {
       const cloud = this.$refs.tagCloudRef
@@ -740,6 +741,9 @@ export default {
     },
     switchTab(tab) {
       this.activeTab = tab
+      if (tab === 'series' && !this.seriesRawPage.length && !this.seriesLoading) {
+        this.loadSeries(this.seriesPage)
+      }
       if (tab === 'series' && !this._seriesGsapInited) {
         this._seriesGsapInited = true
         this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))

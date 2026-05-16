@@ -606,6 +606,11 @@ test('genres page applies series and actor preference settings separately', () =
   assert.match(genres, /v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard"/)
 })
 
+test('genres page lazily loads series tab data', () => {
+  assert.doesNotMatch(genres, /Promise\.all\(\[[\s\S]*this\.loadSeries\(\)/)
+  assert.match(genres, /switchTab\(tab\)[\s\S]*if \(tab === 'series' && !this\.seriesRawPage\.length && !this\.seriesLoading\)[\s\S]*this\.loadSeries\(this\.seriesPage\)/)
+})
+
 test('discovery navigation prefers ids for precise filtering', () => {
   assert.match(genres, /params: \{ type: 'category', value: String\(tag\.id \|\| name\) \}/)
   assert.match(genres, /params: \{ type: 'actress', value: String\(actress\.id \|\| name\) \}/)

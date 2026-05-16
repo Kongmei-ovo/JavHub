@@ -367,6 +367,23 @@ class InfoClient:
         cache.set_enum_list("series", data)
         return data
 
+    async def list_series_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """获取系列分页列表，避免为推荐页拉取完整系列枚举。"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        result = await self._get("/api/v1/series", params=params)
+        if isinstance(result, dict):
+            return result
+        items = result if isinstance(result, list) else []
+        return {
+            "data": items,
+            "page": page,
+            "page_size": page_size,
+            "total_count": len(items),
+            "total_pages": 1,
+        }
+
     async def list_categories(self, q: str | None = None) -> list[dict]:
         """获取所有题材（缓存24小时，支持 q 搜索）"""
         if q:
