@@ -52,6 +52,8 @@ write_plists() {
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SERVER_PORT</key>
+    <string>8080</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>
@@ -259,6 +261,8 @@ stop_services() {
 rebuild_javinfo() {
   (cd "${JAVINFO_DIR}" && go build -o JavInfoApi ./cmd/javinfoapi)
   write_plists
+  stop_label "${JAVINFO_LABEL}"
+  bootstrap_label "${JAVINFO_LABEL}"
   kickstart_label "${JAVINFO_LABEL}"
 }
 
