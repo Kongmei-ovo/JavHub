@@ -21,7 +21,7 @@
     <!-- 题材 Tab：气泡云 -->
     <div v-if="activeTab === 'genre'" class="tag-cloud-wrap page-rail page-rail--standard" ref="cloudRef">
       <div class="cloud-header">
-        <span class="cloud-hint">共 {{ categories.length }} 个题材</span>
+        <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="reshuffle" :disabled="loading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
@@ -72,7 +72,7 @@
     <!-- 演员 Tab：头像卡片 -->
     <div v-if="activeTab === 'actress'" class="actress-tab page-rail page-rail--standard">
       <div class="cloud-header">
-        <span class="cloud-hint">第 {{ actressPage }} / {{ actressTotalPages }} 页</span>
+        <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="shuffleActresses" :disabled="actressesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
@@ -97,7 +97,7 @@
 
       <div v-else class="actress-grid" :style="actressGridStyle">
         <div
-          v-for="actress in displayedActresses"
+          v-for="actress in visibleActresses"
           :key="actress.id"
           class="actress-card"
           @click="goActress(actress)"
@@ -118,7 +118,7 @@
     <!-- 系列 Tab：系列气泡云 -->
     <div v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard">
       <div class="cloud-header">
-        <span class="cloud-hint">第 {{ seriesPage }} / {{ seriesTotalPages }} 页</span>
+        <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="reshuffleSeries" :disabled="seriesLoading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <polyline points="23 4 23 10 17 10"/>
@@ -452,6 +452,13 @@ export default {
     seriesPageSize() {
       return Number(this.cfg.seriesPageSize) || DEFAULT_CFG.seriesPageSize
     },
+    visibleActresses() {
+      return this.displayedActresses.filter(actress => {
+        const count = actress.movie_count ?? actress.video_count ?? actress.total_count
+        const hasMovies = count === undefined || count === null || Number(count) > 0
+        return hasMovies && this.hasActressAvatar(actress)
+      })
+    },
   },
   watch: {
     'cfg.bubbleCount'(newVal) {
@@ -733,9 +740,10 @@ export default {
     },
     goGenre(tag) {
       const name = displayName(tag, 'name_ja', 'name_en') || tag.name || ''
+      const filterValue = tag.id || tag.name_ja || tag.name_en || tag.name || name
       this.$router.push({
         name: 'DiscoveryDetail',
-        params: { type: 'category', value: String(tag.id || name) },
+        params: { type: 'category', value: String(filterValue) },
         query: name ? { name } : {},
       })
     },
@@ -749,9 +757,14 @@ export default {
         this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))
       }
     },
+    hasActressAvatar(actress) {
+      const imageUrl = actress?.image_url || actress?.avatar_url || actress?.javinfo_avatar_url
+      return String(imageUrl || '').trim().length > 0
+    },
     actressAvatar(actress) {
-      if (actress.image_url) {
-        const url = actress.image_url
+      const imageUrl = actress?.image_url || actress?.avatar_url || actress?.javinfo_avatar_url
+      if (imageUrl) {
+        const url = String(imageUrl).trim()
         if (url.startsWith('http')) return url
         return `https://awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/${url.replace(/^\//, '')}`
       }

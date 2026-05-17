@@ -43,6 +43,20 @@ def _first_text(entity: dict, keys: list[str]) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _has_masked_text(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    return "*" in value or "●" in value
+
+
+def _apply_translated_name(entity: dict, key: str, original: str, translated: str | None) -> None:
+    if not translated or translated == original:
+        return
+    entity[f"{key}_translated"] = translated
+    if _has_masked_text(original):
+        entity[key] = translated
+
+
 def _json_array(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -210,8 +224,7 @@ class TranslatorService:
                 persist_ai=use_ai,
                 allow_network=allow_network,
             )
-            if translated and translated != original:
-                item[f"{key}_translated"] = translated
+            _apply_translated_name(item, key, original, translated)
         return items
 
     async def translate_video(
@@ -257,8 +270,7 @@ class TranslatorService:
                     persist_ai=use_ai,
                     allow_network=allow_network,
                 )
-                if translated and translated != original:
-                    cat[f"{key}_translated"] = translated
+                _apply_translated_name(cat, key, original, translated)
 
         for entity_type, keys in (
             ("series", ["name"]),
@@ -285,8 +297,7 @@ class TranslatorService:
                 persist_ai=use_ai,
                 allow_network=allow_network,
             )
-            if translated and translated != original:
-                entity[f"{key}_translated"] = translated
+            _apply_translated_name(entity, key, original, translated)
 
         title_map = content_mapping.get("title", {}) if content_mapping else {}
         for title_key in ["title_en", "title_ja"]:

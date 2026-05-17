@@ -99,6 +99,25 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("title_ja_translated", data)
         self.assertNotIn("summary_translated", data)
 
+    async def test_video_translation_sanitizes_masked_text_in_localized_fields(self):
+        from database import upsert_translation
+
+        upsert_translation("category:7", {"category": {"A***e": "肛门"}})
+
+        data = await self.service().translate_video(
+            "MIAA-784",
+            {
+                "content_id": "MIAA-784",
+                "title_ja": "kawaii*卒業",
+                "categories": [{"id": 7, "name_en": "A***e"}],
+            },
+            allow_network=False,
+        )
+
+        self.assertEqual(data["title_ja"], "kawaii*卒業")
+        self.assertEqual(data["categories"][0]["name_en"], "肛门")
+        self.assertEqual(data["categories"][0]["name_en_translated"], "肛门")
+
     async def test_batch_provider_order_skips_ai(self):
         from translations.providers import GoogleFreeProvider, OpenAICompatibleProvider, TranslationResult
 

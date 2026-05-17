@@ -57,6 +57,17 @@ def _strip_metadata_fields(item: dict) -> dict:
     return data
 
 
+def _is_random_limit_error(exc: httpx.HTTPStatusError) -> bool:
+    if exc.response.status_code != 400:
+        return False
+    try:
+        payload = exc.response.json()
+    except Exception:
+        payload = {}
+    message = str(payload.get("error") or payload.get("detail") or exc.response.text or "")
+    return "random=1" in message
+
+
 class InfoClient:
     """JavInfoApi HTTP 客户端"""
 
@@ -227,7 +238,21 @@ class InfoClient:
         if random:
             params["random"] = random
             # 随机查询跳过缓存，每次直接请求 JavInfoApi 获取新的随机顺序
-            result = await self._get("/api/v1/videos/search", {k: v for k, v in params.items() if v is not None})
+            try:
+                result = await self._get("/api/v1/videos/search", {k: v for k, v in params.items() if v is not None})
+            except httpx.HTTPStatusError as exc:
+                if not _is_random_limit_error(exc):
+                    raise
+                fallback_params = {k: v for k, v in params.items() if v is not None and k != "random"}
+                cached = cache.get_search(fallback_params, page)
+                if cached is not None:
+                    return cached
+                result = await self._get("/api/v1/videos/search", fallback_params)
+                if "data" in result and isinstance(result["data"], list):
+                    result["data"] = [_transform_video_item(item) for item in result["data"]]
+                if result.get("total_count", 0) > 0:
+                    cache.set_search(fallback_params, page, result)
+                return result
             if "data" in result and isinstance(result["data"], list):
                 result["data"] = [_transform_video_item(item) for item in result["data"]]
             return result

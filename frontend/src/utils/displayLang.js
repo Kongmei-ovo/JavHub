@@ -27,10 +27,13 @@ export function displayName(item, jaField = 'name_ja', enField = 'name_en') {
   if (!item) return ''
   const ja = item[jaField]
   const en = item[enField]
+  const jaTrans = item[`${jaField}_translated`]
+  const enTrans = item[`${enField}_translated`]
+  if (String(ja || en || '').includes('*') || String(ja || en || '').includes('●')) {
+    return jaTrans || enTrans || ja || en || ''
+  }
   // zh 模式优先取翻译字段
   if (displayLang.value === 'zh') {
-    const jaTrans = item[`${jaField}_translated`]
-    const enTrans = item[`${enField}_translated`]
     return jaTrans || enTrans || ja || en || ''
   }
   return displayLang.value === 'en' ? (en || ja || '') : (ja || en || '')

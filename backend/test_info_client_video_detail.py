@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import httpx
 from unittest.mock import AsyncMock, patch
 
 from modules.info_client import InfoClient
@@ -97,6 +98,34 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
             data = await client.get_video_metadata("MIAA-784")
 
         self.assertEqual(data, {})
+
+    async def test_random_search_falls_back_when_upstream_rejects_large_result_set(self):
+        client = InfoClient()
+        request = httpx.Request("GET", "http://example.test/api/v1/videos/search")
+        limited_response = httpx.Response(
+            400,
+            request=request,
+            json={"error": "random=1 is limited to filtered result sets of 5000 rows or fewer"},
+        )
+        fallback_result = {
+            "data": [{"dvd_id": "MIAA-784", "jacket_thumb_url": "digital/video/miaa00784/miaa00784ps"}],
+            "total_count": 6000,
+        }
+        get_mock = AsyncMock(side_effect=[
+            httpx.HTTPStatusError("Bad Request", request=request, response=limited_response),
+            fallback_result,
+        ])
+
+        with patch.object(client, "_get", get_mock), \
+             patch("services.cache.get_search", return_value=None), \
+             patch("services.cache.set_search") as set_search:
+            data = await client.search_videos(category_id=5023, random="1", page=1, page_size=30)
+
+        self.assertEqual(data["total_count"], 6000)
+        self.assertEqual(data["data"][0]["content_id"], "MIAA-784")
+        self.assertEqual(get_mock.await_count, 2)
+        self.assertNotIn("random", get_mock.await_args_list[1].args[1])
+        set_search.assert_called_once()
 
 
 if __name__ == "__main__":

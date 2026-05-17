@@ -31,6 +31,7 @@ const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.m
 const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
+const displayLangSource = readFileSync(new URL('../utils/displayLang.js', import.meta.url), 'utf8')
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
@@ -604,6 +605,20 @@ test('genres page applies series and actor preference settings separately', () =
   assert.match(genres, /const pageSize = this\.seriesPageSize[\s\S]*api\.listSeries\(page, pageSize\)/)
   assert.match(genres, /legendaryBubbleClass\(tag\)[\s\S]*if \(this\.activeTab === 'series'\) return ''/)
   assert.match(genres, /v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard"/)
+  assert.match(genres, /visibleActresses\(\)[\s\S]*movie_count/)
+  assert.match(genres, /hasActressAvatar\(actress\)/)
+  assert.match(genres, /actress\?\.image_url/)
+  assert.match(genres, /actress\?\.avatar_url/)
+  assert.match(genres, /actress\?\.javinfo_avatar_url/)
+  assert.match(genres, /v-for="actress in visibleActresses"/)
+  assert.doesNotMatch(genres, /第 \{\{ actressPage \}\}/)
+  assert.doesNotMatch(genres, /第 \{\{ seriesPage \}\}/)
+  assert.doesNotMatch(genres, /共 \{\{ categories\.length \}\}/)
+})
+
+test('display names prefer translations when source names are masked', () => {
+  assert.match(displayLangSource, /String\(ja \|\| en \|\| ''\)\.includes\('\*'\)/)
+  assert.match(displayLangSource, /return jaTrans \|\| enTrans \|\| ja \|\| en \|\| ''/)
 })
 
 test('genres page lazily loads series tab data', () => {
@@ -612,7 +627,8 @@ test('genres page lazily loads series tab data', () => {
 })
 
 test('discovery navigation prefers ids for precise filtering', () => {
-  assert.match(genres, /params: \{ type: 'category', value: String\(tag\.id \|\| name\) \}/)
+  assert.match(genres, /const filterValue = tag\.id \|\| tag\.name_ja \|\| tag\.name_en \|\| tag\.name \|\| name/)
+  assert.match(genres, /params: \{ type: 'category', value: String\(filterValue\) \}/)
   assert.match(genres, /params: \{ type: 'actress', value: String\(actress\.id \|\| name\) \}/)
   assert.match(genres, /params: \{ type: 'series', value: String\(item\.id \|\| name\) \}/)
   assert.match(app, /const value = item\.id \|\| item\.actress_id \|\| name/)
