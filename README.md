@@ -28,18 +28,18 @@ cp config.yaml.example config.yaml
 docker-compose up -d
 ```
 
-The compose file includes PostgreSQL, JavInfoApi, the JavHub backend, and the
-JavHub frontend. PostgreSQL defaults to database name `r18`. If you already have
-a PostgreSQL instance, comment out the `postgres` service and the corresponding
-`depends_on` entries, then create a database with the same name (`r18` by
-default) in your external PostgreSQL before starting the stack.
+The compose file includes PostgreSQL, JavInfoApi, and one JavHub container that
+serves both the Vue frontend and the FastAPI backend. PostgreSQL defaults to
+database name `r18`. If you already have a PostgreSQL instance, comment out the
+`postgres` service and the corresponding `depends_on` entries, then create a
+database with the same name (`r18` by default) in your external PostgreSQL
+before starting the stack.
 
 Published images:
 
 | Image | Purpose |
 |-------|---------|
-| `ghcr.io/kongmei-ovo/javhub/backend:<tag>` | JavHub FastAPI backend |
-| `ghcr.io/kongmei-ovo/javhub/frontend:<tag>` | JavHub Vue frontend |
+| `ghcr.io/kongmei-ovo/javhub:<tag>` | JavHub frontend and backend |
 | `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | JavInfoApi metadata API |
 
 For container deployment, make sure `config.yaml` points JavHub import settings
@@ -187,4 +187,3 @@ This project is for personal use and educational purposes only.
 ## License
 
 MIT
-
