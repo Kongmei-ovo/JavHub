@@ -22,7 +22,21 @@ export const DEFAULT_CONFIG = {
     auto_confirm_gap: 0.08,
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
-  javinfo: { api_url: 'http://localhost:18080', page_size: 30 },
+  javinfo: {
+    api_url: 'http://localhost:18080',
+    page_size: 30,
+    timeout: 30,
+    import_db: {
+      host: 'localhost',
+      port: 5432,
+      database: 'r18',
+      maintenance_database: 'postgres',
+      user: 'kongmei',
+      password: '',
+      max_parallel_jobs: 2,
+      keep_previous_databases: 1,
+    },
+  },
   ai: {
     provider: 'openai_compatible',
     openai_compatible: {

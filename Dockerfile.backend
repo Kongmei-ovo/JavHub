@@ -6,6 +6,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# PostgreSQL dump import needs the client tools for pg_restore/psql and gzip.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client gzip \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first for better caching
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

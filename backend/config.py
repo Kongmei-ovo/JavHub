@@ -402,6 +402,42 @@ class Config:
         return self._config.get('javinfo', {})
 
     @property
+    def javinfo_import_db(self) -> dict:
+        defaults = {
+            'host': 'localhost',
+            'port': 5432,
+            'database': 'r18',
+            'maintenance_database': 'postgres',
+            'user': 'kongmei',
+            'password': '',
+            'max_parallel_jobs': 2,
+            'keep_previous_databases': 1,
+        }
+        javinfo_cfg = self._config.get('javinfo', {}) or {}
+        import_db = javinfo_cfg.get('import_db', {}) if isinstance(javinfo_cfg, dict) else {}
+        if not isinstance(import_db, dict):
+            import_db = {}
+        merged = {**defaults, **import_db}
+        try:
+            merged['port'] = int(merged.get('port') or defaults['port'])
+        except Exception:
+            merged['port'] = defaults['port']
+        try:
+            merged['max_parallel_jobs'] = max(1, min(int(merged.get('max_parallel_jobs') or 2), 8))
+        except Exception:
+            merged['max_parallel_jobs'] = defaults['max_parallel_jobs']
+        try:
+            merged['keep_previous_databases'] = max(
+                0,
+                min(int(merged.get('keep_previous_databases', defaults['keep_previous_databases'])), 5),
+            )
+        except Exception:
+            merged['keep_previous_databases'] = defaults['keep_previous_databases']
+        for key in ('host', 'database', 'maintenance_database', 'user', 'password'):
+            merged[key] = str(merged.get(key) or defaults.get(key, '')).strip()
+        return merged
+
+    @property
     def javinfo_api_url(self) -> str:
         api_url = _env('JAVINFO_API_URL', self._config.get('javinfo', {}).get('api_url', DEFAULT_JAVINFO_API_URL))
         source = 'JAVINFO_API_URL' if os.getenv('JAVINFO_API_URL') else 'config.yaml'
@@ -488,6 +524,7 @@ class Config:
             'page_size': javinfo_cfg.get('page_size', 30),
             'timeout': self.javinfo_timeout,
             **javinfo_cfg,
+            'import_db': self.javinfo_import_db,
             'api_url': self.javinfo_api_url,
         }
         return cfg

@@ -98,6 +98,15 @@ javinfo:
   page_size: 30
   timeout: 30
   supplement_admin_token: ""
+  import_db:
+    host: "localhost"
+    port: 5432
+    database: "r18"
+    maintenance_database: "postgres"
+    user: "kongmei"
+    password: ""
+    max_parallel_jobs: 2
+    keep_previous_databases: 1
 
 telegram:
   bot_token: ""

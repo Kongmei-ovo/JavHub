@@ -533,6 +533,26 @@ test('settings page keeps downloaders out and gives Telegram its own section', (
   assert.doesNotMatch(config, /系统通知/)
 })
 
+test('settings page exposes JavInfo database import workflow', () => {
+  assert.match(configFeatureSource, /import_db/)
+  assert.match(config, /JavInfo 数据库导入/)
+  assert.match(config, /危险操作：全量替换/)
+  assert.match(config, /type="file"/)
+  assert.match(config, /preflightJavInfoImport/)
+  assert.match(config, /createJavInfoImportJob/)
+  assert.match(config, /uploadJavInfoImportDump/)
+  assert.match(config, /listJavInfoImportJobs/)
+  assert.match(config, /javinfoImportConfirm/)
+  assert.match(config, /javinfoImportDirectConfirm/)
+  assert.match(config, /javinfoImportCanStart/)
+  assert.match(config, /import-progress/)
+  assert.match(config, /@drop\.prevent="onJavInfoImportFileDrop"/)
+  assert.match(config, /import-log-tail/)
+  assert.match(config, /失败不能自动回滚/)
+  assert.match(configDefaults, /maintenance_database: 'postgres'/)
+  assert.match(configDefaults, /keep_previous_databases: 1/)
+})
+
 test('interactive filters avoid stale actions and stale pagination', () => {
   assert.match(search, /this\.applySearchPreferences\(\)/)
   assert.match(search, /clearSort\(\{ search = true \} = \{\}\)/)

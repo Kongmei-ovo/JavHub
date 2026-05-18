@@ -327,6 +327,41 @@ export default {
     return api.post('/v1/cache/purge', null, { params: { scope } })
   },
 
+  preflightJavInfoImport(importDb = {}, expectedSize = 0) {
+    return api.post('/v1/javinfo/imports/preflight', {
+      import_db: importDb,
+      expected_size: expectedSize,
+    })
+  },
+
+  createJavInfoImportJob(payload = {}) {
+    return api.post('/v1/javinfo/imports/jobs', payload)
+  },
+
+  uploadJavInfoImportDump(jobId, file, onUploadProgress) {
+    return api.put(`/v1/javinfo/imports/jobs/${jobId}/upload`, file, {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-Filename': file?.name || 'dump',
+        'X-File-Size': String(file?.size || 0),
+      },
+      transformRequest: [(data) => data],
+      onUploadProgress,
+    })
+  },
+
+  getJavInfoImportJob(jobId) {
+    return api.get(`/v1/javinfo/imports/jobs/${jobId}`)
+  },
+
+  listJavInfoImportJobs(limit = 20) {
+    return api.get('/v1/javinfo/imports/jobs', { params: { limit }, silentError: true })
+  },
+
+  cancelJavInfoImportJob(jobId) {
+    return api.post(`/v1/javinfo/imports/jobs/${jobId}/cancel`)
+  },
+
   // ========== 翻译映射 ==========
 
   exportTranslations(type) {
