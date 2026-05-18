@@ -1,18 +1,11 @@
-# Git
 .git
 .gitignore
 
-# Documentation
-*.md
-!requirements.txt
-
-# IDE
 .vscode
 .idea
 *.swp
 *.swo
 
-# Python
 __pycache__
 *.py[cod]
 *$py.class
@@ -20,21 +13,21 @@ __pycache__
 venv/
 env/
 .venv/
+.pytest_cache/
 
-# Node
 node_modules/
 npm-debug.log
 dist/
+frontend/dist/
+frontend/node_modules/
 
-# Docker
-Dockerfile*
-docker-compose*
-.docker/
-
-# Misc
 .env
 .env.*
 config.yaml
+data/
+logs/
 *.log
 .DS_Store
 Thumbs.db
+.worktrees/
+.superpowers/

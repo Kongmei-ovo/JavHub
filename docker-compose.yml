@@ -1,16 +1,114 @@
+name: javhub
+
+# Before first start:
+#   cp config.yaml.example config.yaml
+#   edit config.yaml secrets and external service URLs
+#
+# PostgreSQL is included for JavInfoApi and JavHub import features.
+# If you already have PostgreSQL, you may comment out the postgres service and
+# remove the postgres dependencies below. Create the same database name there
+# first, for example "r18", then update DB_HOST/DB_USER/DB_PASSWORD and
+# config.yaml javinfo.import_db.host/user/password/database to match it.
+
+x-postgres-env: &postgres-env
+  POSTGRES_DB: ${POSTGRES_DB:-r18}
+  POSTGRES_USER: ${POSTGRES_USER:-javhub}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+
+x-javinfoapi-env: &javinfoapi-env
+  APP_ENV: ${APP_ENV:-production}
+  DB_HOST: ${DB_HOST:-postgres}
+  DB_PORT: ${DB_PORT:-5432}
+  DB_USER: ${DB_USER:-javhub}
+  DB_PASSWORD: ${DB_PASSWORD:-change-me}
+  DB_NAME: ${DB_NAME:-r18}
+  DB_MAX_CONN: ${DB_MAX_CONN:-20}
+  DB_MIN_CONN: ${DB_MIN_CONN:-5}
+  SERVER_HOST: 0.0.0.0
+  SERVER_PORT: 18080
+  SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
+  CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
+
 services:
-  backend:
-    build: ./backend
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      <<: *postgres-env
+    volumes:
+      - javinfo-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  javinfoapi-migrate:
+    image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
+    # For local development with a sibling checkout, replace image with:
+    # build:
+    #   context: ../JavInfoApi
+    command: migrate
+    restart: "no"
+    environment:
+      <<: *javinfoapi-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  javinfoapi:
+    image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
+    # For local development with a sibling checkout, replace image with:
+    # build:
+    #   context: ../JavInfoApi
+    restart: unless-stopped
+    environment:
+      <<: *javinfoapi-env
     ports:
-      - "8000:8000"
+      - "${JAVINFOAPI_PORT:-18080}:18080"
+    depends_on:
+      javinfoapi-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:18080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  backend:
+    image: ${JAVHUB_BACKEND_IMAGE:-ghcr.io/kongmei-ovo/javhub/backend:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      JAVINFO_API_URL: http://javinfoapi:18080
+      OPENLIST_USERNAME: ${OPENLIST_USERNAME:-}
+      OPENLIST_PASSWORD: ${OPENLIST_PASSWORD:-}
+      EMBY_API_URL: ${EMBY_API_URL:-}
+      EMBY_API_KEY: ${EMBY_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml
-    working_dir: /app
+    ports:
+      - "${JAVHUB_BACKEND_PORT:-18090}:8000"
+    depends_on:
+      javinfoapi:
+        condition: service_healthy
 
   frontend:
-    build: ./frontend
+    image: ${JAVHUB_FRONTEND_IMAGE:-ghcr.io/kongmei-ovo/javhub/frontend:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${JAVHUB_FRONTEND_PORT:-3000}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+
+volumes:
+  javinfo-postgres:

@@ -28,6 +28,35 @@ cp config.yaml.example config.yaml
 docker-compose up -d
 ```
 
+The compose file includes PostgreSQL, JavInfoApi, the JavHub backend, and the
+JavHub frontend. PostgreSQL defaults to database name `r18`. If you already have
+a PostgreSQL instance, comment out the `postgres` service and the corresponding
+`depends_on` entries, then create a database with the same name (`r18` by
+default) in your external PostgreSQL before starting the stack.
+
+Published images:
+
+| Image | Purpose |
+|-------|---------|
+| `ghcr.io/kongmei-ovo/javhub/backend:<tag>` | JavHub FastAPI backend |
+| `ghcr.io/kongmei-ovo/javhub/frontend:<tag>` | JavHub Vue frontend |
+| `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | JavInfoApi metadata API |
+
+For container deployment, make sure `config.yaml` points JavHub import settings
+at the same PostgreSQL database used by JavInfoApi:
+
+```yaml
+javinfo:
+  api_url: "http://javinfoapi:18080"
+  import_db:
+    host: "postgres"
+    port: 5432
+    database: "r18"
+    maintenance_database: "postgres"
+    user: "javhub"
+    password: "change-me"
+```
+
 ### Manual
 
 ```bash
@@ -138,13 +167,13 @@ JavHub/
 
 ## Cloud Deployment
 
-Push to GitHub and GitHub Actions will automatically build Docker images:
+Push to GitHub and GitHub Actions will automatically build GHCR Docker images:
 
-1. Fork this repository
-2. Add to GitHub Secrets:
-   - `DOCKER_USERNAME`
-   - `DOCKER_TOKEN`
-3. Push to trigger build
+1. Enable package publishing for GitHub Actions if your fork requires it.
+2. Push to `main`, push a `v*` tag, or manually run the Docker workflow.
+3. Pull the images from GHCR using the lowercase image names above.
+
+Pull requests build images for validation but do not push them.
 
 ## Disclaimer
 
@@ -158,5 +187,4 @@ This project is for personal use and educational purposes only.
 ## License
 
 MIT
-
 
