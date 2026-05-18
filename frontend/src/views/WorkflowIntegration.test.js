@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import packageJson from '../../package.json' with { type: 'json' }
 import { THEMES, THEME_KEYS, applyTheme, resolveThemeKey, toggleTheme, isDarkTheme } from '../assets/themes.js'
 
 const subscription = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
@@ -34,12 +35,26 @@ const displayLangSource = readFileSync(new URL('../utils/displayLang.js', import
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
+const viteConfig = readFileSync(new URL('../../vite.config.js', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
 const translationJobs = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
 
+test('sidebar displays the package version without a hardcoded release string', () => {
+  assert.match(app, /v\{\{ appVersion \}\}/)
+  assert.match(app, /const appVersion = import\.meta\.env\.VITE_APP_VERSION \|\| 'dev'/)
+  assert.doesNotMatch(app, /v1\.2\.0-beta\.\d+/)
+  assert.match(viteConfig, /package\.json/)
+  assert.match(viteConfig, /VITE_APP_VERSION/)
+  assert.match(viteConfig, /packageJson\.version/)
+  assert.doesNotMatch(viteConfig, /1\.2\.0-beta\.\d+/)
+  assert.equal(packageJson.version, '1.2.0-beta.4')
+})
+
 test('navigation and actor page use actor mapping language', () => {
-  assert.match(app, /v1\.2\.0-beta\.4/)
-  assert.doesNotMatch(app, /v1\.2\.0-beta\.1/)
+  assert.match(app, /appVersion/)
+  assert.match(app, /import\.meta\.env\.VITE_APP_VERSION/)
+  assert.doesNotMatch(app, /v1\.2\.0-beta\.\d+/)
+  assert.equal(packageJson.version, '1.2.0-beta.4')
   assert.match(app, /演员映射/)
   assert.doesNotMatch(app, /演员合并/)
   assert.match(normalize, /演员映射/)

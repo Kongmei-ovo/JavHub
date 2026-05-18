@@ -52,7 +52,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div v-if="!sidebarCollapsed" class="version">v1.2.0-beta.4</div>
+        <div v-if="!sidebarCollapsed" class="version">v{{ appVersion }}</div>
       </div>
     </aside>
 
@@ -167,6 +167,7 @@ const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 2
 const IconTranslate = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M5 8l6 6' }), h('path', { d: 'M4 14l6-6 2-2' }), h('path', { d: 'M2 5h12' }), h('path', { d: 'M7 2v3' }), h('path', { d: 'M22 22l-5-10-5 10' }), h('path', { d: 'M14 18h6' })]) })
 const IconSupplement = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' }), h('circle', { cx: '12', cy: '12', r: '3' })]) })
 const IconOperations = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 3v18h18' }), h('path', { d: 'M7 15l3-3 3 2 5-7' }), h('path', { d: 'M18 7h-4' }), h('path', { d: 'M18 7v4' })]) })
+const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
 
 export default {
   name: 'App',
@@ -328,6 +329,7 @@ export default {
       bottomNavItems,
       mobileMoreItems,
       isMoreRoute,
+      appVersion,
       currentTheme,
       isDarkMode,
       toggleAppTheme,
