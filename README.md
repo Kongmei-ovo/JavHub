@@ -1,53 +1,64 @@
 # JavHub
 
-A self-hosted media library management tool with multi-source metadata aggregation, automated monitoring, and direct download integration.
+JavHub is a self-hosted media library management tool. It combines a Vue web
+dashboard, a FastAPI backend, JavInfoApi metadata lookup, downloader
+integration, Emby checks, subscriptions, and optional Telegram notifications.
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js)
 
-## Features
+## What Is Included
 
-- **Multi-Provider Metadata** — Aggregates content from multiple public sources with automatic fallback
-- **Performer Monitoring** — Subscribe to performers and receive alerts on new content
-- **Direct Link Download** — Integrates with OpenList-compatible endpoints for offline downloads
-- **Emby Library Sync** — Detects whether content already exists in your Emby library
-- **Telegram Bot** — Search, subscribe, and manage downloads directly from chat
-- **Real-time Notifications** — New content alerts, download completion, and system status
-- **Web Dashboard** — Intuitive UI for all management operations
+- Multi-source metadata search through JavInfoApi
+- Performer subscriptions and scheduled checks
+- Download task creation through OpenList-compatible and common BT clients
+- Emby library existence checks
+- Web dashboard for search, subscriptions, imports, logs, and settings
+- Optional Telegram bot commands and notifications
+- Docker image that serves both the frontend and backend in one container
 
-## Quick Start
+## Docker Images
 
-### Docker
+| Image | Purpose |
+|-------|---------|
+| `ghcr.io/kongmei-ovo/javhub:<tag>` | JavHub frontend, Nginx, and FastAPI backend |
+| `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | JavInfoApi metadata service |
+
+Current beta release:
+
+```bash
+ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.1
+ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.1
+```
+
+JavHub is intentionally published as a single image. The container builds the
+Vue frontend, serves it with Nginx, and proxies `/api` plus `/health` to the
+FastAPI backend running inside the same container.
+
+## Docker Compose Deployment
+
+`docker-compose.yml` is the recommended single-machine deployment example. It
+starts:
+
+- PostgreSQL for JavInfoApi and JavHub import features
+- JavInfoApi, including a one-shot migration service
+- JavHub, exposed as the web entrypoint
 
 ```bash
 git clone https://github.com/Kongmei-ovo/JavHub.git
 cd JavHub
 cp config.yaml.example config.yaml
-# Edit config.yaml with your settings
-docker-compose up -d
 ```
 
-The compose file includes PostgreSQL, JavInfoApi, and one JavHub container that
-serves both the Vue frontend and the FastAPI backend. PostgreSQL defaults to
-database name `r18`. If you already have a PostgreSQL instance, comment out the
-`postgres` service and the corresponding `depends_on` entries, then create a
-database with the same name (`r18` by default) in your external PostgreSQL
-before starting the stack.
-
-Published images:
-
-| Image | Purpose |
-|-------|---------|
-| `ghcr.io/kongmei-ovo/javhub:<tag>` | JavHub frontend and backend |
-| `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | JavInfoApi metadata API |
-
-For container deployment, make sure `config.yaml` points JavHub import settings
-at the same PostgreSQL database used by JavInfoApi:
+Edit `config.yaml` before starting the stack. For the bundled compose network,
+the JavInfo section should point at the compose service names:
 
 ```yaml
 javinfo:
   api_url: "http://javinfoapi:18080"
+  page_size: 30
+  supplement_admin_token: "change-me"
   import_db:
     host: "postgres"
     port: 5432
@@ -57,132 +68,216 @@ javinfo:
     password: "change-me"
 ```
 
-### Manual
+Create a local `.env` file if you want to pin image tags or change passwords:
 
 ```bash
-# Backend
+JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.1
+JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.1
+JAVHUB_PORT=3000
+JAVINFOAPI_PORT=18080
+
+POSTGRES_DB=r18
+POSTGRES_USER=javhub
+POSTGRES_PASSWORD=change-me
+
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=javhub
+DB_PASSWORD=change-me
+DB_NAME=r18
+SUPPLEMENT_ADMIN_TOKEN=change-me
+CORS_ALLOW_ORIGINS=http://localhost:3000
+```
+
+Validate and start:
+
+```bash
+docker compose config
+docker compose up -d --build
+docker compose ps
+```
+
+Open JavHub at `http://localhost:3000`.
+
+Health checks:
+
+```bash
+curl -fsS http://localhost:3000/health
+curl -fsS http://localhost:18080/health
+```
+
+### PostgreSQL Notes
+
+PostgreSQL is included by default because JavInfoApi needs it, and JavHub's
+JavInfo import workflow writes to the same database. The default database name
+is `r18`.
+
+If you already have PostgreSQL, you may comment out the `postgres` service and
+the `depends_on: postgres` block in `javinfoapi-migrate`. You must create the
+same database name before startup:
+
+```bash
+createdb -h <db-host> -U <db-user> r18
+```
+
+Then update both places:
+
+- `.env`: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- `config.yaml`: `javinfo.import_db.host`, `user`, `password`, `database`
+
+Keep the JavInfoApi `DB_NAME` and JavHub `javinfo.import_db.database` values the
+same unless you deliberately manage separate databases.
+
+### Persistent Data
+
+| Path or volume | Purpose |
+|----------------|---------|
+| `./config.yaml` | JavHub runtime configuration mounted into the container |
+| `./data` | JavHub local SQLite data, runtime files, and logs |
+| `javinfo-postgres` | PostgreSQL data volume |
+
+Secrets, runtime data, logs, `config.yaml`, and database files are not baked
+into the Docker image.
+
+### Updating
+
+For a source checkout deployment:
+
+```bash
+git pull
+docker compose pull
+docker compose up -d --build
+```
+
+For pinned releases, update `JAVHUB_IMAGE` and `JAVINFOAPI_IMAGE` in `.env`,
+then run:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+## Local Development
+
+On macOS, use the project helper instead of starting ad hoc background
+processes:
+
+```bash
+scripts/services.sh ensure
+scripts/services.sh status
+scripts/services.sh restart backend
+scripts/services.sh logs backend
+```
+
+The helper manages LaunchAgents:
+
+| Service | Default URL | Notes |
+|---------|-------------|-------|
+| JavHub frontend | `http://localhost:5174` | Vite dev server |
+| JavHub backend | `http://localhost:18090` | FastAPI API server |
+| JavInfoApi | `http://localhost:8080` | Helper-managed local JavInfoApi |
+
+Direct manual startup is also possible:
+
+```bash
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 18090
+```
 
-# Frontend (new terminal)
+```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Local development uses three ports by default:
+JavInfoApi's own default port is `18080` when run directly from that repository.
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| JavHub frontend | `http://localhost:5173` | Browser entrypoint |
-| JavHub backend | `http://localhost:18090` | Frontend `/api` proxy target |
-| JavInfoApi | `http://localhost:18080` | Metadata API called by JavHub backend |
+## Main Configuration
 
-## Configuration
-
-Edit `config.yaml`:
+Most settings live in `config.yaml`.
 
 ```yaml
+server:
+  frontend_origin: "http://localhost:5174"
+
 openlist:
-  api_url: "https://your-openlist.com"
-  username: "your-username"
-  password: "your-password"
+  api_url: "https://your-openlist.example"
+  username: ""
+  password: ""
   default_path: "/115/AV"
 
 emby:
   api_url: "http://your-emby:8096"
-  api_key: "your-api-key"
+  api_key: ""
 
 javinfo:
   api_url: "http://localhost:18080"
-  page_size: 30
   supplement_admin_token: ""
+  import_db:
+    host: "localhost"
+    port: 5432
+    database: "r18"
+    maintenance_database: "postgres"
+    user: "kongmei"
+    password: ""
 
 telegram:
-  bot_token: "123456:ABC-DEF..."
-  allowed_user_ids: ["123456789"]
-
-notification:
-  enabled: true
-  telegram: true
-
-scheduler:
-  subscription_check_hour: 2
+  bot_token: ""
+  allowed_user_ids: []
 ```
 
-## Web UI
+Container deployments can override the JavInfoApi URL with
+`JAVINFO_API_URL=http://javinfoapi:18080`.
 
-Access at `http://localhost:3000` after startup.
+## Useful Commands
 
-| Page | Description |
-|------|-------------|
-| Dashboard | Download queue, system statistics |
-| Search | Search by content ID or performer, select download |
-| Subscriptions | Manage performer subscriptions, manual checks |
-| Library Check | Verify if content exists in Emby |
-| Logs | View system logs |
-| Settings | Configure system parameters |
+```bash
+# Build the unified JavHub image locally
+docker build -t javhub:test .
 
-## Telegram Bot Commands
+# Validate the compose file
+docker compose config
 
-| Command | Description |
-|---------|-------------|
-| `/search ABC-123` | Search by content ID |
-| `/sub add Name` | Add performer subscription |
-| `/sub list` | List all subscriptions |
-| `/sub del Name` | Remove subscription |
-| `/check` | Manually trigger subscription check |
-| `/status` | View download queue |
+# Run backend tests
+PYTHONPATH=backend pytest
 
-## API
-
+# Build frontend assets
+cd frontend && npm ci && npm run build
 ```
-GET  /api/v1/videos/search?q=xxx      # Search content
-GET  /api/v1/videos/{id}              # Content detail
-POST /api/downloads                    # Create download task
-GET  /api/downloads                   # Download list
-GET  /api/subscriptions               # Subscription list
-POST /api/subscriptions               # Add subscription
-GET  /api/library/check?code=xxx      # Emby library check
-GET  /api/logs                        # System logs
-GET  /api/config                       # Configuration
-PUT  /api/config                       # Update configuration
-```
+
+## GitHub Actions
+
+The repository includes three workflows:
+
+- `CI`: backend tests and frontend build
+- `CodeQL`: strict Python and JavaScript/TypeScript analysis
+- `Build Docker Image`: builds the unified JavHub image
+
+Docker images are pushed to GHCR on `main`, `v*` tags, and manual workflow
+dispatch. Pull requests build for validation but do not push images.
 
 ## Project Structure
 
-```
+```text
 JavHub/
 ├── backend/              # FastAPI backend
-│   ├── routers/          # API routes
-│   ├── services/         # Business logic
-│   └── telegram/         # Telegram bot
 ├── frontend/             # Vue 3 frontend
-│   └── src/
-│       ├── views/        # Page components
-│       └── api/          # API client
-└── docker-compose.yml
+├── scripts/              # service helpers and container entrypoint
+├── Dockerfile            # unified frontend + backend image
+├── docker-compose.yml    # single-machine deployment example
+├── nginx.conf            # static serving and /api proxy
+└── config.yaml.example
 ```
-
-## Cloud Deployment
-
-Push to GitHub and GitHub Actions will automatically build GHCR Docker images:
-
-1. Enable package publishing for GitHub Actions if your fork requires it.
-2. Push to `main`, push a `v*` tag, or manually run the Docker workflow.
-3. Pull the images from GHCR using the lowercase image names above.
-
-Pull requests build images for validation but do not push them.
 
 ## Disclaimer
 
 This project is for personal use and educational purposes only.
 
-- This project does not host or distribute any content
-- All metadata is sourced from publicly available APIs
-- Users are solely responsible for their use of this tool
-- This tool is not intended for commercial use
+- This project does not host or distribute media content.
+- Metadata is read from public or user-configured sources.
+- Users are responsible for complying with local laws and service terms.
+- This tool is not intended for commercial use.
 
 ## License
 
