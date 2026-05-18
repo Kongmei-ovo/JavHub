@@ -186,7 +186,9 @@ EOF
 </plist>
 EOF
 
-  plutil -lint "${JAVINFO_PLIST}" "${BACKEND_PLIST}" "${FRONTEND_PLIST}" >/dev/null
+  if command -v plutil >/dev/null 2>&1; then
+    plutil -lint "${JAVINFO_PLIST}" "${BACKEND_PLIST}" "${FRONTEND_PLIST}" >/dev/null
+  fi
 }
 
 is_loaded() {

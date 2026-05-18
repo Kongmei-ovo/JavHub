@@ -3,6 +3,7 @@ from __future__ import annotations
 """翻译映射数据库层"""
 import json
 import hashlib
+import sqlite3
 from datetime import datetime
 from typing import Optional
 from database.base import get_db
@@ -161,10 +162,19 @@ def _get_raw(content_id: str) -> Optional[dict]:
         return _translation_cache[key]
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT actress_json, category_json, series_json, title_json, maker_json, label_json FROM translation_mappings WHERE content_id = ?",
-            (content_id,)
-        )
+        try:
+            cursor.execute(
+                "SELECT actress_json, category_json, series_json, title_json, maker_json, label_json FROM translation_mappings WHERE content_id = ?",
+                (content_id,)
+            )
+        except sqlite3.OperationalError as exc:
+            if "no such table: translation_mappings" not in str(exc):
+                raise
+            init_translation_db()
+            cursor.execute(
+                "SELECT actress_json, category_json, series_json, title_json, maker_json, label_json FROM translation_mappings WHERE content_id = ?",
+                (content_id,)
+            )
         row = cursor.fetchone()
         if not row:
             _translation_cache[key] = None
