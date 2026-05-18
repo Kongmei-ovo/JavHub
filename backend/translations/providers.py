@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 import httpx
+from services.ai import build_ai_client, get_ai_client
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,91 @@ class TranslationProvider(Protocol):
         ...
 
 
+_BASE_AI_TRANSLATION_PROMPT = (
+    "You are a precise metadata translation engine for Japanese adult video library data. "
+    "Translate into natural Simplified Chinese for a private media catalog. "
+    "Return only the translated text. Do not explain, censor, summarize, add warnings, "
+    "add quotes, or invent missing details. Preserve product codes, names, numbers, "
+    "symbols, line breaks, and intentional punctuation unless Chinese readability "
+    "requires minimal adjustment."
+)
+
+_SCENE_PROMPTS = {
+    "title": (
+        "This text is an adult video title. Keep it as a title, not an advertisement. "
+        "Preserve product codes, actor names, maker/series names, and named works. "
+        "Translate meaning accurately but avoid over-polishing, euphemisms, or adding "
+        "words not present in the source."
+    ),
+    "category": (
+        "This text is an adult video genre/tag. Output a concise Chinese tag, usually "
+        "a short noun phrase. Do not write a sentence. Do not explain the tag. Use "
+        "common Chinese AV metadata terminology when clear."
+    ),
+    "actress": (
+        "This text is a performer name. Preserve the name unless there is an obvious "
+        "established Chinese form. Do not invent phonetic transliterations for "
+        "uncertain Japanese names."
+    ),
+    "brand": (
+        "This text is a series, maker, or label name. Preserve brand, studio, series, "
+        "and label proper names. Translate only obvious ordinary words when doing so "
+        "improves Chinese readability."
+    ),
+    "summary": (
+        "This text is an adult video summary/description. Translate all meaning "
+        "faithfully in the same order. Keep names, product codes, and concrete "
+        "details. Do not censor explicit terms, do not summarize, and do not add "
+        "commentary."
+    ),
+    "metadata": (
+        "This text is an adult video metadata field. Translate the field value "
+        "faithfully and concisely. Return only the translated text."
+    ),
+}
+
+
+def _request_scene(request: TranslationRequest) -> str:
+    context = str(request.context or "").strip().lower()
+    scope = str(request.scope or "").strip().lower()
+    combined = f"{context} {scope}"
+    if "video title" in context or scope.startswith("title:") or scope.startswith("supplement:title:"):
+        return "title"
+    if "category name" in context or scope.startswith("category:") or scope.startswith("supplement:category_names:"):
+        return "category"
+    if "actress name" in context or "actor_names" in scope or scope.startswith("actress:"):
+        return "actress"
+    if any(item in context for item in ("series name", "maker name", "label name")):
+        return "brand"
+    if scope.startswith(("series:", "maker:", "label:")):
+        return "brand"
+    if (
+        "video summary" in context
+        or "description" in context
+        or scope.startswith("summary:")
+        or scope.startswith("supplement:summary:")
+        or scope.startswith("supplement:description:")
+    ):
+        return "summary"
+    if "title" in combined:
+        return "title"
+    if "category" in combined or "genre" in combined or "tag" in combined:
+        return "category"
+    return "metadata"
+
+
+def _translation_prompts(request: TranslationRequest) -> tuple[str, str]:
+    scene = _request_scene(request)
+    system_prompt = f"{_BASE_AI_TRANSLATION_PROMPT} {_SCENE_PROMPTS[scene]}"
+    user_prompt = (
+        f"Target language: {request.target_language}\n"
+        f"Metadata context: {request.context or request.scope or scene}\n"
+        "Source text:\n"
+        f"{request.text}"
+    )
+    return system_prompt, user_prompt
+
+
 class MappingProvider:
     name = "mapping"
 
@@ -54,74 +140,66 @@ class MappingProvider:
         )
 
 
-class OpenAICompatibleProvider:
-    name = "openai_compatible"
+class AIProvider:
+    name = "ai"
 
     def __init__(self, settings: dict[str, Any]):
         self.settings = settings or {}
 
     @property
     def model(self) -> str:
-        return str(self.settings.get("model") or "gpt-4o-mini")
+        provider = str(self.settings.get("provider") or "")
+        provider_cfg = self.settings.get(provider, {}) if provider else {}
+        if isinstance(provider_cfg, dict):
+            return str(provider_cfg.get("model") or "")
+        return ""
 
     def supports(self, request: TranslationRequest) -> bool:
-        return bool(
-            request.text
-            and self.settings.get("api_key")
-            and self.settings.get("base_url")
-            and self.model
-        )
+        return bool(request.text)
 
     async def translate(self, request: TranslationRequest) -> TranslationResult | None:
         if not self.supports(request):
             return None
 
-        base_url = str(self.settings.get("base_url") or "").rstrip("/")
-        api_key = str(self.settings.get("api_key") or "")
-        try:
-            timeout = float(self.settings.get("timeout", 30))
-        except Exception:
-            timeout = 30.0
-
-        system_prompt = (
-            "You are a translation engine for Japanese adult video metadata. "
-            "Translate to natural Simplified Chinese. Preserve names, product codes, "
-            "line breaks, punctuation meaning, and do not add commentary. Return only the translation."
-        )
-        user_prompt = (
-            f"Target language: {request.target_language}\n"
-            f"Context: {request.context or request.scope}\n"
-            f"Text:\n{request.text}"
-        )
-
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.2,
-        }
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        system_prompt, user_prompt = _translation_prompts(request)
 
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+            client = build_ai_client(self.settings) if self.settings else get_ai_client()
+            result = await client.chat(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.2,
+            )
         except Exception as exc:
             logger.warning("AI translation failed for scope=%s: %s", request.scope, exc)
             return None
 
-        try:
-            translated = data["choices"][0]["message"]["content"].strip()
-        except Exception:
-            logger.warning("AI translation returned unexpected response for scope=%s", request.scope)
-            return None
-
+        translated = result.content.strip()
         if not translated:
             return None
-        return TranslationResult(translated_text=translated, provider=self.name, model=self.model)
+        return TranslationResult(translated_text=translated, provider=result.provider, model=result.model)
+
+
+class OpenAICompatibleProvider(AIProvider):
+    name = "openai_compatible"
+
+    def __init__(self, settings: dict[str, Any]):
+        if settings and "provider" not in settings:
+            settings = {"provider": "openai_compatible", "openai_compatible": settings}
+        super().__init__(settings)
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        result = await super().translate(request)
+        if not result:
+            return None
+        return TranslationResult(
+            translated_text=result.translated_text,
+            provider=self.name if result.provider == "openai_compatible" else result.provider,
+            model=result.model,
+            cacheable=result.cacheable,
+        )
 
 
 class GoogleFreeProvider:

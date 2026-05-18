@@ -17,14 +17,10 @@ function installRejectingAdapter(t, status = 404, detail = 'Not Found') {
   })
 }
 
-test('getVideoMetadata failure does not show global error toast', async (t) => {
-  installRejectingAdapter(t)
-  const errorMock = t.mock.method(ElMessage, 'error', () => {})
-  const { default: api } = await import(`./index.js?metadata-suppress-${Date.now()}`)
+test('metatube metadata API is no longer exposed', async () => {
+  const { default: api } = await import(`./index.js?metadata-removed-${Date.now()}`)
 
-  await assert.rejects(() => api.getVideoMetadata('miaa405'))
-
-  assert.equal(errorMock.mock.callCount(), 0)
+  assert.equal(api.getVideoMetadata, undefined)
 })
 
 test('main path API failure still shows global error toast', async (t) => {
@@ -49,63 +45,38 @@ test('duplicate API failures are rate limited globally', async (t) => {
   assert.equal(errorMock.mock.callCount(), 1)
 })
 
-test('concurrent getCategoryStats calls share one network request', async (t) => {
-  const originalAdapter = axios.defaults.adapter
-  const originalLocalStorage = globalThis.localStorage
-  let requestCount = 0
+test('category stats helper is not exposed from the frontend API', async () => {
+  const { default: api } = await import(`./index.js?category-stats-removed-${Date.now()}`)
 
-  globalThis.localStorage = {
-    getItem: () => null,
-    setItem: () => {},
-  }
-  axios.defaults.adapter = async (config) => {
-    requestCount += 1
-    return {
-      config,
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      data: [{ category_id: 1, count: 12 }],
-    }
-  }
-  t.after(() => {
-    axios.defaults.adapter = originalAdapter
-    if (originalLocalStorage === undefined) {
-      delete globalThis.localStorage
-    } else {
-      globalThis.localStorage = originalLocalStorage
-    }
-  })
-
-  const { default: api } = await import(`./index.js?category-stats-dedupe-${Date.now()}`)
-
-  const [first, second] = await Promise.all([
-    api.getCategoryStats(),
-    api.getCategoryStats(),
-  ])
-
-  assert.deepEqual(first, [{ category_id: 1, count: 12 }])
-  assert.deepEqual(second, [{ category_id: 1, count: 12 }])
-  assert.equal(requestCount, 1)
+  assert.equal(api.getCategoryStats, undefined)
 })
 
-test('getCategoryStats suppresses global error toast', async (t) => {
-  installRejectingAdapter(t, 500, '服务器内部错误')
-  const errorMock = t.mock.method(ElMessage, 'error', () => {})
-  const originalLocalStorage = globalThis.localStorage
-  globalThis.localStorage = { getItem: () => null, setItem: () => {} }
-  t.after(() => {
-    if (originalLocalStorage === undefined) {
-      delete globalThis.localStorage
-    } else {
-      globalThis.localStorage = originalLocalStorage
-    }
-  })
-  const { default: api } = await import(`./index.js?category-stats-silent-${Date.now()}`)
+test('AI helper APIs send provider-aware requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { success: true, models: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
 
-  await assert.rejects(() => api.getCategoryStats(true))
+  const { default: api } = await import(`./index.js?ai-provider-${Date.now()}`)
+  const draft = {
+    provider: 'gemini',
+    gemini: {
+      base_url: 'https://generativelanguage.googleapis.com/v1beta',
+      api_key: '',
+      model: 'gemini-2.0-flash',
+      timeout: 30,
+    },
+  }
+  await api.testAiModel(draft)
+  await api.listAiModels(draft)
 
-  assert.equal(errorMock.mock.callCount(), 0)
+  assert.equal(calls[0].url, '/v1/ai/test')
+  assert.deepEqual(calls[0].data && JSON.parse(calls[0].data), { provider: 'gemini', ai: draft })
+  assert.equal(calls[1].url, '/v1/ai/models')
+  assert.deepEqual(calls[1].data && JSON.parse(calls[1].data), { provider: 'gemini', ai: draft })
 })
 
 test('getActressVideos forwards include_supplement and extra params', async (t) => {

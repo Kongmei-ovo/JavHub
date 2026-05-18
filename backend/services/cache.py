@@ -7,7 +7,6 @@ from typing import Any, Optional
 
 # Default TTLs in seconds
 DEFAULT_VIDEO_TTL = 86400       # 24h
-DEFAULT_STATS_TTL = 3600        # 1h
 DEFAULT_ENUM_TTL = 86400         # 24h
 DEFAULT_SEARCH_TTL = 600         # 10min
 
@@ -49,16 +48,6 @@ def _search_key(params: dict, page: int) -> str:
     stable = json.dumps(params, sort_keys=True, default=str)
     h = hashlib.md5(stable.encode()).hexdigest()
     return f"search:{h}:{page}"
-
-
-# === Category Stats ===
-
-def get_category_stats() -> Optional[list]:
-    return _get_cache().get("category:stats")
-
-
-def set_category_stats(data: list, ttl: int = DEFAULT_STATS_TTL) -> None:
-    _get_cache().set("category:stats", data, expire=ttl)
 
 
 # === Enums ===

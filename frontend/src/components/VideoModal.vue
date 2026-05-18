@@ -1,8 +1,8 @@
 <template>
-  <!-- 单根节点包裹，teleport 放在内部 -->
-  <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container">
-      <button class="modal-close" @click="$emit('close')">×</button>
+  <teleport to="body">
+    <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
+      <div class="modal-container">
+        <button class="modal-close" @click="$emit('close')">×</button>
 
       <div class="modal-body">
         <!-- 顶部大图 -->
@@ -254,8 +254,7 @@
       </div>
     </div>
 
-    <!-- 视频预览弹窗 -->
-    <teleport to="body">
+      <!-- 视频预览弹窗 -->
       <VideoPlayerOverlay
         v-if="video.sample_url"
         ref="previewPlayer"
@@ -278,8 +277,8 @@
         @close="closeStreamPlayer"
         @speed="setStreamSpeed"
       />
-    </teleport>
-  </div>
+    </div>
+  </teleport>
 </template>
 
 <script>
@@ -323,15 +322,16 @@ export default {
       return !!(this.video.dvd_id || this.video.release_date || this.video.content_id)
     },
     metadataLoaded() {
-      if (this.video?._loading?.metatube === false) return true
+      if (this.video?._loading?.javinfo === false) return true
+      if (this.video?._loading?.supplement === false) return true
       // 通过是否存在外部元数据判定扩展请求是否完成
-      return !!(this.video.summary || this.video.score || this.video.director)
+      return !!(this.video.summary || this.video.score || this.video.directors?.length)
     },
     directorsDisplay() {
       if (this.video?.directors?.length) {
         return this.video.directors.map(d => d.name_kanji || d.name_romaji || d.name_kana).filter(Boolean).join('、')
       }
-      return this.video?.director || ''
+      return ''
     },
     authorsDisplay() {
       if (!this.video?.authors?.length) return ''
@@ -574,7 +574,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-modal);
+  z-index: var(--z-lightbox);
   padding: 40px;
   transition: all 0.4s var(--ease-pro);
 }

@@ -108,40 +108,6 @@
               </div>
             </div>
 
-            <!-- MetaTube -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  <h2>MetaTube / 数据增强</h2>
-                </div>
-                <div class="form-slot">
-                  <div class="form-group">
-                    <label>服务器地址</label>
-                    <input class="input" v-model="config.metatube.host" placeholder="localhost" />
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>端口</label>
-                      <input class="input" v-model.number="config.metatube.port" type="number" placeholder="8081" />
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>Token（无Token则留空）</label>
-                    <div class="input-password-wrap">
-                      <input class="input" :type="showMetatubeToken ? 'text' : 'password'" v-model="config.metatube.token" autocomplete="off" placeholder="可选" />
-                      <button class="input-eye-btn" type="button" @click="showMetatubeToken = !showMetatubeToken">
-                        <svg v-if="!showMetatubeToken" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Telegram Section -->
@@ -535,10 +501,9 @@
                 <section class="scope-card visual-card">
                   <div class="scope-card-header">
                     <div>
-                      <span class="setting-title">题材 / 系列气泡视觉</span>
-                      <span class="setting-note">系列只复用颜色、尺寸和间距，不参与题材稀有度分层</span>
+                      <span class="setting-title">题材 / 系列气泡</span>
+                      <span class="setting-note">数量、尺寸和间距</span>
                     </div>
-                    <span class="appearance-chip">{{ bubbleCfg.colorMode === 'legendary' ? 'Rarity' : 'Palette' }}</span>
                   </div>
 
                   <div class="aura-preview" :style="auraPreviewStyle">
@@ -546,125 +511,32 @@
                       v-for="(tag, index) in previewTags"
                       :key="tag"
                       class="preview-bubble"
-                      :class="previewBubbleClass(index)"
                       :style="previewBubbleStyle(index)"
                     >
                     {{ tag }}</span>
                   </div>
 
                   <div class="appearance-setting-list">
-                  <div class="appearance-setting-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">视觉风格</span>
-                      <span class="setting-note">{{ bubbleCfg.colorMode === 'legendary' ? '按稀有度分层' : '按色系流动' }}</span>
-                    </div>
-                    <div class="segmented-mini wide" aria-label="题材视觉风格">
-                      <button
-                        type="button"
-                        :class="{ active: bubbleCfg.colorMode === 'random' }"
-                        :aria-pressed="bubbleCfg.colorMode === 'random'"
-                        @click="bubbleCfg.colorMode = 'random'"
-                      >柔和色彩</button>
-                      <button
-                        type="button"
-                        :class="{ active: bubbleCfg.colorMode === 'legendary' }"
-                        :aria-pressed="bubbleCfg.colorMode === 'legendary'"
-                        @click="bubbleCfg.colorMode = 'legendary'"
-                      >灵动金传说</button>
-                    </div>
-                  </div>
-
-                  <template v-if="bubbleCfg.colorMode === 'random'">
-                    <div class="appearance-setting-row">
-                      <div class="setting-copy">
-                        <span class="setting-title">色系预设</span>
-                        <span class="setting-note">{{ paletteLabel }}</span>
-                      </div>
-                      <div class="palette-select-wrap">
-                        <GlassSelect
-                          v-model="bubbleCfg.palette"
-                          :options="paletteOptions"
-                          class="glass-select-control glass-select-control--wide"
-                          placement="right"
-                          aria-label="题材色系预设"
-                        />
-                        <div class="palette-color-bar" :style="{ background: currentPalettePreview }"></div>
-                      </div>
-                    </div>
-
-                    <div v-if="bubbleCfg.palette === '__custom__'" class="appearance-setting-row vertical">
-                      <div class="setting-copy">
-                        <span class="setting-title">自定义材质</span>
-                        <span class="setting-note">用逗号分隔颜色或 linear-gradient</span>
-                      </div>
-                      <textarea
-                        class="input custom-gradients-input"
-                        v-model="bubbleCfg.customGradientsText"
-                        rows="3"
-                        placeholder="#d8d2cc,#bfb8b2,linear-gradient(135deg,#111,#777)"
-                      ></textarea>
-                    </div>
-                  </template>
-
-                  <template v-if="bubbleCfg.colorMode === 'legendary'">
-                    <div class="legendary-colors-grid">
-                      <label
-                        v-for="rarity in rarityOptions"
-                        :key="rarity.key"
-                        class="legendary-color-item"
-                      >
-                        <span class="legendary-dot" :style="{ background: bubbleCfg.rarityColors[rarity.key] }"></span>
-                        <span>{{ rarity.label }}</span>
-                        <input
-                          type="color"
-                          v-model="bubbleCfg.rarityColors[rarity.key]"
-                          class="rarity-color-input"
-                          :title="`${rarity.label}颜色`"
-                        />
-                      </label>
-                    </div>
-
-                    <div class="rarity-thresholds">
+                    <div class="tag-tuning-grid">
                       <div
-                        v-for="rarity in rarityThresholdOptions"
-                        :key="rarity.key"
-                        class="rarity-threshold-row"
+                        v-for="control in tagTuningControls"
+                        :key="control.key"
+                        class="tuning-control"
                       >
-                        <span class="rarity-dot" :style="{ background: bubbleCfg.rarityColors[rarity.key] }"></span>
-                        <span class="threshold-label">{{ rarity.label }}</span>
+                        <div class="tuning-copy">
+                          <span>{{ control.label }}</span>
+                          <strong>{{ bubbleCfg[control.key] }}{{ control.unit }}</strong>
+                        </div>
                         <input
                           type="range"
-                          :min="rarity.min"
-                          :max="rarity.max"
-                          step="1"
-                          v-model.number="bubbleCfg.rarityThresholds[rarity.key]"
+                          :min="control.min"
+                          :max="control.max"
+                          :step="control.step"
+                          v-model.number="bubbleCfg[control.key]"
                           class="threshold-slider"
                         />
-                        <span class="threshold-value">{{ bubbleCfg.rarityThresholds[rarity.key] }}%</span>
                       </div>
                     </div>
-                  </template>
-
-                  <div class="tag-tuning-grid">
-                    <div
-                      v-for="control in tagTuningControls"
-                      :key="control.key"
-                      class="tuning-control"
-                    >
-                      <div class="tuning-copy">
-                        <span>{{ control.label }}</span>
-                        <strong>{{ bubbleCfg[control.key] }}{{ control.unit }}</strong>
-                      </div>
-                      <input
-                        type="range"
-                        :min="control.min"
-                        :max="control.max"
-                        :step="control.step"
-                        v-model.number="bubbleCfg[control.key]"
-                        class="threshold-slider"
-                      />
-                    </div>
-                  </div>
                   </div>
                 </section>
               </section>
@@ -697,26 +569,42 @@
                 </div>
                 <div class="form-slot">
                   <div class="form-group">
-                    <label>OpenAI 兼容接口地址</label>
-                    <input class="input" v-model="config.ai.openai_compatible.base_url" placeholder="https://api.openai.com/v1" />
+                    <label>接口类型</label>
+                    <div class="segmented-mini wide ai-provider-control">
+                      <button
+                        v-for="option in aiProviderOptions"
+                        :key="option.value"
+                        type="button"
+                        :class="{ active: config.ai.provider === option.value }"
+                        @click="config.ai.provider = option.value"
+                      >{{ option.label }}</button>
+                    </div>
+                    <small>{{ currentAiProviderHint }}</small>
+                  </div>
+                  <div class="form-group">
+                    <label>{{ currentAiProviderLabel }} 接口地址</label>
+                    <input class="input" v-model="currentAiConfig.base_url" :placeholder="currentAiProviderPlaceholder" />
                   </div>
                   <div class="form-row">
                     <div class="form-group">
                       <label>模型</label>
-                      <input class="input" v-model="config.ai.openai_compatible.model" placeholder="gpt-4o-mini" />
+                      <input class="input" v-model="currentAiConfig.model" :placeholder="currentAiModelPlaceholder" list="ai-model-options" />
+                      <datalist id="ai-model-options">
+                        <option v-for="model in aiModelOptions" :key="model.id" :value="model.id">{{ model.name || model.id }}</option>
+                      </datalist>
                     </div>
                     <div class="form-group">
                       <label>超时（秒）</label>
-                      <input class="input" v-model.number="config.ai.openai_compatible.timeout" type="number" min="1" />
+                      <input class="input" v-model.number="currentAiConfig.timeout" type="number" min="1" />
                     </div>
                   </div>
-                  <div class="form-group">
+                  <div v-if="config.ai.provider !== 'ollama'" class="form-group">
                     <label>密钥</label>
                     <div class="input-password-wrap">
                       <input
                         class="input"
                         :type="showAIKey ? 'text' : 'password'"
-                        v-model="config.ai.openai_compatible.api_key"
+                        v-model="currentAiConfig.api_key"
                         autocomplete="off"
                         placeholder="空白保存不覆盖现有密钥"
                       />
@@ -729,10 +617,18 @@
                   </div>
                   <div class="form-group ai-test-row">
                     <button
+                      class="btn btn-ghost"
+                      type="button"
+                      @click="loadAiModels"
+                      :disabled="loadingAIModels || !canSaveConfig || !currentAiConfig.base_url"
+                    >
+                      {{ loadingAIModels ? '获取中...' : '获取模型列表' }}
+                    </button>
+                    <button
                       class="btn btn-secondary"
                       type="button"
                       @click="testAIModel"
-                      :disabled="testingAI || !canSaveConfig || !config.ai.openai_compatible.base_url || !config.ai.openai_compatible.model"
+                      :disabled="testingAI || !canSaveConfig || !currentAiConfig.base_url || !currentAiConfig.model"
                     >
                       {{ testingAI ? '测试中...' : '测试模型调用' }}
                     </button>
@@ -826,7 +722,9 @@ import { displayLang } from '../utils/displayLang.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
-import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG, parseGradientList } from '../features/config/configDefaults.js'
+import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG } from '../features/config/configDefaults.js'
+
+const BUBBLE_CFG_KEYS = Object.keys(DEFAULT_BUBBLE_CFG)
 
 export default {
   name: 'Config',
@@ -841,13 +739,14 @@ export default {
       saving: false,
       testingTelegram: false,
       testingAI: false,
+      loadingAIModels: false,
+      aiModelOptions: [],
       inventoryCron: '',
       telegramTestMsg: '',
       aiTestMsg: '',
       aiTestType: 'info',
       showBotToken: false,
       showEmbyKey: false,
-      showMetatubeToken: false,
       showAIKey: false,
       navGroups: [
         { id: 'services', label: '常规与服务' },
@@ -894,6 +793,11 @@ export default {
         { value: 'rental', label: '租赁版' },
         { value: 'ebook', label: '写真' },
       ],
+      aiProviderOptions: [
+        { value: 'openai_compatible', label: 'OpenAI 兼容', hint: '适合 OpenAI、One API、LiteLLM、OpenRouter 等兼容接口。', placeholder: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+        { value: 'gemini', label: 'Gemini', hint: '使用 Google Gemini 原生 generateContent 接口。', placeholder: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash' },
+        { value: 'ollama', label: 'Ollama', hint: '连接本机或局域网 Ollama 服务。', placeholder: 'http://localhost:11434', model: 'qwen2.5:7b' },
+      ],
       downloadPolicyOptions: [
         { value: 'manual', label: '人工批准', hint: '只生成候选，下载必须手动批准。' },
         { value: 'rules', label: '规则自动', hint: '自动处理允许来源中符合规则的候选。' },
@@ -905,17 +809,6 @@ export default {
         { value: 'supplement', label: '补全发现' },
         { value: 'manual', label: '手动加入' },
       ],
-      rarityOptions: [
-        { key: 'legendary', label: '传奇' },
-        { key: 'epic', label: '史诗' },
-        { key: 'rare', label: '稀有' },
-        { key: 'common', label: '基础' },
-      ],
-      rarityThresholdOptions: [
-        { key: 'legendary', label: '传奇', min: 1, max: 30 },
-        { key: 'epic', label: '史诗', min: 5, max: 60 },
-        { key: 'rare', label: '稀有', min: 20, max: 85 },
-      ],
       tagTuningControls: [
         { key: 'bubbleCount', label: '显示数量', min: 12, max: 120, step: 6, unit: '' },
         { key: 'baseSize', label: '基础尺寸', min: 8, max: 48, step: 1, unit: 'px' },
@@ -923,21 +816,6 @@ export default {
         { key: 'spacing', label: '标签间距', min: 0, max: 48, step: 2, unit: 'px' },
       ],
       previewTags: ['剧情', '高清', '限定', '新作', '字幕'],
-      palettes: [
-        { key: 'monet',    label: '莫奈',    colors: ['#d8d2cc', '#d6c8c8'] },
-        { key: 'sunset',   label: '夕阳',    colors: ['#c89080', '#c87868'] },
-        { key: 'ocean',   label: '雾石',    colors: ['#d2d2ce', '#c8c2ba'] },
-        { key: 'forest',   label: '森林',    colors: ['#90b898', '#7aa888'] },
-        { key: 'gold',    label: '金色',    colors: ['#a88050', '#c89050'] },
-        { key: 'anime',   label: '粉陶',    colors: ['#e8a0c8', '#d8a8b8'] },
-        { key: 'retro',    label: '复古',    colors: ['#c89050', '#8b7355'] },
-        { key: 'cyber',   label: '石墨',    colors: ['#1d1d1f', '#6e6e73'] },
-        { key: 'pastel',  label: '马卡龙',  colors: ['#f0b8c0', '#e8d4c8'] },
-        { key: 'nord',    label: '北境',    colors: ['#9a9a9a', '#a3be8c'] },
-        { key: 'neon',    label: '霓虹',    colors: ['#ff0080', '#00ff80'] },
-        { key: 'earth',   label: '大地',    colors: ['#8b7355', '#6b8e5a'] },
-        { key: 'candy',   label: '糖果',    colors: ['#ffb8d0', '#ffd0c0'] },
-      ],
     }
   },
   computed: {
@@ -963,50 +841,29 @@ export default {
     currentPolicyHint() {
       return this.downloadPolicyOptions.find(option => option.value === this.config.automation.download_policy)?.hint || ''
     },
-    paletteLabel() {
-      if (this.bubbleCfg.palette === '__all__') return '艺术随机'
-      if (this.bubbleCfg.palette === '__custom__') return '自定义材质'
-      return this.palettes.find(p => p.key === this.bubbleCfg.palette)?.label || '莫奈'
+    currentAiProvider() {
+      return this.aiProviderOptions.find(option => option.value === this.config.ai.provider) || this.aiProviderOptions[0]
+    },
+    currentAiProviderLabel() {
+      return this.currentAiProvider.label
+    },
+    currentAiProviderHint() {
+      return this.currentAiProvider.hint
+    },
+    currentAiProviderPlaceholder() {
+      return this.currentAiProvider.placeholder
+    },
+    currentAiModelPlaceholder() {
+      return this.currentAiProvider.model
+    },
+    currentAiConfig() {
+      const provider = this.config.ai.provider || 'openai_compatible'
+      return this.config.ai[provider] || this.config.ai.openai_compatible
     },
     auraPreviewStyle() {
       return {
         '--preview-gap': `${Math.max(4, Math.min(this.bubbleCfg.spacing || 12, 28)) * 0.45}px`,
         '--preview-font': `${Math.max(11, Math.min(this.bubbleCfg.baseSize || 16, 24))}px`,
-      }
-    },
-    // 下拉选中色系的颜色预览条
-    currentPalettePreview() {
-      if (this.bubbleCfg.palette === '__all__') {
-        // 完全随机：展示所有色系的混合渐变
-        return 'var(--text-primary)'
-      }
-      if (this.bubbleCfg.palette === '__custom__') {
-        return 'var(--text-muted)'
-      }
-      const p = this.palettes.find(p => p.key === this.bubbleCfg.palette)
-      if (!p) return 'var(--text-muted)'
-      const [c1, c2] = p.colors
-      return c1
-    },
-    paletteOptions() {
-      return [
-        { value: '__all__', label: '艺术随机', color: 'var(--text-primary)' },
-        ...this.palettes.map(palette => ({
-          value: palette.key,
-          label: palette.label,
-          color: palette.colors?.[0],
-        })),
-        { value: '__custom__', label: '自定义材质', color: 'var(--text-muted)' },
-      ]
-    },
-  },
-  watch: {
-    'bubbleCfg.palette'(newVal) {
-      // __all__ 和 __custom__ 是独立于 palettes 数组的特殊值，直接放行
-      if (newVal === '__all__' || newVal === '__custom__') return
-      // 防止旧数据中已删除的 palette 值导致白屏
-      if (!this.palettes.find(p => p.key === newVal)) {
-        this.bubbleCfg.palette = 'monet'
       }
     },
   },
@@ -1036,6 +893,7 @@ export default {
             }
           }
         }
+        this.mergeAiConfig(data.ai || {})
 
         this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
         this.inventoryCron = data.inventory_cron || ''
@@ -1067,6 +925,16 @@ export default {
         this.$message.error('保存失败')
       } finally {
         this.saving = false
+      }
+    },
+    mergeAiConfig(remote = {}) {
+      const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG.ai))
+      this.config.ai = { ...base, ...(remote || {}) }
+      if (!this.aiProviderOptions.some(option => option.value === this.config.ai.provider)) {
+        this.config.ai.provider = 'openai_compatible'
+      }
+      for (const key of ['openai_compatible', 'gemini', 'ollama']) {
+        this.config.ai[key] = { ...(base[key] || {}), ...((remote && remote[key]) || {}) }
       }
     },
     async saveInventoryCron() {
@@ -1122,10 +990,11 @@ export default {
       this.aiTestMsg = ''
       this.aiTestType = 'info'
       try {
-        const resp = await api.testAiModel(this.config.ai.openai_compatible)
+        const resp = await api.testAiModel(this.config.ai)
         const latency = resp.data?.latency_ms ? ` · ${resp.data.latency_ms}ms` : ''
-        const model = resp.data?.model || this.config.ai.openai_compatible.model
-        this.aiTestMsg = `调用成功：${model}${latency}`
+        const model = resp.data?.model || this.currentAiConfig.model
+        const provider = resp.data?.provider || this.config.ai.provider
+        this.aiTestMsg = `调用成功：${provider} / ${model}${latency}`
         this.aiTestType = 'success'
         this.$message.success('模型调用正常')
       } catch (e) {
@@ -1135,23 +1004,43 @@ export default {
         this.testingAI = false
       }
     },
+    async loadAiModels() {
+      if (!this.canSaveConfig) {
+        this.aiTestMsg = '配置未加载成功，请先重新加载'
+        this.aiTestType = 'error'
+        return
+      }
+      this.loadingAIModels = true
+      this.aiTestMsg = ''
+      this.aiTestType = 'info'
+      try {
+        const resp = await api.listAiModels(this.config.ai)
+        this.aiModelOptions = resp.data?.models || []
+        if (this.aiModelOptions.length && !this.currentAiConfig.model) {
+          this.currentAiConfig.model = this.aiModelOptions[0].id
+        }
+        this.aiTestMsg = this.aiModelOptions.length ? `已获取 ${this.aiModelOptions.length} 个模型` : '没有返回可用模型'
+        this.aiTestType = this.aiModelOptions.length ? 'success' : 'info'
+      } catch (e) {
+        this.aiTestMsg = e.response?.data?.detail || '获取模型列表失败'
+        this.aiTestType = 'error'
+      } finally {
+        this.loadingAIModels = false
+      }
+    },
     loadBubbleCfg() {
       try {
         const saved = localStorage.getItem('genres_bubble_cfg')
         if (saved) {
           const parsed = JSON.parse(saved)
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            this.bubbleCfg = {
-              ...JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
-              ...parsed,
-            }
+            this.bubbleCfg = BUBBLE_CFG_KEYS.reduce((cfg, key) => {
+              if (Object.prototype.hasOwnProperty.call(parsed, key)) cfg[key] = parsed[key]
+              return cfg
+            }, JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)))
             if (!parsed.actressPageSize && parsed.actressAvatarSize) {
               const fallbackPageSize = { small: 48, medium: 36, large: 20 }
               this.bubbleCfg.actressPageSize = fallbackPageSize[parsed.actressAvatarSize] || DEFAULT_BUBBLE_CFG.actressPageSize
-            }
-            if (Array.isArray(parsed.customGradients)) {
-              this.bubbleCfg.customGradients = parsed.customGradients
-              this.bubbleCfg.customGradientsText = parsed.customGradients.join(',')
             }
           }
         }
@@ -1160,7 +1049,6 @@ export default {
       }
     },
     saveBubbleCfg() {
-      this.bubbleCfg.customGradients = parseGradientList(this.bubbleCfg.customGradientsText)
       localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
     },
     loadSearchPrefs() {
@@ -1177,36 +1065,13 @@ export default {
     setDisplayLang(lang) {
       displayLang.value = lang
     },
-    previewBubbleClass(index) {
-      if (this.bubbleCfg.colorMode !== 'legendary') return 'soft'
-      return ['legendary', 'epic', 'rare', 'common', 'rare'][index] || 'common'
-    },
-    previewBubbleStyle(index) {
+    previewBubbleStyle() {
       const fill = Math.max(0.7, Math.min((this.bubbleCfg.fillPercent || 50) / 100, 1.8))
       const basePaddingY = Math.round(7 * fill)
       const basePaddingX = Math.round(12 * fill)
-      if (this.bubbleCfg.colorMode === 'legendary') {
-        const rarity = this.previewBubbleClass(index)
-        return {
-          background: this.bubbleCfg.rarityColors[rarity],
-          padding: `${basePaddingY}px ${basePaddingX}px`,
-        }
-      }
-      const gradients = this.previewGradients()
       return {
-        background: gradients[index % gradients.length],
         padding: `${basePaddingY}px ${basePaddingX}px`,
       }
-    },
-    previewGradients() {
-      if (this.bubbleCfg.palette === '__custom__' && this.bubbleCfg.customGradientsText) {
-        const custom = parseGradientList(this.bubbleCfg.customGradientsText)
-        if (custom.length) return custom
-      }
-      if (this.bubbleCfg.palette === '__all__') {
-        return this.palettes.flatMap(p => p.colors)
-      }
-      return this.palettes.find(p => p.key === this.bubbleCfg.palette)?.colors || this.palettes[0].colors
     },
   }
 }
@@ -1478,6 +1343,7 @@ export default {
 .ai-test-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .telegram-test-msg,
@@ -1723,25 +1589,6 @@ export default {
   box-shadow: var(--glass-active-shadow);
 }
 
-.palette-select-wrap {
-  position: relative;
-  flex: 0 0 214px;
-  min-width: 0;
-}
-
-.palette-color-bar {
-  position: relative;
-  z-index: 1;
-  left: 0;
-  right: 0;
-  bottom: 3px;
-  width: calc(100% - 24px);
-  height: 3px;
-  margin: -7px 12px 0;
-  border-radius: 999px;
-  pointer-events: none;
-}
-
 .aura-preview {
   display: flex;
   align-items: center;
@@ -1764,85 +1611,14 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 30px;
-  border: 1px solid rgba(255,255,255,0.22);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-control);
-  color: #fff;
+  color: var(--text-primary);
+  background: var(--surface-card);
   font-size: var(--preview-font);
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.35);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 12px 28px rgba(0,0,0,0.22);
-}
-
-.preview-bubble.legendary {
-  border-color: rgba(255,255,255,0.34);
-}
-
-.legendary-colors-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.legendary-color-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 7px 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--material-glass-subtle);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.legendary-dot,
-.rarity-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
-}
-
-.rarity-color-input {
-  width: 22px;
-  height: 22px;
-  margin-left: auto;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.rarity-color-input::-webkit-color-swatch-wrapper { padding: 2px; }
-.rarity-color-input::-webkit-color-swatch { border: none; border-radius: 5px; }
-
-.rarity-thresholds {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--material-glass-subtle);
-}
-
-.rarity-threshold-row {
-  display: grid;
-  grid-template-columns: 10px 38px minmax(0, 1fr) 38px;
-  align-items: center;
-  gap: 10px;
-}
-
-.threshold-label {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
 }
 
 .threshold-slider {
@@ -1850,13 +1626,6 @@ export default {
   min-width: 0;
   accent-color: var(--accent);
   cursor: pointer;
-}
-
-.threshold-value {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 
 .tag-tuning-grid {
@@ -1889,14 +1658,6 @@ export default {
   font-variant-numeric: tabular-nums;
 }
 
-.custom-gradients-input {
-  resize: vertical;
-  min-height: 76px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 @media (max-width: 900px) {
   .appearance-scope-grid,
   .discovery-preference-grid {
@@ -1922,8 +1683,7 @@ export default {
   }
 
   .segmented-mini,
-  .segmented-mini.wide,
-  .palette-select-wrap {
+  .segmented-mini.wide {
     width: 100%;
     flex-basis: auto;
     min-width: 0;
@@ -1940,24 +1700,8 @@ export default {
     padding: 0 8px;
   }
 
-  .legendary-colors-grid,
   .tag-tuning-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .legendary-color-item {
-    min-width: 0;
-  }
-
-  .legendary-color-item span:nth-child(2) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .rarity-threshold-row {
-    grid-template-columns: 10px 34px minmax(0, 1fr) 36px;
-    gap: 8px;
   }
 }
 

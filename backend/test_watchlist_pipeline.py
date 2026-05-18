@@ -250,12 +250,11 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             async def post(self, *args, **kwargs):
                 return FakeResponse()
 
-        with patch("config.Config.openai_compatible", new_callable=PropertyMock, return_value={
-            "base_url": "https://ai.example/v1",
-            "api_key": "token",
-            "model": "gpt-test",
-            "timeout": 1,
-        }), patch("services.actor_mapping_candidates.httpx.AsyncClient", FakeAsyncClient):
+        with patch("services.actor_mapping_candidates.get_ai_client") as get_ai_client:
+            client = AsyncMock()
+            client.chat.return_value.content = '{"decision":"same_person","confidence":0.93,"reason":"名称一致"}'
+            client.chat.return_value.model = "gemini-test"
+            get_ai_client.return_value = client
             result = await inventory.ai_review_mapping(inventory.ActorMappingAiReviewRequest(
                 emby_actor_id="901",
                 emby_actor_name="糸井瑠花",

@@ -1,12 +1,17 @@
 from __future__ import annotations
+import asyncio
+import logging
 import httpx
 from typing import Any
 from services import cache
+
+logger = logging.getLogger(__name__)
 
 # DMM/FANZA 图片基础URL
 DMM_IMAGE_BASE_URL = "https://pics.dmm.co.jp"
 # DMM 预览视频基础URL
 DMM_SAMPLE_BASE_URL = "https://cc3001.dmm.co.jp"
+PENDING_METADATA_VIDEO_TTL = 300
 
 
 def _transform_jacket_url(jacket_path: str | None) -> str | None:
@@ -52,9 +57,42 @@ def _has_result_items(result: Any) -> bool:
 
 def _strip_metadata_fields(item: dict) -> dict:
     data = dict(item)
-    for field in ("summary", "director", "score", "meta_provider"):
+    for field in ("director",):
         data.pop(field, None)
     return data
+
+
+def _has_enhancement_fields(item: dict | None) -> bool:
+    if not isinstance(item, dict):
+        return False
+    summary = item.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        return True
+    return "score" in item and item.get("score") is not None
+
+
+def _has_complete_enhancement_fields(item: dict | None) -> bool:
+    if not isinstance(item, dict):
+        return False
+    summary = item.get("summary")
+    return isinstance(summary, str) and bool(summary.strip()) and item.get("score") is not None
+
+
+def _has_partial_enhancement_fields(item: dict | None) -> bool:
+    return _has_enhancement_fields(item) and not _has_complete_enhancement_fields(item)
+
+
+def _source_movie_id_for_enrichment(content_id: str, item: dict) -> str:
+    for value in (
+        item.get("dvd_id"),
+        item.get("canonical_number"),
+        item.get("content_id"),
+        content_id,
+    ):
+        value = str(value or "").strip()
+        if value:
+            return value
+    return ""
 
 
 def _is_random_limit_error(exc: httpx.HTTPStatusError) -> bool:
@@ -286,43 +324,76 @@ class InfoClient:
         cache_key = f"{normalized}:service:{service_code}" if service_code else normalized
         cached = cache.get_video(cache_key)
         if cached is not None:
-            return _strip_metadata_fields(cached)
+            data = _strip_metadata_fields(cached)
+            if _has_complete_enhancement_fields(data):
+                return data
+            if not _has_partial_enhancement_fields(data):
+                cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
+                self.queue_video_detail_enrichment(content_id, data)
+                return data
+
+            try:
+                return await self._fetch_video_detail(content_id, normalized, cache_key, service_code)
+            except Exception:
+                cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
+                self.queue_video_detail_enrichment(content_id, data)
+                return data
+
+        return await self._fetch_video_detail(content_id, normalized, cache_key, service_code)
+
+    async def _fetch_video_detail(
+        self,
+        content_id: str,
+        normalized: str,
+        cache_key: str,
+        service_code: str | None = None,
+    ) -> dict[str, Any]:
         params = {}
         if service_code:
             params["service_code"] = service_code
         result = await self._get(f"/api/v1/videos/{normalized}", params=params or None)
         # 转换图片URL
         data = _strip_metadata_fields(_transform_video_item(result))
-        cache.set_video(cache_key, data)
+        cache_ttl = PENDING_METADATA_VIDEO_TTL if not _has_complete_enhancement_fields(data) else cache.DEFAULT_VIDEO_TTL
+        cache.set_video(cache_key, data, ttl=cache_ttl)
+        self.queue_video_detail_enrichment(content_id, data)
         return data
 
-    async def get_video_metadata(self, content_id: str) -> dict[str, Any]:
-        """获取 MetaTube 增强元数据（失败不影响主流程）"""
-        try:
-            from modules.metatube_client import get_movie as mt_get_movie
-            mt_data = await mt_get_movie(content_id)
-        except Exception:
-            return {}
-        if not mt_data:
-            return {}
-        data = {}
-        if mt_data.get("summary"):
-            data["summary"] = mt_data["summary"]
-        if mt_data.get("director"):
-            data["director"] = mt_data["director"]
-        if "score" in mt_data:
-            data["score"] = mt_data.get("score", 0)
-        if mt_data.get("provider"):
-            data["meta_provider"] = mt_data["provider"]
-        return data
+    def queue_video_detail_enrichment(self, content_id: str, data: dict[str, Any]) -> bool:
+        """后台触发 JavInfoApi source=all 补全，当前详情响应不等待。"""
+        if _has_complete_enhancement_fields(data):
+            return False
+        source_movie_id = _source_movie_id_for_enrichment(content_id, data)
+        if not source_movie_id:
+            return False
+
+        async def run() -> None:
+            try:
+                await self.proxy_post(
+                    "/api/v1/supplement/movies/detail/jobs",
+                    params={"source": "all", "source_movie_id": source_movie_id},
+                )
+            except Exception as exc:
+                logger.warning("Failed to queue JavInfoApi detail enrichment for %s: %s", source_movie_id, exc)
+
+        asyncio.create_task(run())
+        return True
 
     # === 演员相关 ===
 
-    async def list_actresses(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    async def list_actresses(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        has_valid_avatar: str | int | bool | None = None,
+    ) -> dict[str, Any]:
         """获取演员列表（支持 q 关键词搜索）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if q:
             params["q"] = q
+        if has_valid_avatar is not None:
+            params["has_valid_avatar"] = has_valid_avatar
         return await self._get("/api/v1/actresses", params=params)
 
     async def get_actress(self, actress_id: int) -> dict[str, Any]:
@@ -518,16 +589,6 @@ class InfoClient:
     async def get_stats(self) -> dict[str, Any]:
         """获取统计数据"""
         return await self._get("/api/v1/stats")
-
-    async def get_category_stats(self) -> list[dict]:
-        """获取题材分类统计（含 video_count），走缓存"""
-        cached = cache.get_category_stats()
-        if cached is not None:
-            return cached
-        data = await self._get_list("/api/v1/categories/stats")
-        cache.set_category_stats(data)
-        return data
-
 
 # 全局单例（复用 httpx client，只把 api_url 做成动态读配置）
 _info_client: InfoClient | None = None

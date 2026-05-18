@@ -5,35 +5,12 @@
         <h1>翻译作业</h1>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" type="button" :disabled="loading" @click="reloadAll">
-          {{ loading ? '刷新中...' : '刷新' }}
+        <button class="btn btn-ghost" type="button" :disabled="loading || statsLoading" @click="refreshOverview">
+          {{ loading || statsLoading ? '刷新中...' : '刷新' }}
         </button>
         <button class="btn btn-primary" type="button" @click="setActiveSegment('create')">创建作业</button>
       </div>
     </header>
-
-    <section class="summary-strip apple-surface" aria-label="翻译统计">
-      <div class="summary-item">
-        <span>{{ coverageTitle.translated || 0 }}</span>
-        <strong>标题已翻译</strong>
-        <small>{{ coverageTitle.untranslated || 0 }} 未翻译 · {{ coveragePercent(coverageTitle) }}</small>
-      </div>
-      <div class="summary-item">
-        <span>{{ metadataCoverage.translated || 0 }}</span>
-        <strong>元数据已翻译</strong>
-        <small>{{ metadataCoverage.untranslated || 0 }} 未翻译 · {{ metadataSummary }}</small>
-      </div>
-      <div class="summary-item">
-        <span>{{ stats.ai_cache || 0 }}</span>
-        <strong>实时缓存</strong>
-        <small>标题缓存 {{ coverageTitle.cached || 0 }} · 正式映射 {{ coverageTitle.mapped || stats.title || 0 }}</small>
-      </div>
-      <div class="summary-item">
-        <span>{{ recentJobLabel }}</span>
-        <strong>最近作业</strong>
-        <small>{{ recentJobDetail }}</small>
-      </div>
-    </section>
 
     <nav class="segmented-control apple-surface" aria-label="翻译作业视图">
       <button
@@ -50,58 +27,139 @@
         <div>
           <h2>总览</h2>
         </div>
-        <div class="panel-actions">
-          <button class="btn btn-ghost btn-sm" type="button" :disabled="!canPauseCurrentJob || pausingJob" @click="pauseJob">
-            {{ pausingJob ? '暂停中...' : '暂停' }}
-          </button>
-          <span class="status-pill" :class="jobStatusClass(currentJob?.status)">{{ statusLabel(currentJob?.status) }}</span>
-        </div>
       </div>
 
-      <div class="overview-grid">
-        <div class="progress-block">
-          <template v-if="currentJob">
-            <div class="progress-topline">
-              <strong>#{{ currentJob.id }} · {{ jobTypeLabel(currentJob.job_type) }}</strong>
-              <span>{{ currentJob.progress_percent || 0 }}%</span>
+      <div class="overview-dashboard">
+        <section class="coverage-hero" :class="{ loading: overviewLoading }" aria-label="标题覆盖">
+          <template v-if="overviewLoading || overviewNeedsRefresh">
+            <div class="coverage-donut skeleton-donut" aria-hidden="true"></div>
+            <div class="coverage-hero-copy">
+              <span class="overview-kicker">标题覆盖</span>
+              <div class="coverage-placeholder-title">{{ overviewLoading ? '加载中' : '待刷新' }}</div>
+              <p>{{ overviewLoading ? '正在计算覆盖率' : '未加载覆盖统计' }}</p>
+              <div class="overview-track skeleton-track" aria-label="标题翻译覆盖率加载中">
+                <div></div>
+              </div>
             </div>
-            <div class="progress-track" aria-label="翻译作业进度">
-              <div class="progress-fill" :style="{ width: `${currentJob.progress_percent || 0}%` }"></div>
-            </div>
-            <div class="counter-grid">
-              <div><strong>{{ currentJob.total || 0 }}</strong><span>总数</span></div>
-              <div><strong>{{ currentJob.processed || 0 }}</strong><span>已处理</span></div>
-              <div><strong>{{ currentJob.translated || 0 }}</strong><span>已翻译</span></div>
-              <div><strong>{{ currentJob.skipped || 0 }}</strong><span>跳过</span></div>
-              <div><strong>{{ currentJob.failed || 0 }}</strong><span>失败</span></div>
-              <div><strong>{{ durationText(currentJob.duration_seconds) }}</strong><span>耗时</span></div>
-            </div>
-            <div class="job-meta">
-              <span>开始 {{ formatTime(currentJob.started_at || currentJob.created_at) }}</span>
-              <span v-if="currentJob.finished_at">结束 {{ formatTime(currentJob.finished_at) }}</span>
-              <span>源 {{ providerOrderLabel(currentJob.provider_order) }}</span>
-            </div>
-            <div v-if="currentJob.error_msg" class="message-line error">{{ currentJob.error_msg }}</div>
           </template>
-          <div v-else class="empty-panel compact">暂无运行中的翻译作业</div>
-        </div>
+          <template v-else>
+            <div class="coverage-donut" :style="{ '--coverage-angle': `${percentValue(coverageTitle) * 3.6}deg` }">
+              <div>
+                <strong>{{ coveragePercent(coverageTitle) }}</strong>
+                <span>标题覆盖</span>
+              </div>
+            </div>
+            <div class="coverage-hero-copy">
+              <span class="overview-kicker">标题覆盖</span>
+              <div class="coverage-count">
+                <strong>{{ formatNumber(coverageTitle.translated || 0) }}</strong>
+                <span>/ {{ formatNumber(coverageTitle.total || 0) }}</span>
+              </div>
+              <p>剩余 {{ formatNumber(coverageTitle.untranslated || 0) }} 条标题需要翻译</p>
+              <div class="overview-track" aria-label="标题翻译覆盖率">
+                <div :style="{ width: `${percentValue(coverageTitle)}%` }"></div>
+              </div>
+            </div>
+          </template>
+        </section>
 
-        <aside class="recent-panel">
-          <div class="recent-head">
-            <strong>最近作业</strong>
-            <button class="btn btn-ghost btn-sm" type="button" @click="setActiveSegment('history')">查看历史</button>
+        <section class="metadata-overview" :class="{ loading: overviewLoading }" aria-label="元数据覆盖">
+          <div class="overview-section-head">
+            <div>
+              <span class="overview-kicker">元数据覆盖</span>
+              <strong>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '待刷新' : coveragePercent(metadataCoverage)) }}</strong>
+            </div>
+            <small>{{ overviewLoading ? '统计中' : (overviewNeedsRefresh ? '未加载' : `${formatNumber(metadataCoverage.untranslated || 0)} 未翻译`) }}</small>
           </div>
-          <button
-            v-for="job in jobs.slice(0, 4)"
-            :key="job.id"
-            class="compact-job-row"
-            type="button"
-            @click="selectJob(job)"
-          >
-            <span>#{{ job.id }} · {{ jobTypeLabel(job.job_type) }}</span>
-            <small>{{ statusLabel(job.status) }} · {{ job.progress_percent || 0 }}%</small>
-          </button>
-          <small v-if="!jobs.length" class="muted">暂无作业记录</small>
+          <div class="coverage-row-list">
+            <div v-for="row in coverageRows" :key="row.key" class="coverage-row" :class="{ 'coverage-row--loading': overviewLoading || overviewNeedsRefresh }">
+              <div class="coverage-row-label">
+                <strong>{{ row.label }}</strong>
+                <span>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '等待刷新' : `${formatNumber(row.translated)} / ${formatNumber(row.total)}`) }}</span>
+              </div>
+              <div class="overview-track compact" :class="{ 'skeleton-track': overviewLoading || overviewNeedsRefresh }" :aria-label="`${row.label}覆盖率`">
+                <div :style="{ width: (overviewLoading || overviewNeedsRefresh) ? '52%' : `${row.percent}%` }"></div>
+              </div>
+              <span class="coverage-percent">{{ (overviewLoading || overviewNeedsRefresh) ? '...' : `${row.percent}%` }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="overview-signals" aria-label="工作台和缓存">
+          <div class="signal-card" :class="{ loading: overviewLoading || overviewNeedsRefresh }">
+            <span class="overview-kicker">待处理工作台</span>
+            <strong>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '待刷新' : formatNumber(workbenchPendingCount)) }}</strong>
+            <small>{{ overviewLoading ? '校对状态统计中' : (overviewNeedsRefresh ? '未加载统计' : `机翻 ${formatNumber(reviewStatsByStatus.machine_translated || 0)} · 未翻译 ${formatNumber(reviewStatsByStatus.untranslated || 0)}`) }}</small>
+          </div>
+          <div class="signal-card" :class="{ quiet: !(reviewStatsByStatus.failed || 0), loading: overviewLoading || overviewNeedsRefresh }">
+            <span class="overview-kicker">失败条目</span>
+            <strong>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '待刷新' : formatNumber(reviewStatsByStatus.failed || 0)) }}</strong>
+            <small>{{ overviewLoading ? '风险统计中' : (overviewNeedsRefresh ? '未加载统计' : `已校对 ${formatNumber(reviewStatsByStatus.reviewed || 0)} · 人工 ${formatNumber(reviewStatsByStatus.manual_edited || 0)}`) }}</small>
+          </div>
+          <div class="signal-card" :class="{ loading: overviewLoading || overviewNeedsRefresh }">
+            <span class="overview-kicker">缓存与映射</span>
+            <strong>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '待刷新' : formatNumber(stats.ai_cache || 0)) }}</strong>
+            <small>{{ overviewLoading ? '缓存统计中' : (overviewNeedsRefresh ? '未加载统计' : `标题缓存 ${formatNumber(coverageTitle.cached || 0)} · 正式映射 ${formatNumber(coverageTitle.mapped || stats.title || 0)}`) }}</small>
+          </div>
+        </section>
+
+        <aside class="job-control-card" :class="{ empty: !jobControlJob }" aria-label="任务状态">
+          <div class="job-control-head">
+            <div>
+              <span class="overview-kicker">任务状态</span>
+              <strong>{{ jobControlJob ? `#${jobControlJob.id} · ${jobTypeLabel(jobControlJob.job_type)}` : '暂无作业' }}</strong>
+            </div>
+            <span class="status-pill" :class="jobStatusClass(jobControlJob?.status)">{{ statusLabel(jobControlJob?.status) }}</span>
+          </div>
+
+          <div class="job-control-progress">
+            <div class="job-progress-label">
+              <span>进度</span>
+              <strong>{{ jobProgressValue(jobControlJob) }}%</strong>
+            </div>
+            <div class="overview-track" aria-label="当前作业进度">
+              <div :style="{ width: `${jobProgressValue(jobControlJob)}%` }"></div>
+            </div>
+          </div>
+
+          <div class="job-control-metrics">
+            <div>
+              <span>处理</span>
+              <strong>{{ formatNumber(jobControlJob?.processed || 0) }} / {{ formatNumber(jobControlJob?.total || 0) }}</strong>
+            </div>
+            <div>
+              <span>翻译</span>
+              <strong>{{ formatNumber(jobControlJob?.translated || 0) }}</strong>
+            </div>
+            <div>
+              <span>跳过</span>
+              <strong>{{ formatNumber(jobControlJob?.skipped || 0) }}</strong>
+            </div>
+            <div :class="{ danger: (jobControlJob?.failed || 0) > 0 }">
+              <span>失败</span>
+              <strong>{{ formatNumber(jobControlJob?.failed || 0) }}</strong>
+            </div>
+          </div>
+
+          <div class="job-control-meta">
+            <span>创建 {{ formatTime(jobControlJob?.created_at) }}</span>
+            <span>耗时 {{ durationText(jobControlJob?.duration_seconds) }}</span>
+            <span>源 {{ providerOrderLabel(jobControlJob?.provider_order) }}</span>
+          </div>
+
+          <div v-if="jobControlJob?.error_msg" class="job-error">{{ jobControlJob.error_msg }}</div>
+
+          <div class="job-control-actions">
+            <button v-if="canPauseCurrentJob" class="btn btn-ghost btn-sm" type="button" :disabled="pausingJob" @click="pauseJob">
+              {{ pausingJob ? '暂停中...' : '暂停作业' }}
+            </button>
+            <button class="btn btn-primary btn-sm" type="button" :disabled="!canStartContinuationJob" @click="continueJobFromLatest">
+              {{ startingJob ? '继续中...' : '继续翻译' }}
+            </button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="setActiveSegment('history')">历史记录</button>
+          </div>
+
+          <small v-if="!jobControlJob" class="muted">会按当前默认字段从剩余内容继续处理。</small>
         </aside>
       </div>
     </section>
@@ -267,7 +325,7 @@
               <strong>实时兜底</strong>
               <span>公共智能翻译参数在设置页维护，这里只用于状态检测和手动测试。</span>
             </div>
-            <span class="provider-status">{{ providerStatusLabel('openai_compatible') }}</span>
+            <span class="provider-status">{{ providerStatusLabel('ai') }}</span>
           </div>
           <div class="source-settings">
             <textarea v-model="translationTestText" class="input test-textarea" rows="3" placeholder="输入一小段文本测试实时翻译"></textarea>
@@ -477,6 +535,8 @@ import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'
 
 const BASE_BATCH_ORDER = ['cache', 'mapping']
+const TRANSLATION_STATS_CACHE_KEY = 'javhub_translation_stats_cache'
+let cachedTranslationStats = null
 const JOB_TYPE_OPTIONS = [
   { value: 'library_titles', label: '库内影片标题', hint: '独立处理片库标题，默认走低成本源。' },
   { value: 'metadata_categories', label: '题材名称', hint: '只翻译题材名称。' },
@@ -505,6 +565,7 @@ const PROVIDER_META = {
   google_free: { label: 'Google 免费接口', hint: '无密钥，适合标题和短名称批量翻译。' },
   deepl: { label: 'DeepL', hint: '质量更高，需要配置密钥。' },
   microsoft: { label: 'Microsoft 翻译', hint: 'Azure 翻译接口，需要密钥和可选区域。' },
+  ai: { label: '智能兜底', hint: '使用设置页当前公共智能模型，适合低成本源效果不好时补充。' },
 }
 
 function cloneTranslationConfig() {
@@ -526,6 +587,8 @@ export default {
         { key: 'history', label: '历史记录' },
       ],
       loading: false,
+      statsLoading: false,
+      statsLoaded: false,
       savingConfig: false,
       startingJob: false,
       pausingJob: false,
@@ -577,6 +640,7 @@ export default {
         { key: 'google_free', ...PROVIDER_META.google_free, enabled: true },
         { key: 'deepl', ...PROVIDER_META.deepl, enabled: true },
         { key: 'microsoft', ...PROVIDER_META.microsoft, enabled: true },
+        { key: 'ai', ...PROVIDER_META.ai, enabled: false },
       ],
       jobForm: {
         job_type: 'library_titles',
@@ -615,29 +679,37 @@ export default {
         return acc
       }, { total: 0, translated: 0, untranslated: 0 })
     },
-    metadataTotal() {
-      return (this.stats.actress || 0) + (this.stats.category || 0) + (this.stats.series || 0)
-        + (this.stats.maker || 0) + (this.stats.label || 0)
-    },
-    metadataSummary() {
+    coverageRows() {
       return [
-        `演员 ${this.stats.actress || 0}`,
-        `题材 ${this.stats.category || 0}`,
-        `系列 ${this.stats.series || 0}`,
-        `厂商 ${this.stats.maker || 0}`,
-        `厂牌 ${this.stats.label || 0}`,
-      ].join(' · ')
+        { key: 'actress', label: '演员' },
+        { key: 'category', label: '题材' },
+        { key: 'series', label: '系列' },
+        { key: 'maker', label: '厂商' },
+        { key: 'label', label: '厂牌' },
+      ].map(row => {
+        const item = this.coverage[row.key] || {}
+        return {
+          ...row,
+          total: item.total || 0,
+          translated: item.translated || 0,
+          untranslated: item.untranslated || 0,
+          percent: this.percentValue(item),
+        }
+      })
     },
-    recentJob() {
-      return this.jobs[0] || null
+    workbenchPendingCount() {
+      return (this.reviewStatsByStatus.machine_translated || 0)
+        + (this.reviewStatsByStatus.untranslated || 0)
+        + (this.reviewStatsByStatus.failed || 0)
     },
-    recentJobLabel() {
-      if (!this.recentJob) return '无'
-      return this.statusLabel(this.recentJob.status)
+    overviewLoading() {
+      return this.statsLoading && !Object.keys(this.coverage || {}).length
     },
-    recentJobDetail() {
-      if (!this.recentJob) return '尚未启动作业'
-      return `#${this.recentJob.id} · ${this.jobTypeLabel(this.recentJob.job_type)} · ${this.recentJob.progress_percent || 0}%`
+    overviewNeedsRefresh() {
+      return !this.statsLoading && !this.statsLoaded
+    },
+    jobControlJob() {
+      return this.currentJob || this.jobs[0] || this.selectedJob || null
     },
     selectedProviderOrder() {
       return [
@@ -651,6 +723,12 @@ export default {
     canPauseCurrentJob() {
       return Boolean(this.currentJob?.id && ['pending', 'running'].includes(this.currentJob.status))
     },
+    canStartContinuationJob() {
+      const status = this.jobControlJob?.status
+      return !this.startingJob
+        && this.selectedProviderOrder.length > 2
+        && !['pending', 'running'].includes(status)
+    },
     selectedJobMode() {
       return JOB_MODE_OPTIONS.find(option => option.value === this.jobForm.mode) || JOB_MODE_OPTIONS[0]
     },
@@ -662,6 +740,7 @@ export default {
     },
   },
   async mounted() {
+    this.loadCachedStats()
     await this.reloadAll()
   },
   beforeUnmount() {
@@ -677,9 +756,20 @@ export default {
     async reloadAll() {
       this.loading = true
       try {
-        await Promise.all([this.loadConfig(), this.loadStats(), this.loadJobs()])
-        if (this.activeSegment === 'review') await this.loadTranslationItems(this.reviewPage)
+        await Promise.all([this.loadConfig(), this.loadJobs()])
         this.pickCurrentJob()
+        if (this.activeSegment === 'review') await this.loadTranslationItems(this.reviewPage)
+      } finally {
+        this.loading = false
+      }
+    },
+    async refreshOverview() {
+      this.loading = true
+      try {
+        await Promise.all([this.loadConfig(), this.loadJobs()])
+        this.pickCurrentJob()
+        if (this.activeSegment === 'review') await this.loadTranslationItems(this.reviewPage)
+        await this.loadStats()
       } finally {
         this.loading = false
       }
@@ -693,6 +783,41 @@ export default {
       } catch (error) {
         console.error('Failed to load translation config:', error)
         ElMessage.error('翻译配置加载失败')
+      }
+    },
+    translationStatsStorage() {
+      try {
+        return typeof window !== 'undefined' ? window.localStorage : null
+      } catch (error) {
+        return null
+      }
+    },
+    loadCachedStats() {
+      try {
+        if (cachedTranslationStats) {
+          this.stats = cachedTranslationStats
+          this.statsLoaded = true
+          return
+        }
+        const storage = this.translationStatsStorage()
+        const cached = storage?.getItem(TRANSLATION_STATS_CACHE_KEY)
+        if (!cached) return
+        const parsed = JSON.parse(cached)
+        if (!parsed || typeof parsed !== 'object') return
+        cachedTranslationStats = parsed
+        this.stats = parsed
+        this.statsLoaded = true
+      } catch (error) {
+        console.warn('Failed to load cached translation stats:', error)
+      }
+    },
+    saveCachedStats(stats) {
+      try {
+        cachedTranslationStats = stats || {}
+        const storage = this.translationStatsStorage()
+        storage?.setItem(TRANSLATION_STATS_CACHE_KEY, JSON.stringify(cachedTranslationStats))
+      } catch (error) {
+        console.warn('Failed to save cached translation stats:', error)
       }
     },
     mergeTranslationConfig(remote = {}) {
@@ -713,12 +838,17 @@ export default {
       return merged
     },
     async loadStats() {
+      this.statsLoading = true
       try {
         const resp = await api.getTranslationStats()
         this.stats = resp.data || {}
+        this.saveCachedStats(this.stats)
+        this.statsLoaded = true
       } catch (error) {
         console.error('Failed to load translation stats:', error)
-        this.stats = {}
+        if (!this.statsLoaded) this.stats = {}
+      } finally {
+        this.statsLoading = false
       }
     },
     async loadJobs() {
@@ -774,7 +904,7 @@ export default {
         'cache',
         'mapping',
         ...this.selectedProviderOrder.filter(key => !BASE_BATCH_ORDER.includes(key)),
-        'openai_compatible',
+        'ai',
       ]))
       const payload = {
         translation: {
@@ -827,6 +957,13 @@ export default {
         this.startingJob = false
       }
     },
+    async continueJobFromLatest() {
+      if (!this.canStartContinuationJob) return
+      const job = this.jobControlJob
+      if (job?.job_type) this.jobForm.job_type = job.job_type
+      this.jobForm.mode = 'remaining'
+      await this.startJob()
+    },
     startPolling(jobId) {
       this.stopPolling()
       this.pollTimer = setInterval(() => this.refreshCurrentJob(jobId), 2000)
@@ -849,7 +986,8 @@ export default {
         this.jobs = [job, ...this.jobs.filter(item => item.id !== job.id)]
         this.stopPolling()
         ElMessage.success('翻译作业已暂停')
-        await Promise.all([this.loadStats(), this.loadJobs()])
+        this.loadStats()
+        await this.loadJobs()
       } catch (error) {
         console.error('Failed to pause translation job:', error)
         ElMessage.error(error.response?.data?.detail || '暂停翻译作业失败')
@@ -867,7 +1005,8 @@ export default {
         if (this.selectedJob?.id === job.id) this.selectedJob = job
         if (['completed', 'failed', 'paused'].includes(job.status)) {
           this.stopPolling()
-          await Promise.all([this.loadStats(), this.loadJobs()])
+          this.loadStats()
+          await this.loadJobs()
           this.pickCurrentJob()
         }
       } catch (error) {
@@ -1086,6 +1225,7 @@ export default {
         google_free: 'Google 免费接口',
         deepl: 'DeepL',
         microsoft: 'Microsoft 翻译',
+        ai: '智能兜底',
         openai_compatible: '智能兜底',
         translation_service: '批量源',
         import: '导入',
@@ -1096,10 +1236,17 @@ export default {
       const labels = (order || []).map(key => this.providerLabel(key)).filter(Boolean)
       return labels.length ? labels.join(' -> ') : '未记录'
     },
+    percentValue(item = {}) {
+      const total = Number(item.total || 0)
+      if (!total) return 0
+      const translated = Number(item.translated || 0)
+      return Math.max(0, Math.min(100, Math.round((translated / total) * 100)))
+    },
     coveragePercent(item = {}) {
-      const total = item.total || 0
-      if (!total) return '0%'
-      return `${Math.round(((item.translated || 0) / total) * 100)}%`
+      return `${this.percentValue(item)}%`
+    },
+    formatNumber(value) {
+      return new Intl.NumberFormat('zh-CN').format(Number(value || 0))
     },
     jobTypeLabel(type) {
       return {
@@ -1149,6 +1296,11 @@ export default {
       const hours = Math.floor(minutes / 60)
       const minuteRest = minutes % 60
       return minuteRest ? `${hours}h ${minuteRest}m` : `${hours}h`
+    },
+    jobProgressValue(job = null) {
+      const value = Number(job?.progress_percent || 0)
+      if (!Number.isFinite(value)) return 0
+      return Math.max(0, Math.min(100, Math.round(value)))
     },
     formatTime(value) {
       if (!value) return '—'
@@ -1208,10 +1360,7 @@ export default {
 .panel-actions,
 .panel-footer-actions,
 .key-actions,
-.mapping-actions,
-.recent-head,
-.progress-topline,
-.job-meta {
+.mapping-actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1229,55 +1378,11 @@ export default {
   font-size: 12px;
 }
 
-.summary-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-}
-
-.summary-item {
-  min-height: 62px;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.025);
-  border-right: 1px solid var(--border);
-}
-
-.summary-item:last-child {
-  border-right: 0;
-}
-
-.summary-item span {
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.summary-item strong {
-  margin-top: 6px;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.summary-item small {
-  display: block;
-  margin-top: 3px;
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.summary-item small,
 .muted,
 .provider-row small,
 .source-section-head span,
 .history-row span,
 .result-summary span,
-.job-meta,
 .notice-row span {
   color: var(--text-secondary);
 }
@@ -1342,79 +1447,406 @@ export default {
   gap: 16px;
 }
 
-.progress-block,
+.overview-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.8fr);
+  grid-template-areas:
+    "hero metadata"
+    "signals metadata"
+    "control control";
+  gap: 14px;
+}
+
+.coverage-hero,
+.metadata-overview,
+.overview-signals,
+.job-control-card {
+  min-width: 0;
+}
+
+.coverage-hero,
+.metadata-overview,
+.signal-card,
+.job-control-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.coverage-hero {
+  grid-area: hero;
+  min-height: 252px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.36fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+}
+
+.coverage-donut {
+  --coverage-angle: 0deg;
+  --donut-progress: var(--translation-donut-progress, var(--accent));
+  --donut-track: var(--translation-donut-track, rgba(var(--accent-rgb), 0.12));
+  --donut-hole-bg: var(--translation-donut-hole-bg, rgba(255, 255, 255, 0.94));
+  --donut-hole-border: var(--translation-donut-hole-border, rgba(29, 29, 31, 0.10));
+  --donut-edge: var(--translation-donut-edge, var(--border-light));
+  --donut-glow: var(--translation-donut-glow, rgba(var(--accent-rgb), 0.08));
+  width: clamp(132px, 13vw, 160px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(255, 255, 255, 0.24) 61%, transparent 62%),
+    conic-gradient(var(--donut-progress) 0 var(--coverage-angle), var(--donut-track) var(--coverage-angle) 360deg);
+  box-shadow: inset 0 0 0 1px var(--donut-edge), 0 18px 34px var(--donut-glow);
+}
+
+.coverage-donut div {
+  width: 68%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  background: var(--donut-hole-bg);
+  border: 1px solid var(--donut-hole-border);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+:global(:root[data-theme='dark']) {
+  --translation-donut-track: rgba(255, 255, 255, 0.13);
+  --translation-donut-hole-bg: #1C1C1E;
+  --translation-donut-hole-border: rgba(255, 255, 255, 0.16);
+  --translation-donut-edge: rgba(255, 255, 255, 0.18);
+  --translation-donut-glow: rgba(0, 0, 0, 0.34);
+}
+
+.coverage-donut strong {
+  color: var(--text-primary);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverage-donut span,
+.overview-kicker,
+.coverage-row-label span,
+.signal-card small,
+.overview-section-head small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.coverage-donut span {
+  margin-top: 6px;
+}
+
+.skeleton-donut,
+.skeleton-line,
+.skeleton-track div,
+.coverage-row--loading .coverage-percent {
+  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+  background-size: 200% 100%;
+  animation: apple-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-donut {
+  box-shadow: none;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: var(--radius-control);
+}
+
+.skeleton-line.large {
+  width: min(260px, 100%);
+  height: 42px;
+  margin-top: 8px;
+}
+
+.skeleton-line.medium {
+  width: min(210px, 86%);
+  margin: 12px 0 17px;
+}
+
+.skeleton-track div {
+  background-color: transparent;
+}
+
+.coverage-row--loading .coverage-percent {
+  height: 14px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  color: transparent;
+}
+
+.coverage-hero-copy {
+  min-width: 0;
+}
+
+.overview-kicker {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.coverage-count {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverage-count strong {
+  color: var(--text-primary);
+  font-size: clamp(28px, 4.2vw, 44px);
+  font-weight: 650;
+  line-height: 1.02;
+}
+
+.coverage-count span {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.coverage-hero-copy p {
+  margin: 8px 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.overview-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: rgba(var(--accent-rgb), 0.11);
+}
+
+.overview-track.compact {
+  height: 7px;
+}
+
+.overview-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.28s ease;
+}
+
+.metadata-overview {
+  grid-area: metadata;
+  padding: 16px;
+}
+
+.overview-section-head {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.overview-section-head strong {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverage-row-list {
+  display: grid;
+  gap: 13px;
+}
+
+.coverage-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) minmax(120px, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.coverage-row-label {
+  min-width: 0;
+}
+
+.coverage-row-label strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.coverage-row-label span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverage-percent {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-signals {
+  grid-area: signals;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.signal-card {
+  min-height: 106px;
+  padding: 13px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.signal-card strong {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-card small {
+  line-height: 1.35;
+}
+
+.signal-card.quiet strong {
+  color: var(--text-secondary);
+}
+
+.job-control-card {
+  grid-area: control;
+  padding: 15px;
+  display: grid;
+  gap: 14px;
+}
+
+.job-control-card.empty {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.job-control-head,
+.job-progress-label,
+.job-control-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.job-control-head strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.job-control-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.job-progress-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.job-progress-label strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-control-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.job-control-metrics div {
+  min-height: 68px;
+  padding: 10px 11px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.job-control-metrics span,
+.job-control-meta,
+.job-error {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.job-control-metrics strong {
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-control-metrics .danger strong,
+.job-error {
+  color: #ff6b78;
+}
+
+.job-control-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.job-control-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-error {
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 80, 90, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(255, 80, 90, 0.08);
+}
+
+.job-control-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .recent-panel,
 .source-section,
 .result-summary {
   min-width: 0;
 }
 
-.recent-panel,
 .result-summary {
   padding-left: 16px;
   border-left: 1px solid var(--border);
 }
 
-.progress-topline {
-  justify-content: space-between;
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
-.progress-topline strong,
 .recent-head strong,
 .history-row strong,
 .result-summary strong {
   font-weight: 500;
-}
-
-.progress-track {
-  height: 6px;
-  margin: 14px 0;
-  overflow: hidden;
-  border-radius: var(--radius-control);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 0.25s ease;
-}
-
-.counter-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.counter-grid div {
-  min-height: 52px;
-  padding: 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.035);
-}
-
-.counter-grid strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.counter-grid span {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-
-.job-meta {
-  margin-top: 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
 }
 
 .compact-job-row,
@@ -1437,9 +1869,17 @@ export default {
   gap: 12px;
 }
 
+.compact-job-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .compact-job-row small,
 .history-row small {
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .history-row {
@@ -1959,12 +2399,14 @@ export default {
     justify-content: flex-start;
   }
 
-  .summary-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-item:nth-child(2n) {
-    border-right: 0;
+  .overview-dashboard,
+  .overview-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "metadata"
+      "signals"
+      "control";
   }
 
   .segmented-control {
@@ -2005,7 +2447,6 @@ export default {
     justify-content: flex-start;
   }
 
-  .recent-panel,
   .result-summary,
   .source-section + .source-section {
     padding-left: 0;
@@ -2014,8 +2455,12 @@ export default {
     border-top: 1px solid var(--border);
   }
 
-  .counter-grid {
+  .overview-signals {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .job-control-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2033,22 +2478,45 @@ export default {
     line-height: 1.1;
   }
 
-  .summary-strip {
+  .coverage-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 16px;
+    gap: 18px;
+  }
+
+  .coverage-hero-copy {
+    width: 100%;
+  }
+
+  .coverage-count {
+    justify-content: center;
+  }
+
+  .coverage-row {
+    grid-template-columns: 1fr 42px;
+  }
+
+  .coverage-row .overview-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .overview-signals {
     grid-template-columns: 1fr;
   }
 
-  .summary-item {
-    min-height: 62px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
+  .job-control-head,
+  .job-control-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .summary-item:last-child {
-    border-bottom: 0;
-  }
-
-  .counter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .job-control-head .status-pill,
+  .job-control-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .provider-row {
@@ -2084,6 +2552,7 @@ export default {
   .review-actions .btn,
   .review-search-btn,
   .mapping-actions .btn,
+  .job-control-actions .btn,
   .mapping-actions .import-button {
     width: 100%;
     justify-content: center;

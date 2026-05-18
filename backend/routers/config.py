@@ -1,9 +1,9 @@
 import logging
-import time
 from fastapi import APIRouter, HTTPException
 from urllib.parse import urlparse, urlunparse
 from config import config
 from services import cache
+from services.ai import build_ai_client
 from .proxy import _get_httpx_proxies
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ async def _push_proxy_to_javinfo():
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
-_WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'metatube', 'notification', 'scheduler',
+_WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'notification', 'scheduler',
                   'ai',
                   'automation', 'actor_mapping', 'translation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
@@ -103,10 +103,6 @@ async def update_config(new_config: dict):
     if "javinfo" in sanitized:
         from modules.info_client import reset_info_client
         reset_info_client()
-    # MetaTube URL 变更后重置 client
-    if "metatube" in sanitized:
-        from modules.metatube_client import close as mt_close
-        await mt_close()
     # 代理配置变更后推送到 JavInfoApi
     if "proxy" in sanitized:
         await _push_proxy_to_javinfo()
@@ -122,59 +118,44 @@ async def update_config(new_config: dict):
 
 @router.post("/ai/test")
 async def test_ai_model(body: dict | None = None):
-    """测试公共 OpenAI 兼容模型配置。"""
-    import httpx
-
-    body = body or {}
-    incoming = body.get("openai_compatible") if isinstance(body.get("openai_compatible"), dict) else body
-    saved = config.openai_compatible
-    openai_cfg = {**saved, **(incoming or {})}
-    if not openai_cfg.get("api_key"):
-        openai_cfg["api_key"] = saved.get("api_key", "")
-
-    base_url = str(openai_cfg.get("base_url") or "").rstrip("/")
-    api_key = str(openai_cfg.get("api_key") or "")
-    model = str(openai_cfg.get("model") or "")
-    if not base_url or not api_key or not model:
-        raise HTTPException(400, "请先填写 AI API 地址、API Key 和模型")
+    """测试当前公共智能模型配置。"""
     try:
-        timeout = float(openai_cfg.get("timeout", 30))
-    except Exception:
-        timeout = 30.0
-
-    started = time.perf_counter()
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "Return only the exact text: ok"},
-            {"role": "user", "content": "health check"},
-        ],
-        "temperature": 0,
-        "max_tokens": 8,
-    }
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    try:
-        async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-            response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-    except httpx.HTTPStatusError as exc:
-        detail = exc.response.text[:300] if exc.response is not None else str(exc)
-        raise HTTPException(exc.response.status_code if exc.response is not None else 502, f"AI 测试失败: {detail}") from exc
+        return await build_ai_client(_ai_settings_from_body(body)).test()
     except Exception as exc:
         raise HTTPException(502, f"AI 测试失败: {exc}") from exc
 
-    try:
-        content = str(data["choices"][0]["message"]["content"]).strip()
-    except Exception as exc:
-        raise HTTPException(502, "AI 返回格式异常") from exc
 
-    return {
-        "success": True,
-        "model": model,
-        "reply": content,
-        "latency_ms": round((time.perf_counter() - started) * 1000),
-    }
+@router.post("/ai/models")
+async def list_ai_models(body: dict | None = None):
+    """获取当前草稿 AI 配置可用模型列表。"""
+    try:
+        return await build_ai_client(_ai_settings_from_body(body)).list_models()
+    except Exception as exc:
+        raise HTTPException(502, f"获取模型列表失败: {exc}") from exc
+
+
+def _ai_settings_from_body(body: dict | None) -> dict:
+    body = body or {}
+    saved = config.ai
+    if isinstance(body.get("openai_compatible"), dict):
+        draft = {"provider": "openai_compatible", "openai_compatible": body["openai_compatible"]}
+    else:
+        draft_ai = body.get("ai") if isinstance(body.get("ai"), dict) else {}
+        draft = {**draft_ai}
+        if body.get("provider"):
+            draft["provider"] = body.get("provider")
+
+    merged = config._merge_config(saved, draft)
+    for provider_key in ("openai_compatible", "gemini", "ollama"):
+        provider_cfg = merged.get(provider_key)
+        if not isinstance(provider_cfg, dict):
+            continue
+        if provider_cfg.get("api_key"):
+            continue
+        saved_provider = saved.get(provider_key, {}) if isinstance(saved.get(provider_key), dict) else {}
+        if saved_provider.get("api_key"):
+            provider_cfg["api_key"] = saved_provider.get("api_key")
+    return merged
 
 @router.post("/notification/telegram/test")
 async def test_telegram(token: str):

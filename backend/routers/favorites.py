@@ -33,7 +33,7 @@ async def get_favorites(entity_type: Optional[str] = Query(None)):
 
 @router.get("/videos")
 async def get_favorite_videos():
-    """获取 video 类型收藏的完整影片数据（javinfo + metatube + 翻译）"""
+    """获取 video 类型收藏的完整影片数据（JavInfoApi + 翻译）"""
     items = favorite.list_favorites("video")
     if not items:
         return []

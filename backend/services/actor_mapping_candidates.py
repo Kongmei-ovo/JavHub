@@ -6,8 +6,6 @@ import json
 from difflib import SequenceMatcher
 from typing import Any
 
-import httpx
-
 from config import config
 from database import (
     confirm_actor_mapping,
@@ -18,6 +16,7 @@ from database import (
     upsert_actor_mapping,
 )
 from modules.info_client import get_info_client
+from services.ai import get_ai_client
 
 
 def _normalize_name(value: str | None) -> str:
@@ -325,18 +324,7 @@ async def review_actor_mapping_with_ai(
     emby_actor_name: str,
     candidate: dict[str, Any],
 ) -> dict[str, Any]:
-    """Use configured OpenAI-compatible chat completions for text-only actor mapping review."""
-    openai_cfg = config.openai_compatible
-    base_url = str(openai_cfg.get("base_url") or "").rstrip("/")
-    api_key = str(openai_cfg.get("api_key") or "")
-    model = str(openai_cfg.get("model") or "")
-    if not base_url or not api_key or not model:
-        raise RuntimeError("AI 未配置：请先在设置中配置 AI 的 base_url、api_key 和 model")
-    try:
-        timeout = float(openai_cfg.get("timeout", 30))
-    except Exception:
-        timeout = 30.0
-
+    """Use configured shared AI chat provider for text-only actor mapping review."""
     javinfo_id = candidate.get("javinfo_actress_id") or candidate.get("id")
     if not javinfo_id:
         raise ValueError("javinfo_actress_id is required")
@@ -350,22 +338,15 @@ async def review_actor_mapping_with_ai(
         "confidence must be a number from 0 to 1. reason must be concise Chinese."
     )
     user_prompt = json.dumps(payload_context, ensure_ascii=False, indent=2)
-    request_body = {
-        "model": model,
-        "messages": [
+    response = await get_ai_client().chat(
+        [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "temperature": 0.1,
-        "response_format": {"type": "json_object"},
-    }
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-        response = await client.post(f"{base_url}/chat/completions", json=request_body, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-
-    content = str(data["choices"][0]["message"]["content"]).strip()
+        json_mode=True,
+        temperature=0.1,
+    )
+    content = response.content
     parsed = _extract_json_object(content)
     decision = str(parsed.get("decision") or "uncertain").strip()
     if decision not in {"same_person", "different_person", "uncertain"}:
@@ -384,7 +365,7 @@ async def review_actor_mapping_with_ai(
         ai_decision=decision,
         ai_confidence=round(ai_confidence, 3),
         ai_reason=ai_reason,
-        ai_model=model,
+        ai_model=response.model,
     )
     return {
         "id": mapping_id,
@@ -393,7 +374,7 @@ async def review_actor_mapping_with_ai(
         "ai_decision": decision,
         "ai_confidence": round(ai_confidence, 3),
         "ai_reason": ai_reason,
-        "ai_model": model,
+        "ai_model": response.model,
     }
 
 

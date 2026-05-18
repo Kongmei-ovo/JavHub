@@ -75,6 +75,8 @@ def init_db():
 
     from database.translation import init_translation_db
     init_translation_db()
+    from translations.category_decensor import repair_masked_category_translations
+    repair_masked_category_translations()
     from database.favorite import init_favorite_db
     init_favorite_db()
     _migrate_download_tasks()
