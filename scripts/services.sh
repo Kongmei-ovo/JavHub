@@ -14,6 +14,12 @@ JAVINFO_PLIST="${LAUNCH_AGENTS_DIR}/${JAVINFO_LABEL}.plist"
 BACKEND_PLIST="${LAUNCH_AGENTS_DIR}/${BACKEND_LABEL}.plist"
 FRONTEND_PLIST="${LAUNCH_AGENTS_DIR}/${FRONTEND_LABEL}.plist"
 
+if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
+  PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
+else
+  PYTHON_BIN="${PYTHON_BIN:-python3}"
+fi
+
 usage() {
   cat <<'USAGE'
 Usage: scripts/services.sh <command> [service]
@@ -34,11 +40,11 @@ USAGE
 }
 
 xml_escape() {
-  "${ROOT_DIR}/.venv/bin/python" -c 'import html, sys; print(html.escape(sys.stdin.read().rstrip("\n"), quote=True), end="")'
+  "${PYTHON_BIN}" -c 'import html, sys; print(html.escape(sys.stdin.read().rstrip("\n"), quote=True), end="")'
 }
 
 javinfo_source_proxy_url() {
-  ROOT_DIR="${ROOT_DIR}" "${ROOT_DIR}/.venv/bin/python" <<'PY'
+  ROOT_DIR="${ROOT_DIR}" "${PYTHON_BIN}" <<'PY'
 from pathlib import Path
 import os
 import sys
