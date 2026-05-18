@@ -568,7 +568,7 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             try:
                 await asyncio.sleep(0.01)
                 paused = pause_translation_job(job_id)
-                await task
+                self.assertIsNone(await task)
             finally:
                 if job_id in jobs._running_jobs:
                     del jobs._running_jobs[job_id]
