@@ -1,14 +1,22 @@
-# Compatibility entrypoint for `docker build .`.
-# Prefer Dockerfile.backend and Dockerfile.frontend for published images.
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ .
+RUN npm run build
+
 FROM python:3.11-slim
 
-LABEL org.opencontainers.image.title="JavHub Backend"
-LABEL org.opencontainers.image.description="FastAPI backend for JavHub"
+LABEL org.opencontainers.image.title="JavHub"
+LABEL org.opencontainers.image.description="JavHub web UI and FastAPI backend"
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client gzip \
+    && apt-get install -y --no-install-recommends nginx postgresql-client gzip \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -19,11 +27,16 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend/ .
 
-RUN mkdir -p /app/data
+COPY --from=frontend-builder /frontend/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 8000
+RUN mkdir -p /app/data /run/nginx \
+    && rm -f /etc/nginx/sites-enabled/default
+
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1/health', timeout=5).read()" || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "/usr/local/bin/docker-entrypoint.sh"]
