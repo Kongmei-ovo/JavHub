@@ -1,6 +1,7 @@
 import logging
 import re
-from fastapi import APIRouter, HTTPException
+import yaml
+from fastapi import APIRouter, HTTPException, Response
 from urllib.parse import urlparse, urlunparse
 from config import config
 from services import cache
@@ -100,6 +101,17 @@ def _validated_telegram_bot_token(token: str) -> str | None:
 @router.get("/config")
 async def get_config():
     return _sanitize_config(config.get_all())
+
+
+@router.get("/config/export")
+async def export_config():
+    exported = _sanitize_config(config.get_all())
+    content = yaml.safe_dump(exported, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    return Response(
+        content=content,
+        media_type="application/x-yaml",
+        headers={"Content-Disposition": 'attachment; filename="javhub-config.yaml"'},
+    )
 
 
 @router.put("/config")

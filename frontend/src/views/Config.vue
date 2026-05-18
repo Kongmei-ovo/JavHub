@@ -108,141 +108,6 @@
               </div>
             </div>
 
-            <!-- JavInfo PostgreSQL Import -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>
-                  <h2>JavInfo 数据库导入</h2>
-                </div>
-                <div class="form-slot javinfo-import-panel">
-                  <div class="import-warning">
-                    <strong>危险操作：全量替换</strong>
-                    <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。优先使用临时库恢复并保留最近旧库。</span>
-                  </div>
-
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>数据库地址</label>
-                      <input class="input" v-model="config.javinfo.import_db.host" placeholder="localhost" />
-                    </div>
-                    <div class="form-group compact-number">
-                      <label>端口</label>
-                      <input class="input" v-model.number="config.javinfo.import_db.port" type="number" min="1" max="65535" />
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>目标库</label>
-                      <input class="input" v-model="config.javinfo.import_db.database" placeholder="r18" />
-                    </div>
-                    <div class="form-group">
-                      <label>维护库</label>
-                      <input class="input" v-model="config.javinfo.import_db.maintenance_database" placeholder="postgres" />
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>用户</label>
-                      <input class="input" v-model="config.javinfo.import_db.user" placeholder="kongmei" />
-                    </div>
-                    <div class="form-group">
-                      <label>密码</label>
-                      <div class="input-password-wrap">
-                        <input
-                          class="input"
-                          :type="showImportPassword ? 'text' : 'password'"
-                          v-model="config.javinfo.import_db.password"
-                          autocomplete="off"
-                          placeholder="空白保存不覆盖现有密码"
-                        />
-                        <button class="input-eye-btn" type="button" @click="showImportPassword = !showImportPassword" :title="showImportPassword ? '隐藏' : '显示'">
-                          <svg v-if="!showImportPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group compact-number">
-                      <label>并行恢复</label>
-                      <input class="input" v-model.number="config.javinfo.import_db.max_parallel_jobs" type="number" min="1" max="8" />
-                    </div>
-                    <div class="form-group compact-number">
-                      <label>保留旧库</label>
-                      <input class="input" v-model.number="config.javinfo.import_db.keep_previous_databases" type="number" min="0" max="5" />
-                    </div>
-                  </div>
-
-                  <div class="import-actions">
-                    <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
-                      {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
-                    </button>
-                    <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
-                      {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
-                    </span>
-                  </div>
-
-                  <div
-                    class="form-group import-file-drop"
-                    @dragover.prevent
-                    @drop.prevent="onJavInfoImportFileDrop"
-                  >
-                    <label>Dump 文件（.dump / .backup / .sql / .sql.gz）</label>
-                    <input class="input file-input" type="file" accept=".dump,.backup,.sql,.gz" @change="onJavInfoImportFileChange" />
-                    <small v-if="javinfoImportFile">{{ javinfoImportFile.name }} · {{ formatBytes(javinfoImportFile.size) }}</small>
-                  </div>
-
-                  <label class="form-group checkbox import-confirm">
-                    <input type="checkbox" v-model="javinfoImportConfirm" />
-                    <span>我确认这是全量替换导入，并已确认 dump 来源可信。</span>
-                  </label>
-
-                  <div v-if="javinfoImportRequiresDirectConfirm" class="import-warning import-warning-direct">
-                    <strong>无法使用临时库</strong>
-                    <span>当前账号没有建库权限，将直接清空目标库恢复；失败不能自动回滚。</span>
-                    <label class="checkbox import-confirm">
-                      <input type="checkbox" v-model="javinfoImportDirectConfirm" />
-                      <span>我确认接受直接恢复目标库模式。</span>
-                    </label>
-                  </div>
-
-                  <div v-if="javinfoImportJob" class="import-progress">
-                    <div class="import-progress-head">
-                      <span>{{ javinfoImportStatusLabel(javinfoImportJob) }}</span>
-                      <strong>{{ javinfoImportProgress }}%</strong>
-                    </div>
-                    <div class="progress-bar">
-                      <div class="progress-bar-fill" :style="{ width: `${javinfoImportProgress}%` }"></div>
-                    </div>
-                    <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
-                    <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>
-                  </div>
-
-                  <div class="import-actions">
-                    <button class="btn btn-primary" type="button" @click="startJavInfoImport" :disabled="!javinfoImportCanStart">
-                      {{ javinfoImportUploading ? '上传中...' : '开始导入' }}
-                    </button>
-                    <button v-if="javinfoImportJob && isJavInfoImportActive(javinfoImportJob)" class="btn btn-ghost" type="button" @click="cancelJavInfoImport">
-                      取消任务
-                    </button>
-                  </div>
-
-                  <div v-if="javinfoImportJobs.length" class="import-job-list">
-                    <div class="import-job-list-title">最近任务</div>
-                    <div v-for="job in javinfoImportJobs" :key="job.id" class="import-job-row">
-                      <span>{{ job.filename || `任务 #${job.id}` }}</span>
-                      <strong>{{ javinfoImportStatusLabel(job) }}</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
           <!-- Telegram Section -->
@@ -682,7 +547,164 @@
           <div v-if="activeGroup === 'advanced'" class="config-section">
             <div class="section-header">
               <h2>高级配置</h2>
-              <p>进阶功能设置，包括公共智能模型、网络代理、服务端策略和速率限制。</p>
+              <p>进阶功能设置，包括配置备份、数据库导入、公共智能模型和网络代理。</p>
+            </div>
+
+            <!-- 配置备份 -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <h2>配置备份</h2>
+                </div>
+                <div class="form-slot">
+                  <div class="form-group">
+                    <button class="btn btn-secondary" type="button" @click="exportUserConfig" :disabled="exportingConfig || !canSaveConfig">
+                      {{ exportingConfig ? '导出中...' : '导出用户配置' }}
+                    </button>
+                    <small>导出当前可见配置，敏感字段会自动脱敏。</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- JavInfo PostgreSQL Import -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <h2>JavInfo 数据库导入</h2>
+                </div>
+                <div class="form-slot javinfo-import-panel">
+                  <div class="import-warning">
+                    <strong>危险操作：全量替换</strong>
+                    <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。优先使用临时库恢复并保留最近旧库。</span>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>数据库地址</label>
+                      <input class="input" v-model="config.javinfo.import_db.host" placeholder="postgres" />
+                    </div>
+                    <div class="form-group compact-number">
+                      <label>端口</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.port" type="number" min="1" max="65535" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>目标库</label>
+                      <input class="input" v-model="config.javinfo.import_db.database" placeholder="r18" />
+                    </div>
+                    <div class="form-group">
+                      <label>维护库</label>
+                      <input class="input" v-model="config.javinfo.import_db.maintenance_database" placeholder="postgres" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>用户</label>
+                      <input class="input" v-model="config.javinfo.import_db.user" placeholder="javhub" />
+                    </div>
+                    <div class="form-group">
+                      <label>密码</label>
+                      <div class="input-password-wrap">
+                        <input
+                          class="input"
+                          :type="showImportPassword ? 'text' : 'password'"
+                          v-model="config.javinfo.import_db.password"
+                          autocomplete="off"
+                          placeholder="空白保存不覆盖现有密码"
+                        />
+                        <button class="input-eye-btn" type="button" @click="showImportPassword = !showImportPassword" :title="showImportPassword ? '隐藏' : '显示'">
+                          <svg v-if="!showImportPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group compact-number">
+                      <label>并行恢复</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.max_parallel_jobs" type="number" min="1" max="8" />
+                    </div>
+                    <div class="form-group compact-number">
+                      <label>保留旧库</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.keep_previous_databases" type="number" min="0" max="5" />
+                    </div>
+                  </div>
+
+                  <div class="import-actions">
+                    <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
+                      {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
+                    </button>
+                    <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
+                      {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
+                    </span>
+                  </div>
+
+                  <div
+                    class="form-group import-file-drop"
+                    @dragover.prevent
+                    @drop.prevent="onJavInfoImportFileDrop"
+                  >
+                    <label>Dump 文件（.dump / .backup / .sql / .sql.gz）</label>
+                    <input class="input file-input" type="file" accept=".dump,.backup,.sql,.gz" @change="onJavInfoImportFileChange" />
+                    <small v-if="javinfoImportFile">{{ javinfoImportFile.name }} · {{ formatBytes(javinfoImportFile.size) }}</small>
+                  </div>
+
+                  <label class="form-group checkbox import-confirm">
+                    <input type="checkbox" v-model="javinfoImportConfirm" />
+                    <span>我确认这是全量替换导入，并已确认 dump 来源可信。</span>
+                  </label>
+
+                  <div v-if="javinfoImportRequiresDirectConfirm" class="import-warning import-warning-direct">
+                    <strong>无法使用临时库</strong>
+                    <span>当前账号没有建库权限，将直接清空目标库恢复；失败不能自动回滚。</span>
+                    <label class="checkbox import-confirm">
+                      <input type="checkbox" v-model="javinfoImportDirectConfirm" />
+                      <span>我确认接受直接恢复目标库模式。</span>
+                    </label>
+                  </div>
+
+                  <div v-if="javinfoImportJob" class="import-progress">
+                    <div class="import-progress-head">
+                      <span>{{ javinfoImportStatusLabel(javinfoImportJob) }}</span>
+                      <strong>{{ javinfoImportProgress }}%</strong>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-bar-fill" :style="{ width: `${javinfoImportProgress}%` }"></div>
+                    </div>
+                    <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
+                    <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>
+                  </div>
+
+                  <div class="import-actions">
+                    <button class="btn btn-primary" type="button" @click="startJavInfoImport" :disabled="!javinfoImportCanStart">
+                      {{ javinfoImportUploading ? '上传中...' : '开始导入' }}
+                    </button>
+                    <button v-if="javinfoImportJob && isJavInfoImportActive(javinfoImportJob)" class="btn btn-ghost" type="button" @click="cancelJavInfoImport">
+                      取消任务
+                    </button>
+                  </div>
+
+                  <div v-if="javinfoImportJobs.length" class="import-job-list">
+                    <div class="import-job-list-title">最近任务</div>
+                    <div v-for="job in javinfoImportJobs" :key="job.id" class="import-job-row">
+                      <span>{{ job.filename || `任务 #${job.id}` }}</span>
+                      <strong>{{ javinfoImportStatusLabel(job) }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 公共智能模型设置 -->
@@ -801,39 +823,6 @@
               </div>
             </div>
 
-            <!-- 服务端设置 -->
-            <div class="settings-card">
-              <div class="card-content">
-                <div class="settings-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="M9 12l2 2 4-4"/>
-                  </svg>
-                  <h2>服务端设置</h2>
-                </div>
-                <div class="form-slot">
-                  <div class="form-group">
-                    <label>前端 Origin</label>
-                    <input class="input" v-model="config.server.frontend_origin" placeholder="http://localhost:5174" />
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group checkbox">
-                      <input type="checkbox" id="rateLimitEnabled" v-model="config.rate_limit.enabled" />
-                      <label for="rateLimitEnabled">启用速率限制</label>
-                    </div>
-                    <div class="form-group">
-                      <label>每分钟补充令牌</label>
-                      <input class="input" v-model.number="config.rate_limit.requests_per_minute" type="number" min="1" />
-                    </div>
-                    <div class="form-group">
-                      <label>突发容量</label>
-                      <input class="input" v-model.number="config.rate_limit.burst" type="number" min="1" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </transition>
@@ -872,6 +861,7 @@ export default {
       configLoaded: false,
       configLoadError: '',
       saving: false,
+      exportingConfig: false,
       testingTelegram: false,
       testingAI: false,
       loadingAIModels: false,
@@ -1096,7 +1086,7 @@ export default {
       this.saving = true
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
-        const { downloaders, openlist, ...configPayload } = this.config
+        const { downloaders, openlist, server, rate_limit, ...configPayload } = this.config
         await api.updateConfig(configPayload)
         this.saveBubbleCfg()
         this.saveSearchPrefs()
@@ -1106,6 +1096,34 @@ export default {
         this.$message.error('保存失败')
       } finally {
         this.saving = false
+      }
+    },
+    async exportUserConfig() {
+      if (!this.canSaveConfig) {
+        this.$message.error('配置未加载成功，已阻止导出')
+        return
+      }
+      this.exportingConfig = true
+      try {
+        const resp = await api.exportConfig()
+        const blob = resp.data instanceof Blob
+          ? resp.data
+          : new Blob([resp.data], { type: 'application/x-yaml;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+        link.href = url
+        link.download = `javhub-config-${stamp}.yaml`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+        this.$message.success('配置已导出')
+      } catch (e) {
+        console.error('Failed to export config:', e)
+        this.$message.error(e.response?.data?.detail || '导出失败')
+      } finally {
+        this.exportingConfig = false
       }
     },
     mergeAiConfig(remote = {}) {

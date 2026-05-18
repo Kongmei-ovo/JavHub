@@ -27,11 +27,11 @@ export const DEFAULT_CONFIG = {
     page_size: 30,
     timeout: 30,
     import_db: {
-      host: 'localhost',
+      host: 'postgres',
       port: 5432,
       database: 'r18',
       maintenance_database: 'postgres',
-      user: 'kongmei',
+      user: 'javhub',
       password: '',
       max_parallel_jobs: 2,
       keep_previous_databases: 1,
@@ -89,8 +89,6 @@ export const DEFAULT_CONFIG = {
     },
   },
   proxy: { enabled: false, http_url: '', https_url: '' },
-  server: { frontend_origin: 'http://localhost:5174' },
-  rate_limit: { enabled: false, requests_per_minute: 60, burst: 10 },
 }
 
 export const DEFAULT_BUBBLE_CFG = {

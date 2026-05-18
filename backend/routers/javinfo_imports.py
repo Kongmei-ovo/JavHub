@@ -20,6 +20,7 @@ def _settings_from_body(body: dict[str, Any] | None) -> dict[str, Any]:
     body = body or {}
     incoming = body.get("import_db") if isinstance(body.get("import_db"), dict) else body.get("settings")
     incoming = incoming if isinstance(incoming, dict) else {}
+    incoming = {key: value for key, value in incoming.items() if not (key == "password" and (value is None or value == ""))}
     return config._merge_config(config.javinfo_import_db, incoming)
 
 

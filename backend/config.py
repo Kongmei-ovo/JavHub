@@ -16,6 +16,14 @@ def _env(key: str, default: str = '') -> str:
     return os.getenv(key) or default
 
 
+def _first_env(default: str, *keys: str) -> str:
+    for key in keys:
+        value = os.getenv(key)
+        if value:
+            return value
+    return default
+
+
 def _warn_if_legacy_javinfo_url(api_url: str, source: str) -> None:
     normalized = str(api_url or "").rstrip("/")
     if normalized not in LEGACY_JAVINFO_API_URLS:
@@ -403,21 +411,42 @@ class Config:
 
     @property
     def javinfo_import_db(self) -> dict:
+        env_overrides = {
+            'host': _first_env('', 'DB_HOST', 'POSTGRES_HOST'),
+            'port': _first_env('', 'DB_PORT', 'POSTGRES_PORT'),
+            'database': _first_env('', 'DB_NAME', 'POSTGRES_DB'),
+            'maintenance_database': _first_env('', 'DB_MAINTENANCE_DATABASE'),
+            'user': _first_env('', 'DB_USER', 'POSTGRES_USER'),
+            'password': _first_env('', 'DB_PASSWORD', 'POSTGRES_PASSWORD'),
+        }
         defaults = {
-            'host': 'localhost',
-            'port': 5432,
-            'database': 'r18',
-            'maintenance_database': 'postgres',
-            'user': 'kongmei',
-            'password': '',
+            'host': env_overrides['host'] or 'localhost',
+            'port': env_overrides['port'] or '5432',
+            'database': env_overrides['database'] or 'r18',
+            'maintenance_database': env_overrides['maintenance_database'] or 'postgres',
+            'user': env_overrides['user'] or 'javhub',
+            'password': env_overrides['password'] or '',
             'max_parallel_jobs': 2,
             'keep_previous_databases': 1,
+        }
+        placeholders = {
+            'host': {'localhost', '127.0.0.1', 'postgres'},
+            'port': {'5432'},
+            'database': {'r18'},
+            'maintenance_database': {'postgres'},
+            'user': {'kongmei', 'javhub'},
+            'password': {'', 'change-me'},
         }
         javinfo_cfg = self._config.get('javinfo', {}) or {}
         import_db = javinfo_cfg.get('import_db', {}) if isinstance(javinfo_cfg, dict) else {}
         if not isinstance(import_db, dict):
             import_db = {}
         merged = {**defaults, **import_db}
+        for key, env_value in env_overrides.items():
+            raw_value = import_db.get(key)
+            raw_text = str(raw_value or '').strip()
+            if env_value and (key not in import_db or raw_text in placeholders.get(key, set())):
+                merged[key] = env_value
         try:
             merged['port'] = int(merged.get('port') or defaults['port'])
         except Exception:

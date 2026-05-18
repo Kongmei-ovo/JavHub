@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,25 +14,101 @@ async def _noop_post_import_migrator(job):
 
 
 class JavInfoImportConfigTest(unittest.TestCase):
-    def test_import_db_defaults_follow_local_javinfo_database(self):
+    def test_import_db_defaults_follow_database_env(self):
         from config import Config
 
         cfg = Config.__new__(Config)
         cfg._config = {}
 
-        self.assertEqual(
-            cfg.javinfo_import_db,
+        with patch.dict(
+            os.environ,
             {
-                "host": "localhost",
-                "port": 5432,
-                "database": "r18",
-                "maintenance_database": "postgres",
-                "user": "kongmei",
-                "password": "",
-                "max_parallel_jobs": 2,
-                "keep_previous_databases": 1,
+                "DB_HOST": "postgres",
+                "DB_PORT": "15432",
+                "DB_USER": "javhub",
+                "DB_PASSWORD": "change-me",
+                "DB_NAME": "r18",
             },
-        )
+            clear=False,
+        ):
+            self.assertEqual(
+                cfg.javinfo_import_db,
+                {
+                    "host": "postgres",
+                    "port": 15432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "change-me",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+            )
+
+    def test_import_db_config_overrides_database_env(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {
+            "javinfo": {
+                "import_db": {
+                    "host": "db.example",
+                    "port": 25432,
+                    "database": "custom_r18",
+                    "user": "custom_user",
+                    "password": "custom-secret",
+                }
+            }
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "DB_HOST": "postgres",
+                "DB_PORT": "15432",
+                "DB_USER": "javhub",
+                "DB_PASSWORD": "change-me",
+                "DB_NAME": "r18",
+            },
+            clear=False,
+        ):
+            self.assertEqual(cfg.javinfo_import_db["host"], "db.example")
+            self.assertEqual(cfg.javinfo_import_db["port"], 25432)
+            self.assertEqual(cfg.javinfo_import_db["database"], "custom_r18")
+            self.assertEqual(cfg.javinfo_import_db["user"], "custom_user")
+            self.assertEqual(cfg.javinfo_import_db["password"], "custom-secret")
+
+    def test_import_db_env_replaces_legacy_placeholder_values(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {
+            "javinfo": {
+                "import_db": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "user": "kongmei",
+                    "password": "",
+                }
+            }
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "DB_HOST": "postgres",
+                "DB_PORT": "15432",
+                "DB_USER": "javhub",
+                "DB_PASSWORD": "change-me",
+                "DB_NAME": "r18",
+            },
+            clear=False,
+        ):
+            self.assertEqual(cfg.javinfo_import_db["host"], "postgres")
+            self.assertEqual(cfg.javinfo_import_db["port"], 15432)
+            self.assertEqual(cfg.javinfo_import_db["user"], "javhub")
+            self.assertEqual(cfg.javinfo_import_db["password"], "change-me")
 
     def test_import_db_allows_zero_previous_databases(self):
         from config import Config
@@ -136,6 +213,20 @@ class JavInfoDumpFormatTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "pg_dumpall"):
                 detect_dump_format(compressed, "dump.sql.gz")
+
+
+class JavInfoImportServiceSettingsTest(unittest.TestCase):
+    def test_normalize_settings_uses_deployable_user_default(self):
+        from services.javinfo_import import _normalize_settings
+
+        self.assertEqual(_normalize_settings({})["user"], "javhub")
+
+    def test_connection_command_uses_deployable_user_default(self):
+        from services.javinfo_import import build_psql_command
+
+        command = build_psql_command({}, "r18")
+
+        self.assertEqual(command[command.index("--username") + 1], "javhub")
 
 
 class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
@@ -538,6 +629,28 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(manager.settings["host"], "localhost")
         self.assertEqual(manager.expected_size, 123)
 
+    def test_preflight_endpoint_preserves_saved_password_when_ui_sends_blank(self):
+        class Manager:
+            async def preflight(self, settings, *, expected_size=0):
+                self.settings = settings
+                return {"ok": True, "checks": {"database": {"ok": True}}}
+
+        manager = Manager()
+        with patch(
+            "config.config._config",
+            {"javinfo": {"import_db": {"user": "javhub", "password": "saved-secret"}}},
+        ):
+            client = self._client(manager)
+            response = client.post(
+                "/api/v1/javinfo/imports/preflight",
+                json={"import_db": {"host": "postgres", "password": ""}},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(manager.settings["host"], "postgres")
+        self.assertEqual(manager.settings["user"], "javhub")
+        self.assertEqual(manager.settings["password"], "saved-secret")
+
     def test_create_job_conflict_returns_409(self):
         from services.javinfo_import import JavInfoImportConflict
 
@@ -588,3 +701,40 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(manager.saved, b"abcdef")
         self.assertEqual(response.json()["uploaded_bytes"], 6)
+
+
+class ConfigExportRouterTest(unittest.TestCase):
+    def test_config_export_downloads_sanitized_yaml(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from routers.config import router
+
+        app = FastAPI()
+        app.include_router(router)
+
+        with patch(
+            "routers.config.config.get_all",
+            return_value={
+                "javinfo": {
+                    "api_url": "http://javinfoapi:18080",
+                    "import_db": {
+                        "host": "postgres",
+                        "user": "javhub",
+                        "password": "secret",
+                    },
+                },
+                "telegram": {"bot_token": "secret-token"},
+            },
+        ):
+            response = TestClient(app).get("/api/v1/config/export")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response.headers["content-disposition"])
+        self.assertIn("javhub-config.yaml", response.headers["content-disposition"])
+        self.assertIn("application/x-yaml", response.headers["content-type"])
+        text = response.text
+        self.assertIn("javinfo:", text)
+        self.assertIn("host: postgres", text)
+        self.assertIn("user: javhub", text)
+        self.assertNotIn("password", text)
+        self.assertNotIn("bot_token", text)

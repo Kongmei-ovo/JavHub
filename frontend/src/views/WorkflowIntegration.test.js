@@ -525,18 +525,34 @@ test('settings page keeps downloaders out and gives Telegram its own section', (
   assert.match(config, /label: 'Telegram 通知'/)
   assert.match(config, /<h2>Bot 连接<\/h2>/)
   assert.match(config, /<h2>通知事件<\/h2>/)
-  assert.match(config, /const \{ downloaders, openlist, \.\.\.configPayload \} = this\.config/)
+  assert.match(config, /const \{ downloaders, openlist, server, rate_limit, \.\.\.configPayload \} = this\.config/)
   assert.doesNotMatch(config, /OpenList \/ 115云盘/)
   assert.doesNotMatch(config, /管理下载源/)
   assert.doesNotMatch(config, /config\.openlist/)
   assert.doesNotMatch(config, /系统通知/)
 })
 
+test('settings page does not expose startup-only server controls', () => {
+  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
+
+  assert.doesNotMatch(advancedSection, /服务端设置/)
+  assert.doesNotMatch(advancedSection, /前端 Origin/)
+  assert.doesNotMatch(advancedSection, /启用速率限制/)
+  assert.doesNotMatch(config, /config\.server\.frontend_origin/)
+  assert.doesNotMatch(config, /config\.rate_limit/)
+  assert.doesNotMatch(configDefaults, /server: \{ frontend_origin/)
+  assert.doesNotMatch(configDefaults, /rate_limit:/)
+})
+
 test('settings page exposes JavInfo database import workflow', () => {
+  const servicesSection = config.slice(config.indexOf("activeGroup === 'services'"), config.indexOf("activeGroup === 'telegram'"))
+  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
+
   assert.match(configFeatureSource, /import_db/)
-  assert.match(config, /JavInfo 数据库导入/)
-  assert.match(config, /危险操作：全量替换/)
-  assert.match(config, /type="file"/)
+  assert.match(advancedSection, /JavInfo 数据库导入/)
+  assert.match(advancedSection, /危险操作：全量替换/)
+  assert.match(advancedSection, /type="file"/)
+  assert.doesNotMatch(servicesSection, /JavInfo 数据库导入/)
   assert.match(config, /preflightJavInfoImport/)
   assert.match(config, /createJavInfoImportJob/)
   assert.match(config, /uploadJavInfoImportDump/)
@@ -550,6 +566,16 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.match(config, /失败不能自动回滚/)
   assert.match(configDefaults, /maintenance_database: 'postgres'/)
   assert.match(configDefaults, /keep_previous_databases: 1/)
+  assert.match(configDefaults, /user: 'javhub'/)
+})
+
+test('settings page exposes sanitized config export from advanced settings', () => {
+  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
+
+  assert.match(advancedSection, /导出用户配置/)
+  assert.match(advancedSection, /exportUserConfig/)
+  assert.match(config, /exportingConfig/)
+  assert.match(apiSource, /exportConfig/)
 })
 
 test('interactive filters avoid stale actions and stale pagination', () => {

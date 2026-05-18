@@ -116,6 +116,22 @@ test('JavInfo import APIs use preflight, job creation, raw upload, status, and c
   assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/cancel')
 })
 
+test('config export API downloads a blob from the config export endpoint', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: new Blob(['config']) }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?config-export-${Date.now()}`)
+  await api.exportConfig()
+
+  assert.equal(calls[0].url, '/v1/config/export')
+  assert.equal(calls[0].responseType, 'blob')
+})
+
 test('getActressVideos forwards include_supplement and extra params', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null

@@ -99,12 +99,12 @@ javinfo:
   timeout: 30
   supplement_admin_token: ""
   import_db:
-    host: "localhost"
+    host: "postgres"
     port: 5432
     database: "r18"
     maintenance_database: "postgres"
-    user: "kongmei"
-    password: ""
+    user: "javhub"
+    password: "change-me"
     max_parallel_jobs: 2
     keep_previous_databases: 1
 

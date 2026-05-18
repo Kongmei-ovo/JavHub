@@ -327,6 +327,10 @@ export default {
     return api.put('/v1/config', config)
   },
 
+  exportConfig() {
+    return api.get('/v1/config/export', { responseType: 'blob' })
+  },
+
   testTelegramBot(token) {
     return api.post('/v1/notification/telegram/test', null, { params: { token } })
   },

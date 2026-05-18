@@ -76,6 +76,11 @@ services:
     environment:
       JAVINFO_API_URL: http://javinfoapi:18080
       SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-javhub}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_NAME: ${DB_NAME:-r18}
       OPENLIST_USERNAME: ${OPENLIST_USERNAME:-}
       OPENLIST_PASSWORD: ${OPENLIST_PASSWORD:-}
       EMBY_API_URL: ${EMBY_API_URL:-}

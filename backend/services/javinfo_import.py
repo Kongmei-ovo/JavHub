@@ -62,7 +62,7 @@ def _normalize_settings(settings: dict[str, Any]) -> dict[str, Any]:
         "port": 5432,
         "database": "r18",
         "maintenance_database": "postgres",
-        "user": "kongmei",
+        "user": "javhub",
         "password": "",
         "max_parallel_jobs": 2,
         "keep_previous_databases": 1,
@@ -111,7 +111,7 @@ def _connection_args(settings: dict[str, Any], database: str) -> list[str]:
         "--port",
         str(settings.get("port") or 5432),
         "--username",
-        str(settings.get("user") or "kongmei"),
+        str(settings.get("user") or "javhub"),
         "--dbname",
         database,
     ]

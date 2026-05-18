@@ -221,12 +221,12 @@ javinfo:
   api_url: "http://localhost:18080"
   supplement_admin_token: ""
   import_db:
-    host: "localhost"
+    host: "postgres"
     port: 5432
     database: "r18"
     maintenance_database: "postgres"
-    user: "kongmei"
-    password: ""
+    user: "javhub"
+    password: "change-me"
 
 telegram:
   bot_token: ""
@@ -234,7 +234,9 @@ telegram:
 ```
 
 Container deployments can override the companion API URL with
-`JAVINFO_API_URL=http://javinfoapi:18080`.
+`JAVINFO_API_URL=http://javinfoapi:18080`. The JavInfo import settings also
+read `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME`, so compose
+deployments can inherit the same database values used by JavInfoApi.
 
 ## Useful Commands
 
