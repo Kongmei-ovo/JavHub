@@ -1,8 +1,8 @@
 # JavHub
 
-JavHub is a self-hosted media library management tool. It combines a Vue web
-dashboard, a FastAPI backend, JavInfoApi metadata lookup, downloader
-integration, Emby checks, subscriptions, and optional Telegram notifications.
+JavHub is a self-hosted personal catalog dashboard. It combines a Vue web UI, a
+FastAPI backend, a companion data API, background tasks, external service
+connectors, and optional notifications.
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)
@@ -10,20 +10,20 @@ integration, Emby checks, subscriptions, and optional Telegram notifications.
 
 ## What Is Included
 
-- Multi-source metadata search through JavInfoApi
-- Performer subscriptions and scheduled checks
-- Download task creation through OpenList-compatible and common BT clients
-- Emby library existence checks
-- Web dashboard for search, subscriptions, imports, logs, and settings
-- Optional Telegram bot commands and notifications
-- Docker image that serves both the frontend and backend in one container
+- Query and detail views backed by the companion API
+- Saved watches and scheduled refresh tasks
+- Optional integrations with user-managed external services
+- Local library status checks
+- Web dashboard for search, imports, logs, and settings
+- Optional chat-based commands and notifications
+- One Docker image for the frontend and backend
 
 ## Docker Images
 
 | Image | Purpose |
 |-------|---------|
 | `ghcr.io/kongmei-ovo/javhub:<tag>` | JavHub frontend, Nginx, and FastAPI backend |
-| `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | JavInfoApi metadata service |
+| `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | Companion data API |
 
 Current beta release:
 
@@ -108,8 +108,8 @@ curl -fsS http://localhost:18080/health
 
 ### PostgreSQL Notes
 
-PostgreSQL is included by default because JavInfoApi needs it, and JavHub's
-JavInfo import workflow writes to the same database. The default database name
+PostgreSQL is included by default because the companion API needs it, and
+JavHub's import workflow writes to the same database. The default database name
 is `r18`.
 
 If you already have PostgreSQL, you may comment out the `postgres` service and
@@ -132,7 +132,7 @@ same unless you deliberately manage separate databases.
 
 | Path or volume | Purpose |
 |----------------|---------|
-| `./config.yaml` | JavHub runtime configuration mounted into the container |
+| `./config.yaml` | Runtime configuration mounted into the container |
 | `./data` | JavHub local SQLite data, runtime files, and logs |
 | `javinfo-postgres` | PostgreSQL data volume |
 
@@ -175,7 +175,7 @@ The helper manages LaunchAgents:
 |---------|-------------|-------|
 | JavHub frontend | `http://localhost:5174` | Vite dev server |
 | JavHub backend | `http://localhost:18090` | FastAPI API server |
-| JavInfoApi | `http://localhost:8080` | Helper-managed local JavInfoApi |
+| JavInfoApi | `http://localhost:8080` | Helper-managed companion API |
 
 Direct manual startup is also possible:
 
@@ -227,7 +227,7 @@ telegram:
   allowed_user_ids: []
 ```
 
-Container deployments can override the JavInfoApi URL with
+Container deployments can override the companion API URL with
 `JAVINFO_API_URL=http://javinfoapi:18080`.
 
 ## Useful Commands
@@ -274,8 +274,8 @@ JavHub/
 
 This project is for personal use and educational purposes only.
 
-- This project does not host or distribute media content.
-- Metadata is read from public or user-configured sources.
+- This project does not host or distribute third-party content.
+- Data is read from public or user-configured sources.
 - Users are responsible for complying with local laws and service terms.
 - This tool is not intended for commercial use.
 
