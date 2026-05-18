@@ -45,8 +45,8 @@ class DownloaderService:
                     asyncio.get_running_loop().create_task(
                         notification_service.notify_auto_download(code, title, title)
                     )
-                except Exception:
-                    pass
+                except RuntimeError:
+                    logger.debug("No running event loop for auto-download notification")
         else:
             error_msg = result.message or f"{downloader_config.get('name')} API 调用失败"
             update_task_status(task_id, "failed", error_msg)

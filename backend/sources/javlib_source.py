@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from sources.base import MagnetSource
 from models.video import MagnetInfo, MovieDetail
 
 

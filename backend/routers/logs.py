@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from typing import List
 from database import add_log, get_db_orig
 
 router = APIRouter(prefix="/api/v1/logs", tags=["logs"])

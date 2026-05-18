@@ -184,11 +184,11 @@ async def shutdown_event():
     try:
         from modules.info_client import get_info_client
         await get_info_client().close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug("Failed to close JavInfoApi client: %s", e)
 
     try:
         from modules.emby_client import get_emby_client
         await get_emby_client().close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug("Failed to close Emby client: %s", e)

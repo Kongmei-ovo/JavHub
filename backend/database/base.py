@@ -7,6 +7,22 @@ from contextlib import contextmanager
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "avdownloader.db"
 
 
+def _add_column_if_missing(cursor, sql: str) -> None:
+    try:
+        cursor.execute(sql)
+    except sqlite3.OperationalError as exc:
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
+
+def _create_index_if_possible(cursor, sql: str) -> None:
+    try:
+        cursor.execute(sql)
+    except sqlite3.OperationalError:
+        # Older user databases may lack legacy columns referenced by optional indexes.
+        pass
+
+
 def get_db_orig():
     """主数据库连接（向后兼容原 get_db_orig）"""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +82,8 @@ def _migrate_download_tasks():
             cursor2.execute("DROP TABLE download_tasks_old")
             conn2.commit()
             conn2.close()
-    except Exception:
+    except sqlite3.OperationalError:
+        # Legacy databases without the old shape do not need this migration.
         pass
 
 
@@ -108,10 +125,7 @@ def init_db():
         "ALTER TABLE download_tasks ADD COLUMN downloader_type TEXT",
         "ALTER TABLE download_tasks ADD COLUMN remote_task_id TEXT",
     ):
-        try:
-            cursor.execute(sql)
-        except Exception:
-            pass
+        _add_column_if_missing(cursor, sql)
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS subscriptions (
@@ -170,18 +184,9 @@ def init_db():
             updated_at TEXT
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN snapshot_key TEXT")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN progress INTEGER DEFAULT 0")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE inventory_jobs ADD COLUMN result_json TEXT")
-    except Exception:
-        pass
+    _add_column_if_missing(cursor, "ALTER TABLE inventory_jobs ADD COLUMN snapshot_key TEXT")
+    _add_column_if_missing(cursor, "ALTER TABLE inventory_jobs ADD COLUMN progress INTEGER DEFAULT 0")
+    _add_column_if_missing(cursor, "ALTER TABLE inventory_jobs ADD COLUMN result_json TEXT")
 
     # Inventory actors
     cursor.execute('''
@@ -283,10 +288,7 @@ def init_db():
         "ALTER TABLE actor_mappings ADD COLUMN ai_model TEXT",
         "ALTER TABLE actor_mappings ADD COLUMN ai_reviewed_at TEXT",
     ):
-        try:
-            cursor.execute(sql)
-        except Exception:
-            pass
+        _add_column_if_missing(cursor, sql)
     cursor.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_actor_mappings_pair
         ON actor_mappings(emby_actor_id, javinfo_actress_id)
@@ -314,10 +316,7 @@ def init_db():
             updated_at TEXT
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE download_candidates ADD COLUMN error_msg TEXT")
-    except Exception:
-        pass
+    _add_column_if_missing(cursor, "ALTER TABLE download_candidates ADD COLUMN error_msg TEXT")
     cursor.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_download_candidates_content_source
         ON download_candidates(content_id, source)
@@ -381,10 +380,7 @@ def init_db():
             updated_at TEXT
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE emby_actors ADD COLUMN image_tag TEXT")
-    except Exception:
-        pass
+    _add_column_if_missing(cursor, "ALTER TABLE emby_actors ADD COLUMN image_tag TEXT")
 
     conn.commit()
     conn.close()
@@ -416,10 +412,7 @@ def _create_indexes():
         "CREATE INDEX IF NOT EXISTS idx_download_candidates_content_id ON download_candidates(content_id)",
     ]
     for sql in indexes:
-        try:
-            cursor.execute(sql)
-        except Exception:
-            pass
+        _create_index_if_possible(cursor, sql)
     conn.commit()
     conn.close()
 

@@ -45,7 +45,7 @@ async def get_actress(actress_id: int) -> dict[str, Any]:
                 vids = await client.get_actress_videos(actress_id, page=1, page_size=1)
                 result["movie_count"] = vids.get("total_count", 0)
             except Exception:
-                pass
+                result["movie_count"] = 0
         await get_translator_service().translate_entities(
             [result],
             entity_type="actress",

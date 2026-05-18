@@ -8,6 +8,22 @@ const api = axios.create({
 const ERROR_TOAST_COOLDOWN_MS = 3000
 let lastErrorToast = { key: '', ts: 0 }
 
+function numericPathSegment(value, label) {
+  const text = String(value ?? '').trim()
+  if (!/^\d+$/.test(text)) {
+    throw new TypeError(`${label} must be a numeric id`)
+  }
+  return encodeURIComponent(text)
+}
+
+function pathSegment(value, label) {
+  const text = String(value ?? '').trim()
+  if (!text) {
+    throw new TypeError(`${label} is required`)
+  }
+  return encodeURIComponent(text)
+}
+
 // ========== 全局错误拦截 ==========
 api.interceptors.response.use(
   response => response,
@@ -37,7 +53,7 @@ export default {
   },
 
   checkLibrary(code) {
-    return api.get(`/v1/videos/${code}`)
+    return api.get(`/v1/videos/${pathSegment(code, 'code')}`)
   },
 
   listVideos(page = 1, page_size = 20) {
@@ -45,7 +61,7 @@ export default {
   },
 
   getVideo(contentId) {
-    return api.get(`/v1/videos/${contentId}`)
+    return api.get(`/v1/videos/${pathSegment(contentId, 'contentId')}`)
   },
 
   // ========== 演员 ==========
@@ -55,11 +71,11 @@ export default {
   },
 
   getActress(actressId) {
-    return api.get(`/v1/actresses/${actressId}`)
+    return api.get(`/v1/actresses/${numericPathSegment(actressId, 'actressId')}`)
   },
 
   getActressVideos(actressId, page = 1, page_size = 20, options = {}) {
-    return api.get(`/v1/actresses/${actressId}/videos`, {
+    return api.get(`/v1/actresses/${numericPathSegment(actressId, 'actressId')}/videos`, {
       params: { page, page_size, ...options },
     })
   },
@@ -441,15 +457,15 @@ export default {
   },
 
   getSupplementActressStatus(actressId) {
-    return api.get(`/v1/supplement/actresses/${actressId}/status`)
+    return api.get(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/status`)
   },
 
   startSupplementFilmographyJob(actressId) {
-    return api.post(`/v1/supplement/actresses/${actressId}/filmography/jobs`)
+    return api.post(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/filmography/jobs`)
   },
 
   refreshSupplementActressResolved(actressId) {
-    return api.post(`/v1/supplement/actresses/${actressId}/resolved/refresh`)
+    return api.post(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/resolved/refresh`)
   },
 
   listSupplementJobs(params = {}) {
@@ -457,11 +473,11 @@ export default {
   },
 
   getSupplementJob(jobId) {
-    return api.get(`/v1/supplement/jobs/${jobId}`)
+    return api.get(`/v1/supplement/jobs/${numericPathSegment(jobId, 'jobId')}`)
   },
 
   retrySupplementJob(jobId) {
-    return api.post(`/v1/supplement/jobs/${jobId}/retry`)
+    return api.post(`/v1/supplement/jobs/${numericPathSegment(jobId, 'jobId')}/retry`)
   },
 
   cancelSupplementJob(jobId) {

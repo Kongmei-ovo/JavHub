@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from middlewares.rate_limit import RateLimiter
 from routers import stream
-from routers.config import _mask_url_credentials
+from routers.config import _mask_url_credentials, test_telegram as run_telegram_test
 
 
 class StreamSecurityTests(unittest.TestCase):
@@ -106,6 +106,17 @@ class HardeningRegressionTests(unittest.TestCase):
 
         self.assertIn("LIKE ?", executed["sql"])
         self.assertEqual(executed["params"], ("category:%",))
+
+
+class TelegramConfigSecurityTests(unittest.IsolatedAsyncioTestCase):
+    async def test_telegram_test_rejects_path_delimiters_before_http_request(self):
+        with patch("routers.config.config._config", {"telegram": {"allowed_user_ids": [123456]}}), \
+             patch("httpx.AsyncClient") as async_client:
+            result = await run_telegram_test("123456:bad/token")
+
+        self.assertFalse(result["success"])
+        self.assertIn("Token", result["error"])
+        async_client.assert_not_called()
 
 
 class SourceRegistryTests(unittest.TestCase):

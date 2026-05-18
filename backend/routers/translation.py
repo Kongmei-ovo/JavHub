@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 import json
 import io
 import asyncio
+import logging
 from typing import Any, Optional
 
 from config import config
@@ -35,6 +36,7 @@ from translations.jobs import (
 )
 
 router = APIRouter(prefix="/api/v1/translations", tags=["translations"])
+logger = logging.getLogger(__name__)
 
 VALID_TYPES = {"actress", "category", "series", "maker", "label", "title"}
 
@@ -550,8 +552,8 @@ async def list_translation_items(
     if item_type and q:
         try:
             seeded += await _seed_workbench_from_javinfo(item_type, q.strip())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("JavInfo metadata seeding skipped for %s: %s", item_type, exc)
     result = list_translation_workbench_items(
         item_type=item_type,
         q=q,

@@ -1,6 +1,5 @@
 import logging
 import httpx
-from typing import List, Optional
 from config import config
 from database import add_log
 

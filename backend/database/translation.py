@@ -20,6 +20,14 @@ _VALID_COLUMNS = {"actress_json", "category_json", "series_json", "title_json", 
 _translation_cache: dict[str, Optional[dict]] = {}
 
 
+def _add_column_if_missing(cursor, sql: str) -> None:
+    try:
+        cursor.execute(sql)
+    except sqlite3.OperationalError as exc:
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
+
 def _cache_key(content_id: str) -> str:
     return content_id
 
@@ -56,10 +64,7 @@ def init_translation_db():
             )
         ''')
         for column in ("maker_json", "label_json"):
-            try:
-                cursor.execute(f"ALTER TABLE translation_mappings ADD COLUMN {column} TEXT DEFAULT '{{}}'")
-            except Exception:
-                pass
+            _add_column_if_missing(cursor, f"ALTER TABLE translation_mappings ADD COLUMN {column} TEXT DEFAULT '{{}}'")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS translation_cache (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,10 +105,7 @@ def init_translation_db():
             )
         ''')
         for column in ("started_at", "finished_at"):
-            try:
-                cursor.execute(f"ALTER TABLE translation_jobs ADD COLUMN {column} TEXT")
-            except Exception:
-                pass
+            _add_column_if_missing(cursor, f"ALTER TABLE translation_jobs ADD COLUMN {column} TEXT")
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_translation_jobs_created
             ON translation_jobs(created_at DESC)

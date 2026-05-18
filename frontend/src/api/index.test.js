@@ -134,6 +134,28 @@ test('getActressVideos forwards include_supplement and extra params', async (t) 
   assert.equal(capturedConfig.params.year, 2024)
 })
 
+test('numeric path APIs reject path-like identifiers before sending requests', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?numeric-path-safety-${Date.now()}`)
+
+  assert.throws(() => api.getActress('../123'), /actressId/)
+  assert.throws(() => api.getActressVideos('123/status'), /actressId/)
+  assert.throws(() => api.getSupplementActressStatus('123?debug=1'), /actressId/)
+  assert.throws(() => api.startSupplementFilmographyJob('123/filmography'), /actressId/)
+  assert.throws(() => api.refreshSupplementActressResolved('abc'), /actressId/)
+  assert.throws(() => api.getSupplementJob('7/retry'), /jobId/)
+  assert.throws(() => api.retrySupplementJob('retry'), /jobId/)
+
+  assert.deepEqual(calls, [])
+})
+
 test('getSupplementStats sends GET to correct path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null

@@ -1,5 +1,4 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from typing import Any
 
 def search_result_keyboard(content_id: str, actress_name: str = "") -> InlineKeyboardMarkup:
     """搜索结果 InlineKeyboard"""

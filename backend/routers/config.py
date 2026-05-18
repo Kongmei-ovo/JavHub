@@ -1,4 +1,5 @@
 import logging
+import re
 from fastapi import APIRouter, HTTPException
 from urllib.parse import urlparse, urlunparse
 from config import config
@@ -41,6 +42,7 @@ _WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'notification', 'scheduler',
                   'ai',
                   'automation', 'actor_mapping', 'translation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
+_TELEGRAM_BOT_TOKEN_RE = re.compile(r"^\d{5,20}:[A-Za-z0-9_-]{20,128}$")
 
 
 def _is_sensitive_key(key: str) -> bool:
@@ -86,6 +88,13 @@ def _strip_blank_sensitive_values(cfg: dict) -> dict:
         else:
             result[k] = v
     return result
+
+
+def _validated_telegram_bot_token(token: str) -> str | None:
+    token = (token or "").strip()
+    if not _TELEGRAM_BOT_TOKEN_RE.fullmatch(token):
+        return None
+    return token
 
 
 @router.get("/config")
@@ -161,8 +170,9 @@ def _ai_settings_from_body(body: dict | None) -> dict:
 async def test_telegram(token: str):
     """发送测试 Telegram 消息"""
     import httpx
+    token = _validated_telegram_bot_token(token)
     if not token:
-        return {"success": False, "error": "Token is required"}
+        return {"success": False, "error": "Token 格式无效"}
     proxies = _get_httpx_proxies()
     # 从配置读取 allowed_user_ids
     allowed_users = config.telegram.get("allowed_user_ids", [])

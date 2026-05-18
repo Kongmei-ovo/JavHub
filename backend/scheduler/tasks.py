@@ -70,8 +70,9 @@ def configure_candidate_auto_process_job():
     """Install or refresh the candidate automation interval job."""
     try:
         scheduler.remove_job('candidate_auto_process')
-    except Exception:
-        pass
+    except Exception as exc:
+        if "No job by the id" not in str(exc):
+            logger.debug("Unable to remove candidate automation job before refresh: %s", exc)
     interval_minutes = config.automation_auto_process_interval_minutes
     if interval_minutes <= 0:
         return

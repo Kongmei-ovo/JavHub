@@ -5,13 +5,13 @@ from typing import Optional
 from database import (
     get_inventory_actors, get_inventory_actor, get_inventory_videos,
     get_missing_videos, get_all_missing_videos, delete_missing_video,
-    get_exempt_videos, add_exempt_video, delete_exempt_video, is_video_exempt,
+    get_exempt_videos, add_exempt_video, delete_exempt_video,
     add_inventory_job, get_inventory_jobs, get_inventory_job,
-    get_actor_aliases, add_actor_alias, get_canonical_actress_id, get_actor_primary_name, set_actor_primary_name,
-    upsert_inventory_actor, upsert_inventory_video, add_missing_video, get_missing_count_by_actress,
-    update_inventory_job, get_latest_snapshot_key, get_snapshot_actors,
-    reassign_actress_movies, find_similar_actresses
+    get_actor_aliases, add_actor_alias, get_canonical_actress_id, get_actor_primary_name,
+    set_actor_primary_name, get_latest_snapshot_key, get_snapshot_actors,
+    find_similar_actresses
 )
+from database.base import get_db
 from modules.info_client import get_info_client
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
@@ -412,7 +412,7 @@ async def get_actor(actress_id: int):
             system_info = await emby._get("/System/Info")
             emby_server_id = system_info.get("Id", "")
         except Exception:
-            pass
+            emby_server_id = ""
 
     return {
         **actor,
@@ -517,11 +517,9 @@ async def add_alias(req: AliasRequest):
 @router.delete("/aliases/{alias_id}")
 async def delete_alias(alias_id: int):
     """删除演员归一化映射"""
-    conn = get_db_orig()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM actor_aliases WHERE id = ?", (alias_id,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM actor_aliases WHERE id = ?", (alias_id,))
     return {"success": True}
 
 class PrimaryNameRequest(BaseModel):

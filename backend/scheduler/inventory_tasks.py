@@ -5,16 +5,15 @@ import threading
 from typing import Optional
 from database import (
     add_inventory_job, update_inventory_job, update_inventory_progress, get_inventory_job,
-    upsert_inventory_actor, upsert_inventory_video, add_missing_video,
+    upsert_inventory_actor, add_missing_video,
     update_inventory_actor_stats, get_exempt_videos,
-    get_inventory_actors, create_snapshot_key, clear_snapshot,
+    create_snapshot_key,
     save_emby_actors_snapshot, save_emvy_snapshot,
     get_latest_snapshot_key, get_snapshot_actors, get_snapshot_videos,
-    get_snapshot_filenames, get_db_orig, get_confirmed_actor_mapping
+    get_confirmed_actor_mapping
 )
 from config import config
 from modules.emby_client import get_emby_client
-from modules.info_client import get_info_client
 from services.watchlist_pipeline import WatchlistPipeline, video_in_snapshot, video_code
 
 

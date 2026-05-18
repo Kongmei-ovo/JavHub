@@ -1,5 +1,5 @@
 import { reactive, computed } from 'vue'
-import api from '../api'
+import api from '../api/index.js'
 
 /**
  * 全局收藏状态管理
@@ -7,7 +7,7 @@ import api from '../api'
  */
 export const state = reactive({
   // 按实体类型存储收藏 ID 集合 (Set)
-  registry: {},
+  registry: new Map(),
   // 存储完整的收藏对象列表
   items: [],
   initialized: false
@@ -24,14 +24,14 @@ export const favoriteState = {
       const items = resp.data || []
 
       state.items = items
-      state.registry = {}
+      state.registry = new Map()
 
       items.forEach(item => {
-        const type = item.entity_type
-        if (!state.registry[type]) {
-          state.registry[type] = new Set()
+        const type = String(item.entity_type || '')
+        if (!state.registry.has(type)) {
+          state.registry.set(type, new Set())
         }
-        state.registry[type].add(String(item.entity_id))
+        state.registry.get(type).add(String(item.entity_id))
       })
 
       state.initialized = true
@@ -53,8 +53,9 @@ export const favoriteState = {
    * 检查是否已收藏
    */
   isFavorited(type, id) {
-    if (!state.registry[type]) return false
-    return state.registry[type].has(String(id))
+    const bucket = state.registry.get(String(type || ''))
+    if (!bucket) return false
+    return bucket.has(String(id))
   },
 
   /**
@@ -71,29 +72,31 @@ export const favoriteState = {
       
       const is_favorited = resp.data.is_favorited
       
-      if (!state.registry[type]) {
-        state.registry[type] = new Set()
+      const normalizedType = String(type)
+      if (!state.registry.has(normalizedType)) {
+        state.registry.set(normalizedType, new Set())
       }
+      const bucket = state.registry.get(normalizedType)
       
       if (is_favorited) {
-        state.registry[type].add(String(id))
-        const exists = state.items.some(item => item.entity_type === type && String(item.entity_id) === String(id))
+        bucket.add(String(id))
+        const exists = state.items.some(item => item.entity_type === normalizedType && String(item.entity_id) === String(id))
         if (!exists) {
           state.items.unshift({
-            entity_type: type,
+            entity_type: normalizedType,
             entity_id: String(id),
             metadata: {},
             created_at: new Date().toISOString()
           })
         }
       } else {
-        state.registry[type].delete(String(id))
-        state.items = state.items.filter(item => !(item.entity_type === type && String(item.entity_id) === String(id)))
+        bucket.delete(String(id))
+        state.items = state.items.filter(item => !(item.entity_type === normalizedType && String(item.entity_id) === String(id)))
       }
 
       // Notify listeners (for Toast)
       if (this.listener) {
-        this.listener({ type, id, is_favorited })
+        this.listener({ type: normalizedType, id, is_favorited })
       }
 
       return is_favorited
@@ -114,8 +117,8 @@ export const favoriteState = {
    */
   count: computed(() => {
     let total = 0
-    for (const key in state.registry) {
-      total += state.registry[key].size
+    for (const bucket of state.registry.values()) {
+      total += bucket.size
     }
     return total
   }),

@@ -14,7 +14,7 @@ def create_bot() -> Application:
     from telegram_bot.handlers.status import status_handler
 
     app.add_handler(CommandHandler("search", search_handler))
-    app.add_handler(CommandHandler("sub", lambda update, context: handle_sub_command(update, context)))
+    app.add_handler(CommandHandler("sub", handle_sub_command))
     app.add_handler(CommandHandler("status", status_handler))
     app.add_handler(CommandHandler("check", check_handler))
     app.add_handler(CommandHandler("help", help_handler))

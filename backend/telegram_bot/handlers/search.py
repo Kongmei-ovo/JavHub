@@ -1,7 +1,8 @@
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from telegram import Update, InputMediaPhoto
 from telegram.ext import ContextTypes
 from telegram_bot.utils_image import jacket_full_url
 from modules.info_client import get_info_client
+from database import add_download_candidate_event, upsert_download_candidate
 from telegram_bot.keyboards import (
     search_card_keyboard,
     confirm_download_keyboard,
@@ -9,13 +10,15 @@ from telegram_bot.keyboards import (
     back_to_search_keyboard,
 )
 
+import logging
+
+log = logging.getLogger('telegram.bot')
+
 
 async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 /search 命令：发送封面卡片第一页"""
-    import logging
     import traceback
     import sys
-    log = logging.getLogger('telegram.bot')
     print(f"[SEARCH HANDLER] invoked, args={context.args}", flush=True)
     sys.stderr.flush()
     log.info(f"[SEARCH HANDLER] invoked, args={context.args}")
@@ -56,12 +59,14 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(f"未找到「{keyword}」相关影片")
             return
 
+        total_pages = (total + page_size - 1) // page_size
         # 获取第一结果的详情（包含高清封面）
         first = data[0]
         content_id = first.get("content_id") or first.get("dvd_id", "")
         try:
             detail = await info_client.get_video(content_id)
-        except Exception:
+        except Exception as exc:
+            log.debug("[SEARCH HANDLER] detail fetch failed for %s: %s", content_id, exc)
             detail = first
         caption = _build_caption(detail, keyword, page, total_pages)
         cover_url = jacket_full_url(detail.get("jacket_thumb_url")) or detail.get("jacket_full_url") or detail.get("jacket_thumb_url")
@@ -191,8 +196,8 @@ async def _send_search_page(query, keyword: str, page: int) -> None:
     if not data:
         try:
             await query.edit_message_text(text=f"未找到「{keyword}」相关影片")
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("Failed to edit empty search result message: %s", exc)
         return
 
     total_pages = (total + page_size - 1) // page_size
@@ -213,8 +218,8 @@ async def _send_search_page(query, keyword: str, page: int) -> None:
                 parse_mode="HTML",
                 reply_markup=search_card_keyboard(keyword, page, total_pages, has_actress),
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("Failed to update search page: %s", exc)
 
 
 async def _show_confirm(query, keyword: str, page: int) -> None:
@@ -246,8 +251,8 @@ async def _show_confirm(query, keyword: str, page: int) -> None:
                 parse_mode="HTML",
                 reply_markup=confirm_download_keyboard(content_id, keyword, page),
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("Failed to show download confirmation: %s", exc)
 
 
 async def _show_detail(query, keyword: str, page: int) -> None:
@@ -279,8 +284,31 @@ async def _show_detail(query, keyword: str, page: int) -> None:
                 parse_mode="HTML",
                 reply_markup=detail_keyboard(content_id, keyword, page, has_actress),
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("Failed to show video detail: %s", exc)
+
+
+async def _do_download(query, content_id: str, keyword: str, page: int) -> None:
+    try:
+        candidate = upsert_download_candidate(
+            content_id=content_id,
+            dvd_id=content_id,
+            source="telegram",
+            reason=f"telegram:{keyword}",
+        )
+        add_download_candidate_event(candidate["id"], "upsert", "telegram download request", "telegram")
+        text = f"✅ <code>{content_id}</code> 已加入下载候选，请在 Web 端补充 magnet 后批准下载"
+    except Exception as exc:
+        text = f"❌ 下载候选创建失败：{str(exc)}"
+
+    try:
+        await query.edit_message_text(
+            text=text,
+            parse_mode="HTML",
+            reply_markup=back_to_search_keyboard(keyword, page),
+        )
+    except Exception as exc:
+        log.debug("Failed to show download candidate result: %s", exc)
 
 
 async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -311,7 +339,8 @@ async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         cid = first.get("content_id") or first.get("dvd_id", "")
         try:
             detail = await info_client.get_video(cid)
-        except Exception:
+        except Exception as exc:
+            log.debug("[ID HANDLER] detail fetch failed for %s: %s", cid, exc)
             detail = first
         caption = _build_caption(detail, content_id, page, total_pages)
         cover_url = jacket_full_url(detail.get("jacket_thumb_url")) or detail.get("jacket_full_url") or detail.get("jacket_thumb_url")
@@ -335,22 +364,6 @@ async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await update.message.reply_text(f"搜索出错：{str(e)}")
         except Exception:
             print("[ID HANDLER] failed to send error reply", flush=True)
-    try:
-        from routers.download import create_download_by_content_id
-        await create_download_by_content_id(content_id)
-        text = f"✅ <code>{content_id}</code> 已加入下载队列"
-    except Exception as e:
-        text = f"❌ 下载失败：{str(e)}"
-
-    try:
-        await query.edit_message_text(
-            text=text,
-            parse_mode="HTML",
-            reply_markup=back_to_search_keyboard(keyword, page),
-        )
-    except Exception:
-        pass
-
 
 # 兼容旧 export：download_callback = 统一的 callback_handler
 download_callback = callback_handler

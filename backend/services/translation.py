@@ -3,7 +3,6 @@ import asyncio
 
 from translations.service import (
     apply_translation as apply_translation_async,
-    translate_item as _translate_item,
 )
 
 
