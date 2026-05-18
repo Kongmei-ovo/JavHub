@@ -27,7 +27,6 @@ class RateLimiter:
             allowed = tokens >= 1.0
             if allowed:
                 tokens -= 1.0
-                retry_after = 0
             else:
                 retry_after = max(1, int((1.0 - tokens) / self.refill_rate) + 1)
 

@@ -10,7 +10,6 @@ from database.base import get_db
 
 # 允许的列名（防 SQL 注入）
 _VALID_TYPES = {"actress", "category", "series", "title", "maker", "label"}
-_METADATA_TYPES = {"actress", "category", "series", "maker", "label"}
 _WORKBENCH_STATUSES = {"untranslated", "machine_translated", "reviewed", "manual_edited", "failed", "invalid"}
 
 # 允许的列名（防 SQL 注入）

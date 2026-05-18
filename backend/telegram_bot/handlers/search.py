@@ -313,7 +313,7 @@ async def _do_download(query, content_id: str, keyword: str, page: int) -> None:
 
 async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 /id 命令：番号精确搜索"""
-    import logging, traceback, sys
+    import traceback
     log = logging.getLogger('telegram.bot')
     print(f"[ID HANDLER] invoked, args={context.args}", flush=True)
     log.info(f"[ID HANDLER] invoked, args={context.args}")

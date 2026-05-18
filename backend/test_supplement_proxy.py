@@ -140,7 +140,7 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
                 mock_client.get.return_value = mock_response
                 get_client.return_value = mock_client
 
-                result = await client.proxy_get("/api/v1/supplement/stats")
+                self.assertEqual(await client.proxy_get("/api/v1/supplement/stats"), fake_response)
 
         headers = mock_client.get.call_args.kwargs.get("headers", {})
         self.assertNotIn("Authorization", headers)

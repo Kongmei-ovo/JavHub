@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from config import config
@@ -12,17 +13,15 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 
 # 防重入标志
-_running = False
+_subscription_check_lock = threading.Lock()
 
 
 def subscription_check_job():
     """定时检查订阅任务"""
-    global _running
-    if _running:
+    if not _subscription_check_lock.acquire(blocking=False):
         add_log("WARNING", "订阅检查任务正在执行，跳过本次触发（防重入）")
         return
     add_log("INFO", "开始订阅检查...")
-    _running = True
     try:
         from services.subscription import check_all_subscriptions
         new_movies = asyncio.run(check_all_subscriptions())
@@ -38,7 +37,7 @@ def subscription_check_job():
     except Exception as e:
         add_log("ERROR", f"订阅检查失败: {e}")
     finally:
-        _running = False
+        _subscription_check_lock.release()
 
 
 def candidate_auto_process_job():
@@ -90,7 +89,7 @@ def configure_candidate_auto_process_job():
 def start_scheduler():
     """启动定时任务"""
     check_hour = config.scheduler_check_hour
-    if not check_hour and check_hour != 0:
+    if check_hour is None:
         logger.info("Scheduler disabled")
         return
 

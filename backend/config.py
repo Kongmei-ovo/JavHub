@@ -124,7 +124,7 @@ class Config:
         return self._config.get('openlist', {})
 
     @property
-    def scheduler_check_hour(self) -> int:
+    def scheduler_check_hour(self) -> Optional[int]:
         return self._config.get('scheduler', {}).get('subscription_check_hour', 2)
 
     # Automation policy settings

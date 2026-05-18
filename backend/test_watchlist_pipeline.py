@@ -229,26 +229,6 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             source="exact_review",
         )
 
-        class FakeResponse:
-            def raise_for_status(self):
-                return None
-
-            def json(self):
-                return {"choices": [{"message": {"content": '{"decision":"same_person","confidence":0.93,"reason":"名称一致"}'}}]}
-
-        class FakeAsyncClient:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, *args):
-                return None
-
-            async def post(self, *args, **kwargs):
-                return FakeResponse()
-
         with patch("services.actor_mapping_candidates.get_ai_client") as get_ai_client:
             client = AsyncMock()
             client.chat.return_value.content = '{"decision":"same_person","confidence":0.93,"reason":"名称一致"}'

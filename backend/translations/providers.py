@@ -33,10 +33,10 @@ class TranslationProvider(Protocol):
     name: str
 
     def supports(self, request: TranslationRequest) -> bool:
-        ...
+        raise NotImplementedError
 
     async def translate(self, request: TranslationRequest) -> TranslationResult | None:
-        ...
+        raise NotImplementedError
 
 
 _BASE_AI_TRANSLATION_PROMPT = (

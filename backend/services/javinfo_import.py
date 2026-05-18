@@ -198,6 +198,11 @@ async def _terminate_process(process: asyncio.subprocess.Process) -> None:
         await process.wait()
 
 
+async def _discard_task_result(task: asyncio.Task) -> None:
+    with suppress(BaseException):
+        _ = await task
+
+
 async def _collect_process(
     process: asyncio.subprocess.Process,
     args: list[str],
@@ -228,8 +233,7 @@ async def _collect_process(
             wait_task.cancel()
         if not output_task.done():
             output_task.cancel()
-        with suppress(BaseException):
-            await output_task
+        await _discard_task_result(output_task)
         raise
 
 
@@ -317,8 +321,8 @@ class AsyncCommandRunner:
         except BaseException:
             if "pump_task" in locals() and not pump_task.done():
                 pump_task.cancel()
-            with suppress(BaseException):
-                await pump_task
+            if "pump_task" in locals():
+                await _discard_task_result(pump_task)
             raise
         if output and log:
             for line in output.splitlines()[-50:]:
@@ -549,7 +553,6 @@ class JavInfoImportManager:
                 await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
                 job["stage"] = "restarting"
                 await self._service("restart", job)
-                service_stopped = False
             else:
                 self._log(job, "database user cannot create databases; restoring directly into target database")
                 job["stage"] = "stopping"
@@ -562,7 +565,6 @@ class JavInfoImportManager:
                 await self._restore_to_database(job, fmt, target_db)
                 job["stage"] = "restarting"
                 await self._service("restart", job)
-                service_stopped = False
         except BaseException:
             if service_stopped:
                 job["stage"] = "restarting"

@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite

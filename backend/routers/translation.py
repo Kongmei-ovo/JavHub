@@ -552,8 +552,8 @@ async def list_translation_items(
     if item_type and q:
         try:
             seeded += await _seed_workbench_from_javinfo(item_type, q.strip())
-        except Exception as exc:
-            logger.debug("JavInfo metadata seeding skipped for %s: %s", item_type, exc)
+        except Exception:
+            logger.debug("JavInfo metadata seeding skipped")
     result = list_translation_workbench_items(
         item_type=item_type,
         q=q,

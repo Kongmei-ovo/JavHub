@@ -20,7 +20,6 @@ const supplement = readFileSync(new URL('./SupplementManagement.vue', import.met
 const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
 const candidateRunPanel = readFileSync(new URL('../features/candidates/CandidateRunPanel.vue', import.meta.url), 'utf8')
-const homeFeatureSource = [home, candidateRunPanel].join('\n')
 const configFeatureSource = [config, configDefaults].join('\n')
 const supplementFeatureSource = [supplement, supplementActorPicker, supplementSourceHealth].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')

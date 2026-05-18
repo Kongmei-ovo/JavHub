@@ -137,9 +137,6 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             async def list_actresses(self, page=1, page_size=100):
                 raise AssertionError("metadata_makers should not collect actresses")
 
-        async def translate(request):
-            return TranslationResult(f"{request.text}中文", "google_free")
-
         job_id = add_translation_job("metadata_makers", provider_order=["cache", "google_free"])
 
         with patch("translations.jobs.get_info_client", return_value=Client()), \
@@ -573,7 +570,8 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
                 paused = pause_translation_job(job_id)
                 await task
             finally:
-                jobs._running_jobs.pop(job_id, None)
+                if job_id in jobs._running_jobs:
+                    del jobs._running_jobs[job_id]
                 jobs._paused_jobs.discard(job_id)
 
         self.assertEqual(paused["status"], "paused")
