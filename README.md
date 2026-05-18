@@ -28,8 +28,8 @@ connectors, and optional notifications.
 Current beta release:
 
 ```bash
-ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.2
-ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.2
+ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.3
+ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.3
 ```
 
 JavHub is intentionally published as a single image. The container builds the
@@ -71,8 +71,8 @@ javinfo:
 Create a local `.env` file if you want to pin image tags or change passwords:
 
 ```bash
-JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.2
-JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.2
+JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.3
+JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.3
 JAVHUB_PORT=3000
 JAVINFOAPI_PORT=18080
 
