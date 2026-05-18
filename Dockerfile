@@ -1,25 +1,29 @@
-# ============================================
-# AV Downloader - Docker Image
-# Multi-stage build for optimized image size
-# ============================================
+# Compatibility entrypoint for `docker build .`.
+# Prefer Dockerfile.backend and Dockerfile.frontend for published images.
+FROM python:3.11-slim
 
-# --- Backend Stage ---
-FROM python:3.11-slim as backend
+LABEL org.opencontainers.image.title="JavHub Backend"
+LABEL org.opencontainers.image.description="FastAPI backend for JavHub"
 
 WORKDIR /app
 
-# Install dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client gzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy backend code
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
 COPY backend/ .
 
-# Create data directory
 RUN mkdir -p /app/data
 
-# Expose port
 EXPOSE 8000
 
-# Run backend
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()" || exit 1
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

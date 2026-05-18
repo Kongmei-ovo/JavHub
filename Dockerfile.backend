@@ -1,27 +1,24 @@
-# ============================================
-# AV Downloader Backend - Python/FastAPI Image
-# ============================================
-
 FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="JavHub Backend"
+LABEL org.opencontainers.image.description="FastAPI backend for JavHub"
 
 WORKDIR /app
 
-# PostgreSQL dump import needs the client tools for pg_restore/psql and gzip.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client gzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies first for better caching
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Copy backend code
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
 COPY backend/ .
 
-# Create data directory
 RUN mkdir -p /app/data
 
-# Run
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()" || exit 1
