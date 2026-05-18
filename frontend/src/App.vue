@@ -52,7 +52,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div v-if="!sidebarCollapsed" class="version">v0.1.0</div>
+        <div v-if="!sidebarCollapsed" class="version">v1.2.0-beta.1</div>
       </div>
     </aside>
 

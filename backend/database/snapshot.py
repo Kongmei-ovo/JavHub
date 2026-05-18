@@ -9,7 +9,7 @@ from database.base import get_db
 # === Snapshot Key ===
 
 def create_snapshot_key() -> str:
-    return hashlib.md5(str(time.time()).encode()).hexdigest()[:12]
+    return hashlib.sha256(str(time.time()).encode()).hexdigest()[:12]
 
 
 # === Emby Snapshots ===
