@@ -262,6 +262,123 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(Path(uploaded["file_path"]).read_bytes(), b"abcdef")
             self.assertEqual(uploaded["status"], "uploaded")
 
+    async def test_chunk_upload_appends_by_offset_and_finalize_starts_restore_ready_state(self):
+        from services.javinfo_import import JavInfoImportManager
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(storage_dir=Path(tmp))
+            payload = b"CREATE TABLE movies(id integer);\n"
+            first_chunk = b"CREATE TABLE movies"
+            second_chunk = b"(id integer);\n"
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql",
+                file_size=len(payload),
+                confirm_replace=True,
+            )
+
+            first = await manager.save_upload_chunk(job["id"], first_chunk, offset=0, total_size=len(payload))
+            second = await manager.save_upload_chunk(job["id"], second_chunk, offset=len(first_chunk), total_size=len(payload))
+            finalized = await manager.finalize_upload(job["id"])
+
+            self.assertEqual(first["uploaded_bytes"], len(first_chunk))
+            self.assertEqual(second["uploaded_bytes"], len(payload))
+            self.assertEqual(finalized["uploaded_bytes"], len(payload))
+            self.assertEqual(finalized["sha256"], hashlib.sha256(payload).hexdigest())
+            self.assertEqual(Path(finalized["file_path"]).read_bytes(), payload)
+            self.assertEqual(finalized["status"], "uploaded")
+
+    async def test_chunk_upload_rejects_offset_mismatch_without_overwriting_partial_file(self):
+        from services.javinfo_import import JavInfoImportManager
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(storage_dir=Path(tmp))
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql",
+                file_size=31,
+                confirm_replace=True,
+            )
+
+            await manager.save_upload_chunk(job["id"], b"CREATE TABLE movies", offset=0, total_size=31)
+
+            with self.assertRaisesRegex(ValueError, "offset mismatch"):
+                await manager.save_upload_chunk(job["id"], b"bad", offset=0, total_size=31)
+
+            partial_path = Path(manager._jobs[job["id"]]["file_path"]).with_suffix(".sql.part")
+            self.assertEqual(partial_path.read_bytes(), b"CREATE TABLE movies")
+            self.assertEqual(manager.get_job(job["id"])["uploaded_bytes"], 19)
+
+    async def test_chunk_upload_rejects_canceled_job(self):
+        from services.javinfo_import import JavInfoImportManager
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(storage_dir=Path(tmp))
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql",
+                file_size=31,
+                confirm_replace=True,
+            )
+
+            await manager.cancel_job(job["id"])
+
+            with self.assertRaisesRegex(ValueError, "not accepting uploads"):
+                await manager.save_upload_chunk(job["id"], b"CREATE TABLE movies", offset=0, total_size=31)
+
+    async def test_finalize_upload_rejects_incomplete_partial_file(self):
+        from services.javinfo_import import JavInfoImportManager
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(storage_dir=Path(tmp))
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql",
+                file_size=31,
+                confirm_replace=True,
+            )
+
+            await manager.save_upload_chunk(job["id"], b"CREATE TABLE movies", offset=0, total_size=31)
+
+            with self.assertRaisesRegex(ValueError, "incomplete upload"):
+                await manager.finalize_upload(job["id"])
+
     def test_rejects_second_active_job(self):
         from services.javinfo_import import JavInfoImportConflict, JavInfoImportManager
 
@@ -322,6 +439,8 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 self.calls.append(args)
                 if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
                     return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
                 return CommandResult(returncode=0, output="")
 
         async def chunks():
@@ -367,6 +486,8 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 self.calls.append(args)
                 if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
                     return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
                 return CommandResult(returncode=0, output="")
 
         migration_calls = []
@@ -432,6 +553,8 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
             async def run(self, args, **kwargs):
                 if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
                     return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
                 return CommandResult(returncode=0, output="")
 
         async def fail_migrations(job):
@@ -559,6 +682,8 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 self.calls.append(args)
                 if args[0] == "psql" and any("SELECT rolsuper OR rolcreatedb" in str(arg) for arg in args):
                     return CommandResult(returncode=0, output="t\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
                 if args[0] == "psql" and any("SELECT datname FROM pg_database" in str(arg) for arg in args):
                     return CommandResult(
                         returncode=0,
@@ -596,6 +721,80 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(restored["status"], "completed")
         self.assertTrue(any('DROP DATABASE IF EXISTS "r18_before_import_20240102030405"' in call for call in sql_calls))
         self.assertTrue(any('DROP DATABASE IF EXISTS "r18_before_import_20240101030405"' in call for call in sql_calls))
+
+    async def test_staged_restore_skips_target_backup_when_target_database_is_missing(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            def __init__(self):
+                self.calls = []
+
+            async def run(self, args, **kwargs):
+                self.calls.append(args)
+                if args[0] == "psql" and any("SELECT rolsuper OR rolcreatedb" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="t\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="")
+                return CommandResult(returncode=0, output="")
+
+        async def chunks():
+            yield b"PGDMP fake custom dump"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Runner()
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=runner,
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
+            )
+            settings = {
+                "host": "localhost",
+                "port": 5432,
+                "database": "r18",
+                "maintenance_database": "postgres",
+                "user": "javhub",
+                "password": "",
+                "max_parallel_jobs": 2,
+                "keep_previous_databases": 1,
+            }
+            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            await manager.save_upload(job["id"], chunks())
+
+            restored = await manager.restore_job(job["id"])
+
+        sql_calls = [" ".join(call) for call in runner.calls if call[0] == "psql"]
+        self.assertEqual(restored["status"], "completed")
+        self.assertFalse(any('ALTER DATABASE "r18" RENAME TO' in call for call in sql_calls))
+        self.assertTrue(any('ALTER DATABASE "r18_import_1" RENAME TO "r18"' in call for call in sql_calls))
+
+    async def test_preflight_reports_target_database_existence(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            async def run(self, args, **kwargs):
+                if any("SELECT rolsuper OR rolcreatedb" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="t\n")
+                if any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
+                return CommandResult(returncode=0, output="")
+
+        with tempfile.TemporaryDirectory() as tmp, patch("services.javinfo_import.shutil.which", return_value="/usr/bin/tool"):
+            manager = JavInfoImportManager(storage_dir=Path(tmp), command_runner=Runner())
+            result = await manager.preflight(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                },
+                expected_size=1,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["checks"]["database"]["target_exists"])
 
 
 class JavInfoImportRouterTest(unittest.TestCase):
@@ -701,6 +900,46 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(manager.saved, b"abcdef")
         self.assertEqual(response.json()["uploaded_bytes"], 6)
+
+    def test_chunk_upload_endpoint_passes_offset_headers_to_manager(self):
+        class Manager:
+            async def save_upload_chunk(self, job_id, chunk, *, offset, total_size):
+                self.args = (job_id, chunk, offset, total_size)
+                return {"id": job_id, "status": "uploading", "uploaded_bytes": offset + len(chunk)}
+
+        manager = Manager()
+        client = self._client(manager)
+        response = client.put(
+            "/api/v1/javinfo/imports/jobs/7/upload/chunks/0",
+            content=b"abcdef",
+            headers={
+                "Content-Type": "application/octet-stream",
+                "X-Chunk-Offset": "0",
+                "X-Total-Size": "12",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(manager.args, (7, b"abcdef", 0, 12))
+        self.assertEqual(response.json()["uploaded_bytes"], 6)
+
+    def test_finalize_upload_endpoint_starts_restore_after_upload_completion(self):
+        class Manager:
+            async def finalize_upload(self, job_id):
+                self.finalized_job_id = job_id
+                return {"id": job_id, "status": "uploaded", "uploaded_bytes": 6}
+
+            async def restore_job(self, job_id):
+                self.restore_job_id = job_id
+                return {"id": job_id, "status": "completed"}
+
+        manager = Manager()
+        client = self._client(manager)
+        response = client.post("/api/v1/javinfo/imports/jobs/7/upload/complete")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "uploaded")
+        self.assertEqual(manager.finalized_job_id, 7)
 
 
 class ConfigExportRouterTest(unittest.TestCase):

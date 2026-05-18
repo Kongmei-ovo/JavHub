@@ -49,6 +49,10 @@ def _safe_filename(filename: str) -> str:
     return value or "dump"
 
 
+def _partial_upload_path(path: Path) -> Path:
+    return path.with_suffix(path.suffix + ".part") if path.suffix else Path(str(path) + ".part")
+
+
 def _redact_settings(settings: dict[str, Any]) -> dict[str, Any]:
     redacted = dict(settings or {})
     if redacted.get("password"):
@@ -430,9 +434,97 @@ class JavInfoImportManager:
                 raise
             job["status"] = "failed"
             job["stage"] = "failed"
-            job["error"] = str(exc)
+            job["error"] = str(exc) or exc.__class__.__name__
             job["updated_at"] = time.time()
             raise
+
+    async def save_upload_chunk(self, job_id: int, chunk: bytes, *, offset: int, total_size: int = 0) -> dict[str, Any]:
+        job = self._require_job(job_id)
+        if job.get("status") not in {"pending", "uploading"}:
+            raise ValueError("job is not accepting uploads")
+        if job.get("cancel_requested"):
+            job["status"] = "canceled"
+            job["stage"] = "canceled"
+            job["updated_at"] = time.time()
+            raise ValueError("job is not accepting uploads")
+
+        offset = int(offset or 0)
+        total_size = int(total_size or 0)
+        if offset < 0:
+            raise ValueError("chunk offset must be non-negative")
+        if total_size < 0:
+            raise ValueError("total size must be non-negative")
+        if total_size:
+            expected_total = int(job.get("file_size") or 0)
+            if expected_total and expected_total != total_size:
+                raise ValueError("total size does not match import job")
+            job["file_size"] = total_size
+
+        path = Path(job["file_path"])
+        partial_path = _partial_upload_path(path)
+        partial_path.parent.mkdir(parents=True, exist_ok=True)
+        current_size = partial_path.stat().st_size if partial_path.exists() else 0
+        if current_size != int(job.get("uploaded_bytes") or 0):
+            job["uploaded_bytes"] = current_size
+        if offset != current_size:
+            raise ValueError(f"offset mismatch: expected {current_size}, got {offset}")
+
+        payload = chunk or b""
+        if total_size and current_size + len(payload) > total_size:
+            raise ValueError("chunk exceeds total size")
+        with partial_path.open("ab") as fh:
+            fh.write(payload)
+        uploaded = current_size + len(payload)
+        job["status"] = "uploading"
+        job["stage"] = "uploading"
+        job["uploaded_bytes"] = uploaded
+        job["updated_at"] = time.time()
+        return self.public_job(job)
+
+    async def finalize_upload(self, job_id: int) -> dict[str, Any]:
+        job = self._require_job(job_id)
+        if job.get("status") not in {"pending", "uploading"}:
+            raise ValueError("job is not accepting uploads")
+        if job.get("cancel_requested"):
+            job["status"] = "canceled"
+            job["stage"] = "canceled"
+            job["updated_at"] = time.time()
+            raise ValueError("job is not accepting uploads")
+
+        path = Path(job["file_path"])
+        partial_path = _partial_upload_path(path)
+        if not partial_path.exists():
+            raise ValueError("upload has no partial file")
+        uploaded = partial_path.stat().st_size
+        expected = int(job.get("file_size") or 0)
+        if expected and uploaded != expected:
+            job["uploaded_bytes"] = uploaded
+            job["updated_at"] = time.time()
+            raise ValueError(f"incomplete upload: expected {expected} bytes, got {uploaded}")
+
+        digest = hashlib.sha256()
+        with partial_path.open("rb") as fh:
+            while True:
+                block = fh.read(1024 * 1024)
+                if not block:
+                    break
+                digest.update(block)
+        try:
+            fmt = detect_dump_format(partial_path, job["filename"])
+        except Exception as exc:
+            job["status"] = "failed"
+            job["stage"] = "failed"
+            job["error"] = str(exc) or exc.__class__.__name__
+            job["updated_at"] = time.time()
+            raise
+        partial_path.replace(path)
+        job["dump_format"] = fmt.kind
+        job["sha256"] = digest.hexdigest()
+        job["uploaded_bytes"] = uploaded
+        job["status"] = "uploaded"
+        job["stage"] = "uploaded"
+        job["updated_at"] = time.time()
+        return self.public_job(job)
 
     async def preflight(self, settings: dict[str, Any], *, expected_size: int = 0) -> dict[str, Any]:
         normalized = _normalize_settings(settings)
@@ -442,7 +534,7 @@ class JavInfoImportManager:
                 "psql": bool(shutil.which("psql")),
                 "gzip": bool(shutil.which("gzip")),
             },
-            "database": {"ok": False, "can_create_database": False, "error": ""},
+            "database": {"ok": False, "can_create_database": False, "target_exists": False, "error": ""},
             "disk": {"ok": False, "free_bytes": 0, "required_bytes": int(expected_size or 0)},
         }
         free = shutil.disk_usage(self.storage_dir.parent if self.storage_dir.exists() else ROOT_DIR).free
@@ -466,6 +558,8 @@ class JavInfoImportManager:
             checks["database"]["can_create_database"] = "t" in result.output.lower().split()
             if result.returncode != 0:
                 checks["database"]["error"] = result.output[-1000:]
+            else:
+                checks["database"]["target_exists"] = await self._database_exists(normalized, normalized["database"])
 
         ok = all(checks["tools"].values()) and checks["database"]["ok"] and checks["disk"]["ok"]
         return {"ok": ok, "checks": checks}
@@ -549,10 +643,15 @@ class JavInfoImportManager:
                 service_stopped = True
                 job["stage"] = "swapping"
                 backup_db = f"{target_db}_before_import_{time.strftime('%Y%m%d%H%M%S')}"
-                await self._sql(job, settings, settings["maintenance_database"], _terminate_db_sql(target_db))
-                await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(target_db)} RENAME TO {_pg_ident(backup_db)}")
+                target_exists = await self._database_exists(settings, target_db)
+                if target_exists:
+                    await self._sql(job, settings, settings["maintenance_database"], _terminate_db_sql(target_db))
+                    await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(target_db)} RENAME TO {_pg_ident(backup_db)}")
+                else:
+                    self._log(job, f"target database {target_db} does not exist; importing without previous database backup")
                 await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(staging_db)} RENAME TO {_pg_ident(target_db)}")
-                await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
+                if target_exists:
+                    await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
                 job["stage"] = "restarting"
                 await self._service("restart", job)
             else:
@@ -563,6 +662,10 @@ class JavInfoImportManager:
                 self._raise_if_canceled(job)
                 job["stage"] = "restoring"
                 job["status"] = "restoring"
+                if not await self._database_exists(settings, target_db):
+                    raise JavInfoImportError(
+                        f"target database {target_db} does not exist and the configured user cannot create databases"
+                    )
                 await self._reset_target_database(job, settings, target_db)
                 await self._restore_to_database(job, fmt, target_db)
                 job["stage"] = "restarting"
@@ -659,6 +762,21 @@ class JavInfoImportManager:
             timeout=15,
         )
         return result.returncode == 0 and "t" in result.output.lower().split()
+
+    async def _database_exists(self, settings: dict[str, Any], database: str) -> bool:
+        result = await self.command_runner.run(
+            [
+                "psql",
+                *_connection_args(settings, settings["maintenance_database"]),
+                "--tuples-only",
+                "--no-align",
+                "--command",
+                f"SELECT 1 FROM pg_database WHERE datname = {_pg_literal(database)}",
+            ],
+            env=_pg_env(settings),
+            timeout=15,
+        )
+        return result.returncode == 0 and "1" in result.output.split()
 
     async def _service(self, action: str, job: dict[str, Any]) -> None:
         if not self.service_helper or not Path(self.service_helper).exists():

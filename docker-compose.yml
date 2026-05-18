@@ -48,8 +48,8 @@ services:
       retries: 5
 
   javinfoapi:
-    image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
-    # For local development with a sibling checkout, replace image with:
+    image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.4}
+    # For local development with a sibling checkout, replace the image line with:
     # build:
     #   context: ../JavInfoApi
     restart: unless-stopped
@@ -68,10 +68,11 @@ services:
       retries: 3
 
   javhub:
-    image: ${JAVHUB_IMAGE:-ghcr.io/kongmei-ovo/javhub:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${JAVHUB_IMAGE:-ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.4}
+    # For local development from this checkout, replace the image line with:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       JAVINFO_API_URL: http://javinfoapi:18080

@@ -66,6 +66,40 @@ async def upload_import_dump(job_id: int, request: Request) -> dict[str, Any]:
     return job
 
 
+@router.put("/jobs/{job_id}/upload/chunks/{chunk_index}")
+async def upload_import_dump_chunk(job_id: int, chunk_index: int, request: Request) -> dict[str, Any]:
+    if chunk_index < 0:
+        raise HTTPException(400, "chunk index must be non-negative")
+    if request.headers.get("content-type", "").split(";")[0].strip() != "application/octet-stream":
+        raise HTTPException(415, "upload must use application/octet-stream")
+    try:
+        offset = int(request.headers.get("x-chunk-offset") or "")
+        total_size = int(request.headers.get("x-total-size") or 0)
+    except ValueError as exc:
+        raise HTTPException(400, "invalid chunk upload headers") from exc
+    body = await request.body()
+    manager = get_import_manager()
+    try:
+        return await manager.save_upload_chunk(job_id, body, offset=offset, total_size=total_size)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, JavInfoImportError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/jobs/{job_id}/upload/complete")
+async def complete_import_dump_upload(job_id: int) -> dict[str, Any]:
+    manager = get_import_manager()
+    try:
+        job = await manager.finalize_upload(job_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (ValueError, JavInfoImportError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    asyncio.create_task(_restore_after_upload(manager, job_id))
+    return job
+
+
 async def _restore_after_upload(manager, job_id: int) -> None:
     job = await manager.restore_job(job_id)
     if job.get("status") == "completed":

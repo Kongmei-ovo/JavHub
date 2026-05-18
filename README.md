@@ -28,8 +28,8 @@ connectors, and optional notifications.
 Current beta release:
 
 ```bash
-ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.3
-ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.3
+ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.4
+ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.4
 ```
 
 JavHub is intentionally published as a single image. The container builds the
@@ -68,11 +68,11 @@ javinfo:
     password: "change-me"
 ```
 
-Create a local `.env` file if you want to pin image tags or change passwords:
+Create a local `.env` file if you want to override image tags or change passwords:
 
 ```bash
-JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.3
-JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.3
+JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.4
+JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.4
 JAVHUB_PORT=3000
 JAVINFOAPI_PORT=18080
 
@@ -93,15 +93,17 @@ Validate and start:
 
 ```bash
 docker compose config
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 docker compose ps
 ```
 
 After the stack is healthy, open the JavHub UI and import the base database
-dump from the JavInfo import screen. When the import finishes, JavHub
-automatically asks JavInfoApi to apply its auxiliary tables and indexes. There
-is no separate migration container or manual migrate step in the normal compose
-deployment path.
+dump from the JavInfo import screen. Uploads are chunked and resumable from the
+server-recorded byte offset. When the import finishes, JavHub automatically
+asks JavInfoApi to apply its auxiliary tables and indexes. There is no separate
+migration container or manual migrate step in the normal compose deployment
+path.
 
 Open JavHub at `http://localhost:3000`.
 
@@ -152,7 +154,7 @@ For a source checkout deployment:
 ```bash
 git pull
 docker compose pull
-docker compose up -d --build
+docker compose up -d
 ```
 
 For pinned releases, update `JAVHUB_IMAGE` and `JAVINFOAPI_IMAGE` in `.env`,
@@ -162,6 +164,10 @@ then run:
 docker compose pull
 docker compose up -d
 ```
+
+Avoid relying on `latest` for self-hosted deployments. A pinned beta tag makes
+rollback and upgrade checks predictable, and `docker compose up -d` will not
+pull a changed tag unless you run `docker compose pull` first.
 
 ## Local Development
 

@@ -6,6 +6,8 @@ const api = axios.create({
 })
 
 const ERROR_TOAST_COOLDOWN_MS = 3000
+const JAVINFO_IMPORT_CHUNK_SIZE = 8 * 1024 * 1024
+const JAVINFO_IMPORT_CHUNK_RETRIES = 3
 let lastErrorToast = { key: '', ts: 0 }
 
 function numericPathSegment(value, label) {
@@ -22,6 +24,59 @@ function pathSegment(value, label) {
     throw new TypeError(`${label} is required`)
   }
   return encodeURIComponent(text)
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function chunkUploadProgress(onUploadProgress, loaded, total) {
+  if (typeof onUploadProgress === 'function') {
+    onUploadProgress({ loaded, total })
+  }
+}
+
+function isUploadCompleteStatus(status) {
+  return ['uploaded', 'restoring', 'stopping', 'swapping', 'restarting', 'migrating', 'completed'].includes(status)
+}
+
+async function retryChunkUpload(request, refreshUploadedBytes) {
+  let lastError = null
+  for (let attempt = 1; attempt <= JAVINFO_IMPORT_CHUNK_RETRIES; attempt += 1) {
+    try {
+      return await request()
+    } catch (error) {
+      lastError = error
+      if (typeof refreshUploadedBytes === 'function') {
+        const refreshed = await refreshUploadedBytes()
+        if (refreshed !== null && refreshed !== undefined) {
+          return { data: { uploaded_bytes: refreshed } }
+        }
+      }
+      if (attempt === JAVINFO_IMPORT_CHUNK_RETRIES) break
+      await sleep(250 * attempt)
+    }
+  }
+  throw lastError
+}
+
+async function completeChunkedUpload(jobId, total) {
+  let lastError = null
+  for (let attempt = 1; attempt <= JAVINFO_IMPORT_CHUNK_RETRIES; attempt += 1) {
+    try {
+      return await api.post(`/v1/javinfo/imports/jobs/${jobId}/upload/complete`, null, { silentError: true })
+    } catch (error) {
+      lastError = error
+      const statusResp = await api.get(`/v1/javinfo/imports/jobs/${jobId}`, { silentError: true })
+      const job = statusResp.data || {}
+      if (isUploadCompleteStatus(job.status) && Number(job.uploaded_bytes || 0) >= total) {
+        return statusResp
+      }
+      if (attempt === JAVINFO_IMPORT_CHUNK_RETRIES) break
+      await sleep(250 * attempt)
+    }
+  }
+  throw lastError
 }
 
 // ========== 全局错误拦截 ==========
@@ -358,16 +413,42 @@ export default {
     return api.post('/v1/javinfo/imports/jobs', payload)
   },
 
-  uploadJavInfoImportDump(jobId, file, onUploadProgress) {
-    return api.put(`/v1/javinfo/imports/jobs/${jobId}/upload`, file, {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'X-Filename': file?.name || 'dump',
-        'X-File-Size': String(file?.size || 0),
-      },
-      transformRequest: [(data) => data],
-      onUploadProgress,
-    })
+  async uploadJavInfoImportDump(jobId, file, onUploadProgress, options = {}) {
+    const total = Number(file?.size || 0)
+    const chunkSize = Number(options.chunkSize || JAVINFO_IMPORT_CHUNK_SIZE)
+    const statusResp = await api.get(`/v1/javinfo/imports/jobs/${jobId}`)
+    let uploaded = Math.max(0, Math.min(total, Number(statusResp.data?.uploaded_bytes || 0)))
+    chunkUploadProgress(onUploadProgress, uploaded, total)
+
+    let chunkIndex = Math.floor(uploaded / chunkSize)
+    while (uploaded < total) {
+      const end = Math.min(uploaded + chunkSize, total)
+      const chunk = file.slice(uploaded, end)
+      const offset = uploaded
+      const response = await retryChunkUpload(() => api.put(
+        `/v1/javinfo/imports/jobs/${jobId}/upload/chunks/${chunkIndex}`,
+        chunk,
+        {
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'X-Chunk-Offset': String(offset),
+            'X-Chunk-Size': String(chunk.size ?? end - offset),
+            'X-Total-Size': String(total),
+          },
+          transformRequest: [(data) => data],
+          silentError: true,
+        },
+      ), async () => {
+        const refreshed = await api.get(`/v1/javinfo/imports/jobs/${jobId}`, { silentError: true })
+        const serverUploaded = Math.max(0, Math.min(total, Number(refreshed.data?.uploaded_bytes || 0)))
+        return serverUploaded > offset ? serverUploaded : null
+      })
+      uploaded = Math.max(uploaded, Math.min(total, Number(response.data?.uploaded_bytes || end)))
+      chunkUploadProgress(onUploadProgress, uploaded, total)
+      chunkIndex = Math.floor(uploaded / chunkSize)
+    }
+
+    return completeChunkedUpload(jobId, total)
   },
 
   getJavInfoImportJob(jobId) {

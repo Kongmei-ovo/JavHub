@@ -79,41 +79,142 @@ test('AI helper APIs send provider-aware requests', async (t) => {
   assert.deepEqual(calls[1].data && JSON.parse(calls[1].data), { provider: 'gemini', ai: draft })
 })
 
-test('JavInfo import APIs use preflight, job creation, raw upload, status, and cancel endpoints', async (t) => {
+test('JavInfo import APIs use preflight, job creation, chunked upload, status, and cancel endpoints', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []
   axios.defaults.adapter = async (config) => {
     calls.push(config)
-    return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true, id: 7, data: [] } }
+    if (config.url === '/v1/javinfo/imports/jobs/7') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
+    }
+    if (config.url === '/v1/javinfo/imports/jobs/7/upload/chunks/0') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 4 } }
+    }
+    if (config.url === '/v1/javinfo/imports/jobs/7/upload/chunks/1') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 6 } }
+    }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true, id: 7, uploaded_bytes: 6, data: [] } }
   }
   t.after(() => { axios.defaults.adapter = originalAdapter })
 
   const { default: api } = await import(`./index.js?javinfo-import-${Date.now()}`)
   const importDb = { host: 'localhost', database: 'r18' }
-  const file = { name: 'r18.dump', size: 6, marker: 'raw-file' }
-  const progress = () => {}
+  const file = new Blob(['abcdef'])
+  file.name = 'r18.dump'
+  const progressEvents = []
+  const progress = (event) => progressEvents.push(event)
 
   await api.preflightJavInfoImport(importDb, 6)
   await api.createJavInfoImportJob({ filename: file.name, file_size: file.size, import_db: importDb, confirm_replace: true })
-  await api.uploadJavInfoImportDump(7, file, progress)
-  await api.getJavInfoImportJob(7)
+  await api.uploadJavInfoImportDump(7, file, progress, { chunkSize: 4 })
   await api.listJavInfoImportJobs(5)
   await api.cancelJavInfoImportJob(7)
 
   assert.equal(calls[0].url, '/v1/javinfo/imports/preflight')
   assert.deepEqual(JSON.parse(calls[0].data), { import_db: importDb, expected_size: 6 })
   assert.equal(calls[1].url, '/v1/javinfo/imports/jobs')
-  assert.equal(calls[2].url, '/v1/javinfo/imports/jobs/7/upload')
-  assert.equal(calls[2].method, 'put')
-  assert.deepEqual(calls[2].data, file)
-  assert.equal(calls[2].headers['Content-Type'], 'application/octet-stream')
-  assert.equal(calls[2].headers['X-Filename'], 'r18.dump')
-  assert.equal(calls[2].headers['X-File-Size'], '6')
-  assert.equal(calls[2].onUploadProgress, progress)
+  assert.equal(calls[2].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[3].url, '/v1/javinfo/imports/jobs/7/upload/chunks/0')
+  assert.equal(calls[3].method, 'put')
+  assert.equal(calls[3].headers['Content-Type'], 'application/octet-stream')
+  assert.equal(calls[3].headers['X-Chunk-Offset'], '0')
+  assert.equal(calls[3].headers['X-Chunk-Size'], '4')
+  assert.equal(calls[3].headers['X-Total-Size'], '6')
+  assert.equal(calls[4].url, '/v1/javinfo/imports/jobs/7/upload/chunks/1')
+  assert.equal(calls[4].headers['X-Chunk-Offset'], '4')
+  assert.equal(calls[4].headers['X-Chunk-Size'], '2')
+  assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/upload/complete')
+  assert.equal(calls[6].url, '/v1/javinfo/imports/jobs')
+  assert.deepEqual(calls[6].params, { limit: 5 })
+  assert.equal(calls[7].url, '/v1/javinfo/imports/jobs/7/cancel')
+  assert.deepEqual(progressEvents.at(-1), { loaded: 6, total: 6 })
+})
+
+test('JavInfo chunk upload resumes from server byte count after a lost chunk response', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  let jobReads = 0
+  let firstChunkAttempts = 0
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    if (config.url === '/v1/javinfo/imports/jobs/7') {
+      jobReads += 1
+      return {
+        config,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: { id: 7, uploaded_bytes: jobReads === 1 ? 0 : 4 },
+      }
+    }
+    if (config.url === '/v1/javinfo/imports/jobs/7/upload/chunks/0') {
+      firstChunkAttempts += 1
+      if (firstChunkAttempts === 1) {
+        return Promise.reject({
+          config,
+          response: { status: 502, data: { detail: 'Bad Gateway' } },
+          message: 'Bad Gateway',
+          isAxiosError: true,
+          toJSON: () => ({}),
+        })
+      }
+    }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 6 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?javinfo-import-resume-${Date.now()}`)
+  const file = new Blob(['abcdef'])
+  file.name = 'r18.dump'
+
+  await api.uploadJavInfoImportDump(7, file, null, { chunkSize: 4 })
+
+  assert.equal(calls[0].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[1].url, '/v1/javinfo/imports/jobs/7/upload/chunks/0')
+  assert.equal(calls[2].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[3].url, '/v1/javinfo/imports/jobs/7/upload/chunks/1')
+  assert.equal(calls[3].headers['X-Chunk-Offset'], '4')
+  assert.equal(calls[4].url, '/v1/javinfo/imports/jobs/7/upload/complete')
+})
+
+test('JavInfo upload treats a lost complete response as success when job is already restoring', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    if (config.url === '/v1/javinfo/imports/jobs/7/upload/complete') {
+      return Promise.reject({
+        config,
+        response: { status: 502, data: { detail: 'Bad Gateway' } },
+        message: 'Bad Gateway',
+        isAxiosError: true,
+        toJSON: () => ({}),
+      })
+    }
+    if (config.url === '/v1/javinfo/imports/jobs/7' && calls.length > 3) {
+      return {
+        config,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: { id: 7, status: 'restoring', uploaded_bytes: 6, file_size: 6 },
+      }
+    }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?javinfo-import-complete-resume-${Date.now()}`)
+  const file = new Blob(['abcdef'])
+  file.name = 'r18.dump'
+
+  const response = await api.uploadJavInfoImportDump(7, file, null, { chunkSize: 6 })
+
+  assert.equal(response.data.status, 'restoring')
+  assert.equal(calls[0].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[1].url, '/v1/javinfo/imports/jobs/7/upload/chunks/0')
+  assert.equal(calls[2].url, '/v1/javinfo/imports/jobs/7/upload/complete')
   assert.equal(calls[3].url, '/v1/javinfo/imports/jobs/7')
-  assert.equal(calls[4].url, '/v1/javinfo/imports/jobs')
-  assert.deepEqual(calls[4].params, { limit: 5 })
-  assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/cancel')
 })
 
 test('config export API downloads a blob from the config export endpoint', async (t) => {

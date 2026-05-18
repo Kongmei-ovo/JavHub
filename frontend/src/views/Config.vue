@@ -586,7 +586,7 @@
                 <div class="form-slot javinfo-import-panel">
                   <div class="import-warning">
                     <strong>危险操作：全量替换</strong>
-                    <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。优先使用临时库恢复并保留最近旧库。</span>
+                    <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。系统会自动使用临时库恢复并保留最近旧库。</span>
                   </div>
 
                   <div class="form-row">
@@ -631,17 +631,6 @@
                       </div>
                     </div>
                   </div>
-                  <div class="form-row">
-                    <div class="form-group compact-number">
-                      <label>并行恢复</label>
-                      <input class="input" v-model.number="config.javinfo.import_db.max_parallel_jobs" type="number" min="1" max="8" />
-                    </div>
-                    <div class="form-group compact-number">
-                      <label>保留旧库</label>
-                      <input class="input" v-model.number="config.javinfo.import_db.keep_previous_databases" type="number" min="0" max="5" />
-                    </div>
-                  </div>
-
                   <div class="import-actions">
                     <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
                       {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}

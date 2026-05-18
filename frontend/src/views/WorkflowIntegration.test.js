@@ -567,6 +567,10 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.match(configDefaults, /maintenance_database: 'postgres'/)
   assert.match(configDefaults, /keep_previous_databases: 1/)
   assert.match(configDefaults, /user: 'javhub'/)
+  assert.doesNotMatch(advancedSection, /并行恢复/)
+  assert.doesNotMatch(advancedSection, /保留旧库/)
+  assert.doesNotMatch(advancedSection, /max_parallel_jobs/)
+  assert.doesNotMatch(advancedSection, /keep_previous_databases/)
 })
 
 test('settings page exposes sanitized config export from advanced settings', () => {
