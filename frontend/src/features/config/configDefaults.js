@@ -23,12 +23,24 @@ export const DEFAULT_CONFIG = {
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   javinfo: { api_url: 'http://localhost:18080', page_size: 30 },
-  metatube: { host: 'localhost', port: 8081, token: '' },
   ai: {
+    provider: 'openai_compatible',
     openai_compatible: {
       base_url: 'https://api.openai.com/v1',
       api_key: '',
       model: 'gpt-4o-mini',
+      timeout: 30,
+    },
+    gemini: {
+      base_url: 'https://generativelanguage.googleapis.com/v1beta',
+      api_key: '',
+      model: 'gemini-2.0-flash',
+      timeout: 30,
+    },
+    ollama: {
+      base_url: 'http://localhost:11434',
+      api_key: '',
+      model: '',
       timeout: 30,
     },
   },
@@ -69,44 +81,11 @@ export const DEFAULT_CONFIG = {
 
 export const DEFAULT_BUBBLE_CFG = {
   baseSize: 16, fillPercent: 50, spacing: 16,
-  colorMode: 'legendary', palette: 'monet',
-  customGradients: [], customGradientsText: '',
   bubbleCount: 36,
   defaultTab: 'genre',
-  rarityThresholds: { legendary: 5, epic: 20, rare: 50 },
   actressAvatarSize: 'medium',
   actressPageSize: 36,
   seriesPageSize: 24,
-  rarityColors: {
-    legendary: '#c89a30',
-    epic: '#8a7060',
-    rare: '#9a9690',
-    common: '#607080',
-  },
 }
 
 export const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', maker: '厂商', label: '厂牌', title: '标题' }
-
-export function parseGradientList(value = '') {
-  const items = []
-  let depth = 0
-  let current = ''
-
-  for (const char of value) {
-    if (char === '(') depth += 1
-    if (char === ')') depth = Math.max(0, depth - 1)
-
-    if (char === ',' && depth === 0) {
-      const item = current.trim()
-      if (item) items.push(item)
-      current = ''
-      continue
-    }
-
-    current += char
-  }
-
-  const last = current.trim()
-  if (last) items.push(last)
-  return items.filter(item => item.startsWith('linear-gradient') || item.startsWith('#'))
-}

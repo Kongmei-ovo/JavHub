@@ -836,6 +836,8 @@ export default {
         series_name: '系列',
         category_names: '分类',
         actor_names: '演员',
+        summary: '简介',
+        score: '评分',
         sample_image_urls: '样张',
         sample_movie_url: '预告',
         source_url: '来源链接',

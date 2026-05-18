@@ -29,53 +29,7 @@ api.interceptors.response.use(
   }
 )
 
-// ==============================================
-// 全局缓存：题材统计数据（启动时拉取，所有页面共享）
-// ==============================================
-const STATS_CACHE_KEY = 'javhub_category_stats'
-const STATS_TTL_MS = 60 * 60 * 1000
-
-let _cachedStats = null
-let _statsRequest = null
-
-async function getCategoryStats(forceRefresh = false) {
-  if (!forceRefresh && _cachedStats) {
-    return _cachedStats
-  }
-  if (!forceRefresh && _statsRequest) {
-    return _statsRequest
-  }
-  if (!forceRefresh) {
-    try {
-      const cached = localStorage.getItem(STATS_CACHE_KEY)
-      if (cached) {
-        const { data, ts } = JSON.parse(cached)
-        if (Date.now() - ts < STATS_TTL_MS) {
-          _cachedStats = data
-          return data
-        }
-      }
-    } catch {}
-  }
-  const request = api.get('/v1/categories/stats', { silentError: true })
-    .then(resp => {
-      const data = Array.isArray(resp.data) ? resp.data : (resp.data || [])
-      _cachedStats = data
-      try {
-        localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))
-      } catch {}
-      return data
-    })
-    .finally(() => {
-      if (_statsRequest === request) _statsRequest = null
-    })
-  _statsRequest = request
-  return request
-}
-
 export default {
-  getCategoryStats,
-
   // ========== 视频搜索 & 详情 (JavInfoApi) ==========
 
   searchVideos(params = {}) {
@@ -94,14 +48,10 @@ export default {
     return api.get(`/v1/videos/${contentId}`)
   },
 
-  getVideoMetadata(contentId) {
-    return api.get(`/v1/videos/${contentId}/metadata`, { silentError: true })
-  },
-
   // ========== 演员 ==========
 
-  listActresses(page = 1, page_size = 20) {
-    return api.get('/v1/actresses', { params: { page, page_size } })
+  listActresses(page = 1, page_size = 20, options = {}) {
+    return api.get('/v1/actresses', { params: { page, page_size, ...options } })
   },
 
   getActress(actressId) {
@@ -129,7 +79,7 @@ export default {
   },
 
   listCategories() {
-    return api.get('/v1/categories')
+    return api.get('/v1/categories', { silentError: true })
   },
 
   listLabels() {
@@ -365,8 +315,12 @@ export default {
     return api.post('/v1/notification/telegram/test', null, { params: { token } })
   },
 
-  testAiModel(openaiCompatible = {}) {
-    return api.post('/v1/ai/test', { openai_compatible: openaiCompatible })
+  testAiModel(ai = {}) {
+    return api.post('/v1/ai/test', { provider: ai.provider || 'openai_compatible', ai })
+  },
+
+  listAiModels(ai = {}) {
+    return api.post('/v1/ai/models', { provider: ai.provider || 'openai_compatible', ai })
   },
 
   purgeCache(scope = 'video') {

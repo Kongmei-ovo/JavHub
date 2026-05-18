@@ -4,44 +4,15 @@ import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from fastapi.routing import APIRoute
-from routers.videos import get_video_metadata, router, search_videos
+from routers.videos import router, search_videos
 
 
 class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
-    def test_metadata_route_is_registered_before_content_id_route(self):
+    def test_metadata_route_is_not_registered(self):
         paths = [route.path for route in router.routes if isinstance(route, APIRoute)]
 
-        self.assertLess(paths.index("/api/v1/videos/{content_id}/metadata"), paths.index("/api/v1/videos/{content_id}"))
-
-    async def test_metadata_route_calls_get_video_metadata_not_get_video(self):
-        client = AsyncMock()
-        client.get_video_metadata.return_value = {"summary": "Metadata summary"}
-        translator = AsyncMock()
-        translator.translate_metadata.return_value = {
-            "summary": "Metadata summary",
-            "summary_translated": "译文",
-        }
-
-        with patch("routers.videos.get_info_client", return_value=client), \
-             patch("routers.videos.get_translator_service", return_value=translator):
-            data = await get_video_metadata("MIAA-784")
-
-        client.get_video_metadata.assert_awaited_once_with("MIAA-784")
-        client.get_video.assert_not_called()
-        translator.translate_metadata.assert_awaited_once_with("MIAA-784", {"summary": "Metadata summary"})
-        self.assertEqual(data, {"summary": "Metadata summary", "summary_translated": "译文"})
-
-    async def test_metadata_route_keeps_original_when_translation_falls_back(self):
-        client = AsyncMock()
-        client.get_video_metadata.return_value = {"summary": "Metadata summary"}
-        translator = AsyncMock()
-        translator.translate_metadata.return_value = {"summary": "Metadata summary"}
-
-        with patch("routers.videos.get_info_client", return_value=client), \
-             patch("routers.videos.get_translator_service", return_value=translator):
-            data = await get_video_metadata("MIAA-784")
-
-        self.assertEqual(data, {"summary": "Metadata summary"})
+        self.assertNotIn("/api/v1/videos/{content_id}/metadata", paths)
+        self.assertIn("/api/v1/videos/{content_id}", paths)
 
     async def test_search_route_uses_cache_only_translation(self):
         client = AsyncMock()
@@ -108,44 +79,113 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
             result = await test_translation({"text": "原文"})
 
         self.assertEqual(result["translated_text"], "译文")
-        self.assertEqual(translator.seen_order, ["openai_compatible"])
+        self.assertEqual(translator.seen_order, ["ai"])
         self.assertEqual(translator.settings["provider_order"], ["cache", "mapping", "openai_compatible"])
 
     async def test_ai_model_test_route_uses_current_config(self):
         from routers.config import test_ai_model
 
-        class FakeResponse:
-            status_code = 200
-            text = ""
+        with patch("config.Config.ai", new_callable=PropertyMock, return_value={
+            "provider": "gemini",
+            "openai_compatible": {},
+            "gemini": {
+                "base_url": "https://generativelanguage.googleapis.com/v1beta",
+                "api_key": "saved-key",
+                "model": "saved-model",
+                "timeout": 3,
+            },
+            "ollama": {},
+        }), patch("routers.config.build_ai_client") as build_client:
+            client = AsyncMock()
+            client.test.return_value = {
+                "success": True,
+                "provider": "gemini",
+                "model": "current-model",
+                "reply": "ok",
+                "latency_ms": 12,
+            }
+            build_client.return_value = client
+            result = await test_ai_model({
+                "provider": "gemini",
+                "ai": {
+                    "gemini": {
+                        "base_url": "https://current.example/v1beta",
+                        "api_key": "",
+                        "model": "current-model",
+                        "timeout": 5,
+                    }
+                },
+            })
 
-            def raise_for_status(self):
-                return None
+        self.assertTrue(result["success"])
+        self.assertEqual(result["provider"], "gemini")
+        self.assertEqual(result["model"], "current-model")
+        self.assertEqual(result["reply"], "ok")
+        sent = build_client.call_args.args[0]
+        self.assertEqual(sent["provider"], "gemini")
+        self.assertEqual(sent["gemini"]["base_url"], "https://current.example/v1beta")
+        self.assertEqual(sent["gemini"]["api_key"], "saved-key")
+        self.assertEqual(sent["gemini"]["model"], "current-model")
 
-            def json(self):
-                return {"choices": [{"message": {"content": "ok"}}]}
+    async def test_ai_models_route_lists_models_with_draft_config(self):
+        from routers.config import list_ai_models
 
-        class FakeAsyncClient:
-            captured = {}
+        with patch("config.Config.ai", new_callable=PropertyMock, return_value={
+            "provider": "openai_compatible",
+            "openai_compatible": {
+                "base_url": "https://saved.example/v1",
+                "api_key": "saved-key",
+                "model": "saved-model",
+                "timeout": 3,
+            },
+            "gemini": {},
+            "ollama": {},
+        }), patch("routers.config.build_ai_client") as build_client:
+            client = AsyncMock()
+            client.list_models.return_value = {
+                "provider": "openai_compatible",
+                "models": [{"id": "draft-model", "name": "draft-model"}],
+            }
+            build_client.return_value = client
+            result = await list_ai_models({
+                "provider": "openai_compatible",
+                "ai": {
+                    "openai_compatible": {
+                        "base_url": "https://draft.example/v1",
+                        "api_key": "",
+                        "model": "draft-model",
+                    }
+                },
+            })
 
-            def __init__(self, *args, **kwargs):
-                FakeAsyncClient.captured["timeout"] = kwargs.get("timeout")
+        self.assertEqual(result["models"][0]["id"], "draft-model")
+        sent = build_client.call_args.args[0]
+        self.assertEqual(sent["openai_compatible"]["base_url"], "https://draft.example/v1")
+        self.assertEqual(sent["openai_compatible"]["api_key"], "saved-key")
 
-            async def __aenter__(self):
-                return self
+    async def test_legacy_ai_test_body_still_uses_openai_compatible(self):
+        from routers.config import test_ai_model
 
-            async def __aexit__(self, *args):
-                return None
-
-            async def post(self, url, json=None, headers=None):
-                FakeAsyncClient.captured.update({"url": url, "json": json, "headers": headers})
-                return FakeResponse()
-
-        with patch("config.Config.openai_compatible", new_callable=PropertyMock, return_value={
-            "base_url": "https://saved.example/v1",
-            "api_key": "saved-key",
-            "model": "saved-model",
-            "timeout": 3,
-        }), patch("httpx.AsyncClient", FakeAsyncClient):
+        with patch("config.Config.ai", new_callable=PropertyMock, return_value={
+            "provider": "gemini",
+            "openai_compatible": {
+                "base_url": "https://saved.example/v1",
+                "api_key": "saved-key",
+                "model": "saved-model",
+                "timeout": 3,
+            },
+            "gemini": {},
+            "ollama": {},
+        }), patch("routers.config.build_ai_client") as build_client:
+            client = AsyncMock()
+            client.test.return_value = {
+                "success": True,
+                "provider": "openai_compatible",
+                "model": "current-model",
+                "reply": "ok",
+                "latency_ms": 12,
+            }
+            build_client.return_value = client
             result = await test_ai_model({
                 "openai_compatible": {
                     "base_url": "https://current.example/v1",
@@ -157,11 +197,10 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["model"], "current-model")
-        self.assertEqual(result["reply"], "ok")
-        self.assertEqual(FakeAsyncClient.captured["url"], "https://current.example/v1/chat/completions")
-        self.assertEqual(FakeAsyncClient.captured["json"]["model"], "current-model")
-        self.assertEqual(FakeAsyncClient.captured["headers"]["Authorization"], "Bearer saved-key")
-        self.assertEqual(FakeAsyncClient.captured["timeout"], 5)
+        sent = build_client.call_args.args[0]
+        self.assertEqual(sent["provider"], "openai_compatible")
+        self.assertEqual(sent["openai_compatible"]["base_url"], "https://current.example/v1")
+        self.assertEqual(sent["openai_compatible"]["api_key"], "saved-key")
 
 
 if __name__ == "__main__":

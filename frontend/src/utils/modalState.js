@@ -19,7 +19,6 @@ function withLoadingState(video, contentId, api) {
     ...normalized,
     _loading: {
       javinfo: Boolean(fetchPrimaryDetails && api?.getVideo),
-      metatube: Boolean(fetchPrimaryDetails && api?.getVideoMetadata),
       supplement: Boolean(fetchSupplementDetails),
       cover: true,
       gallery: false,
@@ -27,7 +26,6 @@ function withLoadingState(video, contentId, api) {
     },
     _errors: {
       javinfo: null,
-      metatube: null,
       cover: null,
       gallery: null,
       stream: null,
@@ -191,28 +189,6 @@ export function openVideoModal(video, routePath = null, api = defaultApi) {
         if (isCurrentRequest(requestId, contentId)) {
           modalState.selectedVideo._loading.javinfo = false
           modalState.selectedVideo._errors.javinfo = errorMessage(error)
-        }
-      })
-  }
-
-  if (fetchPrimaryDetails && api?.getVideoMetadata) {
-    api.getVideoMetadata(contentId)
-      .then(response => {
-        if (isCurrentRequest(requestId, contentId)) {
-          modalState.selectedVideo = {
-            ...modalState.selectedVideo,
-            ...(response?.data || {}),
-            _loading: {
-              ...modalState.selectedVideo._loading,
-              metatube: false,
-            },
-          }
-        }
-      })
-      .catch(error => {
-        if (isCurrentRequest(requestId, contentId)) {
-          modalState.selectedVideo._loading.metatube = false
-          modalState.selectedVideo._errors.metatube = errorMessage(error)
         }
       })
   }

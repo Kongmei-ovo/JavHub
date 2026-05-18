@@ -10,7 +10,9 @@ from database import (
     get_translation,
     upsert_cached_translation,
 )
+from translations.category_decensor import decensor_category_name
 from translations.providers import (
+    AIProvider,
     DeepLProvider,
     GoogleFreeProvider,
     MappingProvider,
@@ -55,6 +57,16 @@ def _apply_translated_name(entity: dict, key: str, original: str, translated: st
     entity[f"{key}_translated"] = translated
     if _has_masked_text(original):
         entity[key] = translated
+
+
+def _decensor_category_fields(entity: dict) -> None:
+    for key in ("name_en", "name"):
+        value = entity.get(key)
+        if not isinstance(value, str) or "*" not in value:
+            continue
+        decensored = decensor_category_name(value)
+        if decensored and decensored != value:
+            entity[key] = decensored
 
 
 def _json_array(value: Any) -> list[str]:
@@ -125,12 +137,14 @@ class TranslatorService:
             provider = DeepLProvider(self.settings.get("deepl", {}) or {})
         elif name == "microsoft":
             provider = MicrosoftTranslatorProvider(self.settings.get("microsoft", {}) or {})
-        elif name == "openai_compatible":
+        elif name in {"ai", "openai_compatible"}:
             local_settings = self.settings.get("openai_compatible", {}) or {}
             if self._uses_injected_settings and any(local_settings.get(key) for key in ("base_url", "api_key", "model")):
                 provider = OpenAICompatibleProvider(local_settings)
+            elif self._uses_injected_settings and isinstance(self.settings.get("ai"), dict):
+                provider = AIProvider(self.settings.get("ai", {}) or {})
             else:
-                provider = OpenAICompatibleProvider(config.openai_compatible)
+                provider = AIProvider(config.ai)
         else:
             return None
         if self.reuse_clients:
@@ -181,7 +195,7 @@ class TranslatorService:
             if not allow_network and provider_name not in self.LOCAL_PROVIDERS:
                 continue
 
-            if provider_name == "openai_compatible" and not use_ai:
+            if provider_name in {"ai", "openai_compatible"} and not use_ai:
                 continue
 
             provider = self._provider(provider_name)
@@ -212,6 +226,14 @@ class TranslatorService:
             key, original = _first_text(item, keys)
             if not key or not original:
                 continue
+            if entity_type == "category":
+                _decensor_category_fields(item)
+                if isinstance(item.get(key), str):
+                    original = item[key]
+                decensored = decensor_category_name(original)
+                if decensored and decensored != original:
+                    item[key] = decensored
+                    original = decensored
             entity_id = item.get("id")
             trans = get_translation(_entity_scope(entity_type, entity_id))
             mapping = trans.get(entity_type, {}) if trans else {}

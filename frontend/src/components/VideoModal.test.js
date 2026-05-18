@@ -26,10 +26,10 @@ function summaryDisplayFor(video) {
   return summaryDisplay.call({ video })
 }
 
-test('metadataLoaded resolves when MetaTube loading finishes with empty metadata', () => {
+test('metadataLoaded resolves when JavInfo detail loading finishes with empty metadata', () => {
   assert.equal(metadataLoadedFor({
     content_id: 'MIAA-784',
-    _loading: { metatube: false },
+    _loading: { javinfo: false },
   }), true)
 })
 
@@ -37,6 +37,13 @@ test('metadataLoaded remains true when legacy callers provide metadata fields', 
   assert.equal(metadataLoadedFor({
     content_id: 'MIAA-784',
     summary: 'Metadata summary',
+  }), true)
+})
+
+test('metadataLoaded remains true when JavInfo directors are present', () => {
+  assert.equal(metadataLoadedFor({
+    content_id: 'MIAA-784',
+    directors: [{ name_kanji: '松田コージ' }],
   }), true)
 })
 
@@ -55,4 +62,11 @@ test('summaryDisplay prefers translated summary', () => {
   assert.equal(summaryDisplayFor({
     summary: 'Original summary',
   }), 'Original summary')
+})
+
+test('modal overlay is teleported above sheet overlays', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /<teleport to="body">\s*<div v-if="visible" class="modal-overlay"/)
+  assert.match(source, /\.modal-overlay\s*\{[\s\S]*z-index:\s*var\(--z-lightbox\)/)
 })

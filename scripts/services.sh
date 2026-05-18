@@ -26,14 +26,57 @@ Commands:
   status              Print launchd and port status.
   logs <service>      Tail logs for: javinfo, backend, frontend.
   rebuild-javinfo     Rebuild JavInfoApi binary and restart javinfo.
+  render-plists       Write LaunchAgent plists without starting services.
 
 Environment:
   JAVINFO_DIR         Defaults to /Users/kongmei/Code/JavInfoApi.
 USAGE
 }
 
+xml_escape() {
+  "${ROOT_DIR}/.venv/bin/python" -c 'import html, sys; print(html.escape(sys.stdin.read().rstrip("\n"), quote=True), end="")'
+}
+
+javinfo_source_proxy_url() {
+  ROOT_DIR="${ROOT_DIR}" "${ROOT_DIR}/.venv/bin/python" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+try:
+    import yaml
+except Exception:
+    sys.exit(0)
+
+config_path = Path(os.environ["ROOT_DIR"]) / "config.yaml"
+try:
+    data = yaml.safe_load(config_path.read_text()) or {}
+except Exception:
+    sys.exit(0)
+
+proxy = data.get("proxy") or {}
+if not proxy.get("enabled"):
+    sys.exit(0)
+
+for key in ("http_url", "https_url"):
+    value = str(proxy.get(key) or "").strip()
+    if value:
+        print(value, end="")
+        break
+PY
+}
+
 write_plists() {
   mkdir -p "${LAUNCH_AGENTS_DIR}"
+  local javinfo_source_proxy_url_value javinfo_source_proxy_env
+  javinfo_source_proxy_url_value="$(javinfo_source_proxy_url)"
+  javinfo_source_proxy_env=""
+  if [[ -n "${javinfo_source_proxy_url_value}" ]]; then
+    local escaped_proxy_url
+    escaped_proxy_url="$(printf '%s' "${javinfo_source_proxy_url_value}" | xml_escape)"
+    javinfo_source_proxy_env="    <key>JAVINFO_SOURCE_PROXY_URL</key>
+    <string>${escaped_proxy_url}</string>"
+  fi
 
   cat > "${JAVINFO_PLIST}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -54,6 +97,7 @@ write_plists() {
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>SERVER_PORT</key>
     <string>8080</string>
+${javinfo_source_proxy_env}
   </dict>
   <key>RunAtLoad</key>
   <true/>
@@ -271,6 +315,7 @@ shift || true
 
 case "${command}" in
   ensure|start) ensure_services ;;
+  render-plists) write_plists ;;
   restart) restart_services "$@" ;;
   stop) stop_services "$@" ;;
   status) status ;;

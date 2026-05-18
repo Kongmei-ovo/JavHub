@@ -74,12 +74,6 @@ async def list_videos(
         result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
     return result
 
-@router.get("/{content_id}/metadata")
-async def get_video_metadata(content_id: str) -> Dict[str, Any]:
-    client = get_info_client()
-    data = await client.get_video_metadata(content_id)
-    return await get_translator_service().translate_metadata(content_id, data)
-
 @router.get("/{content_id}")
 async def get_video(content_id: str, service_code: Optional[str] = Query(None)) -> Dict[str, Any]:
     client = get_info_client()

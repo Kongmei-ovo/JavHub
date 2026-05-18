@@ -21,6 +21,7 @@ from database import (
     upsert_translation,
 )
 from modules.info_client import get_info_client
+from translations.category_decensor import decensor_category_name
 from translations.providers import GoogleFreeProvider, TranslationRequest
 from translations.service import TranslatorService
 
@@ -132,6 +133,10 @@ def _metadata_known_translation(entity_type: str, entity_id: Any, source: str) -
 
 def _network_provider_order(provider_order: list[str]) -> list[str]:
     return [provider for provider in provider_order if provider not in {"cache", "mapping"}]
+
+
+def _allows_ai_provider(provider_order: list[str]) -> bool:
+    return any(provider in {"ai", "openai_compatible"} for provider in provider_order)
 
 
 def _can_batch_google(provider_order: list[str]) -> bool:
@@ -607,7 +612,10 @@ def _metadata_text(item: dict, entity_type: str) -> str:
     for key in _METADATA_TEXT_KEYS.get(entity_type, ("name",)):
         value = item.get(key)
         if isinstance(value, str) and value.strip():
-            return value.strip()
+            text = value.strip()
+            if entity_type == "category":
+                return decensor_category_name(text)
+            return text
     return ""
 
 
@@ -762,7 +770,7 @@ async def _translate_titles(
                     source,
                     scope=scope,
                     context="video title",
-                    use_ai=False,
+                    use_ai=_allows_ai_provider(network_provider_order),
                     persist_ai=False,
                     provider_order=network_provider_order,
                     return_original=False,
@@ -803,6 +811,8 @@ async def _translate_metadata_names(job_id: int, items: list[dict], provider_ord
         entity_type = item.get("type")
         entity_id = item.get("id")
         source = str(item.get("text") or "").strip()
+        if entity_type == "category":
+            source = decensor_category_name(source)
         if not entity_type or not entity_id or not source:
             skipped += 1
             continue
@@ -868,7 +878,7 @@ async def _translate_metadata_names(job_id: int, items: list[dict], provider_ord
                     source,
                     scope=scope,
                     context=f"{entity_type} name",
-                    use_ai=False,
+                    use_ai=_allows_ai_provider(network_provider_order),
                     persist_ai=False,
                     provider_order=network_provider_order,
                     return_original=False,

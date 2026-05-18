@@ -240,10 +240,23 @@ class Config:
     @property
     def ai(self) -> dict:
         defaults = {
+            'provider': 'openai_compatible',
             'openai_compatible': {
                 'base_url': 'https://api.openai.com/v1',
                 'api_key': '',
                 'model': 'gpt-4o-mini',
+                'timeout': 30,
+            },
+            'gemini': {
+                'base_url': 'https://generativelanguage.googleapis.com/v1beta',
+                'api_key': '',
+                'model': 'gemini-2.0-flash',
+                'timeout': 30,
+            },
+            'ollama': {
+                'base_url': 'http://localhost:11434',
+                'api_key': '',
+                'model': '',
                 'timeout': 30,
             },
         }
@@ -251,12 +264,23 @@ class Config:
         legacy_translation_cfg = self._config.get('translation', {}) or {}
         legacy_openai_cfg = legacy_translation_cfg.get('openai_compatible', {})
         merged = {**defaults, **cfg}
+        provider = str(merged.get('provider') or 'openai_compatible').strip()
+        merged['provider'] = provider if provider in {'openai_compatible', 'gemini', 'ollama'} else 'openai_compatible'
         merged['openai_compatible'] = {
             **defaults['openai_compatible'],
             **(legacy_openai_cfg if isinstance(legacy_openai_cfg, dict) else {}),
             **(cfg.get('openai_compatible', {}) if isinstance(cfg.get('openai_compatible'), dict) else {}),
         }
+        for nested_key in ('gemini', 'ollama'):
+            merged[nested_key] = {
+                **defaults[nested_key],
+                **(cfg.get(nested_key, {}) if isinstance(cfg.get(nested_key), dict) else {}),
+            }
         return merged
+
+    @property
+    def ai_provider(self) -> str:
+        return str(self.ai.get('provider') or 'openai_compatible')
 
     @property
     def openai_compatible(self) -> dict:
@@ -392,23 +416,6 @@ class Config:
     def supplement_admin_token(self) -> str:
         return _env('SUPPLEMENT_ADMIN_TOKEN', self._config.get('javinfo', {}).get('supplement_admin_token', ''))
 
-    # MetaTube settings
-    @property
-    def metatube(self) -> dict:
-        return self._config.get('metatube', {})
-
-    @property
-    def metatube_host(self) -> str:
-        return _env('METATUBE_HOST', self._config.get('metatube', {}).get('host', 'localhost'))
-
-    @property
-    def metatube_port(self) -> int:
-        return int(_env('METATUBE_PORT', str(self._config.get('metatube', {}).get('port', 8081))))
-
-    @property
-    def metatube_token(self) -> str:
-        return _env('METATUBE_TOKEN', self._config.get('metatube', {}).get('token', ''))
-
     # Download sources settings
     @property
     def sources(self) -> dict:
@@ -471,6 +478,7 @@ class Config:
 
     def get_all(self) -> dict:
         cfg = self._config.copy()
+        cfg.pop('metatube', None)
         cfg['ai'] = self.ai
         cfg['automation'] = self.automation
         cfg['actor_mapping'] = self.actor_mapping
@@ -496,23 +504,23 @@ class Config:
     def update(self, new_config: dict):
         incoming = self._merge_config({}, new_config)
         if isinstance(incoming.get('ai'), dict):
-            incoming_openai = incoming['ai'].get('openai_compatible')
-            if isinstance(incoming_openai, dict) and not incoming_openai.get('api_key'):
-                current_ai = self._config.get('ai', {}) or {}
-                current_openai = current_ai.get('openai_compatible', {}) if isinstance(current_ai, dict) else {}
-                legacy_translation = self._config.get('translation', {}) or {}
-                legacy_openai = (
-                    legacy_translation.get('openai_compatible', {})
-                    if isinstance(legacy_translation, dict)
-                    else {}
-                )
-                existing_api_key = (
-                    current_openai.get('api_key') if isinstance(current_openai, dict) else ''
-                ) or (
-                    legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
-                )
+            current_ai = self._config.get('ai', {}) or {}
+            legacy_translation = self._config.get('translation', {}) or {}
+            legacy_openai = (
+                legacy_translation.get('openai_compatible', {})
+                if isinstance(legacy_translation, dict)
+                else {}
+            )
+            for provider_key in ('openai_compatible', 'gemini', 'ollama'):
+                incoming_provider = incoming['ai'].get(provider_key)
+                if not isinstance(incoming_provider, dict) or incoming_provider.get('api_key'):
+                    continue
+                current_provider = current_ai.get(provider_key, {}) if isinstance(current_ai, dict) else {}
+                existing_api_key = current_provider.get('api_key') if isinstance(current_provider, dict) else ''
+                if not existing_api_key and provider_key == 'openai_compatible':
+                    existing_api_key = legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
                 if existing_api_key:
-                    incoming_openai['api_key'] = existing_api_key
+                    incoming_provider['api_key'] = existing_api_key
         self._config = self._merge_config(self._config, incoming)
         if isinstance(incoming.get('javinfo'), dict):
             _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')

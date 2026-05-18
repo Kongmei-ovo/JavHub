@@ -66,7 +66,7 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         job_id = add_translation_job("library_titles", provider_order=["cache", "google_free"])
 
         with patch("translations.jobs.get_info_client", return_value=Client()), \
-             patch.object(GoogleFreeProvider, "translate", AsyncMock(return_value=TranslationResult("测试标题", "google_free"))), \
+             patch.object(GoogleFreeProvider, "translate_many", AsyncMock(return_value=[TranslationResult("测试标题", "google_free")])), \
              patch.object(OpenAICompatibleProvider, "translate", new_callable=AsyncMock) as ai_translate:
             await _run_job(job_id, "library_titles", ["cache", "google_free"], limit=10, force=False)
 
@@ -83,6 +83,38 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(job["duration_seconds"], 0)
         self.assertEqual(job["result"]["provider_order"], ["cache", "google_free"])
         self.assertEqual(get_translation("miaa784")["title"]["テストタイトル"], "测试标题")
+
+    async def test_library_title_job_can_use_ai_when_selected(self):
+        from database import get_translation
+        from translations.jobs import _run_job
+        from translations.providers import AIProvider, GoogleFreeProvider, TranslationResult
+
+        class Client:
+            async def list_videos(self, page=1, page_size=20):
+                return {
+                    "data": [{"content_id": "MIAA-784", "title_ja": "テストタイトル"}],
+                    "total_pages": 1,
+                }
+
+        from database import add_translation_job, get_translation_job
+        job_id = add_translation_job("library_titles", provider_order=["cache", "mapping", "ai"])
+
+        async def translate(request):
+            self.assertEqual(request.context, "video title")
+            return TranslationResult("AI测试标题", "ai", "test-model")
+
+        with patch("translations.jobs.get_info_client", return_value=Client()), \
+             patch.object(AIProvider, "translate", AsyncMock(side_effect=translate)) as ai_translate, \
+             patch.object(GoogleFreeProvider, "translate", new_callable=AsyncMock) as google_translate:
+            await _run_job(job_id, "library_titles", ["cache", "mapping", "ai"], limit=10, force=False)
+
+        ai_translate.assert_awaited_once()
+        google_translate.assert_not_awaited()
+        job = get_translation_job(job_id)
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["translated"], 1)
+        self.assertEqual(job["provider_order"], ["cache", "mapping", "ai"])
+        self.assertEqual(get_translation("miaa784")["title"]["テストタイトル"], "AI测试标题")
 
     async def test_metadata_job_can_translate_only_makers(self):
         from database import add_translation_job, get_translation, get_translation_count
@@ -111,7 +143,11 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         job_id = add_translation_job("metadata_makers", provider_order=["cache", "google_free"])
 
         with patch("translations.jobs.get_info_client", return_value=Client()), \
-             patch.object(GoogleFreeProvider, "translate", AsyncMock(side_effect=translate)), \
+             patch.object(
+                 GoogleFreeProvider,
+                 "translate_many",
+                 AsyncMock(side_effect=lambda requests: [TranslationResult(f"{request.text}中文", "google_free") for request in requests]),
+             ), \
              patch.object(OpenAICompatibleProvider, "translate", new_callable=AsyncMock) as ai_translate:
             await _run_job(job_id, "metadata_makers", ["cache", "google_free"], limit=10, force=False)
 
@@ -175,6 +211,141 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             ["category", "category", "series", "series", "maker", "label", "actress", "actress"],
         )
 
+    async def test_metadata_category_collection_decensors_masked_name_en(self):
+        from translations.jobs import _collect_metadata_names
+
+        class Client:
+            async def list_categories(self):
+                return [
+                    {"id": 5064, "name_en": "H*******m"},
+                    {"id": 4121, "name_en": "D***k Girl"},
+                ]
+
+        with patch("translations.jobs.get_info_client", return_value=Client()):
+            rows = await _collect_metadata_names(("category",), limit=10)
+
+        self.assertEqual(
+            rows,
+            [
+                {"type": "category", "id": 5064, "text": "Hypnotism"},
+                {"type": "category", "id": 4121, "text": "Drunk Girl"},
+            ],
+        )
+
+    async def test_metadata_category_job_does_not_persist_masked_source_text(self):
+        from database import add_translation_job, get_translation, get_translation_workbench_item
+        from translations.jobs import _translate_metadata_names
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        job_id = add_translation_job("metadata_categories", provider_order=["google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+        items = [{"type": "category", "id": 5064, "text": "H*******m"}]
+
+        async def translate_many(requests):
+            self.assertEqual([request.text for request in requests], ["Hypnotism"])
+            return [TranslationResult("催眠", "google_free")]
+
+        with patch.object(GoogleFreeProvider, "translate_many", AsyncMock(side_effect=translate_many)):
+            await _translate_metadata_names(job_id, items, ["google_free"], counters, force=False)
+
+        self.assertEqual(get_translation("category:5064")["category"], {"Hypnotism": "催眠"})
+        item = get_translation_workbench_item("category", 5064)
+        self.assertEqual(item["source_text"], "Hypnotism")
+        self.assertEqual(item["translated_text"], "催眠")
+        self.assertNotIn("*", item["source_text"])
+
+    async def test_repair_masked_category_translations_overwrites_machine_rows_only(self):
+        from database import get_translation, get_translation_workbench_item, upsert_translation, upsert_translation_workbench_item
+        from translations.category_decensor import repair_masked_category_translations
+
+        upsert_translation("category:5064", {"category": {"H*******m": "高*****米"}})
+        upsert_translation_workbench_item(
+            "category",
+            5064,
+            "H*******m",
+            translated_text="高*****米",
+            status="machine_translated",
+            provider="google_free",
+        )
+        upsert_translation("category:4058", {"category": {"ショタ": "正太"}})
+        upsert_translation_workbench_item(
+            "category",
+            4058,
+            "ショタ",
+            translated_text="正太",
+            status="manual_edited",
+            provider="manual",
+            preserve_reviewed=False,
+        )
+
+        repaired = repair_masked_category_translations()
+
+        self.assertIn("5064", repaired)
+        self.assertEqual(get_translation("category:5064")["category"], {"Hypnotism": "催眠"})
+        repaired_item = get_translation_workbench_item("category", 5064)
+        self.assertEqual(repaired_item["source_text"], "Hypnotism")
+        self.assertEqual(repaired_item["translated_text"], "催眠")
+        self.assertEqual(repaired_item["provider"], "decensor_repair")
+        manual_item = get_translation_workbench_item("category", 4058)
+        self.assertEqual(manual_item["source_text"], "ショタ")
+        self.assertEqual(manual_item["translated_text"], "正太")
+        self.assertEqual(manual_item["status"], "manual_edited")
+
+    async def test_repair_masked_category_translations_is_noop_for_clean_database(self):
+        from database import get_translation
+        from translations.category_decensor import repair_masked_category_translations
+
+        repaired = repair_masked_category_translations()
+
+        self.assertEqual(repaired, [])
+        self.assertIsNone(get_translation("category:5064"))
+
+    async def test_init_db_repairs_legacy_masked_category_translations(self):
+        from database import get_translation, get_translation_workbench_item, init_db, upsert_translation, upsert_translation_workbench_item
+
+        upsert_translation("category:5064", {"category": {"H*******m": "高*****米"}})
+        upsert_translation_workbench_item(
+            "category",
+            5064,
+            "H*******m",
+            translated_text="高*****米",
+            status="machine_translated",
+            provider="google_free",
+        )
+
+        init_db()
+
+        self.assertEqual(get_translation("category:5064")["category"], {"Hypnotism": "催眠"})
+        repaired_item = get_translation_workbench_item("category", 5064)
+        self.assertEqual(repaired_item["source_text"], "Hypnotism")
+        self.assertEqual(repaired_item["translated_text"], "催眠")
+        self.assertEqual(repaired_item["provider"], "decensor_repair")
+
+    async def test_repair_masked_category_translations_cleans_stale_key_without_overwriting_manual_item(self):
+        from database import get_translation, get_translation_workbench_item, upsert_translation, upsert_translation_workbench_item
+        from translations.category_decensor import repair_masked_category_translations
+
+        upsert_translation("category:5064", {"category": {"H*******m": "高*****米", "Hypnotism": "人工催眠"}})
+        upsert_translation_workbench_item(
+            "category",
+            5064,
+            "Hypnotism",
+            translated_text="人工催眠",
+            status="manual_edited",
+            provider="manual",
+            preserve_reviewed=False,
+        )
+
+        repaired = repair_masked_category_translations()
+
+        self.assertIn("5064", repaired)
+        self.assertEqual(get_translation("category:5064")["category"], {"Hypnotism": "人工催眠"})
+        manual_item = get_translation_workbench_item("category", 5064)
+        self.assertEqual(manual_item["source_text"], "Hypnotism")
+        self.assertEqual(manual_item["translated_text"], "人工催眠")
+        self.assertEqual(manual_item["status"], "manual_edited")
+        self.assertEqual(manual_item["provider"], "manual")
+
     async def test_title_job_uses_bounded_concurrency_and_keeps_failures_local(self):
         from database import add_translation_job, get_translation, get_translation_workbench_item, upsert_cached_translation, upsert_translation
         from translations.jobs import _translate_titles
@@ -237,8 +408,8 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         with patch.object(
             GoogleFreeProvider,
-            "translate",
-            AsyncMock(return_value=TranslationResult("MIAA-784", "google_free")),
+            "translate_many",
+            AsyncMock(return_value=[TranslationResult("MIAA-784", "google_free")]),
         ):
             await _translate_titles(job_id, items, ["google_free"], counters, force=False)
 

@@ -190,9 +190,3 @@ async def shutdown_event():
         await get_emby_client().close()
     except Exception:
         pass
-
-    try:
-        from modules.metatube_client import close as mt_close
-        await mt_close()
-    except Exception:
-        pass

@@ -484,7 +484,9 @@ async def all_stats():
         coverage[mapping_type] = item
 
     translation_cfg = config.translation
-    openai_cfg = config.openai_compatible
+    ai_cfg = config.ai
+    ai_provider = str(ai_cfg.get("provider") or "openai_compatible")
+    provider_cfg = ai_cfg.get(ai_provider, {}) if isinstance(ai_cfg.get(ai_provider), dict) else {}
     stats["ai_cache"] = get_translation_cache_count()
     stats["coverage"] = coverage
     stats["workbench"] = translation_workbench_stats()
@@ -503,10 +505,15 @@ async def all_stats():
             "enabled": "microsoft" in config.translation_provider_order,
             "ready": bool((translation_cfg.get("microsoft") or {}).get("enabled") and (translation_cfg.get("microsoft") or {}).get("api_key")),
         },
-        "openai_compatible": {
-            "enabled": "openai_compatible" in config.translation_provider_order,
-            "ready": bool(openai_cfg.get("api_key") and openai_cfg.get("base_url") and openai_cfg.get("model")),
-            "model": openai_cfg.get("model") or "",
+        "ai": {
+            "enabled": any(item in config.translation_provider_order for item in ("ai", "openai_compatible")),
+            "ready": bool(
+                provider_cfg.get("base_url")
+                and provider_cfg.get("model")
+                and (ai_provider == "ollama" or provider_cfg.get("api_key"))
+            ),
+            "model": provider_cfg.get("model") or "",
+            "provider": ai_provider,
         },
     }
     return stats
@@ -639,7 +646,7 @@ async def test_translation(body: dict[str, Any]):
         raise HTTPException(400, "text is required")
     translator = get_translator_service()
     original_order = translator.settings.get("provider_order")
-    translator.settings["provider_order"] = ["openai_compatible"]
+    translator.settings["provider_order"] = ["ai"]
     try:
         translated = await translator.translate_text(
             text,

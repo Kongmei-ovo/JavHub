@@ -14,7 +14,6 @@ test('openVideoModal ignores stale detail responses from previous modal', async 
         resolve({ data: { title_ja: 'Second full title' } })
       }
     }),
-    getVideoMetadata: () => Promise.resolve({ data: {} }),
   }
 
   openVideoModal({ content_id: 'MIAA-784', title_ja: 'First base title' }, '/search', api)
@@ -32,11 +31,10 @@ test('openVideoModal ignores stale detail responses from previous modal', async 
   resetModal()
 })
 
-test('openVideoModal keeps modal usable when metadata request fails', async () => {
+test('openVideoModal keeps modal usable when detail request fails', async () => {
   resetModal()
   const api = {
-    getVideo: () => Promise.resolve({ data: { title_ja: 'Full title', runtime_mins: 120 } }),
-    getVideoMetadata: () => Promise.reject(new Error('Not Found')),
+    getVideo: () => Promise.reject(new Error('Not Found')),
   }
 
   openVideoModal({ content_id: 'MIAA-784', title_ja: 'Base title' }, '/search', api)
@@ -45,11 +43,9 @@ test('openVideoModal keeps modal usable when metadata request fails', async () =
   await nextTick()
 
   assert.equal(modalState.visible, true)
-  assert.equal(modalState.selectedVideo.title_ja, 'Full title')
-  assert.equal(modalState.selectedVideo.runtime_mins, 120)
+  assert.equal(modalState.selectedVideo.title_ja, 'Base title')
   assert.equal(modalState.selectedVideo._loading.javinfo, false)
-  assert.equal(modalState.selectedVideo._loading.metatube, false)
-  assert.equal(modalState.selectedVideo._errors.metatube, 'Not Found')
+  assert.equal(modalState.selectedVideo._errors.javinfo, 'Not Found')
 
   resetModal()
 })
@@ -57,15 +53,10 @@ test('openVideoModal keeps modal usable when metadata request fails', async () =
 test('openVideoModal does not request primary detail APIs for supplement-only videos', async () => {
   resetModal()
   let getVideoCalls = 0
-  let getVideoMetadataCalls = 0
   const api = {
     getVideo: () => {
       getVideoCalls += 1
       return Promise.resolve({ data: { title_ja: 'Unexpected primary detail' } })
-    },
-    getVideoMetadata: () => {
-      getVideoMetadataCalls += 1
-      return Promise.resolve({ data: { title_ja: 'Unexpected metadata' } })
     },
   }
 
@@ -82,9 +73,7 @@ test('openVideoModal does not request primary detail APIs for supplement-only vi
   assert.equal(modalState.visible, true)
   assert.equal(modalState.selectedVideo.title_ja, 'Supplement title')
   assert.equal(modalState.selectedVideo._loading.javinfo, false)
-  assert.equal(modalState.selectedVideo._loading.metatube, false)
   assert.equal(getVideoCalls, 0)
-  assert.equal(getVideoMetadataCalls, 0)
 
   resetModal()
 })
@@ -94,7 +83,6 @@ test('openVideoModal enriches supplement-only videos from chosen supplement fiel
   let supplementSourcesId = null
   const api = {
     getVideo: () => Promise.reject(new Error('primary detail should not be requested')),
-    getVideoMetadata: () => Promise.reject(new Error('metadata should not be requested')),
     getSupplementMovieSources: (movieId) => {
       supplementSourcesId = movieId
       return Promise.resolve({

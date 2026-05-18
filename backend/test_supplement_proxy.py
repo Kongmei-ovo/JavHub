@@ -206,6 +206,18 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_list_actresses_passes_valid_avatar_filter(self):
+        client = InfoClient()
+
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"data": [], "total_count": 0}
+            await client.list_actresses(page=2, page_size=36, has_valid_avatar=1)
+
+        mock_get.assert_awaited_once_with(
+            "/api/v1/actresses",
+            params={"page": 2, "page_size": 36, "has_valid_avatar": 1},
+        )
+
     async def test_get_actress_videos_falls_back_when_supplement_result_is_empty(self):
         client = InfoClient()
 
