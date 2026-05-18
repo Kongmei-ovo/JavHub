@@ -38,6 +38,8 @@ const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf
 const translationJobs = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
 
 test('navigation and actor page use actor mapping language', () => {
+  assert.match(app, /v1\.2\.0-beta\.4/)
+  assert.doesNotMatch(app, /v1\.2\.0-beta\.1/)
   assert.match(app, /演员映射/)
   assert.doesNotMatch(app, /演员合并/)
   assert.match(normalize, /演员映射/)
