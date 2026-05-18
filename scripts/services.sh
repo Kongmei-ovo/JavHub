@@ -36,6 +36,7 @@ Commands:
 
 Environment:
   JAVINFO_DIR         Defaults to /Users/kongmei/Code/JavInfoApi.
+  JAVHUB_CONFIG_PATH  Defaults to config.yaml in the JavHub checkout.
 USAGE
 }
 
@@ -54,7 +55,7 @@ try:
 except Exception:
     sys.exit(0)
 
-config_path = Path(os.environ["ROOT_DIR"]) / "config.yaml"
+config_path = Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(os.environ["ROOT_DIR"]) / "config.yaml")
 try:
     data = yaml.safe_load(config_path.read_text()) or {}
 except Exception:

@@ -7,6 +7,13 @@ def test_services_render_plists_injects_javinfo_source_proxy(tmp_path):
     javinfo_dir.mkdir()
     home_dir = tmp_path / "home"
     home_dir.mkdir()
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "proxy:\n"
+        "  enabled: true\n"
+        "  http_url: http://127.0.0.1:1082\n"
+        "  https_url: ''\n"
+    )
 
     result = subprocess.run(
         ["bash", "scripts/services.sh", "render-plists"],
@@ -14,6 +21,7 @@ def test_services_render_plists_injects_javinfo_source_proxy(tmp_path):
         env={
             "HOME": str(home_dir),
             "JAVINFO_DIR": str(javinfo_dir),
+            "JAVHUB_CONFIG_PATH": str(config_path),
             "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
         },
         text=True,
