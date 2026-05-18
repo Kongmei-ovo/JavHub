@@ -108,6 +108,141 @@
               </div>
             </div>
 
+            <!-- JavInfo PostgreSQL Import -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <h2>JavInfo 数据库导入</h2>
+                </div>
+                <div class="form-slot javinfo-import-panel">
+                  <div class="import-warning">
+                    <strong>危险操作：全量替换</strong>
+                    <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。优先使用临时库恢复并保留最近旧库。</span>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>数据库地址</label>
+                      <input class="input" v-model="config.javinfo.import_db.host" placeholder="localhost" />
+                    </div>
+                    <div class="form-group compact-number">
+                      <label>端口</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.port" type="number" min="1" max="65535" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>目标库</label>
+                      <input class="input" v-model="config.javinfo.import_db.database" placeholder="r18" />
+                    </div>
+                    <div class="form-group">
+                      <label>维护库</label>
+                      <input class="input" v-model="config.javinfo.import_db.maintenance_database" placeholder="postgres" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>用户</label>
+                      <input class="input" v-model="config.javinfo.import_db.user" placeholder="kongmei" />
+                    </div>
+                    <div class="form-group">
+                      <label>密码</label>
+                      <div class="input-password-wrap">
+                        <input
+                          class="input"
+                          :type="showImportPassword ? 'text' : 'password'"
+                          v-model="config.javinfo.import_db.password"
+                          autocomplete="off"
+                          placeholder="空白保存不覆盖现有密码"
+                        />
+                        <button class="input-eye-btn" type="button" @click="showImportPassword = !showImportPassword" :title="showImportPassword ? '隐藏' : '显示'">
+                          <svg v-if="!showImportPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group compact-number">
+                      <label>并行恢复</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.max_parallel_jobs" type="number" min="1" max="8" />
+                    </div>
+                    <div class="form-group compact-number">
+                      <label>保留旧库</label>
+                      <input class="input" v-model.number="config.javinfo.import_db.keep_previous_databases" type="number" min="0" max="5" />
+                    </div>
+                  </div>
+
+                  <div class="import-actions">
+                    <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
+                      {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
+                    </button>
+                    <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
+                      {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
+                    </span>
+                  </div>
+
+                  <div
+                    class="form-group import-file-drop"
+                    @dragover.prevent
+                    @drop.prevent="onJavInfoImportFileDrop"
+                  >
+                    <label>Dump 文件（.dump / .backup / .sql / .sql.gz）</label>
+                    <input class="input file-input" type="file" accept=".dump,.backup,.sql,.gz" @change="onJavInfoImportFileChange" />
+                    <small v-if="javinfoImportFile">{{ javinfoImportFile.name }} · {{ formatBytes(javinfoImportFile.size) }}</small>
+                  </div>
+
+                  <label class="form-group checkbox import-confirm">
+                    <input type="checkbox" v-model="javinfoImportConfirm" />
+                    <span>我确认这是全量替换导入，并已确认 dump 来源可信。</span>
+                  </label>
+
+                  <div v-if="javinfoImportRequiresDirectConfirm" class="import-warning import-warning-direct">
+                    <strong>无法使用临时库</strong>
+                    <span>当前账号没有建库权限，将直接清空目标库恢复；失败不能自动回滚。</span>
+                    <label class="checkbox import-confirm">
+                      <input type="checkbox" v-model="javinfoImportDirectConfirm" />
+                      <span>我确认接受直接恢复目标库模式。</span>
+                    </label>
+                  </div>
+
+                  <div v-if="javinfoImportJob" class="import-progress">
+                    <div class="import-progress-head">
+                      <span>{{ javinfoImportStatusLabel(javinfoImportJob) }}</span>
+                      <strong>{{ javinfoImportProgress }}%</strong>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-bar-fill" :style="{ width: `${javinfoImportProgress}%` }"></div>
+                    </div>
+                    <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
+                    <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>
+                  </div>
+
+                  <div class="import-actions">
+                    <button class="btn btn-primary" type="button" @click="startJavInfoImport" :disabled="!javinfoImportCanStart">
+                      {{ javinfoImportUploading ? '上传中...' : '开始导入' }}
+                    </button>
+                    <button v-if="javinfoImportJob && isJavInfoImportActive(javinfoImportJob)" class="btn btn-ghost" type="button" @click="cancelJavInfoImport">
+                      取消任务
+                    </button>
+                  </div>
+
+                  <div v-if="javinfoImportJobs.length" class="import-job-list">
+                    <div class="import-job-list-title">最近任务</div>
+                    <div v-for="job in javinfoImportJobs" :key="job.id" class="import-job-row">
+                      <span>{{ job.filename || `任务 #${job.id}` }}</span>
+                      <strong>{{ javinfoImportStatusLabel(job) }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <!-- Telegram Section -->
@@ -748,6 +883,17 @@ export default {
       showBotToken: false,
       showEmbyKey: false,
       showAIKey: false,
+      showImportPassword: false,
+      javinfoImportFile: null,
+      javinfoImportConfirm: false,
+      javinfoImportDirectConfirm: false,
+      javinfoImportPreflight: null,
+      javinfoImportPreflighting: false,
+      javinfoImportUploading: false,
+      javinfoImportUploadProgress: 0,
+      javinfoImportJob: null,
+      javinfoImportJobs: [],
+      javinfoImportPollTimer: null,
       navGroups: [
         { id: 'services', label: '常规与服务' },
         { id: 'automation', label: '自动化策略' },
@@ -823,6 +969,36 @@ export default {
     canSaveConfig() {
       return this.configLoaded && !this.configLoading && !this.configLoadError
     },
+    javinfoImportCanStart() {
+      return Boolean(
+        this.canSaveConfig
+        && this.javinfoImportFile
+        && this.javinfoImportConfirm
+        && this.javinfoImportPreflight?.ok
+        && (!this.javinfoImportRequiresDirectConfirm || this.javinfoImportDirectConfirm)
+        && !this.javinfoImportUploading
+        && !this.isJavInfoImportActive(this.javinfoImportJob)
+      )
+    },
+    javinfoImportRequiresDirectConfirm() {
+      return Boolean(
+        this.javinfoImportPreflight?.ok
+        && this.javinfoImportPreflight?.checks?.database?.can_create_database === false
+      )
+    },
+    javinfoImportLogTail() {
+      return (this.javinfoImportJob?.logs || []).slice(-12).join('\n')
+    },
+    javinfoImportProgress() {
+      const job = this.javinfoImportJob || {}
+      if (job.status === 'completed') return 100
+      if (this.javinfoImportUploading) return Math.max(0, Math.min(100, Math.round(this.javinfoImportUploadProgress)))
+      const total = Number(job.file_size || this.javinfoImportFile?.size || 0)
+      const uploaded = Number(job.uploaded_bytes || 0)
+      if (total > 0) return Math.max(0, Math.min(100, Math.round(uploaded * 100 / total)))
+      if (this.isJavInfoImportActive(job)) return 10
+      return 0
+    },
     avatarSizeHint() {
       return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
     },
@@ -871,6 +1047,10 @@ export default {
     await this.loadConfig()
     this.loadBubbleCfg()
     this.loadSearchPrefs()
+    await this.listJavInfoImportJobs()
+  },
+  unmounted() {
+    this.stopJavInfoImportPolling()
   },
   methods: {
     async loadConfig() {
@@ -893,6 +1073,7 @@ export default {
             }
           }
         }
+        this.mergeJavInfoConfig(data.javinfo || {})
         this.mergeAiConfig(data.ai || {})
 
         this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
@@ -935,6 +1116,17 @@ export default {
       }
       for (const key of ['openai_compatible', 'gemini', 'ollama']) {
         this.config.ai[key] = { ...(base[key] || {}), ...((remote && remote[key]) || {}) }
+      }
+    },
+    mergeJavInfoConfig(remote = {}) {
+      const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG.javinfo))
+      this.config.javinfo = {
+        ...base,
+        ...(remote || {}),
+        import_db: {
+          ...(base.import_db || {}),
+          ...((remote && remote.import_db) || {}),
+        },
       }
     },
     async saveInventoryCron() {
@@ -1027,6 +1219,146 @@ export default {
       } finally {
         this.loadingAIModels = false
       }
+    },
+    setJavInfoImportFile(file) {
+      this.javinfoImportFile = file
+      this.javinfoImportPreflight = null
+      this.javinfoImportDirectConfirm = false
+      this.javinfoImportUploadProgress = 0
+      this.javinfoImportJob = null
+    },
+    onJavInfoImportFileChange(event) {
+      this.setJavInfoImportFile(event?.target?.files?.[0] || null)
+    },
+    onJavInfoImportFileDrop(event) {
+      this.setJavInfoImportFile(event?.dataTransfer?.files?.[0] || null)
+    },
+    async preflightJavInfoImport() {
+      if (!this.canSaveConfig) {
+        this.$message.error('配置未加载成功，已阻止预检')
+        return
+      }
+      this.javinfoImportPreflighting = true
+      this.javinfoImportPreflight = null
+      this.javinfoImportDirectConfirm = false
+      try {
+        const resp = await api.preflightJavInfoImport(
+          this.config.javinfo.import_db,
+          this.javinfoImportFile?.size || 0,
+        )
+        this.javinfoImportPreflight = resp.data
+        if (resp.data?.ok) {
+          this.$message.success('JavInfo 数据库预检通过')
+        } else {
+          this.$message.warning('JavInfo 数据库预检未通过')
+        }
+      } catch (e) {
+        this.javinfoImportPreflight = { ok: false, error: e.response?.data?.detail || e.message }
+      } finally {
+        this.javinfoImportPreflighting = false
+      }
+    },
+    async startJavInfoImport() {
+      if (!this.javinfoImportCanStart) return
+      this.javinfoImportUploading = true
+      this.javinfoImportUploadProgress = 0
+      try {
+        const createResp = await api.createJavInfoImportJob({
+          filename: this.javinfoImportFile.name,
+          file_size: this.javinfoImportFile.size,
+          import_db: this.config.javinfo.import_db,
+          confirm_replace: this.javinfoImportConfirm,
+        })
+        this.javinfoImportJob = createResp.data
+        const uploadResp = await api.uploadJavInfoImportDump(
+          createResp.data.id,
+          this.javinfoImportFile,
+          (event) => {
+            if (event.total) {
+              this.javinfoImportUploadProgress = Math.round(event.loaded * 100 / event.total)
+            }
+          },
+        )
+        this.javinfoImportJob = uploadResp.data
+        this.startJavInfoImportPolling(createResp.data.id)
+        await this.listJavInfoImportJobs()
+        this.$message.success('Dump 已上传，开始恢复数据库')
+      } catch (e) {
+        const message = e.response?.data?.detail || e.message || '导入启动失败'
+        this.$message.error(message)
+        if (this.javinfoImportJob) {
+          this.javinfoImportJob = { ...this.javinfoImportJob, status: 'failed', error: message }
+        }
+      } finally {
+        this.javinfoImportUploading = false
+      }
+    },
+    startJavInfoImportPolling(jobId) {
+      this.stopJavInfoImportPolling()
+      this.javinfoImportPollTimer = setInterval(async () => {
+        try {
+          const resp = await api.getJavInfoImportJob(jobId)
+          this.javinfoImportJob = resp.data
+          if (!this.isJavInfoImportActive(resp.data)) {
+            this.stopJavInfoImportPolling()
+            await this.listJavInfoImportJobs()
+          }
+        } catch (e) {
+          this.stopJavInfoImportPolling()
+        }
+      }, 2000)
+    },
+    stopJavInfoImportPolling() {
+      if (this.javinfoImportPollTimer) {
+        clearInterval(this.javinfoImportPollTimer)
+        this.javinfoImportPollTimer = null
+      }
+    },
+    async listJavInfoImportJobs() {
+      try {
+        const resp = await api.listJavInfoImportJobs(5)
+        this.javinfoImportJobs = resp.data?.data || []
+      } catch (e) {
+        this.javinfoImportJobs = []
+      }
+    },
+    async cancelJavInfoImport() {
+      if (!this.javinfoImportJob?.id) return
+      try {
+        const resp = await api.cancelJavInfoImportJob(this.javinfoImportJob.id)
+        this.javinfoImportJob = resp.data
+        this.stopJavInfoImportPolling()
+        await this.listJavInfoImportJobs()
+      } catch (e) {
+        this.$message.error(e.response?.data?.detail || '取消失败')
+      }
+    },
+    isJavInfoImportActive(job) {
+      return ['pending', 'uploading', 'uploaded', 'restoring', 'stopping', 'swapping', 'restarting'].includes(job?.status)
+    },
+    javinfoImportStatusLabel(job) {
+      const status = job?.status || 'pending'
+      const stage = job?.stage || status
+      const labels = {
+        pending: '等待上传',
+        uploading: '上传中',
+        uploaded: '已上传',
+        restoring: '恢复中',
+        stopping: '停止 JavInfoApi',
+        swapping: '切换数据库',
+        restarting: '重启 JavInfoApi',
+        completed: '已完成',
+        failed: '失败',
+        canceled: '已取消',
+      }
+      return labels[stage] || labels[status] || status
+    },
+    formatBytes(value) {
+      const size = Number(value || 0)
+      if (size >= 1024 ** 3) return `${(size / 1024 ** 3).toFixed(2)} GB`
+      if (size >= 1024 ** 2) return `${(size / 1024 ** 2).toFixed(1)} MB`
+      if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`
+      return `${size} B`
     },
     loadBubbleCfg() {
       try {
@@ -1352,7 +1684,7 @@ export default {
   font-size: 13px;
 }
 .ai-test-msg.error {
-  color: var(--danger);
+  color: var(--badge-error-text);
 }
 .notification-grid {
   display: grid;
@@ -1656,6 +1988,138 @@ export default {
 .tuning-copy strong {
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.javinfo-import-panel {
+  gap: 14px;
+}
+
+.import-warning {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  border-radius: 12px;
+  background: rgba(244, 63, 94, 0.08);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.import-warning strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.import-warning-direct {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.compact-number {
+  max-width: 220px;
+}
+
+.import-file-drop {
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
+}
+
+.file-input {
+  padding-top: 10px;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.import-status {
+  color: var(--badge-success-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.import-status.error,
+.import-error {
+  color: var(--badge-error-text);
+}
+
+.import-confirm {
+  align-items: flex-start;
+}
+
+.import-progress {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--material-glass-subtle);
+}
+
+.import-progress-head,
+.import-job-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.import-progress-head strong,
+.import-job-row strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.import-log-tail {
+  max-height: 180px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-control);
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.import-job-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.import-job-list-title {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.import-job-row {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+
+.import-job-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {

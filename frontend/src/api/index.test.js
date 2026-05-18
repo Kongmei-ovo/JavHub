@@ -79,6 +79,43 @@ test('AI helper APIs send provider-aware requests', async (t) => {
   assert.deepEqual(calls[1].data && JSON.parse(calls[1].data), { provider: 'gemini', ai: draft })
 })
 
+test('JavInfo import APIs use preflight, job creation, raw upload, status, and cancel endpoints', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true, id: 7, data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?javinfo-import-${Date.now()}`)
+  const importDb = { host: 'localhost', database: 'r18' }
+  const file = { name: 'r18.dump', size: 6, marker: 'raw-file' }
+  const progress = () => {}
+
+  await api.preflightJavInfoImport(importDb, 6)
+  await api.createJavInfoImportJob({ filename: file.name, file_size: file.size, import_db: importDb, confirm_replace: true })
+  await api.uploadJavInfoImportDump(7, file, progress)
+  await api.getJavInfoImportJob(7)
+  await api.listJavInfoImportJobs(5)
+  await api.cancelJavInfoImportJob(7)
+
+  assert.equal(calls[0].url, '/v1/javinfo/imports/preflight')
+  assert.deepEqual(JSON.parse(calls[0].data), { import_db: importDb, expected_size: 6 })
+  assert.equal(calls[1].url, '/v1/javinfo/imports/jobs')
+  assert.equal(calls[2].url, '/v1/javinfo/imports/jobs/7/upload')
+  assert.equal(calls[2].method, 'put')
+  assert.deepEqual(calls[2].data, file)
+  assert.equal(calls[2].headers['Content-Type'], 'application/octet-stream')
+  assert.equal(calls[2].headers['X-Filename'], 'r18.dump')
+  assert.equal(calls[2].headers['X-File-Size'], '6')
+  assert.equal(calls[2].onUploadProgress, progress)
+  assert.equal(calls[3].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[4].url, '/v1/javinfo/imports/jobs')
+  assert.deepEqual(calls[4].params, { limit: 5 })
+  assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/cancel')
+})
+
 test('getActressVideos forwards include_supplement and extra params', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
