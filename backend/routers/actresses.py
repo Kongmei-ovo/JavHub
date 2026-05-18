@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
 from fastapi.params import Query as QueryParam
 from typing import Any
 from modules.info_client import get_info_client
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
+
+
+class BatchActressVideosRequest(BaseModel):
+    ids: list[int] = Field(default_factory=list)
+    page: int = Field(1, ge=1)
+    page_size: int = Field(20, ge=1, le=100)
 
 @router.get("")
 async def list_actresses(
@@ -80,6 +87,17 @@ async def get_actress_videos(
     )
     if result.get("data"):
         result["data"] = [await _apply_translation(item, allow_network=False) for item in result["data"]]
+    return result
+
+
+@router.post("/batch_videos")
+async def batch_get_actress_videos(req: BatchActressVideosRequest) -> dict[str, Any]:
+    client = get_info_client()
+    ids = req.ids[:20]
+    result = await client.batch_get_actress_videos(ids, page=req.page, page_size=req.page_size)
+    for info in result.values():
+        if isinstance(info, dict) and isinstance(info.get("videos"), list):
+            info["videos"] = [await _apply_translation(item, allow_network=False) for item in info["videos"]]
     return result
 
 async def _apply_translation(data: dict, *, allow_network: bool = True) -> dict:

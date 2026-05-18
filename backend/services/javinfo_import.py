@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import time
+import zlib
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -147,6 +148,15 @@ def build_psql_command(settings: dict[str, Any], database: str, file_path: Path 
     return command
 
 
+def stream_dump_format_for_filename(filename: str) -> DumpFormat | None:
+    name = str(filename or "").lower()
+    if name.endswith(".sql.gz"):
+        return DumpFormat("plain_sql_gzip", compressed=True)
+    if name.endswith(".sql"):
+        return DumpFormat("plain_sql")
+    return None
+
+
 def _reject_pg_dumpall_sample(sample: str) -> None:
     if any(pattern.search(sample) for pattern in PG_DUMPALL_PATTERNS):
         raise ValueError("pg_dumpall style dumps with CREATE DATABASE or \\connect are not supported")
@@ -207,6 +217,62 @@ async def _discard_task_result(task: asyncio.Task) -> None:
         _ = await task
 
 
+class UploadStreamInspector:
+    def __init__(self, chunks: AsyncIterator[bytes], fmt: DumpFormat, job: dict[str, Any]):
+        self._chunks = chunks
+        self._fmt = fmt
+        self._job = job
+        self.digest = hashlib.sha256()
+        self.uploaded = 0
+        self._sample = bytearray()
+        self._sample_checked = False
+        self._decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS) if fmt.kind == "plain_sql_gzip" else None
+
+    def _sample_chunk(self, chunk: bytes) -> None:
+        if self._sample_checked:
+            return
+        if self._decompressor is not None:
+            sample_bytes = self._decompressor.decompress(chunk, max(0, SQL_SAMPLE_BYTES - len(self._sample)))
+        else:
+            sample_bytes = chunk
+        if sample_bytes:
+            remaining = SQL_SAMPLE_BYTES - len(self._sample)
+            self._sample.extend(sample_bytes[:remaining])
+        if len(self._sample) >= SQL_SAMPLE_BYTES or self._looks_checkable():
+            _reject_pg_dumpall_sample(self._sample.decode("utf-8", errors="ignore"))
+            self._sample_checked = True
+
+    def _looks_checkable(self) -> bool:
+        sample = bytes(self._sample).lstrip()
+        return len(self._sample) >= 4096 or sample.startswith((b"--", b"SET", b"CRE", b"\\", b"DO "))
+
+    async def iter(self) -> AsyncIterator[bytes]:
+        async for chunk in self._chunks:
+            if self._job.get("cancel_requested"):
+                self._job["status"] = "canceled"
+                self._job["stage"] = "canceled"
+                raise asyncio.CancelledError()
+            if not chunk:
+                continue
+            self._sample_chunk(chunk)
+            self.digest.update(chunk)
+            self.uploaded += len(chunk)
+            self._job["uploaded_bytes"] = self.uploaded
+            self._job["updated_at"] = time.time()
+            yield chunk
+        if not self._sample_checked:
+            if self._decompressor is not None:
+                flushed = self._decompressor.flush()
+                if flushed:
+                    remaining = SQL_SAMPLE_BYTES - len(self._sample)
+                    self._sample.extend(flushed[:remaining])
+            _reject_pg_dumpall_sample(self._sample.decode("utf-8", errors="ignore"))
+            self._sample_checked = True
+        expected = int(self._job.get("file_size") or 0)
+        if expected and self.uploaded != expected:
+            raise ValueError(f"incomplete upload: expected {expected} bytes, got {self.uploaded}")
+
+
 async def _collect_process(
     process: asyncio.subprocess.Process,
     args: list[str],
@@ -248,11 +314,22 @@ class AsyncCommandRunner:
         *,
         env: dict[str, str] | None = None,
         stdin_path: Path | None = None,
+        stdin_chunks: AsyncIterator[bytes] | None = None,
         gzip_stdin: bool = False,
         timeout: int | None = None,
         log: Callable[[str], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
     ) -> CommandResult:
+        if stdin_chunks is not None:
+            return await self._run_with_stream_stdin(
+                args,
+                env=env,
+                stdin_chunks=stdin_chunks,
+                gzip_stdin=gzip_stdin,
+                timeout=timeout,
+                log=log,
+                cancel_check=cancel_check,
+            )
         if stdin_path is not None and gzip_stdin:
             return await self._run_with_gzip_stdin(
                 args,
@@ -330,6 +407,60 @@ class AsyncCommandRunner:
             raise
         if output and log:
             for line in output.splitlines()[-50:]:
+                log(line)
+        return result
+
+    async def _run_with_stream_stdin(
+        self,
+        args: list[str],
+        *,
+        env: dict[str, str] | None,
+        stdin_chunks: AsyncIterator[bytes],
+        gzip_stdin: bool,
+        timeout: int | None,
+        log: Callable[[str], None] | None,
+        cancel_check: Callable[[], bool] | None,
+    ) -> CommandResult:
+        process = await asyncio.create_subprocess_exec(
+            *args,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            env=env,
+        )
+
+        async def pump() -> None:
+            assert process.stdin is not None
+            decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS) if gzip_stdin else None
+            try:
+                async for chunk in stdin_chunks:
+                    if cancel_check and cancel_check():
+                        raise asyncio.CancelledError()
+                    payload = decompressor.decompress(chunk) if decompressor is not None else chunk
+                    if payload:
+                        process.stdin.write(payload)
+                        await process.stdin.drain()
+                if decompressor is not None:
+                    payload = decompressor.flush()
+                    if payload:
+                        process.stdin.write(payload)
+                        await process.stdin.drain()
+            finally:
+                process.stdin.close()
+                await process.stdin.wait_closed()
+
+        pump_task = asyncio.create_task(pump())
+        try:
+            result = await _collect_process(process, args, timeout=timeout, cancel_check=cancel_check)
+            await pump_task
+        except BaseException:
+            if not pump_task.done():
+                pump_task.cancel()
+            await _discard_task_result(pump_task)
+            await _terminate_process(process)
+            raise
+        if result.output and log:
+            for line in result.output.splitlines()[-50:]:
                 log(line)
         return result
 
@@ -585,6 +716,38 @@ class JavInfoImportManager:
                 job["updated_at"] = time.time()
             return self.public_job(job)
 
+    async def restore_upload_stream(self, job_id: int, chunks: AsyncIterator[bytes]) -> dict[str, Any]:
+        async with self._lock:
+            job = self._require_job(job_id)
+            if job.get("status") not in {"pending", "uploading"}:
+                raise ValueError("job is not accepting uploads")
+            fmt = stream_dump_format_for_filename(job.get("filename", ""))
+            if fmt is None:
+                raise ValueError("stream restore only supports .sql and .sql.gz dumps")
+            inspector = UploadStreamInspector(chunks, fmt, job)
+            job["dump_format"] = fmt.kind
+            job["status"] = "uploading"
+            job["stage"] = "uploading"
+            job["updated_at"] = time.time()
+            try:
+                await self._restore_stream_job(job, fmt, inspector)
+                job["sha256"] = inspector.digest.hexdigest()
+                job["uploaded_bytes"] = inspector.uploaded
+                job["status"] = "completed"
+                job["stage"] = "completed"
+                job["updated_at"] = time.time()
+            except asyncio.CancelledError:
+                job["status"] = "canceled"
+                job["stage"] = "canceled"
+                job["updated_at"] = time.time()
+            except Exception as exc:
+                job["status"] = "failed"
+                job["stage"] = "failed"
+                job["error"] = str(exc)
+                job["updated_at"] = time.time()
+                raise
+            return self.public_job(job)
+
     async def cancel_job(self, job_id: int) -> dict[str, Any]:
         job = self._require_job(job_id)
         job["cancel_requested"] = True
@@ -618,6 +781,73 @@ class JavInfoImportManager:
             return
         job.setdefault("logs", []).append(str(message)[-2000:])
         job["updated_at"] = time.time()
+
+    async def _restore_stream_job(
+        self,
+        job: dict[str, Any],
+        fmt: DumpFormat,
+        inspector: UploadStreamInspector,
+    ) -> None:
+        settings = job["_settings"]
+        target_db = settings["database"]
+        staging_db = f"{target_db}_import_{job['id']}"
+        can_stage = await self._can_create_database(settings)
+        service_stopped = False
+
+        try:
+            if can_stage:
+                self._raise_if_canceled(job)
+                job["stage"] = "restoring"
+                job["status"] = "restoring"
+                await self._sql(job, settings, settings["maintenance_database"], f"DROP DATABASE IF EXISTS {_pg_ident(staging_db)}")
+                await self._sql(job, settings, settings["maintenance_database"], f"CREATE DATABASE {_pg_ident(staging_db)}")
+                await self._restore_stream_to_database(job, fmt, inspector, staging_db)
+
+                self._raise_if_canceled(job)
+                job["stage"] = "stopping"
+                await self._service("stop", job)
+                service_stopped = True
+                job["stage"] = "swapping"
+                backup_db = f"{target_db}_before_import_{time.strftime('%Y%m%d%H%M%S')}"
+                target_exists = await self._database_exists(settings, target_db)
+                if target_exists:
+                    await self._sql(job, settings, settings["maintenance_database"], _terminate_db_sql(target_db))
+                    await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(target_db)} RENAME TO {_pg_ident(backup_db)}")
+                else:
+                    self._log(job, f"target database {target_db} does not exist; importing without previous database backup")
+                await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(staging_db)} RENAME TO {_pg_ident(target_db)}")
+                if target_exists:
+                    await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
+                job["stage"] = "restarting"
+                await self._service("restart", job)
+            else:
+                self._log(job, "database user cannot create databases; restoring directly into target database")
+                job["stage"] = "stopping"
+                await self._service("stop", job)
+                service_stopped = True
+                self._raise_if_canceled(job)
+                job["stage"] = "restoring"
+                job["status"] = "restoring"
+                if not await self._database_exists(settings, target_db):
+                    raise JavInfoImportError(
+                        f"target database {target_db} does not exist and the configured user cannot create databases"
+                    )
+                await self._reset_target_database(job, settings, target_db)
+                await self._restore_stream_to_database(job, fmt, inspector, target_db)
+                job["stage"] = "restarting"
+                await self._service("restart", job)
+        except BaseException:
+            if service_stopped:
+                job["stage"] = "restarting"
+                try:
+                    await self._service("restart", job)
+                    self._log(job, "javinfo service restarted after interrupted import")
+                except Exception as restart_exc:
+                    self._log(job, f"failed to restart javinfo after interrupted import: {restart_exc}")
+            raise
+        job["stage"] = "migrating"
+        job["status"] = "migrating"
+        await self._run_post_import_migrations(job)
 
     async def _restore_uploaded_job(self, job: dict[str, Any]) -> None:
         settings = job["_settings"]
@@ -719,6 +949,29 @@ class JavInfoImportManager:
             raise ValueError(f"unsupported dump format: {fmt.kind}")
         if result.returncode != 0:
             raise JavInfoImportError(result.output[-2000:] or f"{command[0]} failed")
+
+    async def _restore_stream_to_database(
+        self,
+        job: dict[str, Any],
+        fmt: DumpFormat,
+        inspector: UploadStreamInspector,
+        database: str,
+    ) -> None:
+        settings = job["_settings"]
+        if fmt.kind not in {"plain_sql", "plain_sql_gzip"}:
+            raise ValueError(f"unsupported stream dump format: {fmt.kind}")
+        command = build_psql_command(settings, database, None)
+        result = await self.command_runner.run(
+            command,
+            env=_pg_env(settings),
+            stdin_chunks=inspector.iter(),
+            gzip_stdin=fmt.kind == "plain_sql_gzip",
+            timeout=None,
+            log=lambda line: self._log(job, line),
+            cancel_check=lambda: bool(job.get("cancel_requested")),
+        )
+        if result.returncode != 0:
+            raise JavInfoImportError(result.output[-2000:] or "psql failed")
 
     async def _sql(self, job: dict[str, Any] | None, settings: dict[str, Any], database: str, sql: str) -> None:
         result = await self.command_runner.run(

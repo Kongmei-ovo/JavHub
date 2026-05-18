@@ -148,33 +148,51 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
         set_cache.assert_called_once()
         self.assertEqual(set_cache.call_args.args[0], "miaa784:service:digital")
 
-    async def test_random_search_falls_back_when_upstream_rejects_large_result_set(self):
+    async def test_random_search_delegates_to_javinfo_without_cache(self):
         client = InfoClient()
-        request = httpx.Request("GET", "http://example.test/api/v1/videos/search")
-        limited_response = httpx.Response(
-            400,
-            request=request,
-            json={"error": "random=1 is limited to filtered result sets of 5000 rows or fewer"},
-        )
-        fallback_result = {
+        random_result = {
             "data": [{"dvd_id": "MIAA-784", "jacket_thumb_url": "digital/video/miaa00784/miaa00784ps"}],
-            "total_count": 6000,
+            "page": 1,
+            "page_size": 30,
+            "total_count": 1866871,
+            "total_pages": 62230,
         }
-        get_mock = AsyncMock(side_effect=[
-            httpx.HTTPStatusError("Bad Request", request=request, response=limited_response),
-            fallback_result,
-        ])
 
-        with patch.object(client, "_get", get_mock), \
-             patch("services.cache.get_search", return_value=None), \
-             patch("services.cache.set_search") as set_search:
+        with patch.object(client, "_get", AsyncMock(return_value=random_result)) as get_mock, \
+             patch("services.cache.get_search", return_value=None) as get_cache, \
+             patch("services.cache.set_search") as set_cache:
             data = await client.search_videos(category_id=5023, random="1", page=1, page_size=30)
 
-        self.assertEqual(data["total_count"], 6000)
+        get_mock.assert_awaited_once()
+        params = get_mock.await_args.args[1]
+        self.assertEqual(params["random"], "1")
+        self.assertEqual(params["category_id"], 5023)
+        self.assertEqual(params["page"], 1)
+        self.assertEqual(params["page_size"], 30)
+        get_cache.assert_not_called()
+        set_cache.assert_not_called()
         self.assertEqual(data["data"][0]["content_id"], "MIAA-784")
-        self.assertEqual(get_mock.await_count, 2)
-        self.assertNotIn("random", get_mock.await_args_list[1].args[1])
-        set_search.assert_called_once()
+        self.assertEqual(data["data"][0]["jacket_thumb_url"], "https://pics.dmm.co.jp/digital/video/miaa00784/miaa00784ps.jpg")
+
+    async def test_random_search_does_not_fallback_to_non_random_pages(self):
+        client = InfoClient()
+        request = httpx.Request("GET", "http://example.test/api/v1/videos/search")
+        response = httpx.Response(
+            400,
+            request=request,
+            json={"error": "random=1 requires at least one filter"},
+        )
+        error = httpx.HTTPStatusError("Bad Request", request=request, response=response)
+
+        with patch.object(client, "_get", AsyncMock(side_effect=error)) as get_mock, \
+             patch("services.cache.get_search") as get_cache, \
+             patch("services.cache.set_search") as set_cache:
+            with self.assertRaises(httpx.HTTPStatusError):
+                await client.search_videos(random="1", page=1, page_size=30)
+
+        get_mock.assert_awaited_once()
+        get_cache.assert_not_called()
+        set_cache.assert_not_called()
 
     async def test_run_migrations_uses_admin_endpoint_with_long_timeout(self):
         client = InfoClient()

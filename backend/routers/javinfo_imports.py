@@ -11,6 +11,7 @@ from services.javinfo_import import (
     JavInfoImportConflict,
     JavInfoImportError,
     get_import_manager,
+    stream_dump_format_for_filename,
 )
 
 router = APIRouter(prefix="/api/v1/javinfo/imports", tags=["javinfo-imports"])
@@ -57,6 +58,12 @@ async def upload_import_dump(job_id: int, request: Request) -> dict[str, Any]:
         raise HTTPException(415, "upload must use application/octet-stream")
     manager = get_import_manager()
     try:
+        filename = str(request.headers.get("x-filename") or "")
+        if not filename and hasattr(manager, "get_job"):
+            current = manager.get_job(job_id)
+            filename = str((current or {}).get("filename") or "")
+        if stream_dump_format_for_filename(filename):
+            return await manager.restore_upload_stream(job_id, request.stream())
         job = await manager.save_upload(job_id, request.stream())
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc

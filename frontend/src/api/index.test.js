@@ -177,6 +177,38 @@ test('JavInfo chunk upload resumes from server byte count after a lost chunk res
   assert.equal(calls[4].url, '/v1/javinfo/imports/jobs/7/upload/complete')
 })
 
+test('JavInfo plain sql gzip upload streams in a single request', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    if (config.url === '/v1/javinfo/imports/jobs/7') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
+    }
+    if (config.url === '/v1/javinfo/imports/jobs/7/upload') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, status: 'restoring', uploaded_bytes: 6 } }
+    }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?javinfo-import-stream-${Date.now()}`)
+  const file = new Blob(['abcdef'])
+  file.name = 'r18.sql.gz'
+  const progressEvents = []
+
+  await api.uploadJavInfoImportDump(7, file, (event) => progressEvents.push(event), { chunkSize: 4 })
+
+  assert.equal(calls[0].url, '/v1/javinfo/imports/jobs/7')
+  assert.equal(calls[1].url, '/v1/javinfo/imports/jobs/7/upload')
+  assert.equal(calls[1].method, 'put')
+  assert.equal(calls[1].headers['Content-Type'], 'application/octet-stream')
+  assert.equal(calls[1].headers['X-Filename'], 'r18.sql.gz')
+  assert.equal(calls[1].headers['X-File-Size'], '6')
+  assert.equal(calls.length, 2)
+  assert.deepEqual(progressEvents.at(-1), { loaded: 6, total: 6 })
+})
+
 test('JavInfo upload treats a lost complete response as success when job is already restoring', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []

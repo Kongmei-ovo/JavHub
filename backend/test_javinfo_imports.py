@@ -525,6 +525,125 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(migration_calls, [(job["id"], "migrating")])
         self.assertTrue(any("JavInfoApi migrations completed" in line for line in restored["logs"]))
 
+    async def test_stream_plain_sql_upload_restores_without_persisting_dump_file(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            def __init__(self):
+                self.stdin_payloads = []
+
+            async def run(self, args, **kwargs):
+                if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
+                    return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
+                chunks = kwargs.get("stdin_chunks")
+                if chunks is not None:
+                    payload = b""
+                    async for chunk in chunks:
+                        payload += chunk
+                    self.stdin_payloads.append((args, payload, kwargs.get("gzip_stdin", False)))
+                return CommandResult(returncode=0, output="")
+
+        async def chunks():
+            yield b"CREATE TABLE movies"
+            yield b"(id integer);\n"
+
+        payload = b"CREATE TABLE movies(id integer);\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Runner()
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=runner,
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
+            )
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql",
+                file_size=len(payload),
+                confirm_replace=True,
+            )
+
+            restored = await manager.restore_upload_stream(job["id"], chunks())
+
+        self.assertEqual(restored["status"], "completed")
+        self.assertEqual(restored["uploaded_bytes"], len(payload))
+        self.assertEqual(restored["sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertFalse(Path(restored["file_path"]).exists())
+        self.assertEqual(len(runner.stdin_payloads), 1)
+        command, restored_payload, gzip_stdin = runner.stdin_payloads[0]
+        self.assertEqual(command[0], "psql")
+        self.assertEqual(restored_payload, payload)
+        self.assertFalse(gzip_stdin)
+
+    async def test_stream_gzipped_sql_upload_pipes_compressed_body_to_psql_gzip_stdin(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            def __init__(self):
+                self.stdin_payloads = []
+
+            async def run(self, args, **kwargs):
+                if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
+                    return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
+                chunks = kwargs.get("stdin_chunks")
+                if chunks is not None:
+                    payload = b""
+                    async for chunk in chunks:
+                        payload += chunk
+                    self.stdin_payloads.append((payload, kwargs.get("gzip_stdin", False)))
+                return CommandResult(returncode=0, output="")
+
+        compressed = gzip.compress(b"CREATE TABLE movies(id integer);\n")
+
+        async def chunks():
+            yield compressed[:10]
+            yield compressed[10:]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Runner()
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=runner,
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
+            )
+            job = manager.create_job(
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "r18",
+                    "maintenance_database": "postgres",
+                    "user": "javhub",
+                    "password": "",
+                    "max_parallel_jobs": 2,
+                    "keep_previous_databases": 1,
+                },
+                filename="r18.sql.gz",
+                file_size=len(compressed),
+                confirm_replace=True,
+            )
+
+            restored = await manager.restore_upload_stream(job["id"], chunks())
+
+        self.assertEqual(restored["status"], "completed")
+        self.assertEqual(restored["uploaded_bytes"], len(compressed))
+        self.assertEqual(restored["dump_format"], "plain_sql_gzip")
+        self.assertFalse(Path(restored["file_path"]).exists())
+        self.assertEqual(runner.stdin_payloads, [(compressed, True)])
+
     async def test_migrating_status_blocks_second_import_job(self):
         from services.javinfo_import import JavInfoImportConflict, JavInfoImportManager
 
@@ -892,7 +1011,7 @@ class JavInfoImportRouterTest(unittest.TestCase):
             content=b"abcdef",
             headers={
                 "Content-Type": "application/octet-stream",
-                "X-Filename": "r18.sql",
+                "X-Filename": "r18.dump",
                 "X-File-Size": "6",
             },
         )
@@ -900,6 +1019,35 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(manager.saved, b"abcdef")
         self.assertEqual(response.json()["uploaded_bytes"], 6)
+
+    def test_upload_endpoint_streams_sql_gzip_body_to_restore_manager(self):
+        class Manager:
+            def __init__(self):
+                self.saved = b""
+
+            def get_job(self, job_id):
+                return {"id": job_id, "filename": "r18.sql.gz", "status": "pending"}
+
+            async def restore_upload_stream(self, job_id, chunks):
+                async for chunk in chunks:
+                    self.saved += chunk
+                return {"id": job_id, "status": "completed", "uploaded_bytes": len(self.saved)}
+
+        manager = Manager()
+        client = self._client(manager)
+        response = client.put(
+            "/api/v1/javinfo/imports/jobs/7/upload",
+            content=b"compressed-sql",
+            headers={
+                "Content-Type": "application/octet-stream",
+                "X-Filename": "r18.sql.gz",
+                "X-File-Size": "14",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(manager.saved, b"compressed-sql")
+        self.assertEqual(response.json()["status"], "completed")
 
     def test_chunk_upload_endpoint_passes_offset_headers_to_manager(self):
         class Manager:
