@@ -8,6 +8,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
+async def _noop_post_import_migrator(job):
+    return None
+
+
 class JavInfoImportConfigTest(unittest.TestCase):
     def test_import_db_defaults_follow_local_javinfo_database(self):
         from config import Config
@@ -238,6 +242,7 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 storage_dir=Path(tmp),
                 command_runner=runner,
                 service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
             )
             settings = {
                 "host": "localhost",
@@ -259,6 +264,115 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
         restore_calls = [" ".join(call) for call in runner.calls if call[0] == "pg_restore"]
         self.assertTrue(any("DROP SCHEMA IF EXISTS public CASCADE" in call for call in sql_calls))
         self.assertTrue(restore_calls)
+
+    async def test_restore_runs_post_import_migrations_after_database_import(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            def __init__(self):
+                self.calls = []
+
+            async def run(self, args, **kwargs):
+                self.calls.append(args)
+                if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
+                    return CommandResult(returncode=0, output="f\n")
+                return CommandResult(returncode=0, output="")
+
+        migration_calls = []
+
+        async def run_post_import_migrations(job):
+            migration_calls.append((job["id"], job["stage"]))
+
+        async def chunks():
+            yield b"PGDMP fake custom dump"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = Runner()
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=runner,
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=run_post_import_migrations,
+            )
+            settings = {
+                "host": "localhost",
+                "port": 5432,
+                "database": "r18",
+                "maintenance_database": "postgres",
+                "user": "kongmei",
+                "password": "",
+                "max_parallel_jobs": 2,
+                "keep_previous_databases": 1,
+            }
+            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            await manager.save_upload(job["id"], chunks())
+
+            restored = await manager.restore_job(job["id"])
+
+        self.assertEqual(restored["status"], "completed")
+        self.assertEqual(migration_calls, [(job["id"], "migrating")])
+        self.assertTrue(any("JavInfoApi migrations completed" in line for line in restored["logs"]))
+
+    async def test_migrating_status_blocks_second_import_job(self):
+        from services.javinfo_import import JavInfoImportConflict, JavInfoImportManager
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(storage_dir=Path(tmp))
+            settings = {
+                "host": "localhost",
+                "port": 5432,
+                "database": "r18",
+                "maintenance_database": "postgres",
+                "user": "kongmei",
+                "password": "",
+                "max_parallel_jobs": 2,
+                "keep_previous_databases": 1,
+            }
+            first = manager.create_job(settings, filename="first.dump", file_size=10, confirm_replace=True)
+            manager._jobs[first["id"]]["status"] = "migrating"
+
+            with self.assertRaises(JavInfoImportConflict):
+                manager.create_job(settings, filename="second.dump", file_size=10, confirm_replace=True)
+
+    async def test_restore_fails_when_post_import_migrations_fail(self):
+        from services.javinfo_import import CommandResult, JavInfoImportError, JavInfoImportManager
+
+        class Runner:
+            async def run(self, args, **kwargs):
+                if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
+                    return CommandResult(returncode=0, output="f\n")
+                return CommandResult(returncode=0, output="")
+
+        async def fail_migrations(job):
+            raise JavInfoImportError("migration failed")
+
+        async def chunks():
+            yield b"PGDMP fake custom dump"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=Runner(),
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=fail_migrations,
+            )
+            settings = {
+                "host": "localhost",
+                "port": 5432,
+                "database": "r18",
+                "maintenance_database": "postgres",
+                "user": "kongmei",
+                "password": "",
+                "max_parallel_jobs": 2,
+                "keep_previous_databases": 1,
+            }
+            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            await manager.save_upload(job["id"], chunks())
+
+            restored = await manager.restore_job(job["id"])
+
+        self.assertEqual(restored["status"], "failed")
+        self.assertIn("migration failed", restored["error"])
 
     async def test_restore_failure_after_stopping_service_restarts_javinfo(self):
         from services.javinfo_import import CommandResult, JavInfoImportManager
@@ -370,6 +484,7 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 storage_dir=Path(tmp),
                 command_runner=runner,
                 service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
             )
             settings = {
                 "host": "localhost",
@@ -456,6 +571,7 @@ class JavInfoImportRouterTest(unittest.TestCase):
 
             async def restore_job(self, job_id):
                 self.restore_job_id = job_id
+                return {"id": job_id, "status": "completed"}
 
         manager = Manager()
         client = self._client(manager)

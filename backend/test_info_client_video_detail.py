@@ -176,6 +176,15 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("random", get_mock.await_args_list[1].args[1])
         set_search.assert_called_once()
 
+    async def test_run_migrations_uses_admin_endpoint_with_long_timeout(self):
+        client = InfoClient()
+
+        with patch.object(client, "proxy_post_long", AsyncMock(return_value={"ok": True})) as post_mock:
+            result = await client.run_migrations()
+
+        self.assertEqual(result, {"ok": True})
+        post_mock.assert_awaited_once_with("/api/v1/admin/migrations", {"dry_run": False})
+
 
 if __name__ == "__main__":
     unittest.main()

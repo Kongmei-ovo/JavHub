@@ -10,12 +10,12 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable
+from typing import Any, AsyncIterator, Awaitable, Callable
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_STORAGE_DIR = ROOT_DIR / "data" / "javinfo_imports"
-ACTIVE_STATUSES = {"pending", "uploading", "uploaded", "restoring", "stopping", "swapping", "restarting"}
+ACTIVE_STATUSES = {"pending", "uploading", "uploaded", "restoring", "stopping", "swapping", "restarting", "migrating"}
 FINAL_STATUSES = {"completed", "failed", "canceled"}
 PG_DUMPALL_PATTERNS = (
     re.compile(r"(?im)^\s*CREATE\s+DATABASE\b"),
@@ -337,10 +337,12 @@ class JavInfoImportManager:
         storage_dir: Path = DEFAULT_STORAGE_DIR,
         command_runner: AsyncCommandRunner | None = None,
         service_helper: Path | None = None,
+        post_import_migrator: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     ):
         self.storage_dir = Path(storage_dir)
         self.command_runner = command_runner or AsyncCommandRunner()
         self.service_helper = service_helper if service_helper is not None else ROOT_DIR / "scripts" / "services.sh"
+        self.post_import_migrator = post_import_migrator
         self._jobs: dict[int, dict[str, Any]] = {}
         self._next_id = 1
         self._lock = asyncio.Lock()
@@ -574,6 +576,9 @@ class JavInfoImportManager:
                 except Exception as restart_exc:
                     self._log(job, f"failed to restart javinfo after interrupted import: {restart_exc}")
             raise
+        job["stage"] = "migrating"
+        job["status"] = "migrating"
+        await self._run_post_import_migrations(job)
 
     async def _restore_to_database(self, job: dict[str, Any], fmt: DumpFormat, database: str) -> None:
         settings = job["_settings"]
@@ -662,6 +667,32 @@ class JavInfoImportManager:
         result = await self.command_runner.run([str(self.service_helper), action, "javinfo"], timeout=120)
         if result.returncode != 0:
             raise JavInfoImportError(result.output[-2000:] or f"failed to {action} javinfo")
+
+    async def _run_post_import_migrations(self, job: dict[str, Any]) -> None:
+        self._raise_if_canceled(job)
+        self._log(job, "running JavInfoApi migrations")
+        if self.post_import_migrator is not None:
+            await self.post_import_migrator(job)
+            self._log(job, "JavInfoApi migrations completed")
+            return
+
+        from modules.info_client import get_info_client
+
+        client = get_info_client()
+        last_error: Exception | None = None
+        for attempt in range(1, 11):
+            self._raise_if_canceled(job)
+            try:
+                await client.run_migrations()
+                self._log(job, "JavInfoApi migrations completed")
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt == 10:
+                    break
+                self._log(job, f"JavInfoApi migration attempt {attempt} failed; retrying")
+                await asyncio.sleep(min(attempt, 5))
+        raise JavInfoImportError(f"JavInfoApi migrations failed: {last_error}")
 
     async def _cleanup_old_backups(self, settings: dict[str, Any], target_db: str, keep: int) -> None:
         keep = max(0, int(keep or 0))

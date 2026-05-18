@@ -1334,7 +1334,7 @@ export default {
       }
     },
     isJavInfoImportActive(job) {
-      return ['pending', 'uploading', 'uploaded', 'restoring', 'stopping', 'swapping', 'restarting'].includes(job?.status)
+      return ['pending', 'uploading', 'uploaded', 'restoring', 'stopping', 'swapping', 'restarting', 'migrating'].includes(job?.status)
     },
     javinfoImportStatusLabel(job) {
       const status = job?.status || 'pending'
@@ -1347,6 +1347,7 @@ export default {
         stopping: '停止 JavInfoApi',
         swapping: '切换数据库',
         restarting: '重启 JavInfoApi',
+        migrating: '更新 JavInfoApi',
         completed: '已完成',
         failed: '失败',
         canceled: '已取消',

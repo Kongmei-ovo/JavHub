@@ -10,9 +10,9 @@ name: javhub
 # first, for example "r18", then update DB_HOST/DB_USER/DB_PASSWORD and
 # config.yaml javinfo.import_db.host/user/password/database to match it.
 #
-# JavInfoApi migrations are intentionally not part of the default startup path.
-# Run them after the base database tables exist:
-#   docker compose --profile migrate run --rm javinfoapi-migrate
+# JavHub automatically asks JavInfoApi to apply its auxiliary migrations after
+# a successful database import from the UI. There is no separate migration
+# container in the normal deployment path.
 
 x-postgres-env: &postgres-env
   POSTGRES_DB: ${POSTGRES_DB:-r18}
@@ -47,20 +47,6 @@ services:
       timeout: 5s
       retries: 5
 
-  javinfoapi-migrate:
-    profiles: ["migrate"]
-    image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
-    # For local development with a sibling checkout, replace image with:
-    # build:
-    #   context: ../JavInfoApi
-    command: migrate
-    restart: "no"
-    environment:
-      <<: *javinfoapi-env
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   javinfoapi:
     image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
     # For local development with a sibling checkout, replace image with:
@@ -89,6 +75,7 @@ services:
     restart: unless-stopped
     environment:
       JAVINFO_API_URL: http://javinfoapi:18080
+      SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
       OPENLIST_USERNAME: ${OPENLIST_USERNAME:-}
       OPENLIST_PASSWORD: ${OPENLIST_PASSWORD:-}
       EMBY_API_URL: ${EMBY_API_URL:-}

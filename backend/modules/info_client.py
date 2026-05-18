@@ -204,6 +204,24 @@ class InfoClient:
         response.raise_for_status()
         return response.json()
 
+    async def proxy_post_long(
+        self,
+        path: str,
+        json_body: dict | None = None,
+        params: dict | None = None,
+        timeout: float = 1800,
+    ) -> dict:
+        client = await self._get_client()
+        response = await client.post(
+            f"{self.api_url}{path}",
+            json=json_body,
+            params=params,
+            headers=self._auth_headers(),
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def proxy_patch(self, path: str, json_body: dict | None = None) -> dict:
         """代理 PATCH 请求"""
         client = await self._get_client()
@@ -218,6 +236,9 @@ class InfoClient:
     async def push_proxy_config(self, proxy_url: str) -> dict:
         """推送代理配置到 JavInfoApi"""
         return await self.proxy_patch("/api/v1/config", {"proxy_url": proxy_url})
+
+    async def run_migrations(self, dry_run: bool = False) -> dict:
+        return await self.proxy_post_long("/api/v1/admin/migrations", {"dry_run": dry_run})
 
     # === 视频相关 ===
 

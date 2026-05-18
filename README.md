@@ -28,8 +28,8 @@ connectors, and optional notifications.
 Current beta release:
 
 ```bash
-ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.1
-ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.1
+ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.2
+ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.2
 ```
 
 JavHub is intentionally published as a single image. The container builds the
@@ -71,8 +71,8 @@ javinfo:
 Create a local `.env` file if you want to pin image tags or change passwords:
 
 ```bash
-JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.1
-JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.1
+JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.2
+JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.2
 JAVHUB_PORT=3000
 JAVINFOAPI_PORT=18080
 
@@ -97,13 +97,11 @@ docker compose up -d --build
 docker compose ps
 ```
 
-JavInfoApi migrations are available as an opt-in compose profile. Run them only
-after the base database tables already exist:
-
-```bash
-docker compose --profile migrate run --rm javinfoapi-migrate --dry-run
-docker compose --profile migrate run --rm javinfoapi-migrate
-```
+After the stack is healthy, open the JavHub UI and import the base database
+dump from the JavInfo import screen. When the import finishes, JavHub
+automatically asks JavInfoApi to apply its auxiliary tables and indexes. There
+is no separate migration container or manual migrate step in the normal compose
+deployment path.
 
 Open JavHub at `http://localhost:3000`.
 
