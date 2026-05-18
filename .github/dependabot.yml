@@ -9,6 +9,13 @@ updates:
       timezone: Asia/Shanghai
     groups:
       backend-python-minor-patch:
+        patterns:
+          - beautifulsoup4
+          - lxml
+          - apscheduler
+          - pyyaml
+          - psycopg2-binary
+          - python-multipart
         update-types:
           - minor
           - patch
