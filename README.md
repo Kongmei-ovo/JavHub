@@ -42,7 +42,7 @@ FastAPI backend running inside the same container.
 starts:
 
 - PostgreSQL for JavInfoApi and JavHub import features
-- JavInfoApi, including a one-shot migration service
+- JavInfoApi
 - JavHub, exposed as the web entrypoint
 
 ```bash
@@ -97,6 +97,14 @@ docker compose up -d --build
 docker compose ps
 ```
 
+JavInfoApi migrations are available as an opt-in compose profile. Run them only
+after the base database tables already exist:
+
+```bash
+docker compose --profile migrate run --rm javinfoapi-migrate --dry-run
+docker compose --profile migrate run --rm javinfoapi-migrate
+```
+
 Open JavHub at `http://localhost:3000`.
 
 Health checks:
@@ -113,8 +121,8 @@ JavHub's import workflow writes to the same database. The default database name
 is `r18`.
 
 If you already have PostgreSQL, you may comment out the `postgres` service and
-the `depends_on: postgres` block in `javinfoapi-migrate`. You must create the
-same database name before startup:
+the `depends_on: postgres` blocks. You must create the same database name before
+startup:
 
 ```bash
 createdb -h <db-host> -U <db-user> r18

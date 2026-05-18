@@ -9,6 +9,10 @@ name: javhub
 # remove the postgres dependencies below. Create the same database name there
 # first, for example "r18", then update DB_HOST/DB_USER/DB_PASSWORD and
 # config.yaml javinfo.import_db.host/user/password/database to match it.
+#
+# JavInfoApi migrations are intentionally not part of the default startup path.
+# Run them after the base database tables exist:
+#   docker compose --profile migrate run --rm javinfoapi-migrate
 
 x-postgres-env: &postgres-env
   POSTGRES_DB: ${POSTGRES_DB:-r18}
@@ -44,6 +48,7 @@ services:
       retries: 5
 
   javinfoapi-migrate:
+    profiles: ["migrate"]
     image: ${JAVINFOAPI_IMAGE:-ghcr.io/kongmei-ovo/javinfoapi:latest}
     # For local development with a sibling checkout, replace image with:
     # build:
@@ -67,8 +72,8 @@ services:
     ports:
       - "${JAVINFOAPI_PORT:-18080}:18080"
     depends_on:
-      javinfoapi-migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:18080/health"]
       interval: 30s
