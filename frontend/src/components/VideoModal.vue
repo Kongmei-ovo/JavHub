@@ -568,9 +568,14 @@ export default {
 
 <style scoped>
 .modal-overlay {
+  --modal-sheet-bg: rgba(24, 24, 27, 0.58);
+  --modal-panel-bg: rgba(255, 255, 255, 0.08);
+  --modal-panel-border: rgba(255, 255, 255, 0.18);
+  --modal-gallery-bg: rgba(0, 0, 0, 0.18);
+  --modal-overlay-bg: rgba(0, 0, 0, 0.14);
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--modal-overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -579,18 +584,26 @@ export default {
   transition: all 0.4s var(--ease-pro);
 }
 
+:root[data-theme="dark"] .modal-overlay {
+  --modal-sheet-bg: rgba(18, 18, 20, 0.70);
+  --modal-panel-bg: rgba(255, 255, 255, 0.06);
+  --modal-panel-border: rgba(255, 255, 255, 0.14);
+  --modal-gallery-bg: rgba(0, 0, 0, 0.24);
+  --modal-overlay-bg: rgba(0, 0, 0, 0.22);
+}
+
 .modal-container {
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(80px) saturate(240%) brightness(1.2);
-  -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(1.2);
+  background: var(--modal-sheet-bg);
+  backdrop-filter: blur(52px) saturate(170%);
+  -webkit-backdrop-filter: blur(52px) saturate(170%);
   border-radius: var(--radius-pro);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--modal-panel-border);
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 50px 150px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 42px 120px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .modal-close {
@@ -626,7 +639,7 @@ export default {
 
 .modal-gallery {
   width: 100%;
-  background: rgba(0, 0, 0, 0.1); /* 极暗的相框感 */
+  background: var(--modal-gallery-bg);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -651,7 +664,7 @@ export default {
 .favorite-btn:active svg { transform: scale(0.8); }
 .modal-title-block { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 16px; }
 .modal-title { font-size: var(--type-panel-title); color: #ffffff; font-weight: 600; line-height: 1.6; letter-spacing: 0; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-.modal-meta { background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: 1px solid rgba(255, 255, 255, 0.1); }
+.modal-meta { background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: 1px solid var(--modal-panel-border); }
 .modal-meta::before { content: ''; position: absolute; left: 50%; top: 24px; bottom: 24px; width: 1px; background: rgba(255, 255, 255, 0.08); transform: translateX(-50%); }
 .meta-row { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
 .meta-row:last-child { border-bottom: none; }
@@ -676,7 +689,7 @@ export default {
 .actress-tag { padding: 8px 18px; background: rgba(255, 255, 255, 0.08); border-radius: 40px; font-size: 13px; color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition-pro); }
 .actress-tag:hover { border-color: rgba(255, 255, 255, 0.4); color: white; background: rgba(255, 255, 255, 0.15); }
 .meta-provider { font-size: 12px; color: rgba(255, 255, 255, 0.4); margin-left: 4px; }
-.summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.08); }
+.summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
 .summary-text--empty { color: rgba(255, 255, 255, 0.3); font-style: italic; }
 .skeleton { background: rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; border-radius: 8px; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }

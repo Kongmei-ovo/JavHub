@@ -70,3 +70,12 @@ test('modal overlay is teleported above sheet overlays', () => {
   assert.match(source, /<teleport to="body">\s*<div v-if="visible" class="modal-overlay"/)
   assert.match(source, /\.modal-overlay\s*\{[\s\S]*z-index:\s*var\(--z-lightbox\)/)
 })
+
+test('modal sheet keeps a visible frosted fallback when backdrop filtering is unavailable', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /--modal-sheet-bg/)
+  assert.match(source, /--modal-panel-bg/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
+  assert.doesNotMatch(source, /\.modal-container\s*\{[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\)/)
+})
