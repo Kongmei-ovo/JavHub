@@ -19,7 +19,18 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            suffix: arm64
 
     steps:
       - name: Checkout code
@@ -36,21 +47,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=sha,prefix=sha-
-            type=raw,value=stable,enable={{is_default_branch}}
-            type=raw,value=${{ env.RELEASE_VERSION }},enable={{is_default_branch}}
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push image
+      - name: Build and push platform image
         uses: docker/build-push-action@v7
         env:
           VITE_APP_VERSION: ${{ env.RELEASE_VERSION }}
@@ -58,18 +55,69 @@ jobs:
           context: .
           file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ matrix.platform }}
+          tags: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}-${{ matrix.suffix }}
           labels: |
-            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ env.RELEASE_VERSION }}
           build-args: |
             VITE_APP_VERSION=${{ env.RELEASE_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.suffix }}
+
+  publish:
+    name: Publish manifests
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Docker tags
+        run: |
+          set -euo pipefail
+
+          images=(
+            "${IMAGE_NAME}:main"
+            "${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
+          )
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            images+=(
+              "${IMAGE_NAME}:stable"
+              "${IMAGE_NAME}:latest"
+              "${IMAGE_NAME}:${RELEASE_VERSION}"
+            )
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF_NAME}"
+            images+=("${IMAGE_NAME}:${tag}")
+            images+=("${IMAGE_NAME}:${tag#v}")
+          fi
+
+          sources=(
+            "${IMAGE_NAME}:sha-${GITHUB_SHA}-amd64"
+            "${IMAGE_NAME}:sha-${GITHUB_SHA}-arm64"
+          )
+
+          for image in "${images[@]}"; do
+            docker buildx imagetools create \
+              --tag "${image}" \
+              "${sources[@]}"
+          done
 
       - name: Summary
         run: |
           echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- JavHub: \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Stable: \`${{ env.IMAGE_NAME }}:stable\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Release: \`${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
