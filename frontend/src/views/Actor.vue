@@ -868,8 +868,8 @@ export default {
   }
 
   .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
   }
 
   .year-nav {

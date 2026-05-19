@@ -974,7 +974,11 @@ onMounted(loadSubs)
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .sheet { width: 100vw; max-width: 100%; max-height: 95vh; border-radius: 20px 20px 0 0; }
   .discover-body { padding: 0 12px 24px; }
-  .works-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+  .works-grid {
+    --video-grid-min-mobile: clamp(104px, 31vw, 148px);
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
+  }
   .sheet-translated { font-size: var(--type-panel-title); }
   .name-pill { height: 22px; padding: 0 8px; font-size: var(--type-micro); }
   .clear-btn,

@@ -551,5 +551,16 @@ export default {
     width: var(--filter-control-width);
     min-width: var(--filter-control-width);
   }
+  .results-grid,
+  .skeleton-grid {
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
+    padding-block: 0 20px;
+    padding-inline: 0;
+  }
+  .page-btn,
+  .chronicle-btn {
+    min-height: var(--compact-toolbar-height);
+  }
 }
 </style>

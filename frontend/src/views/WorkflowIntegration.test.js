@@ -251,6 +251,44 @@ test('primary pages use unified breathing rails', () => {
   }
 })
 
+test('mobile video surfaces share compact gallery density', () => {
+  assert.match(mainCss, /--video-grid-min-mobile:\s*clamp\(136px, 40vw, 172px\)/)
+  assert.match(mainCss, /--video-grid-gap-mobile:\s*clamp\(10px, 3vw, 14px\)/)
+  assert.match(mainCss, /--video-card-radius-mobile:\s*18px/)
+  assert.match(mainCss, /--video-card-body-padding-mobile:\s*10px 10px 12px/)
+  assert.match(mainCss, /--compact-toolbar-height:\s*44px/)
+
+  const appleVideoCard = readFileSync(new URL('../components/AppleVideoCard.vue', import.meta.url), 'utf8')
+  assert.match(appleVideoCard, /container-type:\s*inline-size/)
+  assert.match(appleVideoCard, /@container\s*\(max-width:\s*180px\)/)
+  assert.match(appleVideoCard, /padding:\s*var\(--video-card-body-padding-mobile\)/)
+
+  assert.match(search, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+  assert.match(discoveryDetail, /\.results-grid,\s*\.skeleton-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+  assert.match(discoveryDetail, /\.results-grid,\s*\.skeleton-grid[\s\S]*padding-inline:\s*0/)
+  assert.match(actor, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+  assert.match(favorites, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+  assert.match(subscription, /--video-grid-min-mobile:\s*clamp\(104px, 31vw, 148px\)/)
+  assert.match(subscription, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+  assert.match(inventoryActor, /\.videos-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
+})
+
+test('video modal and recommendation page use mobile-specific proportions', () => {
+  assert.match(videoModal, /@media\s*\(max-width:\s*768px\)[\s\S]*\.modal-overlay\s*\{[\s\S]*padding:\s*0/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*width:\s*100vw[\s\S]*height:\s*100dvh/)
+  assert.match(videoModal, /\.modal-content\s*\{[\s\S]*padding:\s*20px 16px 28px[\s\S]*gap:\s*22px/)
+  assert.match(videoModal, /\.modal-code-block\s*\{[\s\S]*flex-direction:\s*column/)
+  assert.match(videoModal, /\.modal-actions\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(videoModal, /\.modal-meta\s*\{[\s\S]*grid-template-columns:\s*1fr/)
+  assert.match(videoModal, /\.modal-meta::before\s*\{[\s\S]*display:\s*none/)
+  assert.match(videoModal, /overflow-wrap:\s*anywhere/)
+
+  assert.match(genres, /mobileDisplayedTags\(\)/)
+  assert.match(genres, /isMobileViewport/)
+  assert.match(genres, /fontSize:\s*`clamp\(/)
+  assert.match(genres, /gridTemplateColumns:[\s\S]*`repeat\(auto-fit, minmax\(clamp\(/)
+})
+
 test('external data failures render page-level retry states', () => {
   assert.match(genres, /AppleErrorState/)
   assert.match(genres, /categoryError/)

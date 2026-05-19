@@ -46,7 +46,7 @@
       />
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
-        <template v-for="tag in displayedTags" :key="tag.id">
+        <template v-for="tag in mobileDisplayedTags" :key="tag.id">
           <div
             class="bubble"
             :data-id="tag.id"
@@ -219,13 +219,22 @@ export default {
       seriesError: '',
       seriesPage: 1,
       seriesTotalPages: 1,
+      mobileMediaQuery: null,
+      isMobileViewport: typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches,
     }
   },
   computed: {
     cloudStyle() {
       return {
-        gap: `${this.cfg.spacing}px`,
+        gap: this.isMobileViewport
+          ? `clamp(8px, ${Math.max(8, this.cfg.spacing)}px, 14px)`
+          : `${this.cfg.spacing}px`,
       }
+    },
+    mobileDisplayedTags() {
+      if (!this.isMobileViewport) return this.displayedTags
+      const mobileCount = Math.min(Number(this.cfg.bubbleCount) || DEFAULT_CFG.bubbleCount, 24)
+      return this.displayedTags.slice(0, mobileCount)
     },
     actressGridStyle() {
       const size = this.cfg.actressAvatarSize || 'medium'
@@ -233,7 +242,9 @@ export default {
       const avatar = avatarMap[size] || '80px'
       return {
         '--actress-avatar-size': avatar,
-        gridTemplateColumns: `repeat(auto-fill, minmax(${avatar}, 1fr))`,
+        gridTemplateColumns: this.isMobileViewport
+          ? `repeat(auto-fit, minmax(clamp(84px, 28vw, ${avatar}), 1fr))`
+          : `repeat(auto-fill, minmax(${avatar}, 1fr))`,
       }
     },
     actressPageSize() {
@@ -259,6 +270,15 @@ export default {
     },
   },
   async mounted() {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      this.mobileMediaQuery = window.matchMedia('(max-width: 768px)')
+      this.isMobileViewport = this.mobileMediaQuery.matches
+      if (this.mobileMediaQuery.addEventListener) {
+        this.mobileMediaQuery.addEventListener('change', this.handleMobileViewportChange)
+      } else if (this.mobileMediaQuery.addListener) {
+        this.mobileMediaQuery.addListener(this.handleMobileViewportChange)
+      }
+    }
     this.loadCfg()
     this.activeTab = this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre'
     const initialLoads = [
@@ -286,9 +306,18 @@ export default {
         }
       } catch {}
     },
+    handleMobileViewportChange(event) {
+      this.isMobileViewport = event.matches
+    },
     bubbleStyle() {
       const size = this.cfg.baseSize
       const fill = this.cfg.fillPercent / 100
+      if (this.isMobileViewport) {
+        return {
+          fontSize: `clamp(13px, ${size * 0.86}px, 15px)`,
+          padding: `clamp(7px, ${Math.round(size * fill * 0.44)}px, 10px) clamp(11px, ${Math.round(size * fill * 0.9)}px, 16px)`,
+        }
+      }
       return {
         fontSize: `${size}px`,
         padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
@@ -515,6 +544,11 @@ export default {
     },
   },
   beforeUnmount() {
+    if (this.mobileMediaQuery?.removeEventListener) {
+      this.mobileMediaQuery.removeEventListener('change', this.handleMobileViewportChange)
+    } else if (this.mobileMediaQuery?.removeListener) {
+      this.mobileMediaQuery.removeListener(this.handleMobileViewportChange)
+    }
     const cloud = this.$refs.tagCloudRef
     if (cloud) {
       cloud.removeEventListener('mousemove', this.handleMouseMove)
@@ -733,6 +767,17 @@ export default {
   .tag-cloud-wrap,
   .actress-tab {
     padding-block: 20px;
+  }
+  .tag-cloud {
+    padding: 18px 10px;
+    border-radius: 20px;
+  }
+  .actress-grid {
+    gap: 16px 10px;
+  }
+  .actress-avatar,
+  .actress-skeleton-avatar {
+    border-radius: 18px;
   }
   .loading-wrap {
     padding: 42px 16px;

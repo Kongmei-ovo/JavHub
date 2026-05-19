@@ -609,7 +609,10 @@ export default {
 @media (max-width: 768px) {
   .favorites-page { --page-top-space: 40px; }
   .curate-title { font-size: var(--page-title-size-mobile); }
-  .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
+  .favorites-grid {
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
+  }
   .actor-favorites-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
   .segment-item {
     min-height: 44px;

@@ -1156,9 +1156,10 @@ export default {
     padding: 20px 0 18px;
   }
   .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
     padding-block: 20px;
+    padding-inline: 0;
   }
   .panel-grid {
     grid-template-columns: 1fr;
@@ -1223,7 +1224,7 @@ export default {
   .sort-pill,
   .filter-item,
   .sort-clear-btn {
-    min-height: 44px;
+    min-height: var(--compact-toolbar-height);
   }
   .sort-clear-btn {
     width: 44px;

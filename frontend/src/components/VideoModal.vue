@@ -725,4 +725,169 @@ export default {
   cursor: not-allowed;
 }
 .stream-download-btn svg { width: 18px; height: 18px; }
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .modal-container {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 22px 22px 0 0;
+    border-inline: 0;
+    border-bottom: 0;
+  }
+
+  .modal-close {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    font-size: 22px;
+  }
+
+  .modal-body {
+    max-height: 100dvh;
+    height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .modal-gallery {
+    max-height: 42dvh;
+  }
+
+  .gallery-img {
+    max-height: 42dvh;
+  }
+
+  .modal-content {
+    padding: 20px 16px 28px;
+    gap: 22px;
+  }
+
+  .modal-code-block {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding-bottom: 14px;
+  }
+
+  .modal-code {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .preview-btn,
+  .stream-btn,
+  .favorite-btn {
+    justify-content: center;
+    min-width: 0;
+    min-height: var(--compact-toolbar-height);
+    padding: 8px 10px;
+    font-size: var(--type-caption);
+    white-space: nowrap;
+  }
+
+  .modal-title {
+    font-size: var(--type-card-title);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .modal-meta {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .modal-meta::before {
+    display: none;
+  }
+
+  .modal-meta > div:nth-last-child(-n+2) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .modal-meta > div:last-child {
+    border-bottom: none;
+  }
+
+  .meta-row {
+    display: grid;
+    grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 10px 6px;
+  }
+
+  .meta-label,
+  .meta-value {
+    overflow-wrap: anywhere;
+  }
+
+  .section-title {
+    margin-bottom: 12px;
+  }
+
+  .actress-list {
+    gap: 12px;
+  }
+
+  .actress-avatar {
+    width: 56px;
+    height: 56px;
+  }
+
+  .avatar-placeholder {
+    width: 56px;
+    height: 56px;
+  }
+
+  .actress-tag {
+    min-height: var(--compact-toolbar-height);
+    padding: 8px 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-text {
+    max-height: none;
+    padding: 16px;
+    font-size: var(--type-body);
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+
+  .stream-download-btn {
+    min-height: var(--compact-toolbar-height);
+    padding: 12px 18px;
+  }
+
+  .lightbox-close {
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    right: 12px;
+  }
+
+  .lightbox-prev,
+  .lightbox-next {
+    width: 44px;
+    height: 72px;
+    font-size: 30px;
+  }
+
+  .lightbox-prev { left: 8px; }
+  .lightbox-next { right: 8px; }
+}
 </style>

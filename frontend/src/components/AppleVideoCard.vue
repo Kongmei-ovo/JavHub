@@ -83,6 +83,7 @@ function onImageLoad(event) {
 .apple-video-card {
   cursor: pointer;
   overflow: hidden;
+  container-type: inline-size;
   transition: transform var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), background var(--motion-standard);
 }
 
@@ -250,6 +251,58 @@ function onImageLoad(event) {
   gap: 8px;
   color: var(--text-muted);
   font-size: var(--type-micro);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+@container (max-width: 180px) {
+  .apple-video-card {
+    border-radius: var(--video-card-radius-mobile);
+  }
+
+  .apple-video-card__body {
+    padding: var(--video-card-body-padding-mobile);
+  }
+
+  .apple-video-card__meta-row {
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+
+  .apple-video-card__code {
+    font-size: 11px;
+  }
+
+  .apple-video-card__badge {
+    padding: 1px 5px;
+    font-size: 9px;
+  }
+
+  .apple-video-card__title {
+    margin-bottom: 6px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .apple-video-card__subline {
+    gap: 4px 6px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .apple-video-card__preview {
+    right: 7px;
+    bottom: 7px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .apple-video-card__favorite {
+    top: 6px;
+    right: 6px;
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
 }
 
 @media (hover: none) {

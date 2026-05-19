@@ -387,4 +387,11 @@ onMounted(async () => {
 .candidate-link { text-align: center; margin: 20px 0; }
 
 .loading, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .videos-grid {
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile);
+  }
+}
 </style>
