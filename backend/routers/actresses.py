@@ -3,9 +3,12 @@ from pydantic import BaseModel, Field
 from fastapi.params import Query as QueryParam
 from typing import Any
 from modules.info_client import get_info_client
+from services import cache
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
+_LIST_CACHE_NAMESPACE = "actresses"
+_LIST_CACHE_TTL = 120
 
 
 class BatchActressVideosRequest(BaseModel):
@@ -22,6 +25,15 @@ async def list_actresses(
 ) -> dict[str, Any]:
     _q = None if isinstance(q, QueryParam) else q
     _has_valid_avatar = None if isinstance(has_valid_avatar, QueryParam) else has_valid_avatar
+    cache_params = {
+        "q": _q,
+        "page": page,
+        "page_size": page_size,
+        "has_valid_avatar": _has_valid_avatar,
+    }
+    cached = cache.get_response(_LIST_CACHE_NAMESPACE, cache_params)
+    if cached is not None:
+        return cached
 
     client = get_info_client()
     result = await client.list_actresses(
@@ -39,6 +51,7 @@ async def list_actresses(
             keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
             allow_network=False,
         )
+    cache.set_response(_LIST_CACHE_NAMESPACE, cache_params, result, ttl=_LIST_CACHE_TTL)
     return result
 
 @router.get("/{actress_id}")

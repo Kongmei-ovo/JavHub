@@ -210,9 +210,13 @@ async def test_telegram(token: str):
 
 @router.post("/cache/purge")
 async def purge_cache(scope: str = "video"):
-    """清除缓存，scope=all 清除全部，scope=video 只清除视频和搜索缓存"""
+    """清除缓存，scope=all 清除全部，scope=video 只清除视频和搜索缓存，scope=enum 清枚举响应缓存"""
     if scope == "all":
         count = cache.purge_all()
+    elif scope == "enum":
+        count = cache.purge_enum_cache()
+    elif scope == "response":
+        count = cache.purge_response_cache()
     else:
         count = cache.purge_video_cache()
     return {"purged": count, "scope": scope}

@@ -6,6 +6,7 @@ from database.base import get_db_orig, get_db, init_db
 from database.translation import (
     init_translation_db,
     get_translation,
+    get_translations_bulk,
     upsert_translation,
     get_all_translations,
     import_translations,
@@ -150,6 +151,7 @@ __all__ = [
     "list_favorites",
     "list_collections",
     "get_translation",
+    "get_translations_bulk",
     "upsert_translation",
     "get_all_translations",
     "import_translations",

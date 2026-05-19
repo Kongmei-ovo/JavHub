@@ -267,6 +267,78 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data[0]["name_ja"], "ショタ")
         self.assertEqual(data[0]["name_ja_translated"], "正太")
 
+    async def test_bulk_translation_lookup_matches_single_lookup(self):
+        from database import get_translation, get_translations_bulk, upsert_translation
+
+        upsert_translation("category:4058", {"category": {"ショタ": "正太"}})
+        upsert_translation("_global:label:7", {"label": {"企画": "企划"}})
+
+        bulk = get_translations_bulk(["category:4058", "label:7", "missing:1"])
+
+        self.assertEqual(bulk["category:4058"], get_translation("category:4058"))
+        self.assertEqual(bulk["label:7"], get_translation("label:7"))
+        self.assertIsNone(bulk["missing:1"])
+
+    async def test_bulk_translation_lookup_caches_direct_and_fallback_misses(self):
+        import database.translation as translation_module
+
+        translation_module._translation_cache.clear()
+        with patch.object(translation_module, "_load_translation_rows", return_value={}) as load_rows:
+            first = translation_module.get_translations_bulk(["missing:1"])
+            second = translation_module.get_translations_bulk(["missing:1"])
+
+        self.assertIsNone(first["missing:1"])
+        self.assertIsNone(second["missing:1"])
+        self.assertEqual(load_rows.call_count, 2)
+
+    async def test_translate_entities_prefetches_mappings_in_bulk(self):
+        from translations import service as service_module
+
+        service = self.service()
+        items = [
+            {"id": 1, "name_ja": "企画"},
+            {"id": 2, "name_ja": "単体"},
+        ]
+
+        with patch.object(
+            service_module,
+            "get_translations_bulk",
+            return_value={
+                "label:1": {"label": {"企画": "企划"}},
+                "label:2": {"label": {"単体": "单体"}},
+            },
+        ) as bulk_lookup:
+            data = await service.translate_entities(
+                items,
+                entity_type="label",
+                keys=["name_ja", "name_en", "name"],
+                allow_network=False,
+            )
+
+        bulk_lookup.assert_called_once_with(["label:1", "label:2"])
+        self.assertEqual(data[0]["name_ja_translated"], "企划")
+        self.assertEqual(data[1]["name_ja_translated"], "单体")
+
+    async def test_translate_entities_uses_each_entity_scope_for_translation_cache(self):
+        from translations import service as service_module
+
+        service = self.service()
+        service.translate_text = AsyncMock(side_effect=lambda text, **_kwargs: text)
+
+        with patch.object(service_module, "get_translations_bulk", return_value={}):
+            await service.translate_entities(
+                [
+                    {"id": 1, "name_ja": "企画"},
+                    {"id": 2, "name_ja": "単体"},
+                ],
+                entity_type="label",
+                keys=["name_ja", "name_en", "name"],
+                allow_network=False,
+            )
+
+        scopes = [call.kwargs["scope"] for call in service.translate_text.await_args_list]
+        self.assertEqual(scopes, ["label:1", "label:2"])
+
     async def test_batch_provider_order_skips_ai(self):
         from translations.providers import GoogleFreeProvider, OpenAICompatibleProvider, TranslationResult
 

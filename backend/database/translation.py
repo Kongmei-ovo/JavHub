@@ -203,6 +203,94 @@ def get_translation(content_id: str) -> Optional[dict]:
     return None
 
 
+def _decode_translation_row(row) -> dict:
+    return {
+        "actress": _json_mapping(row["actress_json"]),
+        "category": _json_mapping(row["category_json"]),
+        "series": _json_mapping(row["series_json"]),
+        "title": _json_mapping(row["title_json"]),
+        "maker": _json_mapping(row["maker_json"]),
+        "label": _json_mapping(row["label_json"]),
+    }
+
+
+def _load_translation_rows(content_ids: list[str]) -> dict[str, Optional[dict]]:
+    found: dict[str, Optional[dict]] = {}
+    if not content_ids:
+        return found
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for start in range(0, len(content_ids), 500):
+            chunk = content_ids[start:start + 500]
+            placeholders = ",".join("?" for _ in chunk)
+            cursor.execute(
+                f"""
+                SELECT content_id, actress_json, category_json, series_json, title_json, maker_json, label_json
+                FROM translation_mappings
+                WHERE content_id IN ({placeholders})
+                """,
+                chunk,
+            )
+            for row in cursor.fetchall():
+                content_id = str(row["content_id"])
+                decoded = _decode_translation_row(row)
+                found[content_id] = decoded
+                _translation_cache[_cache_key(content_id)] = decoded
+    return found
+
+
+def get_translations_bulk(content_ids: list[str]) -> dict[str, Optional[dict]]:
+    """Bulk variant of get_translation, preserving direct/global fallback semantics."""
+    unique_ids = list(dict.fromkeys(str(content_id or "") for content_id in content_ids if str(content_id or "")))
+    result: dict[str, Optional[dict]] = {}
+    missing_direct: list[str] = []
+
+    for content_id in unique_ids:
+        key = _cache_key(content_id)
+        if key in _translation_cache:
+            direct = _translation_cache[key]
+            if direct:
+                result[content_id] = direct
+            continue
+        missing_direct.append(content_id)
+
+    direct_rows = _load_translation_rows(missing_direct) if missing_direct else {}
+    for content_id in missing_direct:
+        direct = direct_rows.get(content_id)
+        if direct:
+            result[content_id] = direct
+        else:
+            _translation_cache[_cache_key(content_id)] = None
+
+    fallback_prefixes = ("_global:actress:", "_global:category:", "_global:series:", "_global:maker:", "_global:label:")
+    fallback_pairs: list[tuple[str, str]] = []
+    fallback_ids: list[str] = []
+    for content_id in unique_ids:
+        if content_id in result:
+            continue
+        for prefix in fallback_prefixes:
+            fallback_id = prefix + content_id
+            fallback_pairs.append((content_id, fallback_id))
+            if _cache_key(fallback_id) not in _translation_cache:
+                fallback_ids.append(fallback_id)
+
+    loaded_fallback_ids = list(dict.fromkeys(fallback_ids))
+    fallback_rows = _load_translation_rows(loaded_fallback_ids) if loaded_fallback_ids else {}
+    for fallback_id in loaded_fallback_ids:
+        if fallback_id not in fallback_rows:
+            _translation_cache[_cache_key(fallback_id)] = None
+    for content_id, fallback_id in fallback_pairs:
+        if content_id in result:
+            continue
+        fallback = _translation_cache.get(_cache_key(fallback_id))
+        if fallback:
+            result[content_id] = fallback
+
+    for content_id in unique_ids:
+        result.setdefault(content_id, None)
+    return result
+
+
 def upsert_translation(content_id: str, mapping: dict) -> bool:
     existing = _get_raw(content_id)
     title_mapping = _valid_mapping(mapping.get("title"))

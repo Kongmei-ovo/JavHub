@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Query
 from modules.info_client import get_info_client
+from services import cache
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/series", tags=["series"])
+_CACHE_NAMESPACE = "series"
+_CACHE_TTL = 600
 
 @router.get("")
 async def list_series(
@@ -10,6 +13,11 @@ async def list_series(
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None),
 ):
+    cache_params = {"q": q, "page": page, "page_size": page_size}
+    cached = cache.get_response(_CACHE_NAMESPACE, cache_params)
+    if cached is not None:
+        return cached
+
     client = get_info_client()
     result = await client.list_series_page(q=q, page=page, page_size=page_size)
     page_items = result.get("data", []) if isinstance(result, dict) else []
@@ -22,4 +30,5 @@ async def list_series(
         allow_network=False,
     )
 
+    cache.set_response(_CACHE_NAMESPACE, cache_params, result, ttl=_CACHE_TTL)
     return result

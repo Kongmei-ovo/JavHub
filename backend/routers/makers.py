@@ -1,11 +1,18 @@
 from fastapi import APIRouter
 from modules.info_client import get_info_client
+from services import cache
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/makers", tags=["makers"])
+_CACHE_NAMESPACE = "makers"
+_CACHE_TTL = 600
 
 @router.get("")
 async def list_makers():
+    cached = cache.get_response(_CACHE_NAMESPACE, {})
+    if cached is not None:
+        return cached
+
     client = get_info_client()
     makers_list = await client.list_makers()
     # 为每个 maker 注入翻译字段
@@ -17,4 +24,5 @@ async def list_makers():
             keys=["name_ja", "name_en", "name"],
             allow_network=False,
         )
+    cache.set_response(_CACHE_NAMESPACE, {}, makers_list, ttl=_CACHE_TTL)
     return makers_list

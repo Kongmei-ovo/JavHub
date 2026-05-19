@@ -10,6 +10,7 @@ from typing import Any, Optional
 DEFAULT_VIDEO_TTL = 86400       # 24h
 DEFAULT_ENUM_TTL = 86400         # 24h
 DEFAULT_SEARCH_TTL = 600         # 10min
+DEFAULT_RESPONSE_TTL = 600       # 10min
 
 _db_path: Optional[Path] = None
 
@@ -30,6 +31,7 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -110,6 +112,22 @@ def _search_key(params: dict, page: int) -> str:
     return f"search:{h}:{page}"
 
 
+# === Response ===
+
+def get_response(namespace: str, params: dict | None = None) -> Any | None:
+    return _get_json(_response_key(namespace, params or {}))
+
+
+def set_response(namespace: str, params: dict | None, data: Any, ttl: int = DEFAULT_RESPONSE_TTL) -> None:
+    _set_json(_response_key(namespace, params or {}), data, ttl)
+
+
+def _response_key(namespace: str, params: dict) -> str:
+    stable = json.dumps(params, sort_keys=True, default=str, separators=(",", ":"))
+    h = hashlib.sha256(stable.encode()).hexdigest()
+    return f"response:{namespace}:{h}"
+
+
 # === Enums ===
 
 def get_enum_list(enum_type: str) -> Optional[list]:
@@ -128,6 +146,22 @@ def purge_video_cache() -> int:
     with _connect() as conn:
         cursor = conn.execute(
             "DELETE FROM cache_entries WHERE key LIKE 'video:%' OR key LIKE 'search:%'"
+        )
+        return cursor.rowcount
+
+
+def purge_response_cache() -> int:
+    """清除最终响应缓存，返回清除数量"""
+    with _connect() as conn:
+        cursor = conn.execute("DELETE FROM cache_entries WHERE key LIKE 'response:%'")
+        return cursor.rowcount
+
+
+def purge_enum_cache() -> int:
+    """清除枚举原始缓存和对应的最终响应缓存，返回清除数量"""
+    with _connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM cache_entries WHERE key LIKE 'enum:%' OR key LIKE 'response:%'"
         )
         return cursor.rowcount
 

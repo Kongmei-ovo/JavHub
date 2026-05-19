@@ -1,12 +1,25 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from routers import actresses
+from services import cache
 
 
 class ActressesRouterTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
+        self.patch = patch.object(cache, "_db_path", self.db_path)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tempdir.cleanup()
+
     async def test_list_actresses_passes_valid_avatar_filter(self):
         mock_client = AsyncMock()
         mock_client.list_actresses.return_value = {"data": [], "total_count": 0}
@@ -21,3 +34,24 @@ class ActressesRouterTest(unittest.IsolatedAsyncioTestCase):
             page_size=36,
             has_valid_avatar="1",
         )
+
+    async def test_list_actresses_caches_by_query_params(self):
+        mock_client = AsyncMock()
+        mock_client.list_actresses.return_value = {
+            "data": [{"id": 1, "name_kanji": "三上"}],
+            "page": 1,
+            "page_size": 20,
+        }
+        mock_translator = AsyncMock()
+        mock_translator.translate_entities.return_value = None
+
+        with patch("routers.actresses.get_info_client", return_value=mock_client), \
+             patch("routers.actresses.get_translator_service", return_value=mock_translator):
+            first = await actresses.list_actresses(page=1, page_size=20, has_valid_avatar=None)
+            second = await actresses.list_actresses(page=1, page_size=20, has_valid_avatar=None)
+            third = await actresses.list_actresses(page=2, page_size=20, has_valid_avatar=None)
+
+        self.assertEqual(second, first)
+        self.assertEqual(third, first)
+        self.assertEqual(mock_client.list_actresses.await_count, 2)
+        self.assertEqual(mock_translator.translate_entities.await_count, 2)

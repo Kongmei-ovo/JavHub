@@ -500,6 +500,16 @@ class InfoClient:
         cache.set_enum_list("labels", data)
         return data
 
+    async def list_labels_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any] | list[dict]:
+        """获取品牌分页列表，上游支持分页时避免全量拉取。"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        result = await self._get("/api/v1/labels", params=params)
+        if isinstance(result, dict):
+            return result
+        return result if isinstance(result, list) else []
+
     # === 批量接口 ===
 
     async def batch_get_videos(self, ids: list[str]) -> list[dict]:

@@ -260,10 +260,10 @@ export default {
       this.displayedTags = this.shuffledTags.slice(0, newVal)
     },
     'cfg.actressAvatarSize'() {
-      this.loadActresses(1)
+      if (this.activeTab === 'actress') this.loadActresses(1)
     },
     'cfg.actressPageSize'() {
-      this.loadActresses(1)
+      if (this.activeTab === 'actress') this.loadActresses(1)
     },
     'cfg.seriesPageSize'() {
       if (this.activeTab === 'series') this.loadSeries(1)
@@ -283,8 +283,8 @@ export default {
     this.activeTab = this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre'
     const initialLoads = [
       this.loadCategories(),
-      this.loadActresses(),
     ]
+    if (this.activeTab === 'actress') initialLoads.push(this.loadActresses())
     if (this.activeTab === 'series') initialLoads.push(this.loadSeries())
     await Promise.all(initialLoads)
   },
@@ -456,6 +456,9 @@ export default {
     },
     switchTab(tab) {
       this.activeTab = tab
+      if (tab === 'actress' && !this.actressRawPage.length && !this.actressesLoading) {
+        this.loadActresses(this.actressPage)
+      }
       if (tab === 'series' && !this.seriesRawPage.length && !this.seriesLoading) {
         this.loadSeries(this.seriesPage)
       }

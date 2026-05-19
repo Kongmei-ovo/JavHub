@@ -8,6 +8,7 @@ from config import config
 from database import (
     get_cached_translation,
     get_translation,
+    get_translations_bulk,
     upsert_cached_translation,
 )
 from translations.category_decensor import decensor_category_name
@@ -220,6 +221,7 @@ class TranslatorService:
         use_ai: bool = False,
         allow_network: bool = True,
     ) -> list[dict]:
+        entries: list[tuple[dict, str, str, str, str]] = []
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -235,11 +237,17 @@ class TranslatorService:
                     item[key] = decensored
                     original = decensored
             entity_id = item.get("id")
-            trans = get_translation(_entity_scope(entity_type, entity_id))
+            entity_scope = _entity_scope(entity_type, entity_id)
+            text_scope = _entity_scope(entity_type, entity_id, original)
+            entries.append((item, key, original, entity_scope, text_scope))
+
+        translations = get_translations_bulk([entry[3] for entry in entries]) if entries else {}
+        for item, key, original, mapping_scope, text_scope in entries:
+            trans = translations.get(mapping_scope)
             mapping = trans.get(entity_type, {}) if trans else {}
             translated = await self.translate_text(
                 original,
-                scope=_entity_scope(entity_type, entity_id, original),
+                scope=text_scope,
                 mapping=mapping,
                 context=f"{entity_type} name",
                 use_ai=use_ai,
