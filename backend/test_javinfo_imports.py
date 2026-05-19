@@ -464,7 +464,13 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 "max_parallel_jobs": 2,
                 "keep_previous_databases": 1,
             }
-            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            job = manager.create_job(
+                settings,
+                filename="r18.dump",
+                file_size=20,
+                confirm_replace=True,
+                confirm_direct_restore=True,
+            )
             await manager.save_upload(job["id"], chunks())
 
             restored = await manager.restore_job(job["id"])
@@ -474,6 +480,50 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
         restore_calls = [" ".join(call) for call in runner.calls if call[0] == "pg_restore"]
         self.assertTrue(any("DROP SCHEMA IF EXISTS public CASCADE" in call for call in sql_calls))
         self.assertTrue(restore_calls)
+
+    async def test_direct_restore_requires_explicit_confirmation(self):
+        from services.javinfo_import import CommandResult, JavInfoImportManager
+
+        class Runner:
+            async def run(self, args, **kwargs):
+                if args[0] == "psql" and "SELECT rolsuper OR rolcreatedb" in args:
+                    return CommandResult(returncode=0, output="f\n")
+                if args[0] == "psql" and any("SELECT 1 FROM pg_database" in str(arg) for arg in args):
+                    return CommandResult(returncode=0, output="1\n")
+                return CommandResult(returncode=0, output="")
+
+        async def chunks():
+            yield b"PGDMP fake custom dump"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = JavInfoImportManager(
+                storage_dir=Path(tmp),
+                command_runner=Runner(),
+                service_helper=Path(tmp) / "missing-services.sh",
+                post_import_migrator=_noop_post_import_migrator,
+            )
+            settings = {
+                "host": "localhost",
+                "port": 5432,
+                "database": "r18",
+                "maintenance_database": "postgres",
+                "user": "kongmei",
+                "password": "",
+                "max_parallel_jobs": 2,
+                "keep_previous_databases": 1,
+            }
+            job = manager.create_job(
+                settings,
+                filename="r18.dump",
+                file_size=20,
+                confirm_replace=True,
+            )
+            await manager.save_upload(job["id"], chunks())
+
+            restored = await manager.restore_job(job["id"])
+
+        self.assertEqual(restored["status"], "failed")
+        self.assertIn("direct restore confirmation is required", restored["error"])
 
     async def test_restore_runs_post_import_migrations_after_database_import(self):
         from services.javinfo_import import CommandResult, JavInfoImportManager
@@ -516,7 +566,13 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 "max_parallel_jobs": 2,
                 "keep_previous_databases": 1,
             }
-            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            job = manager.create_job(
+                settings,
+                filename="r18.dump",
+                file_size=20,
+                confirm_replace=True,
+                confirm_direct_restore=True,
+            )
             await manager.save_upload(job["id"], chunks())
 
             restored = await manager.restore_job(job["id"])
@@ -572,6 +628,7 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 filename="r18.sql",
                 file_size=len(payload),
                 confirm_replace=True,
+                confirm_direct_restore=True,
             )
 
             restored = await manager.restore_upload_stream(job["id"], chunks())
@@ -634,6 +691,7 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 filename="r18.sql.gz",
                 file_size=len(compressed),
                 confirm_replace=True,
+                confirm_direct_restore=True,
             )
 
             restored = await manager.restore_upload_stream(job["id"], chunks())
@@ -699,7 +757,13 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 "max_parallel_jobs": 2,
                 "keep_previous_databases": 1,
             }
-            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            job = manager.create_job(
+                settings,
+                filename="r18.dump",
+                file_size=20,
+                confirm_replace=True,
+                confirm_direct_restore=True,
+            )
             await manager.save_upload(job["id"], chunks())
 
             restored = await manager.restore_job(job["id"])
@@ -744,7 +808,13 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
                 "max_parallel_jobs": 2,
                 "keep_previous_databases": 1,
             }
-            job = manager.create_job(settings, filename="r18.dump", file_size=20, confirm_replace=True)
+            job = manager.create_job(
+                settings,
+                filename="r18.dump",
+                file_size=20,
+                confirm_replace=True,
+                confirm_direct_restore=True,
+            )
             await manager.save_upload(job["id"], chunks())
 
             restored = await manager.restore_job(job["id"])

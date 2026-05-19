@@ -495,6 +495,7 @@ class JavInfoImportManager:
         filename: str,
         file_size: int | None = None,
         confirm_replace: bool = False,
+        confirm_direct_restore: bool = False,
     ) -> dict[str, Any]:
         if not confirm_replace:
             raise ValueError("confirm_replace is required")
@@ -524,6 +525,7 @@ class JavInfoImportManager:
             "created_at": time.time(),
             "updated_at": time.time(),
             "cancel_requested": False,
+            "confirm_direct_restore": bool(confirm_direct_restore),
         }
         self._jobs[job_id] = job
         return self.public_job(job)
@@ -821,6 +823,8 @@ class JavInfoImportManager:
                 job["stage"] = "restarting"
                 await self._service("restart", job)
             else:
+                if not job.get("confirm_direct_restore"):
+                    raise JavInfoImportError("direct restore confirmation is required")
                 self._log(job, "database user cannot create databases; restoring directly into target database")
                 job["stage"] = "stopping"
                 await self._service("stop", job)
@@ -885,6 +889,8 @@ class JavInfoImportManager:
                 job["stage"] = "restarting"
                 await self._service("restart", job)
             else:
+                if not job.get("confirm_direct_restore"):
+                    raise JavInfoImportError("direct restore confirmation is required")
                 self._log(job, "database user cannot create databases; restoring directly into target database")
                 job["stage"] = "stopping"
                 await self._service("stop", job)

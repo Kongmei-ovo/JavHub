@@ -29,6 +29,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5174,
     proxy: {
+      '/health': {
+        target: 'http://127.0.0.1:18090',
+        changeOrigin: true
+      },
       '/api': {
         // 端口与 config.yaml 中 server.port 保持一致
         target: 'http://127.0.0.1:18090',

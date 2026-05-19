@@ -26,7 +26,7 @@
           </svg>
         </button>
         <button
-          v-if="type === 'actress'"
+          v-if="hasNumericActressId"
           class="entity-sub-btn"
           type="button"
           :class="{ 'is-active': isEntitySubscribed }"
@@ -114,7 +114,9 @@
             :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
             :releaseDate="item.release_date || ''"
             :runtimeMins="item.runtime_mins || ''"
+            :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
             @click="openModal(item)"
+            @toggle-favorite="toggleVideoFavorite(item)"
           />
         </div>
       </div>
@@ -130,7 +132,9 @@
         :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
         :releaseDate="item.release_date || ''"
         :runtimeMins="item.runtime_mins || ''"
+        :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
         @click="openModal(item)"
+        @toggle-favorite="toggleVideoFavorite(item)"
       />
     </div>
 
@@ -238,8 +242,11 @@ export default {
       return favoriteState.isFavorited(this.type, this.value)
     },
     isEntitySubscribed() {
-      if (this.type !== 'actress') return false
+      if (!this.hasNumericActressId) return false
       return subscriptionState.isSubscribed(this.value)
+    },
+    hasNumericActressId() {
+      return this.type === 'actress' && /^\d+$/.test(String(this.value || ''))
     },
     groupedByYear() {
       const groups = {}
@@ -248,11 +255,12 @@ export default {
         if (!groups[yearKey]) groups[yearKey] = []
         groups[yearKey].push(item)
       }
+      const releaseDateDirection = this.sortState.release_date === 'asc' ? 'asc' : 'desc'
       return Object.keys(groups)
         .sort((a, b) => {
           if (a === 'null') return 1
           if (b === 'null') return -1
-          return this.sortValue === 'year_chronicle_asc' ? a.localeCompare(b) : b.localeCompare(a)
+          return releaseDateDirection === 'asc' ? a.localeCompare(b) : b.localeCompare(a)
         })
         .reduce((acc, key) => { acc[key] = groups[key]; return acc }, {})
     }
@@ -303,12 +311,23 @@ export default {
       }
     },
     async toggleEntitySubscription() {
-      if (this.type !== 'actress') return
-      const subscribed = await subscriptionState.toggle(this.value, this.displayNameValue || this.value)
+      if (!this.hasNumericActressId) return
+      const subscribed = await subscriptionState.toggle(Number(this.value), this.displayNameValue || this.value)
       if (this.$message) {
         this.$message[subscribed ? 'success' : 'info'](
           subscribed ? `已订阅 ${this.displayNameValue || this.value}` : '已取消订阅'
         )
+      }
+    },
+    isFavorited(type, id) {
+      return favoriteState.isFavorited(type, id)
+    },
+    async toggleVideoFavorite(item) {
+      try {
+        const id = item.content_id || item.dvd_id
+        await favoriteState.toggle('video', id)
+      } catch (err) {
+        console.error('Toggle video favorite failed:', err)
       }
     },
     async loadMetadata() {

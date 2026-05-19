@@ -40,11 +40,6 @@ function isUploadCompleteStatus(status) {
   return ['uploaded', 'restoring', 'stopping', 'swapping', 'restarting', 'migrating', 'completed'].includes(status)
 }
 
-function shouldStreamJavInfoImport(file) {
-  const name = String(file?.name || '').toLowerCase()
-  return name.endsWith('.sql') || name.endsWith('.sql.gz')
-}
-
 async function retryChunkUpload(request, refreshUploadedBytes) {
   let lastError = null
   for (let attempt = 1; attempt <= JAVINFO_IMPORT_CHUNK_RETRIES; attempt += 1) {
@@ -425,26 +420,6 @@ export default {
     let uploaded = Math.max(0, Math.min(total, Number(statusResp.data?.uploaded_bytes || 0)))
     chunkUploadProgress(onUploadProgress, uploaded, total)
 
-    if (shouldStreamJavInfoImport(file)) {
-      const response = await api.put(
-        `/v1/javinfo/imports/jobs/${jobId}/upload`,
-        file,
-        {
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'X-Filename': String(file?.name || ''),
-            'X-File-Size': String(total),
-          },
-          transformRequest: [(data) => data],
-          onUploadProgress,
-          silentError: true,
-        },
-      )
-      const serverUploaded = Math.max(total, Number(response.data?.uploaded_bytes || total))
-      chunkUploadProgress(onUploadProgress, Math.min(serverUploaded, total), total)
-      return response
-    }
-
     let chunkIndex = Math.floor(uploaded / chunkSize)
     while (uploaded < total) {
       const end = Math.min(uploaded + chunkSize, total)
@@ -673,7 +648,7 @@ export default {
   // ========== 健康检查 ==========
 
   health() {
-    return api.get('/health')
+    return api.get('/health', { baseURL: '' })
   },
 
   // ========== 流媒体 ==========

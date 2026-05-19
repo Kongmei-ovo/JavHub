@@ -647,6 +647,20 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.doesNotMatch(advancedSection, /keep_previous_databases/)
 })
 
+test('JavInfo import preflight is tied to current settings and file', () => {
+  assert.match(config, /javinfoImportPreflightSignature: ''/)
+  assert.match(config, /javinfoImportRequestSignature\(\)[\s\S]*JSON\.stringify\(\{[\s\S]*import_db: this\.config\.javinfo\.import_db[\s\S]*file_size: this\.javinfoImportFile\?\.size \|\| 0[\s\S]*\}\)/)
+  assert.match(config, /javinfoImportPreflightCurrent\(\)[\s\S]*this\.javinfoImportPreflightSignature !== this\.javinfoImportRequestSignature\(\)[\s\S]*return null/)
+  assert.match(config, /&& this\.javinfoImportPreflightCurrent\(\)\?\.ok/)
+  assert.match(config, /const signature = this\.javinfoImportRequestSignature\(\)[\s\S]*this\.javinfoImportPreflightSignature = signature/)
+})
+
+test('JavInfo import cancel keeps polling while cancellation is still active', () => {
+  assert.match(config, /const stillActive = this\.isJavInfoImportActive\(resp\.data\)/)
+  assert.match(config, /if \(!stillActive\) \{[\s\S]*this\.stopJavInfoImportPolling\(\)/)
+  assert.match(config, /else \{[\s\S]*this\.startJavInfoImportPolling\(this\.javinfoImportJob\.id\)/)
+})
+
 test('settings page exposes sanitized config export from advanced settings', () => {
   const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
 
@@ -810,6 +824,34 @@ test('discovery navigation prefers ids for precise filtering', () => {
   assert.match(videoModal, /type: 'label', item: video\.label/)
   assert.match(discoveryDetail, /label: '厂牌'/)
   assert.match(discoveryDetail, /params\.label_id = parseInt\(v\); else params\.label_name = v/)
+})
+
+test('discovery video cards wire favorite state and toggle actions', () => {
+  assert.match(discoveryDetail, /:isFavorited="isFavorited\('video', item\.content_id \|\| item\.dvd_id\)"/)
+  assert.match(discoveryDetail, /@toggle-favorite="toggleVideoFavorite\(item\)"/)
+  assert.match(discoveryDetail, /isFavorited\(type, id\)[\s\S]*favoriteState\.isFavorited\(type, id\)/)
+  assert.match(discoveryDetail, /async toggleVideoFavorite\(item\)[\s\S]*const id = item\.content_id \|\| item\.dvd_id[\s\S]*favoriteState\.toggle\('video', id\)/)
+})
+
+test('search reset clears stale pagination state', () => {
+  assert.match(search, /clearFilters\(\)[\s\S]*this\.results = \[\][\s\S]*this\.total = 0[\s\S]*this\.totalPages = 1[\s\S]*this\.page = 1[\s\S]*this\.jumpPage = null[\s\S]*this\.searched = false/)
+})
+
+test('discovery chronicle grouping follows the active release date direction', () => {
+  assert.doesNotMatch(discoveryDetail, /this\.sortValue/)
+  assert.match(discoveryDetail, /const releaseDateDirection = this\.sortState\.release_date === 'asc' \? 'asc' : 'desc'/)
+  assert.match(discoveryDetail, /return releaseDateDirection === 'asc' \? a\.localeCompare\(b\) : b\.localeCompare\(a\)/)
+})
+
+test('discovery actress subscription is only enabled for numeric actress ids', () => {
+  assert.match(discoveryDetail, /hasNumericActressId\(\)[\s\S]*this\.type === 'actress'[\s\S]*\/\^\\d\+\$\/\.test\(String\(this\.value \|\| ''\)\)/)
+  assert.match(discoveryDetail, /v-if="hasNumericActressId"/)
+  assert.match(discoveryDetail, /subscriptionState\.toggle\(Number\(this\.value\), this\.displayNameValue \|\| this\.value\)/)
+})
+
+test('vite dev server proxies bare health checks to the backend', () => {
+  assert.match(apiSource, /api\.get\('\/health', \{ baseURL: '' \}\)/)
+  assert.match(viteConfig, /'\/health': \{[\s\S]*target: 'http:\/\/127\.0\.0\.1:18090'[\s\S]*\}/)
 })
 
 test('download mutations are guarded by in-flight state', () => {

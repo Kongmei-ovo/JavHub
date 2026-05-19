@@ -39,12 +39,14 @@ async def create_import_job(body: dict[str, Any] | None = None) -> dict[str, Any
     if not filename:
         raise HTTPException(400, "filename is required")
     confirm_replace = bool(body.get("confirm_replace"))
+    confirm_direct_restore = bool(body.get("confirm_direct_restore"))
     try:
         return get_import_manager().create_job(
             _settings_from_body(body),
             filename=filename,
             file_size=int(body.get("file_size") or 0),
             confirm_replace=confirm_replace,
+            confirm_direct_restore=confirm_direct_restore,
         )
     except JavInfoImportConflict as exc:
         raise HTTPException(409, str(exc)) from exc

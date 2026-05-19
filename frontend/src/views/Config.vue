@@ -867,6 +867,7 @@ export default {
       javinfoImportConfirm: false,
       javinfoImportDirectConfirm: false,
       javinfoImportPreflight: null,
+      javinfoImportPreflightSignature: '',
       javinfoImportPreflighting: false,
       javinfoImportUploading: false,
       javinfoImportUploadProgress: 0,
@@ -953,7 +954,7 @@ export default {
         this.canSaveConfig
         && this.javinfoImportFile
         && this.javinfoImportConfirm
-        && this.javinfoImportPreflight?.ok
+        && this.javinfoImportPreflightCurrent()?.ok
         && (!this.javinfoImportRequiresDirectConfirm || this.javinfoImportDirectConfirm)
         && !this.javinfoImportUploading
         && !this.isJavInfoImportActive(this.javinfoImportJob)
@@ -961,8 +962,8 @@ export default {
     },
     javinfoImportRequiresDirectConfirm() {
       return Boolean(
-        this.javinfoImportPreflight?.ok
-        && this.javinfoImportPreflight?.checks?.database?.can_create_database === false
+        this.javinfoImportPreflightCurrent()?.ok
+        && this.javinfoImportPreflightCurrent()?.checks?.database?.can_create_database === false
       )
     },
     javinfoImportLogTail() {
@@ -1230,6 +1231,7 @@ export default {
     setJavInfoImportFile(file) {
       this.javinfoImportFile = file
       this.javinfoImportPreflight = null
+      this.javinfoImportPreflightSignature = ''
       this.javinfoImportDirectConfirm = false
       this.javinfoImportUploadProgress = 0
       this.javinfoImportJob = null
@@ -1240,6 +1242,16 @@ export default {
     onJavInfoImportFileDrop(event) {
       this.setJavInfoImportFile(event?.dataTransfer?.files?.[0] || null)
     },
+    javinfoImportRequestSignature() {
+      return JSON.stringify({
+        import_db: this.config.javinfo.import_db,
+        file_size: this.javinfoImportFile?.size || 0,
+      })
+    },
+    javinfoImportPreflightCurrent() {
+      if (this.javinfoImportPreflightSignature !== this.javinfoImportRequestSignature()) return null
+      return this.javinfoImportPreflight
+    },
     async preflightJavInfoImport() {
       if (!this.canSaveConfig) {
         this.$message.error('配置未加载成功，已阻止预检')
@@ -1247,13 +1259,16 @@ export default {
       }
       this.javinfoImportPreflighting = true
       this.javinfoImportPreflight = null
+      this.javinfoImportPreflightSignature = ''
       this.javinfoImportDirectConfirm = false
       try {
+        const signature = this.javinfoImportRequestSignature()
         const resp = await api.preflightJavInfoImport(
           this.config.javinfo.import_db,
           this.javinfoImportFile?.size || 0,
         )
         this.javinfoImportPreflight = resp.data
+        this.javinfoImportPreflightSignature = signature
         if (resp.data?.ok) {
           this.$message.success('JavInfo 数据库预检通过')
         } else {
@@ -1261,6 +1276,7 @@ export default {
         }
       } catch (e) {
         this.javinfoImportPreflight = { ok: false, error: e.response?.data?.detail || e.message }
+        this.javinfoImportPreflightSignature = this.javinfoImportRequestSignature()
       } finally {
         this.javinfoImportPreflighting = false
       }
@@ -1275,6 +1291,7 @@ export default {
           file_size: this.javinfoImportFile.size,
           import_db: this.config.javinfo.import_db,
           confirm_replace: this.javinfoImportConfirm,
+          confirm_direct_restore: this.javinfoImportDirectConfirm,
         })
         this.javinfoImportJob = createResp.data
         const uploadResp = await api.uploadJavInfoImportDump(
@@ -1334,7 +1351,12 @@ export default {
       try {
         const resp = await api.cancelJavInfoImportJob(this.javinfoImportJob.id)
         this.javinfoImportJob = resp.data
-        this.stopJavInfoImportPolling()
+        const stillActive = this.isJavInfoImportActive(resp.data)
+        if (!stillActive) {
+          this.stopJavInfoImportPolling()
+        } else {
+          this.startJavInfoImportPolling(this.javinfoImportJob.id)
+        }
         await this.listJavInfoImportJobs()
       } catch (e) {
         this.$message.error(e.response?.data?.detail || '取消失败')

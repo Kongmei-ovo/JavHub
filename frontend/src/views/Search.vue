@@ -434,6 +434,10 @@ export default {
       this.year = null
       this.applySearchPreferences({ force: true })
       this.results = []
+      this.total = 0
+      this.totalPages = 1
+      this.page = 1
+      this.jumpPage = null
       this.searched = false
     },
     addCategoryTag() {
