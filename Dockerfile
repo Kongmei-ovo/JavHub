@@ -1,5 +1,8 @@
 FROM node:20-alpine AS frontend-builder
 
+ARG VITE_APP_VERSION=dev
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+
 WORKDIR /frontend
 
 COPY frontend/package*.json ./
@@ -10,8 +13,11 @@ RUN npm run build
 
 FROM python:3.11-slim
 
+ARG VITE_APP_VERSION=dev
+
 LABEL org.opencontainers.image.title="JavHub"
 LABEL org.opencontainers.image.description="JavHub web UI and FastAPI backend"
+LABEL org.opencontainers.image.version="${VITE_APP_VERSION}"
 
 WORKDIR /app
 

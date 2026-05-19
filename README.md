@@ -25,12 +25,16 @@ connectors, and optional notifications.
 | `ghcr.io/kongmei-ovo/javhub:<tag>` | JavHub frontend, Nginx, and FastAPI backend |
 | `ghcr.io/kongmei-ovo/javinfoapi:<tag>` | Companion data API |
 
-Current beta release:
+Default moving release tags:
 
 ```bash
-ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.4
-ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.4
+ghcr.io/kongmei-ovo/javhub:stable
+ghcr.io/kongmei-ovo/javinfoapi:stable
 ```
+
+Every push to `main` publishes `stable` plus an immutable automatic beta tag
+such as `v1.2.0-beta.<github-run-number>`. Use `stable` for normal upgrades and
+pin one of the generated beta tags when you need a fixed rollback target.
 
 JavHub is intentionally published as a single image. The container builds the
 Vue frontend, serves it with Nginx, and proxies `/api` plus `/health` to the
@@ -71,8 +75,8 @@ javinfo:
 Create a local `.env` file if you want to override image tags or change passwords:
 
 ```bash
-JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:v1.2.0-beta.4
-JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:v1.2.0-beta.4
+JAVHUB_IMAGE=ghcr.io/kongmei-ovo/javhub:stable
+JAVINFOAPI_IMAGE=ghcr.io/kongmei-ovo/javinfoapi:stable
 JAVHUB_PORT=3000
 JAVINFOAPI_PORT=18080
 
@@ -165,9 +169,11 @@ docker compose pull
 docker compose up -d
 ```
 
-Avoid relying on `latest` for self-hosted deployments. A pinned beta tag makes
-rollback and upgrade checks predictable, and `docker compose up -d` will not
-pull a changed tag unless you run `docker compose pull` first.
+Avoid relying on `latest` for self-hosted deployments. The compose defaults use
+`stable`, which is updated by CI on every successful `main` build. For stricter
+rollback and upgrade checks, pin a generated beta tag such as
+`v1.2.0-beta.<github-run-number>`. `docker compose up -d` will not pull a
+changed tag unless you run `docker compose pull` first.
 
 ## Local Development
 

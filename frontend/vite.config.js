@@ -3,11 +3,12 @@ import vue from '@vitejs/plugin-vue'
 import { readFileSync } from 'node:fs'
 
 const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+const appVersion = process.env.VITE_APP_VERSION || packageJson.version
 
 export default defineConfig({
   plugins: [vue()],
   define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion)
   },
   build: {
     rollupOptions: {

@@ -11,6 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/kongmei-ovo/javhub
+  RELEASE_VERSION: v1.2.0-beta.${{ github.run_number }}
 
 permissions:
   contents: read
@@ -45,16 +46,22 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
+            type=raw,value=stable,enable={{is_default_branch}}
+            type=raw,value=${{ env.RELEASE_VERSION }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push image
         uses: docker/build-push-action@v7
+        env:
+          VITE_APP_VERSION: ${{ env.RELEASE_VERSION }}
         with:
           context: .
           file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_APP_VERSION=${{ env.RELEASE_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
