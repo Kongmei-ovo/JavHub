@@ -51,6 +51,22 @@ test('category stats helper is not exposed from the frontend API', async () => {
   assert.equal(api.getCategoryStats, undefined)
 })
 
+test('listMakers forwards pagination and query params', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?makers-pagination-${Date.now()}`)
+  await api.listMakers({ page: 2, page_size: 30, q: 'studio' })
+
+  assert.equal(capturedConfig.url, '/v1/makers')
+  assert.deepEqual(capturedConfig.params, { page: 2, page_size: 30, q: 'studio' })
+})
+
 test('AI helper APIs send provider-aware requests', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []

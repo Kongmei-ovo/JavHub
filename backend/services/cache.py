@@ -1,10 +1,11 @@
 from __future__ import annotations
+import asyncio
 import hashlib
 import json
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 # Default TTLs in seconds
 DEFAULT_VIDEO_TTL = 86400       # 24h
@@ -13,6 +14,7 @@ DEFAULT_SEARCH_TTL = 600         # 10min
 DEFAULT_RESPONSE_TTL = 600       # 10min
 
 _db_path: Optional[Path] = None
+_response_locks: dict[str, asyncio.Lock] = {}
 
 
 def _get_db_path() -> Path:
@@ -120,6 +122,32 @@ def get_response(namespace: str, params: dict | None = None) -> Any | None:
 
 def set_response(namespace: str, params: dict | None, data: Any, ttl: int = DEFAULT_RESPONSE_TTL) -> None:
     _set_json(_response_key(namespace, params or {}), data, ttl)
+
+
+async def get_or_set_response(
+    namespace: str,
+    params: dict | None,
+    producer: Callable[[], Awaitable[Any]],
+    ttl: int = DEFAULT_RESPONSE_TTL,
+) -> Any:
+    cache_params = params or {}
+    cached = get_response(namespace, cache_params)
+    if cached is not None:
+        return cached
+
+    key = _response_key(namespace, cache_params)
+    lock = _response_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _response_locks[key] = lock
+
+    async with lock:
+        cached = get_response(namespace, cache_params)
+        if cached is not None:
+            return cached
+        data = await producer()
+        set_response(namespace, cache_params, data, ttl=ttl)
+        return data
 
 
 def _response_key(namespace: str, params: dict) -> str:

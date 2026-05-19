@@ -20,6 +20,7 @@ from database import (
     update_translation_job,
     upsert_translation,
 )
+from services import cache
 from modules.info_client import get_info_client
 from translations.category_decensor import decensor_category_name
 from translations.providers import GoogleFreeProvider, TranslationRequest
@@ -354,6 +355,8 @@ async def _run_job(
             finished_at=datetime.utcnow().isoformat(timespec="seconds"),
             result={**result_state, **counters},
         )
+    finally:
+        _purge_response_cache_after_translation_job()
 
 
 async def _run_workbench_retry_job(
@@ -427,6 +430,8 @@ async def _run_workbench_retry_job(
             finished_at=datetime.utcnow().isoformat(timespec="seconds"),
             result={**result_state, **counters},
         )
+    finally:
+        _purge_response_cache_after_translation_job()
 
 
 def _job_workbench_types(job_type: str) -> tuple[str, ...]:
@@ -435,6 +440,10 @@ def _job_workbench_types(job_type: str) -> tuple[str, ...]:
     if job_type in METADATA_JOB_TYPES:
         return METADATA_JOB_TYPES[job_type]
     return ()
+
+
+def _purge_response_cache_after_translation_job() -> None:
+    cache.purge_response_cache()
 
 
 async def _retry_failed_workbench_items(

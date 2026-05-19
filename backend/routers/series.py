@@ -14,21 +14,19 @@ async def list_series(
     q: str | None = Query(None),
 ):
     cache_params = {"q": q, "page": page, "page_size": page_size}
-    cached = cache.get_response(_CACHE_NAMESPACE, cache_params)
-    if cached is not None:
-        return cached
 
-    client = get_info_client()
-    result = await client.list_series_page(q=q, page=page, page_size=page_size)
-    page_items = result.get("data", []) if isinstance(result, dict) else []
+    async def produce():
+        client = get_info_client()
+        result = await client.list_series_page(q=q, page=page, page_size=page_size)
+        page_items = result.get("data", []) if isinstance(result, dict) else []
 
-    # 为当前页注入翻译字段
-    await get_translator_service().translate_entities(
-        page_items,
-        entity_type="series",
-        keys=["name_ja", "name_en", "name"],
-        allow_network=False,
-    )
+        # 为当前页注入翻译字段
+        await get_translator_service().translate_entities(
+            page_items,
+            entity_type="series",
+            keys=["name_ja", "name_en", "name"],
+            allow_network=False,
+        )
+        return result
 
-    cache.set_response(_CACHE_NAMESPACE, cache_params, result, ttl=_CACHE_TTL)
-    return result
+    return await cache.get_or_set_response(_CACHE_NAMESPACE, cache_params, produce, ttl=_CACHE_TTL)

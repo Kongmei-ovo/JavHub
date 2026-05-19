@@ -31,28 +31,27 @@ async def list_actresses(
         "page_size": page_size,
         "has_valid_avatar": _has_valid_avatar,
     }
-    cached = cache.get_response(_LIST_CACHE_NAMESPACE, cache_params)
-    if cached is not None:
-        return cached
 
-    client = get_info_client()
-    result = await client.list_actresses(
-        q=_q,
-        page=page,
-        page_size=page_size,
-        has_valid_avatar=_has_valid_avatar,
-    )
-    # 为每个 actress 注入翻译字段
-    items = result.get("data", []) if isinstance(result, dict) else result
-    if isinstance(items, list):
-        await get_translator_service().translate_entities(
-            items,
-            entity_type="actress",
-            keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
-            allow_network=False,
+    async def produce():
+        client = get_info_client()
+        result = await client.list_actresses(
+            q=_q,
+            page=page,
+            page_size=page_size,
+            has_valid_avatar=_has_valid_avatar,
         )
-    cache.set_response(_LIST_CACHE_NAMESPACE, cache_params, result, ttl=_LIST_CACHE_TTL)
-    return result
+        # 为每个 actress 注入翻译字段
+        items = result.get("data", []) if isinstance(result, dict) else result
+        if isinstance(items, list):
+            await get_translator_service().translate_entities(
+                items,
+                entity_type="actress",
+                keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
+                allow_network=False,
+            )
+        return result
+
+    return await cache.get_or_set_response(_LIST_CACHE_NAMESPACE, cache_params, produce, ttl=_LIST_CACHE_TTL)
 
 @router.get("/{actress_id}")
 async def get_actress(actress_id: int) -> dict[str, Any]:

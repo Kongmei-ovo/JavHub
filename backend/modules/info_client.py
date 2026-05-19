@@ -447,6 +447,16 @@ class InfoClient:
         cache.set_enum_list("makers", data)
         return data
 
+    async def list_makers_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any] | list[dict]:
+        """获取厂商分页列表，上游支持分页时避免全量拉取。"""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        result = await self._get("/api/v1/makers", params=params)
+        if isinstance(result, dict):
+            return result
+        return result if isinstance(result, list) else []
+
     async def list_series(self, q: str | None = None) -> list[dict]:
         """获取所有系列（缓存24小时，支持 q 搜索）"""
         if q:

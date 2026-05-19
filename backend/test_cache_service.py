@@ -1,6 +1,7 @@
 import tempfile
 import time
 import unittest
+import asyncio
 from pathlib import Path
 from unittest.mock import patch
 
@@ -96,6 +97,47 @@ class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["purged"], 2)
         self.assertIsNone(cache.get_response("categories", {}))
         self.assertIsNone(cache.get_enum_list("makers"))
+
+
+class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
+        self.patch = patch.object(cache, "_db_path", self.db_path)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tempdir.cleanup()
+
+    async def test_concurrent_misses_share_one_producer_call(self):
+        calls = 0
+
+        async def producer():
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0.01)
+            return {"data": [{"id": 1}]}
+
+        results = await asyncio.gather(
+            *(
+                cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
+                for _ in range(5)
+            )
+        )
+
+        self.assertEqual(results, [{"data": [{"id": 1}]}] * 5)
+        self.assertEqual(calls, 1)
+
+    async def test_producer_not_called_when_cached(self):
+        cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
+
+        async def producer():
+            raise AssertionError("producer should not be called on cache hit")
+
+        result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
+
+        self.assertEqual(result, {"data": [{"id": 1}]})
 
 
 if __name__ == "__main__":

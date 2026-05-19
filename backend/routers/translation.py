@@ -26,6 +26,7 @@ from database import (
     upsert_translation_workbench_item,
 )
 from modules.info_client import get_info_client
+from services import cache
 from translations import get_translator_service
 from translations.jobs import (
     create_translation_job,
@@ -57,6 +58,12 @@ TOTAL_ENDPOINTS = {
     "maker": "/api/v1/makers",
     "label": "/api/v1/labels",
 }
+_STATS_CACHE_NAMESPACE = "translation_stats"
+_STATS_CACHE_TTL = 60
+
+
+def _purge_translated_response_cache() -> None:
+    cache.purge_response_cache()
 
 
 def _translation_export_payload(mapping_type: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -386,6 +393,7 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
                 preserve_reviewed=False,
             )
             count += 1
+        _purge_translated_response_cache()
         return {"success": True, "imported": count, "type": mapping_type}
 
     if mapping_type in ("category", "series", "maker", "label"):
@@ -416,6 +424,7 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
                 preserve_reviewed=False,
             )
             count += 1
+        _purge_translated_response_cache()
         return {"success": True, "imported": count, "type": mapping_type}
 
     is_wrapped_title = isinstance(data.get("data"), dict) or "_src" in data or "_dst" in data
@@ -441,10 +450,12 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
                 preserve_reviewed=False,
             )
             count += 1
+        _purge_translated_response_cache()
         return {"success": True, "imported": count, "type": mapping_type}
 
     count = import_translations(mapping_type, data)
     sync_translation_workbench_from_mappings(item_type=mapping_type, limit=1000)
+    _purge_translated_response_cache()
     return {"success": True, "imported": count, "type": mapping_type}
 
 
@@ -460,65 +471,68 @@ async def translation_stats(mapping_type: str):
 @router.get("/stats")
 async def all_stats():
     """获取所有翻译类型的统计"""
-    stats = {t: get_translation_count(t) for t in VALID_TYPES}
-    info = get_info_client()
-    totals: dict[str, int] = {}
-    total_results = await asyncio.gather(
-        *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
-        return_exceptions=True,
-    )
-    for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results):
-        totals[mapping_type] = 0 if isinstance(result, Exception) else int(result or 0)
+    async def produce():
+        stats = {t: get_translation_count(t) for t in VALID_TYPES}
+        info = get_info_client()
+        totals: dict[str, int] = {}
+        total_results = await asyncio.gather(
+            *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
+            return_exceptions=True,
+        )
+        for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results):
+            totals[mapping_type] = 0 if isinstance(result, Exception) else int(result or 0)
 
-    coverage: dict[str, dict[str, int]] = {}
-    for mapping_type in VALID_TYPES:
-        local = get_translation_coverage_counts(mapping_type)
-        total = totals.get(mapping_type, 0)
-        translated = min(total, int(local.get("translated", 0) or 0)) if total else int(local.get("translated", 0) or 0)
-        item = {
-            "total": total,
-            "translated": translated,
-            "untranslated": max(total - translated, 0),
+        coverage: dict[str, dict[str, int]] = {}
+        for mapping_type in VALID_TYPES:
+            local = get_translation_coverage_counts(mapping_type)
+            total = totals.get(mapping_type, 0)
+            translated = min(total, int(local.get("translated", 0) or 0)) if total else int(local.get("translated", 0) or 0)
+            item = {
+                "total": total,
+                "translated": translated,
+                "untranslated": max(total - translated, 0),
+            }
+            if mapping_type == "title":
+                item["mapped"] = int(local.get("mapped", 0) or 0)
+                item["cached"] = int(local.get("cached", 0) or 0)
+            coverage[mapping_type] = item
+
+        translation_cfg = config.translation
+        ai_cfg = config.ai
+        ai_provider = str(ai_cfg.get("provider") or "openai_compatible")
+        provider_cfg = ai_cfg.get(ai_provider, {}) if isinstance(ai_cfg.get(ai_provider), dict) else {}
+        stats["ai_cache"] = get_translation_cache_count()
+        stats["coverage"] = coverage
+        stats["workbench"] = translation_workbench_stats()
+        stats["providers"] = {
+            "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
+            "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
+            "google_free": {
+                "enabled": "google_free" in config.translation_provider_order,
+                "ready": bool((translation_cfg.get("google_free") or {}).get("enabled", True)),
+            },
+            "deepl": {
+                "enabled": "deepl" in config.translation_provider_order,
+                "ready": bool((translation_cfg.get("deepl") or {}).get("enabled") and (translation_cfg.get("deepl") or {}).get("api_key")),
+            },
+            "microsoft": {
+                "enabled": "microsoft" in config.translation_provider_order,
+                "ready": bool((translation_cfg.get("microsoft") or {}).get("enabled") and (translation_cfg.get("microsoft") or {}).get("api_key")),
+            },
+            "ai": {
+                "enabled": any(item in config.translation_provider_order for item in ("ai", "openai_compatible")),
+                "ready": bool(
+                    provider_cfg.get("base_url")
+                    and provider_cfg.get("model")
+                    and (ai_provider == "ollama" or provider_cfg.get("api_key"))
+                ),
+                "model": provider_cfg.get("model") or "",
+                "provider": ai_provider,
+            },
         }
-        if mapping_type == "title":
-            item["mapped"] = int(local.get("mapped", 0) or 0)
-            item["cached"] = int(local.get("cached", 0) or 0)
-        coverage[mapping_type] = item
+        return stats
 
-    translation_cfg = config.translation
-    ai_cfg = config.ai
-    ai_provider = str(ai_cfg.get("provider") or "openai_compatible")
-    provider_cfg = ai_cfg.get(ai_provider, {}) if isinstance(ai_cfg.get(ai_provider), dict) else {}
-    stats["ai_cache"] = get_translation_cache_count()
-    stats["coverage"] = coverage
-    stats["workbench"] = translation_workbench_stats()
-    stats["providers"] = {
-        "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
-        "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
-        "google_free": {
-            "enabled": "google_free" in config.translation_provider_order,
-            "ready": bool((translation_cfg.get("google_free") or {}).get("enabled", True)),
-        },
-        "deepl": {
-            "enabled": "deepl" in config.translation_provider_order,
-            "ready": bool((translation_cfg.get("deepl") or {}).get("enabled") and (translation_cfg.get("deepl") or {}).get("api_key")),
-        },
-        "microsoft": {
-            "enabled": "microsoft" in config.translation_provider_order,
-            "ready": bool((translation_cfg.get("microsoft") or {}).get("enabled") and (translation_cfg.get("microsoft") or {}).get("api_key")),
-        },
-        "ai": {
-            "enabled": any(item in config.translation_provider_order for item in ("ai", "openai_compatible")),
-            "ready": bool(
-                provider_cfg.get("base_url")
-                and provider_cfg.get("model")
-                and (ai_provider == "ollama" or provider_cfg.get("api_key"))
-            ),
-            "model": provider_cfg.get("model") or "",
-            "provider": ai_provider,
-        },
-    }
-    return stats
+    return await cache.get_or_set_response(_STATS_CACHE_NAMESPACE, {}, produce, ttl=_STATS_CACHE_TTL)
 
 
 @router.get("/items")
@@ -637,6 +651,7 @@ async def update_translation_item(item_type: str, item_id: str, body: dict[str, 
 
     if not item:
         raise HTTPException(404, "translation workbench item not found")
+    _purge_translated_response_cache()
     return item
 
 

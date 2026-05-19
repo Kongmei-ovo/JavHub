@@ -146,8 +146,8 @@ export default {
 
   // ========== 枚举数据 ==========
 
-  listMakers() {
-    return api.get('/v1/makers')
+  listMakers(params = {}) {
+    return api.get('/v1/makers', { params })
   },
 
   listSeries(page = 1, page_size = 20) {

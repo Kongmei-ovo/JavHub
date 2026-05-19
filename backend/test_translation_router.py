@@ -14,13 +14,17 @@ class TempDbMixin:
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.tmp.name) / "test.db"
+        self.cache_db_path = Path(self.tmp.name) / "cache.sqlite3"
         self.base_patch = patch("database.base.DB_PATH", self.db_path)
+        self.cache_patch = patch("services.cache._db_path", self.cache_db_path)
         self.base_patch.start()
+        self.cache_patch.start()
         from database import init_db
 
         init_db()
 
     def tearDown(self):
+        self.cache_patch.stop()
         self.base_patch.stop()
         self.tmp.cleanup()
 
@@ -37,6 +41,26 @@ async def _stream_json(response) -> dict:
 
 
 class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_all_stats_uses_short_response_cache(self):
+        from database import upsert_translation
+        from routers.translation import all_stats
+
+        upsert_translation("category:1", {"category": {"ドラマ": "剧情"}})
+        total_calls = 0
+
+        class Client:
+            async def get_total_count(self, path: str) -> int:
+                nonlocal total_calls
+                total_calls += 1
+                return 10
+
+        with patch("routers.translation.get_info_client", return_value=Client()):
+            first = await all_stats()
+            second = await all_stats()
+
+        self.assertEqual(first, second)
+        self.assertEqual(total_calls, 6)
+
     async def test_stats_coverage_uses_mappings_as_authoritative_and_reports_cache_separately(self):
         from database import upsert_cached_translation, upsert_translation
         from routers.translation import all_stats
@@ -101,7 +125,11 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_import_keeps_legacy_id_object_json(self):
         from database import get_translation
+        from services import cache
         from routers.translation import import_trans
+
+        cache.set_response("categories", {}, [{"id": 7, "name_ja": "ドラマ"}], ttl=60)
+        cache.set_response("translation_stats", {}, {"category": 0}, ttl=60)
 
         result = await import_trans(
             "category",
@@ -110,6 +138,8 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["imported"], 1)
         self.assertEqual(get_translation("category:7")["category"]["ドラマ"], "ドラマ")
+        self.assertIsNone(cache.get_response("categories", {}))
+        self.assertIsNone(cache.get_response("translation_stats", {}))
 
     async def test_export_uses_self_describing_json_wrapper(self):
         from database import upsert_translation
@@ -164,8 +194,10 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_workbench_manual_save_updates_mapping_and_history(self):
         from database import get_translation, upsert_translation_workbench_item
+        from services import cache
         from routers.translation import get_translation_item_history, list_translation_items, update_translation_item
 
+        cache.set_response("actresses", {"page": 1}, {"data": []}, ttl=60)
         upsert_translation_workbench_item("actress", 26225, "三上悠亜")
 
         class Client:
@@ -186,6 +218,7 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["status"], "manual_edited")
         self.assertEqual(saved["translated_text"], "三上悠亚")
         self.assertEqual(get_translation("actress:26225")["actress"]["三上悠亜"], "三上悠亚")
+        self.assertIsNone(cache.get_response("actresses", {"page": 1}))
 
         history = await get_translation_item_history("actress", "26225")
         self.assertEqual(len(history["data"]), 1)
