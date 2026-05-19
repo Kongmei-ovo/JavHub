@@ -67,6 +67,22 @@ test('listMakers forwards pagination and query params', async (t) => {
   assert.deepEqual(capturedConfig.params, { page: 2, page_size: 30, q: 'studio' })
 })
 
+test('listVideos defaults to skipping total count', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?videos-no-total-${Date.now()}`)
+  await api.listVideos()
+
+  assert.equal(capturedConfig.url, '/v1/videos')
+  assert.deepEqual(capturedConfig.params, { page: 1, page_size: 20, include_total: false })
+})
+
 test('AI helper APIs send provider-aware requests', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []

@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Query
+from fastapi.params import Query as QueryParam
 from typing import Any, Optional, Dict
 from modules.info_client import get_info_client
+from services import cache
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
+_LIST_CACHE_NAMESPACE = "videos"
+_LIST_CACHE_TTL = 600
 
 async def _apply_translation_to_video(data: dict, *, allow_network: bool = True) -> dict:
     """对单条影片数据应用翻译"""
@@ -67,12 +71,19 @@ async def search_videos(
 async def list_videos(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    include_total: bool = Query(False),
 ) -> Dict[str, Any]:
-    client = get_info_client()
-    result = await client.list_videos(page=page, page_size=page_size)
-    if result.get("data"):
-        result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
-    return result
+    _include_total = False if isinstance(include_total, QueryParam) else bool(include_total)
+    cache_params = {"page": page, "page_size": page_size, "include_total": _include_total}
+
+    async def produce():
+        client = get_info_client()
+        result = await client.list_videos(page=page, page_size=page_size, include_total=_include_total)
+        if result.get("data"):
+            result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
+        return result
+
+    return await cache.get_or_set_response(_LIST_CACHE_NAMESPACE, cache_params, produce, ttl=_LIST_CACHE_TTL)
 
 @router.get("/{content_id}")
 async def get_video(content_id: str, service_code: Optional[str] = Query(None)) -> Dict[str, Any]:

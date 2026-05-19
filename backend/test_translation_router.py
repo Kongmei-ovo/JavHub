@@ -43,10 +43,18 @@ async def _stream_json(response) -> dict:
 class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_all_stats_uses_short_response_cache(self):
         from database import upsert_translation
+        from services import cache
         from routers.translation import all_stats
 
         upsert_translation("category:1", {"category": {"ドラマ": "剧情"}})
         total_calls = 0
+        captured_ttl = None
+        original_get_or_set = cache.get_or_set_response
+
+        async def capture_ttl(namespace, params, producer, ttl=cache.DEFAULT_RESPONSE_TTL):
+            nonlocal captured_ttl
+            captured_ttl = ttl
+            return await original_get_or_set(namespace, params, producer, ttl=ttl)
 
         class Client:
             async def get_total_count(self, path: str) -> int:
@@ -54,12 +62,14 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
                 total_calls += 1
                 return 10
 
-        with patch("routers.translation.get_info_client", return_value=Client()):
+        with patch("routers.translation.get_info_client", return_value=Client()), \
+             patch("routers.translation.cache.get_or_set_response", capture_ttl):
             first = await all_stats()
             second = await all_stats()
 
         self.assertEqual(first, second)
         self.assertEqual(total_calls, 6)
+        self.assertEqual(captured_ttl, 300)
 
     async def test_stats_coverage_uses_mappings_as_authoritative_and_reports_cache_separately(self):
         from database import upsert_cached_translation, upsert_translation

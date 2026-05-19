@@ -1,13 +1,27 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from fastapi.routing import APIRoute
+from routers import videos
 from routers.videos import router, search_videos
+from services import cache
 
 
 class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
+        self.patch = patch.object(cache, "_db_path", self.db_path)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tempdir.cleanup()
+
     def test_metadata_route_is_not_registered(self):
         paths = [route.path for route in router.routes if isinstance(route, APIRoute)]
 
@@ -61,6 +75,44 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["total_count"], 1)
         translator.translate_video.assert_awaited_once()
         self.assertFalse(translator.translate_video.await_args.kwargs["allow_network"])
+
+    async def test_list_videos_defaults_to_no_total_and_caches_translated_response(self):
+        client = AsyncMock()
+        client.list_videos.return_value = {
+            "data": [{"content_id": "miaa784", "title_ja": "原文"}],
+            "total_count": -1,
+            "total_pages": -1,
+        }
+        translator = AsyncMock()
+        translator.translate_video.return_value = {"content_id": "miaa784", "title_ja": "译文"}
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            first = await videos.list_videos(page=1, page_size=20)
+            second = await videos.list_videos(page=1, page_size=20)
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["total_count"], -1)
+        client.list_videos.assert_awaited_once_with(page=1, page_size=20, include_total=False)
+        translator.translate_video.assert_awaited_once()
+
+    async def test_list_videos_cache_key_includes_include_total(self):
+        client = AsyncMock()
+        client.list_videos.side_effect = [
+            {"data": [{"content_id": "no-total"}], "total_count": -1, "total_pages": -1},
+            {"data": [{"content_id": "with-total"}], "total_count": 100, "total_pages": 5},
+        ]
+        translator = AsyncMock()
+        translator.translate_video.side_effect = lambda content_id, item, **kwargs: item
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            no_total = await videos.list_videos(page=1, page_size=20, include_total=False)
+            with_total = await videos.list_videos(page=1, page_size=20, include_total=True)
+
+        self.assertEqual(no_total["total_count"], -1)
+        self.assertEqual(with_total["total_count"], 100)
+        self.assertEqual(client.list_videos.await_count, 2)
 
     async def test_translation_test_route_uses_ai_provider_only(self):
         from routers.translation import test_translation

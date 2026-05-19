@@ -260,6 +260,7 @@ class InfoClient:
         random: str | None = None,
         page: int = 1,
         page_size: int = 20,
+        include_total: bool | None = None,
     ) -> dict[str, Any]:
         """搜索视频（结果缓存10分钟，有结果才缓存）"""
         # 多tag支持：空格分隔的 category_name 拆成重复参数实现 AND 过滤
@@ -275,7 +276,8 @@ class InfoClient:
                   "runtime_min": runtime_min, "runtime_max": runtime_max,
                   "release_date_from": release_date_from, "release_date_to": release_date_to,
                   "service_code": service_code,
-                  "page": page, "page_size": page_size}
+                  "page": page, "page_size": page_size,
+                  "include_total": include_total}
         # content_id 映射到 JavInfoApi 的 dvd_id 字段
         # JavInfoApi 会同时匹配带横杠和不带横杠的版本
         # 例如输入 XRW-429 会匹配 XRW-429 和 XRW429
@@ -301,13 +303,19 @@ class InfoClient:
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         # 只缓存有结果的搜索，空结果不缓存（避免"搜过=永远没有"）
-        if result.get("total_count", 0) > 0:
+        if result.get("total_count", 0) > 0 or bool(result.get("data")):
             cache.set_search({k: v for k, v in params.items() if v is not None}, page, result)
         return result
 
-    async def list_videos(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
-        """获取视频列表"""
-        result = await self._get("/api/v1/videos", params={"page": page, "page_size": page_size})
+    async def list_videos(self, page: int = 1, page_size: int = 20, include_total: bool = False) -> dict[str, Any]:
+        """获取视频列表，默认跳过总数并复用 JavInfoApi 搜索缓存路径。"""
+        result = await self.search_videos(
+            page=page,
+            page_size=page_size,
+            sort_by="release_date",
+            sort_order="desc",
+            include_total=include_total,
+        )
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]

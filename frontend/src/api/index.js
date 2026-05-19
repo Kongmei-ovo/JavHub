@@ -111,8 +111,8 @@ export default {
     return api.get(`/v1/videos/${pathSegment(code, 'code')}`)
   },
 
-  listVideos(page = 1, page_size = 20) {
-    return api.get('/v1/videos', { params: { page, page_size } })
+  listVideos(page = 1, page_size = 20, options = {}) {
+    return api.get('/v1/videos', { params: { page, page_size, include_total: false, ...options } })
   },
 
   getVideo(contentId) {

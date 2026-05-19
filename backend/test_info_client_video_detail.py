@@ -194,6 +194,46 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
         get_cache.assert_not_called()
         set_cache.assert_not_called()
 
+    async def test_list_videos_uses_search_path_without_total_by_default(self):
+        client = InfoClient()
+        result = {
+            "data": [{"dvd_id": "MIAA-784", "jacket_thumb_url": "digital/video/miaa00784/miaa00784ps"}],
+            "page": 1,
+            "page_size": 20,
+            "total_count": -1,
+            "total_pages": -1,
+        }
+
+        with patch.object(client, "search_videos", AsyncMock(return_value=result)) as search_mock:
+            data = await client.list_videos(page=1, page_size=20)
+
+        search_mock.assert_awaited_once_with(
+            page=1,
+            page_size=20,
+            sort_by="release_date",
+            sort_order="desc",
+            include_total=False,
+        )
+        self.assertEqual(data["total_count"], -1)
+
+    async def test_search_videos_caches_no_total_results_when_data_is_present(self):
+        client = InfoClient()
+        result = {
+            "data": [{"dvd_id": "MIAA-784"}],
+            "page": 1,
+            "page_size": 20,
+            "total_count": -1,
+            "total_pages": -1,
+        }
+
+        with patch("services.cache.get_search", return_value=None), \
+             patch("services.cache.set_search") as set_search, \
+             patch.object(client, "_get", AsyncMock(return_value=result)):
+            data = await client.search_videos(page=1, page_size=20, include_total=False)
+
+        self.assertEqual(data["total_count"], -1)
+        set_search.assert_called_once()
+
     async def test_run_migrations_uses_admin_endpoint_with_long_timeout(self):
         client = InfoClient()
 

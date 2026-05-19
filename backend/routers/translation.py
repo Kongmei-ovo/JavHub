@@ -59,7 +59,7 @@ TOTAL_ENDPOINTS = {
     "label": "/api/v1/labels",
 }
 _STATS_CACHE_NAMESPACE = "translation_stats"
-_STATS_CACHE_TTL = 60
+_STATS_CACHE_TTL = 300
 
 
 def _purge_translated_response_cache() -> None:
