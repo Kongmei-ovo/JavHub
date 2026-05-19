@@ -15,6 +15,7 @@ class CacheServiceTest(unittest.TestCase):
         self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
         self.patch = patch.object(cache, "_db_path", self.db_path)
         self.patch.start()
+        cache.reset_metrics()
 
     def tearDown(self):
         self.patch.stop()
@@ -75,6 +76,51 @@ class CacheServiceTest(unittest.TestCase):
         self.assertIsNone(cache.get_enum_list("makers"))
         self.assertEqual(cache.get_video("abc-123"), {"content_id": "ABC-123"})
 
+    def test_cache_stats_counts_entries_by_kind_and_response_namespace(self):
+        cache.set_video("abc-123", {"content_id": "ABC-123"})
+        cache.set_search({"q": "abc"}, 1, {"data": []})
+        cache.set_enum_list("makers", [{"id": 2}])
+        cache.set_response("videos", {"page": 1}, {"data": []})
+        cache.set_response("videos", {"page": 2}, {"data": []})
+        cache.set_response("actress_videos", {"actress_id": 1}, {"data": []})
+        cache.set_response("expired", {}, {"data": []}, ttl=0)
+        time.sleep(0.01)
+
+        stats = cache.get_stats()
+
+        self.assertEqual(stats["total_entries"], 7)
+        self.assertEqual(stats["expired_entries"], 1)
+        self.assertEqual(stats["active_entries"], 6)
+        self.assertEqual(stats["by_kind"]["video"], 1)
+        self.assertEqual(stats["by_kind"]["search"], 1)
+        self.assertEqual(stats["by_kind"]["enum"], 1)
+        self.assertEqual(stats["by_kind"]["response"], 3)
+        self.assertEqual(stats["response_namespaces"]["videos"], 2)
+        self.assertEqual(stats["response_namespaces"]["actress_videos"], 1)
+
+    def test_cache_stats_include_hit_miss_metrics(self):
+        cache.set_video("abc-123", {"content_id": "ABC-123"})
+        cache.set_search({"q": "abc"}, 1, {"data": []})
+        cache.set_enum_list("makers", [{"id": 1}])
+        cache.set_response("videos", {"page": 1}, {"data": []})
+
+        cache.get_video("abc-123")
+        cache.get_video("missing")
+        cache.get_search({"q": "abc"}, 1)
+        cache.get_search({"q": "missing"}, 1)
+        cache.get_enum_list("makers")
+        cache.get_enum_list("labels")
+        cache.get_response("videos", {"page": 1})
+        cache.get_response("videos", {"page": 2})
+
+        metrics = cache.get_stats()["metrics"]
+
+        self.assertEqual(metrics["video"], {"hits": 1, "misses": 1})
+        self.assertEqual(metrics["search"], {"hits": 1, "misses": 1})
+        self.assertEqual(metrics["enum"], {"hits": 1, "misses": 1})
+        self.assertEqual(metrics["response"], {"hits": 1, "misses": 1})
+        self.assertEqual(metrics["response_namespaces"]["videos"], {"hits": 1, "misses": 1})
+
 
 class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -82,6 +128,7 @@ class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
         self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
         self.patch = patch.object(cache, "_db_path", self.db_path)
         self.patch.start()
+        cache.reset_metrics()
 
     def tearDown(self):
         self.patch.stop()
@@ -98,6 +145,14 @@ class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(cache.get_response("categories", {}))
         self.assertIsNone(cache.get_enum_list("makers"))
 
+    async def test_cache_stats_route_returns_service_stats(self):
+        cache.set_response("videos", {"page": 1}, {"data": []}, ttl=60)
+
+        result = await config_router.get_cache_stats()
+
+        self.assertEqual(result["total_entries"], 1)
+        self.assertEqual(result["response_namespaces"]["videos"], 1)
+
 
 class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -105,6 +160,7 @@ class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
         self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
         self.patch = patch.object(cache, "_db_path", self.db_path)
         self.patch.start()
+        cache.reset_metrics()
 
     def tearDown(self):
         self.patch.stop()
@@ -128,6 +184,7 @@ class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(results, [{"data": [{"id": 1}]}] * 5)
         self.assertEqual(calls, 1)
+        self.assertGreaterEqual(cache.get_stats()["metrics"]["singleflight_waits"], 4)
 
     async def test_producer_not_called_when_cached(self):
         cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)

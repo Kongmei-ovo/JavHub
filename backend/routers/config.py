@@ -220,3 +220,8 @@ async def purge_cache(scope: str = "video"):
     else:
         count = cache.purge_video_cache()
     return {"purged": count, "scope": scope}
+
+
+@router.get("/cache/stats")
+async def get_cache_stats():
+    return cache.get_stats()

@@ -102,6 +102,24 @@ def _content_translation(content_id: str) -> dict | None:
     return None
 
 
+def _content_translation_from_bulk(translations: dict[str, dict | None], content_id: str) -> dict | None:
+    direct = translations.get(content_id)
+    if direct:
+        return direct
+    normalized = _normalize_content_id(content_id)
+    if normalized and normalized != content_id:
+        return translations.get(normalized)
+    return None
+
+
+def _video_content_id(data: dict) -> str:
+    content_id = data.get("content_id")
+    if content_id:
+        return str(content_id)
+    dvd_id = data.get("dvd_id")
+    return _normalize_content_id(dvd_id)
+
+
 class TranslatorService:
     LOCAL_PROVIDERS = {"cache", "mapping"}
 
@@ -256,6 +274,167 @@ class TranslatorService:
             )
             _apply_translated_name(item, key, original, translated)
         return items
+
+    async def _translate_entities_with_mappings(
+        self,
+        items: list[dict],
+        *,
+        entity_type: str,
+        keys: list[str],
+        translations: dict[str, dict | None],
+        fallback_mapping: dict[str, str] | None = None,
+        use_ai: bool = False,
+        allow_network: bool = True,
+        decensor_categories: bool = True,
+    ) -> list[dict]:
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            key, original = _first_text(item, keys)
+            if not key or not original:
+                continue
+            if entity_type == "category" and decensor_categories:
+                _decensor_category_fields(item)
+                if isinstance(item.get(key), str):
+                    original = item[key]
+                decensored = decensor_category_name(original)
+                if decensored and decensored != original:
+                    item[key] = decensored
+                    original = decensored
+
+            entity_id = item.get("id")
+            mapping_scope = _entity_scope(entity_type, entity_id)
+            text_scope = _entity_scope(entity_type, entity_id, original)
+            trans = translations.get(mapping_scope)
+            mapping = trans.get(entity_type, {}) if trans else {}
+            if not mapping and fallback_mapping:
+                mapping = fallback_mapping
+            translated = await self.translate_text(
+                original,
+                scope=text_scope,
+                mapping=mapping,
+                context=f"{entity_type} name",
+                use_ai=use_ai,
+                persist_ai=use_ai,
+                allow_network=allow_network,
+            )
+            _apply_translated_name(item, key, original, translated)
+        return items
+
+    async def translate_videos(
+        self,
+        items: list[dict],
+        *,
+        use_ai: bool = False,
+        allow_network: bool = True,
+    ) -> list[dict]:
+        if not items:
+            return items
+
+        results: list[dict] = []
+        scopes: list[str] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            result = dict(item)
+            results.append(result)
+
+            content_id = _video_content_id(result)
+            if content_id:
+                scopes.append(content_id)
+                normalized = _normalize_content_id(content_id)
+                if normalized and normalized != content_id:
+                    scopes.append(normalized)
+
+            for actress in result.get("actresses") or []:
+                if isinstance(actress, dict):
+                    scopes.append(_entity_scope("actress", actress.get("id")))
+
+            for category in result.get("categories") or []:
+                if isinstance(category, dict):
+                    scopes.append(_entity_scope("category", category.get("id")))
+
+            for entity_type in ("series", "maker", "label"):
+                entity = result.get(entity_type)
+                if isinstance(entity, dict) and entity:
+                    scopes.append(_entity_scope(entity_type, entity.get("id")))
+
+        translations = get_translations_bulk(list(dict.fromkeys(scopes))) if scopes else {}
+        for result in results:
+            content_id = _video_content_id(result)
+            content_mapping = _content_translation_from_bulk(translations, content_id) if content_id else None
+
+            if isinstance(result.get("actresses"), list):
+                await self._translate_entities_with_mappings(
+                    result["actresses"],
+                    entity_type="actress",
+                    keys=["name_ja", "name_en", "name_kanji", "name_romaji", "name"],
+                    translations=translations,
+                    use_ai=use_ai,
+                    allow_network=allow_network,
+                )
+
+            if isinstance(result.get("categories"), list):
+                await self._translate_entities_with_mappings(
+                    result["categories"],
+                    entity_type="category",
+                    keys=["name_ja", "name_en", "name"],
+                    translations=translations,
+                    fallback_mapping=content_mapping.get("category", {}) if content_mapping else None,
+                    use_ai=use_ai,
+                    allow_network=allow_network,
+                    decensor_categories=False,
+                )
+
+            for entity_type, keys in (
+                ("series", ["name"]),
+                ("maker", ["name_ja", "name_en", "name"]),
+                ("label", ["name_ja", "name_en", "name"]),
+            ):
+                entity = result.get(entity_type)
+                if not isinstance(entity, dict) or not entity:
+                    continue
+                await self._translate_entities_with_mappings(
+                    [entity],
+                    entity_type=entity_type,
+                    keys=keys,
+                    translations=translations,
+                    fallback_mapping=content_mapping.get(entity_type, {}) if content_mapping else None,
+                    use_ai=use_ai,
+                    allow_network=allow_network,
+                )
+
+            title_map = content_mapping.get("title", {}) if content_mapping else {}
+            for title_key in ["title_en", "title_ja"]:
+                original = result.get(title_key)
+                if not original:
+                    continue
+                translated = await self.translate_text(
+                    original,
+                    scope=f"title:{content_id}:{title_key}",
+                    mapping=title_map,
+                    context="video title",
+                    use_ai=use_ai,
+                    persist_ai=use_ai,
+                    allow_network=allow_network,
+                )
+                if translated and translated != original:
+                    result[f"{title_key}_translated"] = translated
+
+            if result.get("summary"):
+                summary = result.get("summary")
+                translated = await self.translate_text(
+                    summary,
+                    scope=f"summary:{content_id}",
+                    context="video summary",
+                    use_ai=True,
+                    persist_ai=True,
+                    allow_network=allow_network,
+                )
+                if translated and translated != summary:
+                    result["summary_translated"] = translated
+
+        return results
 
     async def translate_video(
         self,

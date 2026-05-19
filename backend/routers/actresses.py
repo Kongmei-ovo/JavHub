@@ -9,6 +9,8 @@ from translations import get_translator_service
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
 _LIST_CACHE_NAMESPACE = "actresses"
 _LIST_CACHE_TTL = 120
+_VIDEOS_CACHE_NAMESPACE = "actress_videos"
+_VIDEOS_CACHE_TTL = 600
 
 
 class BatchActressVideosRequest(BaseModel):
@@ -89,17 +91,30 @@ async def get_actress_videos(
     _yr  = None if isinstance(year, QueryParam) else year
     _srt = None if isinstance(sort_by, QueryParam) else sort_by
 
-    client = get_info_client()
-    result = await client.get_actress_videos(
-        actress_id, page=page, page_size=page_size,
-        include_supplement=_inc,
-        service_code=_svc,
-        year=_yr,
-        sort_by=_srt,
-    )
-    if result.get("data"):
-        result["data"] = [await _apply_translation(item, allow_network=False) for item in result["data"]]
-    return result
+    cache_params = {
+        "actress_id": actress_id,
+        "page": page,
+        "page_size": page_size,
+        "include_supplement": _inc,
+        "service_code": _svc,
+        "year": _yr,
+        "sort_by": _srt,
+    }
+
+    async def produce():
+        client = get_info_client()
+        result = await client.get_actress_videos(
+            actress_id, page=page, page_size=page_size,
+            include_supplement=_inc,
+            service_code=_svc,
+            year=_yr,
+            sort_by=_srt,
+        )
+        if result.get("data"):
+            result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)
+        return result
+
+    return await cache.get_or_set_response(_VIDEOS_CACHE_NAMESPACE, cache_params, produce, ttl=_VIDEOS_CACHE_TTL)
 
 
 @router.post("/batch_videos")
@@ -109,7 +124,7 @@ async def batch_get_actress_videos(req: BatchActressVideosRequest) -> dict[str, 
     result = await client.batch_get_actress_videos(ids, page=req.page, page_size=req.page_size)
     for info in result.values():
         if isinstance(info, dict) and isinstance(info.get("videos"), list):
-            info["videos"] = [await _apply_translation(item, allow_network=False) for item in info["videos"]]
+            info["videos"] = await _apply_translation_to_videos(info["videos"], allow_network=False)
     return result
 
 async def _apply_translation(data: dict, *, allow_network: bool = True) -> dict:
@@ -117,3 +132,7 @@ async def _apply_translation(data: dict, *, allow_network: bool = True) -> dict:
     if not content_id:
         return data
     return await get_translator_service().translate_video(content_id, data, allow_network=allow_network)
+
+
+async def _apply_translation_to_videos(items: list[dict], *, allow_network: bool = False) -> list[dict]:
+    return await get_translator_service().translate_videos(items, allow_network=allow_network)

@@ -8,6 +8,12 @@ from translations import get_translator_service
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
 _LIST_CACHE_NAMESPACE = "videos"
 _LIST_CACHE_TTL = 600
+_DETAIL_CACHE_NAMESPACE = "video_detail"
+_DETAIL_CACHE_TTL = 600
+
+
+def _content_cache_id(content_id: str) -> str:
+    return content_id.replace("-", "").lower()
 
 async def _apply_translation_to_video(data: dict, *, allow_network: bool = True) -> dict:
     """对单条影片数据应用翻译"""
@@ -15,6 +21,10 @@ async def _apply_translation_to_video(data: dict, *, allow_network: bool = True)
     if not content_id:
         return data
     return await get_translator_service().translate_video(content_id, data, allow_network=allow_network)
+
+
+async def _apply_translation_to_videos(items: list[dict], *, allow_network: bool = False) -> list[dict]:
+    return await get_translator_service().translate_videos(items, allow_network=allow_network)
 
 @router.get("/search")
 async def search_videos(
@@ -64,7 +74,7 @@ async def search_videos(
         page=page, page_size=page_size
     )
     if result.get("data"):
-        result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
+        result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)
     return result
 
 @router.get("")
@@ -80,13 +90,27 @@ async def list_videos(
         client = get_info_client()
         result = await client.list_videos(page=page, page_size=page_size, include_total=_include_total)
         if result.get("data"):
-            result["data"] = [await _apply_translation_to_video(item, allow_network=False) for item in result["data"]]
+            result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)
         return result
 
     return await cache.get_or_set_response(_LIST_CACHE_NAMESPACE, cache_params, produce, ttl=_LIST_CACHE_TTL)
 
 @router.get("/{content_id}")
 async def get_video(content_id: str, service_code: Optional[str] = Query(None)) -> Dict[str, Any]:
-    client = get_info_client()
-    data = await client.get_video(content_id, service_code=service_code)
-    return await _apply_translation_to_video(data)
+    _service_code = None if isinstance(service_code, QueryParam) else service_code
+    cache_params = {
+        "content_id": _content_cache_id(content_id),
+        "service_code": _service_code,
+    }
+
+    async def produce():
+        client = get_info_client()
+        data = await client.get_video(content_id, service_code=_service_code)
+        return await _apply_translation_to_video(data, allow_network=False)
+
+    return await cache.get_or_set_response(
+        _DETAIL_CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_DETAIL_CACHE_TTL,
+    )

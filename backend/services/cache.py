@@ -15,6 +15,35 @@ DEFAULT_RESPONSE_TTL = 600       # 10min
 
 _db_path: Optional[Path] = None
 _response_locks: dict[str, asyncio.Lock] = {}
+_metrics: dict[str, Any] = {}
+
+
+def reset_metrics() -> None:
+    global _metrics
+    _metrics = {
+        "video": {"hits": 0, "misses": 0},
+        "search": {"hits": 0, "misses": 0},
+        "enum": {"hits": 0, "misses": 0},
+        "response": {"hits": 0, "misses": 0},
+        "response_namespaces": {},
+        "singleflight_waits": 0,
+    }
+
+
+reset_metrics()
+
+
+def _record_metric(kind: str, hit: bool, namespace: str | None = None) -> None:
+    bucket = _metrics.setdefault(kind, {"hits": 0, "misses": 0})
+    bucket["hits" if hit else "misses"] = int(bucket.get("hits" if hit else "misses", 0)) + 1
+    if kind == "response" and namespace:
+        namespaces = _metrics.setdefault("response_namespaces", {})
+        namespace_bucket = namespaces.setdefault(namespace, {"hits": 0, "misses": 0})
+        namespace_bucket["hits" if hit else "misses"] = int(namespace_bucket.get("hits" if hit else "misses", 0)) + 1
+
+
+def _record_singleflight_wait() -> None:
+    _metrics["singleflight_waits"] = int(_metrics.get("singleflight_waits", 0)) + 1
 
 
 def _get_db_path() -> Path:
@@ -88,7 +117,9 @@ def _set_json(key: str, data: Any, ttl: int) -> None:
 
 def get_video(content_id: str) -> Optional[dict]:
     data = _get_json(f"video:{content_id}")
-    return data if isinstance(data, dict) else None
+    hit = isinstance(data, dict)
+    _record_metric("video", hit)
+    return data if hit else None
 
 
 def set_video(content_id: str, data: dict, ttl: int = DEFAULT_VIDEO_TTL) -> None:
@@ -100,7 +131,9 @@ def set_video(content_id: str, data: dict, ttl: int = DEFAULT_VIDEO_TTL) -> None
 def get_search(params: dict, page: int) -> Optional[dict]:
     key = _search_key(params, page)
     data = _get_json(key)
-    return data if isinstance(data, dict) else None
+    hit = isinstance(data, dict)
+    _record_metric("search", hit)
+    return data if hit else None
 
 
 def set_search(params: dict, page: int, data: dict, ttl: int = DEFAULT_SEARCH_TTL) -> None:
@@ -117,7 +150,9 @@ def _search_key(params: dict, page: int) -> str:
 # === Response ===
 
 def get_response(namespace: str, params: dict | None = None) -> Any | None:
-    return _get_json(_response_key(namespace, params or {}))
+    data = _get_json(_response_key(namespace, params or {}))
+    _record_metric("response", data is not None, namespace=namespace)
+    return data
 
 
 def set_response(namespace: str, params: dict | None, data: Any, ttl: int = DEFAULT_RESPONSE_TTL) -> None:
@@ -140,6 +175,8 @@ async def get_or_set_response(
     if lock is None:
         lock = asyncio.Lock()
         _response_locks[key] = lock
+    elif lock.locked():
+        _record_singleflight_wait()
 
     async with lock:
         cached = get_response(namespace, cache_params)
@@ -160,11 +197,61 @@ def _response_key(namespace: str, params: dict) -> str:
 
 def get_enum_list(enum_type: str) -> Optional[list]:
     data = _get_json(f"enum:{enum_type}")
-    return data if isinstance(data, list) else None
+    hit = isinstance(data, list)
+    _record_metric("enum", hit)
+    return data if hit else None
 
 
 def set_enum_list(enum_type: str, data: list, ttl: int = DEFAULT_ENUM_TTL) -> None:
     _set_json(f"enum:{enum_type}", data, ttl)
+
+
+# === Stats ===
+
+def get_stats() -> dict[str, Any]:
+    now = time.time()
+    by_kind = {"video": 0, "search": 0, "enum": 0, "response": 0, "other": 0}
+    response_namespaces: dict[str, int] = {}
+    expired_entries = 0
+    total_entries = 0
+
+    with _connect() as conn:
+        rows = conn.execute("SELECT key, expires_at FROM cache_entries").fetchall()
+
+    for key, expires_at in rows:
+        total_entries += 1
+        if expires_at <= now:
+            expired_entries += 1
+            continue
+        kind = str(key).split(":", 1)[0]
+        if kind == "response":
+            by_kind["response"] += 1
+            namespace = str(key).split(":", 2)[1] if ":" in str(key) else "unknown"
+            response_namespaces[namespace] = response_namespaces.get(namespace, 0) + 1
+        elif kind in by_kind:
+            by_kind[kind] += 1
+        else:
+            by_kind["other"] += 1
+
+    return {
+        "total_entries": total_entries,
+        "active_entries": total_entries - expired_entries,
+        "expired_entries": expired_entries,
+        "by_kind": by_kind,
+        "response_namespaces": dict(sorted(response_namespaces.items())),
+        "metrics": {
+            "video": dict(_metrics["video"]),
+            "search": dict(_metrics["search"]),
+            "enum": dict(_metrics["enum"]),
+            "response": dict(_metrics["response"]),
+            "response_namespaces": {
+                namespace: dict(values)
+                for namespace, values in sorted(_metrics.get("response_namespaces", {}).items())
+            },
+            "singleflight_waits": int(_metrics.get("singleflight_waits", 0)),
+        },
+        "singleflight_locks": len(_response_locks),
+    }
 
 
 # === Purge ===

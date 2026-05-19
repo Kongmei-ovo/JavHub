@@ -339,6 +339,63 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         scopes = [call.kwargs["scope"] for call in service.translate_text.await_args_list]
         self.assertEqual(scopes, ["label:1", "label:2"])
 
+    async def test_translate_videos_prefetches_content_and_entity_mappings_in_bulk(self):
+        from translations import service as service_module
+
+        service = self.service()
+        videos = [
+            {
+                "content_id": "MIAA-784",
+                "title_ja": "タイトルA",
+                "categories": [{"id": 7, "name_ja": "痴女"}],
+                "maker": {"id": 11, "name_ja": "メーカー"},
+                "series": {"id": 12, "name": "シリーズ"},
+                "label": {"id": 13, "name_ja": "レーベル"},
+                "actresses": [{"id": 26225, "name_ja": "三上悠亜"}],
+            },
+            {
+                "content_id": "MIAA-785",
+                "title_ja": "タイトルB",
+                "categories": [{"id": 8, "name_ja": "企画"}],
+                "maker": {"id": 11, "name_ja": "メーカー"},
+            },
+        ]
+
+        with patch.object(
+            service_module,
+            "get_translations_bulk",
+            return_value={
+                "MIAA-784": {"title": {"タイトルA": "标题A"}},
+                "MIAA-785": {"title": {"タイトルB": "标题B"}},
+                "category:7": {"category": {"痴女": "痴女中文"}},
+                "category:8": {"category": {"企画": "企划"}},
+                "maker:11": {"maker": {"メーカー": "片商"}},
+                "series:12": {"series": {"シリーズ": "系列"}},
+                "label:13": {"label": {"レーベル": "厂牌"}},
+                "actress:26225": {"actress": {"三上悠亜": "三上悠亚"}},
+            },
+        ) as bulk_lookup:
+            result = await service.translate_videos(videos, allow_network=False)
+
+        requested = bulk_lookup.call_args.args[0]
+        self.assertIn("MIAA-784", requested)
+        self.assertIn("MIAA-785", requested)
+        self.assertIn("category:7", requested)
+        self.assertIn("category:8", requested)
+        self.assertIn("maker:11", requested)
+        self.assertIn("series:12", requested)
+        self.assertIn("label:13", requested)
+        self.assertIn("actress:26225", requested)
+        self.assertEqual(bulk_lookup.call_count, 1)
+        self.assertEqual(result[0]["title_ja_translated"], "标题A")
+        self.assertEqual(result[0]["categories"][0]["name_ja_translated"], "痴女中文")
+        self.assertEqual(result[0]["maker"]["name_ja_translated"], "片商")
+        self.assertEqual(result[0]["series"]["name_translated"], "系列")
+        self.assertEqual(result[0]["label"]["name_ja_translated"], "厂牌")
+        self.assertEqual(result[0]["actresses"][0]["name_ja_translated"], "三上悠亚")
+        self.assertEqual(result[1]["title_ja_translated"], "标题B")
+        self.assertEqual(result[1]["categories"][0]["name_ja_translated"], "企划")
+
     async def test_batch_provider_order_skips_ai(self):
         from translations.providers import GoogleFreeProvider, OpenAICompatibleProvider, TranslationResult
 
