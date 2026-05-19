@@ -61,6 +61,7 @@ test('docker deployment defaults to stable images and CI injects automatic versi
   assert.match(dockerBuildWorkflow, /type=raw,value=stable,enable=\{\{is_default_branch\}\}/)
   assert.match(dockerBuildWorkflow, /type=raw,value=\$\{\{ env\.RELEASE_VERSION \}\},enable=\{\{is_default_branch\}\}/)
   assert.match(dockerBuildWorkflow, /VITE_APP_VERSION: \$\{\{ env\.RELEASE_VERSION \}\}/)
+  assert.match(dockerBuildWorkflow, /org\.opencontainers\.image\.version=\$\{\{ env\.RELEASE_VERSION \}\}/)
   assert.match(dockerfile, /ARG VITE_APP_VERSION=dev/)
   assert.match(dockerfile, /ENV VITE_APP_VERSION=\$\{VITE_APP_VERSION\}/)
 })

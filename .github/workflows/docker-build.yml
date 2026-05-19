@@ -59,7 +59,9 @@ jobs:
           file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.version=${{ env.RELEASE_VERSION }}
           build-args: |
             VITE_APP_VERSION=${{ env.RELEASE_VERSION }}
           cache-from: type=gha
