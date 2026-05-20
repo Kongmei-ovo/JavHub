@@ -179,13 +179,13 @@
           <!-- 男优 -->
           <div v-if="video.actors && video.actors.length" class="modal-section">
             <h4 class="section-title">男优</h4>
-            <div class="actress-list">
+            <div class="tag-list">
               <span
                 v-for="actor in video.actors"
                 :key="actor.id"
                 class="actress-tag"
               >
-                {{ actor.name_kanji || actor.name_kana || '—' }}
+                <span class="tag-label">{{ actor.name_kanji || actor.name_kana || '—' }}</span>
               </span>
             </div>
           </div>
@@ -193,20 +193,20 @@
           <!-- 题材 -->
           <div v-if="video.categories && video.categories.length" class="modal-section">
             <h4 class="section-title">题材</h4>
-            <div class="actress-list">
+            <div class="tag-list">
               <span
                 v-for="cat in video.categories"
                 :key="cat.id"
                 class="actress-tag clickable"
                 @click="$emit('navigate', { type: 'category', item: cat })"
               >
-                <span v-html="itemDisplayName(cat)"></span>
+                <span class="tag-label" v-html="itemDisplayName(cat)"></span>
               </span>
             </div>
           </div>
           <div v-else-if="!videoLoaded" class="modal-section">
             <h4 class="section-title">题材</h4>
-            <div class="actress-list">
+            <div class="tag-list">
               <span v-for="n in 5" :key="n" class="actress-tag skeleton" style="width: 60px; height: 24px"></span>
             </div>
           </div>
@@ -282,19 +282,22 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
 import favoriteState from '../utils/favoriteState'
-import Hls from 'hls.js'
 import api from '../api'
+import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
-import VideoPlayerOverlay from '../features/video/VideoPlayerOverlay.vue'
-import HlsPlayerOverlay from '../features/video/HlsPlayerOverlay.vue'
+
+const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
+const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
 
 export default {
   name: 'VideoModal',
   components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
+  emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },
     video: { type: Object, default: () => ({}) }
@@ -451,7 +454,7 @@ export default {
     async copyMagnet(mag) {
       try {
         await navigator.clipboard.writeText(mag.magnet || mag)
-        if (this.$message) this.$message.success('磁链已复制')
+        ElMessage.success('磁链已复制')
       } catch (e) {}
     },
     openGalleryViewer(idx) { this.currentGalleryIndex = idx; this.galleryViewerVisible = true; window.addEventListener('keydown', this.onGalleryKeydown) },
@@ -472,22 +475,32 @@ export default {
           this.streamPlayerVisible = true
           this.$nextTick(() => this.initHlsPlayer())
         } else {
-          this.$message?.info('未找到播放地址')
+          ElMessage.info('未找到播放地址')
         }
       } catch (e) {
         console.error('Get stream URL failed:', e)
-        this.$message?.error('获取播放地址失败')
+        ElMessage.error('获取播放地址失败')
       } finally {
         this.streamLoading = false
       }
     },
-    initHlsPlayer() {
-      const video = this.streamVideoEl()
+    async waitForStreamVideoEl() {
+      for (let i = 0; i < 20; i += 1) {
+        await this.$nextTick()
+        const video = this.streamVideoEl()
+        if (video) return video
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      return null
+    },
+    async initHlsPlayer() {
+      const video = await this.waitForStreamVideoEl()
       if (!video) return
       if (this.hlsInstance) {
         this.hlsInstance.destroy()
         this.hlsInstance = null
       }
+      const { default: Hls } = await import('hls.js/dist/hls.light.mjs')
       if (Hls.isSupported()) {
         const hls = new Hls()
         hls.loadSource(this.streamM3u8Url)
@@ -497,15 +510,15 @@ export default {
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                this.$message?.error('网络错误，视频加载失败')
+                ElMessage.error('网络错误，视频加载失败')
                 hls.startLoad()
                 break
               case Hls.ErrorTypes.MEDIA_ERROR:
-                this.$message?.error('视频解码错误')
+                ElMessage.error('视频解码错误')
                 hls.recoverMediaError()
                 break
               default:
-                this.$message?.error('视频播放失败')
+                ElMessage.error('视频播放失败')
                 this.closeStreamPlayer()
                 break
             }
@@ -544,13 +557,13 @@ export default {
           document.body.appendChild(a)
           a.click()
           document.body.removeChild(a)
-          this.$message?.success('m3u8 下载已开始')
+          ElMessage.success('m3u8 下载已开始')
         } else {
-          this.$message?.info('未找到播放地址')
+          ElMessage.info('未找到播放地址')
         }
       } catch (e) {
         console.error('Get stream URL failed:', e)
-        this.$message?.error('获取播放地址失败')
+        ElMessage.error('获取播放地址失败')
       } finally {
         this.streamLoading = false
       }
@@ -568,14 +581,17 @@ export default {
 
 <style scoped>
 .modal-overlay {
-  --modal-sheet-bg: rgba(24, 24, 27, 0.58);
+  --modal-sheet-bg: rgba(24, 24, 27, 0.66);
   --modal-panel-bg: rgba(255, 255, 255, 0.08);
   --modal-panel-border: rgba(255, 255, 255, 0.18);
   --modal-gallery-bg: rgba(0, 0, 0, 0.18);
   --modal-overlay-bg: rgba(0, 0, 0, 0.14);
+  --modal-backdrop-blur: 12px;
   position: fixed;
   inset: 0;
   background: var(--modal-overlay-bg);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(110%);
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(110%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -585,7 +601,7 @@ export default {
 }
 
 :root[data-theme="dark"] .modal-overlay {
-  --modal-sheet-bg: rgba(18, 18, 20, 0.70);
+  --modal-sheet-bg: rgba(18, 18, 20, 0.76);
   --modal-panel-bg: rgba(255, 255, 255, 0.06);
   --modal-panel-border: rgba(255, 255, 255, 0.14);
   --modal-gallery-bg: rgba(0, 0, 0, 0.24);
@@ -594,8 +610,8 @@ export default {
 
 .modal-container {
   background: var(--modal-sheet-bg);
-  backdrop-filter: blur(52px) saturate(170%);
-  -webkit-backdrop-filter: blur(52px) saturate(170%);
+  backdrop-filter: blur(64px) saturate(145%);
+  -webkit-backdrop-filter: blur(64px) saturate(145%);
   border-radius: var(--radius-pro);
   border: 1px solid var(--modal-panel-border);
   width: 100%;
@@ -677,6 +693,7 @@ export default {
 .modal-section { margin-top: 0; }
 .section-title { font-size: var(--type-caption); font-weight: 700; margin-bottom: 20px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.12em; }
 .actress-list { display: flex; flex-wrap: wrap; gap: 20px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
 .actress-avatar-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
 .actress-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.15); transition: var(--transition-pro); }
 .actress-avatar-item:hover .actress-avatar { border-color: rgba(255, 255, 255, 0.6); transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
@@ -686,8 +703,10 @@ export default {
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-name .name-translated { font-size: 11px; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-avatar-item:hover .actress-name { color: #ffffff; }
-.actress-tag { padding: 8px 18px; background: rgba(255, 255, 255, 0.08); border-radius: 40px; font-size: 13px; color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition-pro); }
+.actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: rgba(255, 255, 255, 0.08); border-radius: 40px; font-size: 13px; color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition-pro); text-align: center; }
+.actress-tag.clickable { text-decoration: none; text-decoration-color: transparent; }
 .actress-tag:hover { border-color: rgba(255, 255, 255, 0.4); color: white; background: rgba(255, 255, 255, 0.15); }
+.tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }
 .meta-provider { font-size: 12px; color: rgba(255, 255, 255, 0.4); margin-left: 4px; }
 .summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
 .summary-text--empty { color: rgba(255, 255, 255, 0.3); font-style: italic; }
@@ -769,19 +788,25 @@ export default {
     max-height: 100dvh;
     height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .modal-gallery {
+    height: min(42dvh, 320px);
     max-height: 42dvh;
+    align-items: center;
   }
 
   .gallery-img {
-    max-height: 42dvh;
+    height: 100%;
+    max-height: 100%;
+    object-fit: contain;
   }
 
   .modal-content {
-    padding: 20px 16px 28px;
-    gap: 22px;
+    padding: 18px max(14px, env(safe-area-inset-right, 0px)) 28px max(14px, env(safe-area-inset-left, 0px));
+    gap: 20px;
   }
 
   .modal-code-block {
@@ -798,7 +823,7 @@ export default {
 
   .modal-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
     gap: 8px;
     width: 100%;
   }
@@ -859,6 +884,12 @@ export default {
     gap: 12px;
   }
 
+  .tag-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(108px, 31vw, 148px), 1fr));
+    gap: 8px;
+  }
+
   .actress-avatar {
     width: 56px;
     height: 56px;
@@ -870,9 +901,14 @@ export default {
   }
 
   .actress-tag {
+    width: 100%;
     min-height: var(--compact-toolbar-height);
-    padding: 8px 12px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    font-size: 12px;
+    line-height: 1.35;
     overflow-wrap: anywhere;
+    touch-action: manipulation;
   }
 
   .summary-text {

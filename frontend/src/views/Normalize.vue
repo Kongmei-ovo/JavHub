@@ -211,7 +211,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl } from '../utils/imageUrl.js'
 

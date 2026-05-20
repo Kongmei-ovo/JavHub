@@ -16,7 +16,6 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
           if (id.includes('vue') || id.includes('vue-router')) return 'vue-vendor'
-          if (id.includes('element-plus') || id.includes('@element-plus')) return 'element-plus'
           if (id.includes('hls.js') || id.includes('plyr') || id.includes('vue-video-player')) return 'media-player'
           if (id.includes('gsap')) return 'motion'
           if (id.includes('axios')) return 'network'
