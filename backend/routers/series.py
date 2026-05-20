@@ -13,11 +13,12 @@ async def list_series(
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None),
 ):
-    cache_params = {"q": q, "page": page, "page_size": page_size}
+    include_total = False
+    cache_params = {"q": q, "page": page, "page_size": page_size, "include_total": include_total}
 
     async def produce():
         client = get_info_client()
-        result = await client.list_series_page(q=q, page=page, page_size=page_size)
+        result = await client.list_series_page(q=q, page=page, page_size=page_size, include_total=include_total)
         page_items = result.get("data", []) if isinstance(result, dict) else []
 
         # 为当前页注入翻译字段

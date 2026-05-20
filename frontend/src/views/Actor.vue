@@ -256,6 +256,9 @@ export default {
       return s === 'running' || s === 'queued'
     },
     hasMoreMovies() {
+      if (this.totalCount < 0 || this.movieTotalPages < 0) {
+        return this.movies.length >= this.moviePage * MOVIE_PAGE_SIZE
+      }
       return this.moviePage < this.movieTotalPages
     },
   },
@@ -318,7 +321,7 @@ export default {
     },
     async fetchActorMoviePage(page) {
       if (this.actressId) {
-        const resp = await api.getActressVideos(this.actressId, page, MOVIE_PAGE_SIZE, { include_supplement: '1' })
+        const resp = await api.getActressVideos(this.actressId, page, MOVIE_PAGE_SIZE, { include_supplement: '1', include_total: false })
         return resp.data
       }
       const resp = await api.searchVideos({ actress_name: this.actorName, page, page_size: MOVIE_PAGE_SIZE })
@@ -327,8 +330,8 @@ export default {
     appendMoviePage(data) {
       const incoming = (data.data || []).map(m => this.normalizeMovie(m))
       this.movies.push(...incoming)
-      this.totalCount = data.total_count || this.movies.length
-      this.movieTotalPages = data.total_pages || 1
+      this.totalCount = Number.isInteger(data.total_count) ? data.total_count : this.movies.length
+      this.movieTotalPages = Number.isInteger(data.total_pages) ? data.total_pages : 1
       this.$nextTick(() => this._setupYearObserver())
     },
     async loadActorMovies() {

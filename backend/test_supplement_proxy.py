@@ -417,10 +417,18 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
         mock_client = AsyncMock()
         mock_client.proxy_get.return_value = {"movie": {"id": 12}, "field_values": []}
 
-        with patch("routers.supplement.get_info_client", return_value=mock_client):
+        with patch("routers.supplement.get_info_client", return_value=mock_client), \
+             patch("routers.supplement.get_translator_service") as get_translator:
+            translator = AsyncMock()
+            translator.translate_supplement_sources.return_value = {"movie": {"id": 12}, "field_values": []}
+            get_translator.return_value = translator
             await supplement.get_movie_sources(movie_id=12)
 
         mock_client.proxy_get.assert_awaited_once_with("/api/v1/supplement/movies/12/sources")
+        translator.translate_supplement_sources.assert_awaited_once_with(
+            {"movie": {"id": 12}, "field_values": []},
+            allow_network=False,
+        )
 
     async def test_create_download_candidates_from_supplement_passes_filters(self):
         with patch(

@@ -131,7 +131,7 @@ export default {
 
   getActressVideos(actressId, page = 1, page_size = 20, options = {}) {
     return api.get(`/v1/actresses/${numericPathSegment(actressId, 'actressId')}/videos`, {
-      params: { page, page_size, ...options },
+      params: { page, page_size, include_total: false, ...options },
     })
   },
 

@@ -36,7 +36,7 @@ class SeriesRouteTest(unittest.IsolatedAsyncioTestCase):
              patch("routers.series.get_translator_service", return_value=translator):
             result = await list_series(page=3, page_size=24, q=None)
 
-        client.list_series_page.assert_awaited_once_with(q=None, page=3, page_size=24)
+        client.list_series_page.assert_awaited_once_with(q=None, page=3, page_size=24, include_total=False)
         client.list_series.assert_not_called()
         translator.translate_entities.assert_awaited_once_with(
             result["data"],

@@ -36,10 +36,10 @@ class ActressVideosSupplementTest(unittest.IsolatedAsyncioTestCase):
         mock_client.get_actress_videos.assert_awaited_once_with(
             123, page=1, page_size=20,
             include_supplement="1", service_code="digital", year=2024,
-            sort_by="release_date:desc",
+            sort_by="release_date:desc", include_total=None,
         )
 
-    async def test_no_extra_params_when_not_provided(self):
+    async def test_no_extra_params_when_not_provided_defaults_to_skip_total(self):
         mock_client = AsyncMock()
         mock_client.get_actress_videos.return_value = {"data": [], "total_count": 0}
 
@@ -48,7 +48,7 @@ class ActressVideosSupplementTest(unittest.IsolatedAsyncioTestCase):
 
         mock_client.get_actress_videos.assert_awaited_once_with(
             123, page=1, page_size=20,
-            include_supplement=None, service_code=None, year=None, sort_by=None,
+            include_supplement=None, service_code=None, year=None, sort_by=None, include_total=False,
         )
 
     async def test_actress_videos_caches_translated_response_by_filters(self):

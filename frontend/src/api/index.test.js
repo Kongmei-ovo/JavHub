@@ -320,6 +320,22 @@ test('getActressVideos forwards include_supplement and extra params', async (t) 
   assert.equal(capturedConfig.params.year, 2024)
 })
 
+test('getActressVideos defaults to skipping total count', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [], total_count: -1 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?actress-videos-no-total-${Date.now()}`)
+  await api.getActressVideos(123)
+
+  assert.equal(capturedConfig.url, '/v1/actresses/123/videos')
+  assert.deepEqual(capturedConfig.params, { page: 1, page_size: 20, include_total: false })
+})
+
 test('numeric path APIs reject path-like identifiers before sending requests', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []
