@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 
 function installRejectingAdapter(t, status = 404, detail = 'Not Found') {
   const originalAdapter = axios.defaults.adapter

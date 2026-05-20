@@ -79,3 +79,59 @@ test('modal sheet keeps a visible frosted fallback when backdrop filtering is un
   assert.match(source, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
   assert.doesNotMatch(source, /\.modal-container\s*\{[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\)/)
 })
+
+test('modal material normalizes busy result grids behind the sheet', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /--modal-backdrop-blur:\s*12px/)
+  assert.match(source, /--modal-sheet-bg:\s*rgba\(24,\s*24,\s*27,\s*0\.66\)/)
+  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.76\)/)
+  assert.match(source, /\.modal-overlay\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--modal-backdrop-blur\)\)\s*saturate\(110%\)/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(64px\)\s*saturate\(145%\)/)
+})
+
+test('modal keeps media player and hls libraries out of the base modal chunk', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /defineAsyncComponent/)
+  assert.match(source, /const VideoPlayerOverlay = defineAsyncComponent\(\(\) => import\('\.\.\/features\/video\/VideoPlayerOverlay\.vue'\)\)/)
+  assert.match(source, /const HlsPlayerOverlay = defineAsyncComponent\(\(\) => import\('\.\.\/features\/video\/HlsPlayerOverlay\.vue'\)\)/)
+  assert.match(source, /await import\('hls\.js\/dist\/hls\.light\.mjs'\)/)
+  assert.doesNotMatch(source, /import Hls from 'hls\.js'/)
+  assert.doesNotMatch(source, /import VideoPlayerOverlay from '\.\.\/features\/video\/VideoPlayerOverlay\.vue'/)
+  assert.doesNotMatch(source, /import HlsPlayerOverlay from '\.\.\/features\/video\/HlsPlayerOverlay\.vue'/)
+})
+
+test('modal uses the lightweight message proxy after removing the Element Plus plugin', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /import \{ ElMessage \} from '\.\.\/utils\/message\.js'/)
+  assert.doesNotMatch(source, /\$message/)
+})
+
+test('modal declares emitted events for async component listeners', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /emits:\s*\[\s*'close',\s*'download',\s*'navigate'\s*\]/)
+})
+
+test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /class="tag-list"/)
+  assert.match(source, /class="tag-label"/)
+  assert.match(source, /\.tag-list\s*\{[\s\S]*display:\s*flex/)
+  assert.match(source, /@media \(max-width: 768px\)\s*\{[\s\S]*\.tag-list\s*\{[\s\S]*display:\s*grid/)
+  assert.match(source, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(clamp\(108px,\s*31vw,\s*148px\),\s*1fr\)\)/)
+  assert.match(source, /\.tag-label\s*\{[\s\S]*-webkit-line-clamp:\s*2/)
+  assert.match(source, /\.actress-tag\.clickable\s*\{[\s\S]*text-decoration:\s*none/)
+})
+
+test('mobile modal sheet uses stable poster sizing and momentum scrolling', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /-webkit-overflow-scrolling:\s*touch/)
+  assert.match(source, /\.modal-gallery\s*\{[\s\S]*height:\s*min\(42dvh,\s*320px\)/)
+  assert.match(source, /\.gallery-img\s*\{[\s\S]*height:\s*100%[\s\S]*object-fit:\s*contain/)
+  assert.match(source, /\.modal-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(96px,\s*1fr\)\)/)
+})

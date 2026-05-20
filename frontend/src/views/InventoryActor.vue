@@ -114,7 +114,7 @@ export default {
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'

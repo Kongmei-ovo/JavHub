@@ -2,6 +2,9 @@ import tempfile
 import time
 import unittest
 import asyncio
+import os
+import sys
+import types
 from pathlib import Path
 from unittest.mock import patch
 
@@ -120,6 +123,79 @@ class CacheServiceTest(unittest.TestCase):
         self.assertEqual(metrics["enum"], {"hits": 1, "misses": 1})
         self.assertEqual(metrics["response"], {"hits": 1, "misses": 1})
         self.assertEqual(metrics["response_namespaces"]["videos"], {"hits": 1, "misses": 1})
+
+    def test_default_cache_backend_is_sqlite(self):
+        cache.reset_backend()
+
+        self.assertEqual(cache.get_backend_name(), "sqlite")
+        self.assertIsInstance(cache.get_backend(), cache.SQLiteCacheBackend)
+
+    def test_redis_backend_round_trips_without_changing_cache_api(self):
+        class FakeRedisClient:
+            def __init__(self):
+                self.values = {}
+                self.expiry = {}
+
+            def get(self, key):
+                return self.values.get(key)
+
+            def set(self, key, value, ex=None):
+                self.values[key] = value
+                if ex is not None:
+                    self.expiry[key] = time.time() + ex
+
+            def scan_iter(self, match=None, count=None):
+                prefix = (match or "").rstrip("*")
+                return [key for key in self.values if key.startswith(prefix)]
+
+            def delete(self, *keys):
+                deleted = 0
+                for key in keys:
+                    if key in self.values:
+                        deleted += 1
+                        self.values.pop(key, None)
+                        self.expiry.pop(key, None)
+                return deleted
+
+            def ttl(self, key):
+                expires_at = self.expiry.get(key)
+                if expires_at is None:
+                    return -1
+                return int(expires_at - time.time())
+
+        fake_client = FakeRedisClient()
+        fake_redis = types.SimpleNamespace(
+            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
+        )
+
+        with patch.dict(os.environ, {
+            "JAVHUB_CACHE_BACKEND": "redis",
+            "JAVHUB_REDIS_URL": "redis://cache.example/0",
+            "JAVHUB_REDIS_PREFIX": "test-prefix",
+        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+            cache.reset_backend()
+
+            cache.set_response("videos", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
+
+            self.assertEqual(cache.get_backend_name(), "redis")
+            self.assertEqual(cache.get_response("videos", {"page": 1}), {"data": [{"id": 1}]})
+            self.assertEqual(cache.get_stats()["response_namespaces"]["videos"], 1)
+            self.assertEqual(cache.purge_response_cache(), 1)
+            self.assertIsNone(cache.get_response("videos", {"page": 1}))
+
+        cache.reset_backend()
+
+    def test_redis_backend_requires_url(self):
+        with patch.dict(os.environ, {
+            "JAVHUB_CACHE_BACKEND": "redis",
+            "JAVHUB_REDIS_URL": "",
+        }, clear=False):
+            cache.reset_backend()
+
+            with self.assertRaisesRegex(RuntimeError, "JAVHUB_REDIS_URL"):
+                cache.get_backend()
+
+        cache.reset_backend()
 
 
 class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):

@@ -533,7 +533,7 @@
 </template>
 
 <script>
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'

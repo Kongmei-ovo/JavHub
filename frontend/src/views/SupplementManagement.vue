@@ -365,7 +365,7 @@
 
 <script>
 import api from '../api'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import GlassSelect from '../components/GlassSelect.vue'

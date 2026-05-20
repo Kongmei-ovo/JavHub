@@ -226,7 +226,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'

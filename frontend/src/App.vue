@@ -141,16 +141,17 @@
 </template>
 
 <script>
-import { h, ref, defineComponent, watch, onMounted, computed, reactive } from 'vue'
+import { h, ref, defineComponent, defineAsyncComponent, watch, onMounted, onUnmounted, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import VideoModal from './components/VideoModal.vue'
 import ToastCapsule from './components/ToastCapsule.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import { modalState, closeVideoModal, interruptModal, resumeModal } from './utils/modalState'
 import { favoriteState } from './utils/favoriteState'
 import api from './api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, MESSAGE_EVENT } from './utils/message.js'
 import { isDarkTheme, restoreTheme, toggleTheme } from './assets/themes.js'
+
+const VideoModal = defineAsyncComponent(() => import('./components/VideoModal.vue'))
 
 // Icon components (inline SVG)
 const IconHome = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' }), h('polyline', { points: '9 22 9 12 15 12 15 22' })]) })
@@ -214,8 +215,18 @@ export default {
       }
     })
 
+    const handleAppMessage = (event) => {
+      const detail = event?.detail || {}
+      showToast(detail.message || '', false)
+    }
+
     onMounted(() => {
       favoriteState.init()
+      window.addEventListener(MESSAGE_EVENT, handleAppMessage)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener(MESSAGE_EVENT, handleAppMessage)
     })
 
     // 监听路由变化，处理弹窗恢复
