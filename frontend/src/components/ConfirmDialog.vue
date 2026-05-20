@@ -52,8 +52,8 @@ const confirm = () => resolveConfirm(true)
   justify-content: center;
   padding: 20px;
   background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(110%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(110%);
 }
 
 .confirm-dialog {
@@ -62,6 +62,8 @@ const confirm = () => resolveConfirm(true)
   border-radius: 22px;
   background: var(--material-glass-sheet);
   box-shadow: var(--shadow-sheet);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   padding: 18px;
   color: var(--text-primary);
 }
@@ -82,7 +84,8 @@ const confirm = () => resolveConfirm(true)
   border-radius: 14px;
   border: 1px solid var(--border);
   color: var(--text-secondary);
-  background: var(--white-06);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .confirm-icon.danger {
@@ -125,18 +128,29 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-btn {
   min-height: 44px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   padding: 0 18px;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  transition: var(--transition-pro);
 }
 
 .confirm-cancel {
-  background: var(--white-06);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.confirm-cancel:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .confirm-primary {

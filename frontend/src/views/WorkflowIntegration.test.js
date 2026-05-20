@@ -190,7 +190,7 @@ test('mobile navigation and settings tabs stay compact', () => {
 })
 
 test('primary pages use unified breathing rails', () => {
-  assert.match(mainCss, /--page-gutter:\s*clamp\(16px, 2\.8vw, 40px\)/)
+  assert.match(mainCss, /--page-gutter:\s*clamp\(18px, 2\.4vw, 36px\)/)
   assert.match(mainCss, /--page-max-standard:\s*1180px/)
   assert.match(mainCss, /--page-max-workspace:\s*1360px/)
   assert.match(mainCss, /--page-max-gallery:\s*1600px/)
@@ -276,9 +276,9 @@ test('mobile video surfaces share compact gallery density', () => {
 test('video modal and recommendation page use mobile-specific proportions', () => {
   assert.match(videoModal, /@media\s*\(max-width:\s*768px\)[\s\S]*\.modal-overlay\s*\{[\s\S]*padding:\s*0/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*width:\s*100vw[\s\S]*height:\s*100dvh/)
-  assert.match(videoModal, /\.modal-content\s*\{[\s\S]*padding:\s*20px 16px 28px[\s\S]*gap:\s*22px/)
+  assert.match(videoModal, /\.modal-content\s*\{[\s\S]*padding:\s*18px max\(14px, env\(safe-area-inset-right, 0px\)\) 28px max\(14px, env\(safe-area-inset-left, 0px\)\)[\s\S]*gap:\s*20px/)
   assert.match(videoModal, /\.modal-code-block\s*\{[\s\S]*flex-direction:\s*column/)
-  assert.match(videoModal, /\.modal-actions\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(videoModal, /\.modal-actions\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(96px,\s*1fr\)\)/)
   assert.match(videoModal, /\.modal-meta\s*\{[\s\S]*grid-template-columns:\s*1fr/)
   assert.match(videoModal, /\.modal-meta::before\s*\{[\s\S]*display:\s*none/)
   assert.match(videoModal, /overflow-wrap:\s*anywhere/)
@@ -748,7 +748,7 @@ test('global dropdowns use the unified glass select control', () => {
   assert.doesNotMatch(glassSelect, /Math\.min\(menuRef\.value\.scrollHeight[\s\S]*360\)/)
   assert.match(mainCss, /\.glass-select--compact[\s\S]*--glass-select-height: 38px/)
   assert.match(mainCss, /\.glass-select__button[\s\S]*min-height: var\(--glass-select-height\)/)
-  assert.match(mainCss, /\.glass-select__button[\s\S]*background: var\(--glass-control-bg, rgba\(255, 255, 255, 0\.05\)\)/)
+  assert.match(mainCss, /\.glass-select__button[\s\S]*background: var\(--material-glass-control, var\(--glass-control-bg, rgba\(255, 255, 255, 0\.05\)\)\)/)
   assert.match(mainCss, /\.glass-select__menu[\s\S]*border-radius: var\(--glass-select-menu-radius, var\(--radius-lg\)\)/)
   assert.match(mainCss, /\.glass-select__menu[\s\S]*backdrop-filter: blur/)
 })

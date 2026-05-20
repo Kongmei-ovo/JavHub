@@ -11,14 +11,34 @@
   --glass-edge: rgba(29, 29, 31, 0.10);
   --glass-edge-strong: rgba(29, 29, 31, 0.16);
   --glass-highlight: rgba(255, 255, 255, 0.92);
-  --glass-control-bg: rgba(255, 255, 255, 0.40);
-  --glass-control-bg-hover: rgba(255, 255, 255, 0.58);
+  --glass-lowlight: rgba(29, 29, 31, 0.050);
+  --glass-nav-bg: rgba(246, 246, 248, 0.72);
+  --glass-nav-material: linear-gradient(145deg, rgba(255,255,255,0.80), rgba(246,246,248,0.62) 46%, rgba(255,255,255,0.50));
+  --glass-control-bg: rgba(255, 255, 255, 0.34);
+  --glass-control-bg-hover: rgba(255, 255, 255, 0.50);
+  --glass-control-material: linear-gradient(145deg, rgba(255,255,255,0.54), rgba(255,255,255,0.25) 48%, rgba(255,255,255,0.42));
+  --glass-control-material-hover: linear-gradient(145deg, rgba(255,255,255,0.68), rgba(255,255,255,0.36) 48%, rgba(255,255,255,0.54));
   --glass-control-border: rgba(29, 29, 31, 0.10);
-  --glass-control-border-hover: rgba(29, 29, 31, 0.17);
-  --glass-active-bg: rgba(255, 255, 255, 0.82);
+  --glass-control-border-hover: rgba(29, 29, 31, 0.20);
+  --glass-card-bg: rgba(255, 255, 255, 0.54);
+  --glass-card-bg-hover: rgba(255, 255, 255, 0.68);
+  --glass-card-material: linear-gradient(145deg, rgba(255,255,255,0.64), rgba(255,255,255,0.38) 52%, rgba(255,255,255,0.50));
+  --glass-card-material-hover: linear-gradient(145deg, rgba(255,255,255,0.76), rgba(255,255,255,0.48) 52%, rgba(255,255,255,0.60));
+  --glass-sheet-bg: rgba(255, 255, 255, 0.70);
+  --glass-sheet-material: linear-gradient(145deg, rgba(255,255,255,0.82), rgba(255,255,255,0.58) 50%, rgba(255,255,255,0.68));
+  --glass-active-bg: rgba(255, 255, 255, 0.74);
+  --glass-active-material: linear-gradient(145deg, rgba(255,255,255,0.88), rgba(255,255,255,0.58) 48%, rgba(255,255,255,0.72));
   --glass-active-border: rgba(255, 255, 255, 0.96);
-  --glass-inner-shadow: inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(29,29,31,0.035);
-  --glass-active-shadow: 0 12px 28px rgba(29,29,31,0.13), inset 0 1px 0 rgba(255,255,255,0.95);
+  --glass-inner-shadow: inset 0 1px 0 rgba(255,255,255,0.88), inset 0 -1px 0 rgba(29,29,31,0.055);
+  --glass-control-shadow: inset 0 1px 0 rgba(255,255,255,0.88), inset 0 -1px 0 rgba(29,29,31,0.055), 0 10px 26px rgba(29,29,31,0.075);
+  --glass-control-shadow-hover: inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(29,29,31,0.065), 0 14px 34px rgba(29,29,31,0.105);
+  --glass-surface-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.72), inset 0 -1px 0 rgba(29,29,31,0.045);
+  --glass-active-shadow: 0 12px 28px rgba(29,29,31,0.13), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(29,29,31,0.055);
+  --glass-blur-control: 14px;
+  --glass-blur-surface: 22px;
+  --glass-blur-sheet: 28px;
+  --glass-saturate-control: 170%;
+  --glass-saturate-surface: 165%;
   
   /* Precision Lines */
   --stroke-pro: 1.5px;
@@ -35,11 +55,13 @@
   --radius-control: 999px;
   --touch-target: 44px;
 
-  --material-glass-subtle: rgba(255, 255, 255, 0.42);
-  --material-glass-elevated: rgba(255, 255, 255, 0.62);
-  --material-glass-sheet: rgba(255, 255, 255, 0.78);
-  --surface-card: rgba(255, 255, 255, 0.62);
-  --surface-card-hover: rgba(255, 255, 255, 0.78);
+  --material-glass-subtle: linear-gradient(145deg, rgba(255,255,255,0.44), rgba(255,255,255,0.25) 56%, rgba(255,255,255,0.38));
+  --material-glass-control: var(--glass-control-material);
+  --material-glass-control-hover: var(--glass-control-material-hover);
+  --material-glass-elevated: var(--glass-card-material);
+  --material-glass-sheet: var(--glass-sheet-material);
+  --surface-card: var(--glass-card-material);
+  --surface-card-hover: var(--glass-card-material-hover);
 
   --shadow-floating: 0 16px 38px rgba(29, 29, 31, 0.10);
   --shadow-sheet: 0 28px 80px rgba(29, 29, 31, 0.16);
@@ -112,17 +134,17 @@
   --z-toast: 1000;
   --z-confirm: 1100;
   --text-on-accent: #ffffff;
-  --surface-nav: rgba(246, 246, 248, 0.72);
+  --surface-nav: var(--glass-nav-material);
   --surface-nav-border: var(--glass-edge);
-  --surface-control: var(--glass-control-bg);
-  --surface-control-hover: var(--glass-control-bg-hover);
-  --surface-input: var(--glass-control-bg);
-  --surface-input-focus: var(--glass-active-bg);
+  --surface-control: var(--material-glass-control);
+  --surface-control-hover: var(--material-glass-control-hover);
+  --surface-input: var(--material-glass-control);
+  --surface-input-focus: var(--glass-active-material);
   --surface-scrim: rgba(29, 29, 31, 0.18);
   --hero-background: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 34%), var(--bg-primary);
   --skeleton-base: rgba(112, 112, 112, 0.08);
   --skeleton-highlight: rgba(255, 255, 255, 0.9);
-  --active-bg: var(--glass-active-bg);
+  --active-bg: var(--glass-active-material);
   --active-border: var(--glass-active-border);
   --active-indicator: #1d1d1f;
   --link-text: var(--text-primary);
@@ -132,7 +154,7 @@
   /* 侧边栏宽度 */
   --sidebar-width: 240px;
   /* 页面呼吸轨道 */
-  --page-gutter: clamp(16px, 2.8vw, 40px);
+  --page-gutter: clamp(18px, 2.4vw, 36px);
   --page-gutter-compact: clamp(12px, 2vw, 24px);
   --page-max-standard: 1180px;
   --page-max-workspace: 1360px;
@@ -360,17 +382,17 @@ a:hover {
   box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
 }
 .btn-ghost {
-  background: var(--glass-control-bg);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .btn-ghost:hover {
-  background: var(--glass-control-bg-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-inner-shadow), 0 8px 18px rgba(var(--accent-rgb), 0.08);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .btn:focus-visible {
   outline: none;
@@ -419,7 +441,7 @@ a:hover {
   padding: var(--glass-select-padding);
   border: 1px solid var(--glass-control-border, var(--border));
   border-radius: var(--glass-select-radius);
-  background: var(--glass-control-bg, rgba(255, 255, 255, 0.05));
+  background: var(--material-glass-control, var(--glass-control-bg, rgba(255, 255, 255, 0.05)));
   color: inherit;
   font-family: inherit;
   font-size: var(--glass-select-font);
@@ -427,9 +449,9 @@ a:hover {
   letter-spacing: 0;
   cursor: pointer;
   outline: none;
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition:
     transform var(--motion-fast),
     color var(--motion-fast),
@@ -441,14 +463,15 @@ a:hover {
 .glass-select__button:hover,
 .glass-select.is-open .glass-select__button {
   border-color: var(--glass-control-border-hover, var(--border-light));
-  background: var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08));
+  background: var(--material-glass-control-hover, var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08)));
   color: var(--text-primary);
-  box-shadow: var(--glass-inner-shadow), 0 8px 18px rgba(var(--accent-rgb), 0.08);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .glass-select__button:focus-visible {
   border-color: var(--accent);
   box-shadow:
+    var(--glass-control-shadow),
     0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
@@ -518,8 +541,8 @@ a:hover {
   border-radius: var(--glass-select-menu-radius, var(--radius-lg));
   background: var(--material-glass-sheet);
   box-shadow: var(--shadow-sheet);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   transform-origin: top left;
   z-index: var(--z-dropdown);
 }
@@ -605,9 +628,9 @@ a:hover {
   background: var(--surface-card);
   border-radius: var(--radius-card);
   border: 1px solid var(--glass-edge);
-  box-shadow: var(--shadow-card), var(--glass-inner-shadow);
-  backdrop-filter: blur(22px) saturate(155%);
-  -webkit-backdrop-filter: blur(22px) saturate(155%);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-color 0.3s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
 }
@@ -621,15 +644,15 @@ a:hover {
   background: var(--surface-card);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card), var(--glass-inner-shadow);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .apple-surface-elevated {
   background: var(--material-glass-elevated);
   border: 1px solid var(--glass-edge-strong);
-  box-shadow: var(--shadow-floating), var(--glass-inner-shadow);
+  box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
 }
 
 .apple-reveal {
@@ -669,24 +692,25 @@ a:hover {
 
 /* ===== Form Elements ===== */
 .el-input__wrapper, .input {
-  background-color: var(--surface-input) !important;
+  background: var(--surface-input) !important;
   border: 1px solid var(--glass-control-border) !important;
-  box-shadow: var(--glass-inner-shadow) !important;
+  box-shadow: var(--glass-control-shadow) !important;
   border-radius: var(--radius-md) !important;
-  backdrop-filter: blur(16px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
   transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper:hover, .input:hover {
-  background-color: var(--surface-control-hover) !important;
+  background: var(--surface-control-hover) !important;
   border-color: var(--glass-control-border-hover) !important;
+  box-shadow: var(--glass-control-shadow-hover) !important;
 }
 
 .el-input__wrapper.is-focus, .input:focus {
-  background-color: var(--surface-input-focus) !important;
+  background: var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
 }
 
 .input {
@@ -819,8 +843,8 @@ a:hover {
 
 /* 1. 弹窗和卡片：加入毛玻璃效果（因为你的主题里 bg-card 已经是 rgba 了） */
 .el-dialog, .el-card, .el-popover, .el-dropdown-menu {
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   background: var(--material-glass-sheet) !important;
   border: 1px solid var(--border-light) !important;
   box-shadow: var(--shadow-sheet) !important;
@@ -833,43 +857,45 @@ a:hover {
 
 /* 2. 输入框和下拉框：使用 Sensing Surfaces 设计 */
 .el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
-  background-color: var(--surface-input) !important;
+  background: var(--surface-input) !important;
   border: 1px solid var(--glass-control-border) !important;
-  box-shadow: var(--glass-inner-shadow) !important;
+  box-shadow: var(--glass-control-shadow) !important;
   border-radius: var(--radius-md) !important;
-  backdrop-filter: blur(16px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
   transition: var(--transition-pro) !important;
 }
 
 .el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {
-  background-color: var(--surface-control-hover) !important;
+  background: var(--surface-control-hover) !important;
   border-color: var(--glass-control-border-hover) !important;
+  box-shadow: var(--glass-control-shadow-hover) !important;
 }
 
 .el-input__wrapper.is-focus, .el-textarea__inner:focus {
-  background-color: var(--surface-input-focus) !important;
+  background: var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
 }
 
 /* 3. 按钮：更加果断和纯粹 */
 .el-button {
   font-weight: 500;
   border: 1px solid var(--glass-control-border) !important;
-  box-shadow: var(--glass-inner-shadow) !important;
-  backdrop-filter: blur(16px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  box-shadow: var(--glass-control-shadow) !important;
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
 }
 
 .el-button--default {
-  background-color: var(--surface-control) !important;
+  background: var(--surface-control) !important;
   color: var(--text-primary) !important;
 }
 
 .el-button--default:hover {
-  background-color: var(--surface-control-hover) !important;
+  background: var(--surface-control-hover) !important;
   border-color: var(--glass-control-border-hover) !important;
+  box-shadow: var(--glass-control-shadow-hover) !important;
 }
 
 /* 4. 表格：去线化，呼吸感 (极简风的重灾区通常是表格) */

@@ -35,7 +35,9 @@ defineEmits(['action'])
     radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb), 0.18), transparent 42%),
     var(--surface-control);
   border: 1px solid var(--border-light);
-  box-shadow: none;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 h3 {

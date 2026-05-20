@@ -91,7 +91,7 @@ function onImageLoad(event) {
   transform: translateY(-3px);
   border-color: var(--border-light);
   background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating);
+  box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
 }
 
 .apple-video-card:active {
@@ -148,9 +148,10 @@ function onImageLoad(event) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--border-light);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .apple-video-card__preview {
@@ -160,7 +161,7 @@ function onImageLoad(event) {
   height: 28px;
   border-radius: var(--radius-control);
   color: var(--text-primary);
-  background: var(--material-glass-sheet);
+  background: var(--material-glass-control);
 }
 
 .apple-video-card__favorite {
@@ -170,7 +171,7 @@ function onImageLoad(event) {
   height: var(--touch-target);
   border-radius: 50%;
   color: var(--text-primary);
-  background: var(--material-glass-sheet);
+  background: var(--material-glass-control);
   cursor: pointer;
   opacity: 0;
   transform: scale(0.86);
@@ -184,7 +185,9 @@ function onImageLoad(event) {
 }
 
 .apple-video-card__favorite:hover {
-  background: var(--material-glass-elevated);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   transform: scale(1.06);
 }
 

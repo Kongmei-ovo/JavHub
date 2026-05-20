@@ -38,8 +38,8 @@ defineEmits(['close', 'organize'])
   gap: 12px;
   padding: 10px 10px 10px 20px;
   background: var(--material-glass-sheet);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--border-light);
   border-radius: 100px;
   box-shadow: var(--shadow-sheet);
@@ -86,18 +86,23 @@ defineEmits(['close', 'organize'])
   height: 28px;
   border-radius: 50%;
   background: var(--surface-control);
-  border: none;
+  border: 1px solid var(--glass-control-border);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: var(--transition-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .toast-close:hover {
   background: var(--surface-control-hover);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 /* Animations */

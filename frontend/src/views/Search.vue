@@ -634,8 +634,8 @@ export default {
   display: flex;
   align-items: center;
   background: var(--material-glass-sheet);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--border-light);
   border-radius: 999px;
   padding: 6px 6px 6px 24px;
@@ -646,7 +646,7 @@ export default {
 .command-capsule.focused {
   background: var(--surface-input-focus);
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12), var(--shadow-floating);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12), var(--shadow-floating);
   transform: translateY(-1px);
 }
 
@@ -772,7 +772,7 @@ export default {
   width: 72px;
   padding: 0 12px;
   background: var(--surface-control);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius);
   color: var(--text-secondary);
   font-size: var(--type-control);
@@ -780,19 +780,23 @@ export default {
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
   user-select: none;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .sort-pill:hover {
   background: var(--surface-control-hover);
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .sort-pill.active {
   background: var(--active-bg);
   border-color: var(--active-border);
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .sort-pill.active:hover {
@@ -804,7 +808,7 @@ export default {
   background: var(--active-bg);
   border-color: var(--active-border);
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .sort-pill.random.active:hover {
@@ -831,7 +835,7 @@ export default {
   height: 28px;
   border-radius: 50%;
   background: var(--surface-control);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -840,6 +844,9 @@ export default {
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
   padding: 0;
   flex-shrink: 0;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .sort-clear-btn:hover {
@@ -856,7 +863,7 @@ export default {
   width: var(--filter-control-width);
   min-height: var(--filter-control-height);
   background: var(--surface-control);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius);
   padding: 0 12px;
   color: var(--text-secondary);
@@ -865,18 +872,22 @@ export default {
   cursor: pointer;
   transition: all 0.3s var(--ease-pro);
   white-space: nowrap;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .filter-item:hover {
   background: var(--surface-control-hover);
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .filter-item.toggle.active {
   background: var(--active-bg);
   border-color: var(--active-border);
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .version-filter {
@@ -896,8 +907,8 @@ export default {
   right: 0;
   margin-top: 16px;
   background: var(--material-glass-sheet);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-card);
   padding: 32px;
@@ -938,18 +949,22 @@ export default {
 
 .panel-input {
   background: var(--surface-input);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
   padding: 12px 16px;
   color: var(--text-primary);
   font-size: var(--type-body);
   transition: all 0.3s var(--ease-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .panel-input:focus {
   border-color: var(--accent);
   background: var(--surface-input-focus);
   outline: none;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 
 .panel-tag-input {
@@ -966,7 +981,7 @@ export default {
 
 .tray-tag {
   background: var(--surface-control);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 4px 12px;
   border-radius: 12px;
@@ -974,6 +989,9 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .tray-tag b {
@@ -994,18 +1012,23 @@ export default {
 
 .btn-clear {
   background: var(--surface-control);
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 10px 24px;
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s var(--ease-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .btn-clear:hover {
   background: var(--surface-control-hover);
   color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .btn-apply {
@@ -1083,20 +1106,23 @@ export default {
 }
 
 .page-btn {
-  background: var(--surface-card);
-  border: 1px solid var(--border);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 12px;
   border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 13px;
   transition: var(--transition-pro);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .page-btn:hover:not(:disabled) {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   background: var(--surface-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -1106,35 +1132,43 @@ export default {
 .jump-input {
   width: 56px;
   padding: 6px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   background: var(--surface-input);
   color: var(--text-primary);
   font-size: 12px;
   text-align: center;
   transition: var(--transition-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .jump-input:focus {
   outline: none;
   border-color: var(--accent);
   background: var(--surface-input-focus);
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 .jump-input::-webkit-inner-spin-button,
 .jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 .jump-btn {
   background: var(--surface-control);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 14px;
   border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 12px;
   transition: var(--transition-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .jump-btn:hover {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--bg-card-hover);
+  background: var(--surface-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .page-info {

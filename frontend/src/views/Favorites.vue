@@ -349,13 +349,13 @@ export default {
 
 <style scoped>
 .favorites-page {
-  --page-top-space: 60px;
+  --page-top-space: 38px;
   min-height: 100dvh;
 }
 
 .curate-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 32px;
 }
 
 .curate-title {
@@ -370,7 +370,7 @@ export default {
 .curate-stats {
   font-size: var(--type-body);
   color: var(--text-muted);
-  margin-bottom: 32px;
+  margin-bottom: 22px;
 }
 
 /* Segmented Control - Apple Look */
@@ -425,13 +425,13 @@ export default {
 }
 
 .curate-content {
-  margin-top: 40px;
+  margin-top: 28px;
 }
 
 .favorites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 24px;
   margin-bottom: 40px;
 }
 

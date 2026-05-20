@@ -503,7 +503,7 @@ onMounted(loadSubs)
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  padding: 40px 20px 24px;
+  padding: 20px 4px 24px;
 }
 
 .hero-copy {
@@ -603,8 +603,8 @@ onMounted(loadSubs)
 /* ===== Card Grid ===== */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 16px;
 }
 
 /* ===== Skeleton ===== */
@@ -959,7 +959,7 @@ onMounted(loadSubs)
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
-  .card-grid { grid-template-columns: repeat(4, 1fr); }
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
 }
 
 @media (max-width: 768px) {

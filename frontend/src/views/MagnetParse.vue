@@ -243,12 +243,12 @@ export default {
 .parse-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .parse-hero {
   max-width: 680px;
-  margin: 12px auto 4px;
+  margin: 4px auto 0;
   text-align: center;
 }
 
@@ -267,7 +267,7 @@ export default {
   font-weight: var(--page-title-weight);
   line-height: var(--page-title-line);
   letter-spacing: 0;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .page-desc {
@@ -279,7 +279,7 @@ export default {
 .parse-console {
   width: min(820px, 100%);
   margin-inline: auto;
-  padding: clamp(18px, 3vw, 28px);
+  padding: clamp(18px, 2.5vw, 24px);
   background:
     linear-gradient(180deg, rgba(var(--accent-rgb), 0.045), transparent 42%),
     var(--surface-card);

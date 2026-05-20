@@ -31,6 +31,9 @@ const styleVars = computed(() => ({ '--skeleton-aspect-ratio': props.aspectRatio
   overflow: hidden;
   background: var(--surface-card);
   border: 1px solid var(--border);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .apple-skeleton-cover {

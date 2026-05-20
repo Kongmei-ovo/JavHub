@@ -34,7 +34,9 @@ const handleClick = () => {
   padding: 24px 32px;
   cursor: pointer;
   transition: var(--transition-pro);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 .stat-card:hover {
   transform: translateY(-3px);

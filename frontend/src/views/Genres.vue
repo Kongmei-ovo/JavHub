@@ -572,7 +572,7 @@ export default {
 .genres-page { min-height: 100dvh; background: var(--bg-primary); }
 .genres-hero {
   text-align: center;
-  padding: 76px 20px 40px;
+  padding: 48px 20px 28px;
   background: var(--hero-background);
 }
 .hero-title {
@@ -583,8 +583,8 @@ export default {
   margin-bottom: 10px;
   letter-spacing: 0;
 }
-.hero-subtitle { font-size: var(--type-section-title); color: var(--text-secondary); letter-spacing: 0; }
-.tag-cloud-wrap { --page-max: 1200px; padding-block: 20px; }
+.hero-subtitle { font-size: var(--type-card-title); color: var(--text-secondary); letter-spacing: 0; }
+.tag-cloud-wrap { --page-max: 1200px; padding-block: 16px; }
 .cloud-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 20px; }
 .cloud-hint { font-size: var(--type-control); color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
 .shuffle-btn {
@@ -612,7 +612,7 @@ export default {
   display: inline-flex;
   gap: 4px;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 18px;
   padding: 5px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
@@ -622,7 +622,7 @@ export default {
   -webkit-backdrop-filter: blur(24px) saturate(170%);
 }
 .tab-btn {
-  padding: 8px 24px;
+  padding: 7px 20px;
   background: var(--glass-subtle-bg);
   border: 1px solid var(--glass-control-border);
   color: var(--text-secondary);
@@ -706,19 +706,19 @@ export default {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  padding: 30px 10px;
+  padding: 24px 18px;
   background: var(--glass-control-bg);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(22px) saturate(150%);
   -webkit-backdrop-filter: blur(22px) saturate(150%);
-  gap: 16px;
+  gap: 12px;
 }
 
 .bubble {
   position: relative;
-  padding: 8px 18px;
+  padding: 7px 15px;
   border-radius: 999px;
   color: var(--text-primary);
   font-size: var(--type-body);
