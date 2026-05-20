@@ -534,12 +534,28 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_client.proxy_post.await_args_list[2].args[0], "/api/v1/supplement/movies/12/unmatch")
         self.assertEqual(mock_client.proxy_post.await_args_list[2].kwargs["json_body"], {"reason": "undo"})
 
-    async def test_enrich_movie_detail_passes_source_movie_id(self):
+    async def test_enrich_movie_detail_queues_job_by_default(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 3, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            await supplement.enrich_movie_detail(source_movie_id="prestige:SIVR-438", source="avbase")
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/movies/detail/jobs",
+            params={"source": "avbase", "source_movie_id": "prestige:SIVR-438"},
+        )
+
+    async def test_enrich_movie_detail_allows_explicit_sync_smoke(self):
         mock_client = AsyncMock()
         mock_client.proxy_post.return_value = {"source": "avbase", "source_movie_id": "prestige:SIVR-438"}
 
         with patch("routers.supplement.get_info_client", return_value=mock_client):
-            await supplement.enrich_movie_detail(source_movie_id="prestige:SIVR-438", source="avbase")
+            await supplement.enrich_movie_detail(
+                source_movie_id="prestige:SIVR-438",
+                source="avbase",
+                sync=True,
+            )
 
         mock_client.proxy_post.assert_awaited_once_with(
             "/api/v1/supplement/movies/detail",

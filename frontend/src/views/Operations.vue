@@ -161,6 +161,48 @@
           <article class="workbench-panel">
             <div class="panel-head">
               <div>
+                <h2>Cache Stats</h2>
+                <p>{{ cacheStatsSummary }}</p>
+              </div>
+              <span class="backend-pill">{{ cacheStats?.backend || 'unknown' }}</span>
+            </div>
+            <div class="mini-stats cache-entry-stats">
+              <div><strong>{{ cacheStats?.total_entries || 0 }}</strong><span>Total</span></div>
+              <div><strong>{{ cacheStats?.active_entries || 0 }}</strong><span>Active</span></div>
+              <div><strong>{{ cacheStats?.expired_entries || 0 }}</strong><span>Expired</span></div>
+            </div>
+            <div class="cache-rate-grid">
+              <div class="state-item">
+                <span>Response hit rate</span>
+                <strong>{{ responseHitRate }}</strong>
+              </div>
+              <div class="state-item">
+                <span>Search hit rate</span>
+                <strong>{{ searchHitRate }}</strong>
+              </div>
+              <div class="state-item">
+                <span>Singleflight waits</span>
+                <strong>{{ cacheStats?.metrics?.singleflight_waits || 0 }}</strong>
+              </div>
+            </div>
+            <div class="cache-namespaces">
+              <div class="block-head">
+                <h3>Top response namespaces</h3>
+              </div>
+              <div class="compact-list">
+                <div v-for="item in topResponseNamespaces" :key="item.name" class="compact-row static-row">
+                  <span>{{ item.name }}</span>
+                  <strong>{{ item.count }}</strong>
+                </div>
+                <small v-if="!topResponseNamespaces.length" class="empty-line">暂无 response cache</small>
+              </div>
+            </div>
+            <p v-if="cacheStatsError" class="muted cache-error">{{ cacheStatsError }}</p>
+          </article>
+
+          <article class="workbench-panel">
+            <div class="panel-head">
+              <div>
                 <h2>库存任务</h2>
                 <p>运行中 {{ overview.inventory_jobs?.running || 0 }} · 失败 {{ overview.inventory_jobs?.failed || 0 }}</p>
               </div>
@@ -213,6 +255,8 @@ export default {
   data() {
     return {
       overview: null,
+      cacheStats: null,
+      cacheStatsError: '',
       loading: false,
       processingNow: false,
       error: '',
@@ -285,6 +329,24 @@ export default {
     candidateSchedule() {
       return this.overview?.candidate_runs?.schedule || {}
     },
+    cacheStatsSummary() {
+      if (this.cacheStatsError) return '缓存统计暂不可用。'
+      if (!this.cacheStats) return '加载缓存指标中。'
+      return `${this.cacheStats.backend || 'unknown'} · ${this.cacheStats.active_entries || 0}/${this.cacheStats.total_entries || 0} active`
+    },
+    responseHitRate() {
+      return this.formatHitRate(this.cacheStats?.metrics?.response)
+    },
+    searchHitRate() {
+      return this.formatHitRate(this.cacheStats?.metrics?.search)
+    },
+    topResponseNamespaces() {
+      const namespaces = this.cacheStats?.response_namespaces || {}
+      return Object.entries(namespaces)
+        .map(([name, count]) => ({ name, count: Number(count || 0) }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+        .slice(0, 5)
+    },
     scheduleStatusLabel() {
       if (this.candidateSchedule.running) return '运行中'
       if (this.candidateSchedule.enabled) return '已启用'
@@ -310,9 +372,21 @@ export default {
     async loadOverview() {
       this.loading = true
       this.error = ''
+      this.cacheStatsError = ''
       try {
-        const resp = await api.getOperationsOverview()
-        this.overview = resp.data
+        const [overviewResp, cacheStatsResp] = await Promise.allSettled([
+          api.getOperationsOverview(),
+          api.getCacheStats(),
+        ])
+        if (overviewResp.status === 'rejected') {
+          throw overviewResp.reason
+        }
+        this.overview = overviewResp.value.data
+        if (cacheStatsResp.status === 'fulfilled') {
+          this.cacheStats = cacheStatsResp.value.data
+        } else {
+          this.cacheStatsError = cacheStatsResp.reason?.response?.data?.detail || cacheStatsResp.reason?.message || '加载失败'
+        }
       } catch (e) {
         this.error = e.response?.data?.detail || e.message || '加载失败'
       } finally {
@@ -327,6 +401,13 @@ export default {
       if (!sources.length) return '全部'
       const labels = { subscription: '订阅', inventory: '库存', supplement: '补全', manual: '手动' }
       return sources.map(source => labels[source] || source).join(' / ')
+    },
+    formatHitRate(metrics = {}) {
+      const hits = Number(metrics.hits || 0)
+      const misses = Number(metrics.misses || 0)
+      const total = hits + misses
+      if (!total) return '0%'
+      return `${Math.round((hits / total) * 100)}%`
     },
     async runCandidateProcessingNow() {
       if (this.processingNow) return
@@ -820,6 +901,46 @@ button.state-item {
   margin-top: 4px;
 }
 
+.backend-pill {
+  flex: 0 0 auto;
+  max-width: 110px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-control);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cache-entry-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 8px;
+}
+
+.cache-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cache-rate-grid .state-item {
+  min-height: 48px;
+}
+
+.cache-namespaces {
+  min-width: 0;
+}
+
+.cache-error {
+  margin-top: 8px;
+}
+
 .muted {
   margin: 0;
   line-height: 1.5;
@@ -942,7 +1063,8 @@ button.state-item {
   }
 
   .state-grid,
-  .mini-stats {
+  .mini-stats,
+  .cache-rate-grid {
     grid-template-columns: 1fr;
   }
 

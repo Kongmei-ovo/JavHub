@@ -253,10 +253,17 @@ async def resume_source(source: str) -> dict[str, Any]:
 async def enrich_movie_detail(
     source_movie_id: str = Query(...),
     source: str = Query("avbase"),
+    sync: bool = Query(False),
 ) -> dict[str, Any]:
     client = get_info_client()
     smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
     src = source.default if hasattr(source, "default") else source
+    sync_value = sync.default if hasattr(sync, "default") else sync
+    if not sync_value:
+        return await client.proxy_post(
+            "/api/v1/supplement/movies/detail/jobs",
+            params={"source": src, "source_movie_id": smid},
+        )
     return await client.proxy_post(
         "/api/v1/supplement/movies/detail",
         params={"source": src, "source_movie_id": smid},

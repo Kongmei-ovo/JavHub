@@ -2,6 +2,7 @@ import tempfile
 import time
 import unittest
 import asyncio
+import fnmatch
 import os
 import sys
 import types
@@ -10,6 +11,38 @@ from unittest.mock import patch
 
 from routers import config as config_router
 from services import cache
+
+
+class FakeRedisClient:
+    def __init__(self):
+        self.values = {}
+        self.expiry = {}
+
+    def get(self, key):
+        return self.values.get(key)
+
+    def set(self, key, value, ex=None):
+        self.values[key] = value
+        if ex is not None:
+            self.expiry[key] = time.time() + ex
+
+    def scan_iter(self, match=None, count=None):
+        return [key for key in self.values if match is None or fnmatch.fnmatch(key, match)]
+
+    def delete(self, *keys):
+        deleted = 0
+        for key in keys:
+            if key in self.values:
+                deleted += 1
+                self.values.pop(key, None)
+                self.expiry.pop(key, None)
+        return deleted
+
+    def ttl(self, key):
+        expires_at = self.expiry.get(key)
+        if expires_at is None:
+            return -1
+        return int(expires_at - time.time())
 
 
 class CacheServiceTest(unittest.TestCase):
@@ -131,38 +164,6 @@ class CacheServiceTest(unittest.TestCase):
         self.assertIsInstance(cache.get_backend(), cache.SQLiteCacheBackend)
 
     def test_redis_backend_round_trips_without_changing_cache_api(self):
-        class FakeRedisClient:
-            def __init__(self):
-                self.values = {}
-                self.expiry = {}
-
-            def get(self, key):
-                return self.values.get(key)
-
-            def set(self, key, value, ex=None):
-                self.values[key] = value
-                if ex is not None:
-                    self.expiry[key] = time.time() + ex
-
-            def scan_iter(self, match=None, count=None):
-                prefix = (match or "").rstrip("*")
-                return [key for key in self.values if key.startswith(prefix)]
-
-            def delete(self, *keys):
-                deleted = 0
-                for key in keys:
-                    if key in self.values:
-                        deleted += 1
-                        self.values.pop(key, None)
-                        self.expiry.pop(key, None)
-                return deleted
-
-            def ttl(self, key):
-                expires_at = self.expiry.get(key)
-                if expires_at is None:
-                    return -1
-                return int(expires_at - time.time())
-
         fake_client = FakeRedisClient()
         fake_redis = types.SimpleNamespace(
             Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
@@ -182,6 +183,33 @@ class CacheServiceTest(unittest.TestCase):
             self.assertEqual(cache.get_stats()["response_namespaces"]["videos"], 1)
             self.assertEqual(cache.purge_response_cache(), 1)
             self.assertIsNone(cache.get_response("videos", {"page": 1}))
+
+        cache.reset_backend()
+
+    def test_redis_backend_purge_only_deletes_current_prefix(self):
+        fake_client = FakeRedisClient()
+        fake_redis = types.SimpleNamespace(
+            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
+        )
+
+        with patch.dict(os.environ, {
+            "JAVHUB_CACHE_BACKEND": "redis",
+            "JAVHUB_REDIS_URL": "redis://cache.example/0",
+            "JAVHUB_REDIS_PREFIX": "current-prefix",
+        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+            cache.reset_backend()
+            backend = cache.get_backend()
+
+            backend.set_json("video:abc-123", {"content_id": "ABC-123"}, ttl=60)
+            backend.set_json("search:abc:1", {"data": []}, ttl=60)
+            fake_client.set("other-prefix:video:abc-123", '{"content_id":"OTHER"}', ex=60)
+            fake_client.set("current-prefix-extra:video:abc-123", '{"content_id":"EXTRA"}', ex=60)
+
+            self.assertEqual(cache.purge_video_cache(), 2)
+            self.assertNotIn("current-prefix:video:abc-123", fake_client.values)
+            self.assertNotIn("current-prefix:search:abc:1", fake_client.values)
+            self.assertEqual(fake_client.values["other-prefix:video:abc-123"], '{"content_id":"OTHER"}')
+            self.assertEqual(fake_client.values["current-prefix-extra:video:abc-123"], '{"content_id":"EXTRA"}')
 
         cache.reset_backend()
 
