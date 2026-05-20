@@ -262,6 +262,15 @@ docker compose config
 # Run backend tests
 PYTHONPATH=backend pytest
 
+# Smoke test the cache backend
+PYTHONPATH=backend python scripts/cache_backend_smoke.py
+
+# Smoke test Redis cache mode when Redis is available
+JAVHUB_CACHE_BACKEND=redis \
+JAVHUB_REDIS_URL=redis://localhost:6379/0 \
+JAVHUB_REDIS_PREFIX=javhub-cache-smoke \
+PYTHONPATH=backend python scripts/cache_backend_smoke.py
+
 # Build frontend assets
 cd frontend && npm ci && npm run build
 ```

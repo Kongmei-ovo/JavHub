@@ -406,6 +406,10 @@ export default {
     return api.post('/v1/cache/purge', null, { params: { scope } })
   },
 
+  getCacheStats() {
+    return api.get('/v1/cache/stats')
+  },
+
   preflightJavInfoImport(importDb = {}, expectedSize = 0) {
     return api.post('/v1/javinfo/imports/preflight', {
       import_db: importDb,
@@ -628,9 +632,7 @@ export default {
   },
 
   enrichSupplementMovieDetail(sourceMovieId, source = 'all') {
-    return api.post('/v1/supplement/movies/detail', null, {
-      params: { source, source_movie_id: sourceMovieId },
-    })
+    return this.startSupplementMovieDetailJob(sourceMovieId, source)
   },
 
   startSupplementMovieDetailJob(sourceMovieId, source = 'all', actressId = null) {

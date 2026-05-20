@@ -34,6 +34,18 @@ x-javinfoapi-env: &javinfoapi-env
   CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - javhub-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -87,6 +99,9 @@ services:
       EMBY_API_URL: ${EMBY_API_URL:-}
       EMBY_API_KEY: ${EMBY_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      JAVHUB_CACHE_BACKEND: ${JAVHUB_CACHE_BACKEND:-redis}
+      JAVHUB_REDIS_URL: ${JAVHUB_REDIS_URL:-redis://redis:6379/0}
+      JAVHUB_REDIS_PREFIX: ${JAVHUB_REDIS_PREFIX:-javhub-cache}
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml
@@ -95,6 +110,9 @@ services:
     depends_on:
       javinfoapi:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   javinfo-postgres:
+  javhub-redis:

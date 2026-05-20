@@ -364,14 +364,16 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import { ElMessage } from '../utils/message.js'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import GlassSelect from '../components/GlassSelect.vue'
-import JobList from '../features/supplement/SupplementJobList.vue'
-import ActorPickerView from '../features/supplement/ActorPickerView.vue'
-import SourceHealthPanel from '../features/supplement/SourceHealthPanel.vue'
+
+const ActorPickerView = defineAsyncComponent(() => import('../features/supplement/ActorPickerView.vue'))
+const JobList = defineAsyncComponent(() => import('../features/supplement/SupplementJobList.vue'))
+const SourceHealthPanel = defineAsyncComponent(() => import('../features/supplement/SourceHealthPanel.vue'))
 
 export default {
   name: 'SupplementManagement',
