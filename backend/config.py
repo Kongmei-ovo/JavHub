@@ -301,8 +301,9 @@ class Config:
         defaults = {
             'enabled': True,
             'target_language': 'zh-CN',
-            'provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
-            'batch_provider_order': ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
+            'provider': 'google_free',
+            'provider_order': ['cache', 'mapping', 'google_free'],
+            'batch_provider_order': ['cache', 'mapping', 'google_free'],
             'realtime_mode': 'cache_only',
             'batch_concurrency': 32,
             'batch_size': 200,
@@ -313,6 +314,14 @@ class Config:
                 'enabled': True,
                 'base_url': 'https://translate.googleapis.com/translate_a/single',
                 'timeout': 10,
+            },
+            'baidu': {
+                'enabled': False,
+                'app_id': '',
+                'secret': '',
+                'endpoint': 'https://fanyi-api.baidu.com/api/trans/vip/translate',
+                'timeout': 15,
+                'qps': 1,
             },
             'deepl': {
                 'enabled': False,
@@ -330,13 +339,42 @@ class Config:
         }
         cfg = self._config.get('translation', {}) or {}
         merged = {**defaults, **cfg}
-        for nested_key in ('google_free', 'deepl', 'microsoft'):
+        for nested_key in ('google_free', 'baidu', 'deepl', 'microsoft'):
             merged[nested_key] = {
                 **defaults[nested_key],
                 **(cfg.get(nested_key, {}) if isinstance(cfg.get(nested_key), dict) else {}),
             }
+        provider = self._normalize_translation_provider(merged.get('provider'))
+        if provider == 'google_free' and not cfg.get('provider'):
+            provider = self._first_network_translation_provider(
+                cfg.get('batch_provider_order'),
+                cfg.get('provider_order'),
+            )
+        merged['provider'] = provider
+        merged['provider_order'] = ['cache', 'mapping', provider]
+        merged['batch_provider_order'] = ['cache', 'mapping', provider]
         merged.pop('openai_compatible', None)
         return merged
+
+    @staticmethod
+    def _normalize_translation_provider(value) -> str:
+        provider = str(value or '').strip()
+        if provider == 'openai_compatible':
+            provider = 'ai'
+        return provider if provider in {'google_free', 'baidu', 'deepl', 'microsoft', 'ai'} else 'google_free'
+
+    @classmethod
+    def _first_network_translation_provider(cls, *orders) -> str:
+        for order in orders:
+            if not isinstance(order, list):
+                continue
+            for item in order:
+                provider = cls._normalize_translation_provider(item)
+                if str(item).strip() in {'cache', 'mapping'}:
+                    continue
+                if provider:
+                    return provider
+        return 'google_free'
 
     @property
     def translation_enabled(self) -> bool:
@@ -347,18 +385,16 @@ class Config:
         return str(self.translation.get('target_language') or 'zh-CN')
 
     @property
+    def translation_provider(self) -> str:
+        return self._normalize_translation_provider(self.translation.get('provider'))
+
+    @property
     def translation_provider_order(self) -> list:
-        order = self.translation.get('provider_order')
-        if not isinstance(order, list):
-            return ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible']
-        return [str(item) for item in order if str(item).strip()]
+        return ['cache', 'mapping', self.translation_provider]
 
     @property
     def translation_batch_provider_order(self) -> list:
-        order = self.translation.get('batch_provider_order')
-        if not isinstance(order, list):
-            return ['cache', 'mapping', 'google_free', 'deepl', 'microsoft']
-        return [str(item) for item in order if str(item).strip()]
+        return ['cache', 'mapping', self.translation_provider]
 
     @property
     def translation_batch_concurrency(self) -> int:
@@ -587,6 +623,16 @@ class Config:
                     existing_api_key = legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
                 if existing_api_key:
                     incoming_provider['api_key'] = existing_api_key
+        if isinstance(incoming.get('translation'), dict):
+            incoming_translation = incoming['translation']
+            current_translation = self._config.get('translation', {}) or {}
+            if isinstance(incoming_translation.get('baidu'), dict):
+                incoming_baidu = incoming_translation['baidu']
+                if not incoming_baidu.get('secret'):
+                    current_baidu = current_translation.get('baidu', {}) if isinstance(current_translation, dict) else {}
+                    existing_secret = current_baidu.get('secret') if isinstance(current_baidu, dict) else ''
+                    if existing_secret:
+                        incoming_baidu['secret'] = existing_secret
         self._config = self._merge_config(self._config, incoming)
         if isinstance(incoming.get('javinfo'), dict):
             _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')

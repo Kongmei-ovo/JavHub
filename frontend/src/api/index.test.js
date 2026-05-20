@@ -851,7 +851,7 @@ test('translation job APIs send expected requests', async (t) => {
   t.after(() => { axios.defaults.adapter = originalAdapter })
 
   const { default: api } = await import(`./index.js?translation-jobs-${Date.now()}`)
-  await api.startTranslationJob({ job_type: 'library_titles', provider_order: ['cache', 'google_free'], mode: 'remaining' })
+  await api.startTranslationJob({ job_type: 'library_titles', provider: 'baidu', mode: 'remaining' })
   await api.listTranslationJobs(10)
   await api.getTranslationJob(7)
   await api.pauseTranslationJob(7)
@@ -862,7 +862,7 @@ test('translation job APIs send expected requests', async (t) => {
 
   assert.equal(calls[0].url, '/v1/translations/jobs')
   assert.equal(calls[0].method, 'post')
-  assert.deepEqual(JSON.parse(calls[0].data), { job_type: 'library_titles', provider_order: ['cache', 'google_free'], mode: 'remaining' })
+  assert.deepEqual(JSON.parse(calls[0].data), { job_type: 'library_titles', provider: 'baidu', mode: 'remaining' })
   assert.equal(calls[1].url, '/v1/translations/jobs')
   assert.equal(calls[1].method, 'get')
   assert.deepEqual(calls[1].params, { limit: 10 })
@@ -878,6 +878,22 @@ test('translation job APIs send expected requests', async (t) => {
   assert.deepEqual(calls[6].params, { limit: 20 })
   assert.equal(calls[7].url, '/v1/translations/items/retry')
   assert.equal(calls[7].method, 'post')
+})
+
+test('testTranslation sends selected provider', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { translated_text: '测试' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?translation-test-provider-${Date.now()}`)
+  await api.testTranslation('テスト', 'baidu')
+
+  assert.equal(capturedConfig.url, '/v1/translations/test')
+  assert.deepEqual(JSON.parse(capturedConfig.data), { text: 'テスト', provider: 'baidu' })
 })
 
 test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {

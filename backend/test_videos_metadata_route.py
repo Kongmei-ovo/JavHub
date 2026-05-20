@@ -259,7 +259,7 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
         translator.translate_video.assert_awaited_once()
         self.assertFalse(translator.translate_video.await_args.kwargs["allow_network"])
 
-    async def test_translation_test_route_uses_ai_provider_only(self):
+    async def test_translation_test_route_uses_selected_provider_order(self):
         from routers.translation import test_translation
 
         class Translator:
@@ -268,7 +268,7 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
                 self.seen_order = None
 
             async def translate_text(self, *args, **kwargs):
-                self.seen_order = list(self.settings["provider_order"])
+                self.seen_order = list(kwargs["provider_order"])
                 return "译文"
 
         translator = Translator()
@@ -276,7 +276,7 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
             result = await test_translation({"text": "原文"})
 
         self.assertEqual(result["translated_text"], "译文")
-        self.assertEqual(translator.seen_order, ["ai"])
+        self.assertEqual(translator.seen_order, ["cache", "mapping", "google_free"])
         self.assertEqual(translator.settings["provider_order"], ["cache", "mapping", "openai_compatible"])
 
     async def test_ai_model_test_route_uses_current_config(self):

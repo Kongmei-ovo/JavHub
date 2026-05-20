@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from urllib.parse import parse_qs
 
 
 class TempDbMixin:
@@ -453,6 +454,114 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         cached = get_cached_translation("title:MIAA-784:title_ja", "原文")
         self.assertIsNotNone(cached)
         self.assertEqual(cached["translated_text"], "原文")
+
+    async def test_selected_provider_uses_only_one_network_source(self):
+        from translations.providers import BaiduTranslateProvider, GoogleFreeProvider, TranslationResult
+
+        service = self.service()
+        service.settings["baidu"] = {"enabled": True, "app_id": "appid", "secret": "secret"}
+        with patch.object(
+            BaiduTranslateProvider,
+            "translate",
+            AsyncMock(return_value=TranslationResult("百度译文", "baidu")),
+        ) as baidu_translate, patch.object(GoogleFreeProvider, "translate", new_callable=AsyncMock) as google_translate:
+            translated = await service.translate_text(
+                "原文",
+                scope="title:MIAA-784:title_ja",
+                provider_order=["cache", "mapping", "baidu", "google_free"],
+                return_original=False,
+            )
+
+        self.assertEqual(translated, "百度译文")
+        baidu_translate.assert_awaited_once()
+        google_translate.assert_not_awaited()
+
+    async def test_baidu_translate_signs_request_and_maps_language(self):
+        from translations.providers import BaiduTranslateProvider, TranslationRequest
+
+        captured = {}
+
+        class Response:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"trans_result": [{"src": "テスト", "dst": "测试"}]}
+
+        async def fake_post(self, url, data=None):
+            captured["url"] = url
+            captured["data"] = data
+            return Response()
+
+        provider = BaiduTranslateProvider({
+            "enabled": True,
+            "app_id": "appid",
+            "secret": "secret",
+            "endpoint": "https://example.test/translate",
+            "timeout": 3,
+        })
+        request = TranslationRequest(text="テスト", scope="title:1", target_language="zh-CN", source_language="ja")
+
+        with patch("httpx.AsyncClient.post", new=fake_post), patch("translations.providers._salt", return_value="12345"):
+            result = await provider.translate(request)
+
+        self.assertEqual(result.translated_text, "测试")
+        self.assertEqual(result.provider, "baidu")
+        self.assertEqual(captured["url"], "https://example.test/translate")
+        data = captured["data"]
+        self.assertEqual(data["q"], "テスト")
+        self.assertEqual(data["from"], "jp")
+        self.assertEqual(data["to"], "zh")
+        self.assertEqual(data["salt"], "12345")
+        self.assertEqual(data["sign"], "4f3b0ccd7300b2305137b9ada4a1765b")
+
+    async def test_baidu_translate_many_splits_matching_lines(self):
+        from translations.providers import BaiduTranslateProvider, TranslationRequest
+
+        captured = {}
+
+        class Response:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"trans_result": [{"src": "一\n二", "dst": "one\ntwo"}]}
+
+        async def fake_post(self, url, data=None):
+            captured["data"] = data
+            return Response()
+
+        provider = BaiduTranslateProvider({"enabled": True, "app_id": "appid", "secret": "secret", "qps": 0})
+        requests = [
+            TranslationRequest(text="一", scope="category:1", target_language="zh-CN"),
+            TranslationRequest(text="二", scope="category:2", target_language="zh-CN"),
+        ]
+
+        with patch("httpx.AsyncClient.post", new=fake_post):
+            results = await provider.translate_many(requests)
+
+        self.assertEqual([result.translated_text for result in results], ["one", "two"])
+        self.assertEqual(captured["data"]["q"], "一\n二")
+
+    async def test_baidu_translate_returns_none_for_api_error(self):
+        from translations.providers import BaiduTranslateProvider, TranslationRequest
+
+        class Response:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"error_code": "54003", "error_msg": "Invalid Access Limit"}
+
+        async def fake_post(self, url, data=None):
+            return Response()
+
+        provider = BaiduTranslateProvider({"enabled": True, "app_id": "appid", "secret": "secret"})
+
+        with patch("httpx.AsyncClient.post", new=fake_post):
+            result = await provider.translate(TranslationRequest(text="一", scope="category:1"))
+
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":

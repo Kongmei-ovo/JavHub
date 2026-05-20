@@ -203,30 +203,22 @@
 
       <div class="provider-list">
         <label
-          v-for="(provider, index) in batchProviders"
+          v-for="provider in providerOptions"
           :key="provider.key"
           class="provider-row"
-          :class="{ enabled: provider.enabled }"
+          :class="{ enabled: selectedProvider === provider.key }"
         >
-          <input v-model="provider.enabled" type="checkbox" @change="syncBatchOrderFromProviders" />
+          <input v-model="selectedProvider" type="radio" name="translation-provider" :value="provider.key" />
           <div>
             <strong>{{ provider.label }}</strong>
             <small>{{ provider.hint }}</small>
           </div>
           <span class="provider-status">{{ providerStatusLabel(provider.key) }}</span>
-          <span class="order-actions">
-            <button class="icon-btn" type="button" :disabled="index === 0" title="上移" @click.prevent="moveProvider(index, -1)">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
-            </button>
-            <button class="icon-btn" type="button" :disabled="index === batchProviders.length - 1" title="下移" @click.prevent="moveProvider(index, 1)">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
-            </button>
-          </span>
         </label>
       </div>
 
       <div class="panel-footer-actions">
-        <button class="btn btn-primary" type="button" :disabled="startingJob || selectedProviderOrder.length <= 2" @click="startJob">
+        <button class="btn btn-primary" type="button" :disabled="startingJob || !selectedProvider" @click="startJob">
           {{ startingJob ? '启动中...' : '开始翻译作业' }}
         </button>
       </div>
@@ -295,6 +287,17 @@
             <input v-model="translationConfig.google_free.base_url" class="input" placeholder="https://translate.googleapis.com/translate_a/single" />
             <div class="form-grid">
               <label class="check-row boxed">
+                <input v-model="translationConfig.baidu.enabled" type="checkbox" />
+                <span>启用百度翻译</span>
+              </label>
+              <input v-model.number="translationConfig.baidu.timeout" class="input" type="number" min="1" placeholder="超时（秒）" />
+              <input v-model.number="translationConfig.baidu.qps" class="input" type="number" min="0" step="0.5" placeholder="每秒请求数" />
+            </div>
+            <input v-model="translationConfig.baidu.app_id" class="input" placeholder="百度翻译 APP ID" autocomplete="off" />
+            <input v-model="translationConfig.baidu.secret" class="input" :type="showBaiduSecret ? 'text' : 'password'" placeholder="百度翻译 Secret，空白保存不覆盖现有密钥" autocomplete="off" />
+            <input v-model="translationConfig.baidu.endpoint" class="input" placeholder="https://fanyi-api.baidu.com/api/trans/vip/translate" />
+            <div class="form-grid">
+              <label class="check-row boxed">
                 <input v-model="translationConfig.deepl.enabled" type="checkbox" />
                 <span>启用 DeepL</span>
               </label>
@@ -314,6 +317,7 @@
             <input v-model="translationConfig.microsoft.api_key" class="input" :type="showMicrosoftKey ? 'text' : 'password'" placeholder="Microsoft 密钥，可选" autocomplete="off" />
           </div>
           <div class="key-actions left">
+            <button class="btn btn-ghost btn-sm" type="button" @click="showBaiduSecret = !showBaiduSecret">{{ showBaiduSecret ? '隐藏百度 Secret' : '显示百度 Secret' }}</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="showDeeplKey = !showDeeplKey">{{ showDeeplKey ? '隐藏 DeepL 密钥' : '显示 DeepL 密钥' }}</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="showMicrosoftKey = !showMicrosoftKey">{{ showMicrosoftKey ? '隐藏 Microsoft 密钥' : '显示 Microsoft 密钥' }}</button>
           </div>
@@ -563,10 +567,12 @@ const WORKBENCH_STATUS_OPTIONS = [
 ]
 const PROVIDER_META = {
   google_free: { label: 'Google 免费接口', hint: '无密钥，适合标题和短名称批量翻译。' },
+  baidu: { label: '百度翻译', hint: '使用百度通用文本翻译 API，适合已有免费 key 的低成本翻译。' },
   deepl: { label: 'DeepL', hint: '质量更高，需要配置密钥。' },
   microsoft: { label: 'Microsoft 翻译', hint: 'Azure 翻译接口，需要密钥和可选区域。' },
   ai: { label: '智能兜底', hint: '使用设置页当前公共智能模型，适合低成本源效果不好时补充。' },
 }
+const PROVIDER_KEYS = Object.keys(PROVIDER_META)
 
 function cloneTranslationConfig() {
   return JSON.parse(JSON.stringify(DEFAULT_CONFIG.translation))
@@ -634,14 +640,11 @@ export default {
       mappingMessageType: 'info',
       jobMessage: '',
       jobMessageType: 'info',
+      selectedProvider: 'google_free',
+      showBaiduSecret: false,
       showDeeplKey: false,
       showMicrosoftKey: false,
-      batchProviders: [
-        { key: 'google_free', ...PROVIDER_META.google_free, enabled: true },
-        { key: 'deepl', ...PROVIDER_META.deepl, enabled: true },
-        { key: 'microsoft', ...PROVIDER_META.microsoft, enabled: true },
-        { key: 'ai', ...PROVIDER_META.ai, enabled: false },
-      ],
+      providerOptions: PROVIDER_KEYS.map(key => ({ key, ...PROVIDER_META[key] })),
       jobForm: {
         job_type: 'library_titles',
         mode: 'remaining',
@@ -712,10 +715,7 @@ export default {
       return this.currentJob || this.jobs[0] || this.selectedJob || null
     },
     selectedProviderOrder() {
-      return [
-        ...BASE_BATCH_ORDER,
-        ...this.batchProviders.filter(provider => provider.enabled).map(provider => provider.key),
-      ]
+      return [...BASE_BATCH_ORDER, this.selectedProvider]
     },
     selectedProviderOrderLabel() {
       return this.providerOrderLabel(this.selectedProviderOrder)
@@ -726,7 +726,7 @@ export default {
     canStartContinuationJob() {
       const status = this.jobControlJob?.status
       return !this.startingJob
-        && this.selectedProviderOrder.length > 2
+        && Boolean(this.selectedProvider)
         && !['pending', 'running'].includes(status)
     },
     selectedJobMode() {
@@ -823,10 +823,11 @@ export default {
     mergeTranslationConfig(remote = {}) {
       const base = cloneTranslationConfig()
       const merged = { ...base, ...remote }
-      for (const key of ['google_free', 'deepl', 'microsoft']) {
+      for (const key of ['google_free', 'baidu', 'deepl', 'microsoft']) {
         merged[key] = { ...(base[key] || {}), ...((remote && remote[key]) || {}) }
       }
       delete merged.openai_compatible
+      merged.provider = this.normalizeProvider(merged.provider || this.firstNetworkProvider(merged.batch_provider_order) || this.firstNetworkProvider(merged.provider_order))
       if (!Array.isArray(merged.provider_order)) merged.provider_order = [...base.provider_order]
       if (!Array.isArray(merged.batch_provider_order)) merged.batch_provider_order = [...base.batch_provider_order]
       if (!merged.realtime_mode || merged.realtime_mode === 'sync') merged.realtime_mode = 'cache_only'
@@ -835,6 +836,8 @@ export default {
       merged.batch_char_limit = Math.max(500, Math.min(Number(merged.batch_char_limit || 24000), 24000))
       merged.source_page_size = Math.max(20, Math.min(Number(merged.source_page_size || 500), 1000))
       merged.scan_pages_per_batch = Math.max(1, Math.min(Number(merged.scan_pages_per_batch || 8), 64))
+      merged.baidu.qps = Math.max(0, Number(merged.baidu.qps ?? 1) || 0)
+      merged.baidu.timeout = Math.max(1, Number(merged.baidu.timeout || 15))
       return merged
     },
     async loadStats() {
@@ -870,46 +873,22 @@ export default {
       if (running) this.startPolling(running.id)
     },
     syncProvidersFromConfig() {
-      const configured = Array.isArray(this.translationConfig.batch_provider_order)
-        ? this.translationConfig.batch_provider_order
-        : []
-      const configuredLowCost = configured.filter(key => PROVIDER_META[key])
-      const orderedKeys = [
-        ...configuredLowCost,
-        ...Object.keys(PROVIDER_META).filter(key => !configuredLowCost.includes(key)),
-      ]
-      this.batchProviders = orderedKeys.map(key => ({
-        key,
-        ...PROVIDER_META[key],
-        enabled: configured.length ? configured.includes(key) : true,
-      }))
-      this.syncBatchOrderFromProviders()
+      this.selectedProvider = this.normalizeProvider(this.translationConfig.provider)
+      this.syncSelectedProviderToConfig()
     },
-    syncBatchOrderFromProviders() {
+    syncSelectedProviderToConfig() {
+      this.translationConfig.provider = this.selectedProvider
       this.translationConfig.batch_provider_order = this.selectedProviderOrder
-    },
-    moveProvider(index, direction) {
-      const nextIndex = index + direction
-      if (nextIndex < 0 || nextIndex >= this.batchProviders.length) return
-      const providers = [...this.batchProviders]
-      const [item] = providers.splice(index, 1)
-      providers.splice(nextIndex, 0, item)
-      this.batchProviders = providers
-      this.syncBatchOrderFromProviders()
+      this.translationConfig.provider_order = this.selectedProviderOrder
     },
     async saveTranslationConfig() {
       this.savingConfig = true
-      this.syncBatchOrderFromProviders()
-      const realtimeOrder = Array.from(new Set([
-        'cache',
-        'mapping',
-        ...this.selectedProviderOrder.filter(key => !BASE_BATCH_ORDER.includes(key)),
-        'ai',
-      ]))
+      this.syncSelectedProviderToConfig()
       const payload = {
         translation: {
           ...this.translationConfig,
-          provider_order: realtimeOrder,
+          provider: this.selectedProvider,
+          provider_order: this.selectedProviderOrder,
           batch_provider_order: this.selectedProviderOrder,
           realtime_mode: this.translationConfig.realtime_mode || 'cache_only',
           batch_concurrency: Math.max(1, Math.min(Number(this.translationConfig.batch_concurrency || 32), 64)),
@@ -917,6 +896,11 @@ export default {
           batch_char_limit: Math.max(500, Math.min(Number(this.translationConfig.batch_char_limit || 24000), 24000)),
           source_page_size: Math.max(20, Math.min(Number(this.translationConfig.source_page_size || 500), 1000)),
           scan_pages_per_batch: Math.max(1, Math.min(Number(this.translationConfig.scan_pages_per_batch || 8), 64)),
+          baidu: {
+            ...this.translationConfig.baidu,
+            qps: Math.max(0, Number(this.translationConfig.baidu.qps ?? 1) || 0),
+            timeout: Math.max(1, Number(this.translationConfig.baidu.timeout || 15)),
+          },
         },
       }
       try {
@@ -937,7 +921,7 @@ export default {
       try {
         const resp = await api.startTranslationJob({
           job_type: this.jobForm.job_type,
-          provider_order: this.selectedProviderOrder,
+          provider: this.selectedProvider,
           mode: this.jobForm.mode,
         })
         const job = resp.data || {}
@@ -1023,7 +1007,7 @@ export default {
       this.translationTestMsg = ''
       this.translationTestType = 'info'
       try {
-        const resp = await api.testTranslation(this.translationTestText.trim())
+        const resp = await api.testTranslation(this.translationTestText.trim(), this.selectedProvider)
         const translated = resp.data?.translated_text || ''
         this.translationTestMsg = translated ? `译文：${translated}` : '测试完成，但没有返回译文'
         this.translationTestType = translated ? 'success' : 'error'
@@ -1192,7 +1176,7 @@ export default {
       try {
         const payload = {
           type: this.reviewType,
-          provider_order: this.selectedProviderOrder,
+          provider: this.selectedProvider,
         }
         if (this.reviewStatus && this.reviewStatus !== 'all') payload.status = this.reviewStatus
         if (this.reviewQuery.trim()) payload.q = this.reviewQuery.trim()
@@ -1223,6 +1207,7 @@ export default {
         cache: '缓存',
         mapping: '映射',
         google_free: 'Google 免费接口',
+        baidu: '百度翻译',
         deepl: 'DeepL',
         microsoft: 'Microsoft 翻译',
         ai: '智能兜底',
@@ -1235,6 +1220,15 @@ export default {
     providerOrderLabel(order) {
       const labels = (order || []).map(key => this.providerLabel(key)).filter(Boolean)
       return labels.length ? labels.join(' -> ') : '未记录'
+    },
+    normalizeProvider(provider) {
+      const key = provider === 'openai_compatible' ? 'ai' : provider
+      return PROVIDER_META[key] ? key : 'google_free'
+    },
+    firstNetworkProvider(order) {
+      if (!Array.isArray(order)) return ''
+      const found = order.find(key => PROVIDER_META[key === 'openai_compatible' ? 'ai' : key])
+      return found ? this.normalizeProvider(found) : ''
     },
     percentValue(item = {}) {
       const total = Number(item.total || 0)
@@ -1993,7 +1987,7 @@ export default {
   min-height: 56px;
   padding: 10px 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--border);
@@ -2075,39 +2069,6 @@ export default {
 .status-invalid {
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.035);
-}
-
-.order-actions {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.icon-btn:disabled {
-  opacity: 0.36;
-  cursor: not-allowed;
-}
-
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .panel-footer-actions {
@@ -2524,8 +2485,7 @@ export default {
     min-height: 70px;
   }
 
-  .provider-status,
-  .order-actions {
+  .provider-status {
     grid-column: 2;
     justify-self: start;
   }

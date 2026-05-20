@@ -485,8 +485,8 @@ export default {
     return api.get('/v1/translations/stats')
   },
 
-  testTranslation(text) {
-    return api.post('/v1/translations/test', { text })
+  testTranslation(text, provider) {
+    return api.post('/v1/translations/test', { text, provider })
   },
 
   startTranslationJob(payload = {}) {

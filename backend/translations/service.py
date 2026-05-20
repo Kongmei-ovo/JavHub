@@ -14,6 +14,7 @@ from database import (
 from translations.category_decensor import decensor_category_name
 from translations.providers import (
     AIProvider,
+    BaiduTranslateProvider,
     DeepLProvider,
     GoogleFreeProvider,
     MappingProvider,
@@ -142,8 +143,9 @@ class TranslatorService:
     def provider_order(self) -> list[str]:
         order = self.settings.get("provider_order")
         if not isinstance(order, list):
-            return ["cache", "mapping", "openai_compatible"]
-        return [str(item) for item in order if str(item).strip()]
+            provider = str(self.settings.get("provider") or "google_free")
+            return ["cache", "mapping", provider]
+        return _single_provider_order([str(item) for item in order if str(item).strip()])
 
     def _provider(self, name: str) -> TranslationProvider | None:
         if self.reuse_clients and name in self._provider_cache:
@@ -152,6 +154,8 @@ class TranslatorService:
             provider = self.mapping_provider
         elif name == "google_free":
             provider = GoogleFreeProvider(self.settings.get("google_free", {}) or {}, reuse_client=self.reuse_clients)
+        elif name == "baidu":
+            provider = BaiduTranslateProvider(self.settings.get("baidu", {}) or {}, reuse_client=self.reuse_clients)
         elif name == "deepl":
             provider = DeepLProvider(self.settings.get("deepl", {}) or {})
         elif name == "microsoft":
@@ -204,7 +208,8 @@ class TranslatorService:
             mapping=mapping,
         )
 
-        for provider_name in provider_order or self.provider_order:
+        active_order = _single_provider_order(provider_order) if provider_order is not None else self.provider_order
+        for provider_name in active_order:
             if provider_name == "cache":
                 cached = get_cached_translation(scope, source)
                 if cached and cached.get("translated_text"):
@@ -627,6 +632,26 @@ class TranslatorService:
 
 def get_translator_service() -> TranslatorService:
     return TranslatorService()
+
+
+def _single_provider_order(order: list[str] | None) -> list[str]:
+    if not isinstance(order, list):
+        return ["cache", "mapping", "google_free"]
+    result: list[str] = []
+    for item in order:
+        provider = str(item or "").strip()
+        if not provider:
+            continue
+        if provider == "openai_compatible":
+            provider = "ai"
+        if provider in {"cache", "mapping"}:
+            if provider not in result:
+                result.append(provider)
+            continue
+        if provider in {"google_free", "baidu", "deepl", "microsoft", "ai"}:
+            result.append(provider)
+            break
+    return result or ["cache", "mapping", "google_free"]
 
 
 async def apply_translation(content_id: str, data: dict) -> dict:

@@ -84,6 +84,17 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(job["result"]["provider_order"], ["cache", "google_free"])
         self.assertEqual(get_translation("miaa784")["title"]["テストタイトル"], "测试标题")
 
+    async def test_create_translation_job_accepts_single_provider(self):
+        from translations.jobs import create_translation_job
+
+        async def fake_run(job_id, job_type, provider_order, **kwargs):
+            return None
+
+        with patch("translations.jobs._run_job", side_effect=fake_run):
+            job = await create_translation_job("library_titles", provider="baidu")
+
+        self.assertEqual(job["provider_order"], ["cache", "mapping", "baidu"])
+
     async def test_library_title_job_can_use_ai_when_selected(self):
         from database import get_translation
         from translations.jobs import _run_job
@@ -393,6 +404,30 @@ class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         failed_item = get_translation_workbench_item("title", "FAIL-001")
         self.assertEqual(failed_item["status"], "failed")
         self.assertEqual(failed_item["attempts"], 1)
+
+    async def test_title_job_uses_selected_baidu_without_google_fallback(self):
+        from database import add_translation_job, get_translation_workbench_item
+        from translations.jobs import _translate_titles
+        from translations.providers import BaiduTranslateProvider, GoogleFreeProvider
+
+        job_id = add_translation_job("library_titles", provider_order=["cache", "mapping", "baidu", "google_free"])
+        counters = {"processed": 0, "translated": 0, "skipped": 0, "failed": 0}
+
+        with patch.object(BaiduTranslateProvider, "translate_many", AsyncMock(return_value=[None])) as baidu_translate, \
+             patch.object(GoogleFreeProvider, "translate_many", new_callable=AsyncMock) as google_translate:
+            await _translate_titles(
+                job_id,
+                [{"content_id": "MIAA-784", "title_ja": "テストタイトル"}],
+                ["cache", "mapping", "baidu", "google_free"],
+                counters,
+                force=False,
+            )
+
+        baidu_translate.assert_awaited_once()
+        google_translate.assert_not_awaited()
+        self.assertEqual(counters, {"processed": 1, "translated": 0, "skipped": 0, "failed": 1})
+        failed_item = get_translation_workbench_item("title", "MIAA-784")
+        self.assertEqual(failed_item["status"], "failed")
 
     async def test_title_job_counts_same_text_translation_as_done_without_cache_write(self):
         from database import add_translation_job, get_cached_translation, get_translation
