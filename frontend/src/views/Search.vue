@@ -14,7 +14,7 @@
     <div class="search-hero" :class="{ compact: searched }">
       <transition name="hero-fade">
         <div v-if="!searched" class="hero-intro">
-          <h1 class="hero-title">发现</h1>
+          <h1 class="hero-title">影片检索</h1>
           <p class="hero-subtitle">搜索影片、番号、演员或工作室</p>
         </div>
       </transition>
@@ -63,7 +63,7 @@
                 v-for="pill in sortPills"
                 :key="pill.key"
                 class="sort-pill"
-                :class="{ active: sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
+                :class="{ active: pill.key === 'random' ? sortState.random : sortState[pill.key] !== null, random: pill.key === 'random' && sortState.random }"
                 @click="cycleSort(pill.key)"
               >
                 <span class="pill-label">{{ pill.label }}</span>
@@ -102,6 +102,19 @@
               高级筛选
             </button>
           </div>
+        </div>
+
+        <div v-if="activeFilterChips.length" class="applied-filter-row" aria-label="已应用筛选">
+          <button
+            v-for="chip in activeFilterChips"
+            :key="chip.key + '-' + (chip.value || chip.label)"
+            class="applied-chip"
+            type="button"
+            @click="removeFilterChip(chip)"
+          >
+            <span>{{ chip.label }}</span>
+            <b aria-hidden="true">×</b>
+          </button>
         </div>
 
         <!-- 高级筛选详情面板 -->
@@ -180,6 +193,18 @@
       <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
+    <AppleErrorState
+      v-else-if="searchError"
+      class="page-rail page-rail--standard"
+      title="影片检索失败"
+      :description="searchError.message"
+      :source-label="searchError.serviceLabel"
+      :details="searchError.status ? `HTTP ${searchError.status}` : '网络连接'"
+      retry-label="重试"
+      :retrying="loading"
+      @retry="runSearchFromRoute"
+    />
+
     <!-- 搜索结果网格 -->
     <div v-else-if="results.length > 0" class="results-grid page-rail page-rail--gallery">
       <MovieCard
@@ -192,9 +217,7 @@
         :releaseDate="item.release_date || ''"
         :runtimeMins="item.runtime_mins || ''"
         :sampleUrl="item.sample_url || ''"
-        :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
         @click="openModal(item)"
-        @toggle-favorite="toggleFavorite(item)"
       />
     </div>
 
@@ -202,7 +225,7 @@
     <AppleEmptyState
       v-else-if="searched"
       class="page-rail page-rail--standard"
-      title="未找到相关影片"
+      :title="sortState.random ? '暂无随机探索结果' : '未找到相关影片'"
       description="尝试其他关键词、番号或筛选条件。"
       action-label="重置筛选"
       @action="clearFilters"
@@ -235,34 +258,34 @@
 import api from '../api'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { openVideoModal } from '../utils/modalState'
-import favoriteState from '../utils/favoriteState'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import { loadSearchPreferences } from '../utils/searchPreferences.js'
+import {
+  buildSearchApiParams,
+  canonicalizeSearchState,
+  cycleSearchSort,
+  filterChipsFromSearchState,
+  parseSearchQuery,
+  searchQueryEquals,
+  searchHasUserConditions,
+  searchQueryFromState,
+  sortStateFromSortValue,
+  sortValueFromSortState,
+} from '../utils/searchRouteState.js'
 import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 
 function sortStateFromPreference(defaultSort = 'random') {
-  const state = {
-    release_date: null,
-    title_ja: null,
-    runtime_mins: null,
-    random: false,
-  }
-  if (defaultSort === 'random') {
-    state.random = true
-    return state
-  }
-  if (!defaultSort || defaultSort === 'none') return state
-  const match = defaultSort.match(/^(release_date|title_ja|runtime_mins)_(asc|desc)$/)
-  if (match) state[match[1]] = match[2]
-  return state
+  return sortStateFromSortValue(defaultSort === 'none' ? 'random' : defaultSort)
 }
 
 export default {
   name: 'Search',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState, GlassSelect },
   data() {
     return {
       keyword: '',
@@ -271,6 +294,7 @@ export default {
       loading: false,
       searched: false,
       total: 0,
+      searchError: null,
 
       // 筛选
       categoryName: '',
@@ -319,18 +343,36 @@ export default {
     }
   },
   computed: {
+    searchState() {
+      return {
+        contentId: this.contentId,
+        keyword: this.keyword,
+        serviceCode: this.serviceCode,
+        year: this.year,
+        makerName: this.makerName,
+        actressName: this.actressName,
+        seriesName: this.seriesName,
+        categoryTags: this.categoryTags,
+        sort: sortValueFromSortState(this.sortState),
+        page: this.page,
+      }
+    },
     hasFilters() {
-      return this.categoryTags.length || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName
+      return Boolean(this.categoryTags.length || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName || this.year || this.serviceCode || this.hasSort)
     },
     hasSort() {
       return Object.values(this.sortState).some(v => v !== null && v !== false)
+    },
+    activeFilterChips() {
+      return filterChipsFromSearchState(this.searchState)
     },
     versionOptions() {
       return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     },
     totalLabel() {
+      if (this.sortState.random) return '随机探索结果'
       if (this.total < 0) return '结果'
-      return `${this.total} 个结果`
+      return `共 ${this.total} 条`
     }
   },
   async mounted() {
@@ -348,11 +390,13 @@ export default {
     this.applySearchPreferences({ force: true })
     await this.loadConfiguredPageSize()
 
-    this.syncRouteQuery(this.$route.query)
     this.searchSettingsReady = true
-    if (this.hasFilters) {
-      this.doSearch()
+    if (!Object.keys(this.$route.query || {}).length) {
+      this.replaceSearchRoute({ sort: sortValueFromSortState(this.sortState), page: 1 }, { replace: true })
+      return
     }
+    this.syncRouteQuery(this.$route.query)
+    this.runSearchFromRoute()
   },
   async activated() {
     if (!this.searchSettingsReady) return
@@ -360,7 +404,7 @@ export default {
     const pageSizeChanged = await this.loadConfiguredPageSize()
     const routeChanged = this.syncRouteQuery(this.$route.query)
     if (routeChanged || ((preferencesChanged || pageSizeChanged) && (this.hasFilters || this.searched))) {
-      this.doSearch()
+      this.runSearchFromRoute()
     }
   },
   beforeUnmount() {
@@ -369,7 +413,8 @@ export default {
   },
   watch: {
     '$route.query'(q) {
-      if (this.syncRouteQuery(q)) this.doSearch()
+      this.syncRouteQuery(q)
+      if (this.searchSettingsReady) this.runSearchFromRoute()
     }
   },
   methods: {
@@ -377,8 +422,10 @@ export default {
       const prefs = loadSearchPreferences()
       const prefsKey = JSON.stringify(prefs)
       if (!force && prefsKey === this.appliedSearchPrefsKey) return false
-      this.sortState = sortStateFromPreference(prefs.defaultSort)
-      this.serviceCode = prefs.defaultServiceCode
+      if (!Object.keys(this.$route?.query || {}).length) {
+        this.sortState = sortStateFromPreference(prefs.defaultSort)
+        this.serviceCode = prefs.defaultServiceCode
+      }
       this.appliedSearchPrefsKey = prefsKey
       return true
     },
@@ -395,32 +442,32 @@ export default {
       return false
     },
     syncRouteQuery(q = {}) {
+      const next = parseSearchQuery(q)
+      const nextSortState = sortStateFromSortValue(next.sort)
       let changed = false
-      if (q.actress !== undefined && q.actress !== this.actressName) { this.actressName = q.actress; changed = true }
-      if (q.maker !== undefined && q.maker !== this.makerName) { this.makerName = q.maker; changed = true }
-      if (q.series !== undefined && q.series !== this.seriesName) { this.seriesName = q.series; changed = true }
-      if (q.q !== undefined && q.q !== this.keyword) { this.keyword = q.q; changed = true }
-      if (q.keyword !== undefined && q.keyword !== this.keyword) { this.keyword = q.keyword; changed = true }
-
-      if (q.category_name !== undefined) {
-        const tags = q.category_name.split(' ').filter(t => t)
-        if (JSON.stringify(tags) !== JSON.stringify(this.categoryTags)) {
-          this.categoryTags = tags
+      const assign = (key, value) => {
+        if (this[key] !== value) {
+          this[key] = value
           changed = true
         }
       }
-      return changed
-    },
-    isFavorited(type, id) {
-      return favoriteState.isFavorited(type, id)
-    },
-    async toggleFavorite(item) {
-      try {
-        const id = item.content_id || item.dvd_id
-        await favoriteState.toggle('video', id)
-      } catch (err) {
-        console.error('Failed to toggle favorite:', err)
+      assign('contentId', next.contentId)
+      assign('keyword', next.keyword)
+      assign('serviceCode', next.serviceCode)
+      assign('year', next.year)
+      assign('makerName', next.makerName)
+      assign('actressName', next.actressName)
+      assign('seriesName', next.seriesName)
+      assign('page', next.page)
+      if (JSON.stringify(next.categoryTags) !== JSON.stringify(this.categoryTags)) {
+        this.categoryTags = next.categoryTags
+        changed = true
       }
+      if (JSON.stringify(nextSortState) !== JSON.stringify(this.sortState)) {
+        this.sortState = nextSortState
+        changed = true
+      }
+      return changed
     },
     async loadFilters() {
       // categories now use category_name text input
@@ -436,13 +483,15 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.applySearchPreferences({ force: true })
+      this.serviceCode = ''
+      this.sortState = sortStateFromSortValue('random')
       this.results = []
       this.total = 0
       this.totalPages = 1
       this.page = 1
       this.jumpPage = null
       this.searched = false
+      this.replaceSearchRoute({ sort: 'random', page: 1 }, { replace: true })
     },
     addCategoryTag() {
       const tag = this.categoryInput.trim()
@@ -472,46 +521,44 @@ export default {
       this.doSearch()
     },
     buildSearchParams(page) {
-      const params = {
-        page,
-        page_size: this.pageSize
-      }
-      if (this.contentId) params.content_id = this.contentId.trim()
-      if (this.keyword) params.q = this.keyword.trim()
-      if (this.makerName) params.maker_name = this.makerName.trim()
-      if (this.seriesName) params.series_name = this.seriesName.trim()
-      if (this.actressName) params.actress_name = this.actressName.trim()
-      if (this.year) params.year = this.year
-      if (this.serviceCode) params.service_code = this.serviceCode
-      if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
-      if (this.sortState.random) {
-        params.random = '1'
-        params.include_total = false
-      } else {
-        const sortParts = []
-        for (const [field, dir] of Object.entries(this.sortState)) {
-          if (field === 'random' || dir === null) continue
-          sortParts.push(`${field}:${dir}`)
-        }
-        if (sortParts.length > 0) params.sort_by = sortParts.join(',')
-      }
-      return params
+      return buildSearchApiParams({ ...this.searchState, page }, { pageSize: this.pageSize })
     },
-    async doSearch() {
+    replaceSearchRoute(patch = {}, { replace = false } = {}) {
+      const query = searchQueryFromState({ ...this.searchState, ...patch })
+      if (this.$route.query.returnTo) query.returnTo = this.$route.query.returnTo
+      if (searchQueryEquals(this.$route.query || {}, query)) {
+        this.runSearchFromRoute()
+        return
+      }
+      const nav = replace ? this.$router.replace : this.$router.push
+      nav.call(this.$router, { path: this.$route.path, query })
+        .catch(() => {})
+    },
+    doSearch() {
+      const patch = { page: 1 }
+      if (sortValueFromSortState(this.sortState) === 'random' && searchHasUserConditions({ ...this.searchState, page: 1 })) {
+        patch.sort = 'release_date_desc'
+      }
+      this.replaceSearchRoute(patch)
+    },
+    async runSearchFromRoute() {
       this.loading = true
       this.searched = true
-      this.page = 1
+      this.searchError = null
       const token = this.searchSequence.next()
       try {
-        const resp = await api.searchVideos(this.buildSearchParams(1))
+        const resp = await api.searchVideos(this.buildSearchParams(this.page))
         if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
-        this.total = data.total_count ?? 0
+        this.total = this.sortState.random ? -1 : (data.total_count ?? 0)
         this.totalPages = data.total_pages || 1
       } catch (e) {
         if (!this.searchSequence.isCurrent(token)) return
         console.error('Search failed:', e)
+        this.searchError = api.formatApiError
+          ? api.formatApiError(e, { service: 'JavInfo', action: '检索', fallback: '请检查 JavInfo 服务后重试。' })
+          : { message: '检索失败，请稍后重试。', serviceLabel: 'JavInfo', status: e.response?.status || 0 }
         this.results = []
         this.total = 0
       } finally {
@@ -520,24 +567,8 @@ export default {
     },
     async goPage(p) {
       if (p < 1 || p > this.totalPages || p === this.page) return
-      this.page = p
-      this.loading = true
-      this.searched = true
-      const token = this.searchSequence.next()
-      try {
-        const resp = await api.searchVideos(this.buildSearchParams(p))
-        if (!this.searchSequence.isCurrent(token)) return
-        const data = resp.data
-        this.results = data.data || []
-        this.total = data.total_count ?? 0
-        this.totalPages = data.total_pages || 1
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      } catch (e) {
-        if (!this.searchSequence.isCurrent(token)) return
-        console.error('Page change failed:', e)
-      } finally {
-        if (this.searchSequence.isCurrent(token)) this.loading = false
-      }
+      this.replaceSearchRoute({ page: p })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     },
     doJumpPage() {
       if (!this.jumpPage) return
@@ -546,35 +577,23 @@ export default {
       this.goPage(p)
     },
     cycleSort(key) {
-      if (key === 'random') {
-        // 随机是互斥开关
-        this.sortState.random = !this.sortState.random
-        if (this.sortState.random) {
-          // 激活随机时清除其他排序
-          this.sortState.release_date = null
-          this.sortState.title_ja = null
-          this.sortState.runtime_mins = null
-        }
-      } else {
-        // 普通排序：null → desc → asc → null
-        const cycle = { null: 'desc', desc: 'asc', asc: null }
-        this.sortState[key] = cycle[this.sortState[key]]
-        // 激活非随机排序时关闭随机
-        if (this.sortState[key] !== null) {
-          this.sortState.random = false
-        }
-      }
-      this.doSearch()
+      this.replaceSearchRoute({ sort: cycleSearchSort(sortValueFromSortState(this.sortState), key), page: 1 })
     },
     clearSort({ search = true } = {}) {
-      this.sortState.release_date = null
-      this.sortState.title_ja = null
-      this.sortState.runtime_mins = null
-      this.sortState.random = false
+      this.sortState = sortStateFromSortValue('random')
       if (search) this.doSearch()
     },
+    removeFilterChip(chip) {
+      const patch = { page: 1 }
+      if (chip.key === 'categoryTags') {
+        patch.categoryTags = this.categoryTags.filter(tag => tag !== chip.value)
+      } else {
+        patch[chip.key] = chip.key === 'year' ? null : ''
+      }
+      this.replaceSearchRoute(canonicalizeSearchState({ ...this.searchState, ...patch }))
+    },
     openModal(video) {
-      openVideoModal(video, this.$route.path)
+      openVideoDetail(video, this.$router, this.$route, openVideoModal)
     },
     cardImageUrl(item) {
       return videoCardCoverUrl(item)
@@ -897,6 +916,43 @@ export default {
   --glass-select-padding: 0 12px;
   --glass-select-font: 12px;
   --glass-select-radius: var(--filter-control-radius);
+}
+
+.applied-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.applied-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  max-width: min(100%, 280px);
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--material-glass-subtle);
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+  cursor: pointer;
+}
+
+.applied-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.applied-chip b {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
 }
 
 /* 高级面板 (Advanced Panel) - 绝对定位消除重排 */
@@ -1271,6 +1327,12 @@ export default {
   }
   .sort-clear-btn {
     width: 44px;
+  }
+  .applied-filter-row {
+    justify-content: flex-start;
+  }
+  .applied-chip {
+    min-height: 38px;
   }
   .advanced-panel {
     position: static;

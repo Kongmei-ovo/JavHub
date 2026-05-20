@@ -10,6 +10,23 @@ const JAVINFO_IMPORT_CHUNK_SIZE = 8 * 1024 * 1024
 const JAVINFO_IMPORT_CHUNK_RETRIES = 3
 let lastErrorToast = { key: '', ts: 0 }
 
+export function formatApiError(error, { service = '服务', action = '请求', fallback = '请稍后重试。' } = {}) {
+  const status = error?.response?.status || 0
+  const rawMessage = error?.response?.data?.detail
+    || error?.response?.data?.message
+    || error?.message
+    || fallback
+  const retryable = !status || status >= 500 || status === 408 || status === 429
+  const serviceLabel = service
+  return {
+    status,
+    retryable,
+    serviceLabel,
+    rawMessage,
+    message: `${serviceLabel}${action}失败：${retryable ? fallback : rawMessage}`,
+  }
+}
+
 function numericPathSegment(value, label) {
   const text = String(value ?? '').trim()
   if (!/^\d+$/.test(text)) {
@@ -101,6 +118,8 @@ api.interceptors.response.use(
 )
 
 export default {
+  formatApiError,
+
   // ========== 视频搜索 & 详情 (JavInfoApi) ==========
 
   searchVideos(params = {}) {
@@ -115,8 +134,10 @@ export default {
     return api.get('/v1/videos', { params: { page, page_size, include_total: false, ...options } })
   },
 
-  getVideo(contentId) {
-    return api.get(`/v1/videos/${pathSegment(contentId, 'contentId')}`)
+  getVideo(contentId, options = {}) {
+    const serviceCode = String(options.service_code || '').trim()
+    const config = serviceCode ? { params: { service_code: serviceCode } } : undefined
+    return api.get(`/v1/videos/${pathSegment(contentId, 'contentId')}`, config)
   },
 
   // ========== 演员 ==========

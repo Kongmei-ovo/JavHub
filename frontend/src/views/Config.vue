@@ -312,7 +312,7 @@
           <div v-if="activeGroup === 'appearance'" class="config-section appearance-section">
             <div class="section-header">
               <h2>界面与外观</h2>
-              <p>按作用范围整理全局显示、影片检索和个性推荐偏好。</p>
+              <p>按作用范围整理全局显示、影片检索和随机探索偏好。</p>
             </div>
 
             <div class="preference-stack">
@@ -403,7 +403,7 @@
               <section class="preference-section">
                 <div class="preference-section-header">
                   <div>
-                    <h3>个性推荐</h3>
+                    <h3>随机探索</h3>
                   </div>
                   <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
                 </div>
@@ -411,7 +411,7 @@
                 <div class="discovery-preference-grid">
                   <section class="scope-card">
                     <div class="scope-card-header">
-                      <span class="setting-title">推荐入口</span>
+                      <span class="setting-title">探索入口</span>
                       <span class="setting-note">默认打开 {{ defaultTabLabel }}</span>
                     </div>
                     <div class="appearance-setting-row">
@@ -419,7 +419,7 @@
                         <span class="setting-title">默认页签</span>
                         <span class="setting-note">{{ defaultTabLabel }}</span>
                       </div>
-                      <div class="segmented-mini" aria-label="个性推荐默认页签">
+                      <div class="segmented-mini" aria-label="随机探索默认页签">
                         <button
                           v-for="option in defaultTabOptions"
                           :key="option.value"
@@ -831,6 +831,7 @@
 
 <script>
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 import { displayLang } from '../utils/displayLang.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
@@ -1283,6 +1284,16 @@ export default {
     },
     async startJavInfoImport() {
       if (!this.javinfoImportCanStart) return
+      const confirmed = await requestConfirm({
+        title: '开始 JavInfo 全量导入',
+        message: `确认用 ${this.javinfoImportFile?.name || 'dump 文件'} 替换目标库 ${this.config.javinfo.import_db.database || '未命名数据库'}？`,
+        details: this.javinfoImportRequiresDirectConfirm
+          ? '当前为直接恢复模式，会清空目标库；失败不能自动回滚。'
+          : '系统会上传 dump 并启动恢复任务，成功后切换 JavInfoApi 使用的新库。',
+        confirmText: '开始导入',
+        tone: this.javinfoImportRequiresDirectConfirm ? 'danger' : 'default',
+      })
+      if (!confirmed) return
       this.javinfoImportUploading = true
       this.javinfoImportUploadProgress = 0
       try {

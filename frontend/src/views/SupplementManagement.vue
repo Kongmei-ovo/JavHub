@@ -763,13 +763,13 @@ export default {
       const name = this.actorContext.name_kanji || this.actorContext.name_romaji || this.actorContext.name || ''
       this.$router.push({ path: `/actor/${encodeURIComponent(name || this.actorContext.id)}`, query: { name, actress_id: this.actorContext.id } })
     },
-    async loadSupplementStatus() {
+    async loadSupplementStatus({ poll = true } = {}) {
       if (!this.actorContext?.id) return
       const normalized = String(this.actorContext.id)
       try {
         const resp = await api.getSupplementActressStatus(normalized)
         this.supplementStatus = resp.data || resp
-        if (this.isSupplementRunning) this._startSupplementPolling()
+        if (poll && this.isSupplementRunning) this._startSupplementPolling()
       } catch (e) {
         console.warn('Load supplement status failed:', e)
       }
@@ -801,7 +801,10 @@ export default {
       this._stopSupplementPolling()
       this.supplementPolling = setInterval(async () => {
         await this.loadSupplementStatus()
-        if (!this.isSupplementRunning) this._stopSupplementPolling()
+        if (!this.isSupplementRunning) {
+          this._stopSupplementPolling()
+          await this.refreshSupplementWorkspaceAfterPolling()
+        }
       }, 4000)
     },
     _stopSupplementPolling() {
@@ -809,6 +812,13 @@ export default {
         clearInterval(this.supplementPolling)
         this.supplementPolling = null
       }
+    },
+    async refreshSupplementWorkspaceAfterPolling() {
+      await Promise.all([
+        this.loadJobs({ silent: true }),
+        this.loadMovies({ silent: true }),
+        this.loadSupplementStatus({ poll: false }),
+      ])
     },
     movieMatchState(movie) {
       if (movie?.matched_content_id) return 'matched'
@@ -1136,15 +1146,7 @@ export default {
       const showLoading = !silent
       if (showLoading) this.moviesLoading = true
       try {
-        const params = { page: this.moviePage, page_size: 20 }
-        if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
-        if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
-        if (this.movieFilters.q) params.q = this.movieFilters.q
-        if (this.movieFilters.quality === 'missing_cover') params.missing_cover = true
-        if (this.movieFilters.quality === 'missing_runtime') params.missing_runtime = true
-        if (this.movieFilters.quality === 'missing_maker') params.missing_maker = true
-        if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
-        if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
+        const params = this.buildMovieFilterParams({ page: this.moviePage, page_size: 20 })
         const resp = await api.listSupplementMovies(params)
         const data = resp.data || resp
         this.supplementMovies = data.data || []
@@ -1159,6 +1161,18 @@ export default {
     async applyMovieFilters() {
       this.moviePage = 1
       await this.loadMovies()
+    },
+    buildMovieFilterParams(baseParams = {}) {
+      const params = { ...baseParams }
+      if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
+      if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
+      if (this.movieFilters.q) params.q = this.movieFilters.q
+      if (this.movieFilters.quality === 'missing_cover') params.missing_cover = true
+      if (this.movieFilters.quality === 'missing_runtime') params.missing_runtime = true
+      if (this.movieFilters.quality === 'missing_maker') params.missing_maker = true
+      if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
+      if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
+      return params
     },
     async enrichMovie(movie) {
       if (!movie?.source_movie_id || this.enrichingMovies[movie.id]) return
@@ -1181,15 +1195,7 @@ export default {
       if (this.batchEnriching) return
       this.batchEnriching = true
       try {
-        const params = { source: 'all', limit: 20 }
-        if (this.movieFilters.matched !== null) params.matched = this.movieFilters.matched
-        if (this.movieFilters.actress_id) params.actress_id = this.movieFilters.actress_id
-        if (this.movieFilters.q) params.q = this.movieFilters.q
-        if (this.movieFilters.quality === 'missing_cover') params.missing_cover = true
-        if (this.movieFilters.quality === 'missing_runtime') params.missing_runtime = true
-        if (this.movieFilters.quality === 'missing_maker') params.missing_maker = true
-        if (this.movieFilters.quality === 'missing_categories') params.missing_categories = true
-        if (this.movieFilters.quality === 'low_completeness') params.max_completeness = 2
+        const params = this.buildMovieFilterParams({ source: 'all', limit: 20 })
         await api.startSupplementMovieDetailBatchJobs(params)
         ElMessage.success('已批量加入详情任务队列')
         this.activeWorkspaceSegment = 'jobs'
@@ -1205,10 +1211,9 @@ export default {
       if (this.candidateImporting) return
       this.candidateImporting = true
       try {
-        const params = { limit: 100 }
+        const params = this.buildMovieFilterParams()
         if (this.actorContext?.id) params.actress_id = this.actorContext.id
         if (this.actorContextName) params.actress_name = this.actorContextName
-        if (this.movieFilters.q) params.q = this.movieFilters.q
         const resp = await api.createSupplementDownloadCandidates(params)
         const data = resp.data || resp
         ElMessage.success(`已生成 ${data.created || 0} 个下载候选，已有 ${data.existing || 0} 个`)

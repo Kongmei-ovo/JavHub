@@ -534,10 +534,17 @@ async def set_primary_name(actress_id: int, req: PrimaryNameRequest):
 
 # === 补全 ===
 
+def _find_missing_video(content_id: str) -> Optional[dict]:
+    for video in get_all_missing_videos():
+        if video.get("content_id") == content_id:
+            return video
+    return None
+
 @router.post("/fill/{content_id}")
 async def fill_video(content_id: str):
     """将单个缺失影片转为下载候选，不直接下发下载。"""
     from database import upsert_download_candidate
+    missing_video = _find_missing_video(content_id) or {}
     info = get_info_client()
     candidate = None
     try:
@@ -545,11 +552,11 @@ async def fill_video(content_id: str):
         candidate = upsert_download_candidate(
             content_id=video.get("content_id") or video.get("dvd_id") or content_id,
             dvd_id=video.get("dvd_id") or content_id,
-            title=video.get("title_ja") or video.get("title_en") or video.get("title") or "",
-            actress_id=None,
+            title=video.get("title_ja") or video.get("title_en") or video.get("title") or missing_video.get("title") or "",
+            actress_id=missing_video.get("actress_id"),
             actress_name=None,
-            jacket_thumb_url=video.get("jacket_thumb_url") or video.get("jacket_full_url"),
-            release_date=video.get("release_date"),
+            jacket_thumb_url=video.get("jacket_thumb_url") or video.get("jacket_full_url") or missing_video.get("jacket_thumb_url"),
+            release_date=video.get("release_date") or missing_video.get("release_date"),
             source="inventory",
             reason="inventory_fill",
         )
@@ -557,7 +564,10 @@ async def fill_video(content_id: str):
         candidate = upsert_download_candidate(
             content_id=content_id,
             dvd_id=content_id,
-            title=content_id,
+            title=missing_video.get("title") or content_id,
+            actress_id=missing_video.get("actress_id"),
+            jacket_thumb_url=missing_video.get("jacket_thumb_url"),
+            release_date=missing_video.get("release_date"),
             source="inventory",
             reason="inventory_fill_fallback",
         )

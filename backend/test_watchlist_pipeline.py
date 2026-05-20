@@ -42,6 +42,26 @@ class DownloadCandidateDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(rows[0]["title"], "Second")
 
+    def test_candidate_upsert_reports_real_insert_only_once(self):
+        from database import upsert_download_candidate
+
+        first = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="First",
+            source="supplement",
+            return_insert_status=True,
+        )
+        second = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Second",
+            source="supplement",
+            return_insert_status=True,
+        )
+
+        self.assertTrue(first["was_inserted"])
+        self.assertFalse(second["was_inserted"])
+        self.assertEqual(first["id"], second["id"])
+
     def test_candidate_upsert_preserves_failed_status(self):
         from database import list_download_candidates, set_download_candidate_status, upsert_download_candidate
 
@@ -577,6 +597,164 @@ class SupplementCandidatePipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestC
         events = get_download_candidate(rows[0]["id"])["events"]
         self.assertEqual([event["action"] for event in events], ["supplement_imported"])
 
+    async def test_supplement_candidate_import_uses_upsert_result_when_race_inserts_candidate(self):
+        from database import get_download_candidate, list_download_candidates
+        from services.supplement_candidates import generate_download_candidates_from_supplement
+
+        info_client = AsyncMock()
+        info_client.proxy_get.return_value = {
+            "data": [{
+                "id": 11,
+                "canonical_number": "SIVR438",
+                "dvd_id": "SIVR-438",
+                "title": "Supplement Only",
+            }],
+        }
+        emby_client = AsyncMock()
+
+        async def insert_racing_candidate(_code):
+            from database import upsert_download_candidate
+
+            upsert_download_candidate(
+                content_id="SIVR438",
+                dvd_id="SIVR-438",
+                title="Racing Request",
+                source="supplement",
+            )
+            return False
+
+        emby_client.check_exists.side_effect = insert_racing_candidate
+
+        result = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+        )
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["existing"], 1)
+        rows = list_download_candidates(source="supplement")
+        self.assertEqual(len(rows), 1)
+        events = get_download_candidate(rows[0]["id"])["events"]
+        self.assertEqual(events, [])
+
+    async def test_supplement_candidate_import_paginates_until_limit(self):
+        from database import list_download_candidates
+        from services.supplement_candidates import generate_download_candidates_from_supplement
+
+        info_client = AsyncMock()
+        pages = {
+            1: {
+                "data": [{
+                    "id": 11,
+                    "canonical_number": "SIVR438",
+                    "dvd_id": "SIVR-438",
+                    "title": "First Page",
+                }],
+                "total_pages": 2,
+            },
+            2: {
+                "data": [{
+                    "id": 12,
+                    "canonical_number": "ABP588",
+                    "dvd_id": "ABP-588",
+                    "title": "Second Page",
+                }],
+                "total_pages": 2,
+            },
+        }
+        info_client.proxy_get.side_effect = lambda _path, params: pages[params["page"]]
+        emby_client = AsyncMock()
+        emby_client.check_exists.return_value = False
+
+        result = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+            limit=150,
+        )
+
+        rows = list_download_candidates(source="supplement")
+        self.assertEqual(result["checked"], 2)
+        self.assertEqual(result["created"], 2)
+        self.assertEqual([row["dvd_id"] for row in rows], ["SIVR-438", "ABP-588"])
+        self.assertEqual(
+            [call.kwargs["params"] for call in info_client.proxy_get.await_args_list],
+            [
+                {"page": 1, "page_size": 100, "matched": "false"},
+                {"page": 2, "page_size": 100, "matched": "false"},
+            ],
+        )
+
+    async def test_supplement_candidate_import_defaults_to_all_pages_and_passes_filters(self):
+        from database import list_download_candidates
+        from services.supplement_candidates import generate_download_candidates_from_supplement
+
+        info_client = AsyncMock()
+        pages = {
+            1: {
+                "data": [{
+                    "id": 11,
+                    "canonical_number": "SIVR438",
+                    "dvd_id": "SIVR-438",
+                    "title": "First Page",
+                }],
+                "total_pages": 2,
+            },
+            2: {
+                "data": [{
+                    "id": 12,
+                    "canonical_number": "ABP588",
+                    "dvd_id": "ABP-588",
+                    "title": "Second Page",
+                }],
+                "total_pages": 2,
+            },
+        }
+        info_client.proxy_get.side_effect = lambda _path, params: pages[params["page"]]
+        emby_client = AsyncMock()
+        emby_client.check_exists.return_value = False
+
+        result = await generate_download_candidates_from_supplement(
+            info_client=info_client,
+            emby_client=emby_client,
+            limit=None,
+            matched=False,
+            missing_cover=True,
+            missing_runtime=True,
+            missing_maker=True,
+            missing_categories=True,
+            max_completeness=2,
+        )
+
+        rows = list_download_candidates(source="supplement")
+        self.assertEqual(result["checked"], 2)
+        self.assertEqual(result["created"], 2)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(
+            [call.kwargs["params"] for call in info_client.proxy_get.await_args_list],
+            [
+                {
+                    "page": 1,
+                    "page_size": 100,
+                    "matched": "false",
+                    "missing_cover": "true",
+                    "missing_runtime": "true",
+                    "missing_maker": "true",
+                    "missing_categories": "true",
+                    "max_completeness": 2,
+                },
+                {
+                    "page": 2,
+                    "page_size": 100,
+                    "matched": "false",
+                    "missing_cover": "true",
+                    "missing_runtime": "true",
+                    "missing_maker": "true",
+                    "missing_categories": "true",
+                    "max_completeness": 2,
+                },
+            ],
+        )
+
 
 class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_approve_candidate_requires_magnet_and_creates_download_task(self):
@@ -654,6 +832,25 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["stats"]["by_source"]["supplement"], 2)
         self.assertEqual(result["stats"]["candidate_by_source"]["subscription"], 2)
         self.assertEqual(result["stats"]["candidate_by_source"]["supplement"], 1)
+
+    async def test_list_candidates_paginates_with_total_pages(self):
+        from database import upsert_download_candidate
+        from routers import downloads
+
+        for index in range(5):
+            upsert_download_candidate(
+                content_id=f"PAGE-{index}",
+                source="subscription",
+                status="candidate",
+            )
+
+        result = await downloads.list_candidates(status="candidate", page=2, page_size=2)
+
+        self.assertEqual(result["total"], 5)
+        self.assertEqual(result["page"], 2)
+        self.assertEqual(result["page_size"], 2)
+        self.assertEqual(result["total_pages"], 3)
+        self.assertEqual(len(result["data"]), 2)
 
     async def test_candidate_summary_uses_filtered_aggregate_counts(self):
         from database import download_candidate_summary, upsert_download_candidate
@@ -955,5 +1152,7 @@ class InventoryFillRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             result = await inventory.fill_video("SIVR-438")
 
         self.assertTrue(result["success"])
-        self.assertEqual(len(list_download_candidates(source="inventory")), 1)
+        candidates = list_download_candidates(source="inventory")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["actress_id"], 1)
         self.assertEqual(get_download_tasks(), [])

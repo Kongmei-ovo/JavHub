@@ -96,6 +96,8 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(normalize, /置信/)
   assert.match(normalize, /autoMatchActorMappings/)
   assert.match(normalize, /自动匹配预演/)
+  assert.match(normalize, /import \{ requestConfirm \} from '\.\.\/utils\/confirmDialog'/)
+  assert.match(normalize, /requestConfirm\(\{[\s\S]*title: '执行自动匹配\?'/)
   assert.match(normalize, /精确但歧义/)
   assert.match(normalize, /statuses = \['confirmed', 'ignored'\]/)
   assert.match(normalize, /actor\.candidates/)
@@ -111,18 +113,38 @@ test('favorites video cards display dvd numbers instead of internal ids', () => 
 test('actor portrait cards unify favorites subscriptions and supplement actor picking', () => {
   assert.match(actorPortraitCard, /actor-portrait-card/)
   assert.match(favorites, /ActorPortraitCard/)
+  assert.match(favorites, /subscriptionState/)
   assert.match(subscription, /ActorPortraitCard/)
   assert.match(supplementActorPicker, /ActorPortraitCard/)
   assert.match(favorites, /class="actor-favorites-grid"/)
   assert.match(favorites, /otherEntityItems/)
   assert.match(favorites, /enrichFavoriteActor/)
+  assert.match(favorites, /:show-subscribe="actorCardCanSubscribe\(item\)"/)
+  assert.match(favorites, /:subscribed="actorCardSubscribed\(item\)"/)
+  assert.match(favorites, /@subscribe="toggleActorSubscription\(item\)"/)
   assert.match(subscription, /density="standard"/)
   assert.match(supplementActorPicker, /density="compact"/)
   assert.match(supplementActorPicker, /action-label="选择"/)
 })
 
+test('favorites actor cards subscribe independently and route to the unified actor page', () => {
+  assert.match(favorites, /subscriptionState\.refresh\(\)/)
+  assert.match(favorites, /subscriptionState\.isSubscribed\(actorCardSubscriptionId\(item\)\)/)
+  assert.match(favorites, /subscriptionState\.toggle\(id, actorCardName\(item\)\)/)
+  assert.match(favorites, /path: `\/actor\/\$\{encodeURIComponent\(name\)\}`/)
+  assert.match(favorites, /query: id \? \{ name, actress_id: id \} : \{ name \}/)
+  assert.doesNotMatch(favorites, /params: \{ type: 'actress'/)
+})
+
+test('subscription management keeps shared subscription state in sync', () => {
+  assert.match(subscription, /import subscriptionState from '..\/utils\/subscriptionState'/)
+  assert.match(subscription, /await subscriptionState\.refresh\(\)/)
+  assert.match(subscription, /api\.addSubscription[\s\S]*await syncSubscriptionState\(\)/)
+  assert.match(subscription, /api\.deleteSubscription[\s\S]*await syncSubscriptionState\(\)/)
+})
+
 test('subscription routes missing movies into download candidates', () => {
-  assert.match(subscription, /createDownloadCandidate/)
+  assert.match(subscription, /checkSubscription/)
   assert.match(subscription, /查看候选/)
   assert.match(subscription, /candidate_count/)
   assert.match(subscription, /待补磁力/)
@@ -130,6 +152,14 @@ test('subscription routes missing movies into download candidates', () => {
   assert.match(subscription, /existing/)
   assert.match(subscription, /include_supplement: '1'/)
   assert.doesNotMatch(subscription, /api\.createDownload\(\{ code:/)
+})
+
+test('movie cards keep cover media free of quick actions', () => {
+  assert.doesNotMatch(search, /@toggle-favorite="toggleFavorite\(item\)"/)
+  assert.doesNotMatch(discoveryDetail, /@toggle-favorite="toggleVideoFavorite\(item\)"/)
+  assert.doesNotMatch(favorites, /@toggle-favorite="toggleFavorite\('video', item\.entity_id\)"/)
+  assert.doesNotMatch(subscription, /class="work-dl-btn"/)
+  assert.doesNotMatch(subscription, /async function downloadMovie/)
 })
 
 test('subscription page defaults to subscribed management and opens discovery from an action', () => {
@@ -146,6 +176,28 @@ test('subscription discovery sheet keeps the management page legible behind it',
   assert.match(subscription, /class="[^"]*\bdiscover-overlay\b[^"]*"/)
   assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*backdrop-filter: none/)
   assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*-webkit-backdrop-filter: none/)
+})
+
+test('actor discovery surfaces route to the canonical actor page', () => {
+  const goActressBlock = genres.match(/goActress\(actress\)\s*\{[\s\S]*?\n    \},\n    goSeries/)?.[0] || ''
+  assert.match(goActressBlock, /path:\s*`\/actor\/\$\{encodeURIComponent\(name\)\}`/)
+  assert.match(goActressBlock, /query\.actress_id = actress\.id/)
+  assert.doesNotMatch(goActressBlock, /name:\s*'DiscoveryDetail'/)
+  assert.doesNotMatch(goActressBlock, /type:\s*'actress'/)
+
+  assert.match(discoveryDetail, /redirectActorRoute\(\)/)
+  assert.match(discoveryDetail, /this\.type !== 'actress'/)
+  assert.match(discoveryDetail, /path:\s*`\/actor\/\$\{encodeURIComponent\(name\)\}`/)
+  assert.match(discoveryDetail, /query\.actress_id = Number\(this\.value\)/)
+  assert.match(discoveryDetail, /category_id/)
+  assert.match(discoveryDetail, /maker_id/)
+  assert.match(discoveryDetail, /series_id/)
+  assert.match(discoveryDetail, /label_id/)
+
+  const viewAllVideosBlock = subscription.match(/function viewAllVideos\(\)\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  assert.match(viewAllVideosBlock, /const actressId = sheetActor\.value\.actress_id \|\| sheetActor\.value\.id/)
+  assert.match(viewAllVideosBlock, /path:\s*`\/actor\/\$\{encodeURIComponent\(name\)\}`/)
+  assert.match(viewAllVideosBlock, /query\.actress_id = actressId/)
 })
 
 test('inventory page shows mapping coverage and candidate handoff', () => {
@@ -199,7 +251,7 @@ test('primary pages use unified breathing rails', () => {
 
   const mainContentBlock = app.match(/\.main-content\s*\{[^}]*\}/)?.[0] || ''
   assert.doesNotMatch(mainContentBlock, /padding/)
-  assert.doesNotMatch(app, /\.main-content\s*\{\s*padding/)
+  assert.match(app, /@media \(max-width: 768px\)\s*\{[\s\S]*\.main-content\s*\{[\s\S]*padding-bottom: calc\(74px \+ env\(safe-area-inset-bottom, 0px\)\)/)
 
   for (const [name, source] of Object.entries({
     home,
@@ -293,6 +345,10 @@ test('external data failures render page-level retry states', () => {
   assert.match(genres, /AppleErrorState/)
   assert.match(genres, /categoryError/)
   assert.match(genres, /reloadGenreData/)
+  assert.match(search, /import AppleErrorState from '\.\.\/components\/AppleErrorState\.vue'/)
+  assert.match(search, /components:\s*\{[^}]*AppleErrorState/)
+  assert.match(search, /searchError/)
+  assert.match(search, /formatApiError/)
   assert.match(apiSource, /silentError: true/)
   assert.match(app, /label: '设置'/)
 })
@@ -448,6 +504,17 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /candidate_by_source/)
   assert.match(home, /readyCandidateCount/)
   assert.match(home, /openCandidatePreset/)
+  assert.match(home, /candidatePage: Number\(this\.\$route\.query\.page \|\| 1\) \|\| 1/)
+  assert.match(home, /candidateTotalPages: 1/)
+  assert.match(home, /page: tab === 'candidates' \? \(Number\(query\.page \|\| 1\) \|\| 1\) : this\.candidatePage/)
+  assert.match(home, /if \(filter\.page && Number\(filter\.page\) > 1\) query\.page = String\(Number\(filter\.page\)\)/)
+  assert.match(home, /params\.page = this\.candidatePage/)
+  assert.match(home, /params\.page_size = this\.candidatePageSize/)
+  assert.match(home, /this\.candidateTotalPages = Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
+  assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ status, needs_magnet: null, page: 1 \}\)\)/)
+  assert.match(home, /goCandidatePage\(page\)/)
+  assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ page: nextPage \}\)\)/)
+  assert.match(home, /candidateTotalPages > 1/)
   assert.match(home, /goCandidateActor/)
   assert.match(home, /goCandidateSupplement/)
   assert.match(home, /最近动作/)
@@ -551,6 +618,13 @@ test('translation jobs has a standalone navigation page and settings no longer o
   }
   assert.match(translationJobs, /progress_percent/)
   assert.match(translationJobs, /startTranslationJob/)
+  const startJobBlock = translationJobs.slice(
+    translationJobs.indexOf('async startJob()'),
+    translationJobs.indexOf('async continueJobFromLatest()')
+  )
+  assert.match(startJobBlock, /const confirmed = await requestConfirm\(/)
+  assert.match(startJobBlock, /title: this\.jobForm\.mode === 'refresh_all' \? '开始全量重翻' : '开始翻译作业'/)
+  assert.match(startJobBlock, /if \(!confirmed\) return[\s\S]*this\.startingJob = true[\s\S]*api\.startTranslationJob/)
   assert.match(translationJobs, /listTranslationJobs/)
   assert.match(translationJobs, /getTranslationJob/)
   assert.match(translationJobs, /pauseTranslationJob/)
@@ -685,8 +759,8 @@ test('interactive filters avoid stale actions and stale pagination', () => {
 
 test('appearance settings are grouped by scope and persist discovery preferences', () => {
   const globalSection = config.slice(config.indexOf('<h3>全局偏好</h3>'), config.indexOf('<h3>影片检索</h3>'))
-  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>个性推荐</h3>'))
-  const discoverySection = config.slice(config.indexOf('<h3>个性推荐</h3>'), config.indexOf('</template>'))
+  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>随机探索</h3>'))
+  const discoverySection = config.slice(config.indexOf('<h3>随机探索</h3>'), config.indexOf('</template>'))
   assert.match(globalSection, /<span class="setting-title">显示语言<\/span>/)
   assert.match(searchSection, /<span class="setting-title">检索页数量<\/span>/)
   assert.match(searchSection, /<span class="setting-title">默认排序<\/span>/)
@@ -719,7 +793,7 @@ test('global dropdowns use the unified glass select control', () => {
     assert.doesNotMatch(source, /<select\b/, `${name} should not use native select controls`)
   }
 
-  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>个性推荐</h3>'))
+  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>随机探索</h3>'))
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultSort"/)
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultServiceCode"/)
   assert.doesNotMatch(config, /v-model="bubbleCfg\.palette"/)
@@ -761,15 +835,23 @@ test('search preferences drive initial search params', () => {
   assert.match(config, /loadSearchPreferences/)
   assert.match(config, /saveSearchPreferences/)
   assert.match(search, /import \{ loadSearchPreferences \} from '\.\.\/utils\/searchPreferences\.js'/)
+  assert.match(search, /buildSearchApiParams/)
+  assert.match(search, /parseSearchQuery/)
+  assert.match(search, /searchHasUserConditions/)
+  assert.match(search, /searchQueryFromState/)
   assert.match(search, /function sortStateFromPreference\(defaultSort = 'random'\)/)
   assert.match(search, /async mounted\(\)[\s\S]*this\.applySearchPreferences\(\{ force: true \}\)[\s\S]*await this\.loadConfiguredPageSize\(\)/)
   assert.match(search, /async loadConfiguredPageSize\(\)[\s\S]*await api\.getConfig\(\)/)
-  assert.match(search, /buildSearchParams\(page\)[\s\S]*page_size: this\.pageSize[\s\S]*params\.service_code = this\.serviceCode/)
-  assert.match(search, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'[\s\S]*params\.include_total = false/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*return buildSearchApiParams\(\{ \.\.\.this\.searchState, page \}, \{ pageSize: this\.pageSize \}\)/)
+  assert.doesNotMatch(search, /params\.service_code = this\.serviceCode/)
+  assert.match(search, /replaceSearchRoute\(patch = \{\}, \{ replace = false \} = \{\}\)[\s\S]*searchQueryFromState\(\{ \.\.\.this\.searchState, \.\.\.patch \}\)/)
+  assert.match(search, /doSearch\(\) \{[\s\S]*sortValueFromSortState\(this\.sortState\) === 'random'[\s\S]*searchHasUserConditions\(\{ \.\.\.this\.searchState, page: 1 \}\)[\s\S]*patch\.sort = 'release_date_desc'/)
   assert.match(discoveryDetail, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'[\s\S]*params\.include_total = false/)
-  assert.match(search, /totalLabel\(\)[\s\S]*this\.total < 0[\s\S]*'结果'/)
+  assert.match(search, /totalLabel\(\)[\s\S]*this\.sortState\.random[\s\S]*'随机探索结果'[\s\S]*this\.total < 0[\s\S]*'结果'/)
   assert.match(discoveryDetail, /totalLabel\(\)[\s\S]*this\.total < 0[\s\S]*'结果'/)
-  assert.match(search, /params\.sort_by = sortParts\.join\(','\)/)
+  assert.match(search, /cycleSort\(key\)[\s\S]*cycleSearchSort\(sortValueFromSortState\(this\.sortState\), key\)/)
+  assert.match(search, /active: pill\.key === 'random' \? sortState\.random : sortState\[pill\.key\] !== null/)
+  assert.doesNotMatch(search, /active: sortState\[pill\.key\] !== null/)
 })
 
 test('genres page applies series and actor preference settings separately', () => {
@@ -777,7 +859,8 @@ test('genres page applies series and actor preference settings separately', () =
   assert.match(genres, /actressAvatarSize: 'medium'/)
   assert.match(genres, /actressPageSize: 36/)
   assert.match(genres, /seriesPageSize: 24/)
-  assert.match(genres, /this\.activeTab = this\.tabs\.some\(tab => tab\.key === this\.cfg\.defaultTab\)/)
+  assert.match(genres, /this\.activeTab = this\.tabFromRoute\(\) \|\| \(this\.tabs\.some\(tab => tab\.key === this\.cfg\.defaultTab\) \? this\.cfg\.defaultTab : 'genre'\)/)
+  assert.match(genres, /'\$route\.query\.tab'\(\) \{[\s\S]*this\.applyRouteTab\(\)/)
   assert.match(genres, /actressPageSize\(\)[\s\S]*this\.cfg\.actressPageSize/)
   assert.match(genres, /seriesPageSize\(\)[\s\S]*this\.cfg\.seriesPageSize/)
   assert.match(genres, /const pageSize = this\.seriesPageSize[\s\S]*api\.listSeries\(page, pageSize\)/)
@@ -817,13 +900,15 @@ test('display names prefer translations when source names are masked', () => {
 
 test('genres page lazily loads series tab data', () => {
   assert.doesNotMatch(genres, /Promise\.all\(\[[\s\S]*this\.loadSeries\(\)/)
-  assert.match(genres, /switchTab\(tab\)[\s\S]*if \(tab === 'series' && !this\.seriesRawPage\.length && !this\.seriesLoading\)[\s\S]*this\.loadSeries\(this\.seriesPage\)/)
+  assert.match(genres, /activateTab\(tab\)[\s\S]*if \(tab === 'series' && !this\.seriesRawPage\.length && !this\.seriesLoading\)[\s\S]*this\.loadSeries\(this\.seriesPage\)/)
+  assert.match(genres, /switchTab\(tab\)[\s\S]*this\.\$router\.push\(\{ path: this\.\$route\.path, query: \{ \.\.\.this\.\$route\.query, tab \} \}\)/)
 })
 
 test('discovery navigation prefers ids for precise filtering', () => {
   assert.match(genres, /const filterValue = tag\.id \|\| tag\.name_ja \|\| tag\.name_en \|\| tag\.name \|\| name/)
   assert.match(genres, /params: \{ type: 'category', value: String\(filterValue\) \}/)
-  assert.match(genres, /params: \{ type: 'actress', value: String\(actress\.id \|\| name\) \}/)
+  assert.match(genres, /path:\s*`\/actor\/\$\{encodeURIComponent\(name\)\}`/)
+  assert.match(genres, /query\.actress_id = actress\.id/)
   assert.match(genres, /params: \{ type: 'series', value: String\(item\.id \|\| name\) \}/)
   assert.match(app, /const value = item\.id \|\| item\.actress_id \|\| name/)
   assert.match(app, /params: \{ type: 'maker', value: String\(value\) \}/)
@@ -834,11 +919,11 @@ test('discovery navigation prefers ids for precise filtering', () => {
   assert.match(discoveryDetail, /params\.label_id = parseInt\(v\); else params\.label_name = v/)
 })
 
-test('discovery video cards wire favorite state and toggle actions', () => {
-  assert.match(discoveryDetail, /:isFavorited="isFavorited\('video', item\.content_id \|\| item\.dvd_id\)"/)
-  assert.match(discoveryDetail, /@toggle-favorite="toggleVideoFavorite\(item\)"/)
-  assert.match(discoveryDetail, /isFavorited\(type, id\)[\s\S]*favoriteState\.isFavorited\(type, id\)/)
-  assert.match(discoveryDetail, /async toggleVideoFavorite\(item\)[\s\S]*const id = item\.content_id \|\| item\.dvd_id[\s\S]*favoriteState\.toggle\('video', id\)/)
+test('discovery video cards leave video favorites to the detail modal', () => {
+  assert.doesNotMatch(discoveryDetail, /:isFavorited="isFavorited\('video', item\.content_id \|\| item\.dvd_id\)"/)
+  assert.doesNotMatch(discoveryDetail, /@toggle-favorite="toggleVideoFavorite\(item\)"/)
+  assert.doesNotMatch(discoveryDetail, /async toggleVideoFavorite\(item\)[\s\S]*favoriteState\.toggle\('video', id\)/)
+  assert.match(videoModal, /class="favorite-btn"/)
 })
 
 test('search reset clears stale pagination state', () => {
@@ -886,4 +971,12 @@ test('download mutations are guarded by in-flight state', () => {
   assert.match(home, /async retry\(task\)/)
   assert.match(home, /await api\.createDownload/)
   assert.match(home, /await this\.loadTasks\(\)/)
+  const enrichVisibleBlock = home.slice(
+    home.indexOf('async enrichVisibleCandidateMagnets()'),
+    home.indexOf('async processVisibleCandidates()')
+  )
+  assert.match(enrichVisibleBlock, /const confirmed = await requestConfirm\(/)
+  assert.match(enrichVisibleBlock, /title: '批量补充磁力'/)
+  assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？`/)
+  assert.match(enrichVisibleBlock, /if \(!confirmed\) return[\s\S]*this\.candidateBatchProcessing = 'enrich'/)
 })

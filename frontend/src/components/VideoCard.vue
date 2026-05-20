@@ -2,17 +2,13 @@
   <AppleVideoCard
     :video="video"
     :cover-url="coverUrl"
-    :favorited="isFavorited"
-    :show-favorite="true"
     @open="$emit('click')"
-    @toggle-favorite="toggleFavorite"
   />
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import AppleVideoCard from './AppleVideoCard.vue'
-import favoriteState from '../utils/favoriteState'
 
 const props = defineProps({
   contentId: { type: String, required: true },
@@ -34,9 +30,4 @@ const video = computed(() => ({
   service_code: props.serviceCode,
 }))
 
-const isFavorited = computed(() => favoriteState.isFavorited('video', props.contentId))
-
-const toggleFavorite = async () => {
-  await favoriteState.toggle('video', props.contentId)
-}
 </script>

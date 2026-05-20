@@ -164,19 +164,37 @@ async def create_download_candidates_from_supplement(
     actress_name: str = Query(""),
     source: str | None = Query(None),
     q: str | None = Query(None),
-    limit: int = Query(100, ge=1, le=200),
+    limit: int | None = Query(None, ge=1, le=2000),
+    matched: bool | None = Query(False),
+    missing_cover: bool | None = Query(None),
+    missing_runtime: bool | None = Query(None),
+    missing_maker: bool | None = Query(None),
+    missing_categories: bool | None = Query(None),
+    max_completeness: int | None = Query(None),
 ) -> dict[str, Any]:
     aid = actress_id.default if hasattr(actress_id, "default") else actress_id
     name = actress_name.default if hasattr(actress_name, "default") else actress_name
     src = source.default if hasattr(source, "default") else source
     qv = q.default if hasattr(q, "default") else q
     lim = limit.default if hasattr(limit, "default") else limit
+    m = matched.default if hasattr(matched, "default") else matched
+    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
+    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
+    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
+    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
+    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
     result = await generate_download_candidates_from_supplement(
         actress_id=aid,
         actress_name=name,
         supplement_source=src,
         q=qv,
         limit=lim,
+        matched=m,
+        missing_cover=mc,
+        missing_runtime=mr,
+        missing_maker=mm,
+        missing_categories=mcat,
+        max_completeness=maxc,
     )
     return {"status": "ok", **result}
 

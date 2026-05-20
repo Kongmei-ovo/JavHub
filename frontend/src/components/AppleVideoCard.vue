@@ -1,5 +1,11 @@
 <template>
-  <article class="apple-video-card apple-surface" @click="$emit('open', normalized)">
+  <article
+    class="apple-video-card apple-surface"
+    role="button"
+    tabindex="0"
+    @click="openCard"
+    @keydown="handleKeydown"
+  >
     <div class="apple-video-card__cover">
       <img
         v-if="coverUrl && !imageError"
@@ -14,23 +20,6 @@
         <span>{{ fallbackText }}</span>
       </div>
 
-      <div v-if="normalized.sample_url" class="apple-video-card__preview" title="有预览视频">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M8 5v14l11-7z"/></svg>
-      </div>
-
-      <button
-        v-if="showFavorite"
-        class="apple-video-card__favorite"
-        :class="{ 'is-active': favorited }"
-        type="button"
-        :aria-label="favorited ? '取消收藏' : '收藏影片'"
-        @click.stop="$emit('toggle-favorite', normalized)"
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16">
-          <path v-if="favorited" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
-          <path v-else d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" fill="currentColor"/>
-        </svg>
-      </button>
     </div>
 
     <div class="apple-video-card__body">
@@ -54,11 +43,9 @@ import { normalizeVideo } from '../utils/videoNormalize.js'
 const props = defineProps({
   video: { type: Object, required: true },
   coverUrl: { type: String, default: '' },
-  favorited: { type: Boolean, default: false },
-  showFavorite: { type: Boolean, default: true },
 })
 
-defineEmits(['open', 'toggle-favorite'])
+const emit = defineEmits(['open'])
 
 const imageError = ref(false)
 const wideImage = ref(false)
@@ -76,6 +63,17 @@ function onImageLoad(event) {
   const img = event.target
   wideImage.value = img.naturalWidth > img.naturalHeight
   if (wideImage.value) img.classList.add('is-wide')
+}
+
+function openCard() {
+  emit('open', normalized.value)
+}
+
+function handleKeydown(event) {
+  if (event.repeat) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  openCard()
 }
 </script>
 
@@ -140,65 +138,6 @@ function onImageLoad(event) {
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--type-caption);
-}
-
-.apple-video-card__preview,
-.apple-video-card__favorite {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-control-shadow);
-}
-
-.apple-video-card__preview {
-  right: 10px;
-  bottom: 10px;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  background: var(--material-glass-control);
-}
-
-.apple-video-card__favorite {
-  top: 10px;
-  right: 10px;
-  width: var(--touch-target);
-  height: var(--touch-target);
-  border-radius: 50%;
-  color: var(--text-primary);
-  background: var(--material-glass-control);
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.86);
-  transition: opacity var(--motion-fast), transform var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
-}
-
-.apple-video-card:hover .apple-video-card__favorite,
-.apple-video-card__favorite.is-active {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.apple-video-card__favorite:hover {
-  background: var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-  transform: scale(1.06);
-}
-
-.apple-video-card__favorite.is-active {
-  color: #FF375F;
-  background: rgba(255, 55, 95, 0.14);
-  border-color: rgba(255, 55, 95, 0.32);
-}
-
-.apple-video-card__favorite:active svg {
-  transform: scale(0.84);
 }
 
 .apple-video-card__body {
@@ -293,25 +232,5 @@ function onImageLoad(event) {
     line-height: 1.25;
   }
 
-  .apple-video-card__preview {
-    right: 7px;
-    bottom: 7px;
-    width: 24px;
-    height: 24px;
-  }
-
-  .apple-video-card__favorite {
-    top: 6px;
-    right: 6px;
-    width: var(--touch-target);
-    height: var(--touch-target);
-  }
-}
-
-@media (hover: none) {
-  .apple-video-card__favorite {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 </style>

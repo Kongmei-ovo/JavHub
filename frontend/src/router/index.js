@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  { path: '/', redirect: '/genres' },
+  { path: '/', redirect: '/search' },
   { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
   { path: '/downloads', component: () => import('../views/Home.vue') },
   { path: '/search', component: () => import('../views/Search.vue') },
   { path: '/genres', component: () => import('../views/Genres.vue') },
   { path: '/discovery/:type/:value', name: 'DiscoveryDetail', component: () => import('../views/DiscoveryDetail.vue') },
+  { path: '/videos/:contentId', name: 'VideoDetail', component: () => import('../views/VideoDetail.vue') },
   { path: '/parse', component: () => import('../views/MagnetParse.vue') },
   { path: '/subscription', component: () => import('../views/Subscription.vue') },
   { path: '/library', component: () => import('../views/Library.vue') },

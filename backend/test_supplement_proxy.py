@@ -442,6 +442,12 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
                 source="avbase",
                 q="SIVR",
                 limit=50,
+                matched=False,
+                missing_cover=True,
+                missing_runtime=True,
+                missing_maker=True,
+                missing_categories=True,
+                max_completeness=2,
             )
 
         generate.assert_awaited_once_with(
@@ -450,6 +456,12 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
             supplement_source="avbase",
             q="SIVR",
             limit=50,
+            matched=False,
+            missing_cover=True,
+            missing_runtime=True,
+            missing_maker=True,
+            missing_categories=True,
+            max_completeness=2,
         )
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["created"], 2)

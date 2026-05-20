@@ -9,6 +9,9 @@ const search = readFileSync(new URL('../views/Search.vue', import.meta.url), 'ut
 const genres = readFileSync(new URL('../views/Genres.vue', import.meta.url), 'utf8')
 const config = readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8')
 const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8')
+const actor = readFileSync(new URL('../views/Actor.vue', import.meta.url), 'utf8')
+const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
+const home = readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
@@ -80,4 +83,10 @@ test('video modal sheet uses the shared sheet material with a frosted fallback',
   assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+})
+
+test('secondary utility controls avoid one-off fog materials', () => {
+  assert.match(actor, /\.year-nav\s*\{[\s\S]*background:\s*var\(--material-glass-sheet\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(duplicates, /\.action-btn\.ignore\s*\{[\s\S]*background:\s*var\(--material-glass-control\)/)
+  assert.match(home, /\.dialog-close-btn\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
 })

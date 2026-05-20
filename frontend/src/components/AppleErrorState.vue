@@ -3,8 +3,15 @@
     <div>
       <h3>{{ title }}</h3>
       <p>{{ description }}</p>
+      <small v-if="sourceLabel || details">
+        <span v-if="sourceLabel">{{ sourceLabel }}</span>
+        <span v-if="sourceLabel && details"> · </span>
+        <span v-if="details">{{ details }}</span>
+      </small>
     </div>
-    <button v-if="retryLabel" type="button" @click="$emit('retry')">{{ retryLabel }}</button>
+    <button v-if="retryLabel" type="button" :disabled="retrying" @click="$emit('retry')">
+      {{ retrying ? '重试中...' : retryLabel }}
+    </button>
   </div>
 </template>
 
@@ -13,6 +20,9 @@ defineProps({
   title: { type: String, default: '加载失败' },
   description: { type: String, default: '请稍后重试。' },
   retryLabel: { type: String, default: '重试' },
+  sourceLabel: { type: String, default: '' },
+  details: { type: String, default: '' },
+  retrying: { type: Boolean, default: false },
 })
 
 defineEmits(['retry'])
@@ -42,6 +52,13 @@ p {
   font-size: var(--type-control);
 }
 
+small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
 button {
   min-height: var(--touch-target);
   padding: 0 14px;
@@ -56,5 +73,11 @@ button {
 button:hover {
   transform: translateY(-1px);
   background: var(--accent-light);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 </style>

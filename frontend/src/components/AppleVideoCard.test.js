@@ -21,6 +21,7 @@ function getSetupBody() {
   return match[1]
     .replace(/^import\s+.*?from\s+.*?$/gm, '')
     .replace(/const props = defineProps\([\s\S]*?\)\n/, '')
+    .replace(/const emit = defineEmits\([\s\S]*?\)\n?/, 'const emit = () => {}\n')
     .replace(/defineEmits\([\s\S]*?\)\n?/, '')
     .trim()
 }
@@ -110,13 +111,30 @@ test('normalizeVideo sets fallback fields from alternative sources', () => {
   assert.equal(nv.release_date, '2026-01-01')
 })
 
-test('AppleVideoCard template renders favorite button with lazy image', () => {
-  assert.ok(source.includes('apple-video-card__favorite'), 'template should render favorite button')
-  assert.ok(source.includes('toggle-favorite'), 'should emit toggle-favorite event')
+test('AppleVideoCard keeps cover free of overlay actions', () => {
+  assert.doesNotMatch(source, /apple-video-card__favorite/, 'cover should not render favorite button')
+  assert.doesNotMatch(source, /apple-video-card__preview/, 'cover should not render preview badge')
+  assert.doesNotMatch(source, /toggle-favorite/, 'card should not emit favorite toggles')
   assert.ok(source.includes('loading="lazy"'), 'image should use lazy loading')
 })
 
-test('AppleVideoCard declares open and toggle-favorite events', () => {
+test('AppleVideoCard exposes button semantics on the card root', () => {
+  const rootTag = source.match(/<article\b[\s\S]*?>/)
+  assert.ok(rootTag, 'should render article as the card root')
+  assert.match(rootTag[0], /\brole="button"/, 'card root should expose button role')
+  assert.match(rootTag[0], /\btabindex="0"/, 'card root should be keyboard focusable')
+})
+
+test('AppleVideoCard opens from Enter and Space without repeated keydown triggers', () => {
+  const rootTag = source.match(/<article\b[\s\S]*?>/)
+  assert.ok(rootTag, 'should render article as the card root')
+  assert.match(rootTag[0], /@keydown=/, 'card root should handle keyboard activation')
+  assert.match(source, /event\.key !== 'Enter'/, 'keyboard activation should allow Enter')
+  assert.match(source, /event\.key !== ' '/, 'keyboard activation should allow Space')
+  assert.match(source, /event\.repeat/, 'keyboard activation should ignore repeated keydown events')
+})
+
+test('AppleVideoCard only declares open event', () => {
   assert.ok(source.includes("'open'"), 'should declare open event')
-  assert.ok(source.includes("'toggle-favorite'"), 'should declare toggle-favorite event')
+  assert.doesNotMatch(source, /'toggle-favorite'/, 'should not declare toggle-favorite event')
 })

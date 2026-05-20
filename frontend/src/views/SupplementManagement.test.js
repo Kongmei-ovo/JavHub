@@ -118,6 +118,25 @@ test('supplement management applies routed movie search and resets filtered page
   assert.match(source, /if \(this\.movieFilters\.q\) query\.q = this\.movieFilters\.q/)
 })
 
+test('supplement management refreshes workspace data when supplement polling finishes', () => {
+  assert.match(source, /async refreshSupplementWorkspaceAfterPolling\(\)/)
+  assert.match(source, /await this\.refreshSupplementWorkspaceAfterPolling\(\)/)
+  assert.match(source, /Promise\.all\(\[[\s\S]*this\.loadJobs\(\{ silent: true \}\)[\s\S]*this\.loadMovies\(\{ silent: true \}\)[\s\S]*this\.loadSupplementStatus\(\{ poll: false \}\)/)
+})
+
+test('supplement management creates download candidates from current movie filters', () => {
+  assert.match(source, /buildMovieFilterParams\(/)
+  assert.match(source, /if \(this\.movieFilters\.matched !== null\) params\.matched = this\.movieFilters\.matched/)
+  assert.match(source, /if \(this\.movieFilters\.quality === 'missing_cover'\) params\.missing_cover = true/)
+  assert.match(source, /if \(this\.movieFilters\.quality === 'missing_runtime'\) params\.missing_runtime = true/)
+  assert.match(source, /if \(this\.movieFilters\.quality === 'missing_maker'\) params\.missing_maker = true/)
+  assert.match(source, /if \(this\.movieFilters\.quality === 'missing_categories'\) params\.missing_categories = true/)
+  assert.match(source, /if \(this\.movieFilters\.quality === 'low_completeness'\) params\.max_completeness = 2/)
+  assert.match(source, /const params = this\.buildMovieFilterParams\(\)/)
+  assert.doesNotMatch(source, /buildMovieFilterParams\(\{ limit: 100 \}\)/)
+  assert.match(source, /if \(this\.actorContextName\) params\.actress_name = this\.actorContextName/)
+})
+
 test('supplement management avoids a remount-style refresh when re-entered', () => {
   assert.match(app, /'SupplementManagement'/)
   assert.match(source, /activated\(\)/)

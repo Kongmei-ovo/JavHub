@@ -38,17 +38,20 @@
       </div>
 
       <nav class="sidebar-nav">
-        <router-link
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          class="nav-item"
-          :class="{ active: $route.path === item.path }"
-        >
-          <component :is="item.icon" />
-          <span v-if="!sidebarCollapsed" class="nav-text">{{ item.label }}</span>
-          <span v-if="!sidebarCollapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
-        </router-link>
+        <div v-for="group in navGroups" :key="group.label" class="nav-group">
+          <div v-if="!sidebarCollapsed" class="nav-group-label">{{ group.label }}</div>
+          <router-link
+            v-for="item in group.items"
+            :key="item.path"
+            :to="item.path"
+            class="nav-item"
+            :class="{ active: $route.path === item.path }"
+          >
+            <component :is="item.icon" />
+            <span v-if="!sidebarCollapsed" class="nav-text">{{ item.label }}</span>
+            <span v-if="!sidebarCollapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
+          </router-link>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -83,8 +86,12 @@
 
     <transition name="mobile-more">
       <div v-if="mobileMoreOpen" class="mobile-more-overlay" @click.self="mobileMoreOpen = false">
-        <div class="mobile-more-sheet" role="dialog" aria-label="更多功能">
+        <div class="mobile-more-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
           <div class="mobile-more-grabber"></div>
+          <div class="mobile-more-head">
+            <h2 id="mobile-more-title">更多功能</h2>
+            <button class="mobile-more-close" type="button" aria-label="关闭更多面板" @click="mobileMoreOpen = false">×</button>
+          </div>
           <button class="mobile-theme-toggle" type="button" @click="toggleAppTheme">
             <span>{{ isDarkMode ? '开灯' : '关灯' }}</span>
             <span>{{ isDarkMode ? 'Light' : 'Dark' }}</span>
@@ -110,7 +117,7 @@
     <main id="main-content" class="main-content" tabindex="-1">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscriptions', 'DiscoveryDetail', 'InventoryActor', 'SupplementManagement']">
+          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscription', 'DiscoveryDetail', 'Actor', 'InventoryActor', 'SupplementManagement']">
             <component :is="Component" />
           </keep-alive>
         </transition>
@@ -230,31 +237,46 @@ export default {
     })
 
     // 监听路由变化，处理弹窗恢复
-    watch(() => route.path, (newPath) => {
+    watch(() => route.fullPath, (newPath) => {
       mobileMoreOpen.value = false
       if (newPath === modalState.openedOnRoute && modalState.interrupted) {
         resumeModal()
       }
     })
 
-    const navItems = computed(() => [
-      { path: '/operations', label: '运营总览', icon: IconOperations },
-      { path: '/genres', label: '个性推荐', icon: IconGenres },
-      { path: '/search', label: '影片检索', icon: IconSearch },
-      { path: '/downloads', label: '下载管理', icon: IconHome },
-      { path: '/parse', label: '磁链解析', icon: IconParse },
-      { path: '/favorites', label: '我的收藏', icon: IconHeart },
-      { path: '/subscription', label: '订阅演员', icon: IconStar },
-      { path: '/inventory', label: '库存对比', icon: IconInventory },
-      { path: '/normalize', label: '演员映射', icon: IconNormalize },
-      { path: '/supplement', label: '补全管理', icon: IconSupplement },
-      { path: '/translations', label: '翻译作业', icon: IconTranslate },
-      { path: '/settings', label: '设置', icon: IconSettings },
+    const navGroups = computed(() => [
+      {
+        label: '日常使用',
+        items: [
+          { path: '/search', label: '影片检索', icon: IconSearch },
+          { path: '/genres', label: '随机探索', icon: IconGenres },
+          { path: '/favorites', label: '我的收藏', icon: IconHeart },
+          { path: '/downloads', label: '下载任务', icon: IconHome },
+          { path: '/parse', label: '磁链解析', icon: IconParse },
+        ],
+      },
+      {
+        label: '自动化维护',
+        items: [
+          { path: '/subscription', label: '演员订阅', icon: IconStar },
+          { path: '/inventory', label: '库存对比', icon: IconInventory },
+          { path: '/normalize', label: '演员映射', icon: IconNormalize },
+          { path: '/supplement', label: '补全管理', icon: IconSupplement },
+          { path: '/translations', label: '翻译作业', icon: IconTranslate },
+          { path: '/operations', label: '运营总览', icon: IconOperations },
+        ],
+      },
+      {
+        label: '系统设置',
+        items: [
+          { path: '/settings', label: '设置', icon: IconSettings },
+        ],
+      },
     ])
 
     const bottomNavItems = computed(() => [
       { path: '/operations', label: '总览', icon: IconOperations },
-      { path: '/genres', label: '推荐', icon: IconGenres },
+      { path: '/genres', label: '探索', icon: IconGenres },
       { path: '/search', label: '检索', icon: IconSearch },
       { path: '/downloads', label: '下载', icon: IconHome },
     ])
@@ -336,7 +358,7 @@ export default {
       sidebarCollapsed,
       mobileMoreOpen,
       IconList,
-      navItems,
+      navGroups,
       bottomNavItems,
       mobileMoreItems,
       isMoreRoute,
@@ -480,8 +502,22 @@ export default {
   padding: 12px 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
   overflow-y: auto;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-group-label {
+  padding: 8px 14px 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .nav-item {
@@ -608,6 +644,9 @@ export default {
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .bottom-nav { display: flex; }
+  .main-content {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
   .mobile-more-overlay {
     position: fixed;
     inset: 0;
@@ -635,6 +674,30 @@ export default {
     margin: 0 auto 12px;
     border-radius: 999px;
     background: var(--border-light);
+  }
+  .mobile-more-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .mobile-more-head h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+  .mobile-more-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-control-border);
+    background: var(--material-glass-control);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
   }
   .mobile-theme-toggle {
     width: 100%;

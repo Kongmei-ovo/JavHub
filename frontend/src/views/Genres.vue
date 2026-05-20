@@ -2,14 +2,16 @@
   <div class="genres-page page-bleed">
     <!-- 顶部 Tab 栏 -->
     <div class="genres-hero">
-      <h1 class="hero-title">个性推荐</h1>
+      <h1 class="hero-title">随机探索</h1>
       <p class="hero-subtitle">随机浏览，发现更多内容</p>
-      <div class="tab-bar">
+      <div class="tab-bar" role="tablist" aria-label="探索类型">
         <button
           v-for="tab in tabs"
           :key="tab.key"
           class="tab-btn"
           type="button"
+          role="tab"
+          :aria-selected="activeTab === tab.key"
           :class="{ active: activeTab === tab.key }"
           @click="switchTab(tab.key)"
         >
@@ -19,7 +21,7 @@
     </div>
 
     <!-- 题材 Tab：气泡云 -->
-    <div v-if="activeTab === 'genre'" class="tag-cloud-wrap page-rail page-rail--standard" ref="cloudRef">
+    <div v-if="activeTab === 'genre'" class="tag-cloud-wrap page-rail page-rail--standard" ref="cloudRef" role="tabpanel">
       <div class="cloud-header">
         <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="reshuffle" :disabled="loading">
@@ -40,15 +42,16 @@
       <AppleErrorState
         v-else-if="categoryError"
         title="题材加载失败"
-        description="数据源当前不可用，推荐内容暂时不能刷新。"
+        description="数据源当前不可用，探索内容暂时不能刷新。"
         retry-label="重试"
         @retry="reloadGenreData"
       />
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="tag in mobileDisplayedTags" :key="tag.id">
-          <div
+          <button
             class="bubble"
+            type="button"
             :data-id="tag.id"
             :style="bubbleStyle(tag)"
             @click="goGenre(tag)"
@@ -56,13 +59,13 @@
             <div class="bubble-content">
               {{ displayName(tag, 'name_ja', 'name_en') || tag.name }}
             </div>
-          </div>
+          </button>
         </template>
       </div>
     </div>
 
     <!-- 演员 Tab：头像卡片 -->
-    <div v-if="activeTab === 'actress'" class="actress-tab page-rail page-rail--standard">
+    <div v-if="activeTab === 'actress'" class="actress-tab page-rail page-rail--standard" role="tabpanel">
       <div class="cloud-header">
         <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="shuffleActresses" :disabled="actressesLoading">
@@ -92,10 +95,11 @@
       />
 
       <div v-else class="actress-grid" :style="actressGridStyle">
-        <div
+        <button
           v-for="actress in displayedActresses"
           :key="actress.id"
           class="actress-card"
+          type="button"
           @click="goActress(actress)"
         >
           <div class="actress-avatar">
@@ -107,12 +111,12 @@
             />
           </div>
           <div class="actress-name">{{ displayName(actress, 'name_kanji', 'name_romaji') || 'Unknown' }}</div>
-        </div>
+        </button>
       </div>
     </div>
 
     <!-- 系列 Tab：系列气泡云 -->
-    <div v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard">
+    <div v-if="activeTab === 'series'" class="tag-cloud-wrap page-rail page-rail--standard" role="tabpanel">
       <div class="cloud-header">
         <span class="cloud-hint"></span>
         <button class="shuffle-btn" type="button" @click="reshuffleSeries" :disabled="seriesLoading">
@@ -140,15 +144,16 @@
 
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
         <template v-for="item in displayedSeries" :key="item.id">
-          <div
+          <button
             class="bubble"
+            type="button"
             :style="bubbleStyle(item)"
             @click="goSeries(item)"
           >
             <div class="bubble-content">
               {{ displayName(item, 'name_ja', 'name_en') }}
             </div>
-          </div>
+          </button>
         </template>
       </div>
     </div>
@@ -268,6 +273,9 @@ export default {
     'cfg.seriesPageSize'() {
       if (this.activeTab === 'series') this.loadSeries(1)
     },
+    '$route.query.tab'() {
+      this.applyRouteTab()
+    },
   },
   async mounted() {
     if (typeof window !== 'undefined' && window.matchMedia) {
@@ -280,10 +288,9 @@ export default {
       }
     }
     this.loadCfg()
-    this.activeTab = this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre'
-    const initialLoads = [
-      this.loadCategories(),
-    ]
+    this.activeTab = this.tabFromRoute() || (this.tabs.some(tab => tab.key === this.cfg.defaultTab) ? this.cfg.defaultTab : 'genre')
+    const initialLoads = []
+    if (this.activeTab === 'genre') initialLoads.push(this.loadCategories())
     if (this.activeTab === 'actress') initialLoads.push(this.loadActresses())
     if (this.activeTab === 'series') initialLoads.push(this.loadSeries())
     await Promise.all(initialLoads)
@@ -308,6 +315,32 @@ export default {
     },
     handleMobileViewportChange(event) {
       this.isMobileViewport = event.matches
+    },
+    tabFromRoute(query = this.$route.query) {
+      const tab = Array.isArray(query?.tab) ? query.tab[0] : query?.tab
+      return this.tabs.some(item => item.key === tab) ? tab : ''
+    },
+    applyRouteTab() {
+      const tab = this.tabFromRoute()
+      if (!tab || tab === this.activeTab) return
+      this.activateTab(tab)
+    },
+    activateTab(tab) {
+      if (!this.tabs.some(item => item.key === tab)) return
+      this.activeTab = tab
+      if (tab === 'genre' && !this.categories.length && !this.loading) {
+        this.loadCategories()
+      }
+      if (tab === 'actress' && !this.actressRawPage.length && !this.actressesLoading) {
+        this.loadActresses(this.actressPage)
+      }
+      if (tab === 'series' && !this.seriesRawPage.length && !this.seriesLoading) {
+        this.loadSeries(this.seriesPage)
+      }
+      if (tab === 'series' && !this._seriesGsapInited) {
+        this._seriesGsapInited = true
+        this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))
+      }
     },
     bubbleStyle() {
       const size = this.cfg.baseSize
@@ -455,17 +488,11 @@ export default {
       })
     },
     switchTab(tab) {
-      this.activeTab = tab
-      if (tab === 'actress' && !this.actressRawPage.length && !this.actressesLoading) {
-        this.loadActresses(this.actressPage)
-      }
-      if (tab === 'series' && !this.seriesRawPage.length && !this.seriesLoading) {
-        this.loadSeries(this.seriesPage)
-      }
-      if (tab === 'series' && !this._seriesGsapInited) {
-        this._seriesGsapInited = true
-        this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))
-      }
+      if (!this.tabs.some(item => item.key === tab)) return
+      if (tab === this.activeTab && this.tabFromRoute() === tab) return
+      this.$router.push({ path: this.$route.path, query: { ...this.$route.query, tab } })
+        .catch(() => {})
+      this.activateTab(tab)
     },
     actressAvatar(actress) {
       const imageUrl = actress?.image_url || actress?.avatar_url || actress?.javinfo_avatar_url
@@ -530,11 +557,12 @@ export default {
       this.loadSeries(randomPage)
     },
     goActress(actress) {
-      const name = actress.name_kanji || actress.name_romaji || actress.name || ''
+      const name = displayName(actress, 'name_kanji', 'name_romaji') || actress.name || String(actress.id || '')
+      const query = name ? { name } : {}
+      if (actress.id) query.actress_id = actress.id
       this.$router.push({
-        name: 'DiscoveryDetail',
-        params: { type: 'actress', value: String(actress.id || name) },
-        query: name ? { name } : {},
+        path: `/actor/${encodeURIComponent(name)}`,
+        query,
       })
     },
     goSeries(item) {
@@ -651,7 +679,7 @@ export default {
 /* 演员卡片：整个圆形，参照VideoModal */
 .actress-tab { --page-max: 1200px; padding-block: 20px; }
 .actress-grid { display: grid; gap: 20px; justify-items: center; }
-.actress-card { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: var(--transition); }
+.actress-card { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; font: inherit; cursor: pointer; transition: var(--transition); }
 .actress-card:hover { transform: translateY(-4px); }
 .actress-avatar { width: var(--actress-avatar-size, 80px); height: var(--actress-avatar-size, 80px); border-radius: 24px; overflow: hidden; background: var(--surface-control); border: 1px solid var(--border-light); transition: border-color 0.2s, box-shadow 0.2s; flex-shrink: 0; }
 .actress-card:hover .actress-avatar { border-color: var(--border-light); box-shadow: var(--shadow-hover); }
@@ -723,6 +751,7 @@ export default {
   color: var(--text-primary);
   font-size: var(--type-body);
   font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;

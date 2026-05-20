@@ -535,6 +535,7 @@
 <script>
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'
 
@@ -915,6 +916,18 @@ export default {
       }
     },
     async startJob() {
+      const confirmed = await requestConfirm({
+        title: this.jobForm.mode === 'refresh_all' ? '开始全量重翻' : '开始翻译作业',
+        message: this.jobForm.mode === 'refresh_all'
+          ? `确认用 ${this.providerLabel(this.selectedProvider)} 重新翻译「${this.jobTypeLabel(this.jobForm.job_type)}」？`
+          : `确认用 ${this.providerLabel(this.selectedProvider)} 翻译「${this.jobTypeLabel(this.jobForm.job_type)}」的剩余内容？`,
+        details: this.jobForm.mode === 'refresh_all'
+          ? '全量重翻会忽略已有译文，并可能覆盖现有正式映射。'
+          : '会创建真实翻译作业，消耗当前翻译源配额，并写入翻译缓存或映射。',
+        confirmText: this.jobForm.mode === 'refresh_all' ? '开始重翻' : '开始翻译',
+        tone: this.jobForm.mode === 'refresh_all' ? 'danger' : 'default',
+      })
+      if (!confirmed) return
       this.startingJob = true
       this.jobMessage = ''
       this.jobMessageType = 'info'
@@ -1043,6 +1056,16 @@ export default {
     async importTranslation(event) {
       const file = event.target.files?.[0]
       if (!file) return
+      const confirmed = await requestConfirm({
+        title: '导入翻译映射',
+        message: `确认导入 ${file.name} 到「${this.translationTypeLabels[this.translationType] || this.translationType}」？`,
+        details: '导入会写入正式映射，已有同源文本可能被更新。',
+        confirmText: '导入',
+      })
+      if (!confirmed) {
+        event.target.value = ''
+        return
+      }
       this.mappingMessage = ''
       try {
         const resp = await api.importTranslations(this.translationType, file)
@@ -1120,6 +1143,14 @@ export default {
       }
     },
     async resetReviewItem(item) {
+      const confirmed = await requestConfirm({
+        title: '重置译文',
+        message: `确认清除「${item.source_text || item.item_id}」的译文？`,
+        details: '会移除当前正式映射，并回到未翻译状态。',
+        confirmText: '重置',
+        tone: 'danger',
+      })
+      if (!confirmed) return
       try {
         const resp = await api.updateTranslationItem(item.item_type, item.item_id, {
           action: 'reset',
@@ -1153,6 +1184,13 @@ export default {
     },
     async restoreHistoryItem(history) {
       if (!this.reviewHistoryItem) return
+      const confirmed = await requestConfirm({
+        title: '恢复历史译文',
+        message: '确认用这条历史记录覆盖当前译文？',
+        details: history.translated_text || '',
+        confirmText: '恢复',
+      })
+      if (!confirmed) return
       try {
         await api.updateTranslationItem(this.reviewHistoryItem.item_type, this.reviewHistoryItem.item_id, {
           action: 'restore',
@@ -1172,6 +1210,13 @@ export default {
       }
     },
     async retryReviewItems() {
+      const confirmed = await requestConfirm({
+        title: '重试当前筛选项',
+        message: `确认重试「${this.reviewStatus === 'all' ? '全部状态' : this.reviewStatus}」筛选下的翻译项？`,
+        details: this.reviewQuery.trim() ? `关键词：${this.reviewQuery.trim()}` : '会按当前类型和状态筛选批量创建重试作业。',
+        confirmText: '开始重试',
+      })
+      if (!confirmed) return
       this.retryingItems = true
       try {
         const payload = {

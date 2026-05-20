@@ -61,13 +61,14 @@ export const favoriteState = {
   /**
    * 切换收藏状态
    */
-  async toggle(type, id) {
+  async toggle(type, id, metadata = {}) {
     if (!type || !id) return false
 
     try {
       const resp = await api.toggleFavorite({
         entity_type: type,
         entity_id: String(id),
+        metadata,
       })
       
       const is_favorited = resp.data.is_favorited
@@ -85,7 +86,7 @@ export const favoriteState = {
           state.items.unshift({
             entity_type: normalizedType,
             entity_id: String(id),
-            metadata: {},
+            metadata,
             created_at: new Date().toISOString()
           })
         }

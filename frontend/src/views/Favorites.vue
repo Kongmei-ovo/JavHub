@@ -5,6 +5,7 @@
       <div class="curate-stats">
         共 {{ count }} 个收藏项
       </div>
+      <p class="instance-note">{{ instanceNote }}</p>
 
       <!-- iOS 风格的分段选择器 -->
       <div class="segmented-control">
@@ -48,9 +49,7 @@
           :releaseDate="item.metadata?.release_date || ''"
           :runtimeMins="item.metadata?.runtime_mins || item.metadata?.runtime || ''"
           :sampleUrl="item.metadata?.sample_url || ''"
-          :isFavorited="isFavorited('video', item.entity_id)"
           @click="openVideo(item)"
-          @toggle-favorite="toggleFavorite('video', item.entity_id)"
         />
       </div>
 
@@ -69,9 +68,13 @@
             :badges="actorCardBadges(item)"
             :show-favorite="true"
             :favorited="true"
+            :show-subscribe="actorCardCanSubscribe(item)"
+            :subscribed="actorCardSubscribed(item)"
+            :subscribe-title="actorCardSubscribed(item) ? '取消订阅演员' : '订阅演员'"
             density="standard"
             @open="navigateToActor(item)"
             @favorite="toggleFavorite('actress', item.entity_id)"
+            @subscribe="toggleActorSubscription(item)"
           />
         </div>
       </div>
@@ -84,7 +87,12 @@
             v-for="item in otherEntityItems"
             :key="item.entity_type + '-' + item.entity_id"
             class="entity-bubble"
+            role="button"
+            tabindex="0"
+            :aria-label="`查看${typeLabel(item.entity_type)}详情：${entityDisplayName(item)}`"
             @click="navigateToEntity(item)"
+            @keydown.enter.prevent="navigateToEntity(item)"
+            @keydown.space.prevent="navigateToEntity(item)"
           >
             <span class="entity-name">{{ entityDisplayName(item) }}</span>
             <span class="entity-type-tag">{{ typeLabel(item.entity_type) }}</span>
@@ -104,9 +112,9 @@
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
           </svg>
         </div>
-        <h3>开始你的策展</h3>
-        <p>在探索过程中点击心形图标，将喜欢的项目收入此处。</p>
-        <button class="btn-explore" type="button" @click="$router.push('/genres')">去探索</button>
+        <h3>{{ emptyTitle }}</h3>
+        <p>{{ emptyDescription }}</p>
+        <button v-if="activeTab === 'all'" class="btn-explore" type="button" @click="$router.push('/genres')">去探索</button>
       </div>
     </div>
   </div>
@@ -116,10 +124,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
+import subscriptionState from '../utils/subscriptionState'
 import { openVideoModal } from '../utils/modalState'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
-import { displayName } from '../utils/displayLang.js'
-import { actorAvatar, actorName, actorOriginalName, actorRouteTarget } from '../utils/actorDisplay.js'
+import { actorAvatar, actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import api from '../api'
 import MovieCard from '../components/MovieCard.vue'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
@@ -168,7 +177,7 @@ export default {
         const resp = await api.getFavoriteVideos()
         videoItems.value = (resp.data || []).map(v => ({
           entity_type: 'video',
-          entity_id: v.content_id || v.dvd_id,
+          entity_id: v._favorite_entity_id || (v.service_code ? `${v.content_id || v.dvd_id}::${v.service_code}` : (v.content_id || v.dvd_id)),
           metadata: v,
           created_at: v._created_at
         }))
@@ -179,7 +188,12 @@ export default {
       }
     }
 
-    onMounted(loadVideos)
+    onMounted(() => {
+      loadVideos()
+      subscriptionState.refresh().catch(err => {
+        console.error('Failed to initialize subscriptions:', err)
+      })
+    })
 
     // 影片展示列表
     const displayVideoItems = computed(() => {
@@ -214,6 +228,15 @@ export default {
       return types.map(t => TYPE_LABELS[t] || t).join('、')
     })
 
+    const activeTabLabel = computed(() => tabs.value.find(tab => tab.id === activeTab.value)?.label || '当前分类')
+    const instanceNote = computed(() => `当前实例收藏 · 影片 ${typeCounts.value.video || 0} · 演员 ${typeCounts.value.actress || 0}`)
+    const emptyTitle = computed(() => activeTab.value === 'all' ? '当前实例还没有收藏' : `当前分类暂无收藏`)
+    const emptyDescription = computed(() => (
+      activeTab.value === 'all'
+        ? '这里显示当前 JavHub 实例的本地收藏。'
+        : `当前实例暂无${activeTabLabel.value}收藏，可切换到其他分类查看。`
+    ))
+
     const typeLabel = (type) => TYPE_LABELS[type] || type
 
     const entityDisplayName = (item) => {
@@ -236,17 +259,14 @@ export default {
     }
 
     const navigateToActor = (item) => {
-      const target = actorRouteTarget(item.actor, item.entity_id)
-      router.push({
-        name: 'DiscoveryDetail',
-        params: { type: 'actress', value: target.value },
-        query: target.query,
-      })
+      const id = actorCardSubscriptionId(item)
+      const name = actorCardName(item)
+      router.push({ path: `/actor/${encodeURIComponent(name)}`, query: id ? { name, actress_id: id } : { name } })
     }
 
     const openVideo = (item) => {
       if (item.entity_type === 'video') {
-        openVideoModal(item.metadata || { content_id: item.entity_id })
+        openVideoDetail(item.metadata || { content_id: item.entity_id }, router, { path: '/favorites', fullPath: '/favorites' }, openVideoModal)
       }
     }
 
@@ -276,7 +296,26 @@ export default {
       return count != null ? `${Number(count).toLocaleString()} 部作品` : ''
     }
     const actorCardAvatar = (item) => actorAvatar(item.actor)
-    const actorCardBadges = () => [{ label: '收藏', tone: 'favorite' }]
+    const actorCardSubscriptionId = (item) => {
+      const id = item.actor?.id || item.actor?.actress_id || item.actor?.javinfo_actress_id || item.entity_id
+      return /^\d+$/.test(String(id || '')) ? String(id) : ''
+    }
+    const actorCardCanSubscribe = (item) => Boolean(actorCardSubscriptionId(item))
+    const actorCardSubscribed = (item) => subscriptionState.isSubscribed(actorCardSubscriptionId(item))
+    const actorCardBadges = (item) => {
+      const badges = [{ label: '收藏', tone: 'favorite' }]
+      if (actorCardSubscribed(item)) badges.push({ label: '已订阅', tone: 'subscribed' })
+      return badges
+    }
+    const toggleActorSubscription = async (item) => {
+      const id = actorCardSubscriptionId(item)
+      if (!id) return
+      try {
+        await subscriptionState.toggle(id, actorCardName(item))
+      } catch (err) {
+        console.error('Failed to toggle actor subscription:', err)
+      }
+    }
 
     const enrichFavoriteActor = async (item) => {
       const id = String(item.entity_id)
@@ -327,6 +366,9 @@ export default {
       actorFavoriteItems,
       otherEntityItems,
       sectionLabel,
+      instanceNote,
+      emptyTitle,
+      emptyDescription,
       typeLabel,
       entityDisplayName,
       navigateToEntity,
@@ -340,7 +382,11 @@ export default {
       actorCardSubtitle,
       actorCardMeta,
       actorCardAvatar,
+      actorCardSubscriptionId,
+      actorCardCanSubscribe,
+      actorCardSubscribed,
       actorCardBadges,
+      toggleActorSubscription,
       enrichFavoriteActor,
     }
   }
@@ -370,7 +416,13 @@ export default {
 .curate-stats {
   font-size: var(--type-body);
   color: var(--text-muted);
-  margin-bottom: 22px;
+  margin-bottom: 6px;
+}
+
+.instance-note {
+  margin: 0 0 22px;
+  color: var(--text-secondary);
+  font-size: var(--type-control);
 }
 
 /* Segmented Control - Apple Look */
@@ -481,6 +533,8 @@ export default {
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  font: inherit;
+  text-align: left;
 }
 
 .entity-bubble:hover {

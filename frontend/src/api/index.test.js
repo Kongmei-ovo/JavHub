@@ -45,6 +45,22 @@ test('duplicate API failures are rate limited globally', async (t) => {
   assert.equal(errorMock.mock.callCount(), 1)
 })
 
+test('getVideo forwards selected service version as a query param', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { content_id: 'MIAA-784' } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?video-service-code-${Date.now()}`)
+  await api.getVideo('MIAA-784', { service_code: 'mono' })
+
+  assert.equal(capturedConfig.url, '/v1/videos/MIAA-784')
+  assert.deepEqual(capturedConfig.params, { service_code: 'mono' })
+})
+
 test('category stats helper is not exposed from the frontend API', async () => {
   const { default: api } = await import(`./index.js?category-stats-removed-${Date.now()}`)
 

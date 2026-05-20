@@ -64,10 +64,12 @@ test('summaryDisplay prefers translated summary', () => {
   }), 'Original summary')
 })
 
-test('modal overlay is teleported above sheet overlays', () => {
+test('modal overlay teleports globally and can render inline on the detail page', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 
-  assert.match(source, /<teleport to="body">\s*<div v-if="visible" class="modal-overlay"/)
+  assert.match(source, /<teleport to="body" :disabled="inline">\s*<div v-if="visible" class="modal-overlay"/)
+  assert.match(source, /inline:\s*\{ type: Boolean, default: false \}/)
+  assert.match(source, /\.modal-overlay\.inline\s*\{[\s\S]*position:\s*static/)
   assert.match(source, /\.modal-overlay\s*\{[\s\S]*z-index:\s*var\(--z-lightbox\)/)
 })
 
@@ -114,6 +116,15 @@ test('modal declares emitted events for async component listeners', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 
   assert.match(source, /emits:\s*\[\s*'close',\s*'download',\s*'navigate'\s*\]/)
+})
+
+test('modal favorites are keyed by concrete service version', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /function videoFavoriteId\(video = \{\}\)/)
+  assert.match(source, /return id && serviceCode \? `\$\{id\}::\$\{serviceCode\}` : id/)
+  assert.match(source, /favoriteState\.isFavorited\('video', id\)/)
+  assert.match(source, /favoriteState\.toggle\('video', id, \{[\s\S]*service_code: this\.video\.service_code \|\| ''/)
 })
 
 test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () => {

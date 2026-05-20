@@ -185,12 +185,8 @@
                     :releaseDate="movie.release_date || ''"
                     :runtimeMins="movie.runtime_mins || ''"
                     :sampleUrl="movie.sample_url || ''"
-                    :isFavorited="false"
                     @click="openVideoModal(movie)"
                   />
-                  <button class="work-dl-btn" @click.stop="downloadMovie(movie)" title="下载">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  </button>
                 </div>
               </div>
             </div>
@@ -217,8 +213,10 @@ import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
+import subscriptionState from '../utils/subscriptionState'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import MovieCard from '../components/MovieCard.vue'
 
@@ -365,19 +363,30 @@ function closeSheet() { sheetActor.value = null; sheetSub.value = null; sheetMov
 
 function viewAllVideos() {
   if (!sheetActor.value) return
-  const name = sheetActor.value.name_kanji || sheetActor.value.name_romaji || ''
-  router.push({ path: `/actor/${encodeURIComponent(name)}`, query: { name, actress_id: sheetActor.value.id } })
+  const actressId = sheetActor.value.actress_id || sheetActor.value.id
+  const name = actorName(sheetActor.value, sheetActor.value.name || sheetActor.value.name_kanji || sheetActor.value.name_romaji || String(actressId || ''))
+  const query = name ? { name } : {}
+  if (actressId) query.actress_id = actressId
+  router.push({ path: `/actor/${encodeURIComponent(name)}`, query })
 }
 
 function openVideoModal(movie) {
-  openVideoModalFn(movie, router.currentRoute.value.path)
+  openVideoDetail(movie, router, router.currentRoute.value, openVideoModalFn)
+}
+
+async function syncSubscriptionState() {
+  try {
+    await subscriptionState.refresh()
+  } catch (e) {
+    console.error('Sync subscription state failed:', e)
+  }
 }
 
 async function subscribeFromSheet() {
   if (!sheetActor.value) return
   const a = sheetActor.value; const name = a.name_kanji || a.name_romaji || ''
   subscribing.value = true
-  try { await api.addSubscription({ actress_id: a.id, actress_name: name }); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
+  try { await api.addSubscription({ actress_id: a.id, actress_name: name }); await syncSubscriptionState(); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
   catch (e) { ElMessage.error('订阅失败') } finally { subscribing.value = false }
 }
 
@@ -460,26 +469,8 @@ async function toggleAutoDownload(sub) {
 }
 
 async function remove(id) {
-  try { await api.deleteSubscription(id); subs.value = subs.value.filter(s => s.id !== id); closeSheet(); ElMessage.success('已取消订阅') }
+  try { await api.deleteSubscription(id); await syncSubscriptionState(); subs.value = subs.value.filter(s => s.id !== id); closeSheet(); ElMessage.success('已取消订阅') }
   catch (e) { ElMessage.error('删除失败') }
-}
-
-async function downloadMovie(movie) {
-  try {
-    await api.createDownloadCandidate({
-      content_id: movie.content_id || movie.dvd_id,
-      dvd_id: movie.dvd_id || movie.content_id,
-      title: movie.title_ja || movie.title_en || movie.title || '',
-      actress_id: sheetActor.value?.id || null,
-      actress_name: sheetActor.value?.name_kanji || sheetActor.value?.name_romaji || '',
-      jacket_thumb_url: movie.jacket_thumb_url || '',
-      release_date: movie.release_date || '',
-      source: 'subscription',
-      reason: 'subscription_manual_pick'
-    })
-    ElMessage.success('已加入下载候选')
-    await loadNewMovieBadges()
-  } catch (e) { ElMessage.error('加入候选失败') }
 }
 
 function viewCandidates(sub) {
@@ -886,38 +877,6 @@ onMounted(loadSubs)
   position: relative;
 }
 
-.work-dl-btn {
-  position: absolute; top: 8px; right: 8px;
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 0.5px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.85);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 2;
-  opacity: 0;
-  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.work-card-wrap:hover .work-dl-btn {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .work-dl-btn {
-    opacity: 1;
-  }
-}
-
-.work-dl-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-  transform: scale(1.1);
-}
-
-.work-dl-btn:active { transform: scale(0.92); }
-
 .sheet-loading {
   display: flex; justify-content: center; padding: 32px 0;
 }
@@ -984,12 +943,10 @@ onMounted(loadSubs)
   .clear-btn,
   .pill-btn,
   .top-action-btn,
-  .toggle-pill,
-  .work-dl-btn {
+  .toggle-pill {
     min-height: 44px;
   }
-  .clear-btn,
-  .work-dl-btn {
+  .clear-btn {
     min-width: 44px;
   }
   .sheet-toggles {

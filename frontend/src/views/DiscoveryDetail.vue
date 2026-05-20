@@ -114,9 +114,7 @@
             :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
             :releaseDate="item.release_date || ''"
             :runtimeMins="item.runtime_mins || ''"
-            :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
             @click="openModal(item)"
-            @toggle-favorite="toggleVideoFavorite(item)"
           />
         </div>
       </div>
@@ -132,9 +130,7 @@
         :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
         :releaseDate="item.release_date || ''"
         :runtimeMins="item.runtime_mins || ''"
-        :isFavorited="isFavorited('video', item.content_id || item.dvd_id)"
         @click="openModal(item)"
-        @toggle-favorite="toggleVideoFavorite(item)"
       />
     </div>
 
@@ -164,6 +160,7 @@ import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { createRequestSequence } from '../utils/requestSequence.js'
@@ -271,6 +268,7 @@ export default {
   },
   async mounted() {
     subscriptionState.init()
+    if (this.redirectActorRoute()) return
     if (this.type === 'category') {
       await this.loadMetadata()
     }
@@ -278,11 +276,25 @@ export default {
   },
   watch: {
     '$route.params'() {
+      if (this.redirectActorRoute()) return
       this.resetFilters()
       this.doSearch()
     }
   },
   methods: {
+    redirectActorRoute() {
+      if (this.type !== 'actress') return false
+      const queryName = this.$route.query.name ? String(this.$route.query.name) : ''
+      const isNumeric = /^\d+$/.test(String(this.value || ''))
+      const name = queryName || String(this.value || '')
+      const query = name ? { name } : {}
+      if (isNumeric) query.actress_id = Number(this.value)
+      this.$router.replace({
+        path: `/actor/${encodeURIComponent(name)}`,
+        query,
+      })
+      return true
+    },
     cycleSort(key) {
       if (key === 'random') {
         this.sortState.random = !this.sortState.random
@@ -321,17 +333,6 @@ export default {
         this.$message[subscribed ? 'success' : 'info'](
           subscribed ? `已订阅 ${this.displayNameValue || this.value}` : '已取消订阅'
         )
-      }
-    },
-    isFavorited(type, id) {
-      return favoriteState.isFavorited(type, id)
-    },
-    async toggleVideoFavorite(item) {
-      try {
-        const id = item.content_id || item.dvd_id
-        await favoriteState.toggle('video', id)
-      } catch (err) {
-        console.error('Toggle video favorite failed:', err)
       }
     },
     async loadMetadata() {
@@ -420,7 +421,7 @@ export default {
       }
     },
     openModal(video) {
-      openVideoModal(video, this.$route.path)
+      openVideoDetail(video, this.$router, this.$route, openVideoModal)
     },
     cardImageUrl(item) { return videoCardCoverUrl(item) }
   }

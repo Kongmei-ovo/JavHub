@@ -4,6 +4,7 @@ from typing import Any, Optional, Dict
 from database import (
     add_download_candidate_event,
     bulk_set_download_candidate_status,
+    count_download_candidates,
     get_download_candidate,
     get_download_tasks,
     delete_download_task,
@@ -156,17 +157,37 @@ async def list_candidates(
     q: Optional[str] = None,
     needs_magnet: Optional[bool] = None,
     limit: int = 200,
+    page: int = 1,
+    page_size: Optional[int] = None,
 ) -> Dict[str, Any]:
     """下载候选列表。候选是人工确认前的安全队列。"""
+    size = max(1, min(int(page_size or limit or 200), 200))
+    current_page = max(1, int(page or 1))
+    total = count_download_candidates(
+        status=status,
+        actress_id=actress_id,
+        source=source,
+        q=q,
+        needs_magnet=needs_magnet,
+    )
     rows = list_download_candidates(
         status=status,
         actress_id=actress_id,
         source=source,
         q=q,
         needs_magnet=needs_magnet,
-        limit=limit,
+        limit=size,
+        offset=(current_page - 1) * size,
     )
-    return {"data": rows, "total": len(rows), "stats": download_candidate_stats()}
+    total_pages = max(1, (total + size - 1) // size)
+    return {
+        "data": rows,
+        "total": total,
+        "page": current_page,
+        "page_size": size,
+        "total_pages": total_pages,
+        "stats": download_candidate_stats(),
+    }
 
 
 @router.get("/candidates/summary")

@@ -2,10 +2,7 @@
   <AppleVideoCard
     :video="video"
     :cover-url="coverUrl"
-    :favorited="isFavorited"
-    :show-favorite="true"
     @open="$emit('click')"
-    @toggle-favorite="$emit('toggle-favorite')"
   />
 </template>
 
@@ -22,10 +19,9 @@ const props = defineProps({
   releaseDate: { type: String, default: '' },
   runtimeMins: { type: [String, Number], default: '' },
   sampleUrl: { type: String, default: '' },
-  isFavorited: { type: Boolean, default: false }
 })
 
-defineEmits(['click', 'toggle-favorite'])
+defineEmits(['click'])
 
 const video = computed(() => ({
   content_id: props.contentId,

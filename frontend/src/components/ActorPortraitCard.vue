@@ -1,7 +1,7 @@
 <template>
   <article
     class="actor-portrait-card"
-    :class="[`actor-portrait-card--${density}`, { 'is-favorited': favorited }]"
+    :class="[`actor-portrait-card--${density}`, { 'is-favorited': favorited, 'is-subscribed': subscribed }]"
     role="button"
     tabindex="0"
     :aria-label="`打开演员 ${displayNameText}`"
@@ -24,12 +24,30 @@
         type="button"
         :aria-label="favorited ? '取消收藏演员' : '收藏演员'"
         @click.stop="emitFavorite"
-        @keydown.enter.stop
-        @keydown.space.stop
+        @keydown.enter.stop.prevent="emitFavorite"
+        @keydown.space.stop.prevent="emitFavorite"
       >
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path
             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <button
+        v-if="showSubscribe"
+        class="actor-portrait-card__subscribe"
+        type="button"
+        :aria-label="subscribeAriaLabel"
+        :title="subscribeButtonTitle"
+        :disabled="subscribeDisabled"
+        @click.stop="emitSubscribe"
+        @keydown.enter.stop.prevent="emitSubscribe"
+        @keydown.space.stop.prevent="emitSubscribe"
+      >
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+          <path
+            d="M19 3H5a2 2 0 0 0-2 2v16l9-4 9 4V5a2 2 0 0 0-2-2zm-2 11H7v-2h10v2zm0-4H7V8h10v2z"
             fill="currentColor"
           />
         </svg>
@@ -72,9 +90,13 @@ const props = defineProps({
   actionLabel: { type: String, default: '' },
   showFavorite: { type: Boolean, default: false },
   favorited: { type: Boolean, default: false },
+  showSubscribe: { type: Boolean, default: false },
+  subscribed: { type: Boolean, default: false },
+  subscribeDisabled: { type: Boolean, default: false },
+  subscribeTitle: { type: String, default: '' },
 })
 
-const emit = defineEmits(['open', 'favorite'])
+const emit = defineEmits(['open', 'favorite', 'subscribe'])
 const imageErrored = ref(false)
 
 const displayNameText = computed(() => props.name || actorName(props.actor, '未知演员') || '未知演员')
@@ -88,6 +110,10 @@ const displayInitial = computed(() => actorInitial(props.actor, displayNameText.
 const normalizedBadges = computed(() => props.badges
   .filter(badge => badge && badge.label)
   .map(badge => ({ label: badge.label, tone: badge.tone || 'neutral' })))
+const subscribeAriaLabel = computed(() => (props.subscribed ? '取消订阅演员' : '订阅演员'))
+const subscribeButtonTitle = computed(() => (
+  props.subscribeTitle || (props.subscribed ? '取消订阅演员' : '订阅演员')
+))
 
 watch(displayAvatar, () => {
   imageErrored.value = false
@@ -103,6 +129,10 @@ function emitOpen() {
 
 function emitFavorite() {
   emit('favorite', props.actor)
+}
+
+function emitSubscribe() {
+  emit('subscribe', props.actor)
 }
 </script>
 
@@ -186,10 +216,10 @@ function emitFavorite() {
   font-weight: 700;
 }
 
-.actor-portrait-card__favorite {
+.actor-portrait-card__favorite,
+.actor-portrait-card__subscribe {
   position: absolute;
   top: 9px;
-  right: 9px;
   display: grid;
   place-items: center;
   width: 32px;
@@ -204,9 +234,30 @@ function emitFavorite() {
   transition: transform var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
 }
 
-.actor-portrait-card__favorite:hover {
+.actor-portrait-card__favorite {
+  right: 9px;
+  color: #ff375f;
+}
+
+.actor-portrait-card__subscribe {
+  left: 9px;
+  color: var(--accent);
+}
+
+.actor-portrait-card__favorite:hover,
+.actor-portrait-card__subscribe:hover {
   transform: scale(1.07);
   background: rgba(255,255,255,0.78);
+}
+
+.actor-portrait-card__subscribe:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe {
+  background: rgba(52, 199, 89, 0.88);
+  color: #fff;
 }
 
 .actor-portrait-card__body {

@@ -214,6 +214,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl } from '../utils/imageUrl.js'
+import { requestConfirm } from '../utils/confirmDialog'
 
 const activeTab = ref('review')
 const search = ref('')
@@ -553,6 +554,14 @@ async function previewAutoMatch() {
 }
 
 async function runAutoMatch() {
+  const confirmed = await requestConfirm({
+    title: '执行自动匹配?',
+    message: '系统会根据当前规则自动确认高置信演员映射，并生成需要人工审核的候选。',
+    details: ['影响范围：全部待映射演员', '可先使用“自动匹配预演”查看预计结果'],
+    tone: 'warning',
+    confirmText: '执行自动匹配'
+  })
+  if (!confirmed) return
   await runAutoMatchRequest(false)
 }
 

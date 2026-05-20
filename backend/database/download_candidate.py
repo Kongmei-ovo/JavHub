@@ -38,6 +38,7 @@ def upsert_download_candidate(
     status: str = "candidate",
     magnet: str | None = None,
     magnet_source: str | None = None,
+    return_insert_status: bool = False,
 ) -> dict:
     """Insert or refresh a candidate, preserving manual decisions."""
     if status not in VALID_CANDIDATE_STATUSES:
@@ -49,27 +50,12 @@ def upsert_download_candidate(
         cursor = conn.cursor()
         cursor.execute(
             '''
-            INSERT INTO download_candidates (
+            INSERT OR IGNORE INTO download_candidates (
                 content_id, dvd_id, title, actress_id, actress_name, jacket_thumb_url,
                 release_date, source, reason, status, magnet, magnet_source,
                 created_at, updated_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT(content_id, source) DO UPDATE SET
-                dvd_id = COALESCE(excluded.dvd_id, download_candidates.dvd_id),
-                title = COALESCE(excluded.title, download_candidates.title),
-                actress_id = COALESCE(excluded.actress_id, download_candidates.actress_id),
-                actress_name = COALESCE(excluded.actress_name, download_candidates.actress_name),
-                jacket_thumb_url = COALESCE(excluded.jacket_thumb_url, download_candidates.jacket_thumb_url),
-                release_date = COALESCE(excluded.release_date, download_candidates.release_date),
-                reason = COALESCE(excluded.reason, download_candidates.reason),
-                status = CASE
-                    WHEN download_candidates.status IN ('rejected', 'sent', 'failed') THEN download_candidates.status
-                    ELSE excluded.status
-                END,
-                magnet = COALESCE(download_candidates.magnet, excluded.magnet),
-                magnet_source = COALESCE(download_candidates.magnet_source, excluded.magnet_source),
-                updated_at = CURRENT_TIMESTAMP
             ''',
             (
                 content_id,
@@ -86,11 +72,51 @@ def upsert_download_candidate(
                 magnet_source,
             ),
         )
+        was_inserted = cursor.rowcount == 1
+        if not was_inserted:
+            cursor.execute(
+                '''
+                UPDATE download_candidates
+                SET
+                    dvd_id = COALESCE(?, dvd_id),
+                    title = COALESCE(?, title),
+                    actress_id = COALESCE(?, actress_id),
+                    actress_name = COALESCE(?, actress_name),
+                    jacket_thumb_url = COALESCE(?, jacket_thumb_url),
+                    release_date = COALESCE(?, release_date),
+                    reason = COALESCE(?, reason),
+                    status = CASE
+                        WHEN status IN ('rejected', 'sent', 'failed') THEN status
+                        ELSE ?
+                    END,
+                    magnet = COALESCE(magnet, ?),
+                    magnet_source = COALESCE(magnet_source, ?),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE content_id = ? AND source = ?
+                ''',
+                (
+                    dvd_id,
+                    title,
+                    actress_id,
+                    actress_name,
+                    jacket_thumb_url,
+                    release_date,
+                    reason,
+                    status,
+                    magnet,
+                    magnet_source,
+                    content_id,
+                    source,
+                ),
+            )
         cursor.execute(
             "SELECT * FROM download_candidates WHERE content_id = ? AND source = ?",
             (content_id, source),
         )
-        return dict(cursor.fetchone())
+        row = dict(cursor.fetchone())
+        if return_insert_status:
+            row["was_inserted"] = was_inserted
+        return row
 
 
 def upsert_candidate_from_video(
@@ -99,6 +125,7 @@ def upsert_candidate_from_video(
     actress_name: str | None,
     source: str,
     reason: str,
+    return_insert_status: bool = False,
 ) -> dict:
     content_id = candidate_content_id(video)
     dvd_id = video.get("dvd_id") or content_id
@@ -112,6 +139,7 @@ def upsert_candidate_from_video(
         release_date=video.get("release_date"),
         source=source,
         reason=reason,
+        return_insert_status=return_insert_status,
     )
 
 
@@ -196,6 +224,7 @@ def list_download_candidates(
     q: str | None = None,
     needs_magnet: bool | None = None,
     limit: int = 200,
+    offset: int = 0,
 ) -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -220,12 +249,40 @@ def list_download_candidates(
                 END,
                 release_date DESC,
                 created_at DESC
-            LIMIT ?
+            LIMIT ? OFFSET ?
             ''',
-            params + [limit],
+            params + [limit, offset],
         )
         rows = [dict(row) for row in cursor.fetchall()]
     return _enrich_candidate_rows(rows)
+
+
+def count_download_candidates(
+    status: str | None = None,
+    actress_id: int | None = None,
+    source: str | None = None,
+    q: str | None = None,
+    needs_magnet: bool | None = None,
+) -> int:
+    where_clause, params = _candidate_filter_clause(
+        status=status,
+        actress_id=actress_id,
+        source=source,
+        q=q,
+        needs_magnet=needs_magnet,
+    )
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f'''
+            SELECT COUNT(*) AS total
+            FROM download_candidates
+            {where_clause}
+            ''',
+            params,
+        )
+        row = cursor.fetchone()
+    return int(row["total"] if row else 0)
 
 
 def _candidate_filter_clause(

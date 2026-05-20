@@ -41,7 +41,7 @@
 
     <!-- 统计卡片 -->
     <div class="stats-bar">
-      <div class="stat-card" @click="filterStatus = 'pending'">
+      <div class="stat-card" @click="setTaskStatus('pending')">
         <div class="stat-icon pending">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="10"/>
@@ -53,7 +53,7 @@
           <div class="stat-label">待处理</div>
         </div>
       </div>
-      <div class="stat-card" @click="filterStatus = 'downloading'">
+      <div class="stat-card" @click="setTaskStatus('downloading')">
         <div class="stat-icon downloading">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -66,7 +66,7 @@
           <div class="stat-label">下载中</div>
         </div>
       </div>
-      <div class="stat-card" @click="filterStatus = 'completed'">
+      <div class="stat-card" @click="setTaskStatus('completed')">
         <div class="stat-icon completed">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
@@ -78,7 +78,7 @@
           <div class="stat-label">已完成</div>
         </div>
       </div>
-      <div class="stat-card" @click="filterStatus = 'failed'">
+      <div class="stat-card" @click="setTaskStatus('failed')">
         <div class="stat-icon failed">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="10"/>
@@ -121,12 +121,12 @@
     </div>
 
     <!-- 任务过滤栏 -->
-    <div v-if="filterStatus" class="filter-bar" @click="filterStatus = null">
+    <div v-if="filterStatus" class="filter-bar" @click="clearTaskStatus">
       <span class="filter-hint">筛选: <strong>{{ filterStatus }}</strong> (点击清除)</span>
     </div>
 
     <div class="download-tabs">
-      <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="activeTab = 'tasks'">真实任务</button>
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="openTaskTab">真实任务</button>
       <button class="tab-btn" type="button" :class="{ active: activeTab === 'candidates' }" @click="openCandidateTab">
         下载候选
         <span v-if="candidateStats.candidate" class="tab-badge">{{ candidateStats.candidate }}</span>
@@ -209,9 +209,9 @@
           v-model="candidateFilter.q"
           class="candidate-search-input"
           placeholder="搜索番号、标题、演员"
-          @keyup.enter="loadCandidates"
-        />
-        <button class="chip" type="button" @click="loadCandidates">搜索</button>
+        @keyup.enter="submitCandidateSearch"
+      />
+        <button class="chip" type="button" @click="submitCandidateSearch">搜索</button>
         <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
         <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
         <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
@@ -257,6 +257,14 @@
         @apply-failed="applyCandidateRunFilters($event, { status: 'failed' })"
         @retry-failed="retryFailedCandidateRun"
       />
+
+      <div v-if="candidateTotalPages > 1" class="candidate-pagination">
+        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(1)">«</button>
+        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(candidatePage - 1)">‹</button>
+        <span class="page-indicator">{{ candidatePage }} / {{ candidateTotalPages }} · {{ candidateTotal }} 个候选</span>
+        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidatePage + 1)">›</button>
+        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidateTotalPages)">»</button>
+      </div>
 
       <div v-if="filteredCandidates.length > 0" class="tasks-grid">
         <div
@@ -340,6 +348,14 @@
         </svg>
         <p>暂无下载候选</p>
         <p class="text-secondary empty-state-hint">订阅检查和库存对比会把缺失影片写到这里</p>
+      </div>
+
+      <div v-if="candidateTotalPages > 1" class="candidate-pagination bottom">
+        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(1)">«</button>
+        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(candidatePage - 1)">‹</button>
+        <span class="page-indicator">{{ candidatePage }} / {{ candidateTotalPages }}</span>
+        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidatePage + 1)">›</button>
+        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidateTotalPages)">»</button>
       </div>
     </div>
 
@@ -551,7 +567,14 @@
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       <p>暂无{{ filterStatus ? statusLabel(filterStatus) : '' }}任务</p>
-      <p class="text-secondary empty-state-hint">去搜索页面添加下载吧</p>
+      <p class="text-secondary empty-state-hint">{{ taskEmptyHint }}</p>
+      <div class="empty-actions">
+        <button v-if="filterStatus" class="btn btn-ghost" type="button" @click="clearTaskStatus">清除筛选</button>
+        <button v-if="candidateStats.candidate > 0" class="btn btn-primary" type="button" @click="openCandidatePreset({ status: 'candidate', source: '' })">
+          查看 {{ candidateStats.candidate }} 个候选
+        </button>
+        <button v-else class="btn btn-primary" type="button" @click="$router.push('/search')">搜索影片</button>
+      </div>
     </div>
 
     <div v-if="magnetEditor.open" class="inline-dialog-overlay" @click.self="closeMagnetEditor">
@@ -667,6 +690,10 @@ export default {
         q: this.$route.query.q || '',
         needs_magnet: this.$route.query.needs_magnet === '1' ? true : (this.$route.query.needs_magnet === '0' ? false : null)
       },
+      candidatePage: Number(this.$route.query.page || 1) || 1,
+      candidatePageSize: 50,
+      candidateTotal: 0,
+      candidateTotalPages: 1,
       timer: null,
       selectingCandidates: false,
       selectedCandidateIds: [],
@@ -717,11 +744,18 @@ export default {
     defaultDownloaderLabel() {
       const client = this.downloaderClients.find(item => item.id === this.downloaders.default_id)
       return client?.name || this.downloaderTypeLabel(client?.type) || '未设置'
+    },
+    taskEmptyHint() {
+      if (this.filterStatus) return '当前筛选没有任务，可以清除筛选查看全部。'
+      if (this.candidateStats.candidate > 0) return '已有下载候选待确认，优先处理候选再下发任务。'
+      return '可以从影片检索或磁链解析添加下载任务。'
     }
   },
   mounted() {
+    this.applyDownloadRoute(this.$route.query, { initial: true })
     this.loadTasks()
-    this.loadCandidates()
+    if (this.activeTab === 'candidates') this.loadCandidates()
+    else this.loadCandidateSummary()
     if (this.activeTab === 'candidates') this.loadCandidateRuns()
     if (this.activeTab === 'downloaders') this.loadDownloaders()
     this.timer = setInterval(this.loadTasks, 30000)
@@ -729,7 +763,72 @@ export default {
   beforeUnmount() {
     if (this.timer) clearInterval(this.timer)
   },
+  watch: {
+    '$route.query'(query) {
+      const changed = this.applyDownloadRoute(query)
+      if (!changed) return
+      if (this.activeTab === 'candidates') {
+        this.loadCandidates()
+        this.loadCandidateRuns()
+      } else if (this.activeTab === 'downloaders') {
+        this.loadDownloaders()
+      }
+    }
+  },
   methods: {
+    applyDownloadRoute(query = {}) {
+      let changed = false
+      const tab = ['tasks', 'candidates', 'downloaders'].includes(query.tab) ? query.tab : 'tasks'
+      if (this.activeTab !== tab) { this.activeTab = tab; changed = true }
+      const taskStatus = tab === 'tasks' ? (query.task_status || '') : ''
+      if ((this.filterStatus || '') !== taskStatus) { this.filterStatus = taskStatus || null; changed = true }
+      const nextFilter = {
+        status: tab === 'candidates' ? (query.status || 'candidate') : this.candidateFilter.status,
+        source: tab === 'candidates' ? (query.source || '') : this.candidateFilter.source,
+        actress_id: tab === 'candidates' ? (query.actress_id || '') : this.candidateFilter.actress_id,
+        q: tab === 'candidates' ? (query.q || '') : this.candidateFilter.q,
+        needs_magnet: query.needs_magnet === '1' ? true : (query.needs_magnet === '0' ? false : null),
+        page: tab === 'candidates' ? (Number(query.page || 1) || 1) : this.candidatePage,
+      }
+      const { page, ...filterOnly } = nextFilter
+      if (this.candidatePage !== page) { this.candidatePage = page; changed = true }
+      if (JSON.stringify(filterOnly) !== JSON.stringify(this.candidateFilter)) {
+        this.candidateFilter = filterOnly
+        changed = true
+      }
+      return changed
+    },
+    cleanDownloadQuery(query = {}) {
+      const next = { ...query }
+      Object.keys(next).forEach(key => {
+        if (next[key] === '' || next[key] === null || next[key] === undefined) delete next[key]
+      })
+      return next
+    },
+    pushDownloadRoute(query = {}) {
+      const next = this.cleanDownloadQuery(query)
+      if (JSON.stringify(next) !== JSON.stringify(this.$route.query || {})) {
+        this.$router.push({ path: this.$route.path, query: next }).catch(() => {})
+      }
+    },
+    replaceDownloadRoute(query = {}) {
+      const next = this.cleanDownloadQuery(query)
+      if (JSON.stringify(next) !== JSON.stringify(this.$route.query || {})) {
+        this.$router.replace({ path: this.$route.path, query: next }).catch(() => {})
+      }
+    },
+    candidateRouteQuery(overrides = {}) {
+      const filter = { ...this.candidateFilter, page: this.candidatePage, ...overrides }
+      const query = { tab: 'candidates' }
+      if (filter.status) query.status = filter.status
+      if (filter.source) query.source = filter.source
+      if (filter.actress_id) query.actress_id = filter.actress_id
+      if (filter.q) query.q = filter.q
+      if (filter.needs_magnet === true) query.needs_magnet = '1'
+      if (filter.needs_magnet === false) query.needs_magnet = '0'
+      if (filter.page && Number(filter.page) > 1) query.page = String(Number(filter.page))
+      return query
+    },
     async loadTasks() {
       try {
         const resp = await api.getDownloads()
@@ -753,13 +852,25 @@ export default {
         if (this.candidateFilter.actress_id) params.actress_id = this.candidateFilter.actress_id
         if (this.candidateFilter.q) params.q = this.candidateFilter.q
         if (this.candidateFilter.needs_magnet !== null) params.needs_magnet = this.candidateFilter.needs_magnet
+        params.page = this.candidatePage
+        params.page_size = this.candidatePageSize
         const resp = await api.listDownloadCandidates(params)
         this.candidates = resp.data.data || []
         this.candidateStats = resp.data.stats || this.candidateStats
+        this.candidateTotal = Number(resp.data.total || this.candidates.length) || 0
+        this.candidateTotalPages = Number(resp.data.total_pages || 1) || 1
         this.selectedCandidateIds = this.selectedCandidateIds.filter(id => this.candidates.some(c => c.id === id))
         this.syncCandidateRoute()
       } catch (e) {
         console.error('Failed to load candidates:', e)
+      }
+    },
+    async loadCandidateSummary() {
+      try {
+        const resp = await api.listDownloadCandidates({ status: 'candidate' })
+        this.candidateStats = resp.data.stats || this.candidateStats
+      } catch (e) {
+        console.error('Failed to load candidate summary:', e)
       }
     },
     async loadCandidateRuns() {
@@ -774,16 +885,22 @@ export default {
       }
     },
     openCandidateTab() {
-      this.activeTab = 'candidates'
-      this.loadCandidates()
-      this.loadCandidateRuns()
+      this.pushDownloadRoute(this.candidateRouteQuery({ page: 1 }))
     },
     openDownloaderTab() {
-      this.activeTab = 'downloaders'
-      this.loadDownloaders()
-      if (this.$route.query.tab !== 'downloaders') {
-        this.$router.replace({ query: { tab: 'downloaders' } }).catch(() => {})
-      }
+      this.pushDownloadRoute({ tab: 'downloaders' })
+    },
+    openTaskTab() {
+      this.pushDownloadRoute({ tab: 'tasks', task_status: this.filterStatus || undefined })
+    },
+    setTaskStatus(status) {
+      this.pushDownloadRoute({ tab: 'tasks', task_status: status })
+    },
+    clearTaskStatus() {
+      this.pushDownloadRoute({ tab: 'tasks' })
+    },
+    submitCandidateSearch() {
+      this.pushDownloadRoute(this.candidateRouteQuery({ q: this.candidateFilter.q, page: 1 }))
     },
     async loadDownloaders() {
       try {
@@ -1021,48 +1138,35 @@ export default {
     },
     syncCandidateRoute() {
       if (this.activeTab !== 'candidates') return
-      const query = { tab: 'candidates' }
-      if (this.candidateFilter.status) query.status = this.candidateFilter.status
-      if (this.candidateFilter.source) query.source = this.candidateFilter.source
-      if (this.candidateFilter.actress_id) query.actress_id = this.candidateFilter.actress_id
-      if (this.candidateFilter.q) query.q = this.candidateFilter.q
-      if (this.candidateFilter.needs_magnet === true) query.needs_magnet = '1'
-      if (this.candidateFilter.needs_magnet === false) query.needs_magnet = '0'
-      if (JSON.stringify(query) !== JSON.stringify(this.$route.query)) {
-        this.$router.replace({ query }).catch(() => {})
-      }
+      this.replaceDownloadRoute(this.candidateRouteQuery())
     },
     setCandidateStatus(status) {
-      this.candidateFilter.status = status
-      this.candidateFilter.needs_magnet = null
-      this.loadCandidates()
+      this.pushDownloadRoute(this.candidateRouteQuery({ status, needs_magnet: null, page: 1 }))
     },
     setNeedsMagnet(needs) {
-      this.candidateFilter.status = 'candidate'
-      this.candidateFilter.needs_magnet = needs
-      this.loadCandidates()
+      this.pushDownloadRoute(this.candidateRouteQuery({ status: 'candidate', needs_magnet: needs, page: 1 }))
     },
     setCandidateSource(source) {
-      this.candidateFilter.source = source
-      this.loadCandidates()
+      this.pushDownloadRoute(this.candidateRouteQuery({ source, page: 1 }))
     },
     openCandidatePreset({ status = 'candidate', source = '', needs_magnet = null } = {}) {
-      this.activeTab = 'candidates'
-      this.candidateFilter.status = status
-      this.candidateFilter.source = source
-      this.candidateFilter.needs_magnet = needs_magnet
-      this.loadCandidates()
-      this.loadCandidateRuns()
+      this.pushDownloadRoute(this.candidateRouteQuery({ status, source, needs_magnet, page: 1 }))
+    },
+    goCandidatePage(page) {
+      const nextPage = Math.max(1, Math.min(this.candidateTotalPages, Number(page) || 1))
+      if (nextPage === this.candidatePage) return
+      this.pushDownloadRoute(this.candidateRouteQuery({ page: nextPage }))
     },
     applyCandidateRunFilters(run, overrides = {}) {
       const filters = { ...(run.filters || {}), ...overrides }
-      this.activeTab = 'candidates'
-      this.candidateFilter.status = filters.status || 'candidate'
-      this.candidateFilter.source = filters.source || ''
-      this.candidateFilter.actress_id = filters.actress_id || ''
-      this.candidateFilter.q = filters.q || ''
-      this.candidateFilter.needs_magnet = filters.needs_magnet === undefined ? null : filters.needs_magnet
-      this.loadCandidates()
+      this.pushDownloadRoute(this.candidateRouteQuery({
+        status: filters.status || 'candidate',
+        source: filters.source || '',
+        actress_id: filters.actress_id || '',
+        q: filters.q || '',
+        needs_magnet: filters.needs_magnet === undefined ? null : filters.needs_magnet,
+        page: 1,
+      }))
     },
     toggleCandidateSelection() {
       this.selectingCandidates = !this.selectingCandidates
@@ -1195,6 +1299,13 @@ export default {
     },
     async processCandidate(candidate) {
       if (this.isCandidateMutating(candidate.id)) return
+      const confirmed = await requestConfirm({
+        title: '按策略处理候选',
+        message: `确认按当前策略处理 ${candidate.dvd_id || candidate.content_id}？`,
+        details: '可能会补充磁力并下发到下载源；不满足策略时会保持候选状态。',
+        confirmText: '处理',
+      })
+      if (!confirmed) return
       this.setCandidateMutation(candidate.id, 'process')
       try {
         const resp = await api.processDownloadCandidate(candidate.id, { enrich: true })
@@ -1213,11 +1324,22 @@ export default {
     },
     async enrichVisibleCandidateMagnets() {
       if (this.candidateBatchProcessing) return
+      const targets = this.candidates.filter(candidate => (
+        (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet
+      ))
+      if (!targets.length) {
+        this.$message?.info?.('当前列表没有待补磁力的候选')
+        return
+      }
+      const confirmed = await requestConfirm({
+        title: '批量补充磁力',
+        message: `确认为当前列表中的 ${targets.length} 个下载候选查找并写入磁力？`,
+        details: '会逐个访问候选的磁力来源，并把找到的磁力保存到候选记录。',
+        confirmText: '开始补磁力',
+      })
+      if (!confirmed) return
       this.candidateBatchProcessing = 'enrich'
       try {
-        const targets = this.candidates.filter(candidate => (
-          (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet
-        ))
         let enriched = 0
         for (const candidate of targets) {
           const resp = await api.enrichDownloadCandidateMagnet(candidate.id)
@@ -1346,6 +1468,13 @@ export default {
     },
     async approveCandidate(candidate) {
       if (this.isCandidateMutating(candidate.id)) return
+      const confirmed = await requestConfirm({
+        title: '批准下载候选',
+        message: `确认批准 ${candidate.dvd_id || candidate.content_id} 并下发下载？`,
+        details: candidate.magnet ? '会创建真实下载任务并发送到当前默认下载源。' : '该候选没有磁力链接，批准可能失败或需要先补磁力。',
+        confirmText: '批准',
+      })
+      if (!confirmed) return
       this.setCandidateMutation(candidate.id, 'approve')
       try {
         await api.approveDownloadCandidate(candidate.id)
@@ -1393,6 +1522,14 @@ export default {
       })
     },
     async remove(id) {
+      const confirmed = await requestConfirm({
+        title: '删除下载任务',
+        message: `确认删除任务 #${id}？`,
+        details: '只会移除 JavHub 中的任务记录，不会自动删除下载器里的文件。',
+        confirmText: '删除',
+        tone: 'danger'
+      })
+      if (!confirmed) return
       try {
         await api.deleteDownload(id)
         this.loadTasks()
@@ -2099,6 +2236,39 @@ export default {
   gap: 20px;
 }
 
+.candidate-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 16px;
+}
+
+.candidate-pagination.bottom {
+  padding: 18px 0 0;
+}
+
+.page-btn {
+  min-width: 36px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--surface-control);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.page-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.page-indicator {
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+}
+
 /* ===== Task Card ===== */
 .task-card {
   display: flex;
@@ -2215,12 +2385,15 @@ export default {
 .dialog-close-btn {
   width: 44px;
   height: 44px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--white-06);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font-size: 24px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .magnet-editor-input {
   width: 100%;

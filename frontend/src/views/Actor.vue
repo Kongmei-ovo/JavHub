@@ -137,7 +137,6 @@
               :releaseDate="movie.date || ''"
               :runtimeMins="movie._raw?.runtime_mins || ''"
               :sampleUrl="movie._raw?.sample_url || ''"
-              :isFavorited="false"
               @click="openModal(movie)"
             />
             <span v-if="movie._variant" class="variant-label">
@@ -191,6 +190,7 @@ import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
 import MovieCard from '../components/MovieCard.vue'
 
@@ -385,7 +385,7 @@ export default {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
     openModal(movie) {
-      openVideoModal(movie._raw || movie, this.$route.path)
+      openVideoDetail(movie._raw || movie, this.$router, this.$route, openVideoModal)
     },
     cardImageUrl(movie) {
       return jacketHdUrl(movie.cover_url) || movie.cover_url || ''
@@ -716,12 +716,13 @@ export default {
   flex-direction: column;
   gap: 2px;
   z-index: 100;
-  background: rgba(22, 22, 24, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--material-glass-sheet);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 6px 4px;
+  box-shadow: var(--glass-surface-shadow);
 }
 
 .year-nav-item {

@@ -17,6 +17,10 @@ test('ActorPortraitCard exposes the planned public interface', () => {
     'actionLabel',
     'showFavorite',
     'favorited',
+    'showSubscribe',
+    'subscribed',
+    'subscribeDisabled',
+    'subscribeTitle',
   ]) {
     assert.match(source, new RegExp(`${prop}:`), `missing ${prop} prop`)
   }
@@ -34,12 +38,33 @@ test('ActorPortraitCard renders accessible lazy portrait media and fallback', ()
 })
 
 test('ActorPortraitCard emits open and favorite actions separately', () => {
-  assert.match(source, /defineEmits\(\['open', 'favorite'\]\)/)
+  assert.match(source, /defineEmits\(\['open', 'favorite', 'subscribe'\]\)/)
   assert.match(source, /emit\('open'/)
   assert.match(source, /emit\('favorite'/)
   assert.match(source, /@click\.stop="emitFavorite"/)
-  assert.match(source, /@keydown\.enter\.stop/)
-  assert.match(source, /@keydown\.space\.stop/)
+  assert.match(source, /@keydown\.enter\.stop\.prevent="emitFavorite"/)
+  assert.match(source, /@keydown\.space\.stop\.prevent="emitFavorite"/)
+})
+
+test('ActorPortraitCard renders subscribe action only when requested', () => {
+  assert.match(source, /v-if="showSubscribe"/)
+  assert.match(source, /actor-portrait-card__subscribe/)
+})
+
+test('ActorPortraitCard emits subscribe without opening the card', () => {
+  assert.match(source, /defineEmits\(\['open', 'favorite', 'subscribe'\]\)/)
+  assert.match(source, /emit\('subscribe'/)
+  assert.match(source, /@click\.stop="emitSubscribe"/)
+  assert.match(source, /@keydown\.enter\.stop\.prevent="emitSubscribe"/)
+  assert.match(source, /@keydown\.space\.stop\.prevent="emitSubscribe"/)
+})
+
+test('ActorPortraitCard exposes subscribed state accessibly and stylistically', () => {
+  assert.match(source, /:aria-label="subscribeAriaLabel"/)
+  assert.match(source, /:title="subscribeButtonTitle"/)
+  assert.match(source, /'is-subscribed': subscribed/)
+  assert.match(source, /props\.subscribeTitle \|\| \(props\.subscribed \? '取消订阅演员' : '订阅演员'\)/)
+  assert.match(source, /:disabled="subscribeDisabled"/)
 })
 
 test('ActorPortraitCard supports badges and action label for reused actor flows', () => {

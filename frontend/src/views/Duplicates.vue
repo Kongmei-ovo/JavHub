@@ -181,8 +181,12 @@ onMounted(fetchDuplicates)
   color: #fff;
 }
 .action-btn.ignore {
-  background: var(--white-06);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-secondary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .loading, .error, .empty {
   text-align: center;

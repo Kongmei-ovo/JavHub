@@ -356,6 +356,13 @@ const triggerFullJob = async () => {
     ElMessage.warning('请先采集 Emby 数据')
     return
   }
+  const confirmed = await requestConfirm({
+    title: '全量库存对比',
+    message: '确认开始全量库存对比？',
+    details: '会读取最近一次 Emby 采集快照并生成缺失/映射结果，运行期间相关操作会暂时不可用。',
+    confirmText: '开始对比',
+  })
+  if (!confirmed) return
   running.value = true
   try {
     await axios.post('/api/inventory/jobs/trigger', { job_type: 'full', snapshot_key: snapshotKey.value })

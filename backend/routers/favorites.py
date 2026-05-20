@@ -41,17 +41,21 @@ async def get_favorite_videos():
     client = get_info_client()
 
     async def fetch_one(item):
-        # entity_id 就是 content_id，JavInfoApi 通用键
-        content_id = item["entity_id"]
+        metadata = item.get("metadata") or {}
+        content_id = metadata.get("content_id") or metadata.get("dvd_id") or str(item["entity_id"]).split("::", 1)[0]
+        service_code = metadata.get("service_code") or None
         try:
-            data = await client.get_video(content_id)
+            data = await client.get_video(content_id, service_code=service_code)
             data = await get_translator_service().translate_video(content_id, data, allow_network=False)
+            data["_favorite_entity_id"] = item["entity_id"]
             data["_created_at"] = item["created_at"]
             return data
         except Exception as e:
             return {
                 "content_id": content_id,
                 "dvd_id": content_id,
+                "service_code": service_code,
+                "_favorite_entity_id": item["entity_id"],
                 "title_ja": content_id,
                 "_created_at": item["created_at"],
                 "_error": str(e),

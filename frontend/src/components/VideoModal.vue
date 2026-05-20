@@ -1,6 +1,6 @@
 <template>
-  <teleport to="body">
-    <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
+  <teleport to="body" :disabled="inline">
+    <div v-if="visible" class="modal-overlay" :class="{ inline }" @click.self="inline ? null : $emit('close')">
       <div class="modal-container">
         <button class="modal-close" @click="$emit('close')">×</button>
 
@@ -294,13 +294,20 @@ import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
 
+function videoFavoriteId(video = {}) {
+  const id = video.content_id || video.dvd_id
+  const serviceCode = String(video.service_code || '').trim()
+  return id && serviceCode ? `${id}::${serviceCode}` : id
+}
+
 export default {
   name: 'VideoModal',
   components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
   emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },
-    video: { type: Object, default: () => ({}) }
+    video: { type: Object, default: () => ({}) },
+    inline: { type: Boolean, default: false }
   },
   data() {
     return {
@@ -317,7 +324,7 @@ export default {
   },
   computed: {
     isFavorited() {
-      const id = this.video.content_id || this.video.dvd_id
+      const id = videoFavoriteId(this.video)
       return favoriteState.isFavorited('video', id)
     },
     videoLoaded() {
@@ -381,10 +388,14 @@ export default {
   },
   methods: {
     async toggleFavorite() {
-      const id = this.video.content_id || this.video.dvd_id
+      const id = videoFavoriteId(this.video)
       if (!id) return
       try {
-        await favoriteState.toggle('video', id)
+        await favoriteState.toggle('video', id, {
+          content_id: this.video.content_id || this.video.dvd_id,
+          dvd_id: this.video.dvd_id,
+          service_code: this.video.service_code || '',
+        })
       } catch (err) {
         console.error('Failed to toggle favorite:', err)
       }
@@ -601,6 +612,27 @@ export default {
   transition: all 0.4s var(--ease-pro);
 }
 
+.modal-overlay.inline {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: block;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.modal-overlay.inline .modal-container {
+  width: min(100%, 980px);
+  max-height: none;
+  margin-inline: auto;
+}
+
+.modal-overlay.inline .modal-body {
+  max-height: none;
+}
+
 :root[data-theme="dark"] .modal-overlay {
   --modal-sheet-fallback: rgba(18, 18, 20, 0.82);
   --modal-panel-bg: rgba(255, 255, 255, 0.06);
@@ -775,6 +807,25 @@ export default {
     border-radius: 22px 22px 0 0;
     border-inline: 0;
     border-bottom: 0;
+  }
+
+  .modal-overlay.inline .modal-container {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-radius: 22px;
+    border: 1px solid var(--modal-panel-border);
+  }
+
+  .modal-overlay.inline .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+
+  .modal-overlay.inline .modal-body {
+    height: auto;
+    max-height: none;
   }
 
   .modal-close {

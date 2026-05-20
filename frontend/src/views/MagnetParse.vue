@@ -105,6 +105,7 @@
 
 <script>
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 export default {
   name: 'MagnetParse',
@@ -200,7 +201,17 @@ export default {
       this.duplicateCount = 0
       this.hasParsed = false
     },
-    clearAll() {
+    async clearAll() {
+      if (this.hasInput || this.hasResults) {
+        const confirmed = await requestConfirm({
+          title: '清空磁链解析',
+          message: '确认清空当前输入和解析结果？',
+          details: '这只会清空当前页面内容，不会删除已经添加的下载任务。',
+          confirmText: '清空',
+          tone: 'danger',
+        })
+        if (!confirmed) return
+      }
       this.magnetInput = ''
       this.clearResults()
     },
@@ -220,6 +231,15 @@ export default {
       }
     },
     async downloadAllMagnets() {
+      const pending = this.parsedMagnets.filter(mag => mag.status !== 'added')
+      if (!pending.length) return
+      const confirmed = await requestConfirm({
+        title: '添加全部磁链',
+        message: `确认添加 ${pending.length} 个磁链到下载任务？`,
+        details: '会逐条创建真实下载任务，并发送到当前配置的下载流程。',
+        confirmText: '添加全部',
+      })
+      if (!confirmed) return
       this.batchLoading = true
       for (const mag of this.parsedMagnets) {
         if (mag.status === 'added') continue

@@ -118,6 +118,7 @@ import { ElMessage } from '../utils/message.js'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'
+import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import api from '../api'
 
 const route = useRoute()
@@ -247,7 +248,7 @@ const openEmbyItem = (video) => {
 }
 
 const showDetail = (video) => {
-  openVideoModal(video)
+  openVideoDetail(video, router, route, openVideoModal)
 }
 
 const createCandidate = async (video) => {
