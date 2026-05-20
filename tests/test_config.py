@@ -95,3 +95,48 @@ def test_blank_ai_secret_update_preserves_existing_provider_secrets(monkeypatch)
     assert c.ai['gemini']['model'] == 'gemini-new'
     assert c.ai['openai_compatible']['api_key'] == 'saved-openai-token'
     assert c.ai['openai_compatible']['model'] == 'new-openai'
+
+def test_translation_defaults_include_single_provider_and_baidu_config():
+    c = Config.__new__(Config)
+    c._config = {}
+
+    assert c.translation['provider'] == 'google_free'
+    assert c.translation_provider == 'google_free'
+    assert c.translation_provider_order == ['cache', 'mapping', 'google_free']
+    assert c.translation_batch_provider_order == ['cache', 'mapping', 'google_free']
+    assert c.translation['baidu']['enabled'] is False
+    assert c.translation['baidu']['endpoint'] == 'https://fanyi-api.baidu.com/api/trans/vip/translate'
+    assert c.translation['baidu']['qps'] == 1
+
+def test_legacy_translation_order_selects_first_network_provider():
+    c = Config.__new__(Config)
+    c._config = {
+        'translation': {
+            'provider_order': ['cache', 'mapping', 'baidu', 'deepl'],
+            'baidu': {'enabled': True, 'app_id': 'appid'},
+        }
+    }
+
+    assert c.translation_provider == 'baidu'
+    assert c.translation_provider_order == ['cache', 'mapping', 'baidu']
+    assert c.translation['baidu']['app_id'] == 'appid'
+
+def test_blank_translation_secret_update_preserves_existing_secret(monkeypatch):
+    c = Config.__new__(Config)
+    c._config = {
+        'translation': {
+            'provider': 'baidu',
+            'baidu': {
+                'enabled': True,
+                'app_id': 'saved-app-id',
+                'secret': 'saved-secret',
+            },
+        }
+    }
+
+    c._merge_config = Config._merge_config.__get__(c, Config)
+    monkeypatch.setattr('builtins.open', mock_open())
+    c.update({'translation': {'baidu': {'app_id': 'new-app-id', 'secret': ''}}})
+
+    assert c.translation['baidu']['app_id'] == 'new-app-id'
+    assert c.translation['baidu']['secret'] == 'saved-secret'

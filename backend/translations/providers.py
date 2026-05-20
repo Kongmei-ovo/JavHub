@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+import time
 from dataclasses import dataclass
+from random import randint
 from typing import Any, Protocol
 
 import httpx
@@ -316,6 +319,154 @@ class GoogleFreeProvider:
         return [*left, *right]
 
 
+class BaiduTranslateProvider:
+    name = "baidu"
+
+    def __init__(self, settings: dict[str, Any], *, reuse_client: bool = False):
+        self.settings = settings or {}
+        self.reuse_client = reuse_client
+        self._client: httpx.AsyncClient | None = None
+        self._last_request_at = 0.0
+        self._rate_lock = asyncio.Lock()
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    def supports(self, request: TranslationRequest) -> bool:
+        return bool(
+            request.text
+            and self.settings.get("enabled")
+            and self.settings.get("app_id")
+            and self.settings.get("secret")
+        )
+
+    async def translate(self, request: TranslationRequest) -> TranslationResult | None:
+        if not self.supports(request):
+            return None
+        payload = await self._request(request.text, request.source_language, request.target_language, request.scope)
+        if not payload:
+            return None
+        try:
+            translated = "\n".join(str(item.get("dst") or "") for item in payload["trans_result"]).strip()
+        except Exception:
+            logger.warning("Baidu translation returned unexpected response for scope=%s", request.scope)
+            return None
+        if not translated:
+            return None
+        return TranslationResult(translated_text=translated, provider=self.name, model="baidu-translate")
+
+    async def translate_many(self, requests: list[TranslationRequest]) -> list[TranslationResult | None]:
+        supported = [request for request in requests if self.supports(request)]
+        if len(supported) != len(requests):
+            return [None for _ in requests]
+        if not requests:
+            return []
+        if len(requests) == 1:
+            return [await self.translate(requests[0])]
+
+        joined = "\n".join(_one_line(request.text) for request in requests)
+        payload = await self._request(
+            joined,
+            requests[0].source_language,
+            requests[0].target_language,
+            f"batch:{len(requests)}",
+        )
+        if not payload:
+            return await self._translate_many_split(requests)
+        try:
+            translated = "\n".join(str(item.get("dst") or "") for item in payload["trans_result"]).strip()
+        except Exception:
+            logger.warning("Baidu batch translation returned unexpected response for %s items", len(requests))
+            return await self._translate_many_split(requests)
+        lines = translated.splitlines()
+        if len(lines) != len(requests):
+            logger.warning(
+                "Baidu batch translation returned %s lines for %s requests",
+                len(lines),
+                len(requests),
+            )
+            return await self._translate_many_split(requests)
+        return [
+            TranslationResult(translated_text=line.strip(), provider=self.name, model="baidu-translate") if line.strip() else None
+            for line in lines
+        ]
+
+    async def _translate_many_split(self, requests: list[TranslationRequest]) -> list[TranslationResult | None]:
+        if len(requests) <= 1:
+            return [await self.translate(requests[0])] if requests else []
+        middle = max(1, len(requests) // 2)
+        left = await self.translate_many(requests[:middle])
+        right = await self.translate_many(requests[middle:])
+        return [*left, *right]
+
+    async def _request(
+        self,
+        text: str,
+        source_language: str | None,
+        target_language: str,
+        scope: str,
+    ) -> dict[str, Any] | None:
+        endpoint = str(self.settings.get("endpoint") or "https://fanyi-api.baidu.com/api/trans/vip/translate")
+        try:
+            timeout = float(self.settings.get("timeout", 15))
+        except Exception:
+            timeout = 15.0
+        app_id = str(self.settings.get("app_id") or "")
+        secret = str(self.settings.get("secret") or "")
+        salt = _salt()
+        data = {
+            "q": text,
+            "from": _baidu_lang(source_language or "auto"),
+            "to": _baidu_lang(target_language),
+            "appid": app_id,
+            "salt": salt,
+            "sign": _baidu_sign(app_id, text, salt, secret),
+        }
+        try:
+            await self._throttle()
+            if self.reuse_client:
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=timeout, trust_env=False)
+                response = await self._client.post(endpoint, data=data)
+            else:
+                async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                    response = await client.post(endpoint, data=data)
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            logger.warning("Baidu translation failed for scope=%s: %s", scope, exc)
+            return None
+        if payload.get("error_code"):
+            logger.warning(
+                "Baidu translation returned error for scope=%s: %s %s",
+                scope,
+                payload.get("error_code"),
+                payload.get("error_msg") or "",
+            )
+            return None
+        if not isinstance(payload.get("trans_result"), list):
+            logger.warning("Baidu translation returned unexpected response for scope=%s", scope)
+            return None
+        return payload
+
+    async def _throttle(self) -> None:
+        try:
+            qps = float(self.settings.get("qps", 1) or 0)
+        except Exception:
+            qps = 1.0
+        if qps <= 0:
+            return
+        min_gap = 1.0 / qps
+        async with self._rate_lock:
+            now = time.monotonic()
+            wait = self._last_request_at + min_gap - now
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last_request_at = time.monotonic()
+
+
 class DeepLProvider:
     name = "deepl"
 
@@ -407,6 +558,28 @@ def _target_lang(value: str) -> str:
     if normalized in {"zh-tw", "zh-hant"}:
         return "zh-TW"
     return normalized
+
+
+def _baidu_lang(value: str) -> str:
+    normalized = (value or "auto").replace("_", "-").lower()
+    if normalized in {"auto", ""}:
+        return "auto"
+    if normalized in {"zh-cn", "zh-hans", "zh"}:
+        return "zh"
+    if normalized in {"zh-tw", "zh-hant", "cht"}:
+        return "cht"
+    if normalized in {"ja", "jp", "jpn"}:
+        return "jp"
+    return normalized
+
+
+def _baidu_sign(app_id: str, text: str, salt: str, secret: str) -> str:
+    raw = f"{app_id}{text}{salt}{secret}"
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+
+def _salt() -> str:
+    return str(randint(32768, 65536))
 
 
 def _one_line(value: str) -> str:

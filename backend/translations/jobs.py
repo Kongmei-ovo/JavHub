@@ -22,7 +22,7 @@ from database import (
 )
 from modules.info_client import get_info_client
 from translations.category_decensor import decensor_category_name
-from translations.providers import GoogleFreeProvider, TranslationRequest
+from translations.providers import BaiduTranslateProvider, GoogleFreeProvider, TranslationProvider, TranslationRequest
 from translations.service import TranslatorService
 
 logger = logging.getLogger(__name__)
@@ -65,10 +65,31 @@ def _content_id(item: dict) -> str:
     return str(item.get("content_id") or item.get("dvd_id") or item.get("canonical_number") or "").strip()
 
 
-def _batch_order(provider_order: list[str] | None = None) -> list[str]:
-    if provider_order:
-        return provider_order
-    return config.translation_batch_provider_order
+NETWORK_PROVIDERS = {"google_free", "baidu", "deepl", "microsoft", "ai", "openai_compatible"}
+
+
+def _batch_order(provider_order: list[str] | None = None, provider: str | None = None) -> list[str]:
+    return _single_provider_order(provider_order, provider=provider)
+
+
+def _single_provider_order(provider_order: list[str] | None = None, provider: str | None = None) -> list[str]:
+    selected = _normalize_provider(provider) if provider else ""
+    if not selected and isinstance(provider_order, list):
+        for item in provider_order:
+            normalized = _normalize_provider(item)
+            if normalized in NETWORK_PROVIDERS:
+                selected = normalized
+                break
+    if not selected:
+        selected = _normalize_provider(config.translation_provider)
+    return ["cache", "mapping", selected]
+
+
+def _normalize_provider(value: Any) -> str:
+    provider = str(value or "").strip()
+    if provider == "openai_compatible":
+        return "ai"
+    return provider if provider in NETWORK_PROVIDERS else ""
 
 
 def _batch_concurrency() -> int:
@@ -92,10 +113,10 @@ def _scan_pages_per_batch() -> int:
 
 
 def _active_provider_order(provider_order: list[str], *, force: bool) -> list[str]:
+    order = _single_provider_order(provider_order)
     if not force:
-        return provider_order
-    refreshed = [provider for provider in provider_order if provider not in {"cache", "mapping"}]
-    return refreshed or provider_order
+        return order
+    return _network_provider_order(order) or order
 
 
 def _has_title_translation(content_id: str, source: str) -> bool:
@@ -132,15 +153,30 @@ def _metadata_known_translation(entity_type: str, entity_id: Any, source: str) -
 
 
 def _network_provider_order(provider_order: list[str]) -> list[str]:
-    return [provider for provider in provider_order if provider not in {"cache", "mapping"}]
+    result = []
+    for provider in provider_order:
+        normalized = _normalize_provider(provider)
+        if normalized in NETWORK_PROVIDERS:
+            result.append(normalized)
+            break
+    return result
 
 
 def _allows_ai_provider(provider_order: list[str]) -> bool:
     return any(provider in {"ai", "openai_compatible"} for provider in provider_order)
 
 
-def _can_batch_google(provider_order: list[str]) -> bool:
-    return bool(_network_provider_order(provider_order)[:1] == ["google_free"])
+def _batch_provider_name(provider_order: list[str]) -> str:
+    provider = (_network_provider_order(provider_order) or [""])[0]
+    return provider if provider in {"google_free", "baidu"} else ""
+
+
+def _batch_provider(name: str) -> TranslationProvider | None:
+    if name == "google_free":
+        return GoogleFreeProvider(config.translation.get("google_free", {}) or {}, reuse_client=True)
+    if name == "baidu":
+        return BaiduTranslateProvider(config.translation.get("baidu", {}) or {}, reuse_client=True)
+    return None
 
 
 def _job_resume_page(current_job_id: int, job_type: str, mode: str) -> int:
@@ -173,6 +209,7 @@ async def create_translation_job(
     job_type: str = "library_titles",
     *,
     provider_order: list[str] | None = None,
+    provider: str | None = None,
     mode: str = "remaining",
     force: bool | None = None,
 ) -> dict:
@@ -182,7 +219,7 @@ async def create_translation_job(
         mode = "refresh_all" if force else "remaining"
     if mode not in JOB_MODES:
         raise ValueError(f"mode must be one of: {', '.join(sorted(JOB_MODES))}")
-    order = _batch_order(provider_order)
+    order = _batch_order(provider_order, provider)
     job_id = add_translation_job(job_type, scope="library", provider_order=order)
     task = asyncio.create_task(_run_job(job_id, job_type, order, mode=mode))
     _running_jobs[job_id] = task
@@ -197,12 +234,13 @@ async def create_translation_retry_job(
     q: str | None = None,
     ids: list[str] | None = None,
     provider_order: list[str] | None = None,
+    provider: str | None = None,
 ) -> dict:
     if item_type and item_type not in {"title", *METADATA_ENTITY_TYPES}:
         raise ValueError("type must be one of: title, actress, category, series, maker, label")
     if status and status not in {"untranslated", "machine_translated", "reviewed", "manual_edited", "failed", "invalid"}:
         raise ValueError("status is not valid")
-    order = _batch_order(provider_order)
+    order = _batch_order(provider_order, provider)
     job_id = add_translation_job(WORKBENCH_RETRY_JOB_TYPE, scope=item_type or "workbench", provider_order=order)
     task = asyncio.create_task(
         _run_workbench_retry_job(
@@ -740,8 +778,9 @@ async def _translate_titles(
         _record_many(job_id, counters, processed=skipped, skipped=skipped)
     if not pending:
         return
-    if _can_batch_google(active_provider_order):
-        await _translate_title_batches_with_google(job_id, pending, counters, preserve_reviewed=not force)
+    batch_provider = _batch_provider_name(active_provider_order)
+    if batch_provider:
+        await _translate_title_batches(job_id, pending, counters, batch_provider, preserve_reviewed=not force)
         return
 
     network_provider_order = _network_provider_order(active_provider_order)
@@ -847,8 +886,9 @@ async def _translate_metadata_names(job_id: int, items: list[dict], provider_ord
         _record_many(job_id, counters, processed=skipped, skipped=skipped)
     if not pending:
         return
-    if _can_batch_google(active_provider_order):
-        await _translate_metadata_batches_with_google(job_id, pending, counters, preserve_reviewed=not force)
+    batch_provider = _batch_provider_name(active_provider_order)
+    if batch_provider:
+        await _translate_metadata_batches(job_id, pending, counters, batch_provider, preserve_reviewed=not force)
         return
 
     network_provider_order = _network_provider_order(active_provider_order)
@@ -929,14 +969,19 @@ def _translation_chunks(items: list[dict]) -> list[list[dict]]:
     return chunks
 
 
-async def _translate_title_batches_with_google(
+async def _translate_title_batches(
     job_id: int,
     pending: list[dict],
     counters: dict,
+    provider_name: str,
     *,
     preserve_reviewed: bool = True,
 ) -> None:
-    provider = GoogleFreeProvider(config.translation.get("google_free", {}) or {}, reuse_client=True)
+    provider = _batch_provider(provider_name)
+    if provider is None:
+        mark_translation_workbench_failed([{**item, "last_error": "no batch translation provider"} for item in pending])
+        _record_many(job_id, counters, processed=len(pending), failed=len(pending))
+        return
     semaphore = asyncio.Semaphore(_batch_concurrency())
     lock = asyncio.Lock()
 
@@ -953,9 +998,9 @@ async def _translate_title_batches_with_google(
         batch_error = "translation returned empty"
         try:
             async with semaphore:
-                results = await provider.translate_many(requests)
+                results = await provider.translate_many(requests)  # type: ignore[attr-defined]
         except Exception as exc:
-            logger.exception("Title batch translation failed for %s items", len(chunk))
+            logger.exception("Title batch translation failed with %s for %s items", provider_name, len(chunk))
             batch_error = str(exc)
             results = [None for _ in chunk]
 
@@ -990,14 +1035,19 @@ async def _translate_title_batches_with_google(
         await provider.aclose()
 
 
-async def _translate_metadata_batches_with_google(
+async def _translate_metadata_batches(
     job_id: int,
     pending: list[dict],
     counters: dict,
+    provider_name: str,
     *,
     preserve_reviewed: bool = True,
 ) -> None:
-    provider = GoogleFreeProvider(config.translation.get("google_free", {}) or {}, reuse_client=True)
+    provider = _batch_provider(provider_name)
+    if provider is None:
+        mark_translation_workbench_failed([{**item, "last_error": "no batch translation provider"} for item in pending])
+        _record_many(job_id, counters, processed=len(pending), failed=len(pending))
+        return
     semaphore = asyncio.Semaphore(_batch_concurrency())
     lock = asyncio.Lock()
 
@@ -1014,9 +1064,9 @@ async def _translate_metadata_batches_with_google(
         batch_error = "translation returned empty"
         try:
             async with semaphore:
-                results = await provider.translate_many(requests)
+                results = await provider.translate_many(requests)  # type: ignore[attr-defined]
         except Exception as exc:
-            logger.exception("Metadata batch translation failed for %s items", len(chunk))
+            logger.exception("Metadata batch translation failed with %s for %s items", provider_name, len(chunk))
             batch_error = str(exc)
             results = [None for _ in chunk]
 

@@ -486,6 +486,7 @@ async def all_stats():
         coverage[mapping_type] = item
 
     translation_cfg = config.translation
+    selected_provider = config.translation_provider
     ai_cfg = config.ai
     ai_provider = str(ai_cfg.get("provider") or "openai_compatible")
     provider_cfg = ai_cfg.get(ai_provider, {}) if isinstance(ai_cfg.get(ai_provider), dict) else {}
@@ -496,19 +497,27 @@ async def all_stats():
         "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
         "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
         "google_free": {
-            "enabled": "google_free" in config.translation_provider_order,
+            "enabled": selected_provider == "google_free",
             "ready": bool((translation_cfg.get("google_free") or {}).get("enabled", True)),
         },
+        "baidu": {
+            "enabled": selected_provider == "baidu",
+            "ready": bool(
+                (translation_cfg.get("baidu") or {}).get("enabled")
+                and (translation_cfg.get("baidu") or {}).get("app_id")
+                and (translation_cfg.get("baidu") or {}).get("secret")
+            ),
+        },
         "deepl": {
-            "enabled": "deepl" in config.translation_provider_order,
+            "enabled": selected_provider == "deepl",
             "ready": bool((translation_cfg.get("deepl") or {}).get("enabled") and (translation_cfg.get("deepl") or {}).get("api_key")),
         },
         "microsoft": {
-            "enabled": "microsoft" in config.translation_provider_order,
+            "enabled": selected_provider == "microsoft",
             "ready": bool((translation_cfg.get("microsoft") or {}).get("enabled") and (translation_cfg.get("microsoft") or {}).get("api_key")),
         },
         "ai": {
-            "enabled": any(item in config.translation_provider_order for item in ("ai", "openai_compatible")),
+            "enabled": selected_provider == "ai",
             "ready": bool(
                 provider_cfg.get("base_url")
                 and provider_cfg.get("model")
@@ -574,6 +583,7 @@ async def retry_translation_items(body: dict[str, Any] | None = None):
     q = str(body.get("q") or "").strip() or None
     ids = body.get("ids")
     provider_order = body.get("provider_order")
+    provider = str(body.get("provider") or "").strip() or None
     if item_type and item_type not in VALID_TYPES:
         raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
     if ids is not None and not isinstance(ids, list):
@@ -587,6 +597,7 @@ async def retry_translation_items(body: dict[str, Any] | None = None):
             q=q,
             ids=[str(item) for item in ids] if isinstance(ids, list) else None,
             provider_order=provider_order,
+            provider=provider,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
@@ -642,26 +653,21 @@ async def update_translation_item(item_type: str, item_id: str, body: dict[str, 
 
 @router.post("/test")
 async def test_translation(body: dict[str, Any]):
-    """测试当前 AI 翻译配置。"""
+    """测试当前翻译源配置。"""
     text = str(body.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "text is required")
+    provider = str(body.get("provider") or config.translation_provider).strip() or None
     translator = get_translator_service()
-    original_order = translator.settings.get("provider_order")
-    translator.settings["provider_order"] = ["ai"]
-    try:
-        translated = await translator.translate_text(
-            text,
-            scope="test",
-            context="translation configuration test",
-            use_ai=True,
-            persist_ai=False,
-        )
-    finally:
-        if original_order is None:
-            translator.settings.pop("provider_order", None)
-        else:
-            translator.settings["provider_order"] = original_order
+    translated = await translator.translate_text(
+        text,
+        scope="test",
+        context="translation configuration test",
+        use_ai=True,
+        persist_ai=False,
+        provider_order=["cache", "mapping", provider] if provider else None,
+        return_original=False,
+    )
     if not translated or translated == text:
         raise HTTPException(502, "No translation provider returned a translated result")
     return {"text": text, "translated_text": translated}
@@ -672,6 +678,7 @@ async def start_translation_job(body: dict[str, Any] | None = None):
     body = body or {}
     job_type = str(body.get("job_type") or "library_titles")
     provider_order = body.get("provider_order")
+    provider = str(body.get("provider") or "").strip() or None
     if provider_order is not None and not isinstance(provider_order, list):
         raise HTTPException(400, "provider_order must be a list")
     mode = str(body.get("mode") or "").strip()
@@ -681,6 +688,7 @@ async def start_translation_job(body: dict[str, Any] | None = None):
         return await create_translation_job(
             job_type,
             provider_order=provider_order,
+            provider=provider,
             mode=mode,
         )
     except ValueError as exc:

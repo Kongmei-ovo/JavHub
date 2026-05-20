@@ -129,24 +129,27 @@ ai:
 translation:
   enabled: true
   target_language: "zh-CN"
+  provider: google_free
   provider_order:
     - cache
     - mapping
     - google_free
-    - deepl
-    - microsoft
-    - openai_compatible
   batch_provider_order:
     - cache
     - mapping
     - google_free
-    - deepl
-    - microsoft
-  realtime_mode: sync
+  realtime_mode: cache_only
   google_free:
     enabled: true
     base_url: "https://translate.googleapis.com/translate_a/single"
     timeout: 10
+  baidu:
+    enabled: false
+    app_id: ""
+    secret: ""
+    endpoint: "https://fanyi-api.baidu.com/api/trans/vip/translate"
+    timeout: 15
+    qps: 1
   deepl:
     enabled: false
     api_key: ""

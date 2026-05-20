@@ -61,8 +61,9 @@ export const DEFAULT_CONFIG = {
   translation: {
     enabled: true,
     target_language: 'zh-CN',
-    provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft', 'openai_compatible'],
-    batch_provider_order: ['cache', 'mapping', 'google_free', 'deepl', 'microsoft'],
+    provider: 'google_free',
+    provider_order: ['cache', 'mapping', 'google_free'],
+    batch_provider_order: ['cache', 'mapping', 'google_free'],
     realtime_mode: 'cache_only',
     batch_concurrency: 32,
     batch_size: 200,
@@ -73,6 +74,14 @@ export const DEFAULT_CONFIG = {
       enabled: true,
       base_url: 'https://translate.googleapis.com/translate_a/single',
       timeout: 10,
+    },
+    baidu: {
+      enabled: false,
+      app_id: '',
+      secret: '',
+      endpoint: 'https://fanyi-api.baidu.com/api/trans/vip/translate',
+      timeout: 15,
+      qps: 1,
     },
     deepl: {
       enabled: false,

@@ -144,7 +144,29 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         create_job.assert_awaited_once_with(
             "library_titles",
             provider_order=["cache", "mapping", "google_free"],
+            provider=None,
             mode="refresh_all",
+        )
+
+    async def test_start_job_accepts_single_provider(self):
+        from routers.translation import start_translation_job
+
+        with patch(
+            "routers.translation.create_translation_job",
+            AsyncMock(return_value={"id": 12, "status": "pending"}),
+        ) as create_job:
+            result = await start_translation_job({
+                "job_type": "library_titles",
+                "provider": "baidu",
+                "mode": "remaining",
+            })
+
+        self.assertEqual(result["id"], 12)
+        create_job.assert_awaited_once_with(
+            "library_titles",
+            provider_order=None,
+            provider="baidu",
+            mode="remaining",
         )
 
     async def test_start_job_keeps_legacy_force_compatibility(self):
@@ -159,6 +181,7 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         create_job.assert_awaited_once_with(
             "metadata_names",
             provider_order=None,
+            provider=None,
             mode="refresh_all",
         )
 
@@ -280,6 +303,26 @@ class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
             q="三上",
             ids=["26225"],
             provider_order=["cache", "google_free"],
+            provider=None,
+        )
+
+    async def test_retry_endpoint_accepts_single_provider(self):
+        from routers.translation import retry_translation_items
+
+        with patch(
+            "routers.translation.create_translation_retry_job",
+            AsyncMock(return_value={"id": 10, "status": "pending"}),
+        ) as create_job:
+            result = await retry_translation_items({"type": "title", "provider": "baidu"})
+
+        self.assertEqual(result["id"], 10)
+        create_job.assert_awaited_once_with(
+            item_type="title",
+            status=None,
+            q=None,
+            ids=None,
+            provider_order=None,
+            provider="baidu",
         )
 
     async def test_pause_job_endpoint_marks_job_paused(self):
