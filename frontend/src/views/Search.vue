@@ -55,7 +55,7 @@
         <!-- 排序 + 筛选条 -->
         <div class="sort-strip">
           <div class="sort-strip-left">
-            <span v-if="searched" class="sort-result-count">{{ loading ? '搜索中...' : `${total} 个结果` }}</span>
+            <span v-if="searched" class="sort-result-count">{{ loading ? '搜索中...' : totalLabel }}</span>
             <span v-else class="sort-strip-label">排序</span>
             <div class="sort-pills">
               <button
@@ -327,6 +327,10 @@ export default {
     },
     versionOptions() {
       return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
+    },
+    totalLabel() {
+      if (this.total < 0) return '结果'
+      return `${this.total} 个结果`
     }
   },
   async mounted() {
@@ -482,6 +486,7 @@ export default {
       if (this.categoryTags.length) params.category_name = this.categoryTags.join(' ')
       if (this.sortState.random) {
         params.random = '1'
+        params.include_total = false
       } else {
         const sortParts = []
         for (const [field, dir] of Object.entries(this.sortState)) {
@@ -502,7 +507,7 @@ export default {
         if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
-        this.total = data.total_count || 0
+        this.total = data.total_count ?? 0
         this.totalPages = data.total_pages || 1
       } catch (e) {
         if (!this.searchSequence.isCurrent(token)) return
@@ -524,7 +529,7 @@ export default {
         if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
-        this.total = data.total_count || 0
+        this.total = data.total_count ?? 0
         this.totalPages = data.total_pages || 1
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch (e) {

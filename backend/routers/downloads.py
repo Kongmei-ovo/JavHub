@@ -8,6 +8,7 @@ from database import (
     get_download_tasks,
     delete_download_task,
     download_candidate_stats,
+    download_candidate_summary,
     list_candidate_process_runs,
     list_download_candidates,
     set_download_candidate_status,
@@ -166,6 +167,23 @@ async def list_candidates(
         limit=limit,
     )
     return {"data": rows, "total": len(rows), "stats": download_candidate_stats()}
+
+
+@router.get("/candidates/summary")
+async def candidate_summary(
+    status: Optional[str] = None,
+    actress_id: Optional[int] = None,
+    source: Optional[str] = None,
+    q: Optional[str] = None,
+    needs_magnet: Optional[bool] = None,
+) -> Dict[str, Any]:
+    return download_candidate_summary(
+        status=status,
+        actress_id=actress_id,
+        source=source,
+        q=q,
+        needs_magnet=needs_magnet,
+    )
 
 
 @router.get("/candidates/runs")

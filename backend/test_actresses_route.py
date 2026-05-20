@@ -55,3 +55,16 @@ class ActressesRouterTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(third, first)
         self.assertEqual(mock_client.list_actresses.await_count, 2)
         self.assertEqual(mock_translator.translate_entities.await_count, 2)
+
+    async def test_get_actress_uses_movie_count_from_detail_response(self):
+        mock_client = AsyncMock()
+        mock_client.get_actress.return_value = {"id": 1, "name_kanji": "三上", "movie_count": 99}
+        mock_translator = AsyncMock()
+        mock_translator.translate_entities.return_value = None
+
+        with patch("routers.actresses.get_info_client", return_value=mock_client), \
+             patch("routers.actresses.get_translator_service", return_value=mock_translator):
+            result = await actresses.get_actress(1)
+
+        self.assertEqual(result["movie_count"], 99)
+        mock_client.get_actress_videos.assert_not_awaited()

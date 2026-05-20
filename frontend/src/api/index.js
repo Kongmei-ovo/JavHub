@@ -199,6 +199,10 @@ export default {
     return api.get('/v1/downloads/candidates', { params })
   },
 
+  getDownloadCandidateSummary(params = {}) {
+    return api.get('/v1/downloads/candidates/summary', { params })
+  },
+
   getDownloadCandidate(candidateId) {
     return api.get(`/v1/downloads/candidates/${candidateId}`)
   },

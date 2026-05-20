@@ -199,25 +199,13 @@ def list_download_candidates(
 ) -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
-        where = []
-        params: list = []
-        if status:
-            where.append("status = ?")
-            params.append(status)
-        if actress_id is not None:
-            where.append("actress_id = ?")
-            params.append(actress_id)
-        if source:
-            where.append("source = ?")
-            params.append(source)
-        if q:
-            where.append("(content_id LIKE ? OR dvd_id LIKE ? OR title LIKE ? OR actress_name LIKE ?)")
-            params.extend([f"%{q}%"] * 4)
-        if needs_magnet is True:
-            where.append("(magnet IS NULL OR magnet = '')")
-        elif needs_magnet is False:
-            where.append("(magnet IS NOT NULL AND magnet != '')")
-        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        where_clause, params = _candidate_filter_clause(
+            status=status,
+            actress_id=actress_id,
+            source=source,
+            q=q,
+            needs_magnet=needs_magnet,
+        )
         cursor.execute(
             f'''
             SELECT * FROM download_candidates
@@ -238,6 +226,77 @@ def list_download_candidates(
         )
         rows = [dict(row) for row in cursor.fetchall()]
     return _enrich_candidate_rows(rows)
+
+
+def _candidate_filter_clause(
+    status: str | None = None,
+    actress_id: int | None = None,
+    source: str | None = None,
+    q: str | None = None,
+    needs_magnet: bool | None = None,
+) -> tuple[str, list]:
+    where = []
+    params: list = []
+    if status:
+        where.append("status = ?")
+        params.append(status)
+    if actress_id is not None:
+        where.append("actress_id = ?")
+        params.append(actress_id)
+    if source:
+        where.append("source = ?")
+        params.append(source)
+    if q:
+        where.append("(content_id LIKE ? OR dvd_id LIKE ? OR title LIKE ? OR actress_name LIKE ?)")
+        params.extend([f"%{q}%"] * 4)
+    if needs_magnet is True:
+        where.append("(magnet IS NULL OR magnet = '')")
+    elif needs_magnet is False:
+        where.append("(magnet IS NOT NULL AND magnet != '')")
+    return (f"WHERE {' AND '.join(where)}" if where else ""), params
+
+
+def download_candidate_summary(
+    status: str | None = None,
+    actress_id: int | None = None,
+    source: str | None = None,
+    q: str | None = None,
+    needs_magnet: bool | None = None,
+) -> dict:
+    where_clause, params = _candidate_filter_clause(
+        status=status,
+        actress_id=actress_id,
+        source=source,
+        q=q,
+        needs_magnet=needs_magnet,
+    )
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f'''
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'candidate' THEN 1 ELSE 0 END) AS candidate,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE
+                    WHEN status = 'candidate' AND (magnet IS NULL OR magnet = '') THEN 1
+                    ELSE 0
+                END) AS needs_magnet,
+                SUM(CASE
+                    WHEN status = 'candidate' AND magnet IS NOT NULL AND magnet != '' THEN 1
+                    ELSE 0
+                END) AS ready
+            FROM download_candidates
+            {where_clause}
+            ''',
+            params,
+        )
+        row = cursor.fetchone()
+    keys = ("total", "candidate", "approved", "rejected", "sent", "failed", "needs_magnet", "ready")
+    return {key: int(row[key] or 0) for key in keys}
 
 
 def get_download_candidate(candidate_id: int) -> Optional[dict]:
@@ -338,6 +397,7 @@ def bulk_set_download_candidate_status(
 
 
 def download_candidate_stats() -> dict:
+    summary = download_candidate_summary()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT status, COUNT(*) AS count FROM download_candidates GROUP BY status")
@@ -356,10 +416,8 @@ def download_candidate_stats() -> dict:
         "failed": counts.get("failed", 0),
         "by_source": source_counts,
         "candidate_by_source": candidate_source_counts,
-        "needs_magnet": sum(
-            1 for row in list_download_candidates(status="candidate", limit=100000)
-            if not row.get("magnet")
-        ),
+        "needs_magnet": summary["needs_magnet"],
+        "ready": summary["ready"],
     }
 
 

@@ -146,6 +146,15 @@
           </div>
         </div>
       </div>
+      <div v-if="hasMoreMovies" class="load-more-wrap">
+        <button
+          class="btn btn-ghost load-more-btn"
+          :disabled="loadingMoreMovies"
+          @click="loadMoreMovies"
+        >
+          {{ loadingMoreMovies ? '加载中...' : `加载更多 (${movies.length}/${totalCount || movies.length})` }}
+        </button>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -185,6 +194,8 @@ import { openVideoModal } from '../utils/modalState.js'
 import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
 import MovieCard from '../components/MovieCard.vue'
 
+const MOVIE_PAGE_SIZE = 100
+
 export default {
   name: 'Actor',
   components: { MovieCard },
@@ -194,6 +205,9 @@ export default {
       actressData: null,
       movies: [],
       totalCount: 0,
+      moviePage: 1,
+      movieTotalPages: 1,
+      loadingMoreMovies: false,
       loading: false,
       activeYear: null,
       showVariants: false,
@@ -241,11 +255,14 @@ export default {
       const s = this.supplementStatus?.last_job?.status
       return s === 'running' || s === 'queued'
     },
+    hasMoreMovies() {
+      return this.moviePage < this.movieTotalPages
+    },
   },
-  mounted() {
+  async mounted() {
     this.actorName = this.$route.query.name || this.$route.params.name || ''
     if (this.actorName) {
-      this.loadActressInfo()
+      await this.loadActressInfo()
       this.loadActorMovies()
       this.loadSupplementStatus()
       this.loadCandidateSummary()
@@ -299,57 +316,48 @@ export default {
         _dataOrigin: m.data_origin || null,
       }
     },
+    async fetchActorMoviePage(page) {
+      if (this.actressId) {
+        const resp = await api.getActressVideos(this.actressId, page, MOVIE_PAGE_SIZE, { include_supplement: '1' })
+        return resp.data
+      }
+      const resp = await api.searchVideos({ actress_name: this.actorName, page, page_size: MOVIE_PAGE_SIZE })
+      return resp.data
+    },
+    appendMoviePage(data) {
+      const incoming = (data.data || []).map(m => this.normalizeMovie(m))
+      this.movies.push(...incoming)
+      this.totalCount = data.total_count || this.movies.length
+      this.movieTotalPages = data.total_pages || 1
+      this.$nextTick(() => this._setupYearObserver())
+    },
     async loadActorMovies() {
       this.loading = true
       try {
-        const pageSize = 100
-        let allMovies = []
-        let totalCount = 0
-
-        if (this.actressId) {
-          const fetchPage = async (page) => {
-            const resp = await api.getActressVideos(this.actressId, page, pageSize, { include_supplement: '1' })
-            return resp.data
-          }
-          const first = await fetchPage(1)
-          allMovies = (first.data || []).map(m => this.normalizeMovie(m))
-          totalCount = first.total_count || allMovies.length
-          const totalPages = first.total_pages || 1
-          if (totalPages > 1) {
-            const pagePromises = []
-            for (let page = 2; page <= totalPages; page++) {
-              pagePromises.push(fetchPage(page))
-            }
-            const results = await Promise.all(pagePromises)
-            for (const r of results) {
-              allMovies.push(...(r.data || []).map(m => this.normalizeMovie(m)))
-            }
-          }
-        } else {
-          const resp = await api.searchVideos({ actress_name: this.actorName, page: 1, page_size: pageSize })
-          const data = resp.data
-          allMovies = (data.data || []).map(m => this.normalizeMovie(m))
-          totalCount = data.total_count || allMovies.length
-          const totalPages = data.total_pages || 1
-          if (totalPages > 1) {
-            const pagePromises = []
-            for (let page = 2; page <= totalPages; page++) {
-              pagePromises.push(api.searchVideos({ actress_name: this.actorName, page, page_size: pageSize }))
-            }
-            const results = await Promise.all(pagePromises)
-            for (const r of results) {
-              allMovies.push(...(r.data.data || []).map(m => this.normalizeMovie(m)))
-            }
-          }
-        }
-
-        this.movies = allMovies
-        this.totalCount = totalCount
-        this.$nextTick(() => this._setupYearObserver())
+        this.movies = []
+        this.moviePage = 1
+        this.movieTotalPages = 1
+        this.totalCount = 0
+        const first = await this.fetchActorMoviePage(1)
+        this.appendMoviePage(first)
       } catch (e) {
         console.error('Load actor movies failed:', e)
       } finally {
         this.loading = false
+      }
+    },
+    async loadMoreMovies() {
+      if (!this.hasMoreMovies || this.loadingMoreMovies) return
+      this.loadingMoreMovies = true
+      try {
+        const nextPage = this.moviePage + 1
+        const data = await this.fetchActorMoviePage(nextPage)
+        this.moviePage = nextPage
+        this.appendMoviePage(data)
+      } catch (e) {
+        console.error('Load more actor movies failed:', e)
+      } finally {
+        this.loadingMoreMovies = false
       }
     },
     _setupYearObserver() {
@@ -401,17 +409,15 @@ export default {
     async loadCandidateSummary() {
       if (!this.actressId) return
       try {
-        const resp = await api.listDownloadCandidates({
+        const resp = await api.getDownloadCandidateSummary({
           status: 'candidate',
           actress_id: this.actressId,
-          limit: 100000,
         })
-        const rows = resp.data?.data || []
-        const needsMagnet = rows.filter(row => !row.magnet).length
+        const summary = resp.data || {}
         this.candidateSummary = {
-          candidate: rows.length,
-          needsMagnet,
-          ready: rows.length - needsMagnet,
+          candidate: summary.candidate || summary.total || 0,
+          needsMagnet: summary.needs_magnet || 0,
+          ready: summary.ready || 0,
         }
       } catch (e) {
         console.warn('Load actor candidate summary failed:', e)
@@ -685,6 +691,16 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px;
+}
+
+.load-more-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 32px;
+}
+
+.load-more-btn {
+  min-width: 180px;
 }
 
 /* Year Navigator */

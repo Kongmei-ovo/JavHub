@@ -655,6 +655,60 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["stats"]["candidate_by_source"]["subscription"], 2)
         self.assertEqual(result["stats"]["candidate_by_source"]["supplement"], 1)
 
+    async def test_candidate_summary_uses_filtered_aggregate_counts(self):
+        from database import download_candidate_summary, upsert_download_candidate
+        from routers import downloads
+
+        upsert_download_candidate(
+            content_id="SIVR-438",
+            source="subscription",
+            actress_id=101,
+            status="candidate",
+        )
+        upsert_download_candidate(
+            content_id="ABP-588",
+            source="subscription",
+            actress_id=101,
+            status="candidate",
+            magnet="magnet:?x",
+        )
+        upsert_download_candidate(
+            content_id="MIAA-999",
+            source="inventory",
+            actress_id=101,
+            status="candidate",
+            magnet="magnet:?y",
+        )
+        upsert_download_candidate(
+            content_id="SUPP-001",
+            source="subscription",
+            actress_id=202,
+            status="candidate",
+        )
+        upsert_download_candidate(
+            content_id="SUPP-002",
+            source="subscription",
+            actress_id=101,
+            status="sent",
+            magnet="magnet:?z",
+        )
+
+        db_summary = download_candidate_summary(status="candidate", actress_id=101, source="subscription")
+        route_summary = await downloads.candidate_summary(status="candidate", actress_id=101, source="subscription")
+
+        expected = {
+            "total": 2,
+            "candidate": 2,
+            "approved": 0,
+            "rejected": 0,
+            "sent": 0,
+            "failed": 0,
+            "needs_magnet": 1,
+            "ready": 1,
+        }
+        self.assertEqual(db_summary, expected)
+        self.assertEqual(route_summary, expected)
+
     async def test_get_candidate_returns_single_row(self):
         from database import upsert_download_candidate
         from routers import downloads

@@ -412,6 +412,8 @@ def _create_indexes():
         "CREATE INDEX IF NOT EXISTS idx_download_candidates_status ON download_candidates(status)",
         "CREATE INDEX IF NOT EXISTS idx_download_candidates_actress_id ON download_candidates(actress_id)",
         "CREATE INDEX IF NOT EXISTS idx_download_candidates_content_id ON download_candidates(content_id)",
+        "CREATE INDEX IF NOT EXISTS idx_download_candidates_status_actress_source ON download_candidates(status, actress_id, source)",
+        "CREATE INDEX IF NOT EXISTS idx_download_candidates_status_source ON download_candidates(status, source)",
     ]
     for sql in indexes:
         _create_index_if_possible(cursor, sql)

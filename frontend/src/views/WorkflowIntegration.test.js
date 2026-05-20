@@ -760,7 +760,10 @@ test('search preferences drive initial search params', () => {
   assert.match(search, /async mounted\(\)[\s\S]*this\.applySearchPreferences\(\{ force: true \}\)[\s\S]*await this\.loadConfiguredPageSize\(\)/)
   assert.match(search, /async loadConfiguredPageSize\(\)[\s\S]*await api\.getConfig\(\)/)
   assert.match(search, /buildSearchParams\(page\)[\s\S]*page_size: this\.pageSize[\s\S]*params\.service_code = this\.serviceCode/)
-  assert.match(search, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'/)
+  assert.match(search, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'[\s\S]*params\.include_total = false/)
+  assert.match(discoveryDetail, /if \(this\.sortState\.random\)[\s\S]*params\.random = '1'[\s\S]*params\.include_total = false/)
+  assert.match(search, /totalLabel\(\)[\s\S]*this\.total < 0[\s\S]*'结果'/)
+  assert.match(discoveryDetail, /totalLabel\(\)[\s\S]*this\.total < 0[\s\S]*'结果'/)
   assert.match(search, /params\.sort_by = sortParts\.join\(','\)/)
 })
 
@@ -847,6 +850,19 @@ test('discovery actress subscription is only enabled for numeric actress ids', (
   assert.match(discoveryDetail, /hasNumericActressId\(\)[\s\S]*this\.type === 'actress'[\s\S]*\/\^\\d\+\$\/\.test\(String\(this\.value \|\| ''\)\)/)
   assert.match(discoveryDetail, /v-if="hasNumericActressId"/)
   assert.match(discoveryDetail, /subscriptionState\.toggle\(Number\(this\.value\), this\.displayNameValue \|\| this\.value\)/)
+})
+
+test('actor page lazy-loads full filmography pagination', () => {
+  assert.match(actor, /async mounted\(\)[\s\S]*await this\.loadActressInfo\(\)[\s\S]*this\.loadActorMovies\(\)/)
+  assert.match(actor, /hasMoreMovies\(\)[\s\S]*this\.moviePage < this\.movieTotalPages/)
+  assert.match(actor, /async loadMoreMovies\(\)[\s\S]*this\.moviePage \+ 1/)
+  assert.match(actor, /@click="loadMoreMovies"/)
+  assert.match(actor, /api\.getDownloadCandidateSummary/)
+  assert.doesNotMatch(actor, /fetchRemainingMoviePages/)
+  assert.doesNotMatch(actor, /MOVIE_PAGE_FETCH_CONCURRENCY/)
+  assert.doesNotMatch(actor, /Promise\.all\(pagePromises\)/)
+  assert.doesNotMatch(actor, /api\.listDownloadCandidates/)
+  assert.doesNotMatch(actor, /limit:\s*100000/)
 })
 
 test('vite dev server proxies bare health checks to the backend', () => {

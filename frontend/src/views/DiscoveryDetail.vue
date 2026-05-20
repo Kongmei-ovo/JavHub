@@ -44,7 +44,7 @@
     <!-- 排序 + 版本筛选栏 -->
     <div class="result-bar page-rail page-rail--gallery">
       <div class="result-bar-left">
-        <span class="result-count">{{ loading ? '加载中...' : `${total} 个结果` }}</span>
+        <span class="result-count">{{ loading ? '加载中...' : totalLabel }}</span>
         <div class="sort-pills">
           <button
             v-for="pill in sortPills"
@@ -232,6 +232,10 @@ export default {
     versionOptions() {
       return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     },
+    totalLabel() {
+      if (this.total < 0) return '结果'
+      return `${this.total} 个结果`
+    },
     isChronicle() {
       return this.chronicleMode
     },
@@ -366,6 +370,7 @@ export default {
 
       if (this.sortState.random) {
         params.random = '1'
+        params.include_total = false
       } else {
         const sortParts = []
         for (const [field, dir] of Object.entries(this.sortState)) {
@@ -386,7 +391,7 @@ export default {
         const resp = await api.searchVideos(this.buildParams())
         if (!this.searchSequence.isCurrent(token)) return
         this.results = resp.data.data || []
-        this.total = resp.data.total_count || 0
+        this.total = resp.data.total_count ?? 0
         this.totalPages = resp.data.total_pages || 1
       } catch (e) {
         if (!this.searchSequence.isCurrent(token)) return

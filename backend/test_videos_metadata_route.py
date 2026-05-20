@@ -11,6 +11,41 @@ from routers.videos import router, search_videos
 from services import cache
 
 
+def _search_kwargs(**overrides):
+    params = {
+        "q": None,
+        "content_id": None,
+        "dvd_id": None,
+        "maker_id": None,
+        "maker_name": None,
+        "series_id": None,
+        "series_name": None,
+        "actress_id": None,
+        "actress_name": None,
+        "category_id": None,
+        "category_name": None,
+        "label_id": None,
+        "label_name": None,
+        "site_id": None,
+        "year": None,
+        "year_from": None,
+        "year_to": None,
+        "runtime_min": None,
+        "runtime_max": None,
+        "release_date_from": None,
+        "release_date_to": None,
+        "service_code": None,
+        "sort_by": None,
+        "sort_order": None,
+        "random": None,
+        "include_total": None,
+        "page": 1,
+        "page_size": 20,
+    }
+    params.update(overrides)
+    return params
+
+
 class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
@@ -75,6 +110,79 @@ class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["total_count"], 1)
         translator.translate_videos.assert_awaited_once()
         self.assertFalse(translator.translate_videos.await_args.kwargs["allow_network"])
+
+    async def test_search_route_forwards_include_total_when_provided(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {"data": [], "total_count": -1, "total_pages": -1}
+
+        with patch("routers.videos.get_info_client", return_value=client):
+            result = await search_videos(**_search_kwargs(include_total=False))
+
+        self.assertEqual(result["total_count"], -1)
+        self.assertFalse(client.search_videos.await_args.kwargs["include_total"])
+
+    async def test_search_route_caches_translated_response_for_non_random_requests(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {"data": [{"content_id": "miaa784", "title_ja": "原文"}], "total_count": -1, "total_pages": -1},
+            {"data": [{"content_id": "miaa785", "title_ja": "別版"}], "total_count": -1, "total_pages": -1},
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = [
+            [{"content_id": "miaa784", "title_ja": "译文"}],
+            [{"content_id": "miaa785", "title_ja": "別版译文"}],
+        ]
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            first = await search_videos(**_search_kwargs(q="abc", include_total=False))
+            second = await search_videos(**_search_kwargs(q="abc", include_total=False))
+            other_page = await search_videos(**_search_kwargs(q="abc", include_total=False, page=2))
+
+        self.assertEqual(second, first)
+        self.assertEqual(other_page["data"][0]["content_id"], "miaa785")
+        self.assertEqual(client.search_videos.await_count, 2)
+        self.assertEqual(translator.translate_videos.await_count, 2)
+
+    async def test_search_route_does_not_cache_random_requests_when_total_is_required(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {"data": [{"content_id": "first"}], "total_count": 2, "total_pages": 1},
+            {"data": [{"content_id": "second"}], "total_count": 2, "total_pages": 1},
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            first = await search_videos(**_search_kwargs(random="1", include_total=True))
+            second = await search_videos(**_search_kwargs(random="1", include_total=True))
+
+        self.assertEqual(first["data"][0]["content_id"], "first")
+        self.assertEqual(second["data"][0]["content_id"], "second")
+        self.assertEqual(client.search_videos.await_count, 2)
+        self.assertEqual(translator.translate_videos.await_count, 2)
+
+    async def test_random_search_with_no_total_uses_short_response_cache(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {"data": [{"content_id": "first"}], "total_count": -1, "total_pages": -1},
+            {"data": [{"content_id": "second"}], "total_count": -1, "total_pages": -1},
+            {"data": [{"content_id": "third"}], "total_count": -1, "total_pages": -1},
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            first = await search_videos(**_search_kwargs(random="1", include_total=False))
+            second = await search_videos(**_search_kwargs(random="1", include_total=False))
+            other_page = await search_videos(**_search_kwargs(random="1", include_total=False, page=2))
+
+        self.assertEqual(second, first)
+        self.assertEqual(other_page["data"][0]["content_id"], "second")
+        self.assertEqual(client.search_videos.await_count, 2)
+        self.assertEqual(translator.translate_videos.await_count, 2)
 
     async def test_list_videos_defaults_to_no_total_and_caches_translated_response(self):
         client = AsyncMock()

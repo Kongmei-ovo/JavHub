@@ -13,7 +13,6 @@ from database import (
     get_latest_snapshot_key,
     get_snapshot_actors,
     list_candidate_process_runs,
-    list_download_candidates,
     mapping_summary,
 )
 
@@ -56,9 +55,6 @@ async def operations_overview() -> dict[str, Any]:
     except Exception as exc:
         supplement = {"available": False, "error": str(exc)}
 
-    candidate_rows = list_download_candidates(status="candidate", limit=100000)
-    ready_candidates = sum(1 for row in candidate_rows if row.get("magnet"))
-
     return {
         "status": "ok",
         "automation": config.automation,
@@ -76,7 +72,6 @@ async def operations_overview() -> dict[str, Any]:
         },
         "candidates": {
             **candidate_stats,
-            "ready": ready_candidates,
         },
         "candidate_runs": {
             "recent": list_candidate_process_runs(limit=5),
