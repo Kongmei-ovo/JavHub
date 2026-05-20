@@ -1464,10 +1464,10 @@ export default {
   padding: 5px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--glass-control-bg);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(22px) saturate(165%);
-  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   scrollbar-width: thin;
   scrollbar-color: var(--border-light) transparent;
 }
@@ -1478,7 +1478,7 @@ export default {
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  background: var(--glass-subtle-bg);
+  background: var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   color: var(--text-secondary);
@@ -1486,18 +1486,18 @@ export default {
   font-weight: 650;
   cursor: pointer;
   position: relative;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow: var(--glass-control-shadow);
   transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .tab-item:hover {
   color: var(--text-primary);
-  background: var(--glass-control-bg-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
 }
 
 .tab-item.active {
-  background: var(--glass-active-bg);
+  background: var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -1877,10 +1877,10 @@ export default {
   padding: 9px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--glass-control-bg);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(18px) saturate(155%);
-  -webkit-backdrop-filter: blur(18px) saturate(155%);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .appearance-setting-row.vertical {
@@ -1913,10 +1913,10 @@ export default {
   padding: 4px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--glass-control-bg);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(18px) saturate(155%);
-  -webkit-backdrop-filter: blur(18px) saturate(155%);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .segmented-mini.wide {
@@ -1929,23 +1929,23 @@ export default {
   padding: 0 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--glass-subtle-bg);
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow: var(--glass-control-shadow);
   transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .segmented-mini button:hover {
   color: var(--text-primary);
-  background: var(--glass-control-bg-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
 }
 
 .segmented-mini button.active {
-  background: var(--glass-active-bg);
+  background: var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);

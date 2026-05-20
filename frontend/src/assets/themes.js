@@ -197,7 +197,7 @@ export const THEMES = {
       '--skeleton-glint': 'rgba(255,255,255,0.92)',
       '--link-underline': 'rgba(29, 29, 31, 0.18)',
       '--link-underline-hover': 'rgba(29, 29, 31, 0.38)',
-      '--nav-active-bg': 'var(--glass-active-bg)',
+      '--nav-active-bg': 'var(--glass-active-material)',
     },
   }),
 
@@ -264,7 +264,7 @@ export const THEMES = {
       '--skeleton-glint': 'rgba(255,255,255,0.13)',
       '--link-underline': 'rgba(255,255,255,0.22)',
       '--link-underline-hover': 'rgba(255,255,255,0.48)',
-      '--nav-active-bg': 'var(--glass-active-bg)',
+      '--nav-active-bg': 'var(--glass-active-material)',
     },
   }),
 }

@@ -241,14 +241,14 @@ export default {
       { path: '/operations', label: '运营总览', icon: IconOperations },
       { path: '/genres', label: '个性推荐', icon: IconGenres },
       { path: '/search', label: '影片检索', icon: IconSearch },
+      { path: '/downloads', label: '下载管理', icon: IconHome },
       { path: '/parse', label: '磁链解析', icon: IconParse },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
       { path: '/normalize', label: '演员映射', icon: IconNormalize },
-      { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
-      { path: '/downloads', label: '下载管理', icon: IconHome },
+      { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/settings', label: '设置', icon: IconSettings },
     ])
 
@@ -507,7 +507,7 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .nav-item.active {
-  background: var(--nav-active-bg);
+  background: var(--glass-active-material);
   color: var(--text-primary);
   border: 1px solid var(--active-border);
   box-shadow: var(--glass-active-shadow);

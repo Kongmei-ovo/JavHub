@@ -581,7 +581,8 @@ export default {
 
 <style scoped>
 .modal-overlay {
-  --modal-sheet-bg: rgba(24, 24, 27, 0.66);
+  --modal-sheet-bg: var(--material-glass-sheet);
+  --modal-sheet-fallback: rgba(24, 24, 27, 0.72);
   --modal-panel-bg: rgba(255, 255, 255, 0.08);
   --modal-panel-border: rgba(255, 255, 255, 0.18);
   --modal-gallery-bg: rgba(0, 0, 0, 0.18);
@@ -601,7 +602,7 @@ export default {
 }
 
 :root[data-theme="dark"] .modal-overlay {
-  --modal-sheet-bg: rgba(18, 18, 20, 0.76);
+  --modal-sheet-fallback: rgba(18, 18, 20, 0.82);
   --modal-panel-bg: rgba(255, 255, 255, 0.06);
   --modal-panel-border: rgba(255, 255, 255, 0.14);
   --modal-gallery-bg: rgba(0, 0, 0, 0.24);
@@ -609,9 +610,10 @@ export default {
 }
 
 .modal-container {
+  background: var(--modal-sheet-fallback);
   background: var(--modal-sheet-bg);
-  backdrop-filter: blur(64px) saturate(145%);
-  -webkit-backdrop-filter: blur(64px) saturate(145%);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border-radius: var(--radius-pro);
   border: 1px solid var(--modal-panel-border);
   width: 100%;

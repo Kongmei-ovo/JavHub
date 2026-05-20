@@ -589,11 +589,11 @@ export default {
 .cloud-hint { font-size: var(--type-control); color: var(--text-muted); font-weight: 500; letter-spacing: 0.01em; }
 .shuffle-btn {
   display: flex; align-items: center; gap: 6px;
-  background: var(--glass-control-bg);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: var(--material-glass-control);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: var(--glass-control-shadow);
   color: var(--text-primary);
   font-size: var(--type-control); font-weight: 500;
   cursor: pointer;
@@ -601,7 +601,7 @@ export default {
   border-radius: 999px;
   transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.shuffle-btn:hover:not(:disabled) { background: var(--glass-control-bg-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); }
+.shuffle-btn:hover:not(:disabled) { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); }
 .shuffle-btn:active:not(:disabled) { transform: scale(0.96); }
 .shuffle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-wrap { text-align: center; padding: 60px; color: var(--text-secondary); }
@@ -616,33 +616,33 @@ export default {
   padding: 5px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--glass-control-bg);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(24px) saturate(170%);
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .tab-btn {
   padding: 7px 20px;
-  background: var(--glass-subtle-bg);
+  background: var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   color: var(--text-secondary);
   font-size: var(--type-body);
   font-weight: 650;
   cursor: pointer;
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow: var(--glass-control-shadow);
   transition: var(--transition);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 .tab-btn:hover {
-  background: var(--glass-control-bg-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
 }
 .tab-btn.active {
-  background: var(--glass-active-bg);
+  background: var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -707,12 +707,12 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 24px 18px;
-  background: var(--glass-control-bg);
+  background: var(--material-glass-sheet);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   gap: 12px;
 }
 
@@ -726,17 +726,19 @@ export default {
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-  background: var(--surface-card);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border-light);
+  background: var(--material-glass-control);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
 }
 
 .bubble:hover {
-  background: var(--surface-control-hover);
-  border-color: var(--border-light);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -746,7 +748,7 @@ export default {
 }
 
 .bubble.active {
-  background: var(--glass-active-bg);
+  background: var(--glass-active-material);
   color: var(--text-primary);
   border-color: var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);

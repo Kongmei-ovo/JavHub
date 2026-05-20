@@ -84,10 +84,11 @@ test('modal material normalizes busy result grids behind the sheet', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 
   assert.match(source, /--modal-backdrop-blur:\s*12px/)
-  assert.match(source, /--modal-sheet-bg:\s*rgba\(24,\s*24,\s*27,\s*0\.66\)/)
-  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.76\)/)
+  assert.match(source, /--modal-sheet-bg:\s*var\(--material-glass-sheet\)/)
+  assert.match(source, /--modal-sheet-fallback:\s*rgba\(24,\s*24,\s*27,\s*0\.72\)/)
+  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
   assert.match(source, /\.modal-overlay\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--modal-backdrop-blur\)\)\s*saturate\(110%\)/)
-  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(64px\)\s*saturate\(145%\)/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 })
 
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {

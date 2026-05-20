@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs'
 import { THEMES } from './themes.js'
 
 const mainCss = readFileSync(new URL('./main.css', import.meta.url), 'utf8')
+const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 const search = readFileSync(new URL('../views/Search.vue', import.meta.url), 'utf8')
+const genres = readFileSync(new URL('../views/Genres.vue', import.meta.url), 'utf8')
+const config = readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8')
+const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
@@ -49,4 +53,31 @@ test('global controls use shared liquid glass material instead of flat tint', ()
   assert.match(cssBlock('.apple-surface'), /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(search, /\.sort-pill\s*\{[\s\S]*background:\s*var\(--surface-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
   assert.match(search, /\.filter-item\s*\{[\s\S]*background:\s*var\(--surface-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+})
+
+test('active states resolve to refractive glass rather than flat rgba tint', () => {
+  for (const [key, theme] of Object.entries(THEMES)) {
+    assert.equal(theme.vars['--nav-active-bg'], 'var(--glass-active-material)', `${key} nav active material should stay refractive`)
+  }
+
+  assert.match(app, /\.nav-item\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+  assert.match(cssBlock('.glass-select__option.is-selected'), /background:\s*var\(--glass-active-material\)/)
+})
+
+test('segmented controls and settings rows use shared glass materials', () => {
+  assert.match(genres, /\.shuffle-btn\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+
+  assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+})
+
+test('video modal sheet uses the shared sheet material with a frosted fallback', () => {
+  assert.match(videoModal, /--modal-sheet-bg:\s*var\(--material-glass-sheet\)/)
+  assert.match(videoModal, /--modal-sheet-fallback:\s*rgba\(24,\s*24,\s*27,\s*0\.72\)/)
+  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 })

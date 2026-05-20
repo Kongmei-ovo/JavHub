@@ -345,7 +345,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.doesNotMatch(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid transparent !important/)
 
   const genresTabBaseBlock = genres.match(/\.tab-btn\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(genresTabBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(genresTabBaseBlock, /background: var\(--material-glass-subtle\)/)
   assert.match(genresTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const genresTabBlock = genres.match(/\.tab-btn\.active\s*\{[^}]*\}/)?.[0] || ''
@@ -353,7 +353,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.match(genresTabBlock, /var\(--glass-active-shadow\)/)
 
   const segmentedBaseBlock = config.match(/\.segmented-mini button\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(segmentedBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(segmentedBaseBlock, /background: var\(--material-glass-subtle\)/)
   assert.match(segmentedBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const segmentedActiveBlock = config.match(/\.segmented-mini button\.active\s*\{[^}]*\}/)?.[0] || ''
@@ -361,7 +361,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.match(segmentedActiveBlock, /var\(--glass-active-shadow\)/)
 
   const settingsTabBaseBlock = config.match(/\.tab-item\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(settingsTabBaseBlock, /background: var\(--glass-subtle-bg\)/)
+  assert.match(settingsTabBaseBlock, /background: var\(--material-glass-subtle\)/)
   assert.match(settingsTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const settingsTabActiveBlock = config.match(/\.tab-item\.active\s*\{[^}]*\}/)?.[0] || ''

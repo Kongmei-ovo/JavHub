@@ -50,10 +50,10 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-pro: var(--radius-xl);
-  --radius-card: 28px;
-  --radius-sheet: 32px;
+  --radius-card: 22px;
+  --radius-sheet: 28px;
   --radius-control: 999px;
-  --touch-target: 44px;
+  --touch-target: 40px;
 
   --material-glass-subtle: linear-gradient(145deg, rgba(255,255,255,0.44), rgba(255,255,255,0.25) 56%, rgba(255,255,255,0.38));
   --material-glass-control: var(--glass-control-material);
@@ -104,13 +104,13 @@
   --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', monospace;
-  --type-display: 56px;
+  --type-display: 50px;
   --type-display-mobile: 32px;
-  --type-page-title: 30px;
+  --type-page-title: 28px;
   --type-page-title-mobile: 26px;
   --type-workbench-title: 24px;
   --type-entity-title: 28px;
-  --type-section-title: 22px;
+  --type-section-title: 20px;
   --type-panel-title: 18px;
   --type-card-title: 15px;
   --type-body: 14px;
@@ -118,9 +118,9 @@
   --type-caption: 12px;
   --type-micro: 11px;
   --type-badge: 10px;
-  --page-title-size: var(--type-display);
+  --page-title-size: 40px;
   --page-title-size-mobile: var(--type-display-mobile);
-  --page-title-line: 1.06;
+  --page-title-line: 1.12;
   --page-title-weight: 650;
 
   /* 层级 */
@@ -152,7 +152,7 @@
   --link-underline-hover: rgba(29, 29, 31, 0.32);
 
   /* 侧边栏宽度 */
-  --sidebar-width: 240px;
+  --sidebar-width: 224px;
   /* 页面呼吸轨道 */
   --page-gutter: clamp(18px, 2.4vw, 36px);
   --page-gutter-compact: clamp(12px, 2vw, 24px);
@@ -574,7 +574,7 @@ a:hover {
 }
 
 .glass-select__option.is-selected {
-  background: var(--glass-active-bg);
+  background: var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
