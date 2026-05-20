@@ -9,9 +9,16 @@ test('actor page treats supplement as part of the default catalog', () => {
   assert.equal(source.includes('supplement-toggle'), false)
   assert.equal(source.includes('includeSupplement'), false)
   assert.equal(source.includes('查看补全影片'), false)
-  assert.match(source, /getActressVideos\(this\.actressId,\s*page,\s*MOVIE_PAGE_SIZE,\s*\{\s*include_supplement:\s*'1'\s*\}\)/)
+  assert.match(source, /getActressVideos\(this\.actressId,\s*page,\s*MOVIE_PAGE_SIZE,\s*\{\s*include_supplement:\s*'1',\s*include_total:\s*false\s*\}\)/)
   assert.match(source, /:serviceCode="displayServiceCode\(movie\)"/)
   assert.match(source, /if \(movie\._raw\?\.data_origin === 'supplement'\) return ''/)
+})
+
+test('actor page keeps loading more when totals are unknown', () => {
+  assert.match(source, /if \(this\.totalCount < 0 \|\| this\.movieTotalPages < 0\)/)
+  assert.match(source, /return this\.movies\.length >= this\.moviePage \* MOVIE_PAGE_SIZE/)
+  assert.match(source, /Number\.isInteger\(data\.total_count\) \? data\.total_count : this\.movies\.length/)
+  assert.match(source, /Number\.isInteger\(data\.total_pages\) \? data\.total_pages : 1/)
 })
 
 test('actor page surfaces download candidate handoff', () => {

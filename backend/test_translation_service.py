@@ -433,6 +433,32 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(translated, "原文")
         google_translate.assert_not_awaited()
 
+    async def test_translate_supplement_sources_can_use_local_mappings_only(self):
+        from database import upsert_cached_translation
+        from translations.providers import AIProvider
+
+        service = self.service()
+        upsert_cached_translation(
+            "supplement:summary:Original summary",
+            "Original summary",
+            "已有简介",
+            "ai",
+            "test-model",
+        )
+        data = {
+            "chosen_fields": [
+                {"field_name": "summary", "field_value": "Original summary"},
+                {"field_name": "maker_name", "field_value": "LEO"},
+            ],
+        }
+
+        with patch.object(AIProvider, "translate", new_callable=AsyncMock) as ai_translate:
+            translated = await service.translate_supplement_sources(data, allow_network=False)
+
+        self.assertEqual(translated["chosen_fields"][0]["field_value_translated"], "已有简介")
+        self.assertNotIn("field_value_translated", translated["chosen_fields"][1])
+        ai_translate.assert_not_awaited()
+
     async def test_provider_same_as_source_can_be_cached_for_batch_skip(self):
         from database import get_cached_translation
         from translations.providers import GoogleFreeProvider, TranslationResult

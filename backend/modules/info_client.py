@@ -413,9 +413,12 @@ class InfoClient:
         service_code: str | None = None,
         year: int | None = None,
         sort_by: str | None = None,
+        include_total: bool | None = None,
     ) -> dict[str, Any]:
         """获取演员作品列表（支持补全层查询）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if include_total is not None:
+            params["include_total"] = include_total
         if include_supplement:
             params["include_supplement"] = include_supplement
         if service_code:
@@ -455,9 +458,17 @@ class InfoClient:
         cache.set_enum_list("makers", data)
         return data
 
-    async def list_makers_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any] | list[dict]:
+    async def list_makers_page(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        include_total: bool | None = None,
+    ) -> dict[str, Any] | list[dict]:
         """获取厂商分页列表，上游支持分页时避免全量拉取。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if include_total is not None:
+            params["include_total"] = include_total
         if q:
             params["q"] = q
         result = await self._get("/api/v1/makers", params=params)
@@ -477,9 +488,17 @@ class InfoClient:
         cache.set_enum_list("series", data)
         return data
 
-    async def list_series_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    async def list_series_page(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        include_total: bool | None = None,
+    ) -> dict[str, Any]:
         """获取系列分页列表，避免为推荐页拉取完整系列枚举。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if include_total is not None:
+            params["include_total"] = include_total
         if q:
             params["q"] = q
         result = await self._get("/api/v1/series", params=params)
@@ -518,9 +537,17 @@ class InfoClient:
         cache.set_enum_list("labels", data)
         return data
 
-    async def list_labels_page(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any] | list[dict]:
+    async def list_labels_page(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        include_total: bool | None = None,
+    ) -> dict[str, Any] | list[dict]:
         """获取品牌分页列表，上游支持分页时避免全量拉取。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if include_total is not None:
+            params["include_total"] = include_total
         if q:
             params["q"] = q
         result = await self._get("/api/v1/labels", params=params)

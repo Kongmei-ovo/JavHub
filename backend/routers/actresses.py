@@ -84,12 +84,16 @@ async def get_actress_videos(
     service_code: str | None = Query(None),
     year: int | None = Query(None),
     sort_by: str | None = Query(None),
+    include_total: bool | None = Query(None),
 ) -> dict[str, Any]:
     # Resolve Query() defaults to plain None for testability
     _inc = None if isinstance(include_supplement, QueryParam) else include_supplement
     _svc = None if isinstance(service_code, QueryParam) else service_code
     _yr  = None if isinstance(year, QueryParam) else year
     _srt = None if isinstance(sort_by, QueryParam) else sort_by
+    _include_total = None if isinstance(include_total, QueryParam) else include_total
+    if _include_total is None and not _inc:
+        _include_total = False
 
     cache_params = {
         "actress_id": actress_id,
@@ -99,6 +103,7 @@ async def get_actress_videos(
         "service_code": _svc,
         "year": _yr,
         "sort_by": _srt,
+        "include_total": _include_total,
     }
 
     async def produce():
@@ -109,6 +114,7 @@ async def get_actress_videos(
             service_code=_svc,
             year=_yr,
             sort_by=_srt,
+            include_total=_include_total,
         )
         if result.get("data"):
             result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)

@@ -155,7 +155,7 @@ async def list_supplement_movies(
 async def get_movie_sources(movie_id: int) -> dict[str, Any]:
     client = get_info_client()
     data = await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
-    return await get_translator_service().translate_supplement_sources(data)
+    return await get_translator_service().translate_supplement_sources(data, allow_network=False)
 
 
 @router.post("/movies/candidates")

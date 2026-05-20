@@ -564,7 +564,7 @@ class TranslatorService:
             result["summary_translated"] = translated
         return result
 
-    async def translate_supplement_sources(self, data: dict) -> dict:
+    async def translate_supplement_sources(self, data: dict, *, allow_network: bool = True) -> dict:
         if not isinstance(data, dict):
             return data
         result = dict(data)
@@ -573,11 +573,11 @@ class TranslatorService:
             if not isinstance(field, dict):
                 fields.append(field)
                 continue
-            fields.append(await self._translate_supplement_field(dict(field)))
+            fields.append(await self._translate_supplement_field(dict(field), allow_network=allow_network))
         result["chosen_fields"] = fields
         return result
 
-    async def _translate_supplement_field(self, field: dict) -> dict:
+    async def _translate_supplement_field(self, field: dict, *, allow_network: bool = True) -> dict:
         name = field.get("field_name")
         value = field.get("field_value")
         if not isinstance(name, str) or not isinstance(value, str) or not value.strip():
@@ -605,6 +605,7 @@ class TranslatorService:
                 context=single_context[name],
                 use_ai=True,
                 persist_ai=True,
+                allow_network=allow_network,
             )
             if translated and translated != value:
                 field["field_value_translated"] = translated
@@ -620,6 +621,7 @@ class TranslatorService:
                     context=array_context[name],
                     use_ai=True,
                     persist_ai=True,
+                    allow_network=allow_network,
                 )
                 translated_values.append(translated or item)
                 changed = changed or bool(translated and translated != item)
