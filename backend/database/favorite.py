@@ -1,7 +1,27 @@
 """收藏与收藏夹数据库层"""
 import json
+import sqlite3
 from typing import List, Optional, Dict
 from database.base import get_db
+
+
+class CollectionValidationError(ValueError):
+    pass
+
+
+class CollectionNameExistsError(ValueError):
+    pass
+
+
+class CollectionNotFoundError(ValueError):
+    pass
+
+
+def _normalize_collection_name(name: str) -> str:
+    normalized = (name or "").strip()
+    if not normalized:
+        raise CollectionValidationError("Collection name must not be empty")
+    return normalized
 
 
 def init_favorite_db():
@@ -19,7 +39,7 @@ def init_favorite_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS collections (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE,
+                name TEXT NOT NULL UNIQUE,
                 description TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -96,3 +116,71 @@ def list_collections() -> List[Dict]:
         cursor.execute("SELECT id, name, description, created_at FROM collections ORDER BY created_at DESC")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
+
+
+def get_collection(collection_id: int) -> Optional[Dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, description, created_at FROM collections WHERE id = ?",
+            (collection_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def create_collection(name: str, description: Optional[str] = None) -> Dict:
+    normalized_name = _normalize_collection_name(name)
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO collections (name, description) VALUES (?, ?)",
+                (normalized_name, description)
+            )
+            collection_id = cursor.lastrowid
+            cursor.execute(
+                "SELECT id, name, description, created_at FROM collections WHERE id = ?",
+                (collection_id,)
+            )
+            return dict(cursor.fetchone())
+    except sqlite3.IntegrityError as exc:
+        if "unique" in str(exc).lower():
+            raise CollectionNameExistsError("Collection name already exists") from exc
+        raise
+
+
+def update_collection(collection_id: int, name: str, description: Optional[str] = None) -> Dict:
+    normalized_name = _normalize_collection_name(name)
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE collections SET name = ?, description = ? WHERE id = ?",
+                (normalized_name, description, collection_id)
+            )
+            if cursor.rowcount == 0:
+                raise CollectionNotFoundError("Collection not found")
+            cursor.execute(
+                "SELECT id, name, description, created_at FROM collections WHERE id = ?",
+                (collection_id,)
+            )
+            return dict(cursor.fetchone())
+    except sqlite3.IntegrityError as exc:
+        if "unique" in str(exc).lower():
+            raise CollectionNameExistsError("Collection name already exists") from exc
+        raise
+
+
+def delete_collection(collection_id: int) -> bool:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM collection_items WHERE collection_id = ?",
+            (collection_id,)
+        )
+        cursor.execute(
+            "DELETE FROM collections WHERE id = ?",
+            (collection_id,)
+        )
+        return cursor.rowcount > 0

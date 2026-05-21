@@ -42,8 +42,17 @@ backend/data/avatars/
 # Runtime data (SQLite DB, diskcache)
 data/
 
+# Local backup artifacts may contain secrets and database rows
+backups/
+*.tgz
+*.dump
+*.backup
+*.sql.gz
+redis-dump.rdb
+
 # Docs (internal design specs)
-docs/
+docs/*
+!docs/backup-restore.md
 
 # Logs
 *.log

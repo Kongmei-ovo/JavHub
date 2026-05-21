@@ -96,7 +96,14 @@ async def operations_overview() -> dict[str, Any]:
 async def run_candidate_processing_now() -> dict[str, Any]:
     from services.candidate_processor import run_automatic_candidate_processing
 
-    return await run_automatic_candidate_processing(operator="manual")
+    result = await run_automatic_candidate_processing(operator="manual")
+    action = str(result.get("action") or "")
+    return {
+        **result,
+        "dry_run": bool(result.get("dry_run", False)),
+        "manual_noop": action == "manual_policy",
+        "effective": action not in {"manual_policy", "busy"},
+    }
 
 
 def _top_missing_actresses(rows: list[dict], limit: int = 8) -> list[dict]:
@@ -127,11 +134,28 @@ def _candidate_schedule_state() -> dict[str, Any]:
     try:
         from scheduler.tasks import candidate_auto_process_schedule_state
 
-        return candidate_auto_process_schedule_state()
+        state = candidate_auto_process_schedule_state()
     except Exception as exc:
-        return {
+        state = {
             "enabled": False,
             "running": False,
             "next_run_time": None,
             "error": str(exc),
         }
+    policy = str(config.automation_download_policy or "manual").lower()
+    enabled = bool(state.get("enabled"))
+    disabled_reason = str(state.get("error") or "")
+    if policy == "manual":
+        effective_enabled = False
+        disabled_reason = disabled_reason or "manual_policy"
+    elif not enabled:
+        effective_enabled = False
+        disabled_reason = disabled_reason or "schedule_disabled"
+    else:
+        effective_enabled = True
+    return {
+        **state,
+        "policy": policy,
+        "effective_enabled": effective_enabled,
+        "disabled_reason": disabled_reason,
+    }

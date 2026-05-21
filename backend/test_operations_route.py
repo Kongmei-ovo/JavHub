@@ -63,7 +63,12 @@ class OperationsRouteTest(unittest.IsolatedAsyncioTestCase):
             ])) as missing, \
             patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 2})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[{"id": 5}])) as runs, \
-            patch.object(operations, "_candidate_schedule_state", Mock(return_value={"enabled": True})) as schedule, \
+            patch.object(operations, "_candidate_schedule_state", Mock(return_value={
+                "enabled": True,
+                "policy": "rules",
+                "effective_enabled": True,
+                "disabled_reason": "",
+            })) as schedule, \
             patch("modules.info_client.get_info_client", Mock(return_value=client)), \
             patch.object(operations.cache, "get_or_set_response", capture_cache):
             first = await operations.operations_overview()
@@ -102,7 +107,12 @@ class OperationsRouteTest(unittest.IsolatedAsyncioTestCase):
             patch.object(operations, "get_all_missing_videos", Mock(return_value=[])) as missing, \
             patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 0})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])) as runs, \
-            patch.object(operations, "_candidate_schedule_state", Mock(return_value={"enabled": False})) as schedule, \
+            patch.object(operations, "_candidate_schedule_state", Mock(return_value={
+                "enabled": False,
+                "policy": "manual",
+                "effective_enabled": False,
+                "disabled_reason": "manual_policy",
+            })) as schedule, \
             patch("modules.info_client.get_info_client", Mock(side_effect=RuntimeError("javinfo down"))) as info_client:
             first = await operations.operations_overview()
             second = await operations.operations_overview()
@@ -119,3 +129,47 @@ class OperationsRouteTest(unittest.IsolatedAsyncioTestCase):
         schedule.assert_called_once()
         info_client.assert_called_once()
 
+    async def test_candidate_schedule_state_marks_manual_policy_not_effective(self):
+        from routers import operations
+
+        scheduler_state = {
+            "enabled": True,
+            "running": False,
+            "next_run_time": "2026-05-21T12:00:00",
+        }
+
+        with patch.object(operations, "config", SimpleNamespace(automation_download_policy="manual")), \
+            patch("scheduler.tasks.candidate_auto_process_schedule_state", Mock(return_value=scheduler_state)):
+            result = operations._candidate_schedule_state()
+
+        self.assertEqual(result, {
+            "enabled": True,
+            "running": False,
+            "next_run_time": "2026-05-21T12:00:00",
+            "policy": "manual",
+            "effective_enabled": False,
+            "disabled_reason": "manual_policy",
+        })
+
+    async def test_candidate_run_now_exposes_manual_policy_noop(self):
+        from routers import operations
+
+        manual_result = {
+            "status": "ok",
+            "action": "manual_policy",
+            "skipped": True,
+            "reason": "manual policy",
+            "total": 0,
+            "counts": {},
+            "results": [],
+        }
+
+        with patch("services.candidate_processor.run_automatic_candidate_processing", new=AsyncMock(return_value=manual_result)):
+            result = await operations.run_candidate_processing_now()
+
+        self.assertEqual(result, {
+            **manual_result,
+            "dry_run": False,
+            "manual_noop": True,
+            "effective": False,
+        })

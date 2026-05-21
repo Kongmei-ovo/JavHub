@@ -11,6 +11,7 @@ const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.
 const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
 const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
 const favorites = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
+const entities = readFileSync(new URL('./Entities.vue', import.meta.url), 'utf8')
 const actor = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
 const config = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
@@ -40,7 +41,31 @@ const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf
 const translationJobs = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
 const dockerCompose = readFileSync(new URL('../../../docker-compose.yml', import.meta.url), 'utf8')
 const dockerBuildWorkflow = readFileSync(new URL('../../../.github/workflows/docker-build.yml', import.meta.url), 'utf8')
+const dockerSmokeWorkflow = readFileSync(new URL('../../../.github/workflows/docker-smoke.yml', import.meta.url), 'utf8')
+const backupRestoreDoc = readFileSync(new URL('../../../docs/backup-restore.md', import.meta.url), 'utf8')
 const dockerfile = readFileSync(new URL('../../../Dockerfile', import.meta.url), 'utf8')
+const gitignore = readFileSync(new URL('../../../.gitignore', import.meta.url), 'utf8')
+
+function loadConfigOptions() {
+  const match = config.match(/<script>([\s\S]*?)<\/script>/)
+  assert.ok(match, 'Config.vue should have an options script block')
+  const script = match[1]
+    .replace(/^import\s+.*$/gm, '')
+    .replace('export default', 'return')
+  return new Function(
+    'api',
+    'requestConfirm',
+    'displayLang',
+    'DEFAULT_SEARCH_PREFERENCES',
+    'loadSearchPreferences',
+    'saveSearchPreferences',
+    'AppleErrorState',
+    'GlassSelect',
+    'DEFAULT_BUBBLE_CFG',
+    'DEFAULT_CONFIG',
+    `${script}`
+  )({}, async () => {}, { value: 'ja' }, {}, () => {}, () => {}, {}, {}, {}, {})
+}
 
 test('sidebar displays the package version without a hardcoded release string', () => {
   assert.match(app, /v\{\{ appVersion \}\}/)
@@ -254,7 +279,11 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.doesNotMatch(bottomNavBlock, /label: '库存'/)
   assert.match(app, /const mobileMoreItems/)
   assert.match(app, /label: '磁链解析'/)
+  assert.match(app, /label: '实体目录'/)
   assert.match(app, /label: '补全管理'/)
+  assert.match(app, /label: '库检测'/)
+  assert.match(app, /label: '去重管理'/)
+  assert.match(app, /label: '活动中心'/)
   assert.match(app, /bottom-nav-more/)
   assert.match(config, /scroll-snap-type: x proximity/)
   assert.match(config, /settings-footer[\s\S]*left: var\(--sidebar-width\)/)
@@ -281,6 +310,7 @@ test('primary pages use unified breathing rails', () => {
     supplement,
     translationJobs,
     inventoryActor,
+    entities,
   })) {
     assert.match(source, /page-shell page-shell--workspace/, `${name} should use the workspace page shell`)
   }
@@ -555,15 +585,115 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /重试/)
 })
 
+test('entity catalog unifies entity directories behind a route and nav entry', () => {
+  assert.match(router, /path: '\/entities'/)
+  assert.match(router, /Entities/)
+  assert.match(app, /path: '\/entities'/)
+  assert.match(app, /label: '实体目录'/)
+  assert.match(entities, /name: 'Entities'/)
+  for (const label of ['JavInfo演员', '演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
+    assert.match(entities, new RegExp(label))
+  }
+  for (const method of ['listActresses', 'listActors', 'listCategories', 'listSeries', 'listMakers', 'listLabels', 'listDirectors', 'listAuthors']) {
+    assert.match(entities, new RegExp(`api\\.${method}`))
+  }
+  assert.match(entities, /searchKeyword/)
+  assert.match(entities, /openEntity\(item\)/)
+  assert.match(entities, /favoriteState\.toggle/)
+  assert.match(discoveryDetail, /\['actor', 'director', 'author'\]\.includes\(this\.type\)/)
+  assert.match(discoveryDetail, /params\.q = this\.displayNameValue \|\| v/)
+})
+
 test('operations overview exposes candidate automation controls', () => {
   assert.match(operations, /立即运行/)
   assert.match(operations, /runCandidateProcessingNow/)
   assert.match(operations, /candidateSchedule/)
   assert.match(operations, /scheduleStatusLabel/)
+  assert.match(operations, /effective_enabled/)
+  assert.match(operations, /disabled_reason/)
   assert.match(operations, /下一次/)
   assert.match(operations, /候选处理正在运行/)
   assert.match(operations, /采集后自动匹配/)
   assert.match(operations, /保守唯一/)
+  assert.match(operations, /自动化工作台/)
+  assert.match(operations, /工作台路径/)
+  assert.match(operations, /goWorkbenchAction/)
+  assert.match(operations, /refreshMissingCache/)
+})
+
+test('operations overview surfaces initialization health and setup entry points', () => {
+  assert.match(operations, /初始化与健康检查/)
+  assert.match(operations, /api\.readiness\(\)/)
+  assert.match(operations, /healthStatusLabel/)
+  assert.match(operations, /health\.status/)
+  assert.match(operations, /配置已加载/)
+  assert.match(operations, /数据库/)
+  assert.match(operations, /JavInfo/)
+  assert.match(operations, /缓存/)
+  assert.match(operations, /healthCacheSummary/)
+  assert.match(operations, /healthJavInfoUrlSummary/)
+  assert.match(operations, /downloaders/)
+  assert.match(operations, /sources/)
+  assert.match(operations, /scheduler/)
+  assert.match(operations, /goJavInfoImport/)
+  assert.match(operations, /this\.\$router\.push\('\/settings'\)/)
+  assert.match(operations, /this\.\$router\.push\('\/logs'\)/)
+  assert.match(operations, /query: \{ tab: 'javinfo-import' \}/)
+})
+
+test('operations exposes cache cleanup UI backed by purge API', () => {
+  assert.match(operations, /缓存清理/)
+  assert.match(operations, /cachePurgeScopes/)
+  assert.match(operations, /selectedCachePurgeScope/)
+  assert.match(operations, /requestConfirm/)
+  assert.match(operations, /api\.purgeCache\(this\.selectedCachePurgeScope\)/)
+  assert.match(operations, /await this\.loadCacheStats\(\)/)
+  assert.match(apiSource, /purgeCache\(scope = 'video'\)/)
+})
+
+test('activity center upgrades logs with search pagination and level summary', () => {
+  assert.match(app, /label: '活动中心'/)
+  assert.match(logs, /活动中心/)
+  assert.match(logs, /activitySummary/)
+  assert.match(logs, /searchText/)
+  assert.match(logs, /api\.getLogs\(this\.limit, this\.filterLevel, \{ q: this\.searchText, offset:/)
+  assert.match(logs, /hasMoreLogs/)
+  assert.match(apiSource, /getLogs\(limit = 100, level = '', options = \{\}\)/)
+})
+
+test('favorites exposes collection management controls', () => {
+  assert.match(favorites, /收藏集合/)
+  assert.match(favorites, /loadCollections/)
+  assert.match(favorites, /api\.getCollections/)
+  assert.match(favorites, /api\.createCollection/)
+  assert.match(favorites, /api\.updateCollection/)
+  assert.match(favorites, /api\.deleteCollection/)
+  assert.match(favorites, /collectionForm/)
+  assert.match(favorites, /editingCollectionId/)
+  assert.match(apiSource, /createCollection\(data\)/)
+  assert.match(apiSource, /updateCollection\(collectionId, data\)/)
+  assert.match(apiSource, /deleteCollection\(collectionId\)/)
+})
+
+test('docker smoke and backup restore docs cover deploy validation', () => {
+  assert.match(dockerSmokeWorkflow, /Docker Smoke/)
+  assert.match(dockerSmokeWorkflow, /docker compose config/)
+  assert.match(dockerSmokeWorkflow, /\/health/)
+  assert.match(dockerSmokeWorkflow, /\/health\/readiness/)
+  assert.match(dockerSmokeWorkflow, /\/api\/v1\/cache\/stats/)
+  assert.match(dockerSmokeWorkflow, /docker compose down -v/)
+  assert.match(backupRestoreDoc, /config\.yaml/)
+  assert.match(backupRestoreDoc, /data\//)
+  assert.match(backupRestoreDoc, /javhub-local\.tgz/)
+  assert.match(backupRestoreDoc, /tar -xzf backups\/<stamp>\/javhub-local\.tgz/)
+  assert.match(backupRestoreDoc, /pg_dump/)
+  assert.match(backupRestoreDoc, /pg_restore/)
+  assert.match(backupRestoreDoc, /\/health/)
+  assert.match(backupRestoreDoc, /\/health\/readiness/)
+  assert.match(backupRestoreDoc, /\/api\/v1\/cache\/stats/)
+  assert.match(gitignore, /backups\//)
+  assert.match(gitignore, /\*\.dump/)
+  assert.match(gitignore, /redis-dump\.rdb/)
 })
 
 test('translation jobs has a standalone navigation page and settings no longer owns translation UI', () => {
@@ -751,6 +881,24 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.doesNotMatch(advancedSection, /保留旧库/)
   assert.doesNotMatch(advancedSection, /max_parallel_jobs/)
   assert.doesNotMatch(advancedSection, /keep_previous_databases/)
+})
+
+test('settings route query opens JavInfo import workflow in advanced settings', () => {
+  const component = loadConfigOptions()
+  const vm = {
+    activeGroup: 'services',
+    navGroups: [
+      { id: 'services' },
+      { id: 'advanced' },
+    ],
+    $route: { query: { tab: 'javinfo-import' } },
+  }
+  vm.syncActiveGroupFromRoute = component.methods.syncActiveGroupFromRoute
+
+  component.created.call(vm)
+
+  assert.equal(vm.activeGroup, 'advanced')
+  assert.equal(component.watch?.['$route.query.tab'], 'syncActiveGroupFromRoute')
 })
 
 test('JavInfo import preflight is tied to current settings and file', () => {

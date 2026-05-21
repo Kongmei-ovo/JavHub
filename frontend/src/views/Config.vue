@@ -1172,6 +1172,12 @@ export default {
       }
     },
   },
+  created() {
+    this.syncActiveGroupFromRoute()
+  },
+  watch: {
+    '$route.query.tab': 'syncActiveGroupFromRoute',
+  },
   async mounted() {
     await this.loadConfig()
     this.loadBubbleCfg()
@@ -1182,6 +1188,16 @@ export default {
     this.stopJavInfoImportPolling()
   },
   methods: {
+    syncActiveGroupFromRoute() {
+      const tab = String(this.$route?.query?.tab || '').trim()
+      const routeGroupMap = {
+        'javinfo-import': 'advanced',
+      }
+      const group = routeGroupMap[tab] || tab
+      if (this.navGroups.some(item => item.id === group)) {
+        this.activeGroup = group
+      }
+    },
     async loadConfig() {
       this.configLoading = true
       this.configLoadError = ''

@@ -7,6 +7,37 @@
       </div>
       <p class="instance-note">{{ instanceNote }}</p>
 
+      <section class="collection-manager" aria-label="收藏集合">
+        <div class="collection-manager-head">
+          <div>
+            <h2>收藏集合</h2>
+            <p>{{ collections.length }} 个集合 · 管理本地策展分组</p>
+          </div>
+          <button class="btn-mini" type="button" @click="resetCollectionForm">新建集合</button>
+        </div>
+        <form class="collection-form" @submit.prevent="saveCollection">
+          <input v-model="collectionForm.name" placeholder="集合名称" />
+          <input v-model="collectionForm.description" placeholder="描述，可选" />
+          <button class="btn-mini primary" type="submit" :disabled="collectionsLoading || !collectionForm.name.trim()">
+            {{ editingCollectionId ? '保存' : '创建' }}
+          </button>
+          <button v-if="editingCollectionId" class="btn-mini" type="button" @click="resetCollectionForm">取消</button>
+        </form>
+        <div class="collection-list">
+          <article v-for="collection in collections" :key="collection.id" class="collection-row">
+            <div>
+              <strong>{{ collection.name }}</strong>
+              <span>{{ collection.description || '暂无描述' }}</span>
+            </div>
+            <div class="collection-actions">
+              <button class="btn-mini" type="button" @click="editCollection(collection)">重命名</button>
+              <button class="btn-mini danger" type="button" @click="removeCollection(collection)">删除</button>
+            </div>
+          </article>
+          <small v-if="!collectionsLoading && collections.length === 0" class="collection-empty">还没有收藏集合</small>
+        </div>
+      </section>
+
       <!-- iOS 风格的分段选择器 -->
       <div class="segmented-control">
         <button
@@ -150,6 +181,10 @@ export default {
     const videoLoading = ref(false)
     const videoItems = ref([])
     const actorMetaMap = ref({})
+    const collections = ref([])
+    const collectionsLoading = ref(false)
+    const editingCollectionId = ref(null)
+    const collectionForm = ref({ name: '', description: '' })
 
     // 动态计算各类型数量
     const typeCounts = computed(() => {
@@ -190,6 +225,7 @@ export default {
 
     onMounted(() => {
       loadVideos()
+      loadCollections()
       subscriptionState.refresh().catch(err => {
         console.error('Failed to initialize subscriptions:', err)
       })
@@ -317,6 +353,60 @@ export default {
       }
     }
 
+    const loadCollections = async () => {
+      collectionsLoading.value = true
+      try {
+        const resp = await api.getCollections()
+        collections.value = resp.data || []
+      } catch (err) {
+        console.error('Failed to load collections:', err)
+      } finally {
+        collectionsLoading.value = false
+      }
+    }
+
+    const resetCollectionForm = () => {
+      editingCollectionId.value = null
+      collectionForm.value = { name: '', description: '' }
+    }
+
+    const editCollection = (collection) => {
+      editingCollectionId.value = collection.id
+      collectionForm.value = {
+        name: collection.name || '',
+        description: collection.description || '',
+      }
+    }
+
+    const saveCollection = async () => {
+      const payload = {
+        name: collectionForm.value.name.trim(),
+        description: collectionForm.value.description?.trim() || null,
+      }
+      if (!payload.name) return
+      try {
+        if (editingCollectionId.value) {
+          await api.updateCollection(editingCollectionId.value, payload)
+        } else {
+          await api.createCollection(payload)
+        }
+        resetCollectionForm()
+        await loadCollections()
+      } catch (err) {
+        console.error('Failed to save collection:', err)
+      }
+    }
+
+    const removeCollection = async (collection) => {
+      try {
+        await api.deleteCollection(collection.id)
+        if (editingCollectionId.value === collection.id) resetCollectionForm()
+        await loadCollections()
+      } catch (err) {
+        console.error('Failed to delete collection:', err)
+      }
+    }
+
     const enrichFavoriteActor = async (item) => {
       const id = String(item.entity_id)
       if (!id || actorMetaMap.value[id]) return
@@ -387,6 +477,15 @@ export default {
       actorCardSubscribed,
       actorCardBadges,
       toggleActorSubscription,
+      collections,
+      collectionsLoading,
+      editingCollectionId,
+      collectionForm,
+      loadCollections,
+      resetCollectionForm,
+      editCollection,
+      saveCollection,
+      removeCollection,
       enrichFavoriteActor,
     }
   }
@@ -423,6 +522,120 @@ export default {
   margin: 0 0 22px;
   color: var(--text-secondary);
   font-size: var(--type-control);
+}
+
+.collection-manager {
+  max-width: 920px;
+  margin: 0 auto 22px;
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  text-align: left;
+}
+
+.collection-manager-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.collection-manager h2 {
+  margin: 0;
+  font-size: var(--type-card-title);
+  letter-spacing: 0;
+}
+
+.collection-manager p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.collection-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.collection-form input {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  font: inherit;
+  outline: none;
+}
+
+.btn-mini {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.btn-mini.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.btn-mini.danger {
+  color: #ff375f;
+}
+
+.collection-list {
+  display: grid;
+  gap: 6px;
+}
+
+.collection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+}
+
+.collection-row div:first-child {
+  min-width: 0;
+}
+
+.collection-row strong,
+.collection-row span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-row span,
+.collection-empty {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.collection-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 /* Segmented Control - Apple Look */
@@ -679,6 +892,17 @@ export default {
   .entity-fav-btn {
     width: 44px;
     height: 44px;
+  }
+  .collection-form,
+  .collection-row,
+  .collection-manager-head {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .collection-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

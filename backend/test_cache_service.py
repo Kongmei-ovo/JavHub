@@ -249,6 +249,13 @@ class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(cache.get_response("categories", {}))
         self.assertIsNone(cache.get_enum_list("makers"))
 
+    async def test_cache_purge_route_rejects_unknown_scope(self):
+        with self.assertRaises(Exception) as ctx:
+            await config_router.purge_cache(scope="typo")
+
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 400)
+        self.assertEqual(getattr(ctx.exception, "detail", None), "Unsupported cache purge scope")
+
     async def test_cache_stats_route_returns_service_stats(self):
         cache.set_response("videos", {"page": 1}, {"data": []}, ttl=60)
 

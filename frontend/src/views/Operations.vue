@@ -36,6 +36,79 @@
         </button>
       </section>
 
+      <section class="workbench-panel health-panel" aria-label="初始化与健康检查">
+        <div class="panel-head">
+          <div>
+            <h2>初始化与健康检查</h2>
+            <p>{{ healthStatusLabel }} · {{ healthConfigSummary }}</p>
+          </div>
+          <div class="panel-actions">
+            <button class="btn btn-ghost btn-sm" type="button" @click="goSettings">设置</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="goJavInfoImport">导入数据库</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">日志</button>
+          </div>
+        </div>
+        <div class="health-grid">
+          <div class="state-item" :class="{ warning: !health?.config?.loaded }">
+            <span>配置已加载</span>
+            <strong>{{ health?.config?.loaded ? '是' : '否' }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.database && !health.database.connectable }">
+            <span>数据库</span>
+            <strong>{{ healthDatabaseSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.javinfo && (!health.javinfo.api_url_configured || health.javinfo.legacy) }">
+            <span>JavInfo</span>
+            <strong>{{ healthJavInfoSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: !!health?.cache?.error }">
+            <span>缓存</span>
+            <strong>{{ healthCacheSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.downloaders && !health.downloaders.default_available }">
+            <span>默认下载器</span>
+            <strong>{{ healthDownloaderSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.sources && !health.sources.available }">
+            <span>磁力源</span>
+            <strong>{{ healthSourceSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }">
+            <span>调度有效性</span>
+            <strong>{{ healthSchedulerSummary }}</strong>
+          </div>
+          <div class="state-item" :class="{ warning: health?.javinfo?.legacy || health?.javinfo?.error }">
+            <span>JavInfo 地址</span>
+            <strong>{{ healthJavInfoUrlSummary }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="workbench-panel action-map-panel" aria-label="自动化工作台">
+        <div class="panel-head">
+          <div>
+            <h2>自动化工作台</h2>
+            <p>工作台路径把采集、映射、补全、下载和活动记录串起来。</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="refreshingMissing" @click="refreshMissingCache">
+            {{ refreshingMissing ? '刷新中...' : '刷新缺失缓存' }}
+          </button>
+        </div>
+        <div class="action-grid">
+          <button
+            v-for="action in workbenchActions"
+            :key="action.key"
+            class="action-card"
+            type="button"
+            @click="goWorkbenchAction(action)"
+          >
+            <span>{{ action.label }}</span>
+            <strong>{{ action.title }}</strong>
+            <small>{{ action.hint }}</small>
+          </button>
+        </div>
+      </section>
+
       <section class="operations-workbench">
         <article class="workbench-panel workbench-primary">
           <div class="panel-head">
@@ -109,8 +182,8 @@
           <article class="workbench-panel">
             <div class="panel-head">
               <div>
-                <h2>自动化状态</h2>
-                <p>策略、调度和映射保护。</p>
+              <h2>自动化状态</h2>
+                <p>{{ candidateSchedule.disabled_reason || '策略、调度和映射保护。' }}</p>
               </div>
               <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
             </div>
@@ -197,6 +270,27 @@
                 <small v-if="!topResponseNamespaces.length" class="empty-line">暂无 response cache</small>
               </div>
             </div>
+            <div class="cache-cleanup">
+              <div class="block-head">
+                <h3>缓存清理</h3>
+                <span>{{ selectedCachePurgeLabel }}</span>
+              </div>
+              <div class="cache-scope-group" role="group" aria-label="缓存清理范围">
+                <button
+                  v-for="scope in cachePurgeScopes"
+                  :key="scope.value"
+                  class="scope-chip"
+                  type="button"
+                  :class="{ active: selectedCachePurgeScope === scope.value }"
+                  @click="selectedCachePurgeScope = scope.value"
+                >
+                  {{ scope.label }}
+                </button>
+              </div>
+              <button class="btn btn-ghost btn-sm cache-purge-btn" type="button" :disabled="purgingCache" @click="purgeSelectedCache">
+                {{ purgingCache ? '清理中...' : '清理缓存' }}
+              </button>
+            </div>
             <p v-if="cacheStatsError" class="muted cache-error">{{ cacheStatsError }}</p>
           </article>
 
@@ -249,6 +343,7 @@
 
 <script>
 import api from '../api'
+import { requestConfirm } from '../utils/confirmDialog'
 
 export default {
   name: 'Operations',
@@ -256,9 +351,20 @@ export default {
     return {
       overview: null,
       cacheStats: null,
+      health: null,
       cacheStatsError: '',
+      healthError: '',
       loading: false,
       processingNow: false,
+      refreshingMissing: false,
+      purgingCache: false,
+      selectedCachePurgeScope: 'video',
+      cachePurgeScopes: [
+        { value: 'video', label: '影片/搜索' },
+        { value: 'response', label: '响应缓存' },
+        { value: 'enum', label: '枚举目录' },
+        { value: 'all', label: '全部' },
+      ],
       error: '',
     }
   },
@@ -334,6 +440,60 @@ export default {
       if (!this.cacheStats) return '加载缓存指标中。'
       return `${this.cacheStats.backend || 'unknown'} · ${this.cacheStats.active_entries || 0}/${this.cacheStats.total_entries || 0} active`
     },
+    healthStatusLabel() {
+      if (this.healthError) return '健康检查暂不可用'
+      if (!this.health) return '健康检查加载中'
+      return this.health.status === 'ok' ? '运行正常' : '需要检查'
+    },
+    healthConfigSummary() {
+      if (this.healthError) return this.healthError
+      const cfg = this.health?.config
+      if (!cfg) return '等待后端返回配置状态'
+      return cfg.loaded ? '配置已加载' : (cfg.error || '配置未加载')
+    },
+    healthDatabaseSummary() {
+      const database = this.health?.database
+      if (!database) return '未知'
+      return database.connectable ? database.backend || 'sqlite' : database.error || '不可连接'
+    },
+    healthJavInfoSummary() {
+      const javinfo = this.health?.javinfo
+      if (!javinfo) return '未知'
+      if (!javinfo.api_url_configured) return '未配置'
+      if (javinfo.legacy) return '旧端口配置'
+      if (javinfo.reachable === false) return '不可达'
+      return '已配置'
+    },
+    healthJavInfoUrlSummary() {
+      const javinfo = this.health?.javinfo
+      if (!javinfo?.api_url) return '未配置'
+      const url = String(javinfo.api_url)
+      return url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    },
+    healthCacheSummary() {
+      const cache = this.health?.cache
+      if (!cache) return '未知'
+      if (cache.error) return cache.error
+      return `${cache.backend || 'unknown'} · ${cache.active_entries || 0}/${cache.total_entries || 0}`
+    },
+    healthDownloaderSummary() {
+      const downloaders = this.health?.downloaders
+      if (!downloaders) return '未知'
+      if (downloaders.error) return downloaders.error
+      return `${downloaders.default_id || '未设置'} · ${downloaders.available || 0}/${downloaders.registered || 0}`
+    },
+    healthSourceSummary() {
+      const sources = this.health?.sources
+      if (!sources) return '未知'
+      if (sources.error) return sources.error
+      return `${sources.available || 0}/${sources.registered || 0} 可用`
+    },
+    healthSchedulerSummary() {
+      const scheduler = this.health?.scheduler
+      if (!scheduler) return '未知'
+      if (scheduler.effective_enabled) return '已启用'
+      return scheduler.disabled_reason || '未启用'
+    },
     responseHitRate() {
       return this.formatHitRate(this.cacheStats?.metrics?.response)
     },
@@ -349,8 +509,25 @@ export default {
     },
     scheduleStatusLabel() {
       if (this.candidateSchedule.running) return '运行中'
-      if (this.candidateSchedule.enabled) return '已启用'
+      if (this.candidateSchedule.effective_enabled) return '已启用'
+      if (this.candidateSchedule.disabled_reason === 'manual_policy') return '手动策略'
+      if (this.candidateSchedule.enabled) return '已配置未生效'
       return '未启用'
+    },
+    selectedCachePurgeLabel() {
+      return this.cachePurgeScopes.find(scope => scope.value === this.selectedCachePurgeScope)?.label || this.selectedCachePurgeScope
+    },
+    workbenchActions() {
+      return [
+        { key: 'collect', label: '1', title: '采集 Emby', hint: '拉取本地库快照', path: '/inventory' },
+        { key: 'compare', label: '2', title: '全量对比', hint: '生成缺失与候选', path: '/inventory' },
+        { key: 'mapping', label: '3', title: '映射审核', hint: `${this.overview?.mapping?.candidate || 0} 个待审`, path: '/normalize' },
+        { key: 'sources', label: '4', title: '补全来源诊断', hint: 'Provider smoke 与预算', path: '/supplement', query: { tab: 'sources' } },
+        { key: 'candidates', label: '5', title: '下载候选', hint: `${this.overview?.candidates?.candidate || 0} 个候选`, path: '/downloads', query: { tab: 'candidates', status: 'candidate' } },
+        { key: 'downloaders', label: '6', title: '下载源', hint: '默认下载器与连通性', path: '/downloads', query: { tab: 'downloaders' } },
+        { key: 'activity', label: '7', title: '活动中心', hint: '日志与通知记录', path: '/logs' },
+        { key: 'settings', label: '8', title: '初始化设置', hint: 'JavInfo/配置导入', path: '/settings', query: { tab: 'javinfo-import' } },
+      ]
     },
     candidateSources() {
       const counts = this.overview?.candidates?.candidate_by_source || {}
@@ -373,10 +550,12 @@ export default {
       this.loading = true
       this.error = ''
       this.cacheStatsError = ''
+      this.healthError = ''
       try {
-        const [overviewResp, cacheStatsResp] = await Promise.allSettled([
+        const [overviewResp, cacheStatsResp, healthResp] = await Promise.allSettled([
           api.getOperationsOverview(),
           api.getCacheStats(),
+          api.readiness(),
         ])
         if (overviewResp.status === 'rejected') {
           throw overviewResp.reason
@@ -387,10 +566,24 @@ export default {
         } else {
           this.cacheStatsError = cacheStatsResp.reason?.response?.data?.detail || cacheStatsResp.reason?.message || '加载失败'
         }
+        if (healthResp.status === 'fulfilled') {
+          this.health = healthResp.value.data
+        } else {
+          this.healthError = healthResp.reason?.response?.data?.detail || healthResp.reason?.message || '加载失败'
+        }
       } catch (e) {
         this.error = e.response?.data?.detail || e.message || '加载失败'
       } finally {
         this.loading = false
+      }
+    },
+    async loadCacheStats() {
+      this.cacheStatsError = ''
+      try {
+        const resp = await api.getCacheStats()
+        this.cacheStats = resp.data
+      } catch (e) {
+        this.cacheStatsError = e.response?.data?.detail || e.message || '加载失败'
       }
     },
     policyLabel(policy) {
@@ -427,6 +620,43 @@ export default {
         this.processingNow = false
       }
     },
+    async refreshMissingCache() {
+      if (this.refreshingMissing) return
+      this.refreshingMissing = true
+      try {
+        await api.refreshMissingCache()
+        this.$message?.success?.('缺失缓存已刷新')
+        await this.loadOverview()
+      } catch (e) {
+        console.error('Refresh missing cache failed:', e)
+      } finally {
+        this.refreshingMissing = false
+      }
+    },
+    async purgeSelectedCache() {
+      if (this.purgingCache) return
+      const confirmed = await requestConfirm({
+        title: '缓存清理',
+        message: `确认清理${this.selectedCachePurgeLabel}？`,
+        details: '清理后会重新拉取相关数据，短时间内接口可能变慢。',
+        confirmText: '清理',
+        tone: this.selectedCachePurgeScope === 'all' ? 'danger' : 'default',
+      })
+      if (!confirmed) return
+      this.purgingCache = true
+      try {
+        await api.purgeCache(this.selectedCachePurgeScope)
+        this.$message?.success?.('缓存已清理')
+        await this.loadCacheStats()
+      } catch (e) {
+        console.error('Purge cache failed:', e)
+      } finally {
+        this.purgingCache = false
+      }
+    },
+    goWorkbenchAction(action) {
+      this.$router.push({ path: action.path, query: action.query || {} })
+    },
     goCandidates({ status = 'candidate', source = '', needs_magnet = null } = {}) {
       const query = { tab: 'candidates' }
       if (status) query.status = status
@@ -434,6 +664,15 @@ export default {
       if (needs_magnet === true) query.needs_magnet = '1'
       if (needs_magnet === false) query.needs_magnet = '0'
       this.$router.push({ path: '/downloads', query })
+    },
+    goJavInfoImport() {
+      this.$router.push({ path: '/settings', query: { tab: 'javinfo-import' } })
+    },
+    goSettings() {
+      this.$router.push('/settings')
+    },
+    goLogs() {
+      this.$router.push('/logs')
     },
     openStatusMetric(key) {
       const actions = {
@@ -573,6 +812,82 @@ export default {
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.health-panel {
+  margin-bottom: 12px;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.state-item.warning {
+  border-color: var(--badge-warning-border);
+  background: var(--badge-warning-bg);
+}
+
+.action-map-panel {
+  margin-bottom: 12px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.action-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-md);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.action-card:hover {
+  border-color: var(--border);
+  background: var(--surface-card-hover);
+}
+
+.action-card span {
+  display: inline-flex;
+  grid-row: 1 / span 2;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.action-card strong,
+.action-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-card strong {
+  font-size: 12px;
+}
+
+.action-card small {
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .operations-workbench {
@@ -937,6 +1252,40 @@ button.state-item {
   min-width: 0;
 }
 
+.cache-cleanup {
+  margin-top: 10px;
+}
+
+.cache-scope-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scope-chip {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
+  background: var(--material-glass-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.scope-chip.active {
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.cache-purge-btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .cache-error {
   margin-top: 8px;
 }
@@ -1027,6 +1376,7 @@ button.state-item {
   }
 
   .operations-workbench,
+  .action-grid,
   .queue-overview,
   .queue-grid {
     grid-template-columns: 1fr;
@@ -1063,6 +1413,8 @@ button.state-item {
   }
 
   .state-grid,
+  .action-grid,
+  .health-grid,
   .mini-stats,
   .cache-rate-grid {
     grid-template-columns: 1fr;

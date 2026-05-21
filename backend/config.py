@@ -9,7 +9,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 DEFAULT_JAVINFO_API_URL = "http://localhost:18080"
-LEGACY_JAVINFO_API_URLS = {"http://localhost:8080", "http://127.0.0.1:8080"}
+LEGACY_JAVINFO_API_URLS: set[str] = set()
 _warned_legacy_javinfo_urls: set[str] = set()
 DEFAULT_TORZNAB_SOURCE = {
     'enabled': False,

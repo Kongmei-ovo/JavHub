@@ -253,6 +253,7 @@ export default {
           { path: '/favorites', label: '我的收藏', icon: IconHeart },
           { path: '/downloads', label: '下载任务', icon: IconHome },
           { path: '/parse', label: '磁链解析', icon: IconParse },
+          { path: '/entities', label: '实体目录', icon: IconList },
         ],
       },
       {
@@ -260,6 +261,8 @@ export default {
         items: [
           { path: '/subscription', label: '演员订阅', icon: IconStar },
           { path: '/inventory', label: '库存对比', icon: IconInventory },
+          { path: '/library', label: '库检测', icon: IconInventory },
+          { path: '/duplicates', label: '去重管理', icon: IconList },
           { path: '/normalize', label: '演员映射', icon: IconNormalize },
           { path: '/supplement', label: '补全管理', icon: IconSupplement },
           { path: '/translations', label: '翻译作业', icon: IconTranslate },
@@ -270,6 +273,7 @@ export default {
         label: '系统设置',
         items: [
           { path: '/settings', label: '设置', icon: IconSettings },
+          { path: '/logs', label: '活动中心', icon: IconList },
         ],
       },
     ])
@@ -284,12 +288,16 @@ export default {
     const mobileMoreItems = computed(() => [
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/parse', label: '磁链解析', icon: IconParse },
+      { path: '/entities', label: '实体目录', icon: IconList },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
       { path: '/inventory', label: '库存对比', icon: IconInventory },
+      { path: '/library', label: '库检测', icon: IconInventory },
+      { path: '/duplicates', label: '去重管理', icon: IconList },
       { path: '/normalize', label: '演员映射', icon: IconNormalize },
       { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
       { path: '/settings', label: '设置', icon: IconSettings },
+      { path: '/logs', label: '活动中心', icon: IconList },
     ])
 
     const isMoreRoute = computed(() => mobileMoreItems.value.some(item => route.path === item.path))
