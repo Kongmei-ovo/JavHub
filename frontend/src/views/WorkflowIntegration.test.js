@@ -79,6 +79,16 @@ test('settings page warns when Docker uses a localhost JavInfo URL', () => {
   assert.match(config, /修正为 Docker 服务地址/)
 })
 
+test('settings page exposes bounded Torznab source configuration', () => {
+  assert.match(configFeatureSource, /sources:\s*\{[\s\S]*torznab:\s*\{[\s\S]*enabled: false/)
+  assert.match(config, /磁力索引源 \/ Torznab/)
+  assert.match(config, /v-model="config\.sources\.torznab\.base_url"/)
+  assert.match(config, /v-model="config\.sources\.torznab\.api_key"/)
+  assert.match(config, /v-model\.number="config\.sources\.torznab\.limit"[\s\S]*max="100"/)
+  assert.match(config, /v-model\.number="config\.sources\.torznab\.timeout"[\s\S]*max="60"/)
+  assert.match(config, /mergeSourceConfig\(data\.sources \|\| \{\}\)/)
+})
+
 test('navigation and actor page use actor mapping language', () => {
   assert.match(app, /appVersion/)
   assert.match(app, /import\.meta\.env\.VITE_APP_VERSION/)

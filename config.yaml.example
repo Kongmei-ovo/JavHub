@@ -93,6 +93,30 @@ emby:
   api_url: ""
   api_key: ""
 
+sources:
+  # Optional user-owned magnet search source via Torznab-compatible apps.
+  # Use a local aggregator such as Prowlarr or Jackett; do not put tracker/indexer
+  # site URLs here. JAVHUB_TORZNAB_API_KEY can provide the api_key when omitted.
+  torznab:
+    enabled: false
+    name: "torznab"
+    base_url: "http://prowlarr:9696"
+    api_key: ""
+    indexer: "all"
+    categories: ""
+    limit: 20
+    timeout: 15
+  # Optional future multi-instance form:
+  # torznab_instances:
+  #   - enabled: false
+  #     name: "jackett"
+  #     base_url: "http://jackett:9117"
+  #     api_key: ""
+  #     indexer: "all"
+  #     categories: ""
+  #     limit: 20
+  #     timeout: 15
+
 javinfo:
   # Docker Compose: http://javinfoapi:18080
   # Local LaunchAgent/bare metal: http://127.0.0.1:8080 or your actual JavInfoApi address

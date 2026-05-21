@@ -288,6 +288,65 @@
               </div>
             </div>
 
+            <!-- 磁力索引源 -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03"/>
+                    <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22"/>
+                  </svg>
+                  <h2>磁力索引源 / Torznab</h2>
+                </div>
+                <div class="form-slot">
+                  <small>连接你自己的 Prowlarr、Jackett 或 Torznab 服务。</small>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="torznabEnabled" v-model="config.sources.torznab.enabled" />
+                    <label for="torznabEnabled">启用磁力索引源</label>
+                  </div>
+                  <div class="form-group">
+                    <label>Base URL</label>
+                    <input class="input" v-model="config.sources.torznab.base_url" placeholder="http://localhost:9696" />
+                  </div>
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <div class="input-password-wrap">
+                      <input
+                        class="input"
+                        :type="showTorznabKey ? 'text' : 'password'"
+                        v-model="config.sources.torznab.api_key"
+                        autocomplete="off"
+                      />
+                      <button class="input-eye-btn" type="button" @click="showTorznabKey = !showTorznabKey" :title="showTorznabKey ? '隐藏' : '显示'">
+                        <svg v-if="!showTorznabKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.8 21.8 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Indexer</label>
+                      <input class="input" v-model="config.sources.torznab.indexer" placeholder="all" />
+                    </div>
+                    <div class="form-group">
+                      <label>Categories</label>
+                      <input class="input" v-model="config.sources.torznab.categories" placeholder="可留空" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Limit</label>
+                      <input class="input" v-model.number="config.sources.torznab.limit" type="number" min="1" max="100" />
+                    </div>
+                    <div class="form-group">
+                      <label>Timeout（秒）</label>
+                      <input class="input" v-model.number="config.sources.torznab.timeout" type="number" min="1" max="60" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 爬虫 -->
             <div class="settings-card">
               <div class="card-content">
@@ -901,6 +960,7 @@ export default {
       showBotToken: false,
       showEmbyKey: false,
       showAIKey: false,
+      showTorznabKey: false,
       showImportPassword: false,
       javinfoImportFile: null,
       javinfoImportConfirm: false,
@@ -1157,6 +1217,7 @@ export default {
         }
         this.mergeJavInfoConfig(data.javinfo || {})
         this.mergeAiConfig(data.ai || {})
+        this.mergeSourceConfig(data.sources || {})
 
         this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
         this.inventoryCron = data.inventory_cron || ''
@@ -1236,6 +1297,17 @@ export default {
         import_db: {
           ...(base.import_db || {}),
           ...((remote && remote.import_db) || {}),
+        },
+      }
+    },
+    mergeSourceConfig(remote = {}) {
+      const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG.sources))
+      this.config.sources = {
+        ...base,
+        ...(remote || {}),
+        torznab: {
+          ...(base.torznab || {}),
+          ...((remote && remote.torznab) || {}),
         },
       }
     },
