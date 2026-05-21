@@ -1,5 +1,6 @@
 import yaml
 import os
+import sys
 import threading
 import logging
 from pathlib import Path
@@ -55,17 +56,41 @@ class Config:
         return cls._instance
 
     def _load(self):
-        config_path = Path(__file__).parent.parent / "config.yaml"
-        if config_path.exists():
+        config_path = Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(__file__).parent.parent / "config.yaml")
+        self._config_path = config_path
+        self._config_load_error = ""
+        if not config_path.exists():
+            self._config = {}
+            self._config_loaded = False
+            self._config_load_error = f"config file not found: {config_path}"
+            logger.warning(self._config_load_error)
+            return
+        try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 self._config = yaml.safe_load(f) or {}
-        else:
+            self._config_loaded = True
+        except Exception as exc:
             self._config = {}
+            self._config_loaded = False
+            self._config_load_error = f"failed to load config file {config_path}: {exc}"
+            logger.exception("Failed to load config file %s", config_path)
         if isinstance(self._config.get('javinfo'), dict):
             _warn_if_legacy_javinfo_url(self._config['javinfo'].get('api_url', ''), 'config.yaml')
 
     def reload(self):
         self._load()
+
+    @property
+    def config_path(self) -> Path:
+        return getattr(self, "_config_path", Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(__file__).parent.parent / "config.yaml"))
+
+    @property
+    def config_loaded(self) -> bool:
+        return bool(getattr(self, "_config_loaded", False))
+
+    @property
+    def config_load_error(self) -> str:
+        return str(getattr(self, "_config_load_error", ""))
 
     @property
     def server_port(self) -> int:
@@ -580,6 +605,11 @@ class Config:
     def get_all(self) -> dict:
         cfg = self._config.copy()
         cfg.pop('metatube', None)
+        cfg['_meta'] = {
+            'config_path': str(self.config_path),
+            'config_loaded': self.config_loaded,
+            'config_load_error': self.config_load_error,
+        }
         cfg['ai'] = self.ai
         cfg['automation'] = self.automation
         cfg['actor_mapping'] = self.actor_mapping
@@ -638,8 +668,10 @@ class Config:
             _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')
         if 'ai' in incoming and isinstance(self._config.get('translation'), dict):
             self._config['translation'].pop('openai_compatible', None)
-        config_path = Path(__file__).parent.parent / "config.yaml"
+        config_path = self.config_path
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(self._config, f, allow_unicode=True, default_flow_style=False)
 
+sys.modules.setdefault("config", sys.modules[__name__])
+sys.modules.setdefault("backend.config", sys.modules[__name__])
 config = Config()

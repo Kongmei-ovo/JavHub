@@ -44,14 +44,24 @@
 
       <AppleErrorState
         v-else-if="configLoadError"
-        title="配置加载失败"
-        description="无法确认当前配置，保存已暂停以避免覆盖现有设置。"
+        :title="configLoadErrorTitle"
+        :description="configLoadErrorDescription"
+        :source-label="configStatusSourceLabel"
+        :details="configStatusDetails"
         retry-label="重新加载"
         @retry="loadConfig"
       />
 
       <transition v-else name="fade-slide" mode="out-in">
         <div :key="activeGroup" class="active-section">
+          <div class="config-status-banner apple-surface" :class="{ warning: !configMeta.config_loaded }">
+            <div>
+              <strong>{{ configStatusTitle }}</strong>
+              <p>{{ configStatusDescription }}</p>
+            </div>
+            <code v-if="configMeta.config_path">{{ configMeta.config_path }}</code>
+          </div>
+
           <!-- Services Section -->
           <div v-if="activeGroup === 'services'" class="config-section">
             <div class="section-header">
@@ -850,6 +860,11 @@ export default {
       configLoading: true,
       configLoaded: false,
       configLoadError: '',
+      configMeta: {
+        config_path: '',
+        config_loaded: false,
+        config_load_error: '',
+      },
       saving: false,
       exportingConfig: false,
       testingTelegram: false,
@@ -948,7 +963,31 @@ export default {
   computed: {
     displayLangVal() { return displayLang.value },
     canSaveConfig() {
-      return this.configLoaded && !this.configLoading && !this.configLoadError
+      return this.configLoaded && !this.configLoading && !this.configLoadError && this.configMeta.config_loaded
+    },
+    configLoadErrorTitle() {
+      return this.configMeta.config_loaded === false ? '配置文件未挂载或不可读取' : '配置加载失败'
+    },
+    configLoadErrorDescription() {
+      if (this.configMeta.config_loaded === false) {
+        return '后端正在使用默认值兜底，保存已暂停以避免覆盖现有设置。请检查部署里的 config.yaml 挂载路径。'
+      }
+      return '无法确认当前配置，保存已暂停以避免覆盖现有设置。'
+    },
+    configStatusTitle() {
+      return this.configMeta.config_loaded ? '配置已读取' : '配置文件未挂载或不可读取'
+    },
+    configStatusDescription() {
+      if (this.configMeta.config_loaded) {
+        return '当前表单来自后端读取到的运行配置。'
+      }
+      return '后端只返回了默认配置，界面已禁止保存，避免把默认值写回覆盖真实配置。'
+    },
+    configStatusSourceLabel() {
+      return this.configMeta.config_path ? `路径 ${this.configMeta.config_path}` : ''
+    },
+    configStatusDetails() {
+      return this.configMeta.config_load_error || ''
     },
     javinfoImportCanStart() {
       return Boolean(
@@ -1039,7 +1078,20 @@ export default {
       this.configLoadError = ''
       try {
         const resp = await api.getConfig()
-        const data = resp.data
+        const data = { ...(resp.data || {}) }
+        const meta = data._meta || {}
+        delete data._meta
+        this.configMeta = {
+          config_path: meta.config_path || '',
+          config_loaded: meta.config_loaded !== false,
+          config_load_error: meta.config_load_error || '',
+        }
+
+        if (!this.configMeta.config_loaded) {
+          this.configLoaded = false
+          this.configLoadError = 'missing_config_file'
+          return
+        }
 
         this.config = {
           ...JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
@@ -1540,6 +1592,39 @@ export default {
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.config-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 14px 16px;
+}
+
+.config-status-banner strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--type-control);
+  margin-bottom: 4px;
+}
+
+.config-status-banner p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+}
+
+.config-status-banner code {
+  max-width: 48%;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
+.config-status-banner.warning {
+  border-color: rgba(255, 181, 71, 0.45);
 }
 
 .config-section {

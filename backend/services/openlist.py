@@ -58,8 +58,7 @@ class OpenListClient:
                     self.token = data.get('data', {}).get('token', '')
                     if self.token:
                         config._config.setdefault('openlist', {})['token'] = self.token
-                        from pathlib import Path
-                        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+                        config_path = config.config_path
                         import yaml
                         with open(config_path, 'r', encoding='utf-8') as f:
                             yaml_data = yaml.safe_load(f)

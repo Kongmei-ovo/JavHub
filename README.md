@@ -245,10 +245,11 @@ telegram:
   allowed_user_ids: []
 ```
 
-Container deployments can override the companion API URL with
-`JAVINFO_API_URL=http://javinfoapi:18080`. The JavInfo import settings also
-read `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME`, so compose
-deployments can inherit the same database values used by JavInfoApi.
+Container deployments mount `./config.yaml` at `/app/config.yaml` and set
+`JAVHUB_CONFIG_PATH=/app/config.yaml`, so the settings page reflects the file
+you edited. The JavInfo import settings also read `DB_HOST`, `DB_PORT`,
+`DB_USER`, `DB_PASSWORD`, and `DB_NAME`, so compose deployments can inherit the
+same database values used by JavInfoApi.
 
 ## Useful Commands
 
