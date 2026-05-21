@@ -15,75 +15,81 @@ from database import (
     list_candidate_process_runs,
     mapping_summary,
 )
+from services import cache
 
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
+_CACHE_NAMESPACE = "operations_overview"
+_CACHE_TTL = 15
 
 
 @router.get("/overview")
 async def operations_overview() -> dict[str, Any]:
-    snapshot_key = get_latest_snapshot_key()
-    snapshot_actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
-    candidate_stats = download_candidate_stats()
-    jobs = get_inventory_jobs(limit=10)
-    missing = get_all_missing_videos()
+    async def produce() -> dict[str, Any]:
+        snapshot_key = get_latest_snapshot_key()
+        snapshot_actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
+        candidate_stats = download_candidate_stats()
+        jobs = get_inventory_jobs(limit=10)
+        missing = get_all_missing_videos()
 
-    supplement: dict[str, Any] = {"available": False}
-    try:
-        from modules.info_client import get_info_client
+        supplement: dict[str, Any] = {"available": False}
+        try:
+            from modules.info_client import get_info_client
 
-        client = get_info_client()
-        stats = await client.proxy_get("/api/v1/supplement/stats", params=None)
-        queued = await client.proxy_get(
-            "/api/v1/supplement/jobs",
-            params={"page": 1, "page_size": 1, "status": "queued"},
-        )
-        running = await client.proxy_get(
-            "/api/v1/supplement/jobs",
-            params={"page": 1, "page_size": 1, "status": "running"},
-        )
-        failed = await client.proxy_get(
-            "/api/v1/supplement/jobs",
-            params={"page": 1, "page_size": 1, "status": "failed"},
-        )
-        supplement = {
-            "available": True,
-            "stats": stats,
-            "queued": _total_from_response(queued),
-            "running": _total_from_response(running),
-            "failed": _total_from_response(failed),
+            client = get_info_client()
+            stats = await client.proxy_get("/api/v1/supplement/stats", params=None)
+            queued = await client.proxy_get(
+                "/api/v1/supplement/jobs",
+                params={"page": 1, "page_size": 1, "status": "queued"},
+            )
+            running = await client.proxy_get(
+                "/api/v1/supplement/jobs",
+                params={"page": 1, "page_size": 1, "status": "running"},
+            )
+            failed = await client.proxy_get(
+                "/api/v1/supplement/jobs",
+                params={"page": 1, "page_size": 1, "status": "failed"},
+            )
+            supplement = {
+                "available": True,
+                "stats": stats,
+                "queued": _total_from_response(queued),
+                "running": _total_from_response(running),
+                "failed": _total_from_response(failed),
+            }
+        except Exception as exc:
+            supplement = {"available": False, "error": str(exc)}
+
+        return {
+            "status": "ok",
+            "automation": config.automation,
+            "snapshot": {
+                "snapshot_key": snapshot_key,
+                "actor_count": len(snapshot_actors),
+            },
+            "mapping": {
+                **mapping_summary(snapshot_actors),
+                "auto_match": config.actor_mapping,
+            },
+            "missing": {
+                "total": len(missing),
+                "top_actresses": _top_missing_actresses(missing),
+            },
+            "candidates": {
+                **candidate_stats,
+            },
+            "candidate_runs": {
+                "recent": list_candidate_process_runs(limit=5),
+                "schedule": _candidate_schedule_state(),
+            },
+            "inventory_jobs": {
+                "recent": jobs,
+                "running": sum(1 for job in jobs if job.get("status") == "running"),
+                "failed": sum(1 for job in jobs if job.get("status") == "failed"),
+            },
+            "supplement": supplement,
         }
-    except Exception as exc:
-        supplement = {"available": False, "error": str(exc)}
 
-    return {
-        "status": "ok",
-        "automation": config.automation,
-        "snapshot": {
-            "snapshot_key": snapshot_key,
-            "actor_count": len(snapshot_actors),
-        },
-        "mapping": {
-            **mapping_summary(snapshot_actors),
-            "auto_match": config.actor_mapping,
-        },
-        "missing": {
-            "total": len(missing),
-            "top_actresses": _top_missing_actresses(missing),
-        },
-        "candidates": {
-            **candidate_stats,
-        },
-        "candidate_runs": {
-            "recent": list_candidate_process_runs(limit=5),
-            "schedule": _candidate_schedule_state(),
-        },
-        "inventory_jobs": {
-            "recent": jobs,
-            "running": sum(1 for job in jobs if job.get("status") == "running"),
-            "failed": sum(1 for job in jobs if job.get("status") == "failed"),
-        },
-        "supplement": supplement,
-    }
+    return await cache.get_or_set_response(_CACHE_NAMESPACE, {}, produce, ttl=_CACHE_TTL)
 
 
 @router.post("/candidate-processing/run")
