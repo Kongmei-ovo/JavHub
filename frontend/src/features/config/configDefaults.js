@@ -23,7 +23,7 @@ export const DEFAULT_CONFIG = {
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   javinfo: {
-    api_url: 'http://localhost:18080',
+    api_url: 'http://javinfoapi:18080',
     page_size: 30,
     timeout: 30,
     import_db: {

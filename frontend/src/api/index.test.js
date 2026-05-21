@@ -155,6 +155,7 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
   await api.preflightJavInfoImport(importDb, 6)
   await api.createJavInfoImportJob({ filename: file.name, file_size: file.size, import_db: importDb, confirm_replace: true })
   await api.uploadJavInfoImportDump(7, file, progress, { chunkSize: 4 })
+  await api.runJavInfoMigrations(true)
   await api.listJavInfoImportJobs(5)
   await api.cancelJavInfoImportJob(7)
 
@@ -172,9 +173,11 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
   assert.equal(calls[4].headers['X-Chunk-Offset'], '4')
   assert.equal(calls[4].headers['X-Chunk-Size'], '2')
   assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/upload/complete')
-  assert.equal(calls[6].url, '/v1/javinfo/imports/jobs')
-  assert.deepEqual(calls[6].params, { limit: 5 })
-  assert.equal(calls[7].url, '/v1/javinfo/imports/jobs/7/cancel')
+  assert.equal(calls[6].url, '/v1/javinfo/imports/migrations')
+  assert.deepEqual(JSON.parse(calls[6].data), { dry_run: true })
+  assert.equal(calls[7].url, '/v1/javinfo/imports/jobs')
+  assert.deepEqual(calls[7].params, { limit: 5 })
+  assert.equal(calls[8].url, '/v1/javinfo/imports/jobs/7/cancel')
   assert.deepEqual(progressEvents.at(-1), { loaded: 6, total: 6 })
 })
 

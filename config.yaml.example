@@ -94,7 +94,9 @@ emby:
   api_key: ""
 
 javinfo:
-  api_url: "http://localhost:18080"
+  # Docker Compose: http://javinfoapi:18080
+  # Local LaunchAgent/bare metal: http://127.0.0.1:8080 or your actual JavInfoApi address
+  api_url: "http://javinfoapi:18080"
   page_size: 30
   timeout: 30
   supplement_admin_token: ""
