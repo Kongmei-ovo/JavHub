@@ -266,6 +266,9 @@ PYTHONPATH=backend pytest
 # Smoke test the cache backend
 PYTHONPATH=backend python scripts/cache_backend_smoke.py
 
+# Run a short read-only API load-test smoke
+node scripts/api_load_test.mjs --base http://localhost:18090 --duration-scale 0.01
+
 # Smoke test Redis cache mode when Redis is available
 JAVHUB_CACHE_BACKEND=redis \
 JAVHUB_REDIS_URL=redis://localhost:6379/0 \

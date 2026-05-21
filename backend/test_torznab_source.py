@@ -96,6 +96,27 @@ class TorznabSourceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results[0]["resolution"], "720p")
         self.assertTrue(results[0]["hd"])
 
+    async def test_parses_http_torrent_enclosure_without_magnet(self):
+        FakeAsyncClient.response_text = """<?xml version="1.0" encoding="UTF-8"?>
+<rss>
+  <channel>
+    <item>
+      <title>ABP-588 1080p</title>
+      <enclosure url="https://indexer.test/download/ABP-588.torrent" length="2147483648" type="application/x-bittorrent" />
+    </item>
+  </channel>
+</rss>"""
+        source = TorznabSource(base_url="http://jackett.test", api_key="secret", enabled=True)
+
+        with patch("sources.torznab_source.httpx.AsyncClient", return_value=FakeAsyncClient()):
+            results = await source.search("ABP-588")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["magnet"], "")
+        self.assertEqual(results[0]["download_url"], "https://indexer.test/download/ABP-588.torrent")
+        self.assertEqual(results[0]["torrent_url"], "https://indexer.test/download/ABP-588.torrent")
+        self.assertEqual(results[0]["size"], "2.0GB")
+
     async def test_ignores_torznab_error_response(self):
         FakeAsyncClient.response_text = """<?xml version="1.0" encoding="UTF-8"?>
 <error code="100" description="Incorrect user credentials" />"""

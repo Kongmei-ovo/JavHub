@@ -89,6 +89,56 @@ class CandidateProcessorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated["status"], "sent")
         self.assertEqual(updated["magnet"], magnet["magnet"])
 
+    async def test_find_best_magnet_accepts_http_torrent_result(self):
+        from services.candidate_processor import find_best_magnet
+
+        http_result = {
+            "magnet": "",
+            "download_url": "https://indexer.test/download/SIVR-438.torrent",
+            "torrent_url": "https://indexer.test/download/SIVR-438.torrent",
+            "title": "SIVR-438 1080p",
+            "size": "2.0GB",
+            "hd": True,
+            "resolution": "1080p",
+        }
+
+        with patch("services.candidate_processor.register_all_sources"):
+            with patch("services.candidate_processor.SourceRegistry.search_all", new=AsyncMock(return_value=[http_result])):
+                result = await find_best_magnet({"content_id": "SIVR-438"})
+
+        self.assertEqual(result["download_url"], "https://indexer.test/download/SIVR-438.torrent")
+        self.assertEqual(result["torrent_url"], "https://indexer.test/download/SIVR-438.torrent")
+
+    async def test_auto_policy_enriches_http_torrent_url_before_send(self):
+        from database import get_download_candidate, upsert_download_candidate
+        from services.candidate_processor import process_candidate
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            dvd_id="SIVR-438",
+            title="Title",
+            source="inventory",
+        )
+        source_result = {
+            "magnet": "",
+            "download_url": "https://indexer.test/download/SIVR-438.torrent",
+            "torrent_url": "https://indexer.test/download/SIVR-438.torrent",
+            "title": "SIVR-438 1080p",
+            "size": "2.0GB",
+        }
+
+        with patch("services.candidate_processor.find_best_magnet", new=AsyncMock(return_value=source_result)):
+            with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=9)) as create:
+                with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 9, "status": "downloading"}]):
+                    result = await process_candidate(candidate["id"], policy="auto")
+
+        updated = get_download_candidate(candidate["id"])
+        self.assertEqual(result["action"], "sent")
+        self.assertEqual(updated["status"], "sent")
+        self.assertEqual(updated["magnet"], "https://indexer.test/download/SIVR-438.torrent")
+        create.assert_awaited_once()
+        self.assertEqual(create.await_args.kwargs["magnet"], "https://indexer.test/download/SIVR-438.torrent")
+
     async def test_rejected_and_sent_are_not_processed(self):
         from database import set_download_candidate_status, upsert_download_candidate
         from services.candidate_processor import process_candidate

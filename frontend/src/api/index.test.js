@@ -454,6 +454,50 @@ test('getCacheStats sends GET to cache stats path', async (t) => {
   assert.equal(capturedConfig.method, 'get')
 })
 
+test('purgeCache forwards the requested scope', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { success: true } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?cache-purge-all-${Date.now()}`)
+  await api.purgeCache('all')
+
+  assert.equal(capturedConfig.url, '/v1/cache/purge')
+  assert.equal(capturedConfig.method, 'post')
+  assert.deepEqual(capturedConfig.params, { scope: 'all' })
+})
+
+test('favorite collection APIs use collection management endpoints', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  const calls = []
+  axios.defaults.adapter = async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7 } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?favorite-collections-${Date.now()}`)
+  await api.getCollections()
+  await api.createCollection({ name: '待看' })
+  await api.updateCollection(7, { name: '精选' })
+  await api.deleteCollection(7)
+
+  assert.equal(calls[0].url, '/v1/favorites/collections')
+  assert.equal(calls[0].method, 'get')
+  assert.equal(calls[1].url, '/v1/favorites/collections')
+  assert.equal(calls[1].method, 'post')
+  assert.deepEqual(JSON.parse(calls[1].data), { name: '待看' })
+  assert.equal(calls[2].url, '/v1/favorites/collections/7')
+  assert.equal(calls[2].method, 'put')
+  assert.deepEqual(JSON.parse(calls[2].data), { name: '精选' })
+  assert.equal(calls[3].url, '/v1/favorites/collections/7')
+  assert.equal(calls[3].method, 'delete')
+})
+
 test('health check bypasses api prefix because backend exposes bare health path', async (t) => {
   const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
@@ -469,6 +513,39 @@ test('health check bypasses api prefix because backend exposes bare health path'
   assert.equal(capturedConfig.url, '/health')
   assert.equal(capturedConfig.baseURL, '')
   assert.equal(capturedConfig.method, 'get')
+})
+
+test('health check returns readiness summary fields used by operations', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return {
+      config,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      data: {
+        status: 'degraded',
+        config: { loaded: false },
+        database: { connectable: true },
+        javinfo: { api_url_configured: true },
+        cache: { backend: 'sqlite', active_entries: 2, total_entries: 3 },
+      },
+    }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?health-summary-${Date.now()}`)
+  const response = await api.readiness()
+
+  assert.equal(capturedConfig.url, '/health/readiness')
+  assert.equal(capturedConfig.baseURL, '')
+  assert.equal(response.data.status, 'degraded')
+  assert.equal(response.data.config.loaded, false)
+  assert.equal(response.data.database.connectable, true)
+  assert.equal(response.data.javinfo.api_url_configured, true)
+  assert.equal(response.data.cache.backend, 'sqlite')
 })
 
 test('startSupplementFilmographyJob sends POST to correct path', async (t) => {

@@ -1,0 +1,56 @@
+name: Docker Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare runtime config
+        run: cp config.yaml.example config.yaml
+
+      - name: Validate compose config
+        run: docker compose config
+
+      - name: Build JavHub image
+        run: docker build -t javhub:smoke --build-arg VITE_APP_VERSION=smoke .
+
+      - name: Start compose stack
+        env:
+          JAVHUB_IMAGE: javhub:smoke
+          JAVHUB_PORT: "3000"
+          JAVINFOAPI_PORT: "18080"
+          POSTGRES_PASSWORD: smoke-password
+          DB_PASSWORD: smoke-password
+          SUPPLEMENT_ADMIN_TOKEN: smoke-token
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Check service health
+        run: |
+          set -euo pipefail
+          curl -fsS http://127.0.0.1:3000/health
+          curl -fsS http://127.0.0.1:3000/health/readiness
+          curl -fsS http://127.0.0.1:3000/api/v1/cache/stats
+          curl -fsS http://127.0.0.1:18080/health
+
+      - name: Show compose status and logs
+        if: always()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=200 javhub javinfoapi postgres redis
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose down -v --remove-orphans

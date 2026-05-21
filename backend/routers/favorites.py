@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite
@@ -24,6 +24,10 @@ class CollectionItem(BaseModel):
     name: str
     description: Optional[str]
     created_at: str
+
+class CollectionRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
 
 @router.get("")
 async def get_favorites(entity_type: Optional[str] = Query(None)):
@@ -84,3 +88,35 @@ async def get_favorite_status(entity_type: str, entity_id: str):
 async def get_collections():
     """获取收藏夹列表"""
     return favorite.list_collections()
+
+
+@router.post("/collections", response_model=CollectionItem)
+async def create_collection(req: CollectionRequest):
+    """创建收藏夹"""
+    try:
+        return favorite.create_collection(req.name, req.description)
+    except favorite.CollectionValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except favorite.CollectionNameExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.put("/collections/{collection_id}", response_model=CollectionItem)
+async def update_collection(collection_id: int, req: CollectionRequest):
+    """更新收藏夹"""
+    try:
+        return favorite.update_collection(collection_id, req.name, req.description)
+    except favorite.CollectionValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except favorite.CollectionNameExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except favorite.CollectionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/collections/{collection_id}")
+async def delete_collection(collection_id: int):
+    """删除收藏夹"""
+    if not favorite.delete_collection(collection_id):
+        raise HTTPException(status_code=404, detail="Collection not found")
+    return {"deleted": True}

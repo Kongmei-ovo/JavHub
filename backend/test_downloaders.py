@@ -169,6 +169,37 @@ class DownloaderClientProtocolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(requests[0][1]["savepath"], "/media")
         self.assertEqual(requests[0][1]["tags"], "javhub")
 
+    async def test_qbittorrent_adds_http_torrent_url_to_web_api(self):
+        from services.downloaders import QBittorrentDownloaderClient
+
+        requests = []
+
+        class FakeResponse:
+            status_code = 200
+            text = "Ok."
+
+        class FakeClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, data=None, **kwargs):
+                requests.append((url, data))
+                return FakeResponse()
+
+        torrent_url = "https://indexer.test/download/SIVR-438.torrent"
+
+        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+            result = await QBittorrentDownloaderClient(
+                {"address": "http://qb", "default_path": "/media"}
+            ).add_magnet(torrent_url)
+
+        self.assertTrue(result.success)
+        self.assertEqual(requests[0][1]["urls"], torrent_url)
+        self.assertEqual(result.remote_task_id, "")
+
     async def test_transmission_retries_with_session_id(self):
         from services.downloaders import TransmissionDownloaderClient
 

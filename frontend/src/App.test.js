@@ -25,16 +25,46 @@ test('primary navigation is grouped around daily workflows first', () => {
     '我的收藏',
     '下载任务',
     '磁链解析',
+    '实体目录',
     '演员订阅',
     '库存对比',
+    '库检测',
+    '去重管理',
     '演员映射',
     '补全管理',
     '翻译作业',
     '运营总览',
     '设置',
+    '活动中心',
   ])
   assert.match(source, /id="mobile-more-title">更多功能/)
   assert.match(source, /aria-label="关闭更多面板"/)
+})
+
+test('mobile more exposes initialization and maintenance entry points', () => {
+  const mobileStart = source.indexOf('const mobileMoreItems')
+  const mobileEnd = source.indexOf('const isMoreRoute', mobileStart)
+  const mobileBlock = source.slice(mobileStart, mobileEnd)
+  const labels = [...mobileBlock.matchAll(/\{ path: '[^']+', label: '([^']+)'/g)].map((match) => match[1])
+
+  assert.deepEqual(labels, [
+    '我的收藏',
+    '磁链解析',
+    '实体目录',
+    '订阅演员',
+    '库存对比',
+    '库检测',
+    '去重管理',
+    '演员映射',
+    '翻译作业',
+    '补全管理',
+    '设置',
+    '活动中心',
+  ])
+  assert.match(mobileBlock, /path: '\/library'/)
+  assert.match(mobileBlock, /path: '\/entities'/)
+  assert.match(mobileBlock, /path: '\/duplicates'/)
+  assert.match(mobileBlock, /path: '\/logs'/)
 })
 
 test('root route redirects to video search as the primary entry page', () => {

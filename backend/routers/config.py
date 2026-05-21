@@ -217,8 +217,10 @@ async def purge_cache(scope: str = "video"):
         count = cache.purge_enum_cache()
     elif scope == "response":
         count = cache.purge_response_cache()
-    else:
+    elif scope == "video":
         count = cache.purge_video_cache()
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported cache purge scope")
     return {"purged": count, "scope": scope}
 
 

@@ -104,8 +104,7 @@ def _candidate_plan(
     if chosen_policy == "manual" and not force:
         return {"action": "manual_required", "reason": "manual policy", "candidate": candidate, "policy": chosen_policy}
 
-    has_magnet = bool(str(candidate.get("magnet") or "").strip())
-    if has_magnet:
+    if _download_uri(candidate):
         return {"action": "would_send", "reason": "ready", "candidate": candidate, "policy": chosen_policy}
 
     if enrich and chosen_policy in {"rules", "auto"}:
@@ -173,8 +172,16 @@ def _magnet_score(item: dict) -> tuple:
     return (1 if subtitle else 0, 1 if hd else 0, res_score, size_score)
 
 
+def _download_uri(item: dict) -> str:
+    for key in ("magnet", "torrent_url", "download_url"):
+        value = str(item.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
 async def find_best_magnet(candidate: dict) -> dict | None:
-    """Search registered sources and select the best available magnet."""
+    """Search registered sources and select the best available download URI."""
     register_all_sources()
     keywords = []
     for value in (candidate.get("dvd_id"), candidate.get("content_id")):
@@ -186,8 +193,7 @@ async def find_best_magnet(candidate: dict) -> dict | None:
     for keyword in keywords:
         results = await SourceRegistry.search_all(keyword)
         for item in results:
-            magnet = str(item.get("magnet") or "").strip()
-            if not magnet:
+            if not _download_uri(item):
                 continue
             if best is None or _magnet_score(item) > _magnet_score(best):
                 best = dict(item)
@@ -209,7 +215,7 @@ async def enrich_candidate_magnet(candidate_id: int, operator: str = "manual") -
 
     updated = update_download_candidate_magnet(
         candidate_id,
-        str(best.get("magnet") or "").strip(),
+        _download_uri(best),
         str(best.get("source") or best.get("name") or "sources"),
     )
     add_download_candidate_event(
@@ -241,10 +247,10 @@ async def process_candidate(
         add_download_candidate_event(candidate_id, "policy_skipped", plan["reason"], operator)
         return _response(planned_action, candidate, policy=chosen_policy)
 
-    if enrich and not candidate.get("magnet"):
+    if enrich and not _download_uri(candidate):
         enrich_result = await enrich_candidate_magnet(candidate_id, operator=operator)
         candidate = get_download_candidate(candidate_id) or candidate
-        if not candidate.get("magnet") and chosen_policy in {"rules", "auto"}:
+        if not _download_uri(candidate) and chosen_policy in {"rules", "auto"}:
             if chosen_policy == "auto":
                 failed = set_download_candidate_status(candidate_id, "failed", error_msg="未找到可用 magnet")
                 add_download_candidate_event(candidate_id, "process_failed", "missing magnet", operator)
@@ -252,12 +258,12 @@ async def process_candidate(
             add_download_candidate_event(candidate_id, "policy_skipped", "missing magnet", operator)
             return _response("skipped_missing_magnet", candidate, policy=chosen_policy, enrich_result=enrich_result)
 
-    if chosen_policy == "rules" and policy_cfg.rules_require_magnet and not candidate.get("magnet"):
+    if chosen_policy == "rules" and policy_cfg.rules_require_magnet and not _download_uri(candidate):
         add_download_candidate_event(candidate_id, "policy_skipped", "rules require magnet", operator)
         return _response("skipped_missing_magnet", candidate, policy=chosen_policy)
 
-    magnet = str(candidate.get("magnet") or "").strip()
-    if not magnet:
+    download_uri = _download_uri(candidate)
+    if not download_uri:
         failed = set_download_candidate_status(candidate_id, "failed", error_msg="候选缺少 magnet，不能下发下载")
         add_download_candidate_event(candidate_id, "process_failed", "missing magnet", operator)
         return _response("failed_missing_magnet", failed, policy=chosen_policy)
@@ -270,7 +276,7 @@ async def process_candidate(
         task_id = await downloader_service.create_download_task(
             code=candidate.get("content_id") or candidate.get("dvd_id") or "",
             title=candidate.get("title") or candidate.get("content_id") or "",
-            magnet=magnet,
+            magnet=download_uri,
             path="",
         )
     except Exception as exc:

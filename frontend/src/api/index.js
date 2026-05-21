@@ -166,16 +166,16 @@ export default {
     return api.get('/v1/makers', { params })
   },
 
-  listSeries(page = 1, page_size = 20) {
-    return api.get('/v1/series', { params: { page, page_size } })
+  listSeries(page = 1, page_size = 20, options = {}) {
+    return api.get('/v1/series', { params: { page, page_size, ...options } })
   },
 
   listCategories() {
     return api.get('/v1/categories', { silentError: true })
   },
 
-  listLabels() {
-    return api.get('/v1/labels')
+  listLabels(params = {}) {
+    return api.get('/v1/labels', { params })
   },
 
   listDirectors(params = {}) {
@@ -389,8 +389,8 @@ export default {
 
   // ========== 日志 ==========
 
-  getLogs(limit = 100, level = '') {
-    return api.get('/v1/logs', { params: { limit, level } })
+  getLogs(limit = 100, level = '', options = {}) {
+    return api.get('/v1/logs', { params: { limit, level, ...options } })
   },
 
   clearLogs() {
@@ -568,6 +568,18 @@ export default {
     return api.get('/v1/favorites/collections')
   },
 
+  createCollection(data) {
+    return api.post('/v1/favorites/collections', data)
+  },
+
+  updateCollection(collectionId, data) {
+    return api.put(`/v1/favorites/collections/${numericPathSegment(collectionId, 'collectionId')}`, data)
+  },
+
+  deleteCollection(collectionId) {
+    return api.delete(`/v1/favorites/collections/${numericPathSegment(collectionId, 'collectionId')}`)
+  },
+
   // ========== 补全管理 ==========
 
   getSupplementStats() {
@@ -680,6 +692,10 @@ export default {
 
   health() {
     return api.get('/health', { baseURL: '' })
+  },
+
+  readiness() {
+    return api.get('/health/readiness', { baseURL: '' })
   },
 
   // ========== 流媒体 ==========

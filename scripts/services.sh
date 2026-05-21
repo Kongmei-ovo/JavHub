@@ -245,6 +245,30 @@ all_labels() {
   printf '%s\n%s\n%s\n' "${JAVINFO_LABEL}" "${BACKEND_LABEL}" "${FRONTEND_LABEL}"
 }
 
+print_http_check() {
+  local name="$1"
+  local url="$2"
+
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "${name} ${url}: skipped (curl not found)"
+    return
+  fi
+
+  if curl -fsS --max-time 2 "${url}" >/dev/null 2>&1; then
+    echo "${name} ${url}: ok"
+  else
+    echo "${name} ${url}: failed"
+  fi
+}
+
+print_http_health_summary() {
+  echo
+  echo "HTTP health:"
+  print_http_check "javinfo" "http://127.0.0.1:8080/health"
+  print_http_check "backend" "http://127.0.0.1:18090/health"
+  print_http_check "frontend" "http://127.0.0.1:5174"
+}
+
 ensure_services() {
   write_plists
   while IFS= read -r label; do
@@ -253,6 +277,7 @@ ensure_services() {
       launchctl kickstart "gui/${UID_VALUE}/${label}" >/dev/null 2>&1 || true
     fi
   done < <(all_labels)
+  print_http_health_summary
 }
 
 status() {
@@ -270,6 +295,8 @@ status() {
   lsof -nP -iTCP:8080 -sTCP:LISTEN 2>/dev/null || true
   lsof -nP -iTCP:18090 -sTCP:LISTEN 2>/dev/null || true
   lsof -nP -iTCP:5174 -sTCP:LISTEN 2>/dev/null || true
+
+  print_http_health_summary
 }
 
 tail_logs() {

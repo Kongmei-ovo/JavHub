@@ -1,6 +1,12 @@
 <template>
   <div class="logs page-shell page-shell--standard">
-    <h1>日志查看</h1>
+    <div class="activity-header">
+      <div>
+        <h1>活动中心</h1>
+        <p>{{ activitySummary }}</p>
+      </div>
+      <button class="toolbar-btn primary" type="button" @click="loadLogs">刷新</button>
+    </div>
 
     <div class="toolbar">
       <GlassSelect
@@ -10,8 +16,15 @@
         @change="loadLogs"
       />
       <input v-model="searchText" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
-      <button class="toolbar-btn primary" type="button" @click="loadLogs">刷新</button>
+      <button class="toolbar-btn primary" type="button" @click="loadLogs">搜索</button>
       <button class="toolbar-btn danger" type="button" @click="clearLogs">清空</button>
+    </div>
+
+    <div class="activity-summary-strip" aria-label="活动等级汇总">
+      <div v-for="item in levelSummary" :key="item.level">
+        <strong>{{ item.count }}</strong>
+        <span>{{ item.level }}</span>
+      </div>
     </div>
 
     <div class="logs-container">
@@ -31,7 +44,7 @@
     </div>
 
     <div class="pagination">
-      <button @click="loadMore" :disabled="logs.length >= total">加载更多</button>
+      <button @click="loadMore" :disabled="!hasMoreLogs || loading">加载更多</button>
     </div>
   </div>
 </template>
@@ -57,19 +70,40 @@ export default {
       ],
       searchText: '',
       total: 0,
-      limit: 100
+      limit: 100,
+      offset: 0
     }
+  },
+  computed: {
+    levelSummary() {
+      return ['INFO', 'WARNING', 'ERROR'].map(level => ({
+        level,
+        count: this.logs.filter(log => String(log.level || '').toUpperCase() === level).length,
+      }))
+    },
+    activitySummary() {
+      return `当前显示 ${this.logs.length} 条 · ${this.filterLevel || '全部等级'}`
+    },
+    hasMoreLogs() {
+      return this.logs.length < this.total
+    },
   },
   mounted() {
     this.loadLogs()
   },
   methods: {
-    async loadLogs() {
+    async loadLogs({ append = false } = {}) {
       this.loading = true
+      if (!append) {
+        this.offset = 0
+      }
       try {
-        const resp = await api.getLogs(this.limit, this.filterLevel)
-        this.logs = resp.data
-        this.total = this.logs.length
+        const resp = await api.getLogs(this.limit, this.filterLevel, { q: this.searchText, offset: this.offset })
+        const payload = resp.data || {}
+        const rows = Array.isArray(payload) ? payload : (payload.data || [])
+        this.logs = append ? [...this.logs, ...rows] : rows
+        this.total = Number(payload.total ?? this.logs.length) || this.logs.length
+        this.offset = this.logs.length
       } catch (e) {
         console.error('Failed to load logs:', e)
       } finally {
@@ -77,8 +111,8 @@ export default {
       }
     },
     async loadMore() {
-      this.limit += 100
-      await this.loadLogs()
+      if (!this.hasMoreLogs || this.loading) return
+      await this.loadLogs({ append: true })
     },
     async clearLogs() {
       const confirmed = await requestConfirm({
@@ -92,6 +126,8 @@ export default {
       try {
         await api.clearLogs()
         this.logs = []
+        this.total = 0
+        this.offset = 0
       } catch (e) {
         console.error('Failed to clear logs:', e)
       }
@@ -109,7 +145,16 @@ export default {
 .logs {
   color: var(--text-primary);
 }
+
+.activity-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
 .logs h1 { margin: 0; font-size: var(--type-page-title); line-height: 1.2; letter-spacing: 0; }
+.activity-header p { margin: 6px 0 0; color: var(--text-secondary); font-size: var(--type-control); }
 .toolbar { margin: 20px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .toolbar .glass-select { width: 132px; }
 .toolbar input {
@@ -157,6 +202,35 @@ export default {
   background: rgba(255, 55, 95, 0.16);
   border-color: rgba(255, 55, 95, 0.42);
 }
+
+.activity-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.activity-summary-strip > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+
+.activity-summary-strip strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+
+.activity-summary-strip span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .logs-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
 .log-list { max-height: 500px; overflow-y: auto; }
 .log-item { display: flex; padding: 10px 15px; border-bottom: 1px solid var(--border); font-family: monospace; font-size: var(--type-control); min-width: 0; }
@@ -189,6 +263,10 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .activity-header {
+    flex-direction: column;
+  }
+
   .toolbar {
     align-items: stretch;
   }
@@ -198,6 +276,10 @@ export default {
   .toolbar button {
     width: 100%;
     max-width: none;
+  }
+
+  .activity-summary-strip {
+    grid-template-columns: 1fr;
   }
 
   .log-item {
