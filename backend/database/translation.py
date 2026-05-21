@@ -223,14 +223,27 @@ def _load_translation_rows(content_ids: list[str]) -> dict[str, Optional[dict]]:
         for start in range(0, len(content_ids), 500):
             chunk = content_ids[start:start + 500]
             placeholders = ",".join("?" for _ in chunk)
-            cursor.execute(
-                f"""
-                SELECT content_id, actress_json, category_json, series_json, title_json, maker_json, label_json
-                FROM translation_mappings
-                WHERE content_id IN ({placeholders})
-                """,
-                chunk,
-            )
+            try:
+                cursor.execute(
+                    f"""
+                    SELECT content_id, actress_json, category_json, series_json, title_json, maker_json, label_json
+                    FROM translation_mappings
+                    WHERE content_id IN ({placeholders})
+                    """,
+                    chunk,
+                )
+            except sqlite3.OperationalError as exc:
+                if "no such table: translation_mappings" not in str(exc):
+                    raise
+                init_translation_db()
+                cursor.execute(
+                    f"""
+                    SELECT content_id, actress_json, category_json, series_json, title_json, maker_json, label_json
+                    FROM translation_mappings
+                    WHERE content_id IN ({placeholders})
+                    """,
+                    chunk,
+                )
             for row in cursor.fetchall():
                 content_id = str(row["content_id"])
                 decoded = _decode_translation_row(row)
