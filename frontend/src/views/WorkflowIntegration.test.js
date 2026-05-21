@@ -57,7 +57,7 @@ test('docker deployment defaults to stable images and CI injects automatic versi
   assert.match(dockerCompose, /ghcr\.io\/kongmei-ovo\/javhub:stable/)
   assert.match(dockerCompose, /ghcr\.io\/kongmei-ovo\/javinfoapi:stable/)
   assert.doesNotMatch(dockerCompose, /v1\.2\.0-beta\.4/)
-  assert.doesNotMatch(dockerCompose, /JAVINFO_API_URL:\s*http:\/\/javinfoapi:18080/)
+  assert.match(dockerCompose, /JAVINFO_API_URL:\s*\$\{JAVINFO_API_URL:-http:\/\/javinfoapi:18080\}/)
   assert.match(dockerCompose, /JAVHUB_CONFIG_PATH:\s*\/app\/config\.yaml/)
   assert.match(dockerBuildWorkflow, /RELEASE_VERSION: v1\.2\.0-beta\.\$\{\{ github\.run_number \}\}/)
   assert.match(dockerBuildWorkflow, /\$\{IMAGE_NAME\}:stable/)
@@ -69,6 +69,24 @@ test('docker deployment defaults to stable images and CI injects automatic versi
   assert.match(dockerBuildWorkflow, /docker buildx imagetools create/)
   assert.match(dockerfile, /ARG VITE_APP_VERSION=dev/)
   assert.match(dockerfile, /ENV VITE_APP_VERSION=\$\{VITE_APP_VERSION\}/)
+})
+
+test('settings page warns when Docker uses a localhost JavInfo URL', () => {
+  assert.match(config, /dockerJavInfoApiUrl\(\)[\s\S]*return 'http:\/\/javinfoapi:18080'/)
+  assert.match(config, /javinfoRuntimeWarning\(\)[\s\S]*localhost:18080[\s\S]*Docker/)
+  assert.match(config, /applyDockerJavInfoUrl\(\)[\s\S]*this\.config\.javinfo\.api_url = this\.dockerJavInfoApiUrl/)
+  assert.match(config, /v-if="javinfoRuntimeWarning"/)
+  assert.match(config, /修正为 Docker 服务地址/)
+})
+
+test('settings page exposes bounded Torznab source configuration', () => {
+  assert.match(configFeatureSource, /sources:\s*\{[\s\S]*torznab:\s*\{[\s\S]*enabled: false/)
+  assert.match(config, /磁力索引源 \/ Torznab/)
+  assert.match(config, /v-model="config\.sources\.torznab\.base_url"/)
+  assert.match(config, /v-model="config\.sources\.torznab\.api_key"/)
+  assert.match(config, /v-model\.number="config\.sources\.torznab\.limit"[\s\S]*max="100"/)
+  assert.match(config, /v-model\.number="config\.sources\.torznab\.timeout"[\s\S]*max="60"/)
+  assert.match(config, /mergeSourceConfig\(data\.sources \|\| \{\}\)/)
 })
 
 test('navigation and actor page use actor mapping language', () => {
@@ -712,6 +730,8 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.match(advancedSection, /type="file"/)
   assert.doesNotMatch(servicesSection, /JavInfo 数据库导入/)
   assert.match(config, /preflightJavInfoImport/)
+  assert.match(config, /runJavInfoMigrations/)
+  assert.match(config, /运行 JavInfo 迁移/)
   assert.match(config, /createJavInfoImportJob/)
   assert.match(config, /uploadJavInfoImportDump/)
   assert.match(config, /listJavInfoImportJobs/)
@@ -722,6 +742,8 @@ test('settings page exposes JavInfo database import workflow', () => {
   assert.match(config, /@drop\.prevent="onJavInfoImportFileDrop"/)
   assert.match(config, /import-log-tail/)
   assert.match(config, /失败不能自动回滚/)
+  assert.match(apiSource, /runJavInfoMigrations\(dryRun = false\)/)
+  assert.match(apiSource, /\/v1\/javinfo\/imports\/migrations/)
   assert.match(configDefaults, /maintenance_database: 'postgres'/)
   assert.match(configDefaults, /keep_previous_databases: 1/)
   assert.match(configDefaults, /user: 'javhub'/)

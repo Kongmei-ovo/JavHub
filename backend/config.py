@@ -11,6 +11,16 @@ logger = logging.getLogger(__name__)
 DEFAULT_JAVINFO_API_URL = "http://localhost:18080"
 LEGACY_JAVINFO_API_URLS = {"http://localhost:8080", "http://127.0.0.1:8080"}
 _warned_legacy_javinfo_urls: set[str] = set()
+DEFAULT_TORZNAB_SOURCE = {
+    'enabled': False,
+    'name': 'torznab',
+    'base_url': '',
+    'api_key': '',
+    'indexer': 'all',
+    'categories': '',
+    'limit': 20,
+    'timeout': 15,
+}
 
 def _env(key: str, default: str = '') -> str:
     """读取环境变量，环境变量有值时优先于配置文件"""
@@ -545,7 +555,73 @@ class Config:
     # Download sources settings
     @property
     def sources(self) -> dict:
-        return self._config.get('sources', {})
+        defaults = {
+            'torznab': DEFAULT_TORZNAB_SOURCE.copy(),
+        }
+        cfg = self._config.get('sources', {}) or {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+        merged = {**defaults, **cfg}
+        merged['torznab'] = {
+            **defaults['torznab'],
+            **(cfg.get('torznab', {}) if isinstance(cfg.get('torznab'), dict) else {}),
+        }
+        return merged
+
+    @property
+    def source_settings(self) -> dict:
+        return self.sources
+
+    @staticmethod
+    def _clamp_int(value, default: int, minimum: int, maximum: int) -> int:
+        try:
+            normalized = int(value)
+        except Exception:
+            normalized = default
+        return max(minimum, min(normalized, maximum))
+
+    def _normalize_torznab_source_config(self, item: dict, index: int) -> dict:
+        cfg = item if isinstance(item, dict) else {}
+        merged = {**DEFAULT_TORZNAB_SOURCE, **cfg}
+        name = str(merged.get('name') or '').strip() or f'torznab-{index}'
+        indexer = str(merged.get('indexer') or '').strip() or 'all'
+        api_key = merged.get('api_key')
+        if not api_key:
+            api_key = os.getenv('JAVHUB_TORZNAB_API_KEY') or ''
+        return {
+            **merged,
+            'enabled': bool(merged.get('enabled', False)),
+            'name': name,
+            'base_url': str(merged.get('base_url') or '').strip(),
+            'api_key': str(api_key or ''),
+            'indexer': indexer,
+            'categories': str(merged.get('categories') or '').strip(),
+            'limit': self._clamp_int(merged.get('limit'), 20, 1, 100),
+            'timeout': self._clamp_int(merged.get('timeout'), 15, 1, 60),
+        }
+
+    @property
+    def source_torznab_configs(self) -> list:
+        source_cfg = self.sources
+        candidates = []
+        torznab_cfg = source_cfg.get('torznab')
+        if isinstance(torznab_cfg, dict):
+            candidates.append(torznab_cfg)
+        instances = source_cfg.get('torznab_instances')
+        if isinstance(instances, list):
+            candidates.extend(item for item in instances if isinstance(item, dict))
+        return [
+            self._normalize_torznab_source_config(item, index + 1)
+            for index, item in enumerate(candidates)
+        ]
+
+    @property
+    def enabled_torznab_configs(self) -> list:
+        return [item for item in self.source_torznab_configs if item.get('enabled')]
+
+    @property
+    def torznab_sources_config(self) -> list:
+        return self.enabled_torznab_configs
 
     @property
     def downloaders(self) -> dict:
@@ -614,6 +690,7 @@ class Config:
         cfg['automation'] = self.automation
         cfg['actor_mapping'] = self.actor_mapping
         cfg['translation'] = self.translation
+        cfg['sources'] = self.sources
         javinfo_cfg = cfg.get('javinfo', {}) if isinstance(cfg.get('javinfo'), dict) else {}
         cfg['javinfo'] = {
             'page_size': javinfo_cfg.get('page_size', 30),

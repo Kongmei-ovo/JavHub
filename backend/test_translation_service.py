@@ -280,6 +280,20 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bulk["label:7"], get_translation("label:7"))
         self.assertIsNone(bulk["missing:1"])
 
+    async def test_bulk_translation_lookup_initializes_missing_table(self):
+        from database import get_db, get_translations_bulk
+
+        with get_db() as conn:
+            conn.execute("DROP TABLE translation_mappings")
+
+        self.assertEqual(get_translations_bulk(["missing:1"]), {"missing:1": None})
+
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'translation_mappings'"
+            ).fetchone()
+        self.assertIsNotNone(row)
+
     async def test_bulk_translation_lookup_caches_direct_and_fallback_misses(self):
         import database.translation as translation_module
 

@@ -438,6 +438,10 @@ export default {
     })
   },
 
+  runJavInfoMigrations(dryRun = false) {
+    return api.post('/v1/javinfo/imports/migrations', { dry_run: dryRun })
+  },
+
   createJavInfoImportJob(payload = {}) {
     return api.post('/v1/javinfo/imports/jobs', payload)
   },

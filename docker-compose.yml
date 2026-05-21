@@ -88,6 +88,7 @@ services:
     restart: unless-stopped
     environment:
       JAVHUB_CONFIG_PATH: /app/config.yaml
+      JAVINFO_API_URL: ${JAVINFO_API_URL:-http://javinfoapi:18080}
       SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
       DB_HOST: ${DB_HOST:-postgres}
       DB_PORT: ${DB_PORT:-5432}

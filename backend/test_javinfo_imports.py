@@ -999,6 +999,12 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
         return TestClient(app)
 
+    def _migrations_client(self, client):
+        patcher = patch("routers.javinfo_imports.get_info_client", return_value=client)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return patcher
+
     def test_preflight_endpoint_merges_saved_config_defaults(self):
         class Manager:
             async def preflight(self, settings, *, expected_size=0):
@@ -1158,6 +1164,58 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "uploaded")
         self.assertEqual(manager.finalized_job_id, 7)
+
+    def test_run_migrations_endpoint_calls_info_client(self):
+        class Client:
+            def __init__(self):
+                self.calls = []
+
+            async def run_migrations(self, dry_run: bool = False):
+                self.calls.append(dry_run)
+                return {"ok": True, "dry_run": dry_run}
+
+        client = Client()
+        self._migrations_client(client)
+        app_client = self._client(object())
+
+        response = app_client.post("/api/v1/javinfo/imports/migrations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ok": True, "dry_run": False})
+        self.assertEqual(client.calls, [False])
+
+    def test_run_migrations_endpoint_transmits_dry_run(self):
+        class Client:
+            def __init__(self):
+                self.calls = []
+
+            async def run_migrations(self, dry_run: bool = False):
+                self.calls.append(dry_run)
+                return {"ok": True, "dry_run": dry_run}
+
+        client = Client()
+        self._migrations_client(client)
+        app_client = self._client(object())
+
+        response = app_client.post("/api/v1/javinfo/imports/migrations", json={"dry_run": True})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ok": True, "dry_run": True})
+        self.assertEqual(client.calls, [True])
+
+    def test_run_migrations_endpoint_returns_http_error_on_failure(self):
+        class Client:
+            async def run_migrations(self, dry_run: bool = False):
+                raise RuntimeError("boom")
+
+        self._migrations_client(Client())
+        app_client = self._client(object())
+
+        response = app_client.post("/api/v1/javinfo/imports/migrations")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("JavInfoApi migrations failed", response.json()["detail"])
+        self.assertIn("boom", response.json()["detail"])
 
 
 class ConfigExportRouterTest(unittest.TestCase):

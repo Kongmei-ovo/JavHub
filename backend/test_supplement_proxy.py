@@ -89,6 +89,22 @@ class SupplementConfigTest(unittest.TestCase):
         with patch.dict('os.environ', {'JAVINFO_API_URL': 'http://javinfo.internal:18080'}, clear=False):
             self.assertEqual(cfg.get_all()['javinfo']['api_url'], 'http://javinfo.internal:18080')
 
+    def test_docker_env_overrides_yaml_localhost_javinfo_url(self):
+        from config import Config
+        cfg = Config.__new__(Config)
+        cfg._config = {'javinfo': {'api_url': 'http://localhost:18080', 'page_size': 30}}
+        with patch.dict('os.environ', {'JAVINFO_API_URL': 'http://javinfoapi:18080'}, clear=False):
+            self.assertEqual(cfg.javinfo_api_url, 'http://javinfoapi:18080')
+            self.assertEqual(cfg.get_all()['javinfo']['api_url'], 'http://javinfoapi:18080')
+
+    def test_local_javinfo_url_still_comes_from_yaml_without_env_override(self):
+        from config import Config
+        cfg = Config.__new__(Config)
+        cfg._config = {'javinfo': {'api_url': 'http://127.0.0.1:8080', 'page_size': 30}}
+        with patch.dict('os.environ', {}, clear=False):
+            os.environ.pop('JAVINFO_API_URL', None)
+            self.assertEqual(cfg.javinfo_api_url, 'http://127.0.0.1:8080')
+
 
 from modules.info_client import InfoClient
 

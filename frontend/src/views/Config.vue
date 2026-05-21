@@ -112,7 +112,24 @@
                 <div class="form-slot">
                   <div class="form-group">
                     <label>API 地址</label>
-                    <input class="input" v-model="config.javinfo.api_url" placeholder="http://localhost:18080" />
+                    <input class="input" v-model="config.javinfo.api_url" placeholder="http://javinfoapi:18080" />
+                  </div>
+                  <div class="javinfo-runtime-panel">
+                    <div class="javinfo-runtime-row">
+                      <span>运行时配置路径</span>
+                      <code>{{ configMeta.config_path || '未返回' }}</code>
+                    </div>
+                    <div class="javinfo-runtime-row">
+                      <span>当前 JavInfo API URL</span>
+                      <code>{{ javinfoApiUrl || '未设置' }}</code>
+                    </div>
+                  </div>
+                  <div v-if="javinfoRuntimeWarning" class="javinfo-runtime-warning">
+                    <strong>JavInfoApi 地址可能不适用于 Docker</strong>
+                    <p>{{ javinfoRuntimeWarning }}</p>
+                    <button class="btn btn-secondary" type="button" @click="applyDockerJavInfoUrl">
+                      修正为 Docker 服务地址
+                    </button>
                   </div>
                 </div>
               </div>
@@ -265,6 +282,65 @@
                     <div class="form-group">
                       <label>24 小时自动下发上限（0 表示不限）</label>
                       <input class="input" v-model.number="config.automation.max_auto_downloads_per_24h" type="number" min="0" max="5000" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 磁力索引源 -->
+            <div class="settings-card">
+              <div class="card-content">
+                <div class="settings-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                    <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03"/>
+                    <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22"/>
+                  </svg>
+                  <h2>磁力索引源 / Torznab</h2>
+                </div>
+                <div class="form-slot">
+                  <small>连接你自己的 Prowlarr、Jackett 或 Torznab 服务。</small>
+                  <div class="form-group checkbox">
+                    <input type="checkbox" id="torznabEnabled" v-model="config.sources.torznab.enabled" />
+                    <label for="torznabEnabled">启用磁力索引源</label>
+                  </div>
+                  <div class="form-group">
+                    <label>Base URL</label>
+                    <input class="input" v-model="config.sources.torznab.base_url" placeholder="http://localhost:9696" />
+                  </div>
+                  <div class="form-group">
+                    <label>API Key</label>
+                    <div class="input-password-wrap">
+                      <input
+                        class="input"
+                        :type="showTorznabKey ? 'text' : 'password'"
+                        v-model="config.sources.torznab.api_key"
+                        autocomplete="off"
+                      />
+                      <button class="input-eye-btn" type="button" @click="showTorznabKey = !showTorznabKey" :title="showTorznabKey ? '隐藏' : '显示'">
+                        <svg v-if="!showTorznabKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.8 21.8 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Indexer</label>
+                      <input class="input" v-model="config.sources.torznab.indexer" placeholder="all" />
+                    </div>
+                    <div class="form-group">
+                      <label>Categories</label>
+                      <input class="input" v-model="config.sources.torznab.categories" placeholder="可留空" />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Limit</label>
+                      <input class="input" v-model.number="config.sources.torznab.limit" type="number" min="1" max="100" />
+                    </div>
+                    <div class="form-group">
+                      <label>Timeout（秒）</label>
+                      <input class="input" v-model.number="config.sources.torznab.timeout" type="number" min="1" max="60" />
                     </div>
                   </div>
                 </div>
@@ -645,8 +721,14 @@
                     <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
                       {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
                     </button>
+                    <button class="btn btn-secondary" type="button" @click="runJavInfoMigrations" :disabled="javinfoMigrating || !canSaveConfig">
+                      {{ javinfoMigrating ? '运行中...' : '运行 JavInfo 迁移' }}
+                    </button>
                     <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
                       {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
+                    </span>
+                    <span v-if="javinfoMigrationStatus" class="import-status" :class="{ error: javinfoMigrationStatusType === 'error' }">
+                      {{ javinfoMigrationStatus }}
                     </span>
                   </div>
 
@@ -878,6 +960,7 @@ export default {
       showBotToken: false,
       showEmbyKey: false,
       showAIKey: false,
+      showTorznabKey: false,
       showImportPassword: false,
       javinfoImportFile: null,
       javinfoImportConfirm: false,
@@ -890,6 +973,9 @@ export default {
       javinfoImportJob: null,
       javinfoImportJobs: [],
       javinfoImportPollTimer: null,
+      javinfoMigrating: false,
+      javinfoMigrationStatus: '',
+      javinfoMigrationStatusType: 'info',
       navGroups: [
         { id: 'services', label: '常规与服务' },
         { id: 'automation', label: '自动化策略' },
@@ -978,6 +1064,9 @@ export default {
       return this.configMeta.config_loaded ? '配置已读取' : '配置文件未挂载或不可读取'
     },
     configStatusDescription() {
+      if (this.javinfoRuntimeWarning) {
+        return '配置已读取，但 JavInfoApi URL 可能不适用于 Docker/远端部署。'
+      }
       if (this.configMeta.config_loaded) {
         return '当前表单来自后端读取到的运行配置。'
       }
@@ -988,6 +1077,26 @@ export default {
     },
     configStatusDetails() {
       return this.configMeta.config_load_error || ''
+    },
+    javinfoApiUrl() {
+      return String(this.config?.javinfo?.api_url || '').trim()
+    },
+    dockerJavInfoApiUrl() {
+      return 'http://javinfoapi:18080'
+    },
+    javinfoRuntimeWarning() {
+      if (!this.configMeta.config_loaded || !this.javinfoApiUrl) return ''
+      try {
+        const parsed = new URL(this.javinfoApiUrl)
+        const host = parsed.hostname.toLowerCase()
+        const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80')
+        if ((host === 'localhost' || host === '127.0.0.1') && port === '18080') {
+          return `当前地址是 ${this.javinfoApiUrl}。Docker/远端部署中 localhost:18080 指向 JavHub 容器自身，不是 JavInfoApi 容器；请改成 ${this.dockerJavInfoApiUrl} 后保存。`
+        }
+      } catch (e) {
+        return ''
+      }
+      return ''
     },
     javinfoImportCanStart() {
       return Boolean(
@@ -1108,6 +1217,7 @@ export default {
         }
         this.mergeJavInfoConfig(data.javinfo || {})
         this.mergeAiConfig(data.ai || {})
+        this.mergeSourceConfig(data.sources || {})
 
         this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
         this.inventoryCron = data.inventory_cron || ''
@@ -1189,6 +1299,20 @@ export default {
           ...((remote && remote.import_db) || {}),
         },
       }
+    },
+    mergeSourceConfig(remote = {}) {
+      const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG.sources))
+      this.config.sources = {
+        ...base,
+        ...(remote || {}),
+        torznab: {
+          ...(base.torznab || {}),
+          ...((remote && remote.torznab) || {}),
+        },
+      }
+    },
+    applyDockerJavInfoUrl() {
+      this.config.javinfo.api_url = this.dockerJavInfoApiUrl
     },
     async saveInventoryCron() {
       if (!this.canSaveConfig) {
@@ -1332,6 +1456,35 @@ export default {
         this.javinfoImportPreflightSignature = this.javinfoImportRequestSignature()
       } finally {
         this.javinfoImportPreflighting = false
+      }
+    },
+    async runJavInfoMigrations() {
+      if (!this.canSaveConfig) {
+        this.$message.error('配置未加载成功，已阻止迁移')
+        return
+      }
+      const confirmed = await requestConfirm({
+        title: '运行 JavInfo 迁移',
+        message: '确认让 JavInfoApi 应用缺失的辅助表和索引？',
+        details: '此操作会复用 JavInfoApi 的幂等 migrations，适合修复导入后缺少派生统计表的问题。',
+        confirmText: '运行迁移',
+      })
+      if (!confirmed) return
+      this.javinfoMigrating = true
+      this.javinfoMigrationStatus = ''
+      this.javinfoMigrationStatusType = 'info'
+      try {
+        const resp = await api.runJavInfoMigrations(false)
+        this.javinfoMigrationStatus = resp.data?.ok ? 'JavInfo 迁移已完成' : 'JavInfo 迁移已返回'
+        this.javinfoMigrationStatusType = 'success'
+        this.$message.success('JavInfo 迁移已完成')
+      } catch (e) {
+        const message = e.response?.data?.detail || e.message || 'JavInfo 迁移失败'
+        this.javinfoMigrationStatus = message
+        this.javinfoMigrationStatusType = 'error'
+        this.$message.error(message)
+      } finally {
+        this.javinfoMigrating = false
       }
     },
     async startJavInfoImport() {
@@ -1797,6 +1950,52 @@ export default {
 }
 .form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 .form-group.checkbox label { margin: 0; font-size: var(--type-body); color: var(--text-primary); cursor: pointer; }
+.javinfo-runtime-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+.javinfo-runtime-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.32fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.javinfo-runtime-row code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.javinfo-runtime-warning {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.javinfo-runtime-warning strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.javinfo-runtime-warning p {
+  margin: 0;
+}
+.javinfo-runtime-warning .btn {
+  justify-self: start;
+}
 .telegram-test-row,
 .ai-test-row {
   display: flex;

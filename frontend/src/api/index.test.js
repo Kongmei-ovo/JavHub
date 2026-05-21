@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import axios from 'axios'
 import { ElMessage } from '../utils/message.js'
+import { DEFAULT_CONFIG } from '../features/config/configDefaults.js'
 
 function installRejectingAdapter(t, status = 404, detail = 'Not Found') {
   const originalAdapter = axios.defaults.adapter
@@ -99,6 +100,50 @@ test('listVideos defaults to skipping total count', async (t) => {
   assert.deepEqual(capturedConfig.params, { page: 1, page_size: 20, include_total: false })
 })
 
+test('config defaults and update payload include Torznab source settings', async (t) => {
+  assert.deepEqual(DEFAULT_CONFIG.sources?.torznab, {
+    enabled: false,
+    name: 'torznab',
+    base_url: '',
+    api_key: '',
+    indexer: 'all',
+    categories: '',
+    limit: 20,
+    timeout: 15,
+  })
+
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?config-sources-${Date.now()}`)
+  await api.updateConfig({
+    sources: {
+      torznab: {
+        ...DEFAULT_CONFIG.sources.torznab,
+        enabled: true,
+        base_url: 'http://localhost:9696',
+      },
+    },
+  })
+
+  assert.equal(capturedConfig.url, '/v1/config')
+  assert.deepEqual(JSON.parse(capturedConfig.data).sources.torznab, {
+    enabled: true,
+    name: 'torznab',
+    base_url: 'http://localhost:9696',
+    api_key: '',
+    indexer: 'all',
+    categories: '',
+    limit: 20,
+    timeout: 15,
+  })
+})
+
 test('AI helper APIs send provider-aware requests', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []
@@ -155,6 +200,7 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
   await api.preflightJavInfoImport(importDb, 6)
   await api.createJavInfoImportJob({ filename: file.name, file_size: file.size, import_db: importDb, confirm_replace: true })
   await api.uploadJavInfoImportDump(7, file, progress, { chunkSize: 4 })
+  await api.runJavInfoMigrations(true)
   await api.listJavInfoImportJobs(5)
   await api.cancelJavInfoImportJob(7)
 
@@ -172,9 +218,11 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
   assert.equal(calls[4].headers['X-Chunk-Offset'], '4')
   assert.equal(calls[4].headers['X-Chunk-Size'], '2')
   assert.equal(calls[5].url, '/v1/javinfo/imports/jobs/7/upload/complete')
-  assert.equal(calls[6].url, '/v1/javinfo/imports/jobs')
-  assert.deepEqual(calls[6].params, { limit: 5 })
-  assert.equal(calls[7].url, '/v1/javinfo/imports/jobs/7/cancel')
+  assert.equal(calls[6].url, '/v1/javinfo/imports/migrations')
+  assert.deepEqual(JSON.parse(calls[6].data), { dry_run: true })
+  assert.equal(calls[7].url, '/v1/javinfo/imports/jobs')
+  assert.deepEqual(calls[7].params, { limit: 5 })
+  assert.equal(calls[8].url, '/v1/javinfo/imports/jobs/7/cancel')
   assert.deepEqual(progressEvents.at(-1), { loaded: 6, total: 6 })
 })
 

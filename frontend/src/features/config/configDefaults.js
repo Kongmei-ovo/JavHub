@@ -22,8 +22,20 @@ export const DEFAULT_CONFIG = {
     auto_confirm_gap: 0.08,
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
+  sources: {
+    torznab: {
+      enabled: false,
+      name: 'torznab',
+      base_url: '',
+      api_key: '',
+      indexer: 'all',
+      categories: '',
+      limit: 20,
+      timeout: 15,
+    },
+  },
   javinfo: {
-    api_url: 'http://localhost:18080',
+    api_url: 'http://javinfoapi:18080',
     page_size: 30,
     timeout: 30,
     import_db: {

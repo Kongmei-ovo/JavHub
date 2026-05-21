@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from config import config
+from modules.info_client import get_info_client
 from services import cache
 from services.javinfo_import import (
     JavInfoImportConflict,
@@ -113,6 +114,16 @@ async def _restore_after_upload(manager, job_id: int) -> None:
     job = await manager.restore_job(job_id)
     if job.get("status") == "completed":
         cache.purge_all()
+
+
+@router.post("/migrations")
+async def run_javinfo_migrations(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = body or {}
+    dry_run = bool(body.get("dry_run"))
+    try:
+        return await get_info_client().run_migrations(dry_run=dry_run)
+    except Exception as exc:
+        raise HTTPException(502, f"JavInfoApi migrations failed: {exc}") from exc
 
 
 @router.get("/jobs")
