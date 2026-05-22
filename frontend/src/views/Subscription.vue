@@ -213,7 +213,6 @@ import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
-import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import subscriptionState from '../utils/subscriptionState'
@@ -371,7 +370,8 @@ function viewAllVideos() {
 }
 
 function openVideoModal(movie) {
-  openVideoDetail(movie, router, router.currentRoute.value, openVideoModalFn)
+  const route = router.currentRoute.value
+  openVideoModalFn(movie, route?.fullPath || route?.path || '/subscription')
 }
 
 async function syncSubscriptionState() {

@@ -160,7 +160,6 @@ import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { modalState, openVideoModal } from '../utils/modalState'
-import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { createRequestSequence } from '../utils/requestSequence.js'
@@ -423,7 +422,7 @@ export default {
       }
     },
     openModal(video) {
-      openVideoDetail(video, this.$router, this.$route, openVideoModal)
+      openVideoModal(video, this.$route.fullPath || this.$route.path)
     },
     cardImageUrl(item) { return videoCardCoverUrl(item) }
   }

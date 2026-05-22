@@ -207,6 +207,15 @@ test('movie cards keep cover media free of quick actions', () => {
   assert.doesNotMatch(subscription, /async function downloadMovie/)
 })
 
+test('movie detail entry points keep the user on the current page with the modal', () => {
+  const movieEntrySources = [search, discoveryDetail, actor, favorites, subscription, inventoryActor]
+  for (const source of movieEntrySources) {
+    assert.match(source, /openVideoModal/)
+    assert.doesNotMatch(source, /openVideoDetail/)
+    assert.doesNotMatch(source, /name: 'VideoDetail'/)
+  }
+})
+
 test('subscription page defaults to subscribed management and opens discovery from an action', () => {
   assert.doesNotMatch(subscription, /activeTab = ref\('discover'\)/)
   assert.doesNotMatch(subscription, /v-show="activeTab === 'discover'"/)

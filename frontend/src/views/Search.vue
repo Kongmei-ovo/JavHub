@@ -258,7 +258,6 @@
 import api from '../api'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { openVideoModal } from '../utils/modalState'
-import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import { loadSearchPreferences } from '../utils/searchPreferences.js'
 import {
@@ -593,7 +592,7 @@ export default {
       this.replaceSearchRoute(canonicalizeSearchState({ ...this.searchState, ...patch }))
     },
     openModal(video) {
-      openVideoDetail(video, this.$router, this.$route, openVideoModal)
+      openVideoModal(video, this.$route.fullPath || this.$route.path)
     },
     cardImageUrl(item) {
       return videoCardCoverUrl(item)

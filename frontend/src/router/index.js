@@ -7,7 +7,6 @@ const routes = [
   { path: '/search', component: () => import('../views/Search.vue') },
   { path: '/genres', component: () => import('../views/Genres.vue') },
   { path: '/discovery/:type/:value', name: 'DiscoveryDetail', component: () => import('../views/DiscoveryDetail.vue') },
-  { path: '/videos/:contentId', name: 'VideoDetail', component: () => import('../views/VideoDetail.vue') },
   { path: '/parse', component: () => import('../views/MagnetParse.vue') },
   { path: '/entities', name: 'Entities', component: () => import('../views/Entities.vue') },
   { path: '/subscription', component: () => import('../views/Subscription.vue') },

@@ -69,7 +69,8 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 
 test('root route redirects to video search as the primary entry page', () => {
   assert.match(routerSource, /\{\s*path:\s*'\/',\s*redirect:\s*'\/search'\s*\}/)
-  assert.match(routerSource, /\{\s*path:\s*'\/videos\/:contentId',\s*name:\s*'VideoDetail'/)
+  assert.doesNotMatch(routerSource, /\/videos\/:contentId/)
+  assert.doesNotMatch(routerSource, /name:\s*'VideoDetail'/)
   assert.doesNotMatch(routerSource, /\{\s*path:\s*'\/',\s*component:/)
 })
 

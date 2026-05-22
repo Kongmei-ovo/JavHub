@@ -157,7 +157,6 @@ import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { openVideoModal } from '../utils/modalState'
-import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { actorAvatar, actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import api from '../api'
@@ -302,7 +301,7 @@ export default {
 
     const openVideo = (item) => {
       if (item.entity_type === 'video') {
-        openVideoDetail(item.metadata || { content_id: item.entity_id }, router, { path: '/favorites', fullPath: '/favorites' }, openVideoModal)
+        openVideoModal(item.metadata || { content_id: item.entity_id }, '/favorites')
       }
     }
 

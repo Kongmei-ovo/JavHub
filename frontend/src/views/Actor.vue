@@ -190,7 +190,6 @@ import api from '../api'
 import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
-import { openVideoDetail } from '../utils/videoDetailNavigation.js'
 import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
 import MovieCard from '../components/MovieCard.vue'
 
@@ -385,7 +384,7 @@ export default {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
     openModal(movie) {
-      openVideoDetail(movie._raw || movie, this.$router, this.$route, openVideoModal)
+      openVideoModal(movie._raw || movie, this.$route.fullPath || this.$route.path)
     },
     cardImageUrl(movie) {
       return jacketHdUrl(movie.cover_url) || movie.cover_url || ''
