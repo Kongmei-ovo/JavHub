@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,6 +23,29 @@ class TempDbMixin:
 
 
 class CandidateProcessorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_classify_candidate_error_maps_retry_metadata(self):
+        from services import candidate_processor
+
+        classify = getattr(candidate_processor, "classify_candidate_error", None)
+        self.assertIsNotNone(classify, "classify_candidate_error should exist")
+        if classify is None:
+            return
+
+        cases = [
+            ("missing magnet", "missing_magnet", False),
+            (TimeoutError("source request timed out"), "source_timeout", True),
+            ("401 unauthorized from downloader", "downloader_auth", False),
+            ("duplicate download task already exists", "duplicate", False),
+            ("remote rejected task: invalid path", "remote_rejected", False),
+            ("unexpected downloader response", "unknown", True),
+        ]
+
+        for error, category, retryable in cases:
+            with self.subTest(category=category):
+                metadata = classify(error)
+                self.assertEqual(metadata["error_category"], category)
+                self.assertIs(metadata["retryable"], retryable)
+
     async def test_manual_policy_does_not_send_download(self):
         from database import list_download_candidate_events, upsert_download_candidate
         from services.candidate_processor import process_candidate
@@ -176,6 +200,59 @@ class CandidateProcessorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated["status"], "failed")
         self.assertEqual(updated["error_msg"], "OpenList API 调用失败")
         self.assertEqual(list_download_candidate_events(candidate["id"])[0]["action"], "process_failed")
+
+    async def test_process_candidate_failure_includes_retry_metadata_in_result_and_event(self):
+        from database import list_download_candidate_events, upsert_download_candidate
+        from services.candidate_processor import process_candidate
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Title",
+            source="subscription",
+            magnet="magnet:?xt=urn:btih:123",
+        )
+
+        with patch(
+            "services.candidate_processor.downloader_service.create_download_task",
+            new=AsyncMock(side_effect=PermissionError("401 unauthorized from downloader")),
+        ):
+            result = await process_candidate(candidate["id"], policy="rules")
+
+        self.assertEqual(result["action"], "failed_downloader")
+        self.assertEqual(result["error_category"], "downloader_auth")
+        self.assertIs(result["retryable"], False)
+        detail = json.loads(list_download_candidate_events(candidate["id"])[0]["detail"])
+        self.assertEqual(detail["error_category"], "downloader_auth")
+        self.assertIs(detail["retryable"], False)
+        self.assertEqual(detail["error"], "401 unauthorized from downloader")
+
+    async def test_batch_failure_records_retry_metadata_in_run_result(self):
+        from database import list_candidate_process_runs, list_download_candidate_events, upsert_download_candidate
+        from services.candidate_processor import process_candidates
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Title",
+            source="subscription",
+        )
+
+        result = await process_candidates(
+            filters={"status": "candidate", "source": "subscription"},
+            policy="auto",
+            enrich=False,
+            operator="manual",
+        )
+
+        self.assertEqual(result["results"][0]["action"], "failed_missing_magnet")
+        self.assertEqual(result["results"][0]["error_category"], "missing_magnet")
+        self.assertIs(result["results"][0]["retryable"], False)
+        runs = list_candidate_process_runs()
+        run_result = runs[0]["result"]["results"][0]
+        self.assertEqual(run_result["error_category"], "missing_magnet")
+        self.assertIs(run_result["retryable"], False)
+        detail = json.loads(list_download_candidate_events(candidate["id"])[0]["detail"])
+        self.assertEqual(detail["error_category"], "missing_magnet")
+        self.assertIs(detail["retryable"], False)
 
     async def test_batch_processing_records_run_history(self):
         from database import list_candidate_process_runs, upsert_download_candidate

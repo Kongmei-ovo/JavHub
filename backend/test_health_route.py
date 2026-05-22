@@ -120,6 +120,10 @@ class HealthRouteTest(unittest.TestCase):
                     "registered": 3,
                     "available": 2,
                     "error": "",
+                    "recent_attempt_count": 0,
+                    "latest_attempt_error": "",
+                    "latest_attempt_source": "",
+                    "latest_attempt_keyword": "",
                 },
                 "scheduler": scheduler_state,
             })
@@ -192,9 +196,31 @@ class HealthRouteTest(unittest.TestCase):
             "error": "cache unavailable",
         })
         self.assertEqual(body["downloaders"]["default_available"], False)
-        self.assertEqual(body["sources"], {"registered": 0, "available": 0, "error": "sources unavailable"})
+        self.assertEqual(body["sources"], {
+            "registered": 0,
+            "available": 0,
+            "error": "sources unavailable",
+            "recent_attempt_count": 0,
+            "latest_attempt_error": "",
+            "latest_attempt_source": "",
+            "latest_attempt_keyword": "",
+        })
         self.assertEqual(body["scheduler"]["disabled_reason"], "manual_policy")
         db_conn.close.assert_called_once()
+
+    def test_readiness_includes_recent_source_attempt_diagnostics(self):
+        with patch("routers.health._source_attempt_summary", Mock(return_value={
+            "recent_attempt_count": 2,
+            "latest_attempt_error": "TimeoutError: slow",
+            "latest_attempt_source": "torznab",
+            "latest_attempt_keyword": "ABC-123",
+        })):
+            result = __import__("routers.health", fromlist=["_source_registry_summary"])._source_registry_summary()
+
+        self.assertEqual(result["recent_attempt_count"], 2)
+        self.assertEqual(result["latest_attempt_error"], "TimeoutError: slow")
+        self.assertEqual(result["latest_attempt_source"], "torznab")
+        self.assertEqual(result["latest_attempt_keyword"], "ABC-123")
 
     def test_local_launchagent_javinfo_url_is_not_marked_legacy(self):
         cfg = SimpleNamespace(

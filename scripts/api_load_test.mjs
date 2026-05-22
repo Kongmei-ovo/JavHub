@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { pathToFileURL } from "node:url";
+
 const DEFAULT_BASE_URL =
   process.env.API_LOAD_BASE_URL || process.env.JAVHUB_BASE_URL || "http://localhost:3000";
 
@@ -18,6 +20,23 @@ const DEFAULT_ENDPOINTS = [
   "/api/v1/series?page=1&page_size=20",
   "/api/v1/operations/overview",
 ];
+
+const INVENTORY_ENDPOINTS = [
+  "/api/inventory/snapshots/latest",
+  "/api/inventory/jobs",
+  "/api/inventory/actors?page=1&page_size=20",
+  "/api/inventory/actor-mappings/summary",
+  "/api/inventory/missing",
+  "/api/inventory/exempt",
+  "/api/inventory/aliases",
+];
+
+const ENDPOINT_GROUPS = {
+  default: DEFAULT_ENDPOINTS,
+  inventory: INVENTORY_ENDPOINTS,
+};
+
+const SCENARIOS = new Set(["default", "cold", "warm", "hot"]);
 
 const DEFAULT_STAGES = [
   { name: "warm", concurrency: 10, durationMs: 30_000 },
@@ -44,8 +63,15 @@ Options:
   --timeout <duration>         Per-request timeout. Default: 15s
   --purge                      POST /api/v1/cache/purge?scope=all before testing.
                                This is off by default.
+  --scenario <default|cold|warm|hot>
+                               Cache scenario. default keeps existing behavior;
+                               cold purges first; warm runs a preflight warmup pass;
+                               hot keeps the existing cache.
+  --endpoint-group <default|inventory>
+                               Use a built-in read-only endpoint group.
+                               Default: default.
   --endpoint <path-or-url>     Add one endpoint. May be repeated. When provided,
-                               replaces the default read-only endpoint list.
+                               replaces the selected read-only endpoint group.
   --help                       Show this help.
 
 Output:
@@ -99,6 +125,9 @@ function parseArgs(argv) {
     stages: DEFAULT_STAGES.map((stage) => ({ ...stage })),
     timeoutMs: 15_000,
     purge: false,
+    scenario: "default",
+    warmup: false,
+    endpointGroup: "default",
     help: false,
   };
 
@@ -135,6 +164,16 @@ function parseArgs(argv) {
       config.timeoutMs = parseDuration(next(), arg);
     } else if (arg === "--purge") {
       config.purge = true;
+    } else if (arg === "--scenario") {
+      config.scenario = next();
+      if (!SCENARIOS.has(config.scenario)) {
+        throw new Error(`Invalid --scenario value: ${config.scenario}`);
+      }
+    } else if (arg === "--endpoint-group") {
+      config.endpointGroup = next();
+      if (!Object.hasOwn(ENDPOINT_GROUPS, config.endpointGroup)) {
+        throw new Error(`Invalid --endpoint-group value: ${config.endpointGroup}`);
+      }
     } else if (arg === "--endpoint") {
       config.endpoints.push(next());
     } else {
@@ -145,10 +184,22 @@ function parseArgs(argv) {
   if (!config.help) {
     config.baseUrl = normalizeBaseUrl(config.baseUrl);
     if (config.endpoints.length === 0) {
-      config.endpoints = [...DEFAULT_ENDPOINTS];
+      config.endpoints = [...ENDPOINT_GROUPS[config.endpointGroup]];
     }
+    applyScenario(config);
   }
   return config;
+}
+
+function applyScenario(config) {
+  if (config.scenario === "cold") {
+    config.purge = true;
+  } else if (config.scenario === "warm") {
+    config.warmup = true;
+  } else if (config.scenario === "hot") {
+    config.purge = false;
+    config.warmup = false;
+  }
 }
 
 function normalizeBaseUrl(baseUrl) {
@@ -328,6 +379,19 @@ async function runStage(stage, config) {
   };
 }
 
+async function runWarmup(config) {
+  const stats = createStats();
+  const started = performance.now();
+  for (const endpoint of config.endpoints) {
+    const result = await timedFetch(buildUrl(config.baseUrl, endpoint), endpoint, config.timeoutMs);
+    recordResult(stats, result);
+  }
+  return {
+    duration_ms: Math.round(performance.now() - started),
+    stats,
+  };
+}
+
 function percentile(sortedValues, p) {
   if (sortedValues.length === 0) return 0;
   const index = Math.ceil((p / 100) * sortedValues.length) - 1;
@@ -389,6 +453,7 @@ async function main() {
   const runStarted = new Date();
   const cacheBefore = await fetchJson(config.baseUrl, "/api/v1/cache/stats", config.timeoutMs);
   const purge = config.purge ? await purgeCache(config.baseUrl, config.timeoutMs) : null;
+  const warmup = config.warmup ? await runWarmup(config) : null;
 
   const aggregate = createStats();
   const stageSummaries = [];
@@ -410,6 +475,8 @@ async function main() {
     base_url: config.baseUrl,
     started_at: runStarted.toISOString(),
     finished_at: new Date().toISOString(),
+    scenario: config.scenario,
+    endpoint_group: config.endpointGroup,
     stages: config.stages.map((stage) => ({
       name: stage.name,
       concurrency: stage.concurrency,
@@ -417,6 +484,12 @@ async function main() {
     })),
     endpoints: config.endpoints,
     purge,
+    warmup: warmup
+      ? {
+          duration_ms: warmup.duration_ms,
+          ...summarizeStats(warmup.stats, warmup.duration_ms),
+        }
+      : null,
     cache_before: cacheBefore.ok ? cacheBefore.data : cacheBefore,
     cache_after: cacheAfter.ok ? cacheAfter.data : cacheAfter,
     stage_summaries: stageSummaries,
@@ -429,7 +502,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error?.stack || error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error?.stack || error);
+    process.exitCode = 1;
+  });
+}
+
+export { parseArgs };

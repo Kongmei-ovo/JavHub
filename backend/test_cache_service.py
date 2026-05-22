@@ -157,6 +157,34 @@ class CacheServiceTest(unittest.TestCase):
         self.assertEqual(metrics["response"], {"hits": 1, "misses": 1})
         self.assertEqual(metrics["response_namespaces"]["videos"], {"hits": 1, "misses": 1})
 
+    def test_data_generation_round_trips_by_namespace(self):
+        self.assertEqual(cache.get_data_generation("javinfo"), 0)
+
+        cache.set_data_generation("javinfo", 42)
+
+        self.assertEqual(cache.get_data_generation("javinfo"), 42)
+        self.assertEqual(cache.get_data_generation("other"), 0)
+
+    def test_data_generation_uses_current_cache_backend(self):
+        fake_client = FakeRedisClient()
+        fake_redis = types.SimpleNamespace(
+            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
+        )
+
+        with patch.dict(os.environ, {
+            "JAVHUB_CACHE_BACKEND": "redis",
+            "JAVHUB_REDIS_URL": "redis://cache.example/0",
+            "JAVHUB_REDIS_PREFIX": "generation-prefix",
+        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+            cache.reset_backend()
+
+            cache.set_data_generation("javinfo", 7, ttl=60)
+
+            self.assertEqual(cache.get_data_generation("javinfo"), 7)
+            self.assertIn("generation-prefix:generation:javinfo", fake_client.values)
+
+        cache.reset_backend()
+
     def test_default_cache_backend_is_sqlite(self):
         cache.reset_backend()
 
@@ -296,6 +324,7 @@ class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results, [{"data": [{"id": 1}]}] * 5)
         self.assertEqual(calls, 1)
         self.assertGreaterEqual(cache.get_stats()["metrics"]["singleflight_waits"], 4)
+        self.assertEqual(cache.get_stats()["singleflight_locks"], 0)
 
     async def test_producer_not_called_when_cached(self):
         cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
@@ -306,6 +335,21 @@ class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
         result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
 
         self.assertEqual(result, {"data": [{"id": 1}]})
+
+    async def test_high_cardinality_response_misses_do_not_retain_idle_locks(self):
+        calls = 0
+
+        async def producer():
+            nonlocal calls
+            calls += 1
+            return {"data": [{"id": calls}]}
+
+        for page in range(50):
+            result = await cache.get_or_set_response("makers", {"page": page}, producer, ttl=60)
+            self.assertEqual(result, {"data": [{"id": page + 1}]})
+
+        self.assertEqual(calls, 50)
+        self.assertEqual(cache.get_stats()["singleflight_locks"], 0)
 
 
 if __name__ == "__main__":

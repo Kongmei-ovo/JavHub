@@ -1146,22 +1146,41 @@ class UTorrentDownloaderClient(BaseDownloaderClient):
 def create_downloader_client(client_config: dict[str, Any]) -> BaseDownloaderClient:
     client_type = _clean_type(client_config.get("type"))
     if client_type == "qbittorrent":
-        return QBittorrentDownloaderClient(client_config)
-    if client_type == "transmission":
-        return TransmissionDownloaderClient(client_config)
-    if client_type == "synology":
-        return SynologyDownloaderClient(client_config)
-    if client_type == "aria2":
-        return Aria2DownloaderClient(client_config)
-    if client_type == "deluge":
-        return DelugeDownloaderClient(client_config)
-    if client_type == "flood":
-        return FloodDownloaderClient(client_config)
-    if client_type == "rutorrent":
-        return RuTorrentDownloaderClient(client_config)
-    if client_type == "utorrent":
-        return UTorrentDownloaderClient(client_config)
-    return OpenListDownloaderClient(client_config)
+        client = QBittorrentDownloaderClient(client_config)
+    elif client_type == "transmission":
+        client = TransmissionDownloaderClient(client_config)
+    elif client_type == "synology":
+        client = SynologyDownloaderClient(client_config)
+    elif client_type == "aria2":
+        client = Aria2DownloaderClient(client_config)
+    elif client_type == "deluge":
+        client = DelugeDownloaderClient(client_config)
+    elif client_type == "flood":
+        client = FloodDownloaderClient(client_config)
+    elif client_type == "rutorrent":
+        client = RuTorrentDownloaderClient(client_config)
+    elif client_type == "utorrent":
+        client = UTorrentDownloaderClient(client_config)
+    else:
+        client = OpenListDownloaderClient(client_config)
+    return _with_duplicate_preflight(client)
+
+
+def _with_duplicate_preflight(client: BaseDownloaderClient) -> BaseDownloaderClient:
+    add_magnet = client.add_magnet
+
+    async def add_magnet_with_duplicate_check(magnet: str, path: str = "", title: str = "") -> DownloadActionResult:
+        if _extract_info_hash(magnet):
+            try:
+                duplicate = check_duplicate_download(await client.list_tasks(), magnet)
+                if not duplicate.success:
+                    return duplicate
+            except Exception as exc:
+                logger.warning("Downloader duplicate preflight failed: %s", exc)
+        return await add_magnet(magnet, path, title)
+
+    client.add_magnet = add_magnet_with_duplicate_check  # type: ignore[method-assign]
+    return client
 
 
 async def test_downloader_config(client_config: dict[str, Any]) -> DownloadActionResult:
@@ -1178,3 +1197,16 @@ def match_remote_task(tasks: list[dict[str, Any]], magnet: str, remote_task_id: 
     if info_hash:
         return next((task for task in tasks if str(task.get("hash") or "").lower() == info_hash), None)
     return None
+
+
+def check_duplicate_download(
+    tasks: list[dict[str, Any]],
+    magnet: str,
+    remote_task_id: str = "",
+) -> DownloadActionResult:
+    matched = match_remote_task(tasks, magnet, remote_task_id)
+    if not matched:
+        return DownloadActionResult(True, message="not duplicate")
+    duplicate_id = str(matched.get("id") or matched.get("hash") or remote_task_id or _extract_info_hash(magnet))
+    status = str(matched.get("status") or "remote").strip()
+    return DownloadActionResult(False, remote_task_id=duplicate_id, message=f"duplicate download: {duplicate_id} ({status})")

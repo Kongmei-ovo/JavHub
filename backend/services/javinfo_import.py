@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -16,8 +17,26 @@ from typing import Any, AsyncIterator, Awaitable, Callable
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_STORAGE_DIR = ROOT_DIR / "data" / "javinfo_imports"
+JOBS_JOURNAL_FILENAME = "jobs.json"
 ACTIVE_STATUSES = {"pending", "uploading", "uploaded", "restoring", "stopping", "swapping", "restarting", "migrating"}
 FINAL_STATUSES = {"completed", "failed", "canceled"}
+JOURNAL_JOB_FIELDS = {
+    "id",
+    "status",
+    "stage",
+    "filename",
+    "file_size",
+    "uploaded_bytes",
+    "sha256",
+    "file_path",
+    "dump_format",
+    "settings",
+    "logs",
+    "error",
+    "created_at",
+    "updated_at",
+    "confirm_direct_restore",
+}
 PG_DUMPALL_PATTERNS = (
     re.compile(r"(?im)^\s*CREATE\s+DATABASE\b"),
     re.compile(r"(?im)^\s*\\connect\b"),
@@ -218,10 +237,18 @@ async def _discard_task_result(task: asyncio.Task) -> None:
 
 
 class UploadStreamInspector:
-    def __init__(self, chunks: AsyncIterator[bytes], fmt: DumpFormat, job: dict[str, Any]):
+    def __init__(
+        self,
+        chunks: AsyncIterator[bytes],
+        fmt: DumpFormat,
+        job: dict[str, Any],
+        *,
+        on_update: Callable[[], None] | None = None,
+    ):
         self._chunks = chunks
         self._fmt = fmt
         self._job = job
+        self._on_update = on_update
         self.digest = hashlib.sha256()
         self.uploaded = 0
         self._sample = bytearray()
@@ -251,6 +278,9 @@ class UploadStreamInspector:
             if self._job.get("cancel_requested"):
                 self._job["status"] = "canceled"
                 self._job["stage"] = "canceled"
+                self._job["updated_at"] = time.time()
+                if self._on_update:
+                    self._on_update()
                 raise asyncio.CancelledError()
             if not chunk:
                 continue
@@ -259,6 +289,8 @@ class UploadStreamInspector:
             self.uploaded += len(chunk)
             self._job["uploaded_bytes"] = self.uploaded
             self._job["updated_at"] = time.time()
+            if self._on_update:
+                self._on_update()
             yield chunk
         if not self._sample_checked:
             if self._decompressor is not None:
@@ -481,6 +513,77 @@ class JavInfoImportManager:
         self._jobs: dict[int, dict[str, Any]] = {}
         self._next_id = 1
         self._lock = asyncio.Lock()
+        self._load_jobs_journal()
+
+    @property
+    def _journal_path(self) -> Path:
+        return self.storage_dir / JOBS_JOURNAL_FILENAME
+
+    def _job_for_journal(self, job: dict[str, Any]) -> dict[str, Any]:
+        saved: dict[str, Any] = {}
+        for key, value in job.items():
+            if key.startswith("_") or key == "cancel_requested":
+                continue
+            if (
+                key in JOURNAL_JOB_FIELDS
+                or key.endswith("_db")
+                or key.endswith("_database")
+                or key.startswith(("staging_", "backup_"))
+            ):
+                saved[key] = value
+        saved["settings"] = _redact_settings(saved.get("settings") or job.get("settings") or {})
+        saved["logs"] = list(saved.get("logs") or [])[-100:]
+        return saved
+
+    def _persist_jobs_journal(self) -> None:
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        jobs = sorted(self._jobs.values(), key=lambda item: int(item.get("id") or 0))
+        payload = {"jobs": [self._job_for_journal(job) for job in jobs]}
+        tmp_path = self._journal_path.with_suffix(self._journal_path.suffix + ".tmp")
+        tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        tmp_path.replace(self._journal_path)
+
+    def _load_jobs_journal(self) -> None:
+        journal_path = self._journal_path
+        if not journal_path.exists():
+            return
+        try:
+            payload = json.loads(journal_path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        raw_jobs = payload.get("jobs") if isinstance(payload, dict) else None
+        if not isinstance(raw_jobs, list):
+            return
+
+        max_id = 0
+        for raw_job in raw_jobs:
+            if not isinstance(raw_job, dict):
+                continue
+            try:
+                job_id = int(raw_job.get("id") or 0)
+            except Exception:
+                continue
+            if job_id <= 0:
+                continue
+            settings = _redact_settings(raw_job.get("settings") if isinstance(raw_job.get("settings"), dict) else {})
+            job = {key: value for key, value in raw_job.items() if not str(key).startswith("_")}
+            job["id"] = job_id
+            job["status"] = str(job.get("status") or "failed")
+            job["stage"] = str(job.get("stage") or job["status"])
+            job["filename"] = _safe_filename(str(job.get("filename") or "dump"))
+            job["file_size"] = int(job.get("file_size") or 0)
+            job["uploaded_bytes"] = int(job.get("uploaded_bytes") or 0)
+            job["settings"] = settings
+            job["_settings"] = settings
+            job["logs"] = list(job.get("logs") or [])[-100:]
+            job["error"] = str(job.get("error") or "")
+            job["created_at"] = float(job.get("created_at") or time.time())
+            job["updated_at"] = float(job.get("updated_at") or job["created_at"])
+            job["cancel_requested"] = False
+            job["confirm_direct_restore"] = bool(job.get("confirm_direct_restore", False))
+            self._jobs[job_id] = job
+            max_id = max(max_id, job_id)
+        self._next_id = max(self._next_id, max_id + 1)
 
     def _active_job(self) -> dict[str, Any] | None:
         for job in self._jobs.values():
@@ -528,6 +631,7 @@ class JavInfoImportManager:
             "confirm_direct_restore": bool(confirm_direct_restore),
         }
         self._jobs[job_id] = job
+        self._persist_jobs_journal()
         return self.public_job(job)
 
     async def save_upload(self, job_id: int, chunks: AsyncIterator[bytes]) -> dict[str, Any]:
@@ -540,6 +644,7 @@ class JavInfoImportManager:
         job["status"] = "uploading"
         job["stage"] = "uploading"
         job["updated_at"] = time.time()
+        self._persist_jobs_journal()
         uploaded = 0
         try:
             with path.open("wb") as fh:
@@ -547,6 +652,8 @@ class JavInfoImportManager:
                     if job.get("cancel_requested"):
                         job["status"] = "canceled"
                         job["stage"] = "canceled"
+                        job["updated_at"] = time.time()
+                        self._persist_jobs_journal()
                         raise asyncio.CancelledError()
                     if not chunk:
                         continue
@@ -555,12 +662,14 @@ class JavInfoImportManager:
                     uploaded += len(chunk)
                     job["uploaded_bytes"] = uploaded
                     job["updated_at"] = time.time()
+                    self._persist_jobs_journal()
             fmt = detect_dump_format(path, job["filename"])
             job["dump_format"] = fmt.kind
             job["sha256"] = digest.hexdigest()
             job["status"] = "uploaded"
             job["stage"] = "uploaded"
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             return self.public_job(job)
         except Exception as exc:
             if isinstance(exc, asyncio.CancelledError):
@@ -569,6 +678,7 @@ class JavInfoImportManager:
             job["stage"] = "failed"
             job["error"] = str(exc) or exc.__class__.__name__
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             raise
 
     async def save_upload_chunk(self, job_id: int, chunk: bytes, *, offset: int, total_size: int = 0) -> dict[str, Any]:
@@ -579,6 +689,7 @@ class JavInfoImportManager:
             job["status"] = "canceled"
             job["stage"] = "canceled"
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             raise ValueError("job is not accepting uploads")
 
         offset = int(offset or 0)
@@ -599,6 +710,8 @@ class JavInfoImportManager:
         current_size = partial_path.stat().st_size if partial_path.exists() else 0
         if current_size != int(job.get("uploaded_bytes") or 0):
             job["uploaded_bytes"] = current_size
+            job["updated_at"] = time.time()
+            self._persist_jobs_journal()
         if offset != current_size:
             raise ValueError(f"offset mismatch: expected {current_size}, got {offset}")
 
@@ -612,6 +725,7 @@ class JavInfoImportManager:
         job["stage"] = "uploading"
         job["uploaded_bytes"] = uploaded
         job["updated_at"] = time.time()
+        self._persist_jobs_journal()
         return self.public_job(job)
 
     async def finalize_upload(self, job_id: int) -> dict[str, Any]:
@@ -622,6 +736,7 @@ class JavInfoImportManager:
             job["status"] = "canceled"
             job["stage"] = "canceled"
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             raise ValueError("job is not accepting uploads")
 
         path = Path(job["file_path"])
@@ -633,6 +748,7 @@ class JavInfoImportManager:
         if expected and uploaded != expected:
             job["uploaded_bytes"] = uploaded
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             raise ValueError(f"incomplete upload: expected {expected} bytes, got {uploaded}")
 
         digest = hashlib.sha256()
@@ -649,6 +765,7 @@ class JavInfoImportManager:
             job["stage"] = "failed"
             job["error"] = str(exc) or exc.__class__.__name__
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             raise
         partial_path.replace(path)
         job["dump_format"] = fmt.kind
@@ -657,6 +774,7 @@ class JavInfoImportManager:
         job["status"] = "uploaded"
         job["stage"] = "uploaded"
         job["updated_at"] = time.time()
+        self._persist_jobs_journal()
         return self.public_job(job)
 
     async def preflight(self, settings: dict[str, Any], *, expected_size: int = 0) -> dict[str, Any]:
@@ -707,15 +825,18 @@ class JavInfoImportManager:
                 job["status"] = "completed"
                 job["stage"] = "completed"
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
             except asyncio.CancelledError:
                 job["status"] = "canceled"
                 job["stage"] = "canceled"
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
             except Exception as exc:
                 job["status"] = "failed"
                 job["stage"] = "failed"
                 job["error"] = str(exc)
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
             return self.public_job(job)
 
     async def restore_upload_stream(self, job_id: int, chunks: AsyncIterator[bytes]) -> dict[str, Any]:
@@ -726,11 +847,12 @@ class JavInfoImportManager:
             fmt = stream_dump_format_for_filename(job.get("filename", ""))
             if fmt is None:
                 raise ValueError("stream restore only supports .sql and .sql.gz dumps")
-            inspector = UploadStreamInspector(chunks, fmt, job)
+            inspector = UploadStreamInspector(chunks, fmt, job, on_update=self._persist_jobs_journal)
             job["dump_format"] = fmt.kind
             job["status"] = "uploading"
             job["stage"] = "uploading"
             job["updated_at"] = time.time()
+            self._persist_jobs_journal()
             try:
                 await self._restore_stream_job(job, fmt, inspector)
                 job["sha256"] = inspector.digest.hexdigest()
@@ -738,15 +860,18 @@ class JavInfoImportManager:
                 job["status"] = "completed"
                 job["stage"] = "completed"
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
             except asyncio.CancelledError:
                 job["status"] = "canceled"
                 job["stage"] = "canceled"
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
             except Exception as exc:
                 job["status"] = "failed"
                 job["stage"] = "failed"
                 job["error"] = str(exc)
                 job["updated_at"] = time.time()
+                self._persist_jobs_journal()
                 raise
             return self.public_job(job)
 
@@ -757,6 +882,7 @@ class JavInfoImportManager:
             job["status"] = "canceled"
             job["stage"] = "canceled"
             job["updated_at"] = time.time()
+        self._persist_jobs_journal()
         return self.public_job(job)
 
     def get_job(self, job_id: int) -> dict[str, Any] | None:
@@ -783,6 +909,21 @@ class JavInfoImportManager:
             return
         job.setdefault("logs", []).append(str(message)[-2000:])
         job["updated_at"] = time.time()
+        self._persist_jobs_journal()
+
+    def _set_job_state(
+        self,
+        job: dict[str, Any],
+        *,
+        status: str | None = None,
+        stage: str | None = None,
+    ) -> None:
+        if status is not None:
+            job["status"] = status
+        if stage is not None:
+            job["stage"] = stage
+        job["updated_at"] = time.time()
+        self._persist_jobs_journal()
 
     async def _restore_stream_job(
         self,
@@ -799,17 +940,16 @@ class JavInfoImportManager:
         try:
             if can_stage:
                 self._raise_if_canceled(job)
-                job["stage"] = "restoring"
-                job["status"] = "restoring"
+                self._set_job_state(job, status="restoring", stage="restoring")
                 await self._sql(job, settings, settings["maintenance_database"], f"DROP DATABASE IF EXISTS {_pg_ident(staging_db)}")
                 await self._sql(job, settings, settings["maintenance_database"], f"CREATE DATABASE {_pg_ident(staging_db)}")
                 await self._restore_stream_to_database(job, fmt, inspector, staging_db)
 
                 self._raise_if_canceled(job)
-                job["stage"] = "stopping"
+                self._set_job_state(job, stage="stopping")
                 await self._service("stop", job)
                 service_stopped = True
-                job["stage"] = "swapping"
+                self._set_job_state(job, stage="swapping")
                 backup_db = f"{target_db}_before_import_{time.strftime('%Y%m%d%H%M%S')}"
                 target_exists = await self._database_exists(settings, target_db)
                 if target_exists:
@@ -820,37 +960,35 @@ class JavInfoImportManager:
                 await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(staging_db)} RENAME TO {_pg_ident(target_db)}")
                 if target_exists:
                     await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 await self._service("restart", job)
             else:
                 if not job.get("confirm_direct_restore"):
                     raise JavInfoImportError("direct restore confirmation is required")
                 self._log(job, "database user cannot create databases; restoring directly into target database")
-                job["stage"] = "stopping"
+                self._set_job_state(job, stage="stopping")
                 await self._service("stop", job)
                 service_stopped = True
                 self._raise_if_canceled(job)
-                job["stage"] = "restoring"
-                job["status"] = "restoring"
+                self._set_job_state(job, status="restoring", stage="restoring")
                 if not await self._database_exists(settings, target_db):
                     raise JavInfoImportError(
                         f"target database {target_db} does not exist and the configured user cannot create databases"
                     )
                 await self._reset_target_database(job, settings, target_db)
                 await self._restore_stream_to_database(job, fmt, inspector, target_db)
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 await self._service("restart", job)
         except BaseException:
             if service_stopped:
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 try:
                     await self._service("restart", job)
                     self._log(job, "javinfo service restarted after interrupted import")
                 except Exception as restart_exc:
                     self._log(job, f"failed to restart javinfo after interrupted import: {restart_exc}")
             raise
-        job["stage"] = "migrating"
-        job["status"] = "migrating"
+        self._set_job_state(job, status="migrating", stage="migrating")
         await self._run_post_import_migrations(job)
 
     async def _restore_uploaded_job(self, job: dict[str, Any]) -> None:
@@ -865,17 +1003,16 @@ class JavInfoImportManager:
         try:
             if can_stage:
                 self._raise_if_canceled(job)
-                job["stage"] = "restoring"
-                job["status"] = "restoring"
+                self._set_job_state(job, status="restoring", stage="restoring")
                 await self._sql(job, settings, settings["maintenance_database"], f"DROP DATABASE IF EXISTS {_pg_ident(staging_db)}")
                 await self._sql(job, settings, settings["maintenance_database"], f"CREATE DATABASE {_pg_ident(staging_db)}")
                 await self._restore_to_database(job, fmt, staging_db)
 
                 self._raise_if_canceled(job)
-                job["stage"] = "stopping"
+                self._set_job_state(job, stage="stopping")
                 await self._service("stop", job)
                 service_stopped = True
-                job["stage"] = "swapping"
+                self._set_job_state(job, stage="swapping")
                 backup_db = f"{target_db}_before_import_{time.strftime('%Y%m%d%H%M%S')}"
                 target_exists = await self._database_exists(settings, target_db)
                 if target_exists:
@@ -886,37 +1023,35 @@ class JavInfoImportManager:
                 await self._sql(job, settings, settings["maintenance_database"], f"ALTER DATABASE {_pg_ident(staging_db)} RENAME TO {_pg_ident(target_db)}")
                 if target_exists:
                     await self._cleanup_old_backups(settings, target_db, int(settings.get("keep_previous_databases", 1)))
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 await self._service("restart", job)
             else:
                 if not job.get("confirm_direct_restore"):
                     raise JavInfoImportError("direct restore confirmation is required")
                 self._log(job, "database user cannot create databases; restoring directly into target database")
-                job["stage"] = "stopping"
+                self._set_job_state(job, stage="stopping")
                 await self._service("stop", job)
                 service_stopped = True
                 self._raise_if_canceled(job)
-                job["stage"] = "restoring"
-                job["status"] = "restoring"
+                self._set_job_state(job, status="restoring", stage="restoring")
                 if not await self._database_exists(settings, target_db):
                     raise JavInfoImportError(
                         f"target database {target_db} does not exist and the configured user cannot create databases"
                     )
                 await self._reset_target_database(job, settings, target_db)
                 await self._restore_to_database(job, fmt, target_db)
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 await self._service("restart", job)
         except BaseException:
             if service_stopped:
-                job["stage"] = "restarting"
+                self._set_job_state(job, stage="restarting")
                 try:
                     await self._service("restart", job)
                     self._log(job, "javinfo service restarted after interrupted import")
                 except Exception as restart_exc:
                     self._log(job, f"failed to restart javinfo after interrupted import: {restart_exc}")
             raise
-        job["stage"] = "migrating"
-        job["status"] = "migrating"
+        self._set_job_state(job, status="migrating", stage="migrating")
         await self._run_post_import_migrations(job)
 
     async def _restore_to_database(self, job: dict[str, Any], fmt: DumpFormat, database: str) -> None:

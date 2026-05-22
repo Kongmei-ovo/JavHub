@@ -88,6 +88,89 @@ class DownloaderConfigTests(unittest.TestCase):
         self.assertNotIn("token", client)
 
 
+class DownloaderDuplicateDetectionTests(unittest.TestCase):
+    def test_check_duplicate_download_matches_info_hash_and_remote_task_id(self):
+        from services.downloaders import check_duplicate_download
+
+        info_hash = "abcdef1234567890abcdef1234567890abcdef12"
+        by_hash = check_duplicate_download(
+            [{"id": "remote-1", "hash": info_hash.upper(), "status": "downloading"}],
+            f"magnet:?xt=urn:btih:{info_hash}",
+        )
+        by_remote_id = check_duplicate_download(
+            [{"id": "gid-123", "hash": "1111111111111111111111111111111111111111"}],
+            "magnet:?xt=urn:btih:2222222222222222222222222222222222222222",
+            remote_task_id="GID-123",
+        )
+        clear = check_duplicate_download(
+            [{"id": "remote-2", "hash": "3333333333333333333333333333333333333333"}],
+            f"magnet:?xt=urn:btih:{info_hash}",
+        )
+
+        self.assertFalse(by_hash.success)
+        self.assertEqual(by_hash.remote_task_id, "remote-1")
+        self.assertIn("duplicate", by_hash.message.lower())
+        self.assertFalse(by_remote_id.success)
+        self.assertEqual(by_remote_id.remote_task_id, "gid-123")
+        self.assertTrue(clear.success)
+
+
+class DownloaderDuplicateAwareClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_create_downloader_client_reports_duplicate_before_add_magnet(self):
+        from services.downloaders import BaseDownloaderClient, create_downloader_client
+
+        calls = {"add": 0}
+        info_hash = "abcdef1234567890abcdef1234567890abcdef12"
+
+        class FakeDownloaderClient(BaseDownloaderClient):
+            async def test(self):
+                raise AssertionError("not used")
+
+            async def add_magnet(self, magnet, path="", title=""):
+                calls["add"] += 1
+                raise AssertionError("duplicate should not be submitted")
+
+            async def list_tasks(self):
+                return [{"id": "existing-task", "hash": info_hash, "status": "downloading"}]
+
+        with patch("services.downloaders.OpenListDownloaderClient", FakeDownloaderClient):
+            client = create_downloader_client({"type": "openlist"})
+            result = await client.add_magnet(f"magnet:?xt=urn:btih:{info_hash}", "/media", "Title")
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.remote_task_id, "existing-task")
+        self.assertIn("duplicate", result.message.lower())
+        self.assertEqual(calls["add"], 0)
+
+    async def test_create_downloader_client_submits_when_remote_task_listing_empty(self):
+        from services.downloaders import BaseDownloaderClient, DownloadActionResult, create_downloader_client
+
+        calls = {"add": 0}
+
+        class FakeDownloaderClient(BaseDownloaderClient):
+            async def test(self):
+                raise AssertionError("not used")
+
+            async def add_magnet(self, magnet, path="", title=""):
+                calls["add"] += 1
+                return DownloadActionResult(True, remote_task_id="new-task", message="success")
+
+            async def list_tasks(self):
+                return []
+
+        with patch("services.downloaders.OpenListDownloaderClient", FakeDownloaderClient):
+            client = create_downloader_client({"type": "openlist"})
+            result = await client.add_magnet(
+                "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12",
+                "/media",
+                "Title",
+            )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.remote_task_id, "new-task")
+        self.assertEqual(calls["add"], 1)
+
+
 class DownloaderServiceTests(TempDbMixin, unittest.IsolatedAsyncioTestCase):
     async def test_create_task_records_selected_downloader(self):
         from database import get_download_tasks
@@ -122,6 +205,48 @@ class DownloaderServiceTests(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(task["downloader_type"], "transmission")
         self.assertEqual(task["remote_task_id"], "hash123")
         self.assertEqual(task["path"], "/downloads")
+
+    async def test_create_task_reports_duplicate_remote_magnet_without_resubmitting(self):
+        from database import get_download_tasks
+        from services.downloader import downloader_service
+        from services.downloaders import BaseDownloaderClient
+
+        cfg = {
+            "id": "qb",
+            "type": "openlist",
+            "name": "QB",
+            "enabled": True,
+            "address": "http://qb",
+            "default_path": "/downloads",
+        }
+        info_hash = "abcdef1234567890abcdef1234567890abcdef12"
+        calls = {"add": 0}
+
+        class FakeClient(BaseDownloaderClient):
+            async def test(self):
+                raise AssertionError("not used")
+
+            async def add_magnet(self, magnet, path="", title=""):
+                calls["add"] += 1
+                raise AssertionError("duplicate should not be submitted")
+
+            async def list_tasks(self):
+                return [{"id": "existing-task", "hash": info_hash, "status": "downloading"}]
+
+        with patch("services.downloader.get_downloader_config", return_value=cfg):
+            with patch("services.downloaders.OpenListDownloaderClient", FakeClient):
+                task_id = await downloader_service.create_download_task(
+                    "SIVR-438",
+                    "Title",
+                    f"magnet:?xt=urn:btih:{info_hash}",
+                    downloader_id="qb",
+                )
+
+        task = get_download_tasks()[0]
+        self.assertEqual(task["id"], task_id)
+        self.assertEqual(task["status"], "failed")
+        self.assertIn("duplicate", task["error_msg"].lower())
+        self.assertEqual(calls["add"], 0)
 
 
 class DownloaderClientProtocolTests(unittest.IsolatedAsyncioTestCase):

@@ -149,13 +149,55 @@ def _source_registry_summary() -> dict[str, Any]:
             "registered": len(sources),
             "available": len(available),
             "error": "",
+            **_source_attempt_summary(),
         }
     except Exception as exc:
         return {
             "registered": 0,
             "available": 0,
             "error": _error_message(exc),
+            **_empty_source_attempt_summary(),
         }
+
+
+def _empty_source_attempt_summary() -> dict[str, Any]:
+    return {
+        "recent_attempt_count": 0,
+        "latest_attempt_error": "",
+        "latest_attempt_source": "",
+        "latest_attempt_keyword": "",
+    }
+
+
+def _with_source_attempt_defaults(status: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **status,
+        **{
+            key: status.get(key, value)
+            for key, value in _empty_source_attempt_summary().items()
+        },
+    }
+
+
+def _source_attempt_summary(limit: int = 20) -> dict[str, Any]:
+    try:
+        from sources.registry import SourceRegistry
+
+        attempts = SourceRegistry.recent_attempts(limit=limit)
+    except Exception:
+        return _empty_source_attempt_summary()
+    latest_error = next((item for item in reversed(attempts) if item.get("error")), None)
+    if not latest_error:
+        return {
+            **_empty_source_attempt_summary(),
+            "recent_attempt_count": len(attempts),
+        }
+    return {
+        "recent_attempt_count": len(attempts),
+        "latest_attempt_error": str(latest_error.get("error") or ""),
+        "latest_attempt_source": str(latest_error.get("source") or ""),
+        "latest_attempt_keyword": str(latest_error.get("keyword") or ""),
+    }
 
 
 def _scheduler_summary() -> dict[str, Any]:
@@ -187,7 +229,7 @@ async def readiness_check():
     javinfo_status = await _javinfo_status()
     cache_status = _cache_status()
     downloader_status = _downloader_summary()
-    sources_status = _source_registry_summary()
+    sources_status = _with_source_attempt_defaults(_source_registry_summary())
     scheduler_status = _scheduler_summary()
 
     degraded = (
