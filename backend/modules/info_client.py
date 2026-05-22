@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import json
 import logging
 import httpx
 from typing import Any
@@ -12,6 +13,106 @@ DMM_IMAGE_BASE_URL = "https://pics.dmm.co.jp"
 # DMM 预览视频基础URL
 DMM_SAMPLE_BASE_URL = "https://cc3001.dmm.co.jp"
 PENDING_METADATA_VIDEO_TTL = 300
+MAX_UPSTREAM_MESSAGE_LENGTH = 200
+
+
+class JavInfoError(Exception):
+    """Base error for JavInfoApi upstream failures."""
+
+    def __init__(self, endpoint_path: str, status_code: int | None, upstream_message: str):
+        self.endpoint_path = endpoint_path
+        self.status_code = status_code
+        self.upstream_message = _concise_upstream_message(upstream_message)
+        status = f" status={status_code}" if status_code is not None else ""
+        super().__init__(f"JavInfoApi request failed for {endpoint_path}{status}: {self.upstream_message}")
+
+
+class JavInfoUnavailable(JavInfoError):
+    """JavInfoApi could not be reached or timed out."""
+
+
+class JavInfoBadGateway(JavInfoError):
+    """JavInfoApi returned an upstream/server failure."""
+
+
+class JavInfoAuthError(JavInfoError):
+    """JavInfoApi rejected the supplied credentials."""
+
+
+class JavInfoNotFound(JavInfoError):
+    """JavInfoApi could not find the requested resource."""
+
+
+class JavInfoContractError(JavInfoError):
+    """JavInfoApi returned a response that does not match the expected contract."""
+
+
+def _concise_upstream_message(message: str) -> str:
+    message = " ".join(str(message or "").split())
+    if len(message) <= MAX_UPSTREAM_MESSAGE_LENGTH:
+        return message
+    return message[: MAX_UPSTREAM_MESSAGE_LENGTH - 3].rstrip() + "..."
+
+
+def _stringify_upstream_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except TypeError:
+        return str(value)
+
+
+def _upstream_message_from_response(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        return _concise_upstream_message(response.text or response.reason_phrase)
+
+    if isinstance(payload, dict):
+        for key in ("detail", "error", "message", "reason", "title"):
+            if payload.get(key):
+                return _concise_upstream_message(_stringify_upstream_value(payload[key]))
+    return _concise_upstream_message(_stringify_upstream_value(payload) or response.reason_phrase)
+
+
+def _map_status_error(path: str, response: httpx.Response) -> JavInfoError:
+    status_code = response.status_code
+    upstream_message = _upstream_message_from_response(response)
+    if status_code in (401, 403):
+        return JavInfoAuthError(path, status_code, upstream_message)
+    if status_code == 404:
+        return JavInfoNotFound(path, status_code, upstream_message)
+    if status_code >= 500:
+        return JavInfoBadGateway(path, status_code, upstream_message)
+    return JavInfoError(path, status_code, upstream_message)
+
+
+def _map_request_error(path: str, exc: httpx.RequestError) -> JavInfoUnavailable:
+    return JavInfoUnavailable(path, None, str(exc) or exc.__class__.__name__)
+
+
+def _response_status_code(response: httpx.Response) -> int | None:
+    status_code = getattr(response, "status_code", None)
+    return status_code if isinstance(status_code, int) else None
+
+
+def _ensure_javinfo_success(path: str, response: httpx.Response) -> None:
+    status_code = _response_status_code(response)
+    if status_code is not None and status_code >= 400:
+        raise _map_status_error(path, response)
+
+
+def _decode_javinfo_json(path: str, response: httpx.Response) -> Any:
+    _ensure_javinfo_success(path, response)
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise JavInfoContractError(path, _response_status_code(response), response.text or str(exc)) from exc
 
 
 def _transform_jacket_url(jacket_path: str | None) -> str | None:
@@ -118,16 +219,20 @@ class InfoClient:
 
     async def _get(self, path: str, params: dict | None = None) -> dict[str, Any]:
         client = await self._get_client()
-        response = await client.get(f"{self.api_url}{path}", params=params)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.get(f"{self.api_url}{path}", params=params)
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        return _decode_javinfo_json(path, response)
 
     async def _get_list(self, path: str, params: dict | None = None) -> list[dict]:
         """获取列表数据（单页），自动处理分页格式返回纯 list"""
         client = await self._get_client()
-        response = await client.get(f"{self.api_url}{path}", params=params)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = await client.get(f"{self.api_url}{path}", params=params)
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        data = _decode_javinfo_json(path, response)
         # 兼容分页格式 {data: [...], ...} 和纯数组格式 [...]
         if isinstance(data, dict):
             return data.get("data", [])
@@ -140,9 +245,11 @@ class InfoClient:
         while True:
             params = {"page": page, "page_size": page_size}
             client = await self._get_client()
-            response = await client.get(f"{self.api_url}{path}", params=params)
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.get(f"{self.api_url}{path}", params=params)
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
+            data = _decode_javinfo_json(path, response)
             items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             all_items.extend(items)
             # 检查是否还有下一页
@@ -173,25 +280,29 @@ class InfoClient:
     async def proxy_get(self, path: str, params: dict | None = None) -> dict:
         """代理 GET 请求，注入补全 token，不做图片转换和缓存"""
         client = await self._get_client()
-        response = await client.get(
-            f"{self.api_url}{path}",
-            params=params,
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.get(
+                f"{self.api_url}{path}",
+                params=params,
+                headers=self._auth_headers(),
+            )
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        return _decode_javinfo_json(path, response)
 
     async def proxy_post(self, path: str, json_body: dict | None = None, params: dict | None = None) -> dict:
         """代理 POST 请求，注入补全 token，不做图片转换和缓存"""
         client = await self._get_client()
-        response = await client.post(
-            f"{self.api_url}{path}",
-            json=json_body,
-            params=params,
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.post(
+                f"{self.api_url}{path}",
+                json=json_body,
+                params=params,
+                headers=self._auth_headers(),
+            )
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        return _decode_javinfo_json(path, response)
 
     async def proxy_post_long(
         self,
@@ -201,26 +312,30 @@ class InfoClient:
         timeout: float = 1800,
     ) -> dict:
         client = await self._get_client()
-        response = await client.post(
-            f"{self.api_url}{path}",
-            json=json_body,
-            params=params,
-            headers=self._auth_headers(),
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.post(
+                f"{self.api_url}{path}",
+                json=json_body,
+                params=params,
+                headers=self._auth_headers(),
+                timeout=timeout,
+            )
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        return _decode_javinfo_json(path, response)
 
     async def proxy_patch(self, path: str, json_body: dict | None = None) -> dict:
         """代理 PATCH 请求"""
         client = await self._get_client()
-        response = await client.patch(
-            f"{self.api_url}{path}",
-            json=json_body,
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await client.patch(
+                f"{self.api_url}{path}",
+                json=json_body,
+                headers=self._auth_headers(),
+            )
+        except httpx.RequestError as exc:
+            raise _map_request_error(path, exc) from exc
+        return _decode_javinfo_json(path, response)
 
     async def push_proxy_config(self, proxy_url: str) -> dict:
         """推送代理配置到 JavInfoApi"""
@@ -566,9 +681,12 @@ class InfoClient:
         for i in range(0, len(ids), 100):
             batch = ids[i:i + 100]
             client = await self._get_client()
-            resp = await client.post(f"{self.api_url}/api/v1/videos/batch", json={"ids": batch})
-            resp.raise_for_status()
-            items = resp.json()
+            path = "/api/v1/videos/batch"
+            try:
+                resp = await client.post(f"{self.api_url}{path}", json={"ids": batch})
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
+            items = _decode_javinfo_json(path, resp)
             if isinstance(items, list):
                 results.extend([_transform_video_item(item) for item in items])
         return results
@@ -581,9 +699,12 @@ class InfoClient:
         for i in range(0, len(dvd_ids), 100):
             batch = dvd_ids[i:i + 100]
             client = await self._get_client()
-            resp = await client.post(f"{self.api_url}/api/v1/videos/lookup", json={"dvd_ids": batch})
-            resp.raise_for_status()
-            data = resp.json()
+            path = "/api/v1/videos/lookup"
+            try:
+                resp = await client.post(f"{self.api_url}{path}", json={"dvd_ids": batch})
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
+            data = _decode_javinfo_json(path, resp)
             if isinstance(data, dict):
                 for k, v in data.items():
                     results[k] = _transform_video_item(v)
@@ -599,12 +720,15 @@ class InfoClient:
         for i in range(0, len(actress_ids), 20):
             batch = actress_ids[i:i + 20]
             client = await self._get_client()
-            resp = await client.post(
-                f"{self.api_url}/api/v1/actresses/batch_videos",
-                json={"ids": batch, "page": page, "page_size": page_size},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+            path = "/api/v1/actresses/batch_videos"
+            try:
+                resp = await client.post(
+                    f"{self.api_url}{path}",
+                    json={"ids": batch, "page": page, "page_size": page_size},
+                )
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
+            data = _decode_javinfo_json(path, resp)
             if isinstance(data, dict):
                 for aid, info in data.items():
                     if isinstance(info, dict) and "videos" in info:

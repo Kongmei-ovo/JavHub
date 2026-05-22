@@ -1,6 +1,7 @@
 """Download candidate enrichment and automation policy processing."""
 from __future__ import annotations
 
+import json
 import re
 import threading
 from dataclasses import dataclass
@@ -180,6 +181,65 @@ def _download_uri(item: dict) -> str:
     return ""
 
 
+def classify_candidate_error(message: Any = None, status: int | str | None = None) -> dict:
+    text = str(message or "").lower()
+    status_code = _status_code(status)
+
+    category = "unknown"
+    retryable = True
+    if (
+        "missing magnet" in text
+        or "no magnet" in text
+        or "magnet_not_found" in text
+        or "未找到可用 magnet" in text
+        or "候选缺少 magnet" in text
+    ):
+        category = "missing_magnet"
+        retryable = False
+    elif isinstance(message, TimeoutError) or status_code in {408, 504} or "timeout" in text or "timed out" in text:
+        category = "source_timeout"
+        retryable = True
+    elif (
+        status_code in {401, 403}
+        or isinstance(message, PermissionError)
+        or "unauthorized" in text
+        or "forbidden" in text
+        or "authentication" in text
+        or "api key" in text
+        or "token" in text
+    ):
+        category = "downloader_auth"
+        retryable = False
+    elif status_code == 409 or "duplicate" in text or "already exists" in text or "already exist" in text:
+        category = "duplicate"
+        retryable = False
+    elif status_code in {400, 422} or "rejected" in text or "invalid path" in text or "invalid request" in text:
+        category = "remote_rejected"
+        retryable = False
+
+    return {"error_category": category, "retryable": retryable}
+
+
+def _status_code(status: int | str | None) -> int | None:
+    if status is None:
+        return None
+    try:
+        return int(status)
+    except (TypeError, ValueError):
+        return None
+
+
+def _failure_event_detail(message: Any, status: int | str | None = None) -> str:
+    payload = {
+        "error": str(message),
+        **classify_candidate_error(message, status),
+    }
+    status_code = _status_code(status)
+    if status_code is not None:
+        payload["status"] = status_code
+    return json.dumps(payload, ensure_ascii=False)
+
+
 async def find_best_magnet(candidate: dict) -> dict | None:
     """Search registered sources and select the best available download URI."""
     register_all_sources()
@@ -252,9 +312,17 @@ async def process_candidate(
         candidate = get_download_candidate(candidate_id) or candidate
         if not _download_uri(candidate) and chosen_policy in {"rules", "auto"}:
             if chosen_policy == "auto":
-                failed = set_download_candidate_status(candidate_id, "failed", error_msg="未找到可用 magnet")
-                add_download_candidate_event(candidate_id, "process_failed", "missing magnet", operator)
-                return _response("failed_missing_magnet", failed, policy=chosen_policy, enrich_result=enrich_result)
+                error_msg = "未找到可用 magnet"
+                failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)
+                metadata = classify_candidate_error(error_msg)
+                add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(error_msg), operator)
+                return _response(
+                    "failed_missing_magnet",
+                    failed,
+                    policy=chosen_policy,
+                    enrich_result=enrich_result,
+                    **metadata,
+                )
             add_download_candidate_event(candidate_id, "policy_skipped", "missing magnet", operator)
             return _response("skipped_missing_magnet", candidate, policy=chosen_policy, enrich_result=enrich_result)
 
@@ -264,9 +332,11 @@ async def process_candidate(
 
     download_uri = _download_uri(candidate)
     if not download_uri:
-        failed = set_download_candidate_status(candidate_id, "failed", error_msg="候选缺少 magnet，不能下发下载")
-        add_download_candidate_event(candidate_id, "process_failed", "missing magnet", operator)
-        return _response("failed_missing_magnet", failed, policy=chosen_policy)
+        error_msg = "候选缺少 magnet，不能下发下载"
+        failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)
+        metadata = classify_candidate_error(error_msg)
+        add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(error_msg), operator)
+        return _response("failed_missing_magnet", failed, policy=chosen_policy, **metadata)
 
     if send_limit_remaining is not None and send_limit_remaining <= 0 and not force:
         add_download_candidate_event(candidate_id, "policy_skipped", "auto download limit reached", operator)
@@ -281,15 +351,25 @@ async def process_candidate(
         )
     except Exception as exc:
         failed = set_download_candidate_status(candidate_id, "failed", error_msg=str(exc))
-        add_download_candidate_event(candidate_id, "process_failed", str(exc), operator)
-        return _response("failed_downloader", failed, policy=chosen_policy, error=str(exc))
+        metadata = classify_candidate_error(exc)
+        add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(exc), operator)
+        return _response("failed_downloader", failed, policy=chosen_policy, error=str(exc), **metadata)
 
     task = next((row for row in get_download_tasks(limit=500) if row.get("id") == task_id), None)
     if task and task.get("status") == "failed":
         error_msg = task.get("error_msg") or "下载任务创建失败"
         failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)
-        add_download_candidate_event(candidate_id, "process_failed", error_msg, operator)
-        return _response("failed_downloader", failed, policy=chosen_policy, download_task_id=task_id, error=error_msg)
+        error_status = task.get("status_code") or task.get("http_status")
+        metadata = classify_candidate_error(error_msg, error_status)
+        add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(error_msg, error_status), operator)
+        return _response(
+            "failed_downloader",
+            failed,
+            policy=chosen_policy,
+            download_task_id=task_id,
+            error=error_msg,
+            **metadata,
+        )
 
     updated = set_download_candidate_status(candidate_id, "sent", download_task_id=task_id)
     event = "auto_approved" if operator == "system" or chosen_policy in {"rules", "auto"} else "approved"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from dataclasses import dataclass
 import hashlib
 import json
 import os
@@ -15,9 +16,17 @@ DEFAULT_SEARCH_TTL = 600         # 10min
 DEFAULT_RESPONSE_TTL = 600       # 10min
 
 _db_path: Optional[Path] = None
-_response_locks: dict[str, asyncio.Lock] = {}
 _metrics: dict[str, Any] = {}
 _backend: Any | None = None
+
+
+@dataclass
+class _ResponseLockEntry:
+    lock: asyncio.Lock
+    users: int = 0
+
+
+_response_locks: dict[str, _ResponseLockEntry] = {}
 
 
 class SQLiteCacheBackend:
@@ -339,20 +348,26 @@ async def get_or_set_response(
         return cached
 
     key = _response_key(namespace, cache_params)
-    lock = _response_locks.get(key)
-    if lock is None:
-        lock = asyncio.Lock()
-        _response_locks[key] = lock
-    elif lock.locked():
+    lock_entry = _response_locks.get(key)
+    if lock_entry is None:
+        lock_entry = _ResponseLockEntry(lock=asyncio.Lock())
+        _response_locks[key] = lock_entry
+    elif lock_entry.lock.locked():
         _record_singleflight_wait()
 
-    async with lock:
-        cached = get_response(namespace, cache_params)
-        if cached is not None:
-            return cached
-        data = await producer()
-        set_response(namespace, cache_params, data, ttl=ttl)
-        return data
+    lock_entry.users += 1
+    try:
+        async with lock_entry.lock:
+            cached = get_response(namespace, cache_params)
+            if cached is not None:
+                return cached
+            data = await producer()
+            set_response(namespace, cache_params, data, ttl=ttl)
+            return data
+    finally:
+        lock_entry.users -= 1
+        if lock_entry.users == 0 and not lock_entry.lock.locked():
+            _response_locks.pop(key, None)
 
 
 def _response_key(namespace: str, params: dict) -> str:
@@ -415,6 +430,21 @@ def get_enum_list(enum_type: str) -> Optional[list]:
 
 def set_enum_list(enum_type: str, data: list, ttl: int = DEFAULT_ENUM_TTL) -> None:
     _set_json(f"enum:{enum_type}", data, ttl)
+
+
+# === Data Generations ===
+
+def get_data_generation(namespace: str) -> int:
+    data = _get_json(_generation_key(namespace))
+    return int(data) if isinstance(data, int) else 0
+
+
+def set_data_generation(namespace: str, generation: int, ttl: int = DEFAULT_ENUM_TTL) -> None:
+    _set_json(_generation_key(namespace), int(generation), ttl)
+
+
+def _generation_key(namespace: str) -> str:
+    return f"generation:{namespace}"
 
 
 # === Stats ===

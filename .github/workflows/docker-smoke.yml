@@ -41,7 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS http://127.0.0.1:3000/health
-          curl -fsS http://127.0.0.1:3000/health/readiness
+          readiness_json="$(curl -fsS http://127.0.0.1:3000/health/readiness)"
+          READINESS_JSON="$readiness_json" python3 -c 'import json, os; payload = json.loads(os.environ["READINESS_JSON"]); assert payload.get("status") == "ok", f"readiness .status == \"ok\" check failed: {payload!r}"'
           curl -fsS http://127.0.0.1:3000/api/v1/cache/stats
           curl -fsS http://127.0.0.1:18080/health
 

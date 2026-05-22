@@ -69,9 +69,10 @@
             <span>默认下载器</span>
             <strong>{{ healthDownloaderSummary }}</strong>
           </div>
-          <div class="state-item" :class="{ warning: health?.sources && !health.sources.available }">
+          <div class="state-item" :class="{ warning: health?.sources && (!health.sources.available || health.sources.latest_attempt_error) }">
             <span>磁力源</span>
             <strong>{{ healthSourceSummary }}</strong>
+            <small v-if="healthSourceAttemptSummary">{{ healthSourceAttemptSummary }}</small>
           </div>
           <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }">
             <span>调度有效性</span>
@@ -234,40 +235,40 @@
           <article class="workbench-panel">
             <div class="panel-head">
               <div>
-                <h2>Cache Stats</h2>
+                <h2>缓存诊断</h2>
                 <p>{{ cacheStatsSummary }}</p>
               </div>
               <span class="backend-pill">{{ cacheStats?.backend || 'unknown' }}</span>
             </div>
             <div class="mini-stats cache-entry-stats">
-              <div><strong>{{ cacheStats?.total_entries || 0 }}</strong><span>Total</span></div>
-              <div><strong>{{ cacheStats?.active_entries || 0 }}</strong><span>Active</span></div>
-              <div><strong>{{ cacheStats?.expired_entries || 0 }}</strong><span>Expired</span></div>
+              <div><strong>{{ cacheStats?.total_entries || 0 }}</strong><span>总条目</span></div>
+              <div><strong>{{ cacheStats?.active_entries || 0 }}</strong><span>有效</span></div>
+              <div><strong>{{ cacheStats?.expired_entries || 0 }}</strong><span>过期</span></div>
             </div>
             <div class="cache-rate-grid">
               <div class="state-item">
-                <span>Response hit rate</span>
+                <span>响应命中率</span>
                 <strong>{{ responseHitRate }}</strong>
               </div>
               <div class="state-item">
-                <span>Search hit rate</span>
+                <span>搜索命中率</span>
                 <strong>{{ searchHitRate }}</strong>
               </div>
               <div class="state-item">
-                <span>Singleflight waits</span>
+                <span>合并等待</span>
                 <strong>{{ cacheStats?.metrics?.singleflight_waits || 0 }}</strong>
               </div>
             </div>
             <div class="cache-namespaces">
               <div class="block-head">
-                <h3>Top response namespaces</h3>
+                <h3>热门响应命名空间</h3>
               </div>
               <div class="compact-list">
                 <div v-for="item in topResponseNamespaces" :key="item.name" class="compact-row static-row">
                   <span>{{ item.name }}</span>
                   <strong>{{ item.count }}</strong>
                 </div>
-                <small v-if="!topResponseNamespaces.length" class="empty-line">暂无 response cache</small>
+                <small v-if="!topResponseNamespaces.length" class="empty-line">暂无响应缓存</small>
               </div>
             </div>
             <div class="cache-cleanup">
@@ -487,6 +488,16 @@ export default {
       if (!sources) return '未知'
       if (sources.error) return sources.error
       return `${sources.available || 0}/${sources.registered || 0} 可用`
+    },
+    healthSourceAttemptSummary() {
+      const sources = this.health?.sources || {}
+      const count = Number(sources.recent_attempt_count || 0)
+      const latestError = String(sources.latest_attempt_error || '').trim()
+      if (!count) return ''
+      if (!latestError) return `最近源检索 ${count} 次无错误`
+      const source = String(sources.latest_attempt_source || '未知源').trim()
+      const keyword = String(sources.latest_attempt_keyword || '').trim()
+      return `最近源检索 ${count} 次 · ${source}${keyword ? ` · ${keyword}` : ''}：${latestError}`
     },
     healthSchedulerSummary() {
       const scheduler = this.health?.scheduler
