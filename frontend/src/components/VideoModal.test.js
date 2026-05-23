@@ -73,27 +73,31 @@ test('modal overlay teleports globally and can render inline on the detail page'
   assert.match(source, /\.modal-overlay\s*\{[\s\S]*z-index:\s*var\(--z-lightbox\)/)
 })
 
-test('modal sheet keeps a visible frosted fallback when backdrop filtering is unavailable', () => {
+test('modal sheet keeps a visible translucent fallback without relying on backdrop filtering', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 
   assert.match(source, /--modal-sheet-bg/)
   assert.match(source, /--modal-panel-bg/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(source, /\.modal-container\s*\{[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\)/)
 })
 
-test('modal material normalizes busy result grids behind the sheet', () => {
+test('modal material stays readable and consistent over busy result grids', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const overlayBlock = source.match(/\.modal-overlay\s*\{[^}]*\}/)?.[0] || ''
 
-  assert.match(source, /--modal-sheet-bg:\s*var\(--material-glass-sheet\)/)
-  assert.match(source, /--modal-sheet-fallback:\s*rgba\(24,\s*24,\s*27,\s*0\.72\)/)
-  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
+  assert.match(source, /--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(source, /--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
+  assert.match(source, /--modal-panel-bg:\s*rgba\(0,\s*0,\s*0,\s*0\.24\)/)
   assert.match(overlayBlock, /backdrop-filter:\s*none/)
   assert.match(overlayBlock, /-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(source, /--modal-backdrop-blur/)
   assert.doesNotMatch(overlayBlock, /backdrop-filter:\s*blur/)
-  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*-webkit-backdrop-filter:\s*none/)
 })
 
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {

@@ -77,12 +77,12 @@ test('segmented controls and settings rows use shared glass materials', () => {
   assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
 })
 
-test('video modal sheet uses the shared sheet material with a frosted fallback', () => {
-  assert.match(videoModal, /--modal-sheet-bg:\s*var\(--material-glass-sheet\)/)
-  assert.match(videoModal, /--modal-sheet-fallback:\s*rgba\(24,\s*24,\s*27,\s*0\.72\)/)
-  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
+test('video modal sheet uses a translucent material without backdrop-filter differences', () => {
+  assert.match(videoModal, /--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(videoModal, /--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
-  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none[\s\S]*-webkit-backdrop-filter:\s*none/)
 })
 
 test('secondary utility controls avoid one-off fog materials', () => {
