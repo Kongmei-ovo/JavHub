@@ -50,12 +50,14 @@ def upsert_download_candidate(
         cursor = conn.cursor()
         cursor.execute(
             '''
-            INSERT OR IGNORE INTO download_candidates (
+            INSERT INTO download_candidates (
                 content_id, dvd_id, title, actress_id, actress_name, jacket_thumb_url,
                 release_date, source, reason, status, magnet, magnet_source,
                 created_at, updated_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(content_id, source) DO NOTHING
+            RETURNING id
             ''',
             (
                 content_id,
@@ -72,7 +74,8 @@ def upsert_download_candidate(
                 magnet_source,
             ),
         )
-        was_inserted = cursor.rowcount == 1
+        inserted = cursor.fetchone()
+        was_inserted = inserted is not None
         if not was_inserted:
             cursor.execute(
                 '''
@@ -248,7 +251,8 @@ def list_download_candidates(
                     ELSE 4
                 END,
                 release_date DESC,
-                created_at DESC
+                created_at ASC,
+                id ASC
             LIMIT ? OFFSET ?
             ''',
             params + [limit, offset],
@@ -550,7 +554,7 @@ def count_auto_sent_candidates_since(hours: int = 24) -> int:
             SELECT COUNT(*) AS count
             FROM download_candidate_events
             WHERE action = 'auto_approved'
-              AND created_at >= datetime('now', ?)
+              AND created_at >= (CURRENT_TIMESTAMP + ?::interval)
             ''',
             (f"-{int(hours)} hours",),
         )

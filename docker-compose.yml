@@ -4,11 +4,11 @@ name: javhub
 #   cp config.yaml.example config.yaml
 #   edit config.yaml secrets and external service URLs
 #
-# PostgreSQL is included for JavInfoApi and JavHub import features.
+# PostgreSQL is included for JavInfoApi metadata and JavHub state.
 # If you already have PostgreSQL, you may comment out the postgres service and
-# remove the postgres dependencies below. Create the same database name there
-# first, for example "r18", then update DB_HOST/DB_USER/DB_PASSWORD and
-# config.yaml javinfo.import_db.host/user/password/database to match it.
+# remove the postgres dependencies below. Create both the JavInfo metadata
+# database (default "r18") and the JavHub state database (default "javhub"),
+# then update DB_* and JAVHUB_DB_* values to match it.
 #
 # JavHub automatically asks JavInfoApi to apply its auxiliary migrations after
 # a successful database import from the UI. There is no separate migration
@@ -18,6 +18,7 @@ x-postgres-env: &postgres-env
   POSTGRES_DB: ${POSTGRES_DB:-r18}
   POSTGRES_USER: ${POSTGRES_USER:-javhub}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+  JAVHUB_DB_NAME: ${JAVHUB_DB_NAME:-javhub}
 
 x-javinfoapi-env: &javinfoapi-env
   APP_ENV: ${APP_ENV:-production}
@@ -53,6 +54,7 @@ services:
       <<: *postgres-env
     volumes:
       - javinfo-postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
@@ -95,6 +97,11 @@ services:
       DB_USER: ${DB_USER:-javhub}
       DB_PASSWORD: ${DB_PASSWORD:-change-me}
       DB_NAME: ${DB_NAME:-r18}
+      JAVHUB_DB_HOST: ${JAVHUB_DB_HOST:-postgres}
+      JAVHUB_DB_PORT: ${JAVHUB_DB_PORT:-5432}
+      JAVHUB_DB_USER: ${JAVHUB_DB_USER:-javhub}
+      JAVHUB_DB_PASSWORD: ${JAVHUB_DB_PASSWORD:-change-me}
+      JAVHUB_DB_NAME: ${JAVHUB_DB_NAME:-javhub}
       OPENLIST_USERNAME: ${OPENLIST_USERNAME:-}
       OPENLIST_PASSWORD: ${OPENLIST_PASSWORD:-}
       EMBY_API_URL: ${EMBY_API_URL:-}
@@ -110,6 +117,8 @@ services:
       - "${JAVHUB_PORT:-3000}:80"
     depends_on:
       javinfoapi:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy

@@ -1,31 +1,22 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from test_support.postgres import TempPostgresMixin
 
-class LogsRouteTest(unittest.TestCase):
+
+class LogsRouteTest(TempPostgresMixin, unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.db_patch = patch("database.base.DB_PATH", self.db_path)
-        self.db_patch.start()
+        super().setUp()
 
-        from database import add_log, init_db
+        from database import add_log
 
-        init_db()
         add_log("INFO", "inventory collect started")
         add_log("WARNING", "inventory collect slow")
         add_log("ERROR", "downloader failed")
-
-    def tearDown(self):
-        self.db_patch.stop()
-        self.tmp.cleanup()
 
     def _client(self) -> TestClient:
         from routers.logs import router

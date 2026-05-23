@@ -2,31 +2,12 @@ from __future__ import annotations
 
 import io
 import json
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from starlette.datastructures import UploadFile
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.cache_db_path = Path(self.tmp.name) / "cache.sqlite3"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.cache_patch = patch("services.cache._db_path", self.cache_db_path)
-        self.base_patch.start()
-        self.cache_patch.start()
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.cache_patch.stop()
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
 async def _upload_json(payload: dict) -> UploadFile:
@@ -40,7 +21,7 @@ async def _stream_json(response) -> dict:
     return json.loads(body.decode("utf-8"))
 
 
-class TranslationRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class TranslationRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_all_stats_uses_short_response_cache(self):
         from database import upsert_translation
         from services import cache

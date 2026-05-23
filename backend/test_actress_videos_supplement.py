@@ -1,26 +1,15 @@
 from __future__ import annotations
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from routers import actresses
-from services import cache
+from test_support.postgres import TempPostgresMixin
 
 
-class ActressVideosSupplementTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_passes_include_supplement_to_client(self):
         mock_client = AsyncMock()

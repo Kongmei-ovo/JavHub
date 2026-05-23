@@ -1,4 +1,3 @@
-import tempfile
 import time
 import unittest
 import asyncio
@@ -6,11 +5,11 @@ import fnmatch
 import os
 import sys
 import types
-from pathlib import Path
 from unittest.mock import patch
 
 from routers import config as config_router
 from services import cache
+from test_support.cache import RedisModulePatch
 
 
 class FakeRedisClient:
@@ -45,17 +44,29 @@ class FakeRedisClient:
         return int(expires_at - time.time())
 
 
-class CacheServiceTest(unittest.TestCase):
+class FakeRedisMixin:
     def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
+        self.fake_client = FakeRedisClient()
+        fake_redis = types.SimpleNamespace(
+            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: self.fake_client)
+        )
+        self.env_patch = patch.dict(os.environ, {
+            "JAVHUB_REDIS_URL": "redis://cache.example/0",
+            "JAVHUB_REDIS_PREFIX": f"test-prefix-{id(self)}",
+        }, clear=False)
+        self.module_patch = RedisModulePatch(fake_redis)
+        self.env_patch.start()
+        self.module_patch.start()
+        cache.reset_backend()
         cache.reset_metrics()
 
     def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+        cache.reset_backend()
+        self.module_patch.stop()
+        self.env_patch.stop()
+
+
+class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
 
     def test_video_cache_round_trips_json_without_pickle(self):
         cache.set_video("abc-123", {"content_id": "ABC-123"}, ttl=60)
@@ -124,8 +135,8 @@ class CacheServiceTest(unittest.TestCase):
 
         stats = cache.get_stats()
 
-        self.assertEqual(stats["total_entries"], 7)
-        self.assertEqual(stats["expired_entries"], 1)
+        self.assertEqual(stats["total_entries"], 6)
+        self.assertEqual(stats["expired_entries"], 0)
         self.assertEqual(stats["active_entries"], 6)
         self.assertEqual(stats["by_kind"]["video"], 1)
         self.assertEqual(stats["by_kind"]["search"], 1)
@@ -175,7 +186,7 @@ class CacheServiceTest(unittest.TestCase):
             "JAVHUB_CACHE_BACKEND": "redis",
             "JAVHUB_REDIS_URL": "redis://cache.example/0",
             "JAVHUB_REDIS_PREFIX": "generation-prefix",
-        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+        }, clear=False), RedisModulePatch(fake_redis):
             cache.reset_backend()
 
             cache.set_data_generation("javinfo", 7, ttl=60)
@@ -185,11 +196,22 @@ class CacheServiceTest(unittest.TestCase):
 
         cache.reset_backend()
 
-    def test_default_cache_backend_is_sqlite(self):
-        cache.reset_backend()
+    def test_default_cache_backend_is_redis(self):
+        fake_client = FakeRedisClient()
+        fake_redis = types.SimpleNamespace(
+            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
+        )
 
-        self.assertEqual(cache.get_backend_name(), "sqlite")
-        self.assertIsInstance(cache.get_backend(), cache.SQLiteCacheBackend)
+        with patch.dict(os.environ, {
+            "JAVHUB_REDIS_URL": "redis://cache.example/0",
+            "JAVHUB_REDIS_PREFIX": "default-prefix",
+        }, clear=False), RedisModulePatch(fake_redis):
+            cache.reset_backend()
+
+            self.assertEqual(cache.get_backend_name(), "redis")
+            self.assertIsInstance(cache.get_backend(), cache.RedisCacheBackend)
+
+        cache.reset_backend()
 
     def test_redis_backend_round_trips_without_changing_cache_api(self):
         fake_client = FakeRedisClient()
@@ -201,7 +223,7 @@ class CacheServiceTest(unittest.TestCase):
             "JAVHUB_CACHE_BACKEND": "redis",
             "JAVHUB_REDIS_URL": "redis://cache.example/0",
             "JAVHUB_REDIS_PREFIX": "test-prefix",
-        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+        }, clear=False), RedisModulePatch(fake_redis):
             cache.reset_backend()
 
             cache.set_response("videos", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
@@ -224,7 +246,7 @@ class CacheServiceTest(unittest.TestCase):
             "JAVHUB_CACHE_BACKEND": "redis",
             "JAVHUB_REDIS_URL": "redis://cache.example/0",
             "JAVHUB_REDIS_PREFIX": "current-prefix",
-        }, clear=False), patch.dict(sys.modules, {"redis": fake_redis}):
+        }, clear=False), RedisModulePatch(fake_redis):
             cache.reset_backend()
             backend = cache.get_backend()
 
@@ -254,18 +276,7 @@ class CacheServiceTest(unittest.TestCase):
         cache.reset_backend()
 
 
-class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-        cache.reset_metrics()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
-
+class CachePurgeRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_cache_purge_route_accepts_enum_scope(self):
         cache.set_response("categories", {}, [{"id": 1}], ttl=60)
         cache.set_enum_list("makers", [{"id": 2}])
@@ -293,18 +304,7 @@ class CachePurgeRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["response_namespaces"]["videos"], 1)
 
 
-class ResponseCacheSingleflightTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-        cache.reset_metrics()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
-
+class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_misses_share_one_producer_call(self):
         calls = 0
 

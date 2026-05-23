@@ -1,10 +1,8 @@
 import unittest
-import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from routers import categories
-from services import cache
+from test_support.cache import FakeRedisMixin
 
 
 class CategoryRouteTests(unittest.TestCase):
@@ -15,16 +13,7 @@ class CategoryRouteTests(unittest.TestCase):
         self.assertNotIn("/api/v1/categories/stats", paths)
 
 
-class CategoryRouteCacheTests(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_list_categories_caches_translated_response(self):
         mock_client = AsyncMock()

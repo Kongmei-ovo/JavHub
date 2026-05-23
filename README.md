@@ -45,7 +45,8 @@ FastAPI backend running inside the same container.
 `docker-compose.yml` is the recommended single-machine deployment example. It
 starts:
 
-- PostgreSQL for JavInfoApi and JavHub import features
+- PostgreSQL for JavInfoApi metadata and JavHub state
+- Redis for JavHub response/cache data
 - JavInfoApi
 - JavHub, exposed as the web entrypoint
 
@@ -56,9 +57,18 @@ cp config.yaml.example config.yaml
 ```
 
 Edit `config.yaml` before starting the stack. For the bundled compose network,
-the JavInfo section should point at the compose service names:
+the JavHub state database and JavInfo import database should point at the
+compose service names. Keep them as separate database names:
 
 ```yaml
+database:
+  host: "postgres"
+  port: 5432
+  database: "javhub"
+  maintenance_database: "postgres"
+  user: "javhub"
+  password: "change-me"
+
 javinfo:
   api_url: "http://javinfoapi:18080"
   page_size: 30
@@ -83,12 +93,17 @@ JAVINFOAPI_PORT=18080
 POSTGRES_DB=r18
 POSTGRES_USER=javhub
 POSTGRES_PASSWORD=change-me
+JAVHUB_DB_NAME=javhub
 
 DB_HOST=postgres
 DB_PORT=5432
 DB_USER=javhub
 DB_PASSWORD=change-me
 DB_NAME=r18
+JAVHUB_DB_HOST=postgres
+JAVHUB_DB_PORT=5432
+JAVHUB_DB_USER=javhub
+JAVHUB_DB_PASSWORD=change-me
 SUPPLEMENT_ADMIN_TOKEN=change-me
 CORS_ALLOW_ORIGINS=http://localhost:3000
 ```
@@ -120,33 +135,36 @@ curl -fsS http://localhost:18080/health
 
 ### PostgreSQL Notes
 
-PostgreSQL is included by default because the companion API needs it, and
-JavHub's import workflow writes to the same database. The default database name
-is `r18`.
+PostgreSQL is included by default for two separate data domains: JavInfoApi and
+JavHub's import workflow use `r18`, while JavHub runtime state uses `javhub`.
 
 If you already have PostgreSQL, you may comment out the `postgres` service and
-the `depends_on: postgres` blocks. You must create the same database name before
+the `depends_on: postgres` blocks. You must create both database names before
 startup:
 
 ```bash
 createdb -h <db-host> -U <db-user> r18
+createdb -h <db-host> -U <db-user> javhub
 ```
 
 Then update both places:
 
-- `.env`: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-- `config.yaml`: `javinfo.import_db.host`, `user`, `password`, `database`
+- `.env`: `DB_*` for JavInfoApi/import, `JAVHUB_DB_*` for JavHub state
+- `config.yaml`: `database.*` for JavHub state, `javinfo.import_db.*` for JavInfo imports
 
 Keep the JavInfoApi `DB_NAME` and JavHub `javinfo.import_db.database` values the
-same unless you deliberately manage separate databases.
+same unless you deliberately manage separate metadata databases. Do not point
+JavHub `database.database` at the JavInfo import database, because imports can
+replace that database.
 
 ### Persistent Data
 
 | Path or volume | Purpose |
 |----------------|---------|
 | `./config.yaml` | Runtime configuration mounted into the container |
-| `./data` | JavHub local SQLite data, runtime files, and logs |
-| `javinfo-postgres` | PostgreSQL data volume |
+| `./data` | Runtime files and logs |
+| `javinfo-postgres` | PostgreSQL data volume for `r18` and `javhub` |
+| `javhub-redis` | Redis cache data volume |
 
 Secrets, runtime data, logs, `config.yaml`, and database files are not baked
 into the Docker image.
@@ -247,9 +265,10 @@ telegram:
 
 Container deployments mount `./config.yaml` at `/app/config.yaml` and set
 `JAVHUB_CONFIG_PATH=/app/config.yaml`, so the settings page reflects the file
-you edited. The JavInfo import settings also read `DB_HOST`, `DB_PORT`,
-`DB_USER`, `DB_PASSWORD`, and `DB_NAME`, so compose deployments can inherit the
-same database values used by JavInfoApi.
+you edited. JavHub state reads `JAVHUB_DB_HOST`, `JAVHUB_DB_PORT`,
+`JAVHUB_DB_USER`, `JAVHUB_DB_PASSWORD`, and `JAVHUB_DB_NAME`. JavInfo import
+settings still read `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and
+`DB_NAME`.
 
 ## Useful Commands
 

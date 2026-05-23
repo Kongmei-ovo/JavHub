@@ -1,31 +1,14 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class FavoriteCollectionsRouterTest(TempDbMixin, unittest.TestCase):
+class FavoriteCollectionsRouterTest(TempPostgresMixin, unittest.TestCase):
     def _client(self) -> TestClient:
         from routers.favorites import router
 
@@ -100,7 +83,7 @@ class FavoriteCollectionsRouterTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(duplicate.json()["detail"], "Collection name already exists")
 
 
-class FavoriteCollectionsDatabaseTest(TempDbMixin, unittest.TestCase):
+class FavoriteCollectionsDatabaseTest(TempPostgresMixin, unittest.TestCase):
     def test_delete_collection_removes_collection_items(self):
         from database import favorite
         from database.base import get_db

@@ -1,6 +1,16 @@
 server:
   frontend_origin: "http://localhost:5174"
 
+database:
+  # JavHub state database. Keep this separate from javinfo.import_db.database,
+  # which is replaced during JavInfo full imports.
+  host: "postgres"
+  port: 5432
+  database: "javhub"
+  maintenance_database: "postgres"
+  user: "javhub"
+  password: "change-me"
+
 openlist:
   api_url: "https://fox.oplist.org"
   username: ""

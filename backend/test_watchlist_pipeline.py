@@ -1,26 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class DownloadCandidateDatabaseTest(TempDbMixin, unittest.TestCase):
+class DownloadCandidateDatabaseTest(TempPostgresMixin, unittest.TestCase):
     def test_candidate_upsert_dedupes_by_content_and_source(self):
         from database import list_download_candidates, upsert_download_candidate
 
@@ -80,7 +66,7 @@ class DownloadCandidateDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(rows[0]["status"], "failed")
 
 
-class ActorMappingDatabaseTest(TempDbMixin, unittest.TestCase):
+class ActorMappingDatabaseTest(TempPostgresMixin, unittest.TestCase):
     def test_confirm_ignore_and_delete_mapping(self):
         from database import (
             confirm_actor_mapping,
@@ -132,7 +118,7 @@ class ActorMappingDatabaseTest(TempDbMixin, unittest.TestCase):
         self.assertEqual(summary["unmapped"], 2)
 
 
-class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_generate_name_match_candidates_for_unmapped_actor(self):
         from database import create_snapshot_key, list_actor_mappings, save_emby_actors_snapshot
         from services.actor_mapping_candidates import generate_actor_mapping_candidates
@@ -478,7 +464,7 @@ class ActorMappingCandidateTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertIn("javinfo down", result["errors"][0]["error"])
 
 
-class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class WatchlistPipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_subscription_pipeline_creates_candidate_for_missing_movie(self):
         from services.watchlist_pipeline import WatchlistPipeline
 
@@ -507,7 +493,7 @@ class WatchlistPipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(info_client.get_actress_videos.await_args.kwargs["include_supplement"], "1")
 
 
-class SupplementCandidatePipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class SupplementCandidatePipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_supplement_movies_create_download_candidates_for_missing_rows(self):
         from database import get_download_candidate, list_download_candidates
         from services.supplement_candidates import generate_download_candidates_from_supplement
@@ -756,7 +742,7 @@ class SupplementCandidatePipelineTest(TempDbMixin, unittest.IsolatedAsyncioTestC
         )
 
 
-class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_approve_candidate_requires_magnet_and_creates_download_task(self):
         from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
         from routers import downloads
@@ -941,7 +927,7 @@ class DownloadCandidateRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(get_download_candidate(failed["id"])["status"], "candidate")
 
 
-class ActorMappingRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class ActorMappingRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_confirm_ignore_and_list_mapping_api(self):
         from routers import inventory
 
@@ -964,7 +950,7 @@ class ActorMappingRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(ignored["data"]), 1)
 
 
-class SubscriptionRouterCandidateStatsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class SubscriptionRouterCandidateStatsTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_list_subscriptions_includes_candidate_counts(self):
         from database import add_subscription, upsert_download_candidate
         from routers import subscriptions
@@ -1016,7 +1002,7 @@ class SubscriptionRouterCandidateStatsTest(TempDbMixin, unittest.IsolatedAsyncio
         self.assertEqual(result["results"][0]["actress_id"], 123)
 
 
-class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class InventoryMappingGuardTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_collect_job_runs_actor_auto_match_and_records_summary(self):
         from database import add_inventory_job, get_inventory_job
         from scheduler.inventory_tasks import run_collect_job
@@ -1135,7 +1121,7 @@ class InventoryMappingGuardTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(actor["actor_mapping"]["javinfo_actress_id"], 123)
 
 
-class InventoryFillRouterTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class InventoryFillRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_fill_video_creates_candidate_instead_of_download_task(self):
         from database import add_missing_video, list_download_candidates, get_download_tasks
         from routers import inventory

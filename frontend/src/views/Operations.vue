@@ -455,7 +455,7 @@ export default {
     healthDatabaseSummary() {
       const database = this.health?.database
       if (!database) return '未知'
-      return database.connectable ? database.backend || 'sqlite' : database.error || '不可连接'
+      return database.connectable ? database.backend || 'postgres' : database.error || '不可连接'
     },
     healthJavInfoSummary() {
       const javinfo = this.health?.javinfo

@@ -1,24 +1,13 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from routers import makers
-from services import cache
+from test_support.cache import FakeRedisMixin
 
 
-class MakersRouterTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_list_makers_uses_paginated_javinfo_endpoint(self):
         mock_client = AsyncMock()
