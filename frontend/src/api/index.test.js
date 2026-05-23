@@ -1015,6 +1015,23 @@ test('actor mapping APIs send expected requests', async (t) => {
   assert.equal(calls[9].method, 'delete')
 })
 
+test('listInventoryActors sends GET to inventory actor portraits source', async (t) => {
+  const originalAdapter = axios.defaults.adapter
+  let capturedConfig = null
+  axios.defaults.adapter = async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  }
+  t.after(() => { axios.defaults.adapter = originalAdapter })
+
+  const { default: api } = await import(`./index.js?inventory-actors-${Date.now()}`)
+  await api.listInventoryActors({ search: 'AIKA', page: 2, page_size: 36, sort_by: 'total_videos', sort_order: 'desc' })
+
+  assert.equal(capturedConfig.url, '/inventory/actors')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, { search: 'AIKA', page: 2, page_size: 36, sort_by: 'total_videos', sort_order: 'desc' })
+})
+
 test('translation job APIs send expected requests', async (t) => {
   const originalAdapter = axios.defaults.adapter
   const calls = []

@@ -1,5 +1,5 @@
 import { reactive, computed } from 'vue'
-import api from '../api'
+import api from '../api/index.js'
 
 export const state = reactive({
     registry: new Set(),
@@ -15,7 +15,7 @@ export const subscriptionState = {
         state.items = items
         state.registry = new Set()
         items.forEach(item => {
-            if (item.actress_id) {
+            if (item.actress_id && item.enabled !== 0 && item.enabled !== false) {
                 state.registry.add(String(item.actress_id))
             }
         })
@@ -33,6 +33,19 @@ export const subscriptionState = {
 
     async toggle(actressId, actressName) {
         if (!actressId) return false
+        const existing = state.items.find(item => (
+            String(item.actress_id) === String(actressId)
+            && item.enabled !== 0
+            && item.enabled !== false
+        ))
+        if (existing?.id) {
+            await api.deleteSubscription(existing.id)
+            state.registry.delete(String(actressId))
+            state.items = state.items.filter(item => item.id !== existing.id)
+            await this.refresh()
+            if (this.listener) this.listener({ actressId, subscribed: false })
+            return false
+        }
         const resp = await api.toggleSubscription({
             actress_id: Number(actressId),
             actress_name: actressName || ''

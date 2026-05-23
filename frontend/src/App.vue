@@ -260,20 +260,17 @@ export default {
         label: '自动化维护',
         items: [
           { path: '/subscription', label: '演员订阅', icon: IconStar },
-          { path: '/inventory', label: '库存对比', icon: IconInventory },
-          { path: '/library', label: '库检测', icon: IconInventory },
-          { path: '/duplicates', label: '去重管理', icon: IconList },
-          { path: '/normalize', label: '演员映射', icon: IconNormalize },
+          { path: '/library-organize', label: '片库整理', icon: IconInventory },
           { path: '/supplement', label: '补全管理', icon: IconSupplement },
           { path: '/translations', label: '翻译作业', icon: IconTranslate },
           { path: '/operations', label: '运营总览', icon: IconOperations },
         ],
       },
       {
-        label: '系统设置',
+        label: '系统管理',
         items: [
-          { path: '/settings', label: '设置', icon: IconSettings },
-          { path: '/logs', label: '活动中心', icon: IconList },
+          { path: '/settings', label: '配置中心', icon: IconSettings },
+          { path: '/logs', label: '运行日志', icon: IconList },
         ],
       },
     ])
@@ -290,14 +287,11 @@ export default {
       { path: '/parse', label: '磁链解析', icon: IconParse },
       { path: '/entities', label: '实体目录', icon: IconList },
       { path: '/subscription', label: '订阅演员', icon: IconStar },
-      { path: '/inventory', label: '库存对比', icon: IconInventory },
-      { path: '/library', label: '库检测', icon: IconInventory },
-      { path: '/duplicates', label: '去重管理', icon: IconList },
-      { path: '/normalize', label: '演员映射', icon: IconNormalize },
+      { path: '/library-organize', label: '片库整理', icon: IconInventory },
       { path: '/translations', label: '翻译作业', icon: IconTranslate },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
-      { path: '/settings', label: '设置', icon: IconSettings },
-      { path: '/logs', label: '活动中心', icon: IconList },
+      { path: '/settings', label: '配置中心', icon: IconSettings },
+      { path: '/logs', label: '运行日志', icon: IconList },
     ])
 
     const isMoreRoute = computed(() => mobileMoreItems.value.some(item => route.path === item.path))

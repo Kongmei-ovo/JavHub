@@ -84,12 +84,15 @@ test('modal sheet keeps a visible frosted fallback when backdrop filtering is un
 
 test('modal material normalizes busy result grids behind the sheet', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const overlayBlock = source.match(/\.modal-overlay\s*\{[^}]*\}/)?.[0] || ''
 
-  assert.match(source, /--modal-backdrop-blur:\s*12px/)
   assert.match(source, /--modal-sheet-bg:\s*var\(--material-glass-sheet\)/)
   assert.match(source, /--modal-sheet-fallback:\s*rgba\(24,\s*24,\s*27,\s*0\.72\)/)
   assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.82\)/)
-  assert.match(source, /\.modal-overlay\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--modal-backdrop-blur\)\)\s*saturate\(110%\)/)
+  assert.match(overlayBlock, /backdrop-filter:\s*none/)
+  assert.match(overlayBlock, /-webkit-backdrop-filter:\s*none/)
+  assert.doesNotMatch(source, /--modal-backdrop-blur/)
+  assert.doesNotMatch(overlayBlock, /backdrop-filter:\s*blur/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 })
 

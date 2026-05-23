@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./ActorPortraitCard.vue', import.meta.url), 'utf8')
 
+function cssRule(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped} \\{([\\s\\S]*?)\\n\\}`))
+  assert.ok(match, `Expected CSS rule for ${selector}`)
+  return match[1]
+}
+
 test('ActorPortraitCard exposes the planned public interface', () => {
   assert.match(source, /defineProps\(/)
   for (const prop of [
@@ -77,4 +84,18 @@ test('ActorPortraitCard supports badges and action label for reused actor flows'
 test('ActorPortraitCard suppresses duplicate subtitle text', () => {
   assert.match(source, /rawSubtitle/)
   assert.match(source, /rawSubtitle\.value && rawSubtitle\.value !== displayNameText\.value/)
+})
+
+test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for active favorites', () => {
+  const sharedActionRule = cssRule('.actor-portrait-card__favorite,\n.actor-portrait-card__subscribe')
+  const favoriteRule = cssRule('.actor-portrait-card__favorite')
+  const activeFavoriteRule = cssRule('.actor-portrait-card.is-favorited .actor-portrait-card__favorite')
+
+  assert.match(source, /:fill="favorited \? 'currentColor' : 'none'"/)
+  assert.match(source, /class="actor-portrait-card__favorite"[\s\S]*stroke="currentColor"/)
+  assert.doesNotMatch(sharedActionRule, /color:\s*#ff375f/)
+  assert.doesNotMatch(favoriteRule, /color:\s*#ff375f/)
+  assert.match(favoriteRule, /color:\s*var\(--text-muted\)/)
+  assert.match(activeFavoriteRule, /background:\s*rgba\(255,\s*55,\s*95,\s*0\.92\)/)
+  assert.match(activeFavoriteRule, /color:\s*#fff/)
 })

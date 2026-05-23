@@ -2,8 +2,8 @@
   <div class="logs page-shell page-shell--standard">
     <div class="activity-header">
       <div>
-        <h1>活动中心</h1>
-        <p>{{ activitySummary }}</p>
+        <h1>运行日志</h1>
+        <p>{{ logSummary }}</p>
       </div>
       <button class="toolbar-btn primary" type="button" @click="loadLogs">刷新</button>
     </div>
@@ -20,7 +20,7 @@
       <button class="toolbar-btn danger" type="button" @click="clearLogs">清空</button>
     </div>
 
-    <div class="activity-summary-strip" aria-label="活动等级汇总">
+    <div class="activity-summary-strip" aria-label="日志等级汇总">
       <div v-for="item in levelSummary" :key="item.level">
         <strong>{{ item.count }}</strong>
         <span>{{ item.level }}</span>
@@ -81,8 +81,10 @@ export default {
         count: this.logs.filter(log => String(log.level || '').toUpperCase() === level).length,
       }))
     },
-    activitySummary() {
-      return `当前显示 ${this.logs.length} 条 · ${this.filterLevel || '全部等级'}`
+    logSummary() {
+      const levelLabel = this.filterLevel || '全部等级'
+      const searchLabel = this.searchText.trim() ? ` · 关键词：${this.searchText.trim()}` : ''
+      return `显示 ${this.logs.length} 条日志 · ${levelLabel}${searchLabel} · 可按等级和关键词筛选`
     },
     hasMoreLogs() {
       return this.logs.length < this.total

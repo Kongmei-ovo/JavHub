@@ -18,7 +18,7 @@ test('primary navigation is grouped around daily workflows first', () => {
   const groupLabels = [...navBlock.matchAll(/label: '([^']+)',\s*items:/g)].map((match) => match[1])
   const labels = [...navBlock.matchAll(/\{ path: '[^']+', label: '([^']+)'/g)].map((match) => match[1])
 
-  assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统设置'])
+  assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统管理'])
   assert.deepEqual(labels, [
     '影片检索',
     '随机探索',
@@ -27,15 +27,12 @@ test('primary navigation is grouped around daily workflows first', () => {
     '磁链解析',
     '实体目录',
     '演员订阅',
-    '库存对比',
-    '库检测',
-    '去重管理',
-    '演员映射',
+    '片库整理',
     '补全管理',
     '翻译作业',
     '运营总览',
-    '设置',
-    '活动中心',
+    '配置中心',
+    '运行日志',
   ])
   assert.match(source, /id="mobile-more-title">更多功能/)
   assert.match(source, /aria-label="关闭更多面板"/)
@@ -52,19 +49,24 @@ test('mobile more exposes initialization and maintenance entry points', () => {
     '磁链解析',
     '实体目录',
     '订阅演员',
-    '库存对比',
-    '库检测',
-    '去重管理',
-    '演员映射',
+    '片库整理',
     '翻译作业',
     '补全管理',
-    '设置',
-    '活动中心',
+    '配置中心',
+    '运行日志',
   ])
-  assert.match(mobileBlock, /path: '\/library'/)
   assert.match(mobileBlock, /path: '\/entities'/)
-  assert.match(mobileBlock, /path: '\/duplicates'/)
+  assert.match(mobileBlock, /path: '\/library-organize'/)
   assert.match(mobileBlock, /path: '\/logs'/)
+})
+
+test('maintenance routes converge on the unified library organizer', () => {
+  assert.match(routerSource, /path:\s*'\/library-organize'[\s\S]*LibraryOrganize/)
+  assert.match(routerSource, /path:\s*'\/inventory'[\s\S]*tab:\s*'inventory'/)
+  assert.match(routerSource, /path:\s*'\/library'[\s\S]*tab:\s*'check'/)
+  assert.match(routerSource, /path:\s*'\/duplicates'[\s\S]*tab:\s*'duplicates'/)
+  assert.match(routerSource, /path:\s*'\/normalize'[\s\S]*tab:\s*'mapping'/)
+  assert.match(routerSource, /path:\s*'\/inventory\/actors\/:id'[\s\S]*actor_id:\s*to\.params\.id/)
 })
 
 test('root route redirects to video search as the primary entry page', () => {

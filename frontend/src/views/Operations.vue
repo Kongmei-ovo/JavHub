@@ -1,9 +1,22 @@
 <template>
   <div class="operations-page page-shell page-shell--workspace">
-    <header class="operations-header">
+    <header class="operations-header operations-hero">
       <div class="header-copy">
+        <span class="hero-eyebrow">系统工作台</span>
         <h1>运营总览</h1>
         <p>{{ operationsSummary }}</p>
+      </div>
+      <div class="hero-stat-grid" aria-label="首要运营指标">
+        <button
+          v-for="metric in statusMetrics.slice(0, 3)"
+          :key="metric.key"
+          class="hero-stat"
+          type="button"
+          @click="openStatusMetric(metric.key)"
+        >
+          <strong>{{ metric.value }}</strong>
+          <span>{{ metric.label }}</span>
+        </button>
       </div>
       <div class="header-actions">
         <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
@@ -26,7 +39,6 @@
           v-for="metric in statusMetrics"
           :key="metric.key"
           class="status-cell"
-          :class="{ urgent: metric.urgent }"
           type="button"
           @click="openStatusMetric(metric.key)"
         >
@@ -36,81 +48,7 @@
         </button>
       </section>
 
-      <section class="workbench-panel health-panel" aria-label="初始化与健康检查">
-        <div class="panel-head">
-          <div>
-            <h2>初始化与健康检查</h2>
-            <p>{{ healthStatusLabel }} · {{ healthConfigSummary }}</p>
-          </div>
-          <div class="panel-actions">
-            <button class="btn btn-ghost btn-sm" type="button" @click="goSettings">设置</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="goJavInfoImport">导入数据库</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">日志</button>
-          </div>
-        </div>
-        <div class="health-grid">
-          <div class="state-item" :class="{ warning: !health?.config?.loaded }">
-            <span>配置已加载</span>
-            <strong>{{ health?.config?.loaded ? '是' : '否' }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: health?.database && !health.database.connectable }">
-            <span>数据库</span>
-            <strong>{{ healthDatabaseSummary }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: health?.javinfo && (!health.javinfo.api_url_configured || health.javinfo.legacy) }">
-            <span>JavInfo</span>
-            <strong>{{ healthJavInfoSummary }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: !!health?.cache?.error }">
-            <span>缓存</span>
-            <strong>{{ healthCacheSummary }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: health?.downloaders && !health.downloaders.default_available }">
-            <span>默认下载器</span>
-            <strong>{{ healthDownloaderSummary }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: health?.sources && (!health.sources.available || health.sources.latest_attempt_error) }">
-            <span>磁力源</span>
-            <strong>{{ healthSourceSummary }}</strong>
-            <small v-if="healthSourceAttemptSummary">{{ healthSourceAttemptSummary }}</small>
-          </div>
-          <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }">
-            <span>调度有效性</span>
-            <strong>{{ healthSchedulerSummary }}</strong>
-          </div>
-          <div class="state-item" :class="{ warning: health?.javinfo?.legacy || health?.javinfo?.error }">
-            <span>JavInfo 地址</span>
-            <strong>{{ healthJavInfoUrlSummary }}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section class="workbench-panel action-map-panel" aria-label="自动化工作台">
-        <div class="panel-head">
-          <div>
-            <h2>自动化工作台</h2>
-            <p>工作台路径把采集、映射、补全、下载和活动记录串起来。</p>
-          </div>
-          <button class="btn btn-ghost btn-sm" type="button" :disabled="refreshingMissing" @click="refreshMissingCache">
-            {{ refreshingMissing ? '刷新中...' : '刷新缺失缓存' }}
-          </button>
-        </div>
-        <div class="action-grid">
-          <button
-            v-for="action in workbenchActions"
-            :key="action.key"
-            class="action-card"
-            type="button"
-            @click="goWorkbenchAction(action)"
-          >
-            <span>{{ action.label }}</span>
-            <strong>{{ action.title }}</strong>
-            <small>{{ action.hint }}</small>
-          </button>
-        </div>
-      </section>
-
-      <section class="operations-workbench">
+      <section class="operations-workbench priority-board">
         <article class="workbench-panel workbench-primary">
           <div class="panel-head">
             <div>
@@ -160,7 +98,7 @@
             <div class="list-block">
               <div class="block-head">
                 <h3>缺口演员</h3>
-                <button type="button" @click="$router.push('/inventory')">库存对比</button>
+                <button type="button" @click="goLibraryOrganize('inventory')">片库整理</button>
               </div>
               <div class="compact-list">
                 <button
@@ -168,7 +106,7 @@
                   :key="actor.actress_id"
                   class="compact-row"
                   type="button"
-                  @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
+                  @click="goInventoryActor(actor.actress_id)"
                 >
                   <span>{{ actor.actress_name || `编号 ${actor.actress_id}` }}</span>
                   <strong>{{ actor.missing_count }}</strong>
@@ -179,11 +117,60 @@
           </div>
         </article>
 
-        <aside class="side-stack">
-          <article class="workbench-panel">
+        <aside class="system-column" aria-label="系统状态">
+          <article class="workbench-panel health-panel" aria-label="初始化与健康检查">
             <div class="panel-head">
               <div>
-              <h2>自动化状态</h2>
+                <h2>初始化与健康检查</h2>
+                <p>{{ healthStatusLabel }} · {{ healthConfigSummary }}</p>
+              </div>
+              <div class="panel-actions">
+                <button class="btn btn-ghost btn-sm" type="button" @click="goSettings">设置</button>
+                <button class="btn btn-ghost btn-sm" type="button" @click="goJavInfoImport">导入数据库</button>
+                <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">日志</button>
+              </div>
+            </div>
+            <div class="health-grid">
+              <div class="state-item" :class="{ warning: !health?.config?.loaded }">
+                <span>配置已加载</span>
+                <strong>{{ health?.config?.loaded ? '是' : '否' }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: health?.database && !health.database.connectable }">
+                <span>数据库</span>
+                <strong>{{ healthDatabaseSummary }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: health?.javinfo && (!health.javinfo.api_url_configured || health.javinfo.legacy) }">
+                <span>JavInfo</span>
+                <strong>{{ healthJavInfoSummary }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: !!health?.cache?.error }">
+                <span>缓存</span>
+                <strong>{{ healthCacheSummary }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: health?.downloaders && !health.downloaders.default_available }">
+                <span>默认下载器</span>
+                <strong>{{ healthDownloaderSummary }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: health?.sources && (!health.sources.available || health.sources.latest_attempt_error) }">
+                <span>磁力源</span>
+                <strong>{{ healthSourceSummary }}</strong>
+                <small v-if="healthSourceAttemptSummary">{{ healthSourceAttemptSummary }}</small>
+              </div>
+              <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }">
+                <span>调度有效性</span>
+                <strong>{{ healthSchedulerSummary }}</strong>
+              </div>
+              <div class="state-item" :class="{ warning: health?.javinfo?.legacy || health?.javinfo?.error }">
+                <span>JavInfo 地址</span>
+                <strong>{{ healthJavInfoUrlSummary }}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="workbench-panel automation-panel">
+            <div class="panel-head">
+              <div>
+                <h2>自动化状态</h2>
                 <p>{{ candidateSchedule.disabled_reason || '策略、调度和映射保护。' }}</p>
               </div>
               <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
@@ -205,7 +192,7 @@
                 <span>下一次</span>
                 <strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong>
               </div>
-              <button class="state-item" type="button" @click="$router.push('/normalize')">
+              <button class="state-item" type="button" @click="goLibraryOrganize('mapping')">
                 <span>自动匹配</span>
                 <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}</strong>
               </button>
@@ -215,8 +202,36 @@
               </div>
             </div>
           </article>
+        </aside>
+      </section>
 
-          <article class="workbench-panel">
+      <section class="diagnostic-grid" aria-label="诊断与记录">
+        <article class="workbench-panel action-map-panel diagnostic-wide" aria-label="自动化工作台">
+          <div class="panel-head">
+            <div>
+              <h2>自动化工作台</h2>
+              <p>工作台路径把采集、映射、补全、下载和运行日志串起来。</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" :disabled="refreshingMissing" @click="refreshMissingCache">
+              {{ refreshingMissing ? '刷新中...' : '刷新缺失缓存' }}
+            </button>
+          </div>
+          <div class="action-grid">
+            <button
+              v-for="action in workbenchActions"
+              :key="action.key"
+              class="action-card"
+              type="button"
+              @click="goWorkbenchAction(action)"
+            >
+              <span>{{ action.label }}</span>
+              <strong>{{ action.title }}</strong>
+              <small>{{ action.hint }}</small>
+            </button>
+          </div>
+        </article>
+
+        <article class="workbench-panel">
             <div class="panel-head">
               <div>
                 <h2>补全状态</h2>
@@ -230,9 +245,9 @@
               <div><strong>{{ overview.supplement.failed || 0 }}</strong><span>失败</span></div>
             </div>
             <p v-else class="muted">补全服务暂不可用：{{ overview.supplement?.error || '未连接' }}</p>
-          </article>
+        </article>
 
-          <article class="workbench-panel">
+        <article class="workbench-panel cache-panel diagnostic-wide">
             <div class="panel-head">
               <div>
                 <h2>缓存诊断</h2>
@@ -293,15 +308,15 @@
               </button>
             </div>
             <p v-if="cacheStatsError" class="muted cache-error">{{ cacheStatsError }}</p>
-          </article>
+        </article>
 
-          <article class="workbench-panel">
+        <article class="workbench-panel">
             <div class="panel-head">
               <div>
                 <h2>库存任务</h2>
                 <p>运行中 {{ overview.inventory_jobs?.running || 0 }} · 失败 {{ overview.inventory_jobs?.failed || 0 }}</p>
               </div>
-              <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/inventory')">库存对比</button>
+              <button class="btn btn-ghost btn-sm" type="button" @click="goLibraryOrganize('inventory')">片库整理</button>
             </div>
             <div class="compact-list">
               <div v-for="job in recentJobs" :key="job.id" class="compact-row static-row">
@@ -310,11 +325,9 @@
               </div>
               <small v-if="!recentJobs.length" class="empty-line">暂无作业记录</small>
             </div>
-          </article>
-        </aside>
-      </section>
+        </article>
 
-      <section class="workbench-panel history-panel">
+        <article class="workbench-panel history-panel diagnostic-wide">
         <div class="panel-head">
           <div>
             <h2>最近候选处理</h2>
@@ -337,6 +350,7 @@
           </div>
           <small v-if="!recentRuns.length" class="empty-line">暂无候选处理记录</small>
         </div>
+        </article>
       </section>
     </template>
   </div>
@@ -408,7 +422,7 @@ export default {
           key: 'missing',
           label: '库存缺口',
           value: missing.total || 0,
-          hint: '库存对比',
+          hint: '片库整理',
           urgent: (missing.total || 0) > 0,
         },
         {
@@ -530,13 +544,13 @@ export default {
     },
     workbenchActions() {
       return [
-        { key: 'collect', label: '1', title: '采集 Emby', hint: '拉取本地库快照', path: '/inventory' },
-        { key: 'compare', label: '2', title: '全量对比', hint: '生成缺失与候选', path: '/inventory' },
-        { key: 'mapping', label: '3', title: '映射审核', hint: `${this.overview?.mapping?.candidate || 0} 个待审`, path: '/normalize' },
+        { key: 'collect', label: '1', title: '采集 Emby', hint: '拉取本地库快照', path: '/library-organize', query: { tab: 'inventory' } },
+        { key: 'compare', label: '2', title: '全量对比', hint: '生成缺失与候选', path: '/library-organize', query: { tab: 'check' } },
+        { key: 'mapping', label: '3', title: '映射审核', hint: `${this.overview?.mapping?.candidate || 0} 个待审`, path: '/library-organize', query: { tab: 'mapping' } },
         { key: 'sources', label: '4', title: '补全来源诊断', hint: 'Provider smoke 与预算', path: '/supplement', query: { tab: 'sources' } },
         { key: 'candidates', label: '5', title: '下载候选', hint: `${this.overview?.candidates?.candidate || 0} 个候选`, path: '/downloads', query: { tab: 'candidates', status: 'candidate' } },
         { key: 'downloaders', label: '6', title: '下载源', hint: '默认下载器与连通性', path: '/downloads', query: { tab: 'downloaders' } },
-        { key: 'activity', label: '7', title: '活动中心', hint: '日志与通知记录', path: '/logs' },
+        { key: 'activity', label: '7', title: '运行日志', hint: '日志与通知记录', path: '/logs' },
         { key: 'settings', label: '8', title: '初始化设置', hint: 'JavInfo/配置导入', path: '/settings', query: { tab: 'javinfo-import' } },
       ]
     },
@@ -685,13 +699,19 @@ export default {
     goLogs() {
       this.$router.push('/logs')
     },
+    goLibraryOrganize(tab = 'inventory') {
+      this.$router.push({ path: '/library-organize', query: { tab } })
+    },
+    goInventoryActor(actorId) {
+      this.$router.push({ path: '/library-organize', query: { tab: 'inventory', actor_id: actorId } })
+    },
     openStatusMetric(key) {
       const actions = {
         candidate: () => this.goCandidates({ status: 'candidate' }),
         ready: () => this.goCandidates({ status: 'candidate', needs_magnet: false }),
         needs_magnet: () => this.goCandidates({ status: 'candidate', needs_magnet: true }),
-        missing: () => this.$router.push('/inventory'),
-        mapping: () => this.$router.push('/normalize'),
+        missing: () => this.goLibraryOrganize('inventory'),
+        mapping: () => this.goLibraryOrganize('mapping'),
         supplement_failed: () => this.$router.push('/supplement'),
       }
       actions[key]?.()
@@ -796,10 +816,6 @@ export default {
   font-size: var(--type-section-title);
   font-weight: 650;
   line-height: 1;
-  color: var(--text-primary);
-}
-
-.status-cell.urgent .status-value {
   color: var(--text-primary);
 }
 
@@ -924,12 +940,6 @@ export default {
 
 .workbench-primary {
   min-height: 100%;
-}
-
-.side-stack {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
 }
 
 .panel-head {
@@ -1354,6 +1364,249 @@ button.state-item {
   font-size: 13px;
 }
 
+.operations-page {
+  --operations-line: color-mix(in srgb, var(--border-light) 68%, transparent);
+  --operations-soft-line: color-mix(in srgb, var(--border-light) 42%, transparent);
+  --operations-panel-gap: clamp(12px, 1.4vw, 18px);
+  --operations-panel-pad: clamp(14px, 1.45vw, 20px);
+}
+
+.operations-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(340px, 0.8fr) auto;
+  align-items: stretch;
+  gap: var(--operations-panel-gap);
+  min-height: unset;
+  margin-bottom: var(--operations-panel-gap);
+  padding: var(--operations-panel-pad);
+  border: 1px solid var(--operations-line);
+  border-radius: var(--radius-xl);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
+
+.hero-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  font-weight: 650;
+}
+
+.operations-header h1 {
+  font-size: var(--type-page-title);
+}
+
+.operations-header p {
+  max-width: 58ch;
+  white-space: normal;
+}
+
+.hero-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.hero-stat {
+  min-width: 0;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--operations-soft-line);
+  border-radius: var(--radius-lg);
+  background: var(--material-glass-subtle);
+  color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast);
+}
+
+.hero-stat:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  transform: translateY(-1px);
+}
+
+.hero-stat strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: clamp(22px, 2.2vw, 32px);
+  line-height: 1;
+  font-weight: 650;
+}
+
+.hero-stat span {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--type-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-strip {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 1px;
+  margin-bottom: var(--operations-panel-gap);
+  border-color: var(--operations-soft-line);
+  background: var(--operations-soft-line);
+  box-shadow: none;
+}
+
+.status-cell {
+  min-height: 68px;
+  padding: 11px 12px;
+  border-right: 0;
+  background: var(--material-glass-control);
+}
+
+.status-cell:hover {
+  background: var(--material-glass-control-hover);
+}
+
+.status-value {
+  font-size: 18px;
+}
+
+.priority-board {
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
+  gap: var(--operations-panel-gap);
+  margin-bottom: var(--operations-panel-gap);
+}
+
+.system-column,
+.diagnostic-grid {
+  display: grid;
+  gap: var(--operations-panel-gap);
+  min-width: 0;
+}
+
+.workbench-panel,
+.loading-panel,
+.empty-panel {
+  border-color: var(--operations-line);
+  border-radius: var(--radius-xl);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
+
+.workbench-panel {
+  padding: var(--operations-panel-pad);
+}
+
+.workbench-primary {
+  min-height: 0;
+}
+
+.panel-head {
+  margin-bottom: 14px;
+}
+
+.panel-head h2 {
+  font-size: var(--type-panel-title);
+}
+
+.panel-head p {
+  max-width: 56ch;
+  line-height: 1.45;
+}
+
+.health-panel,
+.action-map-panel,
+.history-panel {
+  margin: 0;
+}
+
+.health-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.state-item,
+.mini-stats > div,
+.queue-focus,
+.action-card,
+.compact-list,
+.run-list {
+  border-color: var(--operations-soft-line);
+  background: var(--material-glass-control);
+  box-shadow: none;
+}
+
+.state-item.warning {
+  border-color: color-mix(in srgb, var(--badge-warning-border) 72%, transparent);
+  background: linear-gradient(145deg, var(--badge-warning-bg), rgba(255,255,255,0.28));
+}
+
+.queue-overview {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 16px;
+}
+
+.queue-focus {
+  min-height: 84px;
+  padding: 14px 16px;
+}
+
+.queue-focus strong {
+  font-size: clamp(28px, 3vw, 40px);
+}
+
+.quick-actions {
+  justify-content: flex-start;
+}
+
+.queue-grid,
+.diagnostic-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.diagnostic-wide {
+  grid-column: span 2;
+}
+
+.action-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.action-card {
+  min-height: 66px;
+  padding: 12px;
+}
+
+.action-card span {
+  background: var(--material-glass-subtle);
+}
+
+.compact-row,
+.run-row {
+  min-height: 40px;
+}
+
+.cache-panel {
+  align-self: start;
+}
+
+.cache-rate-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scope-chip {
+  background: var(--material-glass-control);
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.scope-chip:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+}
+
 @media (max-width: 900px) {
   .operations-header {
     align-items: flex-start;
@@ -1362,6 +1615,14 @@ button.state-item {
 
   .operations-header p {
     white-space: normal;
+  }
+
+  .operations-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-stat-grid {
+    width: 100%;
   }
 
   .header-actions,
@@ -1388,9 +1649,14 @@ button.state-item {
 
   .operations-workbench,
   .action-grid,
+  .diagnostic-grid,
   .queue-overview,
   .queue-grid {
     grid-template-columns: 1fr;
+  }
+
+  .diagnostic-wide {
+    grid-column: auto;
   }
 
   .quick-actions {

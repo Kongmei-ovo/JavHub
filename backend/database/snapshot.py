@@ -102,6 +102,16 @@ def get_snapshot_filenames(snapshot_key: str) -> set:
         rows = cursor.fetchall()
         return {row["filename"] for row in rows if row["filename"]}
 
+def get_snapshot_duplicate_candidates(snapshot_key: str) -> list:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT emby_item_id, title, filename FROM emby_snapshots WHERE snapshot_key = ? ORDER BY title, emby_item_id",
+            (snapshot_key,)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
 
 # === Find Similar Actresses ===
 

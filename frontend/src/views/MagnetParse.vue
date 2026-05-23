@@ -297,8 +297,7 @@ export default {
 }
 
 .parse-console {
-  width: min(820px, 100%);
-  margin-inline: auto;
+  width: 100%;
   padding: clamp(18px, 2.5vw, 24px);
   background:
     linear-gradient(180deg, rgba(var(--accent-rgb), 0.045), transparent 42%),
@@ -399,8 +398,7 @@ export default {
 
 .result-section,
 .issue-panel {
-  width: min(820px, 100%);
-  margin-inline: auto;
+  width: 100%;
   animation: slideUp 0.3s ease;
 }
 
@@ -538,8 +536,7 @@ export default {
 }
 
 .empty-state {
-  width: min(820px, 100%);
-  margin-inline: auto;
+  width: 100%;
   padding: 44px 20px;
   color: var(--text-muted);
   font-size: var(--type-body);

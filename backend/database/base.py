@@ -435,3 +435,5 @@ def _migrate_subscriptions():
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_actress_id ON subscriptions(actress_id)")
     conn.commit()
     conn.close()
+    from database.subscription import cleanup_legacy_subscriptions
+    cleanup_legacy_subscriptions()

@@ -366,6 +366,7 @@ function viewAllVideos() {
   const name = actorName(sheetActor.value, sheetActor.value.name || sheetActor.value.name_kanji || sheetActor.value.name_romaji || String(actressId || ''))
   const query = name ? { name } : {}
   if (actressId) query.actress_id = actressId
+  closeSheet()
   router.push({ path: `/actor/${encodeURIComponent(name)}`, query })
 }
 
@@ -485,7 +486,6 @@ onMounted(loadSubs)
 
 <style scoped>
 .sub-page {
-  --page-max: 960px;
   min-height: 100dvh;
 }
 
@@ -553,7 +553,7 @@ onMounted(loadSubs)
   font-weight: 700;
 }
 
-.tab-content { padding: 0 16px; animation: fadeIn 0.2s ease; }
+.tab-content { animation: fadeIn 0.2s ease; }
 .subscription-content { padding-bottom: 32px; }
 
 /* ===== Search Bar ===== */
@@ -685,8 +685,8 @@ onMounted(loadSubs)
 .sheet-overlay {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: var(--z-modal);
   display: flex; align-items: flex-end; justify-content: center;
 }

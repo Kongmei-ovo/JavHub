@@ -54,6 +54,40 @@ def init_favorite_db():
                 FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE
             )
         ''')
+    cleanup_legacy_video_favorites()
+
+
+def _is_legacy_video_favorite(entity_id: str, metadata_json: str) -> bool:
+    try:
+        metadata = json.loads(metadata_json or "{}")
+    except json.JSONDecodeError:
+        metadata = {}
+    service_code = str(metadata.get("service_code") or "").strip()
+    if not service_code:
+        return False
+    return not str(entity_id or "").endswith(f"::{service_code}")
+
+
+def cleanup_legacy_video_favorites() -> int:
+    """删除旧版 video 收藏记录，避免与当前 service-qualified ID 重复。"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT entity_id, metadata_json FROM favorites WHERE entity_type = ?",
+            ("video",),
+        )
+        legacy_ids = [
+            row["entity_id"]
+            for row in cursor.fetchall()
+            if _is_legacy_video_favorite(row["entity_id"], row["metadata_json"])
+        ]
+        if not legacy_ids:
+            return 0
+        cursor.executemany(
+            "DELETE FROM favorites WHERE entity_type = ? AND entity_id = ?",
+            [("video", entity_id) for entity_id in legacy_ids],
+        )
+        return len(legacy_ids)
 
 
 def toggle_favorite(entity_type: str, entity_id: str, metadata: Optional[Dict] = None) -> bool:

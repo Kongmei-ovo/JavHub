@@ -8,6 +8,7 @@ const subscription = readFileSync(new URL('./Subscription.vue', import.meta.url)
 const normalize = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
 const inventory = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
 const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8')
+const libraryOrganize = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
 const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
 const favorites = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
@@ -119,7 +120,8 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(app, /import\.meta\.env\.VITE_APP_VERSION/)
   assert.doesNotMatch(app, /v1\.2\.0-beta\.\d+/)
   assert.match(packageJson.version, /^\d+\.\d+\.\d+-beta\.\d+$/)
-  assert.match(app, /演员映射/)
+  assert.match(app, /片库整理/)
+  assert.match(libraryOrganize, /演员映射/)
   assert.doesNotMatch(app, /演员合并/)
   assert.match(normalize, /演员映射/)
   assert.match(normalize, /listUnmappedActors/)
@@ -159,26 +161,65 @@ test('actor portrait cards unify favorites subscriptions and supplement actor pi
   assert.match(actorPortraitCard, /actor-portrait-card/)
   assert.match(favorites, /ActorPortraitCard/)
   assert.match(favorites, /subscriptionState/)
+  assert.match(entities, /ActorPortraitCard/)
   assert.match(subscription, /ActorPortraitCard/)
   assert.match(supplementActorPicker, /ActorPortraitCard/)
   assert.match(favorites, /class="actor-favorites-grid"/)
+  assert.match(entities, /:show-favorite="canFavoriteEntity"/)
+  assert.match(entities, /label: '资料库演员'/)
+  assert.match(entities, /label: 'Emby演员'/)
   assert.match(favorites, /otherEntityItems/)
   assert.match(favorites, /enrichFavoriteActor/)
-  assert.match(favorites, /:show-subscribe="actorCardCanSubscribe\(item\)"/)
-  assert.match(favorites, /:subscribed="actorCardSubscribed\(item\)"/)
-  assert.match(favorites, /@subscribe="toggleActorSubscription\(item\)"/)
+  assert.doesNotMatch(favorites, /:show-favorite="true"/)
+  assert.doesNotMatch(favorites, /:show-subscribe="actorCardCanSubscribe\(item\)"/)
+  assert.doesNotMatch(favorites, /@subscribe="toggleActorSubscription\(item\)"/)
   assert.match(subscription, /density="standard"/)
   assert.match(supplementActorPicker, /density="compact"/)
   assert.match(supplementActorPicker, /action-label="选择"/)
 })
 
-test('favorites actor cards subscribe independently and route to the unified actor page', () => {
+test('library organize inventory actors reuse the shared portrait card', () => {
+  assert.match(libraryOrganize, /import ActorPortraitCard from '\.\.\/components\/ActorPortraitCard\.vue'/)
+  assert.match(libraryOrganize, /<ActorPortraitCard[\s\S]*v-for="actor in inventoryActors"/)
+  assert.match(libraryOrganize, /:name="inventoryActorName\(actor\)"/)
+  assert.match(libraryOrganize, /:avatar-url="inventoryActorAvatar\(actor\)"/)
+  assert.match(libraryOrganize, /:meta="inventoryActorMeta\(actor\)"/)
+  assert.match(libraryOrganize, /function inventoryActorMissingText\(actor\)/)
+  assert.match(libraryOrganize, /missing < 0 \? '待对比'/)
+  assert.match(libraryOrganize, /@open="goActorDetail\(actor\.actress_id\)"/)
+  assert.doesNotMatch(libraryOrganize, /class="actor-tile"/)
+})
+
+test('favorites actor cards show subscription badges and route to the unified actor page', () => {
   assert.match(favorites, /subscriptionState\.refresh\(\)/)
   assert.match(favorites, /subscriptionState\.isSubscribed\(actorCardSubscriptionId\(item\)\)/)
-  assert.match(favorites, /subscriptionState\.toggle\(id, actorCardName\(item\)\)/)
   assert.match(favorites, /path: `\/actor\/\$\{encodeURIComponent\(name\)\}`/)
   assert.match(favorites, /query: id \? \{ name, actress_id: id \} : \{ name \}/)
   assert.doesNotMatch(favorites, /params: \{ type: 'actress'/)
+})
+
+test('actor detail owns actor favorite and subscribe actions', () => {
+  assert.match(actor, /favoriteState/)
+  assert.match(actor, /subscriptionState/)
+  assert.match(actor, /toggleActorFavorite/)
+  assert.match(actor, /toggleActorSubscription/)
+  assert.match(actor, /isActorFavorited/)
+  assert.match(actor, /isActorSubscribed/)
+})
+
+test('favorites page exposes edit mode for batch unfavorite', () => {
+  const movieCardBlock = favorites.match(/<MovieCard[\s\S]*?\/>/)?.[0] || ''
+
+  assert.match(favorites, /editMode/)
+  assert.match(favorites, /selectedFavoriteKeys/)
+  assert.match(favorites, /toggleEditMode/)
+  assert.match(favorites, /toggleFavoriteSelection/)
+  assert.match(favorites, /removeSelectedFavorites/)
+  assert.match(favorites, /编辑/)
+  assert.match(favorites, /取消收藏/)
+  assert.doesNotMatch(movieCardBlock, /@click="handleFavoriteItemClick\(item\)"/)
+  assert.match(favorites, /class="curate-header-main"[\s\S]*class="curate-toolbar"/)
+  assert.match(favorites, /<div\s+v-for="item in actorFavoriteItems"[\s\S]*<ActorPortraitCard[\s\S]*<button[\s\S]*select-check/)
 })
 
 test('subscription management keeps shared subscription state in sync', () => {
@@ -227,6 +268,11 @@ test('subscription page defaults to subscribed management and opens discovery fr
 })
 
 test('subscription discovery sheet keeps the management page legible behind it', () => {
+  const sheetOverlayBlock = subscription.match(/\.sheet-overlay\s*\{[^}]*\}/)?.[0] || ''
+
+  assert.match(sheetOverlayBlock, /backdrop-filter:\s*none/)
+  assert.match(sheetOverlayBlock, /-webkit-backdrop-filter:\s*none/)
+  assert.doesNotMatch(sheetOverlayBlock, /backdrop-filter:\s*blur/)
   assert.match(subscription, /class="[^"]*\bdiscover-overlay\b[^"]*"/)
   assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*backdrop-filter: none/)
   assert.match(subscription, /\.discover-overlay\s*\{[\s\S]*-webkit-backdrop-filter: none/)
@@ -250,6 +296,7 @@ test('actor discovery surfaces route to the canonical actor page', () => {
 
   const viewAllVideosBlock = subscription.match(/function viewAllVideos\(\)\s*\{[\s\S]*?\n\}/)?.[0] || ''
   assert.match(viewAllVideosBlock, /const actressId = sheetActor\.value\.actress_id \|\| sheetActor\.value\.id/)
+  assert.match(viewAllVideosBlock, /closeSheet\(\)/)
   assert.match(viewAllVideosBlock, /path:\s*`\/actor\/\$\{encodeURIComponent\(name\)\}`/)
   assert.match(viewAllVideosBlock, /query\.actress_id = actressId/)
 })
@@ -267,6 +314,32 @@ test('inventory page shows mapping coverage and candidate handoff', () => {
   assert.match(inventoryActor, /查看库存下载候选/)
   assert.match(inventoryActor, /已映射到 JavInfo/)
   assert.match(inventoryActor, /未映射到 JavInfo/)
+})
+
+test('library organizer unifies inventory check duplicates and actor mapping', () => {
+  assert.match(libraryOrganize, /片库整理/)
+  assert.match(libraryOrganize, /const activeTab = ref\('queue'\)/)
+  assert.match(libraryOrganize, /activeTab === 'inventory'/)
+  assert.match(libraryOrganize, /activeTab === 'check'/)
+  assert.match(libraryOrganize, /activeTab === 'mapping'/)
+  assert.match(libraryOrganize, /activeTab === 'duplicates'/)
+  assert.match(libraryOrganize, /source:\s*'inventory'/)
+  assert.match(libraryOrganize, /listDownloadCandidates/)
+  assert.match(libraryOrganize, /getDuplicates/)
+  assert.match(libraryOrganize, /checkLibrary/)
+  assert.match(libraryOrganize, /listUnmappedActors/)
+  assert.match(libraryOrganize, /triggerInventoryJob/)
+  assert.match(libraryOrganize, /getInventorySnapshotLatest/)
+  assert.match(libraryOrganize, /goActorDetail/)
+  assert.match(libraryOrganize, /actor_id/)
+})
+
+test('duplicates page renders duplicate groups from Emby snapshots', () => {
+  assert.match(duplicates, /duplicateItems\(item\)/)
+  assert.match(duplicates, /v-for="duplicate in duplicateItems\(item\)"/)
+  assert.match(duplicates, /deleteItem\(duplicate\)/)
+  assert.match(duplicates, /ignoreItem\(duplicate\)/)
+  assert.match(duplicates, /duplicate_count/)
 })
 
 test('default theme controls avoid white-on-white primary buttons', () => {
@@ -290,9 +363,10 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.match(app, /label: '磁链解析'/)
   assert.match(app, /label: '实体目录'/)
   assert.match(app, /label: '补全管理'/)
-  assert.match(app, /label: '库检测'/)
-  assert.match(app, /label: '去重管理'/)
-  assert.match(app, /label: '活动中心'/)
+  assert.match(app, /label: '片库整理'/)
+  assert.doesNotMatch(app, /label: '库检测'/)
+  assert.doesNotMatch(app, /label: '去重管理'/)
+  assert.match(app, /label: '运行日志'/)
   assert.match(app, /bottom-nav-more/)
   assert.match(config, /scroll-snap-type: x proximity/)
   assert.match(config, /settings-footer[\s\S]*left: var\(--sidebar-width\)/)
@@ -409,7 +483,7 @@ test('external data failures render page-level retry states', () => {
   assert.match(search, /searchError/)
   assert.match(search, /formatApiError/)
   assert.match(apiSource, /silentError: true/)
-  assert.match(app, /label: '设置'/)
+  assert.match(app, /label: '配置中心'/)
 })
 
 test('inline style cleanup keeps only dynamic previews in settings and genres', () => {
@@ -600,10 +674,10 @@ test('entity catalog unifies entity directories behind a route and nav entry', (
   assert.match(app, /path: '\/entities'/)
   assert.match(app, /label: '实体目录'/)
   assert.match(entities, /name: 'Entities'/)
-  for (const label of ['JavInfo演员', '演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
+  for (const label of ['资料库演员', 'Emby演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
     assert.match(entities, new RegExp(label))
   }
-  for (const method of ['listActresses', 'listActors', 'listCategories', 'listSeries', 'listMakers', 'listLabels', 'listDirectors', 'listAuthors']) {
+  for (const method of ['listActresses', 'listInventoryActors', 'listCategories', 'listSeries', 'listMakers', 'listLabels', 'listDirectors', 'listAuthors']) {
     assert.match(entities, new RegExp(`api\\.${method}`))
   }
   assert.match(entities, /searchKeyword/)
@@ -628,6 +702,19 @@ test('operations overview exposes candidate automation controls', () => {
   assert.match(operations, /工作台路径/)
   assert.match(operations, /goWorkbenchAction/)
   assert.match(operations, /refreshMissingCache/)
+})
+
+test('operations overview uses a restrained Apple operations layout', () => {
+  assert.match(operations, /operations-hero/)
+  assert.match(operations, /priority-board/)
+  assert.match(operations, /system-column/)
+  assert.match(operations, /diagnostic-grid/)
+  assert.match(operations, /hero-stat-grid/)
+  assert.match(operations, /--operations-panel-gap:\s*clamp\(12px,\s*1\.4vw,\s*18px\)/)
+  assert.match(operations, /\.workbench-panel[\s\S]*background:\s*var\(--material-glass-sheet\)/)
+  assert.match(operations, /\.status-strip[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(132px,\s*1fr\)\)/)
+  assert.doesNotMatch(operations, /status-cell\.urgent/)
+  assert.doesNotMatch(operations, /title:\s*'活动中心'/)
 })
 
 test('operations overview surfaces initialization health and setup entry points', () => {
@@ -668,10 +755,12 @@ test('operations exposes cache cleanup UI backed by purge API', () => {
   assert.match(apiSource, /purgeCache\(scope = 'video'\)/)
 })
 
-test('activity center upgrades logs with search pagination and level summary', () => {
-  assert.match(app, /label: '活动中心'/)
-  assert.match(logs, /活动中心/)
-  assert.match(logs, /activitySummary/)
+test('run logs page exposes search pagination and level summary', () => {
+  assert.match(app, /label: '运行日志'/)
+  assert.match(logs, /运行日志/)
+  assert.match(logs, /logSummary/)
+  assert.match(logs, /可按等级和关键词筛选/)
+  assert.match(logs, /aria-label="日志等级汇总"/)
   assert.match(logs, /searchText/)
   assert.match(logs, /api\.getLogs\(this\.limit, this\.filterLevel, \{ q: this\.searchText, offset:/)
   assert.match(logs, /hasMoreLogs/)

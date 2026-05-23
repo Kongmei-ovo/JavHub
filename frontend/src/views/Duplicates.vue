@@ -17,13 +17,25 @@
         <div class="item-info">
           <div class="item-code">{{ item.content_id }}</div>
           <div class="item-title">{{ item.javinfo_title }}</div>
-          <div class="item-emby-name">Emby 名称: {{ item.emby_name }}</div>
-          <div class="item-similarity">相似度: {{ (item.similarity * 100).toFixed(0) }}%</div>
+          <div v-if="item.duplicate_count" class="item-similarity">重复条目: {{ item.duplicate_count }}</div>
+          <div v-else class="item-similarity">相似度: {{ (item.similarity * 100).toFixed(0) }}%</div>
           <div class="item-reason">{{ item.reason }}</div>
-        </div>
-        <div class="item-actions">
-          <button @click="deleteItem(item)" class="action-btn delete">删除</button>
-          <button @click="ignoreItem(item)" class="action-btn ignore">忽略</button>
+          <div class="duplicate-entries">
+            <div
+              v-for="duplicate in duplicateItems(item)"
+              :key="duplicate.emby_item_id"
+              class="duplicate-entry"
+            >
+              <div class="duplicate-entry-main">
+                <div class="item-emby-name">Emby 名称: {{ duplicate.emby_name }}</div>
+                <div v-if="duplicate.filename" class="item-filename">{{ duplicate.filename }}</div>
+              </div>
+              <div class="item-actions">
+                <button @click="deleteItem(duplicate)" class="action-btn delete">删除</button>
+                <button @click="ignoreItem(duplicate)" class="action-btn ignore">忽略</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -61,6 +73,25 @@ const rescan = async () => {
   await fetchDuplicates()
 }
 
+const duplicateItems = (item) => item.items?.length ? item.items : [item]
+
+const removeDuplicateItem = (embyItemId) => {
+  duplicates.value = duplicates.value
+    .map(group => {
+      const items = duplicateItems(group).filter(item => item.emby_item_id !== embyItemId)
+      if (!group.items) return group.emby_item_id === embyItemId ? null : group
+      if (items.length < 2) return null
+      return {
+        ...group,
+        emby_item_id: items[0].emby_item_id,
+        emby_name: items[0].emby_name,
+        duplicate_count: items.length,
+        items,
+      }
+    })
+    .filter(Boolean)
+}
+
 const deleteItem = async (item) => {
   const confirmed = await requestConfirm({
     title: '删除 Emby 条目',
@@ -72,7 +103,7 @@ const deleteItem = async (item) => {
   if (!confirmed) return
   try {
     await api.deleteDuplicate(item.emby_item_id)
-    duplicates.value = duplicates.value.filter(d => d.emby_item_id !== item.emby_item_id)
+    removeDuplicateItem(item.emby_item_id)
   } catch (e) {
     ElMessage.error('删除失败: ' + e.message)
   }
@@ -81,7 +112,7 @@ const deleteItem = async (item) => {
 const ignoreItem = async (item) => {
   try {
     await api.ignoreDuplicate(item.emby_item_id)
-    duplicates.value = duplicates.value.filter(d => d.emby_item_id !== item.emby_item_id)
+    removeDuplicateItem(item.emby_item_id)
   } catch (e) {
     ElMessage.error('忽略失败: ' + e.message)
   }
@@ -162,9 +193,32 @@ onMounted(fetchDuplicates)
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
+.duplicate-entries {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.duplicate-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+.duplicate-entry-main {
+  min-width: 0;
+}
+.item-filename {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
 .item-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
 }
 .action-btn {
@@ -208,8 +262,11 @@ onMounted(fetchDuplicates)
   }
 
   .item-actions {
-    grid-column: 1 / -1;
     flex-direction: row;
+  }
+
+  .duplicate-entry {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .action-btn {

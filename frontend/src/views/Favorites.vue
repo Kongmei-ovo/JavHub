@@ -1,11 +1,34 @@
 <template>
   <div class="favorites-page page-shell page-shell--gallery">
     <div class="curate-header">
-      <h1 class="curate-title">私人策展</h1>
-      <div class="curate-stats">
-        共 {{ count }} 个收藏项
+      <div class="curate-header-main">
+        <div class="curate-copy">
+          <h1 class="curate-title">私人策展</h1>
+          <div class="curate-stats">
+            共 {{ count }} 个收藏项
+          </div>
+          <p class="instance-note">{{ instanceNote }}</p>
+        </div>
+        <div class="curate-toolbar">
+          <button
+            class="btn-mini"
+            type="button"
+            :class="{ active: editMode }"
+            @click="toggleEditMode"
+          >
+            {{ editMode ? '完成' : '编辑' }}
+          </button>
+          <button
+            v-if="editMode"
+            class="btn-mini danger"
+            type="button"
+            :disabled="selectedFavoriteKeys.size === 0"
+            @click="removeSelectedFavorites"
+          >
+            取消收藏 {{ selectedFavoriteKeys.size || '' }}
+          </button>
+        </div>
       </div>
-      <p class="instance-note">{{ instanceNote }}</p>
 
       <section class="collection-manager" aria-label="收藏集合">
         <div class="collection-manager-head">
@@ -46,7 +69,7 @@
           class="segment-item"
           type="button"
           :class="{ active: activeTab === tab.id }"
-          @click="activeTab = tab.id"
+          @click="setActiveTab(tab.id)"
         >
           {{ tab.label }}
           <span v-if="tab.count > 0" class="tab-badge">{{ tab.count }}</span>
@@ -68,45 +91,66 @@
     <!-- 收藏内容 -->
     <div v-else class="curate-content">
       <!-- 影片网格 -->
-      <div v-if="activeTab === 'video' || activeTab === 'all'" v-show="videoItems.length > 0" class="favorites-grid">
-        <MovieCard
+      <div v-if="activeTab === 'video' || activeTab === 'all'" v-show="videoItems.length > 0" class="favorites-grid" :class="{ 'is-editing': editMode }">
+        <div
           v-for="item in displayVideoItems"
           :key="'v-' + item.entity_id"
-          :contentId="item.metadata?.content_id || item.entity_id"
-          :dvdId="movieDisplayCode(item)"
-          :coverUrl="cardImageUrl(item.metadata || {})"
-          :title="item.metadata?.title_en_translated || item.metadata?.title_ja_translated || item.metadata?.title_en || item.metadata?.title_ja || item.metadata?.title || ''"
-          :serviceCode="item.metadata?.service_code || ''"
-          :releaseDate="item.metadata?.release_date || ''"
-          :runtimeMins="item.metadata?.runtime_mins || item.metadata?.runtime || ''"
-          :sampleUrl="item.metadata?.sample_url || ''"
-          @click="openVideo(item)"
-        />
+          class="favorite-selectable"
+          :class="{ selected: isSelected(item) }"
+          @click="handleFavoriteItemClick(item)"
+        >
+          <MovieCard
+            :contentId="item.metadata?.content_id || item.entity_id"
+            :dvdId="movieDisplayCode(item)"
+            :coverUrl="cardImageUrl(item.metadata || {})"
+            :title="item.metadata?.title_en_translated || item.metadata?.title_ja_translated || item.metadata?.title_en || item.metadata?.title_ja || item.metadata?.title || ''"
+            :serviceCode="item.metadata?.service_code || ''"
+            :releaseDate="item.metadata?.release_date || ''"
+            :runtimeMins="item.metadata?.runtime_mins || item.metadata?.runtime || ''"
+            :sampleUrl="item.metadata?.sample_url || ''"
+          />
+          <button
+            v-if="editMode"
+            class="select-check"
+            type="button"
+            :aria-label="isSelected(item) ? '取消选择' : '选择收藏项'"
+            @click.stop="toggleFavoriteSelection(item)"
+          >
+            <span></span>
+          </button>
+        </div>
       </div>
 
       <!-- 演员收藏：肖像卡片 -->
       <div v-if="actorFavoriteItems.length > 0" class="entity-section actor-favorites-section">
         <div v-if="activeTab === 'all'" class="section-label">演员</div>
         <div class="actor-favorites-grid">
-          <ActorPortraitCard
+          <div
             v-for="item in actorFavoriteItems"
             :key="'a-' + item.entity_id"
-            :actor="item.actor"
-            :name="actorCardName(item)"
-            :subtitle="actorCardSubtitle(item)"
-            :meta="actorCardMeta(item)"
-            :avatar-url="actorCardAvatar(item)"
-            :badges="actorCardBadges(item)"
-            :show-favorite="true"
-            :favorited="true"
-            :show-subscribe="actorCardCanSubscribe(item)"
-            :subscribed="actorCardSubscribed(item)"
-            :subscribe-title="actorCardSubscribed(item) ? '取消订阅演员' : '订阅演员'"
-            density="standard"
-            @open="navigateToActor(item)"
-            @favorite="toggleFavorite('actress', item.entity_id)"
-            @subscribe="toggleActorSubscription(item)"
-          />
+            class="favorite-selectable"
+            :class="{ selected: isSelected(item) }"
+          >
+            <ActorPortraitCard
+              :actor="item.actor"
+              :name="actorCardName(item)"
+              :subtitle="actorCardSubtitle(item)"
+              :meta="actorCardMeta(item)"
+              :avatar-url="actorCardAvatar(item)"
+              :badges="actorCardBadges(item)"
+              density="standard"
+              @open="handleFavoriteItemClick(item)"
+            />
+            <button
+              v-if="editMode"
+              class="select-check select-check--actor"
+              type="button"
+              :aria-label="isSelected(item) ? '取消选择' : '选择收藏项'"
+              @click.stop="toggleFavoriteSelection(item)"
+            >
+              <span></span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -118,20 +162,22 @@
             v-for="item in otherEntityItems"
             :key="item.entity_type + '-' + item.entity_id"
             class="entity-bubble"
+            :class="{ selected: isSelected(item) }"
             role="button"
             tabindex="0"
             :aria-label="`查看${typeLabel(item.entity_type)}详情：${entityDisplayName(item)}`"
-            @click="navigateToEntity(item)"
-            @keydown.enter.prevent="navigateToEntity(item)"
-            @keydown.space.prevent="navigateToEntity(item)"
+            @click="handleFavoriteItemClick(item)"
+            @keydown.enter.prevent="handleFavoriteItemClick(item)"
+            @keydown.space.prevent="handleFavoriteItemClick(item)"
           >
             <span class="entity-name">{{ entityDisplayName(item) }}</span>
             <span class="entity-type-tag">{{ typeLabel(item.entity_type) }}</span>
-            <button class="entity-fav-btn" type="button" @click.stop="toggleFavorite(item.entity_type, item.entity_id)">
+            <button v-if="!editMode" class="entity-fav-btn" type="button" @click.stop="toggleFavorite(item.entity_type, item.entity_id)">
               <svg viewBox="0 0 24 24" width="12" height="12">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
               </svg>
             </button>
+            <span v-else class="entity-select-dot" aria-hidden="true"></span>
           </div>
         </div>
       </div>
@@ -184,6 +230,8 @@ export default {
     const collectionsLoading = ref(false)
     const editingCollectionId = ref(null)
     const collectionForm = ref({ name: '', description: '' })
+    const editMode = ref(false)
+    const selectedFavoriteKeys = ref(new Set())
 
     // 动态计算各类型数量
     const typeCounts = computed(() => {
@@ -305,6 +353,47 @@ export default {
       }
     }
 
+    const favoriteKey = (item) => `${item.entity_type}:${item.entity_id}`
+    const isSelected = (item) => selectedFavoriteKeys.value.has(favoriteKey(item))
+    const toggleFavoriteSelection = (item) => {
+      const next = new Set(selectedFavoriteKeys.value)
+      const key = favoriteKey(item)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      selectedFavoriteKeys.value = next
+    }
+    const toggleEditMode = () => {
+      editMode.value = !editMode.value
+      if (!editMode.value) selectedFavoriteKeys.value = new Set()
+    }
+    const setActiveTab = (tabId) => {
+      activeTab.value = tabId
+      selectedFavoriteKeys.value = new Set()
+    }
+    const handleFavoriteItemClick = (item) => {
+      if (editMode.value) {
+        toggleFavoriteSelection(item)
+        return
+      }
+      if (item.entity_type === 'video') openVideo(item)
+      else if (item.entity_type === 'actress') navigateToActor(item)
+      else navigateToEntity(item)
+    }
+    const allVisibleFavoriteItems = computed(() => [
+      ...displayVideoItems.value,
+      ...actorFavoriteItems.value,
+      ...otherEntityItems.value,
+    ])
+    const removeSelectedFavorites = async () => {
+      const selectedItems = allVisibleFavoriteItems.value.filter(item => isSelected(item))
+      for (const item of selectedItems) {
+        await favoriteState.toggle(item.entity_type, item.entity_id)
+      }
+      selectedFavoriteKeys.value = new Set()
+      await favoriteState.refresh()
+      await loadVideos()
+    }
+
     const isFavorited = (type, id) => {
       return favoriteState.isFavorited(type, id)
     }
@@ -335,21 +424,11 @@ export default {
       const id = item.actor?.id || item.actor?.actress_id || item.actor?.javinfo_actress_id || item.entity_id
       return /^\d+$/.test(String(id || '')) ? String(id) : ''
     }
-    const actorCardCanSubscribe = (item) => Boolean(actorCardSubscriptionId(item))
     const actorCardSubscribed = (item) => subscriptionState.isSubscribed(actorCardSubscriptionId(item))
     const actorCardBadges = (item) => {
       const badges = [{ label: '收藏', tone: 'favorite' }]
       if (actorCardSubscribed(item)) badges.push({ label: '已订阅', tone: 'subscribed' })
       return badges
-    }
-    const toggleActorSubscription = async (item) => {
-      const id = actorCardSubscriptionId(item)
-      if (!id) return
-      try {
-        await subscriptionState.toggle(id, actorCardName(item))
-      } catch (err) {
-        console.error('Failed to toggle actor subscription:', err)
-      }
     }
 
     const loadCollections = async () => {
@@ -447,6 +526,8 @@ export default {
       state,
       count: favoriteState.count,
       activeTab,
+      editMode,
+      selectedFavoriteKeys,
       tabs,
       videoLoading,
       videoItems,
@@ -463,6 +544,13 @@ export default {
       navigateToEntity,
       navigateToActor,
       openVideo,
+      favoriteKey,
+      isSelected,
+      toggleFavoriteSelection,
+      toggleEditMode,
+      setActiveTab,
+      handleFavoriteItemClick,
+      removeSelectedFavorites,
       isFavorited,
       toggleFavorite,
       cardImageUrl,
@@ -472,10 +560,8 @@ export default {
       actorCardMeta,
       actorCardAvatar,
       actorCardSubscriptionId,
-      actorCardCanSubscribe,
       actorCardSubscribed,
       actorCardBadges,
-      toggleActorSubscription,
       collections,
       collectionsLoading,
       editingCollectionId,
@@ -498,8 +584,20 @@ export default {
 }
 
 .curate-header {
-  text-align: center;
   margin-bottom: 32px;
+}
+
+.curate-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 22px;
+  text-align: left;
+}
+
+.curate-copy {
+  min-width: 0;
 }
 
 .curate-title {
@@ -518,14 +616,20 @@ export default {
 }
 
 .instance-note {
-  margin: 0 0 22px;
+  margin: 0;
   color: var(--text-secondary);
   font-size: var(--type-control);
 }
 
+.curate-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .collection-manager {
-  max-width: 920px;
-  margin: 0 auto 22px;
+  margin: 0 0 22px;
   padding: 14px;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
@@ -593,6 +697,17 @@ export default {
 
 .btn-mini.danger {
   color: #ff375f;
+}
+
+.btn-mini.active {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--text-on-accent);
+}
+
+.btn-mini:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .collection-list {
@@ -703,6 +818,53 @@ export default {
   opacity: 0.5;
 }
 
+.favorite-selectable {
+  position: relative;
+}
+
+.favorites-grid.is-editing :deep(.apple-video-card),
+.favorite-selectable.selected :deep(.actor-portrait-card) {
+  outline: 2px solid rgba(var(--accent-rgb), 0.82);
+  outline-offset: 3px;
+}
+
+.select-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.68);
+  border-radius: 50%;
+  background: rgba(20,20,24,0.42);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+  cursor: pointer;
+}
+
+.select-check--actor {
+  top: 12px;
+  right: 12px;
+}
+
+.select-check span,
+.entity-select-dot {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 50%;
+}
+
+.favorite-selectable.selected .select-check span,
+.entity-bubble.selected .entity-select-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
 /* ===== 非影片收藏区 ===== */
 .entity-section {
   margin-top: 20px;
@@ -755,6 +917,11 @@ export default {
   transform: translateY(-2px);
 }
 
+.entity-bubble.selected {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
 .entity-name {
   font-size: var(--type-body);
   font-weight: 600;
@@ -788,6 +955,11 @@ export default {
 .entity-fav-btn:hover {
   opacity: 1;
   transform: scale(1.15);
+}
+
+.entity-select-dot {
+  display: inline-block;
+  flex: 0 0 auto;
 }
 
 /* ===== 空状态 ===== */
@@ -902,6 +1074,14 @@ export default {
   .collection-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+  .curate-header-main {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .curate-toolbar {
+    justify-content: center;
   }
 }
 </style>

@@ -186,6 +186,38 @@ export default {
     return api.get('/v1/actors', { params })
   },
 
+  listInventoryActors(params = {}) {
+    return api.get('/inventory/actors', { params })
+  },
+
+  getInventoryActor(actressId) {
+    return api.get(`/inventory/actors/${numericPathSegment(actressId, 'actressId')}`)
+  },
+
+  getInventorySnapshotLatest() {
+    return api.get('/inventory/snapshots/latest')
+  },
+
+  triggerInventoryJob(data) {
+    return api.post('/inventory/jobs/trigger', data)
+  },
+
+  listInventoryJobs() {
+    return api.get('/inventory/jobs')
+  },
+
+  listInventoryMissing() {
+    return api.get('/inventory/missing')
+  },
+
+  fillInventoryVideo(contentId) {
+    return api.post(`/inventory/fill/${pathSegment(contentId, 'contentId')}`)
+  },
+
+  fillAllInventoryVideos() {
+    return api.post('/inventory/fill-all')
+  },
+
   listAuthors(params = {}) {
     return api.get('/v1/authors', { params })
   },

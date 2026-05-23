@@ -29,8 +29,12 @@
       >
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path
-            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-            fill="currentColor"
+            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            :fill="favorited ? 'currentColor' : 'none'"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
         </svg>
       </button>
@@ -228,15 +232,15 @@ function emitSubscribe() {
   border: 1px solid rgba(255,255,255,0.58);
   border-radius: 50%;
   background: rgba(255,255,255,0.58);
-  color: #ff375f;
+  color: var(--text-muted);
   box-shadow: 0 8px 20px rgba(29,29,31,0.12), inset 0 1px 0 rgba(255,255,255,0.78);
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-fast), background var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .actor-portrait-card__favorite {
   right: 9px;
-  color: #ff375f;
+  color: var(--text-muted);
 }
 
 .actor-portrait-card__subscribe {
@@ -257,6 +261,11 @@ function emitSubscribe() {
 
 .actor-portrait-card.is-subscribed .actor-portrait-card__subscribe {
   background: rgba(52, 199, 89, 0.88);
+  color: #fff;
+}
+
+.actor-portrait-card.is-favorited .actor-portrait-card__favorite {
+  background: rgba(255, 55, 95, 0.92);
   color: #fff;
 }
 

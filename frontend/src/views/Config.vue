@@ -2,7 +2,8 @@
   <div class="settings page-shell page-shell--standard">
     <!-- Header Aligned with Main App Rhythm -->
     <div class="settings-header">
-      <h1>设置</h1>
+      <h1>配置中心</h1>
+      <p class="settings-subtitle">统一管理服务连接、自动化策略、通知、外观和高级维护。</p>
       <div class="settings-tabs">
         <button
           type="button"
@@ -1686,8 +1687,16 @@ export default {
   font-size: var(--type-page-title); 
   font-weight: 700; 
   color: var(--text-primary);
-  margin-bottom: 32px; 
+  margin: 0;
   letter-spacing: 0;
+}
+
+.settings-subtitle {
+  margin: 8px 0 24px;
+  max-width: 640px;
+  color: var(--text-secondary);
+  font-size: var(--type-control);
+  line-height: 1.6;
 }
 
 .settings-tabs {

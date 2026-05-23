@@ -101,6 +101,34 @@ class FavoriteCollectionsRouterTest(TempDbMixin, unittest.TestCase):
 
 
 class FavoriteCollectionsDatabaseTest(TempDbMixin, unittest.TestCase):
+    def test_cleanup_removes_legacy_video_favorites(self):
+        from database import favorite
+        from database.base import get_db
+
+        favorite.toggle_favorite(
+            "video",
+            "MIAA-784",
+            {"content_id": "MIAA-784", "dvd_id": "MIAA-784", "service_code": "mono"},
+        )
+        favorite.toggle_favorite(
+            "video",
+            "JUQ-001::digital",
+            {"content_id": "JUQ-001", "dvd_id": "JUQ-001", "service_code": "digital"},
+        )
+        favorite.toggle_favorite("actress", "123", {"name_kanji": "Actor"})
+
+        removed = favorite.cleanup_legacy_video_favorites()
+
+        self.assertEqual(removed, 1)
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT entity_type, entity_id FROM favorites ORDER BY entity_type, entity_id"
+            ).fetchall()
+        self.assertEqual(
+            [(row["entity_type"], row["entity_id"]) for row in rows],
+            [("actress", "123"), ("video", "JUQ-001::digital")],
+        )
+
     def test_delete_collection_removes_collection_items(self):
         from database import favorite
         from database.base import get_db

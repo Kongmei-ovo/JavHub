@@ -32,3 +32,10 @@ test('actor page surfaces download candidate handoff', () => {
   assert.match(source, /path: '\/downloads'/)
   assert.match(source, /tab: 'candidates'/)
 })
+
+test('actor page reloads the catalog when route identity changes', () => {
+  assert.match(source, /routeIdentity\(\)/)
+  assert.match(source, /routeIdentity\(newIdentity,\s*oldIdentity\)/)
+  assert.match(source, /if \(newIdentity !== oldIdentity\) this\.loadRouteActor\(\)/)
+  assert.match(source, /async loadRouteActor\(\)/)
+})

@@ -598,12 +598,11 @@ export default {
   --modal-panel-border: rgba(255, 255, 255, 0.18);
   --modal-gallery-bg: rgba(0, 0, 0, 0.18);
   --modal-overlay-bg: rgba(0, 0, 0, 0.14);
-  --modal-backdrop-blur: 12px;
   position: fixed;
   inset: 0;
   background: var(--modal-overlay-bg);
-  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(110%);
-  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(110%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;

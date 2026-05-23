@@ -76,6 +76,7 @@ from database.actor_mapping import (
 )
 from database.subscription import (
     add_subscription,
+    cleanup_legacy_subscriptions,
     get_subscriptions,
     delete_subscription,
     is_subscribed,
@@ -133,10 +134,12 @@ from database.snapshot import (
     get_snapshot_actors,
     get_snapshot_videos,
     get_snapshot_filenames,
+    get_snapshot_duplicate_candidates,
     find_similar_actresses,
 )
 from database.favorite import (
     init_favorite_db,
+    cleanup_legacy_video_favorites,
     toggle_favorite,
     is_favorite,
     list_favorites,
@@ -148,6 +151,7 @@ __all__ = [
     "init_db",
     "init_translation_db",
     "init_favorite_db",
+    "cleanup_legacy_video_favorites",
     "toggle_favorite",
     "is_favorite",
     "list_favorites",
@@ -215,6 +219,7 @@ __all__ = [
     "delete_actor_mapping",
     "mapping_summary",
     "add_subscription",
+    "cleanup_legacy_subscriptions",
     "get_subscriptions",
     "delete_subscription",
     "is_subscribed",
@@ -257,6 +262,7 @@ __all__ = [
     "get_snapshot_actors",
     "get_snapshot_videos",
     "get_snapshot_filenames",
+    "get_snapshot_duplicate_candidates",
     "add_actor_alias",
     "get_actor_aliases",
     "get_canonical_actress_id",

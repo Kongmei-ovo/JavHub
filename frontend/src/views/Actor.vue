@@ -21,6 +21,36 @@
               </svg>
               {{ variantInfo.canonical.length }} 部作品
             </span>
+            <span v-if="isActorFavorited" class="meta-item meta-item--favorite">已收藏</span>
+            <span v-if="isActorSubscribed" class="meta-item meta-item--subscribed">已订阅</span>
+          </div>
+          <div class="actor-actions">
+            <button
+              class="actor-action-btn"
+              :class="{ active: isActorFavorited }"
+              type="button"
+              @click="toggleActorFavorite"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  fill="currentColor"
+                />
+              </svg>
+              {{ isActorFavorited ? '取消收藏' : '收藏演员' }}
+            </button>
+            <button
+              v-if="actressId"
+              class="actor-action-btn actor-action-btn--subscribe"
+              :class="{ active: isActorSubscribed }"
+              type="button"
+              @click="toggleActorSubscription"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M19 3H5a2 2 0 0 0-2 2v16l9-4 9 4V5a2 2 0 0 0-2-2zm-2 11H7v-2h10v2zm0-4H7V8h10v2z" fill="currentColor"/>
+              </svg>
+              {{ isActorSubscribed ? '取消订阅' : '订阅演员' }}
+            </button>
           </div>
         </div>
       </div>
@@ -191,6 +221,8 @@ import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
 import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
+import favoriteState from '../utils/favoriteState'
+import subscriptionState from '../utils/subscriptionState'
 import MovieCard from '../components/MovieCard.vue'
 
 const MOVIE_PAGE_SIZE = 100
@@ -260,21 +292,36 @@ export default {
       }
       return this.moviePage < this.movieTotalPages
     },
+    routeIdentity() {
+      return `${this.$route.query.actress_id || ''}:${this.$route.query.name || this.$route.params.name || ''}`
+    },
+    actorFavoriteId() {
+      return this.actressId || this.actorName
+    },
+    isActorFavorited() {
+      return favoriteState.isFavorited('actress', this.actorFavoriteId)
+    },
+    isActorSubscribed() {
+      return this.actressId ? subscriptionState.isSubscribed(this.actressId) : false
+    },
   },
   async mounted() {
-    this.actorName = this.$route.query.name || this.$route.params.name || ''
-    if (this.actorName) {
-      await this.loadActressInfo()
-      this.loadActorMovies()
-      this.loadSupplementStatus()
-      this.loadCandidateSummary()
-    }
+    favoriteState.init().catch(err => {
+      console.error('Failed to initialize favorites:', err)
+    })
+    subscriptionState.refresh().catch(err => {
+      console.error('Failed to initialize subscriptions:', err)
+    })
+    await this.loadRouteActor()
   },
   beforeUnmount() {
     this._stopSupplementPolling()
     if (this._yearObserver) this._yearObserver.disconnect()
   },
   watch: {
+    routeIdentity(newIdentity, oldIdentity) {
+      if (newIdentity !== oldIdentity) this.loadRouteActor()
+    },
     actressId(newId, oldId) {
       if (newId && newId !== oldId) {
         this.loadSupplementStatus()
@@ -283,6 +330,18 @@ export default {
     },
   },
   methods: {
+    async loadRouteActor() {
+      this.actorName = this.$route.query.name || this.$route.params.name || ''
+      this.actressData = null
+      this.supplementStatus = null
+      this.candidateSummary = { candidate: 0, needsMagnet: 0, ready: 0 }
+      this._stopSupplementPolling()
+      if (!this.actorName) return
+      await this.loadActressInfo()
+      this.loadActorMovies()
+      this.loadSupplementStatus()
+      this.loadCandidateSummary()
+    },
     async loadActressInfo() {
       try {
         const actressId = this.$route.query.actress_id
@@ -459,6 +518,23 @@ export default {
         },
       })
     },
+    async toggleActorFavorite() {
+      const id = this.actorFavoriteId
+      if (!id) return
+      try {
+        await favoriteState.toggle('actress', id, this.actressData || { name: this.actorName })
+      } catch (e) {
+        console.error('Toggle actor favorite failed:', e)
+      }
+    },
+    async toggleActorSubscription() {
+      if (!this.actressId) return
+      try {
+        await subscriptionState.toggle(this.actressId, this.translatedName || this.actorName)
+      } catch (e) {
+        console.error('Toggle actor subscription failed:', e)
+      }
+    },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }
       return map[status] || status || '未知'
@@ -490,8 +566,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-block: 40px;
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  padding-block: 34px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.08) 0%, transparent 78%),
+    linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   gap: 24px;
 }
 
@@ -502,13 +580,14 @@ export default {
 }
 
 .actor-avatar {
-  width: 100px;
-  height: 100px;
+  width: 116px;
+  height: 116px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--bg-card);
   flex-shrink: 0;
-  border: 3px solid var(--accent);
+  border: 2px solid rgba(var(--accent-rgb), 0.68);
+  box-shadow: 0 20px 46px rgba(0,0,0,0.18);
 }
 
 .actor-avatar img {
@@ -519,6 +598,7 @@ export default {
 
 .actor-info {
   flex: 1;
+  min-width: 0;
 }
 
 .actor-name {
@@ -537,7 +617,8 @@ export default {
 
 .actor-meta {
   display: flex;
-  gap: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .meta-item {
@@ -546,6 +627,57 @@ export default {
   gap: 6px;
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.meta-item--favorite,
+.meta-item--subscribed {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--text-primary);
+}
+
+.actor-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.actor-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.actor-action-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--glass-edge-strong);
+  background: var(--surface-card-hover);
+}
+
+.actor-action-btn.active {
+  border-color: rgba(255, 55, 95, 0.42);
+  background: rgba(255, 55, 95, 0.12);
+  color: #ff375f;
+}
+
+.actor-action-btn--subscribe.active {
+  border-color: rgba(52, 199, 89, 0.42);
+  background: rgba(52, 199, 89, 0.14);
+  color: #34c759;
 }
 
 .back-btn {
@@ -880,6 +1012,11 @@ export default {
 
   .hero-content {
     flex-direction: column;
+  }
+
+  .actor-meta,
+  .actor-actions {
+    justify-content: center;
   }
 
   .movies-section {

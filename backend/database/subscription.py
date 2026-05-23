@@ -20,6 +20,14 @@ def get_subscriptions() -> list:
         return [dict(row) for row in rows]
 
 
+def cleanup_legacy_subscriptions() -> int:
+    """删除旧的停用订阅记录，避免前端详情页把历史行误判为订阅。"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM subscriptions WHERE COALESCE(enabled, 1) = 0")
+        return cursor.rowcount
+
+
 def delete_subscription(subscription_id: int):
     with get_db() as conn:
         cursor = conn.cursor()
@@ -41,9 +49,11 @@ def toggle_subscription(actress_id: int, actress_name: str, auto_download: bool 
         cursor.execute("SELECT id, enabled FROM subscriptions WHERE actress_id = ?", (actress_id,))
         row = cursor.fetchone()
         if row:
-            new_enabled = 0 if row["enabled"] else 1
-            cursor.execute("UPDATE subscriptions SET enabled = ? WHERE id = ?", (new_enabled, row["id"]))
-            return {"subscribed": bool(new_enabled), "id": row["id"]}
+            if row["enabled"]:
+                cursor.execute("DELETE FROM subscriptions WHERE id = ?", (row["id"],))
+                return {"subscribed": False, "id": row["id"]}
+            cursor.execute("UPDATE subscriptions SET enabled = 1 WHERE id = ?", (row["id"],))
+            return {"subscribed": True, "id": row["id"]}
         else:
             cursor.execute(
                 "INSERT INTO subscriptions (actress_id, actress_name, auto_download, enabled, created_at) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)",
