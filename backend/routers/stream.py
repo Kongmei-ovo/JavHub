@@ -17,7 +17,12 @@ router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
 
 ALLOWED_STREAM_DOMAINS = {
     "jable.tv", "missav.ai", "surrit.com", "memojav.com",
-    "kanav.info", "hohoj.tv", "mushroomtrack.com",
+    "kanav.info", "hohoj.tv", "mushroomtrack.com", "ggjav.com",
+}
+
+STREAM_REFERER_BY_DOMAIN = {
+    "surrit.com": "https://missav.ai/",
+    "ggjav.com": "https://hohoj.tv/",
 }
 
 PROXY_FAKE_IP_NETWORKS = (
@@ -91,6 +96,15 @@ def _validate_proxy_url(url: str) -> str:
     return parsed.geturl()
 
 
+def _referer_for_stream_url(url: str) -> str:
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    for domain, referer in STREAM_REFERER_BY_DOMAIN.items():
+        if hostname == domain or hostname.endswith(f".{domain}"):
+            return referer
+    return "/".join(url.split("/")[:3]) + "/"
+
+
 async def _fetch_validated_url(client: httpx.AsyncClient, url: str, headers: dict[str, str]) -> httpx.Response:
     current_url = _validate_proxy_url(url)
     for _ in range(MAX_REDIRECTS + 1):
@@ -112,7 +126,7 @@ async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts U
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "*/*",
-        "Referer": "/".join(url.split("/")[:3]) + "/",
+        "Referer": _referer_for_stream_url(url),
     }
     try:
         async with httpx.AsyncClient(timeout=30) as client:

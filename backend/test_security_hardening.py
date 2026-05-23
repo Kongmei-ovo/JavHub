@@ -48,6 +48,15 @@ class StreamSecurityTests(unittest.TestCase):
                 "https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8",
             )
 
+    def test_allows_hohoj_media_domain_used_by_hls_playlist(self):
+        with patch("routers.stream.socket.getaddrinfo", return_value=[
+            (0, 0, 0, "", ("93.184.216.34", 443)),
+        ]):
+            self.assertEqual(
+                stream._validate_proxy_url("https://video-5.ggjav.com/video/index.m3u8"),
+                "https://video-5.ggjav.com/video/index.m3u8",
+            )
+
     def test_allows_whitelisted_domain_resolving_to_proxy_fake_ip(self):
         with patch("routers.stream.socket.getaddrinfo", return_value=[
             (0, 0, 0, "", ("198.18.0.81", 443)),
@@ -56,6 +65,16 @@ class StreamSecurityTests(unittest.TestCase):
                 stream._validate_proxy_url("https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8"),
                 "https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8",
             )
+
+    def test_uses_source_referer_for_protected_hls_hosts(self):
+        self.assertEqual(
+            stream._referer_for_stream_url("https://surrit.com/video/index.m3u8"),
+            "https://missav.ai/",
+        )
+        self.assertEqual(
+            stream._referer_for_stream_url("https://video-5.ggjav.com/video/index.m3u8"),
+            "https://hohoj.tv/",
+        )
 
 
 class StreamRedirectSecurityTests(unittest.IsolatedAsyncioTestCase):
