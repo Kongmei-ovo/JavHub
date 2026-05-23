@@ -17,8 +17,12 @@ router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
 
 ALLOWED_STREAM_DOMAINS = {
     "jable.tv", "missav.ai", "surrit.com", "memojav.com",
-    "kanav.info", "hohoj.tv",
+    "kanav.info", "hohoj.tv", "mushroomtrack.com",
 }
+
+PROXY_FAKE_IP_NETWORKS = (
+    ipaddress.ip_network("198.18.0.0/15"),
+)
 
 MAX_REDIRECTS = 5
 
@@ -39,6 +43,10 @@ def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
         or ip.is_unspecified
         or ip.is_multicast
     )
+
+
+def _is_proxy_fake_ip(ip: ipaddress._BaseAddress) -> bool:
+    return any(ip in network for network in PROXY_FAKE_IP_NETWORKS)
 
 
 def _resolve_host_ips(hostname: str) -> set[ipaddress._BaseAddress]:
@@ -78,7 +86,7 @@ def _validate_proxy_url(url: str) -> str:
     if not _is_allowed_stream_domain(hostname):
         raise HTTPException(403, "URL 域名不在允许列表")
     for ip in _resolve_host_ips(hostname):
-        if _is_blocked_ip(ip):
+        if _is_blocked_ip(ip) and not _is_proxy_fake_ip(ip):
             raise HTTPException(403, "不允许访问私有网络")
     return parsed.geturl()
 

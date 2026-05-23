@@ -39,6 +39,24 @@ class StreamSecurityTests(unittest.TestCase):
                 "https://cdn.jable.tv/playlist.m3u8",
             )
 
+    def test_allows_jable_cdn_domain_used_by_hls_playlist(self):
+        with patch("routers.stream.socket.getaddrinfo", return_value=[
+            (0, 0, 0, "", ("93.184.216.34", 443)),
+        ]):
+            self.assertEqual(
+                stream._validate_proxy_url("https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8"),
+                "https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8",
+            )
+
+    def test_allows_whitelisted_domain_resolving_to_proxy_fake_ip(self):
+        with patch("routers.stream.socket.getaddrinfo", return_value=[
+            (0, 0, 0, "", ("198.18.0.81", 443)),
+        ]):
+            self.assertEqual(
+                stream._validate_proxy_url("https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8"),
+                "https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8",
+            )
+
 
 class StreamRedirectSecurityTests(unittest.IsolatedAsyncioTestCase):
     async def test_redirect_target_is_validated(self):
