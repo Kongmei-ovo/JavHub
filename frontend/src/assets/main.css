@@ -724,16 +724,11 @@ a:hover {
 .input::placeholder { color: var(--text-muted); }
 
 /* ===== Grid Layout ===== */
-.results-grid, .stats-bar {
+.results-grid {
   display: grid;
   gap: 24px !important;
   padding: 0 20px 40px;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-}
-
-.stats-bar {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  padding: 20px;
 }
 
 /* ===== Animations ===== */

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 const favorites = styleSource('./Favorites.vue')
 const magnetParse = styleSource('./MagnetParse.vue')
 const subscription = styleSource('./Subscription.vue')
+const globalStyles = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 
 function styleSource(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
@@ -43,4 +44,9 @@ test('magnet parser workbench surfaces use the global page rail', () => {
 test('subscription grid keeps the global page rail without local offsets', () => {
   assert.doesNotMatch(cssBlock(subscription, '.sub-page'), /--page-max\s*:/)
   assert.doesNotMatch(cssBlock(subscription, '.tab-content'), /padding\s*:\s*0\s+\d/)
+})
+
+test('global grid helpers do not offset the download task stats rail', () => {
+  assert.doesNotMatch(globalStyles, /\.results-grid\s*,\s*\.stats-bar/)
+  assert.doesNotMatch(globalStyles, /\.stats-bar\s*\{[\s\S]*?padding\s*:\s*20px/)
 })
