@@ -8,7 +8,7 @@
       </div>
       <div class="hero-stat-grid" aria-label="首要运营指标">
         <button
-          v-for="metric in statusMetrics.slice(0, 3)"
+          v-for="metric in statusMetrics"
           :key="metric.key"
           class="hero-stat"
           type="button"
@@ -34,21 +34,20 @@
     </div>
 
     <template v-else-if="overview">
-      <section class="status-strip" aria-label="运营待处理状态">
+      <nav class="operations-segments apple-surface" aria-label="运营总览视图">
         <button
-          v-for="metric in statusMetrics"
-          :key="metric.key"
-          class="status-cell"
+          v-for="segment in operationsSegments"
+          :key="segment.key"
           type="button"
-          @click="openStatusMetric(metric.key)"
+          :class="{ active: activeSegment === segment.key }"
+          @click="setActiveSegment(segment.key)"
         >
-          <span class="status-value">{{ metric.value }}</span>
-          <span class="status-label">{{ metric.label }}</span>
-          <small>{{ metric.hint }}</small>
+          <span>{{ segment.label }}</span>
+          <small>{{ segment.hint }}</small>
         </button>
-      </section>
+      </nav>
 
-      <section class="operations-workbench priority-board">
+      <section v-if="activeSegment === 'workbench'" class="operations-workbench priority-board" aria-label="处理">
         <article class="workbench-panel workbench-primary">
           <div class="panel-head">
             <div>
@@ -117,7 +116,63 @@
           </div>
         </article>
 
-        <aside class="system-column" aria-label="系统状态">
+        <aside class="workbench-side" aria-label="处理摘要">
+          <article class="workbench-panel automation-summary">
+            <div class="panel-head">
+              <div>
+                <h2>自动化摘要</h2>
+                <p>{{ candidateSchedule.disabled_reason || '策略、调度和映射保护。' }}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" @click="setActiveSegment('system')">系统状态</button>
+            </div>
+            <div class="state-grid compact-state-grid">
+              <button class="state-item" type="button" @click="$router.push('/settings')">
+                <span>当前策略</span>
+                <strong>{{ policyLabel(overview.automation?.download_policy) }}</strong>
+              </button>
+              <div class="state-item">
+                <span>调度</span>
+                <strong>{{ scheduleStatusLabel }}</strong>
+              </div>
+              <button class="state-item" type="button" @click="goLibraryOrganize('mapping')">
+                <span>自动匹配</span>
+                <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}</strong>
+              </button>
+              <div class="state-item">
+                <span>下一次</span>
+                <strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong>
+              </div>
+            </div>
+          </article>
+        </aside>
+
+        <article class="workbench-panel action-map-panel diagnostic-wide" aria-label="自动化工作台">
+          <div class="panel-head">
+            <div>
+              <h2>自动化工作台</h2>
+              <p>工作台路径把采集、映射、补全、下载和运行日志串起来。</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" :disabled="refreshingMissing" @click="refreshMissingCache">
+              {{ refreshingMissing ? '刷新中...' : '刷新缺失缓存' }}
+            </button>
+          </div>
+          <div class="action-grid action-grid-compact">
+            <button
+              v-for="action in workbenchActions"
+              :key="action.key"
+              class="action-card"
+              type="button"
+              @click="goWorkbenchAction(action)"
+            >
+              <span>{{ action.label }}</span>
+              <strong>{{ action.title }}</strong>
+              <small>{{ action.hint }}</small>
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <section v-else-if="activeSegment === 'system'" class="system-layout" aria-label="系统状态">
           <article class="workbench-panel health-panel" aria-label="初始化与健康检查">
             <div class="panel-head">
               <div>
@@ -202,35 +257,9 @@
               </div>
             </div>
           </article>
-        </aside>
       </section>
 
-      <section class="diagnostic-grid" aria-label="诊断与记录">
-        <article class="workbench-panel action-map-panel diagnostic-wide" aria-label="自动化工作台">
-          <div class="panel-head">
-            <div>
-              <h2>自动化工作台</h2>
-              <p>工作台路径把采集、映射、补全、下载和运行日志串起来。</p>
-            </div>
-            <button class="btn btn-ghost btn-sm" type="button" :disabled="refreshingMissing" @click="refreshMissingCache">
-              {{ refreshingMissing ? '刷新中...' : '刷新缺失缓存' }}
-            </button>
-          </div>
-          <div class="action-grid">
-            <button
-              v-for="action in workbenchActions"
-              :key="action.key"
-              class="action-card"
-              type="button"
-              @click="goWorkbenchAction(action)"
-            >
-              <span>{{ action.label }}</span>
-              <strong>{{ action.title }}</strong>
-              <small>{{ action.hint }}</small>
-            </button>
-          </div>
-        </article>
-
+      <section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid" aria-label="诊断与记录">
         <article class="workbench-panel">
             <div class="panel-head">
               <div>
@@ -374,6 +403,7 @@ export default {
       refreshingMissing: false,
       purgingCache: false,
       selectedCachePurgeScope: 'video',
+      activeSegment: 'workbench',
       cachePurgeScopes: [
         { value: 'video', label: '影片/搜索' },
         { value: 'response', label: '响应缓存' },
@@ -390,6 +420,13 @@ export default {
     operationsSummary() {
       if (!this.overview) return '库存、映射、补全和下载候选的闭环状态。'
       return `候选 ${this.overview.candidates?.candidate || 0} · 缺口 ${this.overview.missing?.total || 0} · 调度 ${this.scheduleStatusLabel}`
+    },
+    operationsSegments() {
+      return [
+        { key: 'workbench', label: '处理', hint: `${this.overview?.candidates?.candidate || 0} 个候选` },
+        { key: 'system', label: '系统状态', hint: this.healthStatusLabel },
+        { key: 'diagnostics', label: '诊断记录', hint: `${this.recentRuns.length} 次运行` },
+      ]
     },
     statusMetrics() {
       const candidates = this.overview?.candidates || {}
@@ -568,9 +605,24 @@ export default {
     },
   },
   mounted() {
+    this.activeSegment = this.segmentFromRoute()
     this.loadOverview()
   },
+  watch: {
+    '$route.query.tab'() {
+      this.activeSegment = this.segmentFromRoute()
+    },
+  },
   methods: {
+    segmentFromRoute() {
+      const tab = this.$route.query.tab
+      return ['workbench', 'system', 'diagnostics'].includes(tab) ? tab : 'workbench'
+    },
+    setActiveSegment(segment) {
+      if (!['workbench', 'system', 'diagnostics'].includes(segment)) return
+      this.activeSegment = segment
+      this.$router.replace({ query: { ...this.$route.query, tab: segment } })
+    },
     async loadOverview() {
       this.loading = true
       this.error = ''
@@ -766,6 +818,7 @@ export default {
 
 .header-actions {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -775,70 +828,6 @@ export default {
   min-height: 34px;
   padding: 7px 12px;
   font-size: 12px;
-}
-
-.status-strip {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  overflow: hidden;
-  margin-bottom: 12px;
-  border: 1px solid var(--operations-line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-card);
-  box-shadow: var(--shadow-card);
-}
-
-.status-cell {
-  min-width: 0;
-  min-height: 64px;
-  padding: 10px 12px;
-  border: 0;
-  border-right: 1px solid var(--operations-line);
-  background: transparent;
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--motion-fast), color var(--motion-fast);
-}
-
-.status-cell:last-child {
-  border-right: 0;
-}
-
-.status-cell:hover {
-  background: var(--surface-control);
-}
-
-.status-value {
-  display: block;
-  margin-bottom: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--type-section-title);
-  font-weight: 650;
-  line-height: 1;
-  color: var(--text-primary);
-}
-
-.status-label {
-  display: block;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-cell small {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .health-panel {
@@ -1373,8 +1362,8 @@ button.state-item {
 
 .operations-hero {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(340px, 0.8fr) auto;
-  align-items: stretch;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(520px, 1.1fr) auto;
+  align-items: start;
   gap: var(--operations-panel-gap);
   min-height: unset;
   margin-bottom: var(--operations-panel-gap);
@@ -1406,14 +1395,74 @@ button.state-item {
 
 .hero-stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
   min-width: 0;
 }
 
+.operations-segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: var(--operations-panel-gap);
+  padding: 4px;
+  border: 1px solid var(--operations-soft-line);
+  border-radius: var(--radius-lg);
+  background: var(--material-glass-control);
+  box-shadow: none;
+}
+
+.operations-segments button {
+  min-width: 0;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.operations-segments button:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  color: var(--text-primary);
+}
+
+.operations-segments button.active {
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.operations-segments span,
+.operations-segments small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-segments span {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.operations-segments small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 .hero-stat {
   min-width: 0;
-  min-height: 76px;
+  min-height: 70px;
   padding: 12px;
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-lg);
@@ -1449,41 +1498,27 @@ button.state-item {
   white-space: nowrap;
 }
 
-.status-strip {
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 1px;
-  margin-bottom: var(--operations-panel-gap);
-  border-color: var(--operations-soft-line);
-  background: var(--operations-soft-line);
-  box-shadow: none;
-}
-
-.status-cell {
-  min-height: 68px;
-  padding: 11px 12px;
-  border-right: 0;
-  background: var(--material-glass-control);
-}
-
-.status-cell:hover {
-  background: var(--material-glass-control-hover);
-}
-
-.status-value {
-  font-size: 18px;
-}
-
 .priority-board {
   grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
   gap: var(--operations-panel-gap);
   margin-bottom: var(--operations-panel-gap);
 }
 
-.system-column,
+.workbench-side,
+.system-layout,
 .diagnostic-grid {
   display: grid;
   gap: var(--operations-panel-gap);
   min-width: 0;
+}
+
+.system-layout {
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  align-items: start;
+}
+
+.workbench-side {
+  align-self: start;
 }
 
 .workbench-panel,
@@ -1567,6 +1602,10 @@ button.state-item {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.compact-state-grid {
+  grid-template-columns: 1fr;
+}
+
 .diagnostic-wide {
   grid-column: span 2;
 }
@@ -1625,31 +1664,19 @@ button.state-item {
     width: 100%;
   }
 
+  .operations-segments {
+    grid-template-columns: 1fr;
+  }
+
   .header-actions,
   .panel-actions {
     justify-content: flex-start;
   }
 
-  .status-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .status-cell {
-    border-right: 1px solid var(--operations-line);
-    border-bottom: 1px solid var(--operations-line);
-  }
-
-  .status-cell:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .status-cell:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
-
   .operations-workbench,
   .action-grid,
   .diagnostic-grid,
+  .system-layout,
   .queue-overview,
   .queue-grid {
     grid-template-columns: 1fr;
