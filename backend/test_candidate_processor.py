@@ -1,28 +1,13 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class CandidateProcessorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_classify_candidate_error_maps_retry_metadata(self):
         from services import candidate_processor
 
@@ -411,7 +396,7 @@ class CandidateProcessorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rows[0]["events"][0]["detail"], "manual policy")
 
 
-class InventoryFillBehaviorTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class InventoryFillBehaviorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_fill_video_keeps_missing_fact_after_candidate_created(self):
         from database import add_missing_video, get_missing_videos, list_download_candidates
         from routers.inventory import fill_video

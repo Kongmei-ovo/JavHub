@@ -1,24 +1,13 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from routers import authors
-from services import cache
+from test_support.cache import FakeRedisMixin
 
 
-class AuthorsRouterTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class AuthorsRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_list_authors_caches_by_query_params(self):
         mock_client = AsyncMock()

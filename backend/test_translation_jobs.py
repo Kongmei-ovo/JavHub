@@ -1,27 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class TranslationJobsTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class TranslationJobsTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_title_stats_ignore_legacy_empty_string_title_json(self):
         from database import get_all_translations, get_db, get_translation_count, upsert_translation
 

@@ -9,11 +9,15 @@ Back up these items before upgrades, host moves, or destructive maintenance:
 
 - `config.yaml`: runtime settings and secrets. In Compose this is mounted at
   `/app/config.yaml` through `JAVHUB_CONFIG_PATH=/app/config.yaml`.
-- `data/`: JavHub's local runtime directory. It includes the main SQLite
-  database at `data/avdownloader.db`, SQLite WAL/SHM sidecar files when present,
-  logs, import job state, and other local runtime files.
-- `javinfo-postgres`: the Compose PostgreSQL volume used by JavInfoApi and the
-  JavHub import workflow. The default database is `r18`.
+- `data/`: JavHub's local runtime directory. It includes logs, import job state,
+  legacy SQLite backup files if you still have them, and other local runtime
+  files. JavHub runtime state is no longer read from SQLite.
+- PostgreSQL databases:
+  - `r18`: JavInfoApi metadata and the JavHub JavInfo import target.
+  - `javhub`: JavHub state such as subscriptions, favorites, downloads,
+    translations, inventory, logs, and local workflow history.
+- `javinfo-postgres`: the Compose PostgreSQL volume containing both `r18` and
+  `javhub` in the default deployment.
 - `javhub-redis`: the Compose Redis volume. Redis is used as a cache in the
   default Compose deployment. It is useful for warm cache recovery but is not a
   primary source of truth.
@@ -23,8 +27,8 @@ Back up these items before upgrades, host moves, or destructive maintenance:
 ## Local Backup
 
 Stop local services or make sure no write-heavy jobs are running before copying
-SQLite files. The project helper keeps the LaunchAgent-managed services in a
-known state:
+runtime files and dumping PostgreSQL. The project helper keeps the
+LaunchAgent-managed services in a known state:
 
 ```bash
 scripts/services.sh status
@@ -40,6 +44,20 @@ tar -czf "backups/${stamp}/javhub-local.tgz" \
   config.yaml \
   data
 test -f .env && cp .env "backups/${stamp}/.env"
+
+pg_dump -h "${DB_HOST:-localhost}" \
+  -p "${DB_PORT:-5432}" \
+  -U "${DB_USER:-kongmei}" \
+  -d "${DB_NAME:-r18}" \
+  --format=custom \
+  --file="backups/${stamp}/javinfo-r18.dump"
+
+pg_dump -h "${JAVHUB_DB_HOST:-localhost}" \
+  -p "${JAVHUB_DB_PORT:-5432}" \
+  -U "${JAVHUB_DB_USER:-kongmei}" \
+  -d "${JAVHUB_DB_NAME:-javhub}" \
+  --format=custom \
+  --file="backups/${stamp}/javhub-state.dump"
 ```
 
 Restart services and verify health:
@@ -52,8 +70,8 @@ curl -fsS http://127.0.0.1:18090/health
 
 ## Docker Compose Backup
 
-From the repository root, capture configuration, local data, PostgreSQL, and
-Redis:
+From the repository root, capture configuration, local runtime files,
+PostgreSQL, and Redis:
 
 ```bash
 stamp="$(date +%Y%m%d-%H%M%S)"
@@ -67,10 +85,19 @@ docker compose exec -T postgres pg_dump \
   -U "${POSTGRES_USER:-javhub}" \
   -d "${POSTGRES_DB:-r18}" \
   --format=custom \
-  --file=/tmp/javinfo-postgres.dump
-docker compose cp postgres:/tmp/javinfo-postgres.dump \
-  "backups/${stamp}/javinfo-postgres.dump"
-docker compose exec -T postgres rm -f /tmp/javinfo-postgres.dump
+  --file=/tmp/javinfo-r18.dump
+docker compose cp postgres:/tmp/javinfo-r18.dump \
+  "backups/${stamp}/javinfo-r18.dump"
+docker compose exec -T postgres rm -f /tmp/javinfo-r18.dump
+
+docker compose exec -T postgres pg_dump \
+  -U "${POSTGRES_USER:-javhub}" \
+  -d "${JAVHUB_DB_NAME:-javhub}" \
+  --format=custom \
+  --file=/tmp/javhub-state.dump
+docker compose cp postgres:/tmp/javhub-state.dump \
+  "backups/${stamp}/javhub-state.dump"
+docker compose exec -T postgres rm -f /tmp/javhub-state.dump
 
 docker compose exec -T redis redis-cli BGSAVE
 docker compose cp redis:/data/dump.rdb "backups/${stamp}/redis-dump.rdb"
@@ -108,7 +135,8 @@ scripts/services.sh ensure
 ```
 
 If you are restoring the `javhub-data.tgz` archive from a Compose backup into a
-local instance, restore the split files instead:
+local instance, restore the split files instead. Then restore the two
+PostgreSQL dumps:
 
 ```bash
 scripts/services.sh stop
@@ -116,6 +144,22 @@ scripts/services.sh stop
 tar -xzf backups/<stamp>/javhub-data.tgz
 cp backups/<stamp>/config.yaml config.yaml
 test -f backups/<stamp>/.env && cp backups/<stamp>/.env .env
+
+pg_restore -h "${DB_HOST:-localhost}" \
+  -p "${DB_PORT:-5432}" \
+  -U "${DB_USER:-kongmei}" \
+  -d "${DB_NAME:-r18}" \
+  --clean \
+  --if-exists \
+  backups/<stamp>/javinfo-r18.dump
+
+pg_restore -h "${JAVHUB_DB_HOST:-localhost}" \
+  -p "${JAVHUB_DB_PORT:-5432}" \
+  -U "${JAVHUB_DB_USER:-kongmei}" \
+  -d "${JAVHUB_DB_NAME:-javhub}" \
+  --clean \
+  --if-exists \
+  backups/<stamp>/javhub-state.dump
 
 scripts/services.sh ensure
 ```
@@ -138,15 +182,25 @@ Start PostgreSQL first, then restore its data:
 ```bash
 docker compose up -d postgres
 
-docker compose cp backups/<stamp>/javinfo-postgres.dump \
-  postgres:/tmp/javinfo-postgres.dump
+docker compose cp backups/<stamp>/javinfo-r18.dump \
+  postgres:/tmp/javinfo-r18.dump
 docker compose exec -T postgres pg_restore \
   -U "${POSTGRES_USER:-javhub}" \
   -d "${POSTGRES_DB:-r18}" \
   --clean \
   --if-exists \
-  /tmp/javinfo-postgres.dump
-docker compose exec -T postgres rm -f /tmp/javinfo-postgres.dump
+  /tmp/javinfo-r18.dump
+docker compose exec -T postgres rm -f /tmp/javinfo-r18.dump
+
+docker compose cp backups/<stamp>/javhub-state.dump \
+  postgres:/tmp/javhub-state.dump
+docker compose exec -T postgres pg_restore \
+  -U "${POSTGRES_USER:-javhub}" \
+  -d "${JAVHUB_DB_NAME:-javhub}" \
+  --clean \
+  --if-exists \
+  /tmp/javhub-state.dump
+docker compose exec -T postgres rm -f /tmp/javhub-state.dump
 ```
 
 Redis is a cache, so the safest restore path is usually to let it start empty.
@@ -193,7 +247,10 @@ docker compose up -d
 ## Import Jobs and Health Checks
 
 JavInfo database imports are coordinated by JavHub and write into the same
-PostgreSQL database used by JavInfoApi. Before taking a backup, avoid starting a
+PostgreSQL database used by JavInfoApi, usually `r18`. JavHub runtime state is
+kept in a separate PostgreSQL database, usually `javhub`, so replacing `r18`
+during an import does not replace subscriptions, favorites, download candidates,
+translation jobs, inventory, or logs. Before taking a backup, avoid starting a
 new import and let active imports finish or cancel them from the UI. After a
 restore, check the import page for interrupted jobs before uploading a new dump.
 
@@ -208,6 +265,9 @@ curl -fsS http://127.0.0.1:18080/health
 docker compose exec -T postgres pg_isready \
   -U "${POSTGRES_USER:-javhub}" \
   -d "${POSTGRES_DB:-r18}"
+docker compose exec -T postgres pg_isready \
+  -U "${POSTGRES_USER:-javhub}" \
+  -d "${JAVHUB_DB_NAME:-javhub}"
 docker compose exec -T redis redis-cli ping
 ```
 
@@ -221,8 +281,8 @@ curl -fsS http://127.0.0.1:8080/health
 ```
 
 The JavHub `/health` endpoint confirms the web/backend process is responding.
-Use `/health/readiness` when you also want configuration, SQLite, JavInfo, and
-cache status details:
+Use `/health/readiness` when you also want configuration, PostgreSQL, JavInfo,
+Redis/cache, and scheduler status details:
 
 ```bash
 curl -fsS http://127.0.0.1:3000/health/readiness

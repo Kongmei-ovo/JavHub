@@ -1,27 +1,12 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class TelegramSearchHandlerTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class TelegramSearchHandlerTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_search_handler_builds_caption_with_total_pages(self):
         from telegram_bot.handlers.search import search_handler
 

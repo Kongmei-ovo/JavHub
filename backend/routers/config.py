@@ -40,6 +40,7 @@ router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'notification', 'scheduler',
+                  'database',
                   'ai',
                   'automation', 'actor_mapping', 'translation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}

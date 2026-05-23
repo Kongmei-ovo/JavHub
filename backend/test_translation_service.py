@@ -1,28 +1,14 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from urllib.parse import parse_qs
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
-class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class TranslatorServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     def service(self):
         from translations.service import TranslatorService
 
@@ -290,9 +276,9 @@ class TranslatorServiceTest(TempDbMixin, unittest.IsolatedAsyncioTestCase):
 
         with get_db() as conn:
             row = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'translation_mappings'"
+                "SELECT to_regclass('public.translation_mappings') AS name"
             ).fetchone()
-        self.assertIsNotNone(row)
+        self.assertEqual(row["name"], "translation_mappings")
 
     async def test_bulk_translation_lookup_caches_direct_and_fallback_misses(self):
         import database.translation as translation_module

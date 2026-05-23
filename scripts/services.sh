@@ -142,6 +142,22 @@ EOF
     <string>${ROOT_DIR}/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>PYTHONUNBUFFERED</key>
     <string>1</string>
+    <key>JAVHUB_DB_HOST</key>
+    <string>${JAVHUB_DB_HOST:-localhost}</string>
+    <key>JAVHUB_DB_PORT</key>
+    <string>${JAVHUB_DB_PORT:-5432}</string>
+    <key>JAVHUB_DB_USER</key>
+    <string>${JAVHUB_DB_USER:-kongmei}</string>
+    <key>JAVHUB_DB_PASSWORD</key>
+    <string>${JAVHUB_DB_PASSWORD:-}</string>
+    <key>JAVHUB_DB_NAME</key>
+    <string>${JAVHUB_DB_NAME:-javhub}</string>
+    <key>JAVHUB_CACHE_BACKEND</key>
+    <string>${JAVHUB_CACHE_BACKEND:-redis}</string>
+    <key>JAVHUB_REDIS_URL</key>
+    <string>${JAVHUB_REDIS_URL:-redis://127.0.0.1:6379/0}</string>
+    <key>JAVHUB_REDIS_PREFIX</key>
+    <string>${JAVHUB_REDIS_PREFIX:-javhub-cache}</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

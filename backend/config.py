@@ -481,6 +481,29 @@ class Config:
         return self._config.get('javinfo', {})
 
     @property
+    def javhub_database(self) -> dict:
+        database_cfg = self._config.get('database', {}) if isinstance(self._config.get('database'), dict) else {}
+        defaults = {
+            'host': os.getenv('JAVHUB_DB_HOST') or database_cfg.get('host') or 'localhost',
+            'port': os.getenv('JAVHUB_DB_PORT') or database_cfg.get('port') or '5432',
+            'database': os.getenv('JAVHUB_DB_NAME') or database_cfg.get('database') or 'javhub',
+            'maintenance_database': (
+                os.getenv('JAVHUB_DB_MAINTENANCE_DATABASE')
+                or database_cfg.get('maintenance_database')
+                or 'postgres'
+            ),
+            'user': os.getenv('JAVHUB_DB_USER') or database_cfg.get('user') or 'kongmei',
+            'password': os.getenv('JAVHUB_DB_PASSWORD') or database_cfg.get('password') or '',
+        }
+        try:
+            defaults['port'] = int(defaults.get('port') or 5432)
+        except Exception:
+            defaults['port'] = 5432
+        for key in ('host', 'database', 'maintenance_database', 'user', 'password'):
+            defaults[key] = str(defaults.get(key) or '').strip()
+        return defaults
+
+    @property
     def javinfo_import_db(self) -> dict:
         env_overrides = {
             'host': _first_env('', 'DB_HOST', 'POSTGRES_HOST'),

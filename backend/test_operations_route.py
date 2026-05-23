@@ -1,32 +1,13 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
+from test_support.cache import FakeRedisMixin
 
-class OperationsRouteTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.cache_db_path = Path(self.tmp.name) / "cache.sqlite3"
-        self.cache_patch = patch("services.cache._db_path", self.cache_db_path)
-        self.cache_patch.start()
 
-        from services import cache
-
-        cache.reset_backend()
-        cache.reset_metrics()
-
-    def tearDown(self):
-        from services import cache
-
-        cache.purge_response_cache()
-        cache.reset_backend()
-        self.cache_patch.stop()
-        self.tmp.cleanup()
-
+class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_overview_uses_short_response_cache_for_expensive_dependencies(self):
         from routers import operations
         from services import cache

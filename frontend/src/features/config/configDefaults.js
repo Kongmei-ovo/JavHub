@@ -1,5 +1,13 @@
 export const DEFAULT_CONFIG = {
   openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
+  database: {
+    host: 'postgres',
+    port: 5432,
+    database: 'javhub',
+    maintenance_database: 'postgres',
+    user: 'javhub',
+    password: '',
+  },
   downloaders: { default_id: 'openlist', clients: [] },
   emby: { api_url: '', api_key: '' },
   telegram: { bot_token: '', allowed_user_ids: [] },

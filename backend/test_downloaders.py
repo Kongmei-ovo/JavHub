@@ -1,24 +1,9 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
+from test_support.postgres import TempPostgresMixin
 
 
 class DownloaderConfigTests(unittest.TestCase):
@@ -171,7 +156,7 @@ class DownloaderDuplicateAwareClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls["add"], 1)
 
 
-class DownloaderServiceTests(TempDbMixin, unittest.IsolatedAsyncioTestCase):
+class DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_create_task_records_selected_downloader(self):
         from database import get_download_tasks
         from services.downloader import downloader_service

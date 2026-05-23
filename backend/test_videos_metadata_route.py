@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from fastapi.routing import APIRoute
 from routers import videos
 from routers.videos import router, search_videos
-from services import cache
+from test_support.cache import FakeRedisMixin
 
 
 def _search_kwargs(**overrides):
@@ -46,16 +44,7 @@ def _search_kwargs(**overrides):
     return params
 
 
-class VideosMetadataRouteTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     def test_metadata_route_is_not_registered(self):
         paths = [route.path for route in router.routes if isinstance(route, APIRoute)]

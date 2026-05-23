@@ -10,6 +10,36 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 class SourceConfigTests(unittest.TestCase):
+    def test_javhub_database_uses_dedicated_env_without_polluting_javinfo_import(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {}
+
+        env = {
+            "DB_HOST": "metadata-postgres",
+            "DB_PORT": "15432",
+            "DB_USER": "javinfo-user",
+            "DB_PASSWORD": "javinfo-secret",
+            "DB_NAME": "r18",
+            "JAVHUB_DB_HOST": "state-postgres",
+            "JAVHUB_DB_PORT": "25432",
+            "JAVHUB_DB_USER": "javhub-user",
+            "JAVHUB_DB_PASSWORD": "javhub-secret",
+            "JAVHUB_DB_NAME": "javhub",
+        }
+
+        with patch.dict(os.environ, env, clear=False):
+            self.assertEqual(cfg.javhub_database["host"], "state-postgres")
+            self.assertEqual(cfg.javhub_database["port"], 25432)
+            self.assertEqual(cfg.javhub_database["user"], "javhub-user")
+            self.assertEqual(cfg.javhub_database["password"], "javhub-secret")
+            self.assertEqual(cfg.javhub_database["database"], "javhub")
+
+            self.assertEqual(cfg.javinfo_import_db["host"], "metadata-postgres")
+            self.assertEqual(cfg.javinfo_import_db["database"], "r18")
+            self.assertEqual(cfg.javinfo_import_db["user"], "javinfo-user")
+
     def test_sanitizer_removes_nested_source_api_keys(self):
         from routers.config import _sanitize_config
 

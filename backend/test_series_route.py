@@ -1,23 +1,12 @@
 from __future__ import annotations
 
 import unittest
-import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from services import cache
+from test_support.cache import FakeRedisMixin
 
 
-class SeriesRouteTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tempdir.name) / "cache.sqlite3"
-        self.patch = patch.object(cache, "_db_path", self.db_path)
-        self.patch.start()
-
-    def tearDown(self):
-        self.patch.stop()
-        self.tempdir.cleanup()
+class SeriesRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_series_route_uses_paged_client_call(self):
         from routers.series import list_series

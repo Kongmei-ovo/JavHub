@@ -443,7 +443,7 @@ test('getCacheStats sends GET to cache stats path', async (t) => {
   let capturedConfig = null
   axios.defaults.adapter = async (config) => {
     capturedConfig = config
-    return { config, status: 200, statusText: 'OK', headers: {}, data: { backend: 'sqlite' } }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { backend: 'redis' } }
   }
   t.after(() => { axios.defaults.adapter = originalAdapter })
 
@@ -530,7 +530,7 @@ test('health check returns readiness summary fields used by operations', async (
         config: { loaded: false },
         database: { connectable: true },
         javinfo: { api_url_configured: true },
-        cache: { backend: 'sqlite', active_entries: 2, total_entries: 3 },
+        cache: { backend: 'redis', active_entries: 2, total_entries: 3 },
       },
     }
   }
@@ -545,7 +545,7 @@ test('health check returns readiness summary fields used by operations', async (
   assert.equal(response.data.config.loaded, false)
   assert.equal(response.data.database.connectable, true)
   assert.equal(response.data.javinfo.api_url_configured, true)
-  assert.equal(response.data.cache.backend, 'sqlite')
+  assert.equal(response.data.cache.backend, 'redis')
 })
 
 test('startSupplementFilmographyJob sends POST to correct path', async (t) => {

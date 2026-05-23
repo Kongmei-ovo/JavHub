@@ -4,7 +4,7 @@ import httpx
 from fastapi import APIRouter
 
 from config import LEGACY_JAVINFO_API_URLS, config
-from database.base import DB_PATH, get_db_orig
+from database.base import get_db_orig
 from services import cache
 
 router = APIRouter(tags=["health"])
@@ -23,10 +23,14 @@ def _config_status() -> dict[str, Any]:
 
 
 def _database_status() -> dict[str, Any]:
+    db_cfg = config.javhub_database
     result = {
-        "backend": "sqlite",
+        "backend": "postgres",
         "connectable": False,
-        "path": str(DB_PATH),
+        "host": str(db_cfg.get("host") or ""),
+        "port": int(db_cfg.get("port") or 5432),
+        "database": str(db_cfg.get("database") or ""),
+        "user": str(db_cfg.get("user") or ""),
         "error": "",
     }
     conn = None

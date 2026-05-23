@@ -30,9 +30,8 @@ class HealthRouteTest(unittest.TestCase):
 
     def test_readiness_returns_dependency_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
-            db_path = Path(tmp) / "app.sqlite3"
             cache_stats = {
-                "backend": "sqlite",
+                "backend": "redis",
                 "active_entries": 4,
                 "expired_entries": 1,
                 "total_entries": 5,
@@ -58,6 +57,13 @@ class HealthRouteTest(unittest.TestCase):
                 openlist_password="",
                 openlist_token="",
                 openlist_default_path="",
+                javhub_database={
+                    "host": "state-postgres",
+                    "port": 5432,
+                    "database": "javhub",
+                    "user": "javhub",
+                    "password": "",
+                },
             )
 
             cache_module = SimpleNamespace(get_stats=Mock(return_value=cache_stats))
@@ -71,7 +77,6 @@ class HealthRouteTest(unittest.TestCase):
             }
 
             with patch("routers.health.config", cfg, create=True), \
-                patch("routers.health.DB_PATH", db_path, create=True), \
                 patch("routers.health.get_db_orig", create=True) as get_db_orig, \
                 patch("routers.health.cache", cache_module, create=True), \
                 patch("routers.health._probe_javinfo", new=AsyncMock(return_value={"reachable": True, "version": "1.2.3", "error": ""})), \
@@ -88,9 +93,12 @@ class HealthRouteTest(unittest.TestCase):
                     "path": str(cfg.config_path),
                 },
                 "database": {
-                    "backend": "sqlite",
+                    "backend": "postgres",
                     "connectable": True,
-                    "path": str(db_path),
+                    "host": "state-postgres",
+                    "port": 5432,
+                    "database": "javhub",
+                    "user": "javhub",
                     "error": "",
                 },
                 "javinfo": {
@@ -102,7 +110,7 @@ class HealthRouteTest(unittest.TestCase):
                     "error": "",
                 },
                 "cache": {
-                    "backend": "sqlite",
+                    "backend": "redis",
                     "active_entries": 4,
                     "expired_entries": 1,
                     "total_entries": 5,
@@ -143,6 +151,13 @@ class HealthRouteTest(unittest.TestCase):
             openlist_password="",
             openlist_token="",
             openlist_default_path="",
+            javhub_database={
+                "host": "state-postgres",
+                "port": 5432,
+                "database": "javhub",
+                "user": "javhub",
+                "password": "",
+            },
         )
         db_conn = Mock()
         db_conn.execute.side_effect = RuntimeError("database locked")
@@ -150,7 +165,6 @@ class HealthRouteTest(unittest.TestCase):
         cache_module = SimpleNamespace(get_stats=Mock(side_effect=cache_error))
 
         with patch("routers.health.config", cfg, create=True), \
-            patch("routers.health.DB_PATH", Path("/tmp/avdownloader.db"), create=True), \
             patch("routers.health.get_db_orig", Mock(return_value=db_conn), create=True), \
             patch("routers.health.cache", cache_module, create=True), \
                 patch("routers.health._probe_javinfo", new=AsyncMock(return_value={"reachable": False, "version": "", "error": "api url not configured"})), \
@@ -174,9 +188,12 @@ class HealthRouteTest(unittest.TestCase):
             "path": "/missing/config.yaml",
         })
         self.assertEqual(body["database"], {
-            "backend": "sqlite",
+            "backend": "postgres",
             "connectable": False,
-            "path": "/tmp/avdownloader.db",
+            "host": "state-postgres",
+            "port": 5432,
+            "database": "javhub",
+            "user": "javhub",
             "error": "database locked",
         })
         self.assertEqual(body["javinfo"], {
@@ -235,13 +252,23 @@ class HealthRouteTest(unittest.TestCase):
                 },
             },
             openlist_api_url="",
+            openlist_username="",
+            openlist_password="",
+            openlist_token="",
+            openlist_default_path="",
+            javhub_database={
+                "host": "state-postgres",
+                "port": 5432,
+                "database": "javhub",
+                "user": "javhub",
+                "password": "",
+            },
         )
 
         with patch("routers.health.config", cfg, create=True), \
-            patch("routers.health.DB_PATH", Path("/tmp/avdownloader.db"), create=True), \
             patch("routers.health.get_db_orig", create=True), \
             patch("routers.health.cache", SimpleNamespace(get_stats=Mock(return_value={
-                "backend": "sqlite",
+                "backend": "redis",
                 "active_entries": 1,
                 "expired_entries": 0,
                 "total_entries": 1,

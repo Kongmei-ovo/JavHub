@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
-from pathlib import Path
 from typing import Any
 
 from services import cache
@@ -44,23 +42,8 @@ def _exercise_cache_backend(label: str) -> dict[str, Any]:
     return {"backend": stats["backend"], "entries_before_purge": stats["total_entries"], "purged": purged}
 
 
-def _run_sqlite_smoke() -> dict[str, Any]:
-    with tempfile.TemporaryDirectory() as tempdir:
-        original_db_path = cache._db_path
-        original_backend = os.environ.pop("JAVHUB_CACHE_BACKEND", None)
-        try:
-            cache._db_path = Path(tempdir) / "cache-smoke.sqlite3"
-            return _exercise_cache_backend("sqlite")
-        finally:
-            cache._db_path = original_db_path
-            if original_backend is not None:
-                os.environ["JAVHUB_CACHE_BACKEND"] = original_backend
-            cache.reset_backend()
-
-
-def _run_redis_smoke_if_requested() -> dict[str, Any] | None:
-    if os.getenv("JAVHUB_CACHE_BACKEND", "").strip().lower() != "redis":
-        return None
+def _run_redis_smoke() -> dict[str, Any]:
+    os.environ["JAVHUB_CACHE_BACKEND"] = "redis"
     if not os.getenv("JAVHUB_REDIS_URL", "").strip():
         raise RuntimeError("JAVHUB_CACHE_BACKEND=redis requires JAVHUB_REDIS_URL")
 
@@ -72,21 +55,10 @@ def _run_redis_smoke_if_requested() -> dict[str, Any] | None:
 
 
 def main() -> int:
-    sqlite_result = _run_sqlite_smoke()
-    print(
-        "sqlite smoke ok: "
-        f"entries_before_purge={sqlite_result['entries_before_purge']} "
-        f"purged={sqlite_result['purged']}"
-    )
-
     try:
-        redis_result = _run_redis_smoke_if_requested()
+        redis_result = _run_redis_smoke()
     except Exception as exc:
         print(f"redis smoke skipped: unable to connect or initialize Redis ({exc})")
-        return 0
-
-    if redis_result is None:
-        print("redis smoke skipped: set JAVHUB_CACHE_BACKEND=redis and JAVHUB_REDIS_URL to run it")
         return 0
 
     print(
