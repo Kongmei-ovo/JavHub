@@ -1,28 +1,11 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
+
+from test_support.postgres import TempPostgresMixin
 
 
-class TempDbMixin:
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmp.name) / "test.db"
-        self.base_patch = patch("database.base.DB_PATH", self.db_path)
-        self.base_patch.start()
-
-        from database import init_db
-
-        init_db()
-
-    def tearDown(self):
-        self.base_patch.stop()
-        self.tmp.cleanup()
-
-
-class SubscriptionDatabaseTest(TempDbMixin, unittest.TestCase):
+class SubscriptionDatabaseTest(TempPostgresMixin, unittest.TestCase):
     def test_cleanup_removes_disabled_subscription_rows(self):
         from database import add_subscription, cleanup_legacy_subscriptions, get_subscriptions, update_subscription
 
