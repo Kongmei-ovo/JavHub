@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from fastapi.params import Query as QueryParam
 
 from config import config
 from database import (
@@ -23,7 +24,10 @@ _CACHE_TTL = 15
 
 
 @router.get("/overview")
-async def operations_overview() -> dict[str, Any]:
+async def operations_overview(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
+    cache_bypass = cache.should_bypass_response_cache(_cache_control)
+
     async def produce() -> dict[str, Any]:
         snapshot_key = get_latest_snapshot_key()
         snapshot_actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
@@ -89,6 +93,14 @@ async def operations_overview() -> dict[str, Any]:
             "supplement": supplement,
         }
 
+    if cache_bypass:
+        return await cache.get_or_set_response(
+            _CACHE_NAMESPACE,
+            {},
+            produce,
+            ttl=_CACHE_TTL,
+            bypass=True,
+        )
     return await cache.get_or_set_response(_CACHE_NAMESPACE, {}, produce, ttl=_CACHE_TTL)
 
 

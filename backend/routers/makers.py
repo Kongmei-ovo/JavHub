@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+from fastapi.params import Query as QueryParam
 from modules.info_client import get_info_client
 from services import cache
 from translations import get_translator_service
@@ -12,13 +13,25 @@ async def list_makers(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None),
+    cache_control: str | None = Query(None, alias="cache"),
 ):
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
+    cache_bypass = cache.should_bypass_response_cache(_cache_control)
     include_total = False
     cache_params = {"q": q, "page": page, "page_size": page_size, "include_total": include_total}
 
     async def produce():
         client = get_info_client()
-        result = await client.list_makers_page(q=q, page=page, page_size=page_size, include_total=include_total)
+        if cache_bypass:
+            result = await client.list_makers_page(
+                q=q,
+                page=page,
+                page_size=page_size,
+                include_total=include_total,
+                cache_bypass=True,
+            )
+        else:
+            result = await client.list_makers_page(q=q, page=page, page_size=page_size, include_total=include_total)
         if isinstance(result, dict):
             page_items = result.get("data", []) if isinstance(result.get("data"), list) else []
         else:
@@ -43,4 +56,10 @@ async def list_makers(
         )
         return result
 
-    return await cache.get_or_set_response(_CACHE_NAMESPACE, cache_params, produce, ttl=_CACHE_TTL)
+    return await cache.get_or_set_response(
+        _CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_CACHE_TTL,
+        bypass=cache_bypass,
+    )

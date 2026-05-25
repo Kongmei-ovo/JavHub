@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi.params import Query as QueryParam
 from fastapi.responses import StreamingResponse
 import json
 import io
@@ -469,16 +470,25 @@ async def translation_stats(mapping_type: str):
 
 
 @router.get("/stats")
-async def all_stats():
+async def all_stats(cache_control: str | None = Query(None, alias="cache")):
     """获取所有翻译类型的统计"""
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
+    cache_bypass = cache.should_bypass_response_cache(_cache_control)
+
     async def produce():
         stats = {t: get_translation_count(t) for t in VALID_TYPES}
         info = get_info_client()
         totals: dict[str, int] = {}
-        total_results = await asyncio.gather(
-            *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
-            return_exceptions=True,
-        )
+        if cache_bypass:
+            total_results = await asyncio.gather(
+                *(info.get_total_count(path, cache_bypass=True) for path in TOTAL_ENDPOINTS.values()),
+                return_exceptions=True,
+            )
+        else:
+            total_results = await asyncio.gather(
+                *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
+                return_exceptions=True,
+            )
         for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results):
             totals[mapping_type] = 0 if isinstance(result, Exception) else int(result or 0)
 
@@ -541,6 +551,14 @@ async def all_stats():
         }
         return stats
 
+    if cache_bypass:
+        return await cache.get_or_set_response(
+            _STATS_CACHE_NAMESPACE,
+            {},
+            produce,
+            ttl=_STATS_CACHE_TTL,
+            bypass=True,
+        )
     return await cache.get_or_set_response(_STATS_CACHE_NAMESPACE, {}, produce, ttl=_STATS_CACHE_TTL)
 
 

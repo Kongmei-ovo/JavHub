@@ -178,6 +178,14 @@ test('actor portrait cards unify favorites subscriptions and supplement actor pi
   assert.match(supplementActorPicker, /action-label="选择"/)
 })
 
+test('supplement actor picker distinguishes empty recent jobs from load failures', () => {
+  assert.match(supplement, /actorPickerError:\s*''/)
+  assert.match(supplement, /actorPickerLoadFailed\(\)/)
+  assert.match(supplementActorPicker, /error \? '补全队列不可用' : '暂无可选演员'/)
+  assert.match(supplement, /:error="actorPickerLoadFailed\(\)"/)
+  assert.doesNotMatch(supplement, /:error="actorPickerError"/)
+})
+
 test('library organize inventory actors reuse the shared portrait card', () => {
   assert.match(libraryOrganize, /import ActorPortraitCard from '\.\.\/components\/ActorPortraitCard\.vue'/)
   assert.match(libraryOrganize, /<ActorPortraitCard[\s\S]*v-for="actor in inventoryActors"/)

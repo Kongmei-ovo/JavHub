@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from routers import makers
 from test_support.cache import FakeRedisMixin
 
@@ -85,6 +87,35 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second["data"], [{"id": 2, "name_ja": "二"}])
         self.assertEqual(first_cached, first)
         self.assertEqual(mock_client.list_makers_page.await_count, 2)
+
+    def test_cache_zero_bypasses_cached_makers_response(self):
+        app = FastAPI()
+        app.include_router(makers.router)
+        mock_client = AsyncMock()
+        mock_client.list_makers_page.side_effect = [
+            {"data": [{"id": 1, "name_ja": "old"}], "page": 1, "page_size": 20},
+            {"data": [{"id": 2, "name_ja": "fresh"}], "page": 1, "page_size": 20},
+        ]
+        mock_translator = AsyncMock()
+        mock_translator.translate_entities.return_value = None
+
+        with patch("routers.makers.get_info_client", return_value=mock_client), \
+             patch("routers.makers.get_translator_service", return_value=mock_translator):
+            http = TestClient(app)
+            first = http.get("/api/v1/makers")
+            cached = http.get("/api/v1/makers")
+            fresh = http.get("/api/v1/makers?cache=0")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(cached.status_code, 200)
+        self.assertEqual(fresh.status_code, 200)
+        self.assertEqual(first.json()["data"][0]["name_ja"], "old")
+        self.assertEqual(cached.json()["data"][0]["name_ja"], "old")
+        self.assertEqual(fresh.json()["data"][0]["name_ja"], "fresh")
+        self.assertEqual(mock_client.list_makers_page.await_count, 2)
+        self.assertTrue(
+            any(call.kwargs.get("cache_bypass") is True for call in mock_client.list_makers_page.await_args_list)
+        )
 
 
 if __name__ == "__main__":

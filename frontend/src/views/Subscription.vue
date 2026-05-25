@@ -211,7 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
-import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
+import { actressImgUrl } from '../utils/imageUrl.js'
 import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
 import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
@@ -292,7 +292,7 @@ function subOriginalName(sub) {
   return meta?.name_kanji || sub.actress_name || ''
 }
 function newMovieCount(actressId) { return (newMovieMap.value[actressId] || []).length }
-function movieCoverUrl(movie) { return jacketHdUrl(movie.jacket_thumb_url) || movie.jacket_thumb_url || '' }
+function movieCoverUrl(movie) { return movie.jacket_thumb_url || movie.jacket_full_url || movie.cover_url || '' }
 function subCardMeta(sub) {
   const count = subMeta(sub)?.movie_count
   const parts = []

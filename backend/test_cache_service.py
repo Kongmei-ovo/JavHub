@@ -336,6 +336,17 @@ class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTest
 
         self.assertEqual(result, {"data": [{"id": 1}]})
 
+    async def test_bypass_ignores_cached_response_and_does_not_store_result(self):
+        cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
+
+        async def producer():
+            return {"data": [{"id": 2}]}
+
+        result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60, bypass=True)
+
+        self.assertEqual(result, {"data": [{"id": 2}]})
+        self.assertEqual(cache.get_response("makers", {"page": 1}), {"data": [{"id": 1}]})
+
     async def test_high_cardinality_response_misses_do_not_retain_idle_locks(self):
         calls = 0
 

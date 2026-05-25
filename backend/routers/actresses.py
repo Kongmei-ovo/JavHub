@@ -4,6 +4,7 @@ from fastapi.params import Query as QueryParam
 from typing import Any
 from modules.info_client import get_info_client
 from services import cache
+from services.video_variants import enrich_video_variants
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
@@ -24,9 +25,12 @@ async def list_actresses(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     has_valid_avatar: str | None = Query(None),
+    cache_control: str | None = Query(None, alias="cache"),
 ) -> dict[str, Any]:
     _q = None if isinstance(q, QueryParam) else q
     _has_valid_avatar = None if isinstance(has_valid_avatar, QueryParam) else has_valid_avatar
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
+    cache_bypass = cache.should_bypass_response_cache(_cache_control)
     cache_params = {
         "q": _q,
         "page": page,
@@ -36,12 +40,21 @@ async def list_actresses(
 
     async def produce():
         client = get_info_client()
-        result = await client.list_actresses(
-            q=_q,
-            page=page,
-            page_size=page_size,
-            has_valid_avatar=_has_valid_avatar,
-        )
+        if cache_bypass:
+            result = await client.list_actresses(
+                q=_q,
+                page=page,
+                page_size=page_size,
+                has_valid_avatar=_has_valid_avatar,
+                cache_bypass=True,
+            )
+        else:
+            result = await client.list_actresses(
+                q=_q,
+                page=page,
+                page_size=page_size,
+                has_valid_avatar=_has_valid_avatar,
+            )
         # 为每个 actress 注入翻译字段
         items = result.get("data", []) if isinstance(result, dict) else result
         if isinstance(items, list):
@@ -53,7 +66,13 @@ async def list_actresses(
             )
         return result
 
-    return await cache.get_or_set_response(_LIST_CACHE_NAMESPACE, cache_params, produce, ttl=_LIST_CACHE_TTL)
+    return await cache.get_or_set_response(
+        _LIST_CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_LIST_CACHE_TTL,
+        bypass=cache_bypass,
+    )
 
 @router.get("/{actress_id}")
 async def get_actress(actress_id: int) -> dict[str, Any]:
@@ -85,6 +104,9 @@ async def get_actress_videos(
     year: int | None = Query(None),
     sort_by: str | None = Query(None),
     include_total: bool | None = Query(None),
+    variant_mode: str = Query("grouped", pattern="^(grouped|flat)$"),
+    include_variant_explanations: bool = Query(False),
+    cache_control: str | None = Query(None, alias="cache"),
 ) -> dict[str, Any]:
     # Resolve Query() defaults to plain None for testability
     _inc = None if isinstance(include_supplement, QueryParam) else include_supplement
@@ -92,6 +114,9 @@ async def get_actress_videos(
     _yr  = None if isinstance(year, QueryParam) else year
     _srt = None if isinstance(sort_by, QueryParam) else sort_by
     _include_total = None if isinstance(include_total, QueryParam) else include_total
+    _variant_mode = "grouped" if isinstance(variant_mode, QueryParam) else variant_mode
+    _include_variant_explanations = False if isinstance(include_variant_explanations, QueryParam) else bool(include_variant_explanations)
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
     if _include_total is None and not _inc:
         _include_total = False
 
@@ -104,23 +129,48 @@ async def get_actress_videos(
         "year": _yr,
         "sort_by": _srt,
         "include_total": _include_total,
+        "variant_mode": _variant_mode,
+        "include_variant_explanations": _include_variant_explanations,
     }
 
     async def produce():
         client = get_info_client()
-        result = await client.get_actress_videos(
-            actress_id, page=page, page_size=page_size,
-            include_supplement=_inc,
-            service_code=_svc,
-            year=_yr,
-            sort_by=_srt,
-            include_total=_include_total,
-        )
+        cache_bypass = cache.should_bypass_response_cache(_cache_control)
+        if cache_bypass:
+            result = await client.get_actress_videos(
+                actress_id, page=page, page_size=page_size,
+                include_supplement=_inc,
+                service_code=_svc,
+                year=_yr,
+                sort_by=_srt,
+                include_total=_include_total,
+                cache_bypass=True,
+            )
+        else:
+            result = await client.get_actress_videos(
+                actress_id, page=page, page_size=page_size,
+                include_supplement=_inc,
+                service_code=_svc,
+                year=_yr,
+                sort_by=_srt,
+                include_total=_include_total,
+            )
         if result.get("data"):
             result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)
+            result["data"] = enrich_video_variants(
+                result["data"],
+                variant_mode=_variant_mode,
+                include_explanations=_include_variant_explanations,
+            )
         return result
 
-    return await cache.get_or_set_response(_VIDEOS_CACHE_NAMESPACE, cache_params, produce, ttl=_VIDEOS_CACHE_TTL)
+    return await cache.get_or_set_response(
+        _VIDEOS_CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_VIDEOS_CACHE_TTL,
+        bypass=cache.should_bypass_response_cache(_cache_control),
+    )
 
 
 @router.post("/batch_videos")

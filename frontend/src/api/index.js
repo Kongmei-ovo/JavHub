@@ -626,6 +626,10 @@ export default {
     return api.post(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/filmography/jobs`)
   },
 
+  startGfriendsAvatarSyncJob() {
+    return api.post('/v1/supplement/avatars/gfriends/jobs')
+  },
+
   refreshSupplementActressResolved(actressId) {
     return api.post(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/resolved/refresh`)
   },

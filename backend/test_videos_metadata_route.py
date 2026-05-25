@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
 from routers import videos
 from routers.videos import router, search_videos
@@ -37,6 +39,8 @@ def _search_kwargs(**overrides):
         "sort_order": None,
         "random": None,
         "include_total": None,
+        "variant_mode": "grouped",
+        "include_variant_explanations": True,
         "page": 1,
         "page_size": 20,
     }
@@ -88,6 +92,8 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             "sort_by": None,
             "sort_order": None,
             "random": "1",
+            "variant_mode": "grouped",
+            "include_variant_explanations": True,
             "page": 1,
             "page_size": 30,
         }
@@ -99,6 +105,101 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["total_count"], 1)
         translator.translate_videos.assert_awaited_once()
         self.assertFalse(translator.translate_videos.await_args.kwargs["allow_network"])
+        self.assertEqual(data["data"][0]["variant_group_count"], 1)
+
+    async def test_search_route_injects_variant_metadata_and_cache_key_includes_mode(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {
+                "data": [
+                    {"content_id": "miaa00784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
+                    {"content_id": "miaa00784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono"},
+                ],
+                "total_count": 2,
+                "total_pages": 1,
+            },
+            {
+                "data": [
+                    {"content_id": "miaa00784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
+                    {"content_id": "miaa00784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono"},
+                ],
+                "total_count": 2,
+                "total_pages": 1,
+            },
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            grouped = await search_videos(**_search_kwargs(q="miaa", variant_mode="grouped", include_variant_explanations=True))
+            flat = await search_videos(**_search_kwargs(q="miaa", variant_mode="flat", include_variant_explanations=True))
+
+        self.assertEqual(len(grouped["data"]), 1)
+        self.assertEqual(grouped["data"][0]["variant_group_count"], 2)
+        self.assertIn("BOD 蓝光按需", [label["label"] for label in grouped["data"][0]["variant_group_items"][1]["variant_labels"]])
+        self.assertEqual(len(flat["data"]), 2)
+        self.assertEqual(client.search_videos.await_count, 2)
+
+    async def test_search_route_expands_exact_code_result_with_safe_variant_lookups(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {
+                "data": [
+                    {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+            {
+                "data": [
+                    {"content_id": "tkmiaa784", "dvd_id": "TKMIAA-784", "title_ja": "【FANZA限定】Title 生写真3枚付き", "service_code": "mono"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+            {
+                "data": [
+                    {"content_id": "miaa784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+            {
+                "data": [
+                    {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(
+                **_search_kwargs(
+                    content_id="MIAA-784",
+                    variant_mode="grouped",
+                    include_variant_explanations=True,
+                )
+            )
+
+        self.assertEqual(len(result["data"]), 1)
+        self.assertEqual(result["data"][0]["variant_group_count"], 4)
+        labels = [
+            label["label"]
+            for item in result["data"][0]["variant_group_items"]
+            for label in item.get("variant_labels", [])
+        ]
+        self.assertIn("FANZA限定特典", labels)
+        self.assertIn("BOD 蓝光按需", labels)
+        self.assertIn("数字版", labels)
+        looked_up_codes = [call.kwargs.get("content_id") for call in client.search_videos.await_args_list[1:]]
+        self.assertIn("TKMIAA-784", looked_up_codes)
+        self.assertIn("MIAA-784BOD", looked_up_codes)
+        self.assertIn("MIAA00784", looked_up_codes)
 
     async def test_search_route_forwards_include_total_when_provided(self):
         client = AsyncMock()
@@ -132,6 +233,32 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(other_page["data"][0]["content_id"], "miaa785")
         self.assertEqual(client.search_videos.await_count, 2)
         self.assertEqual(translator.translate_videos.await_count, 2)
+
+    def test_search_cache_zero_bypasses_cached_response(self):
+        app = FastAPI()
+        app.include_router(videos.router)
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {"data": [{"content_id": "old", "title_ja": "旧"}], "total_count": -1, "total_pages": -1},
+            {"data": [{"content_id": "fresh", "title_ja": "新"}], "total_count": -1, "total_pages": -1},
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            http = TestClient(app)
+            first = http.get("/api/v1/videos/search?q=abc&include_total=false")
+            cached = http.get("/api/v1/videos/search?q=abc&include_total=false")
+            fresh = http.get("/api/v1/videos/search?q=abc&include_total=false&cache=0")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(cached.status_code, 200)
+        self.assertEqual(fresh.status_code, 200)
+        self.assertEqual(first.json()["data"][0]["content_id"], "old")
+        self.assertEqual(cached.json()["data"][0]["content_id"], "old")
+        self.assertEqual(fresh.json()["data"][0]["content_id"], "fresh")
+        self.assertEqual(client.search_videos.await_count, 2)
 
     async def test_search_route_does_not_cache_random_requests_when_total_is_required(self):
         client = AsyncMock()
