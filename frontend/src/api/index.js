@@ -528,6 +528,18 @@ export default {
     return api.post(`/v1/javinfo/imports/jobs/${jobId}/cancel`)
   },
 
+  startVideoVariantIndexJob() {
+    return api.post('/v1/video-variants/index/jobs')
+  },
+
+  listVideoVariantIndexJobs(limit = 20) {
+    return api.get('/v1/video-variants/index/jobs', { params: { limit }, silentError: true })
+  },
+
+  getVideoVariantIndexStats() {
+    return api.get('/v1/video-variants/index/stats', { silentError: true })
+  },
+
   // ========== 翻译映射 ==========
 
   exportTranslations(type) {

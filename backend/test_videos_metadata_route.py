@@ -40,6 +40,7 @@ def _search_kwargs(**overrides):
         "random": None,
         "include_total": None,
         "variant_mode": "grouped",
+        "variant_scope": "page",
         "include_variant_explanations": True,
         "page": 1,
         "page_size": 20,
@@ -93,6 +94,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             "sort_order": None,
             "random": "1",
             "variant_mode": "grouped",
+            "variant_scope": "page",
             "include_variant_explanations": True,
             "page": 1,
             "page_size": 30,
@@ -139,6 +141,46 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(grouped["data"][0]["variant_group_count"], 2)
         self.assertIn("BOD 蓝光按需", [label["label"] for label in grouped["data"][0]["variant_group_items"][1]["variant_labels"]])
         self.assertEqual(len(flat["data"]), 2)
+        self.assertEqual(client.search_videos.await_count, 2)
+
+    async def test_search_route_indexed_scope_uses_index_and_cache_key_includes_scope(self):
+        client = AsyncMock()
+        client.search_videos.side_effect = [
+            {
+                "data": [
+                    {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+            {
+                "data": [
+                    {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
+                ],
+                "total_count": 1,
+                "total_pages": 1,
+            },
+        ]
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        def apply_index(items, **_kwargs):
+            row = dict(items[0])
+            row["variant_indexed"] = True
+            row["variant_group_count"] = 5
+            row["variant_group_items"] = [{"content_id": "miaa00784", "display_code": "MIAA-784"}]
+            return [row]
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator), \
+             patch("routers.videos.apply_indexed_variant_groups", side_effect=apply_index) as indexed:
+            indexed_result = await search_videos(**_search_kwargs(q="miaa", variant_scope="indexed"))
+            page_result = await search_videos(**_search_kwargs(q="miaa", variant_scope="page"))
+
+        self.assertTrue(indexed_result["data"][0]["variant_indexed"])
+        self.assertEqual(indexed_result["data"][0]["variant_group_count"], 5)
+        self.assertFalse(page_result["data"][0].get("variant_indexed", False))
+        indexed.assert_called_once()
         self.assertEqual(client.search_videos.await_count, 2)
 
     async def test_search_route_expands_exact_code_result_with_safe_variant_lookups(self):

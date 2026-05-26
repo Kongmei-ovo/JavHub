@@ -964,11 +964,19 @@ test('operations overview API sends GET to correct path', async (t) => {
   const { default: api } = await import(`./index.js?operations-overview-${Date.now()}`)
   await api.getOperationsOverview()
   await api.runCandidateProcessingNow()
+  await api.startVideoVariantIndexJob()
+  await api.listVideoVariantIndexJobs(5)
+  await api.getVideoVariantIndexStats()
 
   assert.equal(calls[0].url, '/v1/operations/overview')
   assert.equal(calls[0].method, 'get')
   assert.equal(calls[1].url, '/v1/operations/candidate-processing/run')
   assert.equal(calls[1].method, 'post')
+  assert.equal(calls[2].url, '/v1/video-variants/index/jobs')
+  assert.equal(calls[2].method, 'post')
+  assert.equal(calls[3].url, '/v1/video-variants/index/jobs')
+  assert.deepEqual(calls[3].params, { limit: 5 })
+  assert.equal(calls[4].url, '/v1/video-variants/index/stats')
 })
 
 test('actor mapping APIs send expected requests', async (t) => {

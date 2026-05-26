@@ -75,6 +75,7 @@ test('actor page uses backend variant groups and can expand all versions', () =>
   assert.match(source, /variant_group_items/)
   assert.match(source, /displayMovies\(\)[\s\S]*flattenVariantGroups/)
   assert.match(source, /variant_group_count/)
+  assert.match(source, /variant_scope:\s*'indexed'/)
   assert.doesNotMatch(source, /groupByVariant/)
   assert.doesNotMatch(source, /variantLabel\(/)
   assert.doesNotMatch(source, /from '..\/utils\/videoVariant\.js'/)

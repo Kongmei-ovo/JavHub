@@ -50,6 +50,31 @@ test('openVideoModal keeps modal usable when detail request fails', async () => 
   resetModal()
 })
 
+test('openVideoModal passes service_code to primary detail lookup', async () => {
+  resetModal()
+  const calls = []
+  const api = {
+    getVideo: (contentId, options) => {
+      calls.push([contentId, options])
+      return Promise.resolve({ data: { title_ja: 'Digital detail' } })
+    },
+  }
+
+  openVideoModal({
+    content_id: 'miaa00784',
+    service_code: 'digital',
+    title_ja: 'Base title',
+  }, '/search', api)
+  await Promise.resolve()
+  await Promise.resolve()
+  await nextTick()
+
+  assert.deepEqual(calls, [['miaa00784', { service_code: 'digital' }]])
+  assert.equal(modalState.selectedVideo.title_ja, 'Digital detail')
+
+  resetModal()
+})
+
 test('openVideoModal does not request primary detail APIs for supplement-only videos', async () => {
   resetModal()
   let getVideoCalls = 0

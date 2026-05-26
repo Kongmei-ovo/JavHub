@@ -152,9 +152,9 @@ test('navigation and actor page use actor mapping language', () => {
 })
 
 test('favorites video cards display dvd numbers instead of internal ids', () => {
-  assert.match(favorites, /:contentId="item\.metadata\?\.content_id \|\| item\.entity_id"/)
-  assert.match(favorites, /:dvdId="movieDisplayCode\(item\)"/)
-  assert.match(favorites, /metadata\.dvd_id \|\| metadata\.canonical_number \|\| metadata\.content_id \|\| item\?\.entity_id/)
+  assert.match(favorites, /v-bind="movieCardVariantProps\(item\.metadata \|\| \{\}\)"/)
+  assert.match(favorites, /import \{ movieCardVariantProps, variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
+  assert.doesNotMatch(favorites, /movieDisplayCode/)
 })
 
 test('actor portrait cards unify favorites subscriptions and supplement actor picking', () => {
@@ -1149,7 +1149,9 @@ test('search preferences drive initial search params', () => {
   assert.match(search, /function sortStateFromPreference\(defaultSort = 'random'\)/)
   assert.match(search, /async mounted\(\)[\s\S]*this\.applySearchPreferences\(\{ force: true \}\)[\s\S]*await this\.loadConfiguredPageSize\(\)/)
   assert.match(search, /async loadConfiguredPageSize\(\)[\s\S]*await api\.getConfig\(\)/)
-  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*return buildSearchApiParams\(\{ \.\.\.this\.searchState, page \}, \{ pageSize: this\.pageSize \}\)/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*buildSearchApiParams\(\{ \.\.\.this\.searchState, page \}, \{ pageSize: this\.pageSize \}\)/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*variant_mode: 'grouped'/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*include_variant_explanations: 1/)
   assert.doesNotMatch(search, /params\.service_code = this\.serviceCode/)
   assert.match(search, /replaceSearchRoute\(patch = \{\}, \{ replace = false \} = \{\}\)[\s\S]*searchQueryFromState\(\{ \.\.\.this\.searchState, \.\.\.patch \}\)/)
   assert.match(search, /doSearch\(\) \{[\s\S]*sortValueFromSortState\(this\.sortState\) === 'random'[\s\S]*searchHasUserConditions\(\{ \.\.\.this\.searchState, page: 1 \}\)[\s\S]*patch\.sort = 'release_date_desc'/)

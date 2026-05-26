@@ -448,6 +448,7 @@ export default {
         include_supplement: '1',
         include_total: includeTotal,
         variant_mode: 'grouped',
+        variant_scope: 'indexed',
         include_variant_explanations: 1,
       }
       if (year) requestOptions.year = Number(year)
@@ -462,6 +463,7 @@ export default {
         page_size: pageSize,
         include_total: includeTotal,
         variant_mode: 'grouped',
+        variant_scope: 'indexed',
         include_variant_explanations: 1,
         year: year ? Number(year) : undefined,
         sort_by: sortBy,

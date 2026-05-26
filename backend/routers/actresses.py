@@ -5,6 +5,7 @@ from typing import Any
 from modules.info_client import get_info_client
 from services import cache
 from services.video_variants import enrich_video_variants
+from services.video_variant_index import apply_indexed_variant_groups
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
@@ -105,6 +106,7 @@ async def get_actress_videos(
     sort_by: str | None = Query(None),
     include_total: bool | None = Query(None),
     variant_mode: str = Query("grouped", pattern="^(grouped|flat)$"),
+    variant_scope: str = Query("page", pattern="^(page|indexed)$"),
     include_variant_explanations: bool = Query(False),
     cache_control: str | None = Query(None, alias="cache"),
 ) -> dict[str, Any]:
@@ -115,6 +117,7 @@ async def get_actress_videos(
     _srt = None if isinstance(sort_by, QueryParam) else sort_by
     _include_total = None if isinstance(include_total, QueryParam) else include_total
     _variant_mode = "grouped" if isinstance(variant_mode, QueryParam) else variant_mode
+    _variant_scope = "page" if isinstance(variant_scope, QueryParam) else variant_scope
     _include_variant_explanations = False if isinstance(include_variant_explanations, QueryParam) else bool(include_variant_explanations)
     _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
     if _include_total is None and not _inc:
@@ -130,6 +133,7 @@ async def get_actress_videos(
         "sort_by": _srt,
         "include_total": _include_total,
         "variant_mode": _variant_mode,
+        "variant_scope": _variant_scope,
         "include_variant_explanations": _include_variant_explanations,
     }
 
@@ -162,6 +166,11 @@ async def get_actress_videos(
                 variant_mode=_variant_mode,
                 include_explanations=_include_variant_explanations,
             )
+            if _variant_mode == "grouped" and _variant_scope == "indexed":
+                result["data"] = apply_indexed_variant_groups(
+                    result["data"],
+                    include_explanations=_include_variant_explanations,
+                )
         return result
 
     return await cache.get_or_set_response(

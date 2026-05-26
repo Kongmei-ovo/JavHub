@@ -4,6 +4,8 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite
 from modules.info_client import get_info_client
+from services.video_variant_index import apply_indexed_variant_groups
+from services.video_variants import enrich_video_variants
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/favorites", tags=["Favorites"])
@@ -71,6 +73,8 @@ async def get_favorite_videos():
             return await fetch_one(item)
     results = await asyncio.gather(*[limited_fetch(item) for item in items])
     results.sort(key=lambda x: x.get("_created_at", ""), reverse=True)
+    results = enrich_video_variants(results, variant_mode="flat", include_explanations=True)
+    results = apply_indexed_variant_groups(results, include_explanations=True)
     return results
 
 @router.post("/toggle")

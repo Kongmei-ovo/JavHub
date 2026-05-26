@@ -7,6 +7,7 @@ const source = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
 test('search page requests grouped variants with explanations by default', () => {
   assert.match(source, /variant_mode:\s*'grouped'/)
   assert.match(source, /include_variant_explanations:\s*1/)
+  assert.doesNotMatch(source, /variant_scope:\s*'indexed'/)
 })
 
 test('search page can expand backend-provided variant groups inline', () => {

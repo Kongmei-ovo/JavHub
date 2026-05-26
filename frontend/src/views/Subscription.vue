@@ -178,7 +178,7 @@
               <div class="works-grid">
                 <div v-for="movie in sheetMovies" :key="movie.content_id || movie.dvd_id" class="work-card-wrap">
                   <MovieCard
-                    :contentId="movie.dvd_id || movie.content_id"
+                    v-bind="movieCardVariantProps(movie)"
                     :coverUrl="movieCoverUrl(movie)"
                     :title="movie.title_en || movie.title_ja || ''"
                     :serviceCode="movie.service_code || ''"
@@ -186,6 +186,14 @@
                     :runtimeMins="movie.runtime_mins || ''"
                     :sampleUrl="movie.sample_url || ''"
                     @click="openVideoModal(movie)"
+                  />
+                  <VariantGroupDisclosure
+                    :variantGroupCount="Number(movie.variant_group_count || 0)"
+                    :variantGroupItems="visibleVariantItems(movie)"
+                    :expanded="isVariantGroupExpanded(movie)"
+                    :itemKey="variantGroupKey(movie)"
+                    @toggle="toggleVariantGroup"
+                    @openVariant="openVideoModal"
                   />
                 </div>
               </div>
@@ -218,6 +226,8 @@ import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import subscriptionState from '../utils/subscriptionState'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import MovieCard from '../components/MovieCard.vue'
+import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
+import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 
 const router = useRouter()
 
@@ -237,6 +247,7 @@ const sheetSub = ref(null)
 const sheetMovies = ref([])
 const sheetLoading = ref(false)
 const subscribing = ref(false)
+const expandedVariantGroups = ref({})
 
 const newMovieMap = ref({})
 const actressMetaMap = ref({})
@@ -339,7 +350,7 @@ async function openActorSheet(actor) {
   sheetActor.value = actor; sheetSub.value = null
   sheetMovies.value = []; sheetLoading.value = true
   try {
-    const r = await api.getActressVideos(actor.id, 1, 30, { include_supplement: '1' })
+    const r = await api.getActressVideos(actor.id, 1, 30, { include_supplement: '1', variant_mode: 'grouped', variant_scope: 'indexed', include_variant_explanations: 1 })
     const all = r.data?.data || []
     sheetMovies.value = shuffleArray(all).slice(0, 12)
   } catch (e) { console.error(e) } finally { sheetLoading.value = false }
@@ -352,13 +363,13 @@ async function openSubSheet(sub) {
   sheetSub.value = sub
   sheetMovies.value = []; sheetLoading.value = true
   try {
-    const r = await api.getActressVideos(sub.actress_id, 1, 30, { include_supplement: '1' })
+    const r = await api.getActressVideos(sub.actress_id, 1, 30, { include_supplement: '1', variant_mode: 'grouped', variant_scope: 'indexed', include_variant_explanations: 1 })
     const all = r.data?.data || []
     sheetMovies.value = shuffleArray(all).slice(0, 12)
   } catch (e) { console.error(e) } finally { sheetLoading.value = false }
 }
 
-function closeSheet() { sheetActor.value = null; sheetSub.value = null; sheetMovies.value = [] }
+function closeSheet() { sheetActor.value = null; sheetSub.value = null; sheetMovies.value = []; expandedVariantGroups.value = {} }
 
 function viewAllVideos() {
   if (!sheetActor.value) return
@@ -373,6 +384,19 @@ function viewAllVideos() {
 function openVideoModal(movie) {
   const route = router.currentRoute.value
   openVideoModalFn(movie, route?.fullPath || route?.path || '/subscription')
+}
+
+function isVariantGroupExpanded(movie) {
+  const key = variantGroupKey(movie)
+  return Boolean(key && expandedVariantGroups.value[key])
+}
+
+function toggleVariantGroup(key) {
+  if (!key) return
+  expandedVariantGroups.value = {
+    ...expandedVariantGroups.value,
+    [key]: !expandedVariantGroups.value[key],
+  }
 }
 
 async function syncSubscriptionState() {

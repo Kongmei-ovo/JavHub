@@ -6,6 +6,7 @@ from typing import Any, Optional, Dict
 from modules.info_client import get_info_client
 from services import cache
 from services.video_variants import enrich_video_variants
+from services.video_variant_index import apply_indexed_variant_groups
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
@@ -141,6 +142,7 @@ async def search_videos(
     random: Optional[str] = Query(None, description="随机排序"),
     include_total: Optional[bool] = Query(None),
     variant_mode: str = Query("grouped", pattern="^(grouped|flat)$"),
+    variant_scope: str = Query("page", pattern="^(page|indexed)$"),
     include_variant_explanations: bool = Query(False),
     cache_control: str | None = Query(None, alias="cache"),
     page: int = Query(1, ge=1),
@@ -148,6 +150,7 @@ async def search_videos(
 ) -> Dict[str, Any]:
     _include_total = None if isinstance(include_total, QueryParam) else include_total
     _variant_mode = "grouped" if isinstance(variant_mode, QueryParam) else variant_mode
+    _variant_scope = "page" if isinstance(variant_scope, QueryParam) else variant_scope
     _include_variant_explanations = False if isinstance(include_variant_explanations, QueryParam) else bool(include_variant_explanations)
     _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
     cache_bypass = cache.should_bypass_response_cache(_cache_control)
@@ -178,6 +181,7 @@ async def search_videos(
         "sort_order": sort_order,
         "include_total": _include_total,
         "variant_mode": _variant_mode,
+        "variant_scope": _variant_scope,
         "include_variant_explanations": _include_variant_explanations,
         "page": page,
         "page_size": page_size,
@@ -237,6 +241,11 @@ async def search_videos(
                 variant_mode=_variant_mode,
                 include_explanations=_include_variant_explanations,
             )
+            if _variant_mode == "grouped" and _variant_scope == "indexed" and not (content_id or dvd_id):
+                result["data"] = apply_indexed_variant_groups(
+                    result["data"],
+                    include_explanations=_include_variant_explanations,
+                )
         return result
 
     if random:

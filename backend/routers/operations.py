@@ -15,6 +15,7 @@ from database import (
     get_snapshot_actors,
     list_candidate_process_runs,
     mapping_summary,
+    variant_group_stats,
 )
 from services import cache
 
@@ -34,6 +35,7 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
         candidate_stats = download_candidate_stats()
         jobs = get_inventory_jobs(limit=10)
         missing = get_all_missing_videos()
+        variant_index = variant_group_stats()
 
         supplement: dict[str, Any] = {"available": False}
         try:
@@ -91,6 +93,7 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
                 "failed": sum(1 for job in jobs if job.get("status") == "failed"),
             },
             "supplement": supplement,
+            "variant_index": variant_index,
         }
 
     if cache_bypass:
