@@ -143,35 +143,20 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_search_route_expands_exact_code_result_with_safe_variant_lookups(self):
         client = AsyncMock()
-        client.search_videos.side_effect = [
-            {
-                "data": [
-                    {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
-                ],
-                "total_count": 1,
-                "total_pages": 1,
-            },
-            {
-                "data": [
-                    {"content_id": "tkmiaa784", "dvd_id": "TKMIAA-784", "title_ja": "【FANZA限定】Title 生写真3枚付き", "service_code": "mono"},
-                ],
-                "total_count": 1,
-                "total_pages": 1,
-            },
-            {
-                "data": [
-                    {"content_id": "miaa784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono"},
-                ],
-                "total_count": 1,
-                "total_pages": 1,
-            },
-            {
-                "data": [
-                    {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
-                ],
-                "total_count": 1,
-                "total_pages": 1,
-            },
+        client.search_videos.return_value = {
+            "data": [
+                {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
+            ],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        client.batch_lookup_by_dvd_id.return_value = {
+            "TKMIAA-784": {"content_id": "tkmiaa784", "dvd_id": "TKMIAA-784", "title_ja": "【FANZA限定】Title 生写真3枚付き", "service_code": "mono"},
+            "MIAA-784BOD": {"content_id": "miaa784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono"},
+            "4MIAA784": {"content_id": "4miaa784", "dvd_id": "4MIAA784", "title_ja": "Title", "service_code": "rental"},
+        }
+        client.batch_get_videos.return_value = [
+            {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
         ]
         translator = AsyncMock()
         translator.translate_videos.side_effect = lambda items, **kwargs: items
@@ -187,7 +172,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(len(result["data"]), 1)
-        self.assertEqual(result["data"][0]["variant_group_count"], 4)
+        self.assertEqual(result["data"][0]["variant_group_count"], 5)
         labels = [
             label["label"]
             for item in result["data"][0]["variant_group_items"]
@@ -195,11 +180,46 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         ]
         self.assertIn("FANZA限定特典", labels)
         self.assertIn("BOD 蓝光按需", labels)
+        self.assertIn("租赁版", labels)
         self.assertIn("数字版", labels)
-        looked_up_codes = [call.kwargs.get("content_id") for call in client.search_videos.await_args_list[1:]]
-        self.assertIn("TKMIAA-784", looked_up_codes)
-        self.assertIn("MIAA-784BOD", looked_up_codes)
-        self.assertIn("MIAA00784", looked_up_codes)
+        client.search_videos.assert_awaited_once()
+        client.batch_lookup_by_dvd_id.assert_awaited_once_with([
+            "TKMIAA-784",
+            "MIAA-784BOD",
+            "MIAA-784DOD",
+            "MIAA-784RDOD",
+            "4MIAA784",
+        ])
+        client.batch_get_videos.assert_awaited_once_with(["miaa00784"])
+
+    async def test_search_route_keeps_base_result_when_variant_batch_lookup_fails(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [
+                {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono"},
+            ],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        client.batch_lookup_by_dvd_id.side_effect = RuntimeError("lookup unavailable")
+        client.batch_get_videos.side_effect = RuntimeError("batch unavailable")
+        translator = AsyncMock()
+        translator.translate_videos.side_effect = lambda items, **kwargs: items
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(
+                **_search_kwargs(
+                    content_id="MIAA-784",
+                    variant_mode="grouped",
+                    include_variant_explanations=True,
+                )
+            )
+
+        self.assertEqual(len(result["data"]), 1)
+        self.assertEqual(result["data"][0]["display_code"], "MIAA-784")
+        self.assertEqual(result["data"][0]["variant_group_count"], 1)
+        client.search_videos.assert_awaited_once()
 
     async def test_search_route_forwards_include_total_when_provided(self):
         client = AsyncMock()

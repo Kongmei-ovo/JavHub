@@ -1,13 +1,15 @@
+import logging
+import re
 from fastapi import APIRouter, Query
 from fastapi.params import Query as QueryParam
 from typing import Any, Optional, Dict
-import re
 from modules.info_client import get_info_client
 from services import cache
 from services.video_variants import enrich_video_variants
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
+logger = logging.getLogger(__name__)
 _LIST_CACHE_NAMESPACE = "videos"
 _LIST_CACHE_TTL = 600
 _SEARCH_CACHE_NAMESPACE = "video_search"
@@ -36,14 +38,14 @@ async def _apply_translation_to_videos(items: list[dict], *, allow_network: bool
 _CANONICAL_CODE_RE = re.compile(r"^([A-Z]+)-?([0-9]+)$")
 
 
-def _exact_code_variant_candidates(code: str | None) -> list[str]:
+def _exact_code_variant_candidates(code: str | None) -> tuple[list[str], list[str]]:
     raw = str(code or "").strip().upper()
     match = _CANONICAL_CODE_RE.match(raw)
     if not match:
-        return []
+        return [], []
     prefix, digits = match.groups()
     if len(prefix) < 3:
-        return []
+        return [], []
     number = str(int(digits))
     padded = number.zfill(max(5, len(digits)))
     dashed = f"{prefix}-{number}"
@@ -53,8 +55,7 @@ def _exact_code_variant_candidates(code: str | None) -> list[str]:
         f"{dashed}DOD",
         f"{dashed}RDOD",
         f"4{prefix}{number}",
-        f"{prefix}{padded}",
-    ]
+    ], [f"{prefix.lower()}{padded}"]
 
 
 async def _expand_exact_code_variants(
@@ -69,31 +70,43 @@ async def _expand_exact_code_variants(
     if not isinstance(items, list) or len(items) != 1:
         return result
     search_code = content_id or dvd_id
-    candidates = _exact_code_variant_candidates(search_code)
-    if not candidates:
+    dvd_candidates, digital_candidates = _exact_code_variant_candidates(search_code)
+    if not dvd_candidates and not digital_candidates:
         return result
 
     seen = {str(items[0].get("content_id") or items[0].get("dvd_id") or "").lower()}
     expanded = list(items)
-    for candidate in candidates:
-        if candidate.upper() == str(search_code or "").upper():
-            continue
+
+    def add_item(item: dict[str, Any]) -> None:
+        key = str(item.get("content_id") or item.get("dvd_id") or "").lower()
+        if not key or key in seen:
+            return
+        seen.add(key)
+        expanded.append(item)
+
+    if dvd_candidates:
         try:
-            extra = await client.search_videos(
-                content_id=candidate,
-                page=1,
-                page_size=5,
-                include_total=False,
-                cache_bypass=cache_bypass,
-            )
-        except Exception:
-            continue
-        for item in extra.get("data") or []:
-            key = str(item.get("content_id") or item.get("dvd_id") or "").lower()
-            if not key or key in seen:
-                continue
-            seen.add(key)
-            expanded.append(item)
+            found_by_dvd = await client.batch_lookup_by_dvd_id(dvd_candidates)
+        except Exception as exc:
+            logger.warning("Failed to batch lookup exact code variants for %s: %s", search_code, exc)
+        else:
+            if isinstance(found_by_dvd, dict):
+                for candidate in dvd_candidates:
+                    item = found_by_dvd.get(candidate)
+                    if isinstance(item, dict):
+                        add_item(item)
+
+    if digital_candidates:
+        try:
+            found_digital = await client.batch_get_videos(digital_candidates)
+        except Exception as exc:
+            logger.warning("Failed to batch get digital exact code variants for %s: %s", search_code, exc)
+        else:
+            if isinstance(found_digital, list):
+                for item in found_digital:
+                    if isinstance(item, dict):
+                        add_item(item)
+
     if len(expanded) > len(items):
         result = dict(result)
         result["data"] = expanded
