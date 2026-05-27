@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from routers import makers
+from test_support.builders import page_response
 from test_support.cache import FakeRedisMixin
 from test_support.client import create_router_test_client
 
@@ -12,13 +13,13 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_list_makers_uses_paginated_javinfo_endpoint(self):
         mock_client = AsyncMock()
-        mock_client.list_makers_page.return_value = {
-            "data": [{"id": 1, "name_ja": "企画"}],
-            "page": 2,
-            "page_size": 10,
-            "total_count": 30,
-            "total_pages": 3,
-        }
+        mock_client.list_makers_page.return_value = page_response(
+            [{"id": 1, "name_ja": "企画"}],
+            page=2,
+            page_size=10,
+            total_count=30,
+            total_pages=3,
+        )
         mock_translator = AsyncMock()
         mock_translator.translate_entities.return_value = None
 
@@ -58,20 +59,20 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_list_makers_cache_key_includes_page_params(self):
         mock_client = AsyncMock()
         mock_client.list_makers_page.side_effect = [
-            {
-                "data": [{"id": 1, "name_ja": "一"}],
-                "page": 1,
-                "page_size": 1,
-                "total_count": 2,
-                "total_pages": 2,
-            },
-            {
-                "data": [{"id": 2, "name_ja": "二"}],
-                "page": 2,
-                "page_size": 1,
-                "total_count": 2,
-                "total_pages": 2,
-            },
+            page_response(
+                [{"id": 1, "name_ja": "一"}],
+                page=1,
+                page_size=1,
+                total_count=2,
+                total_pages=2,
+            ),
+            page_response(
+                [{"id": 2, "name_ja": "二"}],
+                page=2,
+                page_size=1,
+                total_count=2,
+                total_pages=2,
+            ),
         ]
         mock_translator = AsyncMock()
         mock_translator.translate_entities.return_value = None
@@ -90,8 +91,8 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     def test_cache_zero_bypasses_cached_makers_response(self):
         mock_client = AsyncMock()
         mock_client.list_makers_page.side_effect = [
-            {"data": [{"id": 1, "name_ja": "old"}], "page": 1, "page_size": 20},
-            {"data": [{"id": 2, "name_ja": "fresh"}], "page": 1, "page_size": 20},
+            page_response([{"id": 1, "name_ja": "old"}]),
+            page_response([{"id": 2, "name_ja": "fresh"}]),
         ]
         mock_translator = AsyncMock()
         mock_translator.translate_entities.return_value = None

@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from routers import labels
+from test_support.builders import page_response
 from test_support.cache import FakeRedisMixin
 
 
@@ -11,13 +12,13 @@ class LabelsRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
     async def test_list_labels_uses_paginated_javinfo_endpoint(self):
         mock_client = AsyncMock()
-        mock_client.list_labels_page.return_value = {
-            "data": [{"id": 1, "name_ja": "企画"}],
-            "page": 2,
-            "page_size": 10,
-            "total_count": 30,
-            "total_pages": 3,
-        }
+        mock_client.list_labels_page.return_value = page_response(
+            [{"id": 1, "name_ja": "企画"}],
+            page=2,
+            page_size=10,
+            total_count=30,
+            total_pages=3,
+        )
         mock_translator = AsyncMock()
         mock_translator.translate_entities.return_value = None
 
