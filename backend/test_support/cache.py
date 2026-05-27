@@ -5,6 +5,8 @@ import os
 import sys
 import time
 import types
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest.mock import patch
 
 
@@ -65,13 +67,49 @@ class FakeRedisClient:
         return int(expires_at - time.time())
 
 
+def make_fake_redis_module(client):
+    return types.SimpleNamespace(
+        Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: client)
+    )
+
+
+@contextmanager
+def fake_redis_backend(
+    *,
+    prefix: str,
+    client: FakeRedisClient | None = None,
+    url: str = "redis://cache.example/0",
+    backend: str | None = "redis",
+) -> Iterator[FakeRedisClient]:
+    fake_client = client or FakeRedisClient()
+    fake_redis = make_fake_redis_module(fake_client)
+    env = {
+        "JAVHUB_REDIS_URL": url,
+        "JAVHUB_REDIS_PREFIX": prefix,
+    }
+    if backend is not None:
+        env["JAVHUB_CACHE_BACKEND"] = backend
+
+    with patch.dict(os.environ, env, clear=False), RedisModulePatch(fake_redis):
+        if backend is None:
+            os.environ.pop("JAVHUB_CACHE_BACKEND", None)
+
+        from services import cache
+
+        cache.reset_backend()
+        cache.reset_metrics()
+        try:
+            yield fake_client
+        finally:
+            cache.reset_backend()
+
+
 class FakeRedisMixin:
     def setUp(self):
         super().setUp()
         self.fake_redis_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: self.fake_redis_client)
-        )
+        self.fake_client = self.fake_redis_client
+        fake_redis = make_fake_redis_module(self.fake_redis_client)
         self.redis_env_patch = patch.dict(os.environ, {
             "JAVHUB_CACHE_BACKEND": "redis",
             "JAVHUB_REDIS_URL": "redis://cache.example/0",

@@ -1,21 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import axios from 'axios'
+import { installAxiosAdapter } from '../testSupport/axiosAdapter.js'
 import { ElMessage } from '../utils/message.js'
 import { DEFAULT_CONFIG } from '../features/config/configDefaults.js'
 
 function installRejectingAdapter(t, status = 404, detail = 'Not Found') {
-  const originalAdapter = axios.defaults.adapter
-  axios.defaults.adapter = async (config) => Promise.reject({
+  installAxiosAdapter(t, async (config) => Promise.reject({
     config,
     response: { status, data: { detail } },
     message: `Request failed with status code ${status}`,
     isAxiosError: true,
     toJSON: () => ({}),
-  })
-  t.after(() => {
-    axios.defaults.adapter = originalAdapter
-  })
+  }))
 }
 
 test('metatube metadata API is no longer exposed', async () => {
@@ -47,13 +43,11 @@ test('duplicate API failures are rate limited globally', async (t) => {
 })
 
 test('getVideo forwards selected service version as a query param', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { content_id: 'MIAA-784' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?video-service-code-${Date.now()}`)
   await api.getVideo('MIAA-784', { service_code: 'mono' })
@@ -69,13 +63,11 @@ test('category stats helper is not exposed from the frontend API', async () => {
 })
 
 test('listMakers forwards pagination and query params', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?makers-pagination-${Date.now()}`)
   await api.listMakers({ page: 2, page_size: 30, q: 'studio' })
@@ -85,13 +77,11 @@ test('listMakers forwards pagination and query params', async (t) => {
 })
 
 test('listVideos defaults to skipping total count', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?videos-no-total-${Date.now()}`)
   await api.listVideos()
@@ -112,13 +102,11 @@ test('config defaults and update payload include Torznab source settings', async
     timeout: 15,
   })
 
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?config-sources-${Date.now()}`)
   await api.updateConfig({
@@ -145,13 +133,11 @@ test('config defaults and update payload include Torznab source settings', async
 })
 
 test('AI helper APIs send provider-aware requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { success: true, models: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?ai-provider-${Date.now()}`)
   const draft = {
@@ -173,9 +159,8 @@ test('AI helper APIs send provider-aware requests', async (t) => {
 })
 
 test('JavInfo import APIs use preflight, job creation, chunked upload, status, and cancel endpoints', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     if (config.url === '/v1/javinfo/imports/jobs/7') {
       return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
@@ -187,8 +172,7 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
       return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 6 } }
     }
     return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true, id: 7, uploaded_bytes: 6, data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?javinfo-import-${Date.now()}`)
   const importDb = { host: 'localhost', database: 'r18' }
@@ -227,11 +211,10 @@ test('JavInfo import APIs use preflight, job creation, chunked upload, status, a
 })
 
 test('JavInfo chunk upload resumes from server byte count after a lost chunk response', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
   let jobReads = 0
   let firstChunkAttempts = 0
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     if (config.url === '/v1/javinfo/imports/jobs/7') {
       jobReads += 1
@@ -256,8 +239,7 @@ test('JavInfo chunk upload resumes from server byte count after a lost chunk res
       }
     }
     return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 6 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?javinfo-import-resume-${Date.now()}`)
   const file = new Blob(['abcdef'])
@@ -274,9 +256,8 @@ test('JavInfo chunk upload resumes from server byte count after a lost chunk res
 })
 
 test('JavInfo plain sql gzip upload uses chunked upload so restore can be polled separately', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     if (config.url === '/v1/javinfo/imports/jobs/7') {
       return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
@@ -288,8 +269,7 @@ test('JavInfo plain sql gzip upload uses chunked upload so restore can be polled
       return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, status: 'uploading', uploaded_bytes: 6 } }
     }
     return { config, status: 200, statusText: 'OK', headers: {}, data: { ok: true } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?javinfo-import-stream-${Date.now()}`)
   const file = new Blob(['abcdef'])
@@ -311,9 +291,8 @@ test('JavInfo plain sql gzip upload uses chunked upload so restore can be polled
 })
 
 test('JavInfo upload treats a lost complete response as success when job is already restoring', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     if (config.url === '/v1/javinfo/imports/jobs/7/upload/complete') {
       return Promise.reject({
@@ -334,8 +313,7 @@ test('JavInfo upload treats a lost complete response as success when job is alre
       }
     }
     return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7, uploaded_bytes: 0 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?javinfo-import-complete-resume-${Date.now()}`)
   const file = new Blob(['abcdef'])
@@ -351,13 +329,11 @@ test('JavInfo upload treats a lost complete response as success when job is alre
 })
 
 test('config export API downloads a blob from the config export endpoint', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: new Blob(['config']) }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?config-export-${Date.now()}`)
   await api.exportConfig()
@@ -367,13 +343,11 @@ test('config export API downloads a blob from the config export endpoint', async
 })
 
 test('getActressVideos forwards include_supplement and extra params', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [], total_count: 0 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?actress-videos-supplement-${Date.now()}`)
   await api.getActressVideos(123, 1, 20, { include_supplement: '1', service_code: 'digital', year: 2024 })
@@ -385,13 +359,11 @@ test('getActressVideos forwards include_supplement and extra params', async (t) 
 })
 
 test('getActressVideos defaults to skipping total count', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [], total_count: -1 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?actress-videos-no-total-${Date.now()}`)
   await api.getActressVideos(123)
@@ -401,13 +373,11 @@ test('getActressVideos defaults to skipping total count', async (t) => {
 })
 
 test('numeric path APIs reject path-like identifiers before sending requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?numeric-path-safety-${Date.now()}`)
 
@@ -423,13 +393,11 @@ test('numeric path APIs reject path-like identifiers before sending requests', a
 })
 
 test('getSupplementStats sends GET to correct path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-stats-${Date.now()}`)
   await api.getSupplementStats()
@@ -439,13 +407,11 @@ test('getSupplementStats sends GET to correct path', async (t) => {
 })
 
 test('getCacheStats sends GET to cache stats path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { backend: 'redis' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?cache-stats-${Date.now()}`)
   await api.getCacheStats()
@@ -455,13 +421,11 @@ test('getCacheStats sends GET to cache stats path', async (t) => {
 })
 
 test('purgeCache forwards the requested scope', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { success: true } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?cache-purge-all-${Date.now()}`)
   await api.purgeCache('all')
@@ -472,13 +436,11 @@ test('purgeCache forwards the requested scope', async (t) => {
 })
 
 test('favorite collection APIs use collection management endpoints', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 7 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?favorite-collections-${Date.now()}`)
   await api.getCollections()
@@ -499,13 +461,11 @@ test('favorite collection APIs use collection management endpoints', async (t) =
 })
 
 test('health check bypasses api prefix because backend exposes bare health path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { status: 'ok' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?health-path-${Date.now()}`)
   await api.health()
@@ -516,9 +476,8 @@ test('health check bypasses api prefix because backend exposes bare health path'
 })
 
 test('health check returns readiness summary fields used by operations', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return {
       config,
@@ -533,8 +492,7 @@ test('health check returns readiness summary fields used by operations', async (
         cache: { backend: 'redis', active_entries: 2, total_entries: 3 },
       },
     }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?health-summary-${Date.now()}`)
   const response = await api.readiness()
@@ -549,13 +507,11 @@ test('health check returns readiness summary fields used by operations', async (
 })
 
 test('startSupplementFilmographyJob sends POST to correct path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 1, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-start-job-${Date.now()}`)
   await api.startSupplementFilmographyJob(456)
@@ -565,13 +521,11 @@ test('startSupplementFilmographyJob sends POST to correct path', async (t) => {
 })
 
 test('listSupplementJobs forwards filter params', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-jobs-${Date.now()}`)
   await api.listSupplementJobs({ page: 2, status: 'failed', actress_id: 123 })
@@ -583,13 +537,11 @@ test('listSupplementJobs forwards filter params', async (t) => {
 })
 
 test('listSupplementMovies forwards matched=false filter', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-movies-${Date.now()}`)
   await api.listSupplementMovies({ matched: false, actress_id: 456 })
@@ -600,13 +552,11 @@ test('listSupplementMovies forwards matched=false filter', async (t) => {
 })
 
 test('enrichSupplementMovieDetail queues detail job instead of calling synchronous detail', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-${Date.now()}`)
   await api.enrichSupplementMovieDetail('prestige:SIVR-438', 'avbase')
@@ -618,13 +568,11 @@ test('enrichSupplementMovieDetail queues detail job instead of calling synchrono
 })
 
 test('startSupplementMovieDetailJob sends POST with source movie id', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-job-${Date.now()}`)
   await api.startSupplementMovieDetailJob('prestige:SIVR-438', 'avbase')
@@ -636,13 +584,11 @@ test('startSupplementMovieDetailJob sends POST with source movie id', async (t) 
 })
 
 test('startSupplementMovieDetailJob defaults to all sources', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-job-default-${Date.now()}`)
   await api.startSupplementMovieDetailJob('SIVR-397')
@@ -652,13 +598,11 @@ test('startSupplementMovieDetailJob defaults to all sources', async (t) => {
 })
 
 test('startSupplementMovieDetailJob forwards actress id when provided', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-job-actress-${Date.now()}`)
   await api.startSupplementMovieDetailJob('SIVR-397', 'all', 1098399)
@@ -669,13 +613,11 @@ test('startSupplementMovieDetailJob forwards actress id when provided', async (t
 })
 
 test('enrichSupplementMovieDetail job alias defaults to all sources', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { job_id: 3, status: 'queued' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-default-${Date.now()}`)
   await api.enrichSupplementMovieDetail('SIVR-397')
@@ -686,13 +628,11 @@ test('enrichSupplementMovieDetail job alias defaults to all sources', async (t) 
 })
 
 test('getSupplementMovieSources sends GET to movie sources path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { movie: { id: 12 } } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-movie-sources-${Date.now()}`)
   await api.getSupplementMovieSources(12)
@@ -702,13 +642,11 @@ test('getSupplementMovieSources sends GET to movie sources path', async (t) => {
 })
 
 test('createSupplementDownloadCandidates posts supplement movie filters', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { created: 2 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-candidates-${Date.now()}`)
   await api.createSupplementDownloadCandidates({ actress_id: 123, q: 'SIVR' })
@@ -719,13 +657,11 @@ test('createSupplementDownloadCandidates posts supplement movie filters', async 
 })
 
 test('listSupplementSources sends GET to sources path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-sources-${Date.now()}`)
   await api.listSupplementSources()
@@ -735,13 +671,11 @@ test('listSupplementSources sends GET to sources path', async (t) => {
 })
 
 test('listSupplementSourcesHealth sends GET to source health path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-source-health-${Date.now()}`)
   await api.listSupplementSourcesHealth()
@@ -751,13 +685,11 @@ test('listSupplementSourcesHealth sends GET to source health path', async (t) =>
 })
 
 test('listSupplementSourcesBudgets sends GET to source budgets path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-source-budgets-${Date.now()}`)
   await api.listSupplementSourcesBudgets()
@@ -767,13 +699,11 @@ test('listSupplementSourcesBudgets sends GET to source budgets path', async (t) 
 })
 
 test('runSupplementProviderSmoke posts payload to provider smoke path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { reports: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-provider-smoke-${Date.now()}`)
   await api.runSupplementProviderSmoke({ source: 'fc2', source_movie_id: 'FC2-PPV-4897640' })
@@ -784,13 +714,11 @@ test('runSupplementProviderSmoke posts payload to provider smoke path', async (t
 })
 
 test('listSupplementProviderSmokeRuns sends GET with limit and source', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-provider-smoke-runs-${Date.now()}`)
   await api.listSupplementProviderSmokeRuns(3, 'fc2')
@@ -801,13 +729,11 @@ test('listSupplementProviderSmokeRuns sends GET with limit and source', async (t
 })
 
 test('source health actions post expected payloads', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-source-actions-${Date.now()}`)
   await api.pauseSupplementSource('javbus', 'maintenance', 60)
@@ -820,13 +746,11 @@ test('source health actions post expected payloads', async (t) => {
 })
 
 test('manual supplement movie actions post expected payloads', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-manual-actions-${Date.now()}`)
   await api.matchSupplementMovie(12, 'umd1010', '人工确认')
@@ -842,13 +766,11 @@ test('manual supplement movie actions post expected payloads', async (t) => {
 })
 
 test('startSupplementMovieDetailBatchJobs sends POST with filters', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 202, statusText: 'Accepted', headers: {}, data: { queued: 2 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-detail-batch-${Date.now()}`)
   await api.startSupplementMovieDetailBatchJobs({ source: 'avbase', limit: 20, missing_cover: true })
@@ -861,13 +783,11 @@ test('startSupplementMovieDetailBatchJobs sends POST with filters', async (t) =>
 })
 
 test('cancelSupplementJob sends POST to correct path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { job_id: 1, status: 'failed' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-cancel-${Date.now()}`)
   await api.cancelSupplementJob(1)
@@ -877,13 +797,11 @@ test('cancelSupplementJob sends POST to correct path', async (t) => {
 })
 
 test('download candidate APIs send expected requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
   await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true })
@@ -930,13 +848,11 @@ test('download candidate APIs send expected requests', async (t) => {
 })
 
 test('downloader management APIs send expected requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { clients: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?downloaders-${Date.now()}`)
   await api.listDownloaders()
@@ -953,13 +869,11 @@ test('downloader management APIs send expected requests', async (t) => {
 })
 
 test('operations overview API sends GET to correct path', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { status: 'ok' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?operations-overview-${Date.now()}`)
   await api.getOperationsOverview()
@@ -980,13 +894,11 @@ test('operations overview API sends GET to correct path', async (t) => {
 })
 
 test('actor mapping APIs send expected requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?actor-mappings-${Date.now()}`)
   await api.listActorMappings({ status: 'confirmed' })
@@ -1024,13 +936,11 @@ test('actor mapping APIs send expected requests', async (t) => {
 })
 
 test('listInventoryActors sends GET to inventory actor portraits source', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?inventory-actors-${Date.now()}`)
   await api.listInventoryActors({ search: 'AIKA', page: 2, page_size: 36, sort_by: 'total_videos', sort_order: 'desc' })
@@ -1041,13 +951,11 @@ test('listInventoryActors sends GET to inventory actor portraits source', async 
 })
 
 test('translation job APIs send expected requests', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   const calls = []
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?translation-jobs-${Date.now()}`)
   await api.startTranslationJob({ job_type: 'library_titles', provider: 'baidu', mode: 'remaining' })
@@ -1080,13 +988,11 @@ test('translation job APIs send expected requests', async (t) => {
 })
 
 test('testTranslation sends selected provider', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { translated_text: '测试' } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?translation-test-provider-${Date.now()}`)
   await api.testTranslation('テスト', 'baidu')
@@ -1096,13 +1002,11 @@ test('testTranslation sends selected provider', async (t) => {
 })
 
 test('recoverStaleSupplementJobs sends POST with older_than_minutes', async (t) => {
-  const originalAdapter = axios.defaults.adapter
   let capturedConfig = null
-  axios.defaults.adapter = async (config) => {
+  installAxiosAdapter(t, async (config) => {
     capturedConfig = config
     return { config, status: 200, statusText: 'OK', headers: {}, data: { recovered: 2 } }
-  }
-  t.after(() => { axios.defaults.adapter = originalAdapter })
+  })
 
   const { default: api } = await import(`./index.js?supplement-recover-${Date.now()}`)
   await api.recoverStaleSupplementJobs(60)

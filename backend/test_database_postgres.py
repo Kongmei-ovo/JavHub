@@ -4,6 +4,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from test_support.postgres import make_recording_connection
+
 
 class PostgresDatabaseLayerTest(unittest.TestCase):
     def test_get_db_orig_uses_javhub_database_config(self):
@@ -37,11 +39,9 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
     def test_init_db_uses_idempotent_postgres_schema(self):
         from database import base
 
+        calls = []
         executed: list[str] = []
-        cursor = Mock()
-        cursor.execute.side_effect = lambda sql, params=None: executed.append(str(sql))
-        conn = Mock()
-        conn.cursor.return_value = cursor
+        conn = make_recording_connection(calls=calls, executed=executed)
 
         with patch("database.base.get_db_orig", return_value=conn), \
             patch("database.translation.init_translation_db"), \
@@ -57,8 +57,8 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
         self.assertIn("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_check", joined)
         self.assertNotIn("AUTOINCREMENT", joined)
         self.assertNotIn("PRAGMA", joined)
-        self.assertGreaterEqual(conn.commit.call_count, 2)
-        self.assertGreaterEqual(conn.close.call_count, 2)
+        self.assertGreaterEqual(sum(1 for name, _args in calls if name == "commit"), 2)
+        self.assertGreaterEqual(sum(1 for name, _args in calls if name == "close"), 2)
         self.assertEqual(create_indexes.call_count, 2)
 
 

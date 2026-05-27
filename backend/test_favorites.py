@@ -3,19 +3,15 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
+from test_support.client import ASGITestClient, create_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
 class FavoriteCollectionsRouterTest(TempPostgresMixin, unittest.TestCase):
-    def _client(self) -> TestClient:
+    def _client(self) -> ASGITestClient:
         from routers.favorites import router
 
-        app = FastAPI()
-        app.include_router(router)
-        return TestClient(app)
+        return create_router_test_client(router)
 
     def test_create_list_update_and_delete_collection(self):
         client = self._client()
@@ -179,6 +175,31 @@ class FavoriteCollectionsDatabaseTest(TempPostgresMixin, unittest.TestCase):
         with get_db() as conn:
             rows = conn.execute("SELECT * FROM collection_items").fetchall()
         self.assertEqual(rows, [])
+
+    def test_list_favorites_tolerates_invalid_metadata_json(self):
+        from database import favorite
+        from database.base import get_db
+
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
+                ("video", "BROKEN-001::mono", "{invalid json"),
+            )
+            conn.execute(
+                "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
+                ("video", "GOOD-001::mono", '{"service_code": "mono", "title": "Good"}'),
+            )
+
+        favorites = favorite.list_favorites("video")
+
+        by_id = {item["entity_id"]: item for item in favorites}
+        self.assertEqual(by_id["BROKEN-001::mono"]["metadata"], {})
+        self.assertEqual(by_id["BROKEN-001::mono"]["entity_type"], "video")
+        self.assertIn("created_at", by_id["BROKEN-001::mono"])
+        self.assertEqual(
+            by_id["GOOD-001::mono"]["metadata"],
+            {"service_code": "mono", "title": "Good"},
+        )
 
 
 if __name__ == "__main__":

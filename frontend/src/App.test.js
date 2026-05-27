@@ -83,3 +83,8 @@ test('query-backed modal routes resume by fullPath and keep list pages alive', (
   assert.match(source, /'Actor'/)
   assert.doesNotMatch(source, /'Subscriptions'/)
 })
+
+test('favorite toast subscription is cleaned up when app unmounts', () => {
+  assert.match(source, /const unsubscribeFavoriteState = favoriteState\.subscribe/)
+  assert.match(source, /onUnmounted\(\(\) => \{[\s\S]*unsubscribeFavoriteState\(\)[\s\S]*window\.removeEventListener\(MESSAGE_EVENT, handleAppMessage\)/)
+})

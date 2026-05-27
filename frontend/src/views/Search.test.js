@@ -12,9 +12,15 @@ test('search page requests grouped variants with explanations by default', () =>
 
 test('search page can expand backend-provided variant groups inline', () => {
   assert.match(source, /expandedVariantGroups/)
-  assert.match(source, /variant_group_items/)
+  assert.match(source, /variantGroupItems\(item\)/)
   assert.match(source, /另 \{\{ item\.variant_group_count - 1 \}\} 个版本/)
   assert.match(source, /toggleVariantGroup\(item\)/)
+})
+
+test('search page reuses shared video variant presentation helpers', () => {
+  assert.match(source, /import \{ variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
+  assert.doesNotMatch(source, /variantGroupKey\(item\) \{\s*return item\.canonical_code/)
+  assert.doesNotMatch(source, /const keyOf = \(value\) => value\?\.content_id/)
 })
 
 test('search cards pass backend display code and variant labels into MovieCard', () => {

@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from routers import categories
 from services import cache
 from test_support.cache import FakeRedisMixin
+from test_support.client import create_router_test_client
+from test_support.translations import noop_entity_translator
 
 
 class CategoryRouteTests(unittest.TestCase):
@@ -21,8 +21,7 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_list_categories_caches_translated_response(self):
         mock_client = AsyncMock()
         mock_client.list_categories.return_value = [{"id": 1, "name_ja": "企画"}]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.categories.get_info_client", return_value=mock_client), \
              patch("routers.categories.get_translator_service", return_value=mock_translator):
@@ -35,19 +34,16 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         mock_translator.translate_entities.assert_awaited_once()
 
     def test_cache_zero_bypasses_cached_categories_response(self):
-        app = FastAPI()
-        app.include_router(categories.router)
         mock_client = AsyncMock()
         mock_client.list_categories.side_effect = [
             [{"id": 2, "name_ja": "response-old"}],
             [{"id": 3, "name_ja": "fresh"}],
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.categories.get_info_client", return_value=mock_client), \
              patch("routers.categories.get_translator_service", return_value=mock_translator):
-            http = TestClient(app)
+            http = create_router_test_client(categories.router)
             first = http.get("/api/v1/categories")
             cached = http.get("/api/v1/categories")
             fresh = http.get("/api/v1/categories?cache=0")

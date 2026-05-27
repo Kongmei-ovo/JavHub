@@ -1,6 +1,7 @@
 """库存对比定时任务 - 两阶段设计"""
 from __future__ import annotations
 import asyncio
+import logging
 import threading
 from typing import Optional
 from database import (
@@ -15,6 +16,9 @@ from database import (
 from config import config
 from modules.emby_client import get_emby_client
 from services.watchlist_pipeline import WatchlistPipeline, video_in_snapshot, video_code
+
+
+logger = logging.getLogger(__name__)
 
 
 def is_exempt(content_id: str) -> bool:
@@ -34,7 +38,7 @@ def _execute_job_sync(job_id: int):
     """同步执行作业（在线程中）"""
     job = get_inventory_job(job_id)
     if not job:
-        print(f"[Inventory] Job {job_id} not found")
+        logger.warning("[Inventory] Job %s not found", job_id)
         return
 
     job_type = job["job_type"]
@@ -58,7 +62,7 @@ def _execute_job_sync(job_id: int):
 async def run_collect_job(job_id: int):
     """采集阶段：从 Emby 拉取全量数据存到快照表"""
     update_inventory_job(job_id, "running")
-    print(f"[Inventory] Starting collection job {job_id}")
+    logger.info("[Inventory] Starting collection job %s", job_id)
 
     try:
         emby = get_emby_client()
@@ -66,12 +70,12 @@ async def run_collect_job(job_id: int):
         # 1. 生成新快照 key
         snapshot_key = create_snapshot_key()
         update_inventory_progress(job_id, 5)
-        print(f"[Inventory] Created snapshot key: {snapshot_key}")
+        logger.info("[Inventory] Created snapshot key: %s", snapshot_key)
 
         # 2. 从 Emby 采集所有影片及演员
         actors_data, total = await emby.collect_all_movies_with_actors()
         update_inventory_progress(job_id, 30)
-        print(f"[Inventory] Collected {len(actors_data)} actors, {total} total movies")
+        logger.info("[Inventory] Collected %s actors, %s total movies", len(actors_data), total)
 
         # 3. 保存演员快照
         save_emby_actors_snapshot(snapshot_key, actors_data)
@@ -115,11 +119,12 @@ async def run_collect_job(job_id: int):
 
                 actor_mapping_result = await auto_match_actor_mappings(snapshot_key=snapshot_key)
                 actor_mapping_result["enabled"] = True
-                print(
+                logger.info(
                     "[Inventory] Actor auto-match completed. "
-                    f"Checked: {actor_mapping_result.get('checked', 0)}, "
-                    f"Confirmed: {actor_mapping_result.get('auto_confirmed', 0)}, "
-                    f"Candidates: {actor_mapping_result.get('candidates_created', 0)}"
+                    "Checked: %s, Confirmed: %s, Candidates: %s",
+                    actor_mapping_result.get("checked", 0),
+                    actor_mapping_result.get("auto_confirmed", 0),
+                    actor_mapping_result.get("candidates_created", 0),
                 )
             except Exception as e:
                 actor_mapping_result = {
@@ -128,7 +133,7 @@ async def run_collect_job(job_id: int):
                     "failed": True,
                     "error": str(e),
                 }
-                print(f"[Inventory] Actor auto-match failed after collect: {e}")
+                logger.exception("[Inventory] Actor auto-match failed after collect")
 
         update_inventory_progress(job_id, 95)
         # 更新作业，关联快照key
@@ -144,10 +149,10 @@ async def run_collect_job(job_id: int):
             },
         )
         update_inventory_progress(job_id, 100)
-        print(f"[Inventory] Collection job {job_id} completed. Snapshot: {snapshot_key}")
+        logger.info("[Inventory] Collection job %s completed. Snapshot: %s", job_id, snapshot_key)
 
     except Exception as e:
-        print(f"[Inventory] Collection job {job_id} failed: {e}")
+        logger.exception("[Inventory] Collection job %s failed", job_id)
         update_inventory_job(job_id, "failed", str(e))
         update_inventory_progress(job_id, 0)
 
@@ -155,7 +160,7 @@ async def run_collect_job(job_id: int):
 async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
     """对比阶段：基于快照数据对比 JavInfo，计算缺失（使用批量接口）"""
     update_inventory_job(job_id, "running")
-    print(f"[Inventory] Starting compare job {job_id}, snapshot: {snapshot_key}")
+    logger.info("[Inventory] Starting compare job %s, snapshot: %s", job_id, snapshot_key)
 
     try:
         if not snapshot_key:
@@ -166,7 +171,7 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             return
 
         actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", [])
-        print(f"[Inventory] Comparing {len(actors)} actors from snapshot {snapshot_key}")
+        logger.info("[Inventory] Comparing %s actors from snapshot %s", len(actors), snapshot_key)
 
         scanned = 0
         missing_total = 0
@@ -189,7 +194,11 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             try:
                 javinfo_videos = await pipeline.fetch_actress_videos(javinfo_actress_id, page_size=999)
             except Exception as e:
-                print(f"[Inventory] Fetch failed for mapped actor {emby_actor_id}->{javinfo_actress_id}: {e}")
+                logger.exception(
+                    "[Inventory] Fetch failed for mapped actor %s->%s",
+                    emby_actor_id,
+                    javinfo_actress_id,
+                )
                 update_inventory_actor_stats(emby_actor_id, -1, -1)
                 failed += 1
                 continue
@@ -255,17 +264,23 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             "candidates": missing_total,
         }
         update_inventory_job(job_id, "completed", error_msg=f"unmapped={unmapped}; missing={missing_total}", result=result)
-        print(f"[Inventory] Compare job {job_id} completed. Scanned: {scanned}, Missing: {missing_total}, Unmapped: {unmapped}")
+        logger.info(
+            "[Inventory] Compare job %s completed. Scanned: %s, Missing: %s, Unmapped: %s",
+            job_id,
+            scanned,
+            missing_total,
+            unmapped,
+        )
 
     except Exception as e:
-        print(f"[Inventory] Compare job {job_id} failed: {e}")
+        logger.exception("[Inventory] Compare job %s failed", job_id)
         update_inventory_job(job_id, "failed", str(e))
 
 
 async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Optional[str] = None):
     """单演员增量对比"""
     update_inventory_job(job_id, "running")
-    print(f"[Inventory] Starting actor compare job {job_id} for actress {actress_id}")
+    logger.info("[Inventory] Starting actor compare job %s for actress %s", job_id, actress_id)
 
     try:
         if not snapshot_key:
@@ -293,7 +308,7 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                     "candidates": 0,
                 },
             )
-            print(f"[Inventory] Actor compare skipped unmapped Emby actor {actress_id}")
+            logger.info("[Inventory] Actor compare skipped unmapped Emby actor %s", actress_id)
             return
 
         pipeline = WatchlistPipeline()
@@ -355,10 +370,15 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                 "candidates": missing,
             },
         )
-        print(f"[Inventory] Actor compare job {job_id} completed. Total: {total}, Missing: {missing}")
+        logger.info(
+            "[Inventory] Actor compare job %s completed. Total: %s, Missing: %s",
+            job_id,
+            total,
+            missing,
+        )
 
     except Exception as e:
-        print(f"[Inventory] Actor compare job {job_id} failed: {e}")
+        logger.exception("[Inventory] Actor compare job %s failed", job_id)
         update_inventory_job(job_id, "failed", str(e))
 
 
