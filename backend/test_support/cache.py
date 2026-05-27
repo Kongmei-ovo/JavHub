@@ -65,13 +65,18 @@ class FakeRedisClient:
         return int(expires_at - time.time())
 
 
+def make_fake_redis_module(client):
+    return types.SimpleNamespace(
+        Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: client)
+    )
+
+
 class FakeRedisMixin:
     def setUp(self):
         super().setUp()
         self.fake_redis_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: self.fake_redis_client)
-        )
+        self.fake_client = self.fake_redis_client
+        fake_redis = make_fake_redis_module(self.fake_redis_client)
         self.redis_env_patch = patch.dict(os.environ, {
             "JAVHUB_CACHE_BACKEND": "redis",
             "JAVHUB_REDIS_URL": "redis://cache.example/0",
