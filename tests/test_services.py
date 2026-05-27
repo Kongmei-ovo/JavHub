@@ -153,3 +153,70 @@ def test_services_ensure_prints_health_without_restarting_running_services(tmp_p
     launchctl_calls = launchctl_log.read_text()
     assert "kickstart" not in launchctl_calls
     assert "bootout" not in launchctl_calls
+
+
+def test_services_restart_rejects_extra_service_arguments(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "exit 0\n",
+    )
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "restart", "backend", "extra"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "Usage: scripts/services.sh restart" in result.stderr
+    assert not launchctl_log.exists() or launchctl_log.read_text() == ""
+
+
+def test_services_stop_rejects_extra_service_arguments(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "exit 0\n",
+    )
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "stop", "backend", "extra"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "Usage: scripts/services.sh stop" in result.stderr
+    assert not launchctl_log.exists() or launchctl_log.read_text() == ""
