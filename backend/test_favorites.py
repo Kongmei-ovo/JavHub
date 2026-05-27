@@ -3,9 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi import FastAPI
-
-from test_support.client import ASGITestClient, create_test_client
+from test_support.client import ASGITestClient, create_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
@@ -13,9 +11,7 @@ class FavoriteCollectionsRouterTest(TempPostgresMixin, unittest.TestCase):
     def _client(self) -> ASGITestClient:
         from routers.favorites import router
 
-        app = FastAPI()
-        app.include_router(router)
-        return create_test_client(app)
+        return create_router_test_client(router)
 
     def test_create_list_update_and_delete_collection(self):
         client = self._client()

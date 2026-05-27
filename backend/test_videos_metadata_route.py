@@ -3,11 +3,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from routers import videos
 from routers.videos import router, search_videos
-from test_support.client import create_test_client
+from test_support.client import create_router_test_client
 from test_support.cache import FakeRedisMixin
 
 
@@ -297,8 +296,6 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(translator.translate_videos.await_count, 2)
 
     def test_search_cache_zero_bypasses_cached_response(self):
-        app = FastAPI()
-        app.include_router(videos.router)
         client = AsyncMock()
         client.search_videos.side_effect = [
             {"data": [{"content_id": "old", "title_ja": "旧"}], "total_count": -1, "total_pages": -1},
@@ -309,7 +306,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
-            http = create_test_client(app)
+            http = create_router_test_client(videos.router)
             first = http.get("/api/v1/videos/search?q=abc&include_total=false")
             cached = http.get("/api/v1/videos/search?q=abc&include_total=false")
             fresh = http.get("/api/v1/videos/search?q=abc&include_total=false&cache=0")

@@ -2,11 +2,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi import FastAPI
-
 from routers import actresses
 from test_support.cache import FakeRedisMixin
-from test_support.client import create_test_client
+from test_support.client import create_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
@@ -184,8 +182,6 @@ class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
 
 class ActressVideosCacheBypassTest(FakeRedisMixin, unittest.TestCase):
     def test_cache_zero_bypasses_cached_actress_videos_response(self):
-        app = FastAPI()
-        app.include_router(actresses.router)
         mock_client = AsyncMock()
         mock_client.get_actress_videos.side_effect = [
             {"data": [{"content_id": "old", "title_ja": "旧"}], "total_count": -1},
@@ -198,7 +194,7 @@ class ActressVideosCacheBypassTest(FakeRedisMixin, unittest.TestCase):
             patch("routers.actresses.get_info_client", return_value=mock_client),
             patch("routers.actresses.get_translator_service", return_value=translator),
         ):
-            client = create_test_client(app)
+            client = create_router_test_client(actresses.router)
             first = client.get("/api/v1/actresses/123/videos?include_supplement=1")
             cached = client.get("/api/v1/actresses/123/videos?include_supplement=1")
             fresh = client.get("/api/v1/actresses/123/videos?include_supplement=1&cache=0")
@@ -214,8 +210,6 @@ class ActressVideosCacheBypassTest(FakeRedisMixin, unittest.TestCase):
 
 class ActressBatchVideosRouterTest(unittest.TestCase):
     def test_batch_videos_route_forwards_ids_to_javinfoapi(self):
-        app = FastAPI()
-        app.include_router(actresses.router)
         mock_client = AsyncMock()
         mock_client.batch_get_actress_videos.return_value = {
             "26225": {
@@ -230,7 +224,7 @@ class ActressBatchVideosRouterTest(unittest.TestCase):
             patch("routers.actresses.get_info_client", return_value=mock_client),
             patch("routers.actresses.get_translator_service", return_value=translator),
         ):
-            response = create_test_client(app).post(
+            response = create_router_test_client(actresses.router).post(
                 "/api/v1/actresses/batch_videos",
                 json={"ids": [26225], "page": 2, "page_size": 3},
             )

@@ -3,10 +3,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi import FastAPI
 from routers import makers
 from test_support.cache import FakeRedisMixin
-from test_support.client import create_test_client
+from test_support.client import create_router_test_client
 
 
 class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
@@ -89,8 +88,6 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_client.list_makers_page.await_count, 2)
 
     def test_cache_zero_bypasses_cached_makers_response(self):
-        app = FastAPI()
-        app.include_router(makers.router)
         mock_client = AsyncMock()
         mock_client.list_makers_page.side_effect = [
             {"data": [{"id": 1, "name_ja": "old"}], "page": 1, "page_size": 20},
@@ -101,7 +98,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):
-            http = create_test_client(app)
+            http = create_router_test_client(makers.router)
             first = http.get("/api/v1/makers")
             cached = http.get("/api/v1/makers")
             fresh = http.get("/api/v1/makers?cache=0")

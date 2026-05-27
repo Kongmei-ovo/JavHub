@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from fastapi import FastAPI
-
-from test_support.client import ASGITestClient, create_test_client
+from test_support.client import ASGITestClient, create_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
@@ -21,9 +19,7 @@ class LogsRouteTest(TempPostgresMixin, unittest.TestCase):
     def _client(self) -> ASGITestClient:
         from routers.logs import router
 
-        app = FastAPI()
-        app.include_router(router)
-        return create_test_client(app)
+        return create_router_test_client(router)
 
     def test_logs_support_search_pagination_and_total(self):
         response = self._client().get(

@@ -4,6 +4,7 @@ from typing import Any
 
 import anyio
 import httpx
+from fastapi import FastAPI
 
 
 class ASGITestClient:
@@ -54,3 +55,9 @@ class ASGITestClient:
 
 def create_test_client(app: Any, **kwargs: Any) -> ASGITestClient:
     return ASGITestClient(app, **kwargs)
+
+
+def create_router_test_client(router: Any, **kwargs: Any) -> ASGITestClient:
+    app = FastAPI()
+    app.include_router(router)
+    return create_test_client(app, **kwargs)
