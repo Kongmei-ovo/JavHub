@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 from routers import labels
 from test_support.builders import page_response
 from test_support.cache import FakeRedisMixin
+from test_support.translations import noop_entity_translator
 
 
 class LabelsRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
@@ -19,8 +20,7 @@ class LabelsRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             total_count=30,
             total_pages=3,
         )
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.labels.get_info_client", return_value=mock_client), \
              patch("routers.labels.get_translator_service", return_value=mock_translator):
@@ -43,8 +43,7 @@ class LabelsRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"id": 2, "name_ja": "二"},
             {"id": 3, "name_ja": "三"},
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.labels.get_info_client", return_value=mock_client), \
              patch("routers.labels.get_translator_service", return_value=mock_translator):

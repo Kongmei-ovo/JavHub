@@ -7,6 +7,7 @@ from routers import makers
 from test_support.builders import page_response
 from test_support.cache import FakeRedisMixin
 from test_support.client import create_router_test_client
+from test_support.translations import noop_entity_translator
 
 
 class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
@@ -20,8 +21,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             total_count=30,
             total_pages=3,
         )
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):
@@ -44,8 +44,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"id": 2, "name_ja": "二"},
             {"id": 3, "name_ja": "三"},
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):
@@ -74,8 +73,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
                 total_pages=2,
             ),
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):
@@ -94,8 +92,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             page_response([{"id": 1, "name_ja": "old"}]),
             page_response([{"id": 2, "name_ja": "fresh"}]),
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):

@@ -6,6 +6,7 @@ from routers import actresses
 from test_support.cache import FakeRedisMixin
 from test_support.client import create_router_test_client
 from test_support.postgres import TempPostgresMixin
+from test_support.translations import passthrough_video_translator
 
 
 class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
@@ -54,8 +55,7 @@ class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
             "total_count": 2,
             "total_pages": 1,
         }
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+        translator = passthrough_video_translator()
 
         with (
             patch("routers.actresses.get_info_client", return_value=mock_client),
@@ -92,8 +92,7 @@ class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
                 "total_pages": 1,
             },
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+        translator = passthrough_video_translator()
 
         def apply_index(items, **_kwargs):
             row = dict(items[0])
@@ -187,8 +186,7 @@ class ActressVideosCacheBypassTest(FakeRedisMixin, unittest.TestCase):
             {"data": [{"content_id": "old", "title_ja": "旧"}], "total_count": -1},
             {"data": [{"content_id": "fresh", "title_ja": "新"}], "total_count": -1},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+        translator = passthrough_video_translator()
 
         with (
             patch("routers.actresses.get_info_client", return_value=mock_client),
@@ -217,8 +215,7 @@ class ActressBatchVideosRouterTest(unittest.TestCase):
                 "videos": [{"content_id": "abc", "title_ja": "Title"}],
             }
         }
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+        translator = passthrough_video_translator()
 
         with (
             patch("routers.actresses.get_info_client", return_value=mock_client),

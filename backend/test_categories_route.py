@@ -5,6 +5,7 @@ from routers import categories
 from services import cache
 from test_support.cache import FakeRedisMixin
 from test_support.client import create_router_test_client
+from test_support.translations import noop_entity_translator
 
 
 class CategoryRouteTests(unittest.TestCase):
@@ -20,8 +21,7 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_list_categories_caches_translated_response(self):
         mock_client = AsyncMock()
         mock_client.list_categories.return_value = [{"id": 1, "name_ja": "企画"}]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.categories.get_info_client", return_value=mock_client), \
              patch("routers.categories.get_translator_service", return_value=mock_translator):
@@ -39,8 +39,7 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             [{"id": 2, "name_ja": "response-old"}],
             [{"id": 3, "name_ja": "fresh"}],
         ]
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.categories.get_info_client", return_value=mock_client), \
              patch("routers.categories.get_translator_service", return_value=mock_translator):
