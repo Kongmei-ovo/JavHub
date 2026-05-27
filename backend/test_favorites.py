@@ -176,6 +176,31 @@ class FavoriteCollectionsDatabaseTest(TempPostgresMixin, unittest.TestCase):
             rows = conn.execute("SELECT * FROM collection_items").fetchall()
         self.assertEqual(rows, [])
 
+    def test_list_favorites_tolerates_invalid_metadata_json(self):
+        from database import favorite
+        from database.base import get_db
+
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
+                ("video", "BROKEN-001::mono", "{invalid json"),
+            )
+            conn.execute(
+                "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
+                ("video", "GOOD-001::mono", '{"service_code": "mono", "title": "Good"}'),
+            )
+
+        favorites = favorite.list_favorites("video")
+
+        by_id = {item["entity_id"]: item for item in favorites}
+        self.assertEqual(by_id["BROKEN-001::mono"]["metadata"], {})
+        self.assertEqual(by_id["BROKEN-001::mono"]["entity_type"], "video")
+        self.assertIn("created_at", by_id["BROKEN-001::mono"])
+        self.assertEqual(
+            by_id["GOOD-001::mono"]["metadata"],
+            {"service_code": "mono", "title": "Good"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -338,14 +338,17 @@ restart_services() {
     echo "Usage: scripts/services.sh restart [javinfo|backend|frontend]" >&2
     return 2
   fi
-  write_plists
   if [[ $# -eq 0 ]]; then
+    write_plists
     while IFS= read -r label; do
       kickstart_label "${label}"
     done < <(all_labels)
     return
   fi
-  kickstart_label "$(label_for_service "$1")"
+  local label
+  label="$(label_for_service "$1")" || return $?
+  write_plists
+  kickstart_label "${label}"
 }
 
 stop_services() {
@@ -359,7 +362,9 @@ stop_services() {
     done < <(all_labels)
     return
   fi
-  stop_label "$(label_for_service "$1")"
+  local label
+  label="$(label_for_service "$1")" || return $?
+  stop_label "${label}"
 }
 
 rebuild_javinfo() {

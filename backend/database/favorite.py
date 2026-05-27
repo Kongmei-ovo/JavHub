@@ -141,7 +141,10 @@ def list_favorites(entity_type: Optional[str] = None) -> List[Dict]:
         result = []
         for row in rows:
             item = dict(row)
-            item['metadata'] = json.loads(item.pop('metadata_json') or '{}')
+            try:
+                item['metadata'] = json.loads(item.pop('metadata_json') or '{}')
+            except json.JSONDecodeError:
+                item['metadata'] = {}
             result.append(item)
         return result
 
@@ -182,7 +185,6 @@ def create_collection(name: str, description: Optional[str] = None) -> Dict:
             return dict(cursor.fetchone())
     except psycopg2.IntegrityError as exc:
         raise CollectionNameExistsError("Collection name already exists") from exc
-        raise
 
 
 def update_collection(collection_id: int, name: str, description: Optional[str] = None) -> Dict:
