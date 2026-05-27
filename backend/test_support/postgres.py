@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from contextlib import suppress
 from unittest.mock import patch
 
 import psycopg2
@@ -66,33 +67,59 @@ def drop_test_database(database: str, settings: dict) -> None:
 
 class TempPostgresMixin(FakeRedisMixin):
     def setUp(self):
-        self.test_db_name, self.test_db_settings = create_test_database()
-        self.env_patch = patch.dict(
-            os.environ,
-            {
-                "JAVHUB_DB_HOST": self.test_db_settings["host"],
-                "JAVHUB_DB_PORT": str(self.test_db_settings["port"]),
-                "JAVHUB_DB_USER": self.test_db_settings["user"],
-                "JAVHUB_DB_PASSWORD": self.test_db_settings["password"],
-                "JAVHUB_DB_NAME": self.test_db_settings["database"],
-                "JAVHUB_DB_MAINTENANCE_DATABASE": self.test_db_settings["maintenance_database"],
-            },
-            clear=False,
-        )
-        self.env_patch.start()
+        self.test_db_name = None
+        self.test_db_settings = None
+        self.env_patch = None
+        try:
+            self.test_db_name, self.test_db_settings = create_test_database()
+            self.env_patch = patch.dict(
+                os.environ,
+                {
+                    "JAVHUB_DB_HOST": self.test_db_settings["host"],
+                    "JAVHUB_DB_PORT": str(self.test_db_settings["port"]),
+                    "JAVHUB_DB_USER": self.test_db_settings["user"],
+                    "JAVHUB_DB_PASSWORD": self.test_db_settings["password"],
+                    "JAVHUB_DB_NAME": self.test_db_settings["database"],
+                    "JAVHUB_DB_MAINTENANCE_DATABASE": self.test_db_settings["maintenance_database"],
+                },
+                clear=False,
+            )
+            self.env_patch.start()
 
-        from config import config
+            from config import config
 
-        config.reload()
-        from database import init_db
+            config.reload()
+            from database import init_db
 
-        init_db()
-        super().setUp()
+            init_db()
+            super().setUp()
+        except Exception:
+            self._cleanup_temp_postgres(suppress_config_errors=True)
+            raise
 
     def tearDown(self):
+        try:
+            super().tearDown()
+        finally:
+            self._cleanup_temp_postgres()
+
+    def _cleanup_temp_postgres(self, *, suppress_config_errors: bool = False) -> None:
+        env_patch = getattr(self, "env_patch", None)
+        if env_patch is not None:
+            env_patch.stop()
+            self.env_patch = None
+
         from config import config
 
-        super().tearDown()
-        self.env_patch.stop()
-        config.reload()
-        drop_test_database(self.test_db_name, self.test_db_settings)
+        if suppress_config_errors:
+            with suppress(Exception):
+                config.reload()
+        else:
+            config.reload()
+
+        test_db_name = getattr(self, "test_db_name", None)
+        test_db_settings = getattr(self, "test_db_settings", None)
+        if test_db_name and test_db_settings:
+            drop_test_database(test_db_name, test_db_settings)
+            self.test_db_name = None
+            self.test_db_settings = None
