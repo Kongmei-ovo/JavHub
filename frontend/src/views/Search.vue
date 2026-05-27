@@ -295,6 +295,7 @@ import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { openVideoModal } from '../utils/modalState'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import { loadSearchPreferences } from '../utils/searchPreferences.js'
+import { variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 import {
   buildSearchApiParams,
   canonicalizeSearchState,
@@ -638,9 +639,7 @@ export default {
     cardImageUrl(item) {
       return videoCardCoverUrl(item)
     },
-    variantGroupKey(item) {
-      return item.canonical_code || item.display_code || item.dvd_id || item.content_id
-    },
+    variantGroupKey,
     isVariantGroupExpanded(item) {
       const key = this.variantGroupKey(item)
       return Boolean(key && this.expandedVariantGroups[key])
@@ -654,12 +653,7 @@ export default {
       }
     },
     variantGroupItems(item) {
-      const items = Array.isArray(item.variant_group_items) ? item.variant_group_items : []
-      const keyOf = (value) => value?.content_id || value?.dvd_id || value?.display_code || ''
-      const primaryKey = keyOf(item)
-      return items.length
-        ? items.filter(variant => keyOf(variant) !== primaryKey)
-        : []
+      return visibleVariantItems(item)
     }
   }
 }
