@@ -7,10 +7,8 @@ from unittest.mock import patch
 from routers import config as config_router
 from services import cache
 from test_support.cache import (
-    FakeRedisClient,
     FakeRedisMixin,
-    RedisModulePatch,
-    make_fake_redis_module,
+    fake_redis_backend,
 )
 
 
@@ -125,46 +123,19 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
         self.assertEqual(cache.get_data_generation("other"), 0)
 
     def test_data_generation_uses_current_cache_backend(self):
-        fake_client = FakeRedisClient()
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "generation-prefix",
-        }, clear=False), RedisModulePatch(make_fake_redis_module(fake_client)):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="generation-prefix") as fake_client:
             cache.set_data_generation("javinfo", 7, ttl=60)
 
             self.assertEqual(cache.get_data_generation("javinfo"), 7)
             self.assertIn("generation-prefix:generation:javinfo", fake_client.values)
 
-        cache.reset_backend()
-
     def test_default_cache_backend_is_redis(self):
-        fake_client = FakeRedisClient()
-
-        with patch.dict(os.environ, {
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "default-prefix",
-        }, clear=False), RedisModulePatch(make_fake_redis_module(fake_client)):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="default-prefix", backend=None):
             self.assertEqual(cache.get_backend_name(), "redis")
             self.assertIsInstance(cache.get_backend(), cache.RedisCacheBackend)
 
-        cache.reset_backend()
-
     def test_redis_backend_round_trips_without_changing_cache_api(self):
-        fake_client = FakeRedisClient()
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "test-prefix",
-        }, clear=False), RedisModulePatch(make_fake_redis_module(fake_client)):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="test-prefix"):
             cache.set_response("videos", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
 
             self.assertEqual(cache.get_backend_name(), "redis")
@@ -173,17 +144,8 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
             self.assertEqual(cache.purge_response_cache(), 1)
             self.assertIsNone(cache.get_response("videos", {"page": 1}))
 
-        cache.reset_backend()
-
     def test_redis_backend_purge_only_deletes_current_prefix(self):
-        fake_client = FakeRedisClient()
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "current-prefix",
-        }, clear=False), RedisModulePatch(make_fake_redis_module(fake_client)):
-            cache.reset_backend()
+        with fake_redis_backend(prefix="current-prefix") as fake_client:
             backend = cache.get_backend()
 
             backend.set_json("video:abc-123", {"content_id": "ABC-123"}, ttl=60)
@@ -196,8 +158,6 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
             self.assertNotIn("current-prefix:search:abc:1", fake_client.values)
             self.assertEqual(fake_client.values["other-prefix:video:abc-123"], '{"content_id":"OTHER"}')
             self.assertEqual(fake_client.values["current-prefix-extra:video:abc-123"], '{"content_id":"EXTRA"}')
-
-        cache.reset_backend()
 
     def test_redis_backend_requires_url(self):
         with patch.dict(os.environ, {
