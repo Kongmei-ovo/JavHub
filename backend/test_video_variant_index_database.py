@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from test_support.postgres import TempPostgresMixin
+from test_support.postgres import TempPostgresMixin, make_recording_connection
 
 
 class VideoVariantIndexSchemaTest(unittest.TestCase):
@@ -11,10 +11,7 @@ class VideoVariantIndexSchemaTest(unittest.TestCase):
         from database import base
 
         executed: list[str] = []
-        cursor = Mock()
-        cursor.execute.side_effect = lambda sql, params=None: executed.append(str(sql))
-        conn = Mock()
-        conn.cursor.return_value = cursor
+        conn = make_recording_connection(executed=executed)
 
         with patch("database.base.get_db_orig", return_value=conn), \
             patch("database.translation.init_translation_db"), \

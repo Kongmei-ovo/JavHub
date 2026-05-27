@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from test_support.postgres import TempPostgresMixin
+from test_support.postgres import TempPostgresMixin, make_recording_connection, record_call
 
 
 DB_ENV = {
@@ -84,3 +84,44 @@ class TempPostgresSetupFailureTest(unittest.TestCase):
                 self.assertEqual({key: os.environ.get(key) for key in DB_ENV}, previous)
         finally:
             self._restore_env(previous)
+
+
+def test_recording_connection_records_cursor_sql_and_lifecycle_calls():
+    calls: list[tuple[str, tuple]] = []
+    executed: list[str] = []
+    conn = make_recording_connection(calls=calls, executed=executed)
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT %s", (1,))
+    conn.commit()
+    conn.close()
+
+    assert executed == ["SELECT %s"]
+    assert calls == [
+        ("cursor", ()),
+        ("execute", ("SELECT %s", (1,))),
+        ("commit", ()),
+        ("close", ()),
+    ]
+
+
+def test_recording_connection_supports_rowcount_and_rollback():
+    calls: list[tuple[str, tuple]] = []
+    conn = make_recording_connection(calls=calls)
+
+    cursor = conn.cursor()
+    conn.rollback()
+
+    assert cursor.rowcount == 0
+    assert calls == [
+        ("cursor", ()),
+        ("rollback", ()),
+    ]
+
+
+def test_record_call_appends_named_call_to_shared_call_log():
+    calls: list[tuple[str, tuple]] = []
+
+    record_call("helper", calls)("value")
+
+    assert calls == [("helper", ("value",))]
