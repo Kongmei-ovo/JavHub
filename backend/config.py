@@ -204,27 +204,15 @@ class Config:
 
     @property
     def automation_auto_process_interval_minutes(self) -> int:
-        try:
-            value = int(self.automation.get('auto_process_interval_minutes', 30))
-        except Exception:
-            value = 30
-        return max(0, value)
+        return self._clamp_int(self.automation.get('auto_process_interval_minutes', 30), 30, 0)
 
     @property
     def automation_max_auto_downloads_per_run(self) -> int:
-        try:
-            value = int(self.automation.get('max_auto_downloads_per_run', 20))
-        except Exception:
-            value = 20
-        return max(0, value)
+        return self._clamp_int(self.automation.get('max_auto_downloads_per_run', 20), 20, 0)
 
     @property
     def automation_max_auto_downloads_per_24h(self) -> int:
-        try:
-            value = int(self.automation.get('max_auto_downloads_per_24h', 100))
-        except Exception:
-            value = 100
-        return max(0, value)
+        return self._clamp_int(self.automation.get('max_auto_downloads_per_24h', 100), 100, 0)
 
     # Actor mapping automation settings
     @property
@@ -251,35 +239,19 @@ class Config:
 
     @property
     def actor_mapping_candidate_per_actor(self) -> int:
-        try:
-            value = int(self.actor_mapping.get('candidate_per_actor', 3))
-        except Exception:
-            value = 3
-        return max(1, min(value, 10))
+        return self._clamp_int(self.actor_mapping.get('candidate_per_actor', 3), 3, 1, 10)
 
     @property
     def actor_mapping_candidate_min_confidence(self) -> float:
-        try:
-            value = float(self.actor_mapping.get('candidate_min_confidence', 0.55))
-        except Exception:
-            value = 0.55
-        return max(0.0, min(value, 1.0))
+        return self._clamp_float(self.actor_mapping.get('candidate_min_confidence', 0.55), 0.55, 0.0, 1.0)
 
     @property
     def actor_mapping_auto_confirm_confidence(self) -> float:
-        try:
-            value = float(self.actor_mapping.get('auto_confirm_confidence', 0.98))
-        except Exception:
-            value = 0.98
-        return max(0.0, min(value, 1.0))
+        return self._clamp_float(self.actor_mapping.get('auto_confirm_confidence', 0.98), 0.98, 0.0, 1.0)
 
     @property
     def actor_mapping_auto_confirm_gap(self) -> float:
-        try:
-            value = float(self.actor_mapping.get('auto_confirm_gap', 0.08))
-        except Exception:
-            value = 0.08
-        return max(0.0, min(value, 1.0))
+        return self._clamp_float(self.actor_mapping.get('auto_confirm_gap', 0.08), 0.08, 0.0, 1.0)
 
     # Shared AI settings
     @property
@@ -435,43 +407,23 @@ class Config:
 
     @property
     def translation_batch_concurrency(self) -> int:
-        try:
-            value = int(self.translation.get('batch_concurrency', 32) or 32)
-        except Exception:
-            value = 32
-        return max(1, min(value, 64))
+        return self._clamp_int(self.translation.get('batch_concurrency', 32) or 32, 32, 1, 64)
 
     @property
     def translation_batch_size(self) -> int:
-        try:
-            value = int(self.translation.get('batch_size', 200) or 200)
-        except Exception:
-            value = 200
-        return max(1, min(value, 200))
+        return self._clamp_int(self.translation.get('batch_size', 200) or 200, 200, 1, 200)
 
     @property
     def translation_batch_char_limit(self) -> int:
-        try:
-            value = int(self.translation.get('batch_char_limit', 24000) or 24000)
-        except Exception:
-            value = 24000
-        return max(500, min(value, 24000))
+        return self._clamp_int(self.translation.get('batch_char_limit', 24000) or 24000, 24000, 500, 24000)
 
     @property
     def translation_source_page_size(self) -> int:
-        try:
-            value = int(self.translation.get('source_page_size', 500) or 500)
-        except Exception:
-            value = 500
-        return max(20, min(value, 1000))
+        return self._clamp_int(self.translation.get('source_page_size', 500) or 500, 500, 20, 1000)
 
     @property
     def translation_scan_pages_per_batch(self) -> int:
-        try:
-            value = int(self.translation.get('scan_pages_per_batch', 8) or 8)
-        except Exception:
-            value = 8
-        return max(1, min(value, 64))
+        return self._clamp_int(self.translation.get('scan_pages_per_batch', 8) or 8, 8, 1, 64)
 
     @property
     def translation_openai(self) -> dict:
@@ -581,9 +533,19 @@ class Config:
         return self.sources
 
     @staticmethod
-    def _clamp_int(value, default: int, minimum: int, maximum: int) -> int:
+    def _clamp_int(value, default: int, minimum: int, maximum: int | None = None) -> int:
         try:
             normalized = int(value)
+        except Exception:
+            normalized = default
+        if maximum is not None:
+            normalized = min(normalized, maximum)
+        return max(minimum, normalized)
+
+    @staticmethod
+    def _clamp_float(value, default: float, minimum: float, maximum: float) -> float:
+        try:
+            normalized = float(value)
         except Exception:
             normalized = default
         return max(minimum, min(normalized, maximum))
