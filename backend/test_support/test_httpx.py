@@ -35,6 +35,12 @@ class RecordingAsyncClientTest(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_exposes_configured_cookies(self):
+        cookies = {"session": "abc"}
+
+        async with RecordingAsyncClient(cookies=cookies) as client:
+            self.assertIs(client.cookies, cookies)
+
 
 def test_fake_http_response_raises_for_error_status():
     response = FakeHTTPResponse({"error": "bad"}, status_code=500)

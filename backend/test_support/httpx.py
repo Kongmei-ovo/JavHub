@@ -31,6 +31,7 @@ class RecordingAsyncClient:
     _responses: dict[str, deque[Any]] = defaultdict(deque)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.cookies = kwargs.get("cookies", {})
         self.__class__.calls.append({"method": "__init__", "args": args, "kwargs": kwargs})
 
     @classmethod

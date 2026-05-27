@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from test_support.httpx import FakeHTTPResponse, RecordingAsyncClient
 from test_support.postgres import TempPostgresMixin
 
 
@@ -252,274 +253,145 @@ class DownloaderClientProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_qbittorrent_adds_magnet_to_web_api(self):
         from services.downloaders import QBittorrentDownloaderClient
 
-        requests = []
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse(text="Ok."))
 
-        class FakeResponse:
-            status_code = 200
-            text = "Ok."
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def post(self, url, data=None, **kwargs):
-                requests.append((url, data))
-                return FakeResponse()
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await QBittorrentDownloaderClient(
                 {"address": "http://qb", "default_path": "/media", "tags": "javhub"}
             ).add_magnet("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12")
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(requests[0][0], "http://qb/api/v2/torrents/add")
-        self.assertEqual(requests[0][1]["savepath"], "/media")
-        self.assertEqual(requests[0][1]["tags"], "javhub")
+        self.assertEqual(post_calls[0]["url"], "http://qb/api/v2/torrents/add")
+        self.assertEqual(post_calls[0]["kwargs"]["data"]["savepath"], "/media")
+        self.assertEqual(post_calls[0]["kwargs"]["data"]["tags"], "javhub")
 
     async def test_qbittorrent_adds_http_torrent_url_to_web_api(self):
         from services.downloaders import QBittorrentDownloaderClient
 
-        requests = []
-
-        class FakeResponse:
-            status_code = 200
-            text = "Ok."
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def post(self, url, data=None, **kwargs):
-                requests.append((url, data))
-                return FakeResponse()
-
         torrent_url = "https://indexer.test/download/SIVR-438.torrent"
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse(text="Ok."))
 
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await QBittorrentDownloaderClient(
                 {"address": "http://qb", "default_path": "/media"}
             ).add_magnet(torrent_url)
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(requests[0][1]["urls"], torrent_url)
+        self.assertEqual(post_calls[0]["kwargs"]["data"]["urls"], torrent_url)
         self.assertEqual(result.remote_task_id, "")
 
     async def test_transmission_retries_with_session_id(self):
         from services.downloaders import TransmissionDownloaderClient
 
-        calls = []
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response(
+            "post",
+            FakeHTTPResponse(status_code=409, headers={"X-Transmission-Session-Id": "sid"}),
+        )
+        RecordingAsyncClient.add_response(
+            "post",
+            FakeHTTPResponse({
+                "result": "success",
+                "arguments": {"torrent-added": {"id": 1, "hashString": "hash", "name": "Title"}},
+            }),
+        )
 
-        class FakeResponse:
-            def __init__(self, status_code, data=None, headers=None):
-                self.status_code = status_code
-                self._data = data or {}
-                self.headers = headers or {}
-
-            def raise_for_status(self):
-                if self.status_code >= 400:
-                    raise RuntimeError(self.status_code)
-
-            def json(self):
-                return self._data
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def post(self, url, json=None, headers=None):
-                calls.append((url, json, headers or {}))
-                if len(calls) == 1:
-                    return FakeResponse(409, headers={"X-Transmission-Session-Id": "sid"})
-                return FakeResponse(
-                    200,
-                    {
-                        "result": "success",
-                        "arguments": {"torrent-added": {"id": 1, "hashString": "hash", "name": "Title"}},
-                    },
-                )
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await TransmissionDownloaderClient(
                 {"address": "http://tr", "default_path": "/media"}
             ).add_magnet("magnet:?xt=urn:btih:hash")
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(calls[0][0], "http://tr/transmission/rpc")
-        self.assertEqual(calls[1][2]["X-Transmission-Session-Id"], "sid")
-        self.assertEqual(calls[1][1]["arguments"]["download-dir"], "/media")
+        self.assertEqual(post_calls[0]["url"], "http://tr/transmission/rpc")
+        self.assertEqual(post_calls[1]["kwargs"]["headers"]["X-Transmission-Session-Id"], "sid")
+        self.assertEqual(post_calls[1]["kwargs"]["json"]["arguments"]["download-dir"], "/media")
 
     async def test_deluge_adds_magnet_via_json_rpc(self):
         from services.downloaders import DelugeDownloaderClient
 
-        requests = []
+        info_hash = "abcdef1234567890abcdef1234567890abcdef12"
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"result": True, "error": None}))
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"result": info_hash, "error": None}))
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"result": True, "error": None}))
 
-        class FakeResponse:
-            status_code = 200
-
-            def __init__(self, data):
-                self._data = data
-
-            def raise_for_status(self):
-                return None
-
-            def json(self):
-                return self._data
-
-        class FakeClient:
-            cookies = {}
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def post(self, url, json=None):
-                requests.append((url, json))
-                if json["method"] == "auth.login":
-                    return FakeResponse({"result": True, "error": None})
-                if json["method"] == "core.add_torrent_url":
-                    return FakeResponse({"result": "abcdef1234567890abcdef1234567890abcdef12", "error": None})
-                return FakeResponse({"result": True, "error": None})
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await DelugeDownloaderClient(
                 {"address": "http://deluge", "password": "pw", "default_path": "/media", "tags": "javhub", "paused": True}
-            ).add_magnet("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12")
+            ).add_magnet(f"magnet:?xt=urn:btih:{info_hash}")
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(requests[0][0], "http://deluge/json")
-        self.assertEqual(requests[0][1]["method"], "auth.login")
-        self.assertEqual(requests[1][1]["method"], "core.add_torrent_url")
-        self.assertEqual(requests[1][1]["params"][1]["download_location"], "/media")
-        self.assertEqual(requests[1][1]["params"][1]["add_paused"], True)
-        self.assertEqual(requests[2][1]["method"], "label.set_torrent")
+        self.assertEqual(post_calls[0]["url"], "http://deluge/json")
+        self.assertEqual(post_calls[0]["kwargs"]["json"]["method"], "auth.login")
+        self.assertEqual(post_calls[1]["kwargs"]["json"]["method"], "core.add_torrent_url")
+        self.assertEqual(post_calls[1]["kwargs"]["json"]["params"][1]["download_location"], "/media")
+        self.assertEqual(post_calls[1]["kwargs"]["json"]["params"][1]["add_paused"], True)
+        self.assertEqual(post_calls[2]["kwargs"]["json"]["method"], "label.set_torrent")
 
     async def test_flood_adds_magnet_to_jesec_endpoint(self):
         from services.downloaders import FloodDownloaderClient
 
-        calls = []
+        magnet = "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("get", FakeHTTPResponse(status_code=404))
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"success": True}))
 
-        class FakeResponse:
-            def __init__(self, status_code=200, data=None, text=""):
-                self.status_code = status_code
-                self._data = data or {}
-                self.text = text
-
-            def json(self):
-                return self._data
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def get(self, url):
-                calls.append(("GET", url, None))
-                return FakeResponse(404)
-
-            async def request(self, method, url, json=None):
-                calls.append((method, url, json))
-                return FakeResponse(200, {"success": True})
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await FloodDownloaderClient(
                 {"address": "http://flood", "default_path": "/media", "tags": "javhub,auto", "paused": True}
-            ).add_magnet("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12")
+            ).add_magnet(magnet)
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(calls[1][1], "http://flood/api/torrents/add-urls")
-        self.assertEqual(calls[1][2]["urls"], ["magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"])
-        self.assertEqual(calls[1][2]["destination"], "/media")
-        self.assertEqual(calls[1][2]["tags"], ["javhub", "auto"])
-        self.assertEqual(calls[1][2]["start"], False)
+        self.assertEqual(post_calls[0]["url"], "http://flood/api/torrents/add-urls")
+        self.assertEqual(post_calls[0]["kwargs"]["json"]["urls"], [magnet])
+        self.assertEqual(post_calls[0]["kwargs"]["json"]["destination"], "/media")
+        self.assertEqual(post_calls[0]["kwargs"]["json"]["tags"], ["javhub", "auto"])
+        self.assertEqual(post_calls[0]["kwargs"]["json"]["start"], False)
 
     async def test_rutorrent_adds_magnet_to_addtorrent_php(self):
         from services.downloaders import RuTorrentDownloaderClient
 
-        calls = []
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"result": "Success"}))
 
-        class FakeResponse:
-            def raise_for_status(self):
-                return None
-
-            def json(self):
-                return {"result": "Success"}
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def request(self, method, url, **kwargs):
-                calls.append((method, url, kwargs))
-                return FakeResponse()
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await RuTorrentDownloaderClient(
                 {"address": "http://rt/rutorrent", "username": "u", "password": "p", "default_path": "/media", "tags": "javhub"}
             ).add_magnet("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12")
 
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(calls[0][0], "POST")
-        self.assertEqual(calls[0][1], "http://rt/rutorrent/php/addtorrent.php")
-        self.assertEqual(calls[0][2]["data"]["dir_edit"], "/media")
-        self.assertEqual(calls[0][2]["data"]["label"], "javhub")
+        self.assertEqual(post_calls[0]["url"], "http://rt/rutorrent/php/addtorrent.php")
+        self.assertEqual(post_calls[0]["kwargs"]["data"]["dir_edit"], "/media")
+        self.assertEqual(post_calls[0]["kwargs"]["data"]["label"], "javhub")
 
     async def test_utorrent_fetches_token_then_adds_url(self):
         from services.downloaders import UTorrentDownloaderClient
 
-        calls = []
+        RecordingAsyncClient.reset()
+        RecordingAsyncClient.add_response("get", FakeHTTPResponse(text="<html><div>token123</div></html>"))
+        RecordingAsyncClient.add_response("post", FakeHTTPResponse({"build": 123}))
 
-        class FakeResponse:
-            status_code = 200
-            text = "<html><div>token123</div></html>"
-
-            def raise_for_status(self):
-                return None
-
-            def json(self):
-                return {"build": 123}
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return False
-
-            async def get(self, url, params=None):
-                calls.append(("GET", url, params))
-                return FakeResponse()
-
-            async def request(self, method, url, params=None):
-                calls.append((method, url, params))
-                return FakeResponse()
-
-        with patch("services.downloaders.httpx.AsyncClient", return_value=FakeClient()):
+        with patch("services.downloaders.httpx.AsyncClient", RecordingAsyncClient):
             result = await UTorrentDownloaderClient(
                 {"address": "http://ut", "username": "admin", "password": "p", "default_path": "movie\\"}
             ).add_magnet("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12")
 
+        get_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "get"]
+        post_calls = [call for call in RecordingAsyncClient.calls if call["method"] == "post"]
         self.assertTrue(result.success)
-        self.assertEqual(calls[0][1], "http://ut/gui/token.html")
-        self.assertEqual(calls[1][1], "http://ut/gui/")
-        self.assertEqual(calls[1][2]["token"], "token123")
-        self.assertEqual(calls[1][2]["action"], "add-url")
-        self.assertEqual(calls[1][2]["path"], "movie\\")
+        self.assertEqual(get_calls[0]["url"], "http://ut/gui/token.html")
+        self.assertEqual(post_calls[0]["url"], "http://ut/gui/")
+        self.assertEqual(post_calls[0]["kwargs"]["params"]["token"], "token123")
+        self.assertEqual(post_calls[0]["kwargs"]["params"]["action"], "add-url")
+        self.assertEqual(post_calls[0]["kwargs"]["params"]["path"], "movie\\")
 
 
 class DownloaderRouteTests(unittest.TestCase):
