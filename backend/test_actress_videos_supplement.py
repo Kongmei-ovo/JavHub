@@ -3,11 +3,11 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from routers import actresses
-from test_support.postgres import TempPostgresMixin
 from test_support.cache import FakeRedisMixin
+from test_support.client import create_test_client
+from test_support.postgres import TempPostgresMixin
 
 
 class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
@@ -198,7 +198,7 @@ class ActressVideosCacheBypassTest(FakeRedisMixin, unittest.TestCase):
             patch("routers.actresses.get_info_client", return_value=mock_client),
             patch("routers.actresses.get_translator_service", return_value=translator),
         ):
-            client = TestClient(app)
+            client = create_test_client(app)
             first = client.get("/api/v1/actresses/123/videos?include_supplement=1")
             cached = client.get("/api/v1/actresses/123/videos?include_supplement=1")
             fresh = client.get("/api/v1/actresses/123/videos?include_supplement=1&cache=0")
@@ -230,7 +230,7 @@ class ActressBatchVideosRouterTest(unittest.TestCase):
             patch("routers.actresses.get_info_client", return_value=mock_client),
             patch("routers.actresses.get_translator_service", return_value=translator),
         ):
-            response = TestClient(app).post(
+            response = create_test_client(app).post(
                 "/api/v1/actresses/batch_videos",
                 json={"ids": [26225], "page": 2, "page_size": 3},
             )

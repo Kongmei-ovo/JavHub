@@ -989,15 +989,15 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
 class JavInfoImportRouterTest(unittest.TestCase):
     def _client(self, manager):
         from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from routers.javinfo_imports import router
+        from test_support.client import create_test_client
 
         app = FastAPI()
         app.include_router(router)
         patcher = patch("routers.javinfo_imports.get_import_manager", return_value=manager)
         patcher.start()
         self.addCleanup(patcher.stop)
-        return TestClient(app)
+        return create_test_client(app)
 
     def _migrations_client(self, client):
         patcher = patch("routers.javinfo_imports.get_info_client", return_value=client)
@@ -1221,8 +1221,8 @@ class JavInfoImportRouterTest(unittest.TestCase):
 class ConfigExportRouterTest(unittest.TestCase):
     def test_config_export_downloads_sanitized_yaml(self):
         from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from routers.config import router
+        from test_support.client import create_test_client
 
         app = FastAPI()
         app.include_router(router)
@@ -1241,7 +1241,7 @@ class ConfigExportRouterTest(unittest.TestCase):
                 "telegram": {"bot_token": "secret-token"},
             },
         ):
-            response = TestClient(app).get("/api/v1/config/export")
+            response = create_test_client(app).get("/api/v1/config/export")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("attachment", response.headers["content-disposition"])
