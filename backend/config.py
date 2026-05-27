@@ -6,6 +6,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from services.javinfo_import_settings import normalize_javinfo_import_db_settings
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_JAVINFO_API_URL = "http://localhost:18080"
@@ -541,24 +543,7 @@ class Config:
             raw_text = str(raw_value or '').strip()
             if env_value and (key not in import_db or raw_text in placeholders.get(key, set())):
                 merged[key] = env_value
-        try:
-            merged['port'] = int(merged.get('port') or defaults['port'])
-        except Exception:
-            merged['port'] = defaults['port']
-        try:
-            merged['max_parallel_jobs'] = max(1, min(int(merged.get('max_parallel_jobs') or 2), 8))
-        except Exception:
-            merged['max_parallel_jobs'] = defaults['max_parallel_jobs']
-        try:
-            merged['keep_previous_databases'] = max(
-                0,
-                min(int(merged.get('keep_previous_databases', defaults['keep_previous_databases'])), 5),
-            )
-        except Exception:
-            merged['keep_previous_databases'] = defaults['keep_previous_databases']
-        for key in ('host', 'database', 'maintenance_database', 'user', 'password'):
-            merged[key] = str(merged.get(key) or defaults.get(key, '')).strip()
-        return merged
+        return normalize_javinfo_import_db_settings(merged, defaults=defaults)
 
     @property
     def javinfo_api_url(self) -> str:

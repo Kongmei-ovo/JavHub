@@ -221,6 +221,34 @@ class JavInfoImportServiceSettingsTest(unittest.TestCase):
 
         self.assertEqual(_normalize_settings({})["user"], "javhub")
 
+    def test_normalize_settings_matches_shared_import_db_helper(self):
+        from services.javinfo_import import _normalize_settings
+        from services.javinfo_import_settings import normalize_javinfo_import_db_settings
+
+        raw = {
+            "host": " db.example ",
+            "port": "not-a-port",
+            "database": " r18_new ",
+            "maintenance_database": "",
+            "user": " javhub ",
+            "password": " secret ",
+            "max_parallel_jobs": "99",
+            "keep_previous_databases": "-1",
+        }
+        expected = {
+            "host": "db.example",
+            "port": 5432,
+            "database": "r18_new",
+            "maintenance_database": "postgres",
+            "user": "javhub",
+            "password": "secret",
+            "max_parallel_jobs": 8,
+            "keep_previous_databases": 0,
+        }
+
+        self.assertEqual(normalize_javinfo_import_db_settings(raw), expected)
+        self.assertEqual(_normalize_settings(raw), expected)
+
     def test_connection_command_uses_deployable_user_default(self):
         from services.javinfo_import import build_psql_command
 
