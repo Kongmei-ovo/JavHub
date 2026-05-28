@@ -370,7 +370,12 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                 "candidates": missing,
             },
         )
-        logger.info("[Inventory] Actor compare job %s completed. Total: %s, Missing: %s", job_id, total, missing)
+        logger.info(
+            "[Inventory] Actor compare job %s completed. Total: %s, Missing: %s",
+            job_id,
+            total,
+            missing,
+        )
 
     except Exception as e:
         logger.exception("[Inventory] Actor compare job %s failed", job_id)

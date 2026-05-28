@@ -3,12 +3,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from routers import videos
 from routers.videos import router, search_videos
+from test_support.client import create_router_test_client
 from test_support.cache import FakeRedisMixin
-from test_support.client import create_test_client
+from test_support.translations import passthrough_video_translator
 
 
 def _search_kwargs(**overrides):
@@ -129,8 +129,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
                 "total_pages": 1,
             },
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
@@ -161,8 +160,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
                 "total_pages": 1,
             },
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         def apply_index(items, **_kwargs):
             row = dict(items[0])
@@ -200,8 +198,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         client.batch_get_videos.return_value = [
             {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital"},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
@@ -245,8 +242,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         }
         client.batch_lookup_by_dvd_id.side_effect = RuntimeError("lookup unavailable")
         client.batch_get_videos.side_effect = RuntimeError("batch unavailable")
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
@@ -297,19 +293,16 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(translator.translate_videos.await_count, 2)
 
     def test_search_cache_zero_bypasses_cached_response(self):
-        app = FastAPI()
-        app.include_router(videos.router)
         client = AsyncMock()
         client.search_videos.side_effect = [
             {"data": [{"content_id": "old", "title_ja": "旧"}], "total_count": -1, "total_pages": -1},
             {"data": [{"content_id": "fresh", "title_ja": "新"}], "total_count": -1, "total_pages": -1},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **_kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
-            http = create_test_client(app)
+            http = create_router_test_client(videos.router)
             first = http.get("/api/v1/videos/search?q=abc&include_total=false")
             cached = http.get("/api/v1/videos/search?q=abc&include_total=false")
             fresh = http.get("/api/v1/videos/search?q=abc&include_total=false&cache=0")
@@ -328,8 +321,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"data": [{"content_id": "first"}], "total_count": 2, "total_pages": 1},
             {"data": [{"content_id": "second"}], "total_count": 2, "total_pages": 1},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
@@ -348,8 +340,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"data": [{"content_id": "second"}], "total_count": -1, "total_pages": -1},
             {"data": [{"content_id": "third"}], "total_count": -1, "total_pages": -1},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
@@ -388,8 +379,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"data": [{"content_id": "no-total"}], "total_count": -1, "total_pages": -1},
             {"data": [{"content_id": "with-total"}], "total_count": 100, "total_pages": 5},
         ]
-        translator = AsyncMock()
-        translator.translate_videos.side_effect = lambda items, **kwargs: items
+        translator = passthrough_video_translator()
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):

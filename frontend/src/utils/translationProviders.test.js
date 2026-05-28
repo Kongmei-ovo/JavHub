@@ -7,7 +7,7 @@ import {
   firstNetworkProvider,
   normalizeProvider,
   providerLabel,
-  providerOrderLabel,
+  providerOrderLabel
 } from './translationProviders.js'
 
 test('translation provider metadata exposes configured network providers', () => {

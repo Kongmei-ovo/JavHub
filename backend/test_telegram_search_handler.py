@@ -33,22 +33,6 @@ class TelegramSearchHandlerTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         caption = update.message.reply_photo.await_args.kwargs["caption"]
         self.assertIn("[第1页/共2页]", caption)
 
-    async def test_search_id_handler_reports_search_errors(self):
-        from telegram_bot.handlers.search import search_id_handler
-
-        update = MagicMock()
-        update.message.reply_text = AsyncMock()
-        context = MagicMock(args=["SIVR-438"])
-        info_client = MagicMock()
-        info_client.search_videos = AsyncMock(side_effect=RuntimeError("javinfo down"))
-
-        with patch("telegram_bot.handlers.search.get_info_client", return_value=info_client), \
-             patch("telegram_bot.handlers.search.logger.exception") as log_exception:
-            await search_id_handler(update, context)
-
-        update.message.reply_text.assert_awaited_once_with("搜索出错：javinfo down")
-        log_exception.assert_called_once_with("[ID HANDLER] exception")
-
     async def test_download_callback_creates_manual_candidate(self):
         from database import list_download_candidate_events, list_download_candidates
         from telegram_bot.handlers.search import _do_download

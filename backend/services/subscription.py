@@ -6,6 +6,23 @@ from services.watchlist_pipeline import WatchlistPipeline
 logger = logging.getLogger(__name__)
 
 
+async def _run_subscription_check(sub: dict, pipeline: WatchlistPipeline) -> dict:
+    actress_id = sub.get("actress_id")
+    actress_name = sub.get("actress_name", "")
+    result = await pipeline.generate_candidates_for_actress(
+        actress_id=actress_id,
+        actress_name=actress_name,
+        trigger_source="subscription",
+        reason="subscription_check",
+    )
+    for movie in result.get("new_movies", []):
+        movie["actress_name"] = actress_name
+        movie["subscription_id"] = sub["id"]
+    latest = result.get("new_movies", [{}])[0].get("dvd_id", "") if result.get("new_movies") else ""
+    update_last_check(sub["id"], latest)
+    return result
+
+
 def get_all_subscriptions() -> List[dict]:
     """获取所有订阅"""
     return get_subscriptions()
@@ -31,18 +48,8 @@ async def check_all_subscriptions() -> List[dict]:
             continue
 
         try:
-            result = await pipeline.generate_candidates_for_actress(
-                actress_id=actress_id,
-                actress_name=actress_name,
-                trigger_source="subscription",
-                reason="subscription_check",
-            )
-            for movie in result.get("new_movies", []):
-                movie["actress_name"] = actress_name
-                movie["subscription_id"] = sub["id"]
+            result = await _run_subscription_check(sub, pipeline)
             new_movies.extend(result.get("new_movies", []))
-            latest = result.get("new_movies", [{}])[0].get("dvd_id", "") if result.get("new_movies") else ""
-            update_last_check(sub["id"], latest)
 
         except Exception as e:
             logger.error(f"检查订阅失败 {actress_name}: {e}")
@@ -78,17 +85,7 @@ async def check_all_subscriptions_report() -> dict:
             continue
 
         try:
-            result = await pipeline.generate_candidates_for_actress(
-                actress_id=actress_id,
-                actress_name=actress_name,
-                trigger_source="subscription",
-                reason="subscription_check",
-            )
-            for movie in result.get("new_movies", []):
-                movie["actress_name"] = actress_name
-                movie["subscription_id"] = sub["id"]
-            latest = result.get("new_movies", [{}])[0].get("dvd_id", "") if result.get("new_movies") else ""
-            update_last_check(sub["id"], latest)
+            result = await _run_subscription_check(sub, pipeline)
 
             totals["subscriptions_checked"] += 1
             for key in ("checked", "created", "existing", "skipped", "skipped_exempt", "in_library", "candidate_count"):

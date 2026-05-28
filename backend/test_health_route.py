@@ -6,17 +6,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from fastapi import FastAPI
-from test_support.client import ASGIClient, create_test_client
+from test_support.client import ASGIClient, create_router_test_client
 
 
 class HealthRouteTest(unittest.TestCase):
     def _client(self) -> ASGIClient:
         from routers.health import router
 
-        app = FastAPI()
-        app.include_router(router)
-        return create_test_client(app)
+        return create_router_test_client(router)
 
     def test_health_stays_lightweight_liveness(self):
         with patch("routers.health.get_db_orig", create=True) as get_db_orig, \

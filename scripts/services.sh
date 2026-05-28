@@ -25,14 +25,14 @@ usage() {
 Usage: scripts/services.sh <command> [service]
 
 Commands:
-  ensure              Install/update LaunchAgents and start missing services.
-  start               Install/update LaunchAgents and start all services.
-  restart [service]   Restart all services or one: javinfo, backend, frontend.
-  stop [service]      Stop all services or one: javinfo, backend, frontend.
-  status              Print launchd and port status.
-  logs <service>      Tail logs for: javinfo, backend, frontend.
-  rebuild-javinfo     Rebuild JavInfoApi binary and restart javinfo.
-  render-plists       Write LaunchAgent plists without starting services.
+  ensure                                Install/update LaunchAgents and start missing services.
+  start                                 Install/update LaunchAgents and start all services.
+  restart [<javinfo|backend|frontend>]  Restart all services or one service.
+  stop [<javinfo|backend|frontend>]     Stop all services or one service.
+  status                                Print launchd and port status.
+  logs <javinfo|backend|frontend>       Tail service logs.
+  rebuild-javinfo                       Rebuild JavInfoApi binary and restart javinfo.
+  render-plists                         Write LaunchAgent plists without starting services.
 
 Environment:
   JAVINFO_DIR         Defaults to /Users/kongmei/Code/JavInfoApi.
@@ -334,24 +334,37 @@ tail_logs() {
 }
 
 restart_services() {
-  write_plists
+  if [[ $# -gt 1 ]]; then
+    echo "Usage: scripts/services.sh restart [javinfo|backend|frontend]" >&2
+    return 2
+  fi
   if [[ $# -eq 0 ]]; then
+    write_plists
     while IFS= read -r label; do
       kickstart_label "${label}"
     done < <(all_labels)
     return
   fi
-  kickstart_label "$(label_for_service "$1")"
+  local label
+  label="$(label_for_service "$1")" || return $?
+  write_plists
+  kickstart_label "${label}"
 }
 
 stop_services() {
+  if [[ $# -gt 1 ]]; then
+    echo "Usage: scripts/services.sh stop [javinfo|backend|frontend]" >&2
+    return 2
+  fi
   if [[ $# -eq 0 ]]; then
     while IFS= read -r label; do
       stop_label "${label}"
     done < <(all_labels)
     return
   fi
-  stop_label "$(label_for_service "$1")"
+  local label
+  label="$(label_for_service "$1")" || return $?
+  stop_label "${label}"
 }
 
 rebuild_javinfo() {

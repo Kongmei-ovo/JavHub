@@ -63,6 +63,18 @@ _STATS_CACHE_NAMESPACE = "translation_stats"
 _STATS_CACHE_TTL = 300
 
 
+def _valid_type_message() -> str:
+    return f"type must be one of: {', '.join(sorted(VALID_TYPES))}"
+
+
+def _validate_mapping_type(mapping_type: str | None, *, optional: bool = False) -> str | None:
+    if optional and not mapping_type:
+        return None
+    if mapping_type not in VALID_TYPES:
+        raise HTTPException(400, _valid_type_message())
+    return mapping_type
+
+
 def _purge_translated_response_cache() -> None:
     cache.purge_response_cache()
 
@@ -258,8 +270,7 @@ async def export_translations(mapping_type: str):
     """导出指定类型的翻译映射 JSON。
     actress: 从 JavInfo 获取全部演员并匹配翻译（耗时）。
     """
-    if mapping_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(VALID_TYPES)}")
+    _validate_mapping_type(mapping_type)
 
     if mapping_type == "actress":
         actresses = await _fetch_all_actresses_for_export()
@@ -354,8 +365,7 @@ async def export_translations(mapping_type: str):
 @router.post("/import/{mapping_type}")
 async def import_trans(mapping_type: str, file: UploadFile = File(...)):
     """导入翻译映射 JSON（merge upsert）"""
-    if mapping_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(VALID_TYPES)}")
+    _validate_mapping_type(mapping_type)
     try:
         content = await file.read()
         data = json.loads(content.decode("utf-8"))
@@ -463,8 +473,7 @@ async def import_trans(mapping_type: str, file: UploadFile = File(...)):
 @router.get("/stats/{mapping_type}")
 async def translation_stats(mapping_type: str):
     """获取翻译统计"""
-    if mapping_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(VALID_TYPES)}")
+    _validate_mapping_type(mapping_type)
     count = get_translation_count(mapping_type)
     return {"type": mapping_type, "count": count}
 
@@ -581,8 +590,7 @@ async def list_translation_items(
         page_size = int(page_size)
     except Exception:
         page_size = 50
-    if item_type and item_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    item_type = _validate_mapping_type(item_type, optional=True)
     seeded = 0
     if item_type:
         seeded += sync_translation_workbench_from_mappings(
@@ -616,8 +624,7 @@ async def retry_translation_items(body: dict[str, Any] | None = None):
     ids = body.get("ids")
     provider_order = body.get("provider_order")
     provider = str(body.get("provider") or "").strip() or None
-    if item_type and item_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    item_type = _validate_mapping_type(item_type, optional=True)
     if ids is not None and not isinstance(ids, list):
         raise HTTPException(400, "ids must be a list")
     if provider_order is not None and not isinstance(provider_order, list):
@@ -637,15 +644,13 @@ async def retry_translation_items(body: dict[str, Any] | None = None):
 
 @router.get("/items/{item_type}/{item_id}/history")
 async def get_translation_item_history(item_type: str, item_id: str, limit: int = 50):
-    if item_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    item_type = _validate_mapping_type(item_type)
     return {"data": list_translation_workbench_history(item_type, item_id, limit=max(1, min(int(limit or 50), 200)))}
 
 
 @router.patch("/items/{item_type}/{item_id}")
 async def update_translation_item(item_type: str, item_id: str, body: dict[str, Any] | None = None):
-    if item_type not in VALID_TYPES:
-        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    item_type = _validate_mapping_type(item_type)
     body = body or {}
     action = str(body.get("action") or ("save" if body.get("translated_text") is not None else "review")).strip()
     operator = str(body.get("operator") or "manual").strip() or "manual"
