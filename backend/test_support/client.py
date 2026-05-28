@@ -7,7 +7,7 @@ import httpx
 from fastapi import FastAPI
 
 
-class ASGITestClient:
+class ASGIClient:
     """Small sync wrapper for isolated FastAPI route tests."""
 
     def __init__(
@@ -53,11 +53,11 @@ class ASGITestClient:
         return self.request("DELETE", url, **kwargs)
 
 
-def create_test_client(app: Any, **kwargs: Any) -> ASGITestClient:
-    return ASGITestClient(app, **kwargs)
+def create_test_client(app: Any, **kwargs: Any) -> ASGIClient:
+    return ASGIClient(app, **kwargs)
 
 
-def create_router_test_client(router: Any, **kwargs: Any) -> ASGITestClient:
+def create_router_test_client(router: Any, **kwargs: Any) -> ASGIClient:
     app = FastAPI()
     app.include_router(router)
     return create_test_client(app, **kwargs)

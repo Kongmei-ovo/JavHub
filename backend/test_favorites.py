@@ -3,12 +3,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from test_support.client import ASGITestClient, create_router_test_client
+from test_support.client import ASGIClient, create_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
 class FavoriteCollectionsRouterTest(TempPostgresMixin, unittest.TestCase):
-    def _client(self) -> ASGITestClient:
+    def _client(self) -> ASGIClient:
         from routers.favorites import router
 
         return create_router_test_client(router)
