@@ -148,6 +148,26 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
         set_cache.assert_called_once()
         self.assertEqual(set_cache.call_args.args[0], "miaa784:service:digital")
 
+    async def test_get_video_cache_bypass_skips_local_cache_and_upstream_cache(self):
+        client = InfoClient()
+        javinfo_detail = {
+            "dvd_id": "MIAA-784",
+            "title_ja": "Fresh detail",
+        }
+
+        with patch("services.cache.get_video") as get_cache, \
+             patch("services.cache.set_video") as set_cache, \
+             patch.object(client, "_get", AsyncMock(return_value=javinfo_detail)) as get_mock:
+            data = await client.get_video("MIAA-784", service_code="digital", cache_bypass=True)
+
+        get_cache.assert_not_called()
+        set_cache.assert_not_called()
+        get_mock.assert_awaited_once_with(
+            "/api/v1/videos/miaa784",
+            params={"service_code": "digital", "cache": "0"},
+        )
+        self.assertEqual(data["title_ja"], "Fresh detail")
+
     async def test_random_search_delegates_to_javinfo_without_cache(self):
         client = InfoClient()
         random_result = {
@@ -233,6 +253,27 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(data["total_count"], -1)
         set_search.assert_called_once()
+
+    async def test_search_videos_cache_bypass_skips_local_cache_and_upstream_cache(self):
+        client = InfoClient()
+        result = {
+            "data": [{"dvd_id": "MIAA-784"}],
+            "page": 1,
+            "page_size": 20,
+            "total_count": 1,
+            "total_pages": 1,
+        }
+
+        with patch("services.cache.get_search") as get_search, \
+             patch("services.cache.set_search") as set_search, \
+             patch.object(client, "_get", AsyncMock(return_value=result)) as get_mock:
+            data = await client.search_videos(q="abc", page=1, page_size=20, cache_bypass=True)
+
+        get_search.assert_not_called()
+        set_search.assert_not_called()
+        get_mock.assert_awaited_once()
+        self.assertEqual(get_mock.await_args.args[1]["cache"], "0")
+        self.assertEqual(data["data"][0]["content_id"], "MIAA-784")
 
     async def test_run_migrations_uses_admin_endpoint_with_long_timeout(self):
         client = InfoClient()

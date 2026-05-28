@@ -386,6 +386,7 @@ import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { ElMessage } from '../utils/message.js'
 import { requestConfirm } from '../utils/confirmDialog'
+import { candidateKey, candidateName, confidenceText } from '../utils/actorMappingPresentation.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -824,18 +825,6 @@ async function deleteDuplicate(item) {
 async function ignoreDuplicate(item) {
   await api.ignoreDuplicate(item.emby_item_id)
   removeDuplicateItem(item.emby_item_id)
-}
-
-function candidateName(candidate) {
-  return candidate.javinfo_actress_name || candidate.name_kanji || candidate.name_romaji || candidate.name_ja || candidate.name_en || candidate.name || String(candidate.id || '')
-}
-
-function candidateKey(candidate) {
-  return String(candidate.id || candidate.javinfo_actress_id || candidateName(candidate))
-}
-
-function confidenceText(value) {
-  return `${Math.round((Number(value) || 0) * 100)}%`
 }
 
 function inventoryActorName(actor) {

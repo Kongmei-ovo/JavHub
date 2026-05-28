@@ -100,14 +100,21 @@
           @click="handleFavoriteItemClick(item)"
         >
           <MovieCard
-            :contentId="item.metadata?.content_id || item.entity_id"
-            :dvdId="movieDisplayCode(item)"
+            v-bind="movieCardVariantProps(item.metadata || {})"
             :coverUrl="cardImageUrl(item.metadata || {})"
             :title="item.metadata?.title_en_translated || item.metadata?.title_ja_translated || item.metadata?.title_en || item.metadata?.title_ja || item.metadata?.title || ''"
             :serviceCode="item.metadata?.service_code || ''"
             :releaseDate="item.metadata?.release_date || ''"
             :runtimeMins="item.metadata?.runtime_mins || item.metadata?.runtime || ''"
             :sampleUrl="item.metadata?.sample_url || ''"
+          />
+          <VariantGroupDisclosure
+            :variantGroupCount="Number(item.metadata?.variant_group_count || 0)"
+            :variantGroupItems="visibleVariantItems(item.metadata || {})"
+            :expanded="isVariantGroupExpanded(item.metadata || {})"
+            :itemKey="variantGroupKey(item.metadata || {})"
+            @toggle="toggleVariantGroup"
+            @openVariant="openVideoModalFromMetadata"
           />
           <button
             v-if="editMode"
@@ -208,6 +215,8 @@ import { actorAvatar, actorName, actorOriginalName } from '../utils/actorDisplay
 import api from '../api'
 import MovieCard from '../components/MovieCard.vue'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
+import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
+import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 
 const TYPE_LABELS = {
   video: '影片',
@@ -219,7 +228,7 @@ const TYPE_LABELS = {
 
 export default {
   name: 'Favorites',
-  components: { MovieCard, ActorPortraitCard },
+  components: { MovieCard, ActorPortraitCard, VariantGroupDisclosure },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
@@ -232,6 +241,7 @@ export default {
     const collectionForm = ref({ name: '', description: '' })
     const editMode = ref(false)
     const selectedFavoriteKeys = ref(new Set())
+    const expandedVariantGroups = ref({})
 
     // 动态计算各类型数量
     const typeCounts = computed(() => {
@@ -352,6 +362,9 @@ export default {
         openVideoModal(item.metadata || { content_id: item.entity_id }, '/favorites')
       }
     }
+    const openVideoModalFromMetadata = (metadata) => {
+      openVideoModal(metadata, '/favorites')
+    }
 
     const favoriteKey = (item) => `${item.entity_type}:${item.entity_id}`
     const isSelected = (item) => selectedFavoriteKeys.value.has(favoriteKey(item))
@@ -408,9 +421,16 @@ export default {
     }
 
     const cardImageUrl = (metadata) => videoCardCoverUrl(metadata)
-    const movieDisplayCode = (item) => {
-      const metadata = item?.metadata || {}
-      return metadata.dvd_id || metadata.canonical_number || metadata.content_id || item?.entity_id || ''
+    const isVariantGroupExpanded = (metadata) => {
+      const key = variantGroupKey(metadata)
+      return Boolean(key && expandedVariantGroups.value[key])
+    }
+    const toggleVariantGroup = (key) => {
+      if (!key) return
+      expandedVariantGroups.value = {
+        ...expandedVariantGroups.value,
+        [key]: !expandedVariantGroups.value[key],
+      }
     }
 
     const actorCardName = (item) => actorName(item.actor, entityDisplayName(item) || String(item.entity_id))
@@ -544,6 +564,7 @@ export default {
       navigateToEntity,
       navigateToActor,
       openVideo,
+      openVideoModalFromMetadata,
       favoriteKey,
       isSelected,
       toggleFavoriteSelection,
@@ -554,7 +575,11 @@ export default {
       isFavorited,
       toggleFavorite,
       cardImageUrl,
-      movieDisplayCode,
+      movieCardVariantProps,
+      variantGroupKey,
+      visibleVariantItems,
+      isVariantGroupExpanded,
+      toggleVariantGroup,
       actorCardName,
       actorCardSubtitle,
       actorCardMeta,

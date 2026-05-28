@@ -34,6 +34,7 @@ const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const displayLangSource = readFileSync(new URL('../utils/displayLang.js', import.meta.url), 'utf8')
+const translationProviders = readFileSync(new URL('../utils/translationProviders.js', import.meta.url), 'utf8')
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
@@ -152,9 +153,9 @@ test('navigation and actor page use actor mapping language', () => {
 })
 
 test('favorites video cards display dvd numbers instead of internal ids', () => {
-  assert.match(favorites, /:contentId="item\.metadata\?\.content_id \|\| item\.entity_id"/)
-  assert.match(favorites, /:dvdId="movieDisplayCode\(item\)"/)
-  assert.match(favorites, /metadata\.dvd_id \|\| metadata\.canonical_number \|\| metadata\.content_id \|\| item\?\.entity_id/)
+  assert.match(favorites, /v-bind="movieCardVariantProps\(item\.metadata \|\| \{\}\)"/)
+  assert.match(favorites, /import \{ movieCardVariantProps, variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
+  assert.doesNotMatch(favorites, /movieDisplayCode/)
 })
 
 test('actor portrait cards unify favorites subscriptions and supplement actor picking', () => {
@@ -176,6 +177,14 @@ test('actor portrait cards unify favorites subscriptions and supplement actor pi
   assert.match(subscription, /density="standard"/)
   assert.match(supplementActorPicker, /density="compact"/)
   assert.match(supplementActorPicker, /action-label="选择"/)
+})
+
+test('supplement actor picker distinguishes empty recent jobs from load failures', () => {
+  assert.match(supplement, /actorPickerError:\s*''/)
+  assert.match(supplement, /actorPickerLoadFailed\(\)/)
+  assert.match(supplementActorPicker, /error \? '补全队列不可用' : '暂无可选演员'/)
+  assert.match(supplement, /:error="actorPickerLoadFailed\(\)"/)
+  assert.doesNotMatch(supplement, /:error="actorPickerError"/)
 })
 
 test('library organize inventory actors reuse the shared portrait card', () => {
@@ -870,7 +879,9 @@ test('translation jobs has a standalone navigation page and settings no longer o
   assert.match(translationJobs, /实时兜底/)
   assert.match(translationJobs, /公共智能翻译参数在设置页维护/)
   assert.match(translationJobs, /批量作业默认不使用智能兜底/)
-  assert.match(translationJobs, /ai: \{ label: '智能兜底'/)
+  assert.match(translationJobs, /translationProviders\.js/)
+  assert.match(translationProviders, /ai: \{ label: '智能兜底'/)
+  assert.match(translationProviders, /providerOrderLabel/)
   assert.match(translationJobs, /batch_concurrency/)
   assert.match(translationJobs, /batch_size/)
   assert.match(translationJobs, /batch_char_limit/)
@@ -906,7 +917,7 @@ test('translation jobs has a standalone navigation page and settings no longer o
   assert.match(translationJobs, /selectedProvider/)
   assert.match(translationJobs, /providerOptions/)
   assert.match(translationJobs, /name="translation-provider"/)
-  assert.match(translationJobs, /baidu: \{ label: '百度翻译'/)
+  assert.match(translationProviders, /baidu: \{ label: '百度翻译'/)
   assert.match(translationJobs, /provider: this\.selectedProvider/)
   assert.doesNotMatch(translationJobs, /moveProvider/)
   assert.doesNotMatch(translationJobs, /上移/)
@@ -1141,7 +1152,9 @@ test('search preferences drive initial search params', () => {
   assert.match(search, /function sortStateFromPreference\(defaultSort = 'random'\)/)
   assert.match(search, /async mounted\(\)[\s\S]*this\.applySearchPreferences\(\{ force: true \}\)[\s\S]*await this\.loadConfiguredPageSize\(\)/)
   assert.match(search, /async loadConfiguredPageSize\(\)[\s\S]*await api\.getConfig\(\)/)
-  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*return buildSearchApiParams\(\{ \.\.\.this\.searchState, page \}, \{ pageSize: this\.pageSize \}\)/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*buildSearchApiParams\(\{ \.\.\.this\.searchState, page \}, \{ pageSize: this\.pageSize \}\)/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*variant_mode: 'grouped'/)
+  assert.match(search, /buildSearchParams\(page\) \{[\s\S]*include_variant_explanations: 1/)
   assert.doesNotMatch(search, /params\.service_code = this\.serviceCode/)
   assert.match(search, /replaceSearchRoute\(patch = \{\}, \{ replace = false \} = \{\}\)[\s\S]*searchQueryFromState\(\{ \.\.\.this\.searchState, \.\.\.patch \}\)/)
   assert.match(search, /doSearch\(\) \{[\s\S]*sortValueFromSortState\(this\.sortState\) === 'random'[\s\S]*searchHasUserConditions\(\{ \.\.\.this\.searchState, page: 1 \}\)[\s\S]*patch\.sort = 'release_date_desc'/)

@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from fastapi.params import Query as QueryParam
 
 from config import config
 from database import (
@@ -14,6 +15,7 @@ from database import (
     get_snapshot_actors,
     list_candidate_process_runs,
     mapping_summary,
+    variant_group_stats,
 )
 from services import cache
 
@@ -23,13 +25,17 @@ _CACHE_TTL = 15
 
 
 @router.get("/overview")
-async def operations_overview() -> dict[str, Any]:
+async def operations_overview(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
+    _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
+    cache_bypass = cache.should_bypass_response_cache(_cache_control)
+
     async def produce() -> dict[str, Any]:
         snapshot_key = get_latest_snapshot_key()
         snapshot_actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
         candidate_stats = download_candidate_stats()
         jobs = get_inventory_jobs(limit=10)
         missing = get_all_missing_videos()
+        variant_index = variant_group_stats()
 
         supplement: dict[str, Any] = {"available": False}
         try:
@@ -87,8 +93,17 @@ async def operations_overview() -> dict[str, Any]:
                 "failed": sum(1 for job in jobs if job.get("status") == "failed"),
             },
             "supplement": supplement,
+            "variant_index": variant_index,
         }
 
+    if cache_bypass:
+        return await cache.get_or_set_response(
+            _CACHE_NAMESPACE,
+            {},
+            produce,
+            ttl=_CACHE_TTL,
+            bypass=True,
+        )
     return await cache.get_or_set_response(_CACHE_NAMESPACE, {}, produce, ttl=_CACHE_TTL)
 
 

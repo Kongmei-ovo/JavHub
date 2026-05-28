@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -735,16 +736,19 @@ async def _collect_metadata_names(entity_types: tuple[str, ...] | None = None, l
     return rows
 
 
-async def _translate_titles(
-    job_id: int,
+@dataclass(frozen=True)
+class TitleTranslationPlan:
+    pending: list[dict]
+    index_entries: list[dict]
+    skipped: int
+
+
+def _build_title_translation_plan(
     items: list[dict],
-    provider_order: list[str],
-    counters: dict,
     *,
     force: bool,
     source_page: int | None = None,
-) -> None:
-    active_provider_order = _active_provider_order(provider_order, force=force)
+) -> TitleTranslationPlan:
     pending: list[dict] = []
     index_entries: list[dict] = []
     skipped = 0
@@ -757,9 +761,10 @@ async def _translate_titles(
         scope = str(item.get("_translation_scope") or f"title:{content_id}:title_ja")
         known = _title_known_translation(content_id, source)
         item_source_page = item.get("_source_page", source_page)
+        item_id = _normalize_code(content_id)
         index_entries.append({
             "item_type": "title",
-            "item_id": _normalize_code(content_id),
+            "item_id": item_id,
             "source_text": source,
             "translated_text": known.get("translated_text") or "",
             "status": "machine_translated" if known.get("translated_text") else "untranslated",
@@ -773,7 +778,7 @@ async def _translate_titles(
             continue
         pending.append({
             "item_type": "title",
-            "item_id": _normalize_code(content_id),
+            "item_id": item_id,
             "content_id": content_id,
             "source": source,
             "source_text": source,
@@ -781,10 +786,26 @@ async def _translate_titles(
             "source_page": item_source_page,
         })
 
-    if index_entries:
-        bulk_upsert_translation_workbench_items(index_entries)
-    if skipped:
-        _record_many(job_id, counters, processed=skipped, skipped=skipped)
+    return TitleTranslationPlan(pending=pending, index_entries=index_entries, skipped=skipped)
+
+
+async def _translate_titles(
+    job_id: int,
+    items: list[dict],
+    provider_order: list[str],
+    counters: dict,
+    *,
+    force: bool,
+    source_page: int | None = None,
+) -> None:
+    active_provider_order = _active_provider_order(provider_order, force=force)
+    plan = _build_title_translation_plan(items, force=force, source_page=source_page)
+    pending = plan.pending
+
+    if plan.index_entries:
+        bulk_upsert_translation_workbench_items(plan.index_entries)
+    if plan.skipped:
+        _record_many(job_id, counters, processed=plan.skipped, skipped=plan.skipped)
     if not pending:
         return
     batch_provider = _batch_provider_name(active_provider_order)

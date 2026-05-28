@@ -216,7 +216,7 @@ export default {
     }
 
     // 监听收藏状态变化
-    favoriteState.subscribe(({ is_favorited }) => {
+    const unsubscribeFavoriteState = favoriteState.subscribe(({ is_favorited }) => {
       if (is_favorited) {
         showToast('已加入收藏', true)
       }
@@ -233,6 +233,7 @@ export default {
     })
 
     onUnmounted(() => {
+      unsubscribeFavoriteState()
       window.removeEventListener(MESSAGE_EVENT, handleAppMessage)
     })
 

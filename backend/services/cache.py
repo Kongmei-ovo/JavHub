@@ -223,8 +223,12 @@ async def get_or_set_response(
     params: dict | None,
     producer: Callable[[], Awaitable[Any]],
     ttl: int = DEFAULT_RESPONSE_TTL,
+    bypass: bool = False,
 ) -> Any:
     cache_params = params or {}
+    if bypass:
+        return await producer()
+
     cached = get_response(namespace, cache_params)
     if cached is not None:
         return cached
@@ -256,6 +260,11 @@ def _response_key(namespace: str, params: dict) -> str:
     stable = json.dumps(params, sort_keys=True, default=str, separators=(",", ":"))
     h = hashlib.sha256(stable.encode()).hexdigest()
     return f"response:{namespace}:{h}"
+
+
+def should_bypass_response_cache(value: Any) -> bool:
+    raw = str(value or "").strip().lower()
+    return raw in {"0", "false", "f", "no", "n", "off"}
 
 
 def _count_cache_key(key: Any, by_kind: dict[str, int], response_namespaces: dict[str, int]) -> None:

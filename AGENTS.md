@@ -5,10 +5,10 @@ Use the project service helper instead of ad hoc process commands.
 - Ensure services are installed and running: `scripts/services.sh ensure`
 - Check status and ports: `scripts/services.sh status`
 - Restart everything: `scripts/services.sh restart`
-- Restart one service: `scripts/services.sh restart backend|frontend|javinfo`
-- Stop services: `scripts/services.sh stop [backend|frontend|javinfo]`
+- Restart one service: `scripts/services.sh restart <backend|frontend|javinfo>`
+- Stop services: `scripts/services.sh stop [<backend|frontend|javinfo>]`
 - Rebuild JavInfoApi after Go changes: `scripts/services.sh rebuild-javinfo`
-- Tail logs: `scripts/services.sh logs backend|frontend|javinfo`
+- Tail logs: `scripts/services.sh logs <backend|frontend|javinfo>`
 
 Services are managed as macOS user LaunchAgents:
 
