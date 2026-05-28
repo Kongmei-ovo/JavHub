@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import defaultApi from '../api/index.js'
+import { apiErrorMessage } from './apiErrors.js'
 import { normalizeVideo, videoCodeOf } from './videoNormalize.js'
 
 let modalRequestId = 0
@@ -45,13 +46,6 @@ function isCurrentRequest(requestId, contentId) {
   return modalRequestId === requestId && videoCodeOf(modalState.selectedVideo) === contentId
 }
 
-function errorMessage(error) {
-  return error?.response?.data?.detail
-    || error?.response?.data?.message
-    || error?.message
-    || '网络错误'
-}
-
 export function openVideoModal(video, routePath = null, api = defaultApi) {
   const requestId = ++modalRequestId
   const contentId = videoCodeOf(video)
@@ -82,7 +76,7 @@ export function openVideoModal(video, routePath = null, api = defaultApi) {
       .catch(error => {
         if (isCurrentRequest(requestId, contentId)) {
           modalState.selectedVideo._loading.javinfo = false
-          modalState.selectedVideo._errors.javinfo = errorMessage(error)
+          modalState.selectedVideo._errors.javinfo = apiErrorMessage(error)
         }
       })
   }

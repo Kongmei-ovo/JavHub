@@ -926,6 +926,7 @@
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import { displayLang } from '../utils/displayLang.js'
+import { formatBytes, isJavInfoImportActive, javinfoImportProgress, javinfoImportStatusLabel } from '../utils/javinfoImportPresentation.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
@@ -1120,14 +1121,12 @@ export default {
       return (this.javinfoImportJob?.logs || []).slice(-12).join('\n')
     },
     javinfoImportProgress() {
-      const job = this.javinfoImportJob || {}
-      if (job.status === 'completed') return 100
-      if (this.javinfoImportUploading) return Math.max(0, Math.min(100, Math.round(this.javinfoImportUploadProgress)))
-      const total = Number(job.file_size || this.javinfoImportFile?.size || 0)
-      const uploaded = Number(job.uploaded_bytes || 0)
-      if (total > 0) return Math.max(0, Math.min(100, Math.round(uploaded * 100 / total)))
-      if (this.isJavInfoImportActive(job)) return 10
-      return 0
+      return javinfoImportProgress({
+        job: this.javinfoImportJob,
+        uploading: this.javinfoImportUploading,
+        uploadProgress: this.javinfoImportUploadProgress,
+        fileSize: this.javinfoImportFile?.size,
+      })
     },
     avatarSizeHint() {
       return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
@@ -1596,32 +1595,13 @@ export default {
       }
     },
     isJavInfoImportActive(job) {
-      return ['pending', 'uploading', 'uploaded', 'restoring', 'stopping', 'swapping', 'restarting', 'migrating'].includes(job?.status)
+      return isJavInfoImportActive(job)
     },
     javinfoImportStatusLabel(job) {
-      const status = job?.status || 'pending'
-      const stage = job?.stage || status
-      const labels = {
-        pending: '等待上传',
-        uploading: '上传中',
-        uploaded: '已上传',
-        restoring: '恢复中',
-        stopping: '停止 JavInfoApi',
-        swapping: '切换数据库',
-        restarting: '重启 JavInfoApi',
-        migrating: '更新 JavInfoApi',
-        completed: '已完成',
-        failed: '失败',
-        canceled: '已取消',
-      }
-      return labels[stage] || labels[status] || status
+      return javinfoImportStatusLabel(job)
     },
     formatBytes(value) {
-      const size = Number(value || 0)
-      if (size >= 1024 ** 3) return `${(size / 1024 ** 3).toFixed(2)} GB`
-      if (size >= 1024 ** 2) return `${(size / 1024 ** 2).toFixed(1)} MB`
-      if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`
-      return `${size} B`
+      return formatBytes(value)
     },
     loadBubbleCfg() {
       try {

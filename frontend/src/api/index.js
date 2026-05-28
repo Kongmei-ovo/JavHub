@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from '../utils/message.js'
+import { apiErrorMessage } from '../utils/apiErrors.js'
 
 const api = axios.create({
   baseURL: '/api'
@@ -12,10 +13,7 @@ let lastErrorToast = { key: '', ts: 0 }
 
 export function formatApiError(error, { service = '服务', action = '请求', fallback = '请稍后重试。' } = {}) {
   const status = error?.response?.status || 0
-  const rawMessage = error?.response?.data?.detail
-    || error?.response?.data?.message
-    || error?.message
-    || fallback
+  const rawMessage = apiErrorMessage(error, fallback)
   const retryable = !status || status >= 500 || status === 408 || status === 429
   const serviceLabel = service
   return {
@@ -101,10 +99,7 @@ api.interceptors.response.use(
   response => response,
   error => {
     if (!error.config?.silentError) {
-      const errMsg = error.response?.data?.detail
-        || error.response?.data?.message
-        || error.message
-        || '网络错误'
+      const errMsg = apiErrorMessage(error)
       const key = `${error.response?.status || 'network'}:${errMsg}`
       const now = Date.now()
       if (key !== lastErrorToast.key || now - lastErrorToast.ts > ERROR_TOAST_COOLDOWN_MS) {
