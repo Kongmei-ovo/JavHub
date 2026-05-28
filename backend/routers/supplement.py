@@ -40,6 +40,12 @@ async def create_filmography_job(
     )
 
 
+@router.post("/avatars/gfriends/jobs")
+async def create_gfriends_avatar_sync_job() -> dict[str, Any]:
+    client = get_info_client()
+    return await client.proxy_post("/api/v1/supplement/avatars/gfriends/jobs")
+
+
 @router.post("/actresses/{actress_id}/resolved/refresh")
 async def refresh_resolved(actress_id: int) -> dict[str, Any]:
     client = get_info_client()

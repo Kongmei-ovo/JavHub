@@ -1,69 +1,15 @@
 import time
 import unittest
 import asyncio
-import fnmatch
 import os
-import sys
-import types
 from unittest.mock import patch
 
 from routers import config as config_router
 from services import cache
-from test_support.cache import RedisModulePatch
-
-
-class FakeRedisClient:
-    def __init__(self):
-        self.values = {}
-        self.expiry = {}
-
-    def get(self, key):
-        return self.values.get(key)
-
-    def set(self, key, value, ex=None):
-        self.values[key] = value
-        if ex is not None:
-            self.expiry[key] = time.time() + ex
-
-    def scan_iter(self, match=None, count=None):
-        return [key for key in self.values if match is None or fnmatch.fnmatch(key, match)]
-
-    def delete(self, *keys):
-        deleted = 0
-        for key in keys:
-            if key in self.values:
-                deleted += 1
-                self.values.pop(key, None)
-                self.expiry.pop(key, None)
-        return deleted
-
-    def ttl(self, key):
-        expires_at = self.expiry.get(key)
-        if expires_at is None:
-            return -1
-        return int(expires_at - time.time())
-
-
-class FakeRedisMixin:
-    def setUp(self):
-        self.fake_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: self.fake_client)
-        )
-        self.env_patch = patch.dict(os.environ, {
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": f"test-prefix-{id(self)}",
-        }, clear=False)
-        self.module_patch = RedisModulePatch(fake_redis)
-        self.env_patch.start()
-        self.module_patch.start()
-        cache.reset_backend()
-        cache.reset_metrics()
-
-    def tearDown(self):
-        cache.reset_backend()
-        self.module_patch.stop()
-        self.env_patch.stop()
+from test_support.cache import (
+    FakeRedisMixin,
+    fake_redis_backend,
+)
 
 
 class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
@@ -177,55 +123,19 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
         self.assertEqual(cache.get_data_generation("other"), 0)
 
     def test_data_generation_uses_current_cache_backend(self):
-        fake_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
-        )
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "generation-prefix",
-        }, clear=False), RedisModulePatch(fake_redis):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="generation-prefix") as fake_client:
             cache.set_data_generation("javinfo", 7, ttl=60)
 
             self.assertEqual(cache.get_data_generation("javinfo"), 7)
             self.assertIn("generation-prefix:generation:javinfo", fake_client.values)
 
-        cache.reset_backend()
-
     def test_default_cache_backend_is_redis(self):
-        fake_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
-        )
-
-        with patch.dict(os.environ, {
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "default-prefix",
-        }, clear=False), RedisModulePatch(fake_redis):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="default-prefix", backend=None):
             self.assertEqual(cache.get_backend_name(), "redis")
             self.assertIsInstance(cache.get_backend(), cache.RedisCacheBackend)
 
-        cache.reset_backend()
-
     def test_redis_backend_round_trips_without_changing_cache_api(self):
-        fake_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
-        )
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "test-prefix",
-        }, clear=False), RedisModulePatch(fake_redis):
-            cache.reset_backend()
-
+        with fake_redis_backend(prefix="test-prefix"):
             cache.set_response("videos", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
 
             self.assertEqual(cache.get_backend_name(), "redis")
@@ -234,20 +144,8 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
             self.assertEqual(cache.purge_response_cache(), 1)
             self.assertIsNone(cache.get_response("videos", {"page": 1}))
 
-        cache.reset_backend()
-
     def test_redis_backend_purge_only_deletes_current_prefix(self):
-        fake_client = FakeRedisClient()
-        fake_redis = types.SimpleNamespace(
-            Redis=types.SimpleNamespace(from_url=lambda url, decode_responses=True: fake_client)
-        )
-
-        with patch.dict(os.environ, {
-            "JAVHUB_CACHE_BACKEND": "redis",
-            "JAVHUB_REDIS_URL": "redis://cache.example/0",
-            "JAVHUB_REDIS_PREFIX": "current-prefix",
-        }, clear=False), RedisModulePatch(fake_redis):
-            cache.reset_backend()
+        with fake_redis_backend(prefix="current-prefix") as fake_client:
             backend = cache.get_backend()
 
             backend.set_json("video:abc-123", {"content_id": "ABC-123"}, ttl=60)
@@ -260,8 +158,6 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
             self.assertNotIn("current-prefix:search:abc:1", fake_client.values)
             self.assertEqual(fake_client.values["other-prefix:video:abc-123"], '{"content_id":"OTHER"}')
             self.assertEqual(fake_client.values["current-prefix-extra:video:abc-123"], '{"content_id":"EXTRA"}')
-
-        cache.reset_backend()
 
     def test_redis_backend_requires_url(self):
         with patch.dict(os.environ, {
@@ -335,6 +231,17 @@ class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTest
         result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
 
         self.assertEqual(result, {"data": [{"id": 1}]})
+
+    async def test_bypass_ignores_cached_response_and_does_not_store_result(self):
+        cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
+
+        async def producer():
+            return {"data": [{"id": 2}]}
+
+        result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60, bypass=True)
+
+        self.assertEqual(result, {"data": [{"id": 2}]})
+        self.assertEqual(cache.get_response("makers", {"page": 1}), {"data": [{"id": 1}]})
 
     async def test_high_cardinality_response_misses_do_not_retain_idle_locks(self):
         calls = 0

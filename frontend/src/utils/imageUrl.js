@@ -92,8 +92,7 @@ export function jacketThumbUrl(video) {
 }
 
 export function videoCardCoverUrl(video) {
-  const jacketUrl = jacketThumbUrl(video)
-  return jacketHdUrl(jacketUrl) || jacketUrl || '/placeholder.png'
+  return jacketThumbUrl(video) || video?.cover_url || ''
 }
 
 /**

@@ -13,13 +13,26 @@
         :alt="displayCode || normalized.title_ja || 'video cover'"
         loading="lazy"
         class="apple-video-card__image"
-        @error="imageError = true"
+        @error="onImageError"
         @load="onImageLoad"
       />
       <div v-else class="apple-video-card__fallback">
         <span>{{ fallbackText }}</span>
       </div>
 
+      <div
+        v-if="variantLabels.length"
+        class="apple-video-card__variant-stack"
+        :title="variantTooltip"
+      >
+        <span
+          v-for="label in variantLabels"
+          :key="label.key || label.label"
+          class="apple-video-card__variant-pill"
+        >
+          {{ label.short_label || label.label }}
+        </span>
+      </div>
     </div>
 
     <div class="apple-video-card__body">
@@ -37,8 +50,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { normalizeVideo } from '../utils/videoNormalize.js'
+import { computed, ref, watch } from 'vue'
+import { normalizeVideo, videoCoverCandidates } from '../utils/videoNormalize.js'
 
 const props = defineProps({
   video: { type: Object, required: true },
@@ -49,15 +62,55 @@ const emit = defineEmits(['open'])
 
 const imageError = ref(false)
 const wideImage = ref(false)
+const coverIndex = ref(0)
 const normalized = computed(() => normalizeVideo(props.video))
-const coverUrl = computed(() => props.coverUrl || normalized.value.jacket_thumb_url || normalized.value.jacket_full_url || '')
+const coverCandidates = computed(() => videoCoverCandidates(normalized.value, props.coverUrl))
+const coverUrl = computed(() => imageError.value ? '' : (coverCandidates.value[coverIndex.value] || ''))
 const titleText = computed(() => normalized.value.title_ja || normalized.value.title_en || normalized.value.title || 'Untitled')
-const displayCode = computed(() => normalized.value.dvd_id || normalized.value.content_id || '')
+const displayCode = computed(() => normalized.value.display_code || normalized.value.dvd_id || normalized.value.content_id || '')
 const fallbackText = computed(() => (displayCode.value || '?').slice(0, 12))
 const serviceLabel = computed(() => {
   const map = { mono: 'DVD', digital: '数字', rental: '租赁', ebook: '写真', download: '下载', streaming: '流媒体', subscription: '订阅' }
   return map[normalized.value.service_code] || normalized.value.service_code || ''
 })
+const variantLabels = computed(() => {
+  const labels = Array.isArray(normalized.value.variant_labels) ? normalized.value.variant_labels : []
+  return labels
+    .filter(label => label && (label.short_label || label.label))
+    .slice(0, 2)
+})
+const variantTooltip = computed(() => {
+  const explanations = Array.isArray(normalized.value.variant_explanations)
+    ? normalized.value.variant_explanations
+    : []
+  if (explanations.length) {
+    return explanations
+      .map(item => {
+        const label = item.label || item.raw || '版本'
+        const meaning = item.meaning || item.evidence || ''
+        return meaning ? `${label}：${meaning}` : label
+      })
+      .join('\n')
+  }
+  const labels = Array.isArray(normalized.value.variant_labels) ? normalized.value.variant_labels : []
+  return labels.map(label => label.label || label.short_label).filter(Boolean).join(' / ')
+})
+
+watch(coverCandidates, () => {
+  coverIndex.value = 0
+  imageError.value = false
+  wideImage.value = false
+})
+
+function onImageError() {
+  const nextIndex = coverIndex.value + 1
+  if (nextIndex < coverCandidates.value.length) {
+    coverIndex.value = nextIndex
+    wideImage.value = false
+    return
+  }
+  imageError.value = true
+}
 
 function onImageLoad(event) {
   const img = event.target
@@ -124,6 +177,35 @@ function handleKeydown(event) {
   object-fit: none;
   object-position: right center;
   clip-path: inset(0 0 0 50%);
+}
+
+.apple-video-card__variant-stack {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+  pointer-events: auto;
+}
+
+.apple-video-card__variant-pill {
+  min-width: 0;
+  max-width: 72px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(16, 18, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
 }
 
 .apple-video-card__fallback {
@@ -217,6 +299,18 @@ function handleKeydown(event) {
 
   .apple-video-card__badge {
     padding: 1px 5px;
+    font-size: 9px;
+  }
+
+  .apple-video-card__variant-stack {
+    top: 6px;
+    left: 6px;
+    gap: 4px;
+  }
+
+  .apple-video-card__variant-pill {
+    max-width: 58px;
+    padding: 2px 5px;
     font-size: 9px;
   }
 

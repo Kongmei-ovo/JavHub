@@ -10,6 +10,53 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 class SourceConfigTests(unittest.TestCase):
+    def test_numeric_clamp_helpers_normalize_invalid_and_out_of_range_values(self):
+        from config import Config
+
+        self.assertEqual(Config._clamp_int("12", 5, 1, 10), 10)
+        self.assertEqual(Config._clamp_int("bad", 5, 1, 10), 5)
+        self.assertEqual(Config._clamp_int("5000", 5, 1), 5000)
+        self.assertEqual(Config._clamp_float("1.5", 0.5, 0.0, 1.0), 1.0)
+        self.assertEqual(Config._clamp_float("bad", 0.5, 0.0, 1.0), 0.5)
+
+    def test_numeric_config_properties_preserve_clamp_semantics(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {
+            "automation": {
+                "auto_process_interval_minutes": 0,
+                "max_auto_downloads_per_run": -1,
+                "max_auto_downloads_per_24h": "bad",
+            },
+            "actor_mapping": {
+                "candidate_per_actor": 99,
+                "candidate_min_confidence": "-1",
+                "auto_confirm_confidence": "bad",
+                "auto_confirm_gap": "1.5",
+            },
+            "translation": {
+                "batch_concurrency": 0,
+                "batch_size": "bad",
+                "batch_char_limit": 1,
+                "source_page_size": 5000,
+                "scan_pages_per_batch": -2,
+            },
+        }
+
+        self.assertEqual(cfg.automation_auto_process_interval_minutes, 0)
+        self.assertEqual(cfg.automation_max_auto_downloads_per_run, 0)
+        self.assertEqual(cfg.automation_max_auto_downloads_per_24h, 100)
+        self.assertEqual(cfg.actor_mapping_candidate_per_actor, 10)
+        self.assertEqual(cfg.actor_mapping_candidate_min_confidence, 0.0)
+        self.assertEqual(cfg.actor_mapping_auto_confirm_confidence, 0.98)
+        self.assertEqual(cfg.actor_mapping_auto_confirm_gap, 1.0)
+        self.assertEqual(cfg.translation_batch_concurrency, 32)
+        self.assertEqual(cfg.translation_batch_size, 200)
+        self.assertEqual(cfg.translation_batch_char_limit, 500)
+        self.assertEqual(cfg.translation_source_page_size, 1000)
+        self.assertEqual(cfg.translation_scan_pages_per_batch, 1)
+
     def test_javhub_database_uses_dedicated_env_without_polluting_javinfo_import(self):
         from config import Config
 

@@ -9,6 +9,7 @@ function resetState() {
   state.items = []
   state.initialized = false
   subscriptionState.listener = null
+  subscriptionState.listeners?.clear?.()
 }
 
 test('subscription registry only treats enabled rows as subscribed', async (t) => {
@@ -65,4 +66,36 @@ test('subscription toggle deletes an existing subscribed row', async (t) => {
 
   assert.equal(subscribed, false)
   assert.deepEqual(calls, [['delete', 7]])
+})
+
+test('subscription state notifies listeners in order and can unsubscribe one listener', async (t) => {
+  const originalGetSubscriptions = api.getSubscriptions
+  const originalToggleSubscription = api.toggleSubscription
+  const events = []
+  t.after(() => {
+    api.getSubscriptions = originalGetSubscriptions
+    api.toggleSubscription = originalToggleSubscription
+    resetState()
+  })
+
+  api.getSubscriptions = async () => ({ data: { data: [] } })
+  api.toggleSubscription = async () => ({ data: { subscribed: true } })
+
+  resetState()
+  state.initialized = true
+
+  const unsubscribeFirst = subscriptionState.subscribe((event) => events.push(['first', event.actressId, event.subscribed]))
+  subscriptionState.subscribe((event) => events.push(['second', event.actressId, event.subscribed]))
+
+  assert.equal(typeof unsubscribeFirst, 'function')
+
+  await subscriptionState.toggle(101, 'Enabled')
+  unsubscribeFirst()
+  await subscriptionState.toggle(202, 'Another')
+
+  assert.deepEqual(events, [
+    ['first', 101, true],
+    ['second', 101, true],
+    ['second', 202, true],
+  ])
 })

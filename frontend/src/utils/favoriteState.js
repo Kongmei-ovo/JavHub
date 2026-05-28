@@ -96,8 +96,8 @@ export const favoriteState = {
       }
 
       // Notify listeners (for Toast)
-      if (this.listener) {
-        this.listener({ type: normalizedType, id, is_favorited })
+      for (const listener of this.listeners) {
+        listener({ type: normalizedType, id, is_favorited })
       }
 
       return is_favorited
@@ -109,8 +109,12 @@ export const favoriteState = {
 
   // 简单的监听器机制，用于触发全局 Toast
   listener: null,
+  listeners: new Set(),
   subscribe(callback) {
-    this.listener = callback
+    this.listeners.add(callback)
+    return () => {
+      this.listeners.delete(callback)
+    }
   },
 
   /**

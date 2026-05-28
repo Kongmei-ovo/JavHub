@@ -280,7 +280,7 @@ docker build -t javhub:test .
 docker compose config
 
 # Run backend tests
-PYTHONPATH=backend pytest
+python -m pytest -q
 
 # Smoke test the cache backend
 PYTHONPATH=backend python scripts/cache_backend_smoke.py
@@ -300,11 +300,12 @@ cd frontend && npm ci && npm run build
 
 ## GitHub Actions
 
-The repository includes three workflows:
+The repository includes four workflows:
 
 - `CI`: backend tests and frontend build
 - `CodeQL`: strict Python and JavaScript/TypeScript analysis
 - `Build Docker Image`: builds the unified JavHub image
+- `Docker Smoke`: validates the compose stack and service health
 
 Docker images are pushed to GHCR on `main`, `v*` tags, and manual workflow
 dispatch. Pull requests build for validation but do not push images.

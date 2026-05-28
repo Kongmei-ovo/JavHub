@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from routers import actresses
 from test_support.cache import FakeRedisMixin
+from test_support.translations import noop_entity_translator
 
 
 class ActressesRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
@@ -31,8 +32,7 @@ class ActressesRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             "page": 1,
             "page_size": 20,
         }
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.actresses.get_info_client", return_value=mock_client), \
              patch("routers.actresses.get_translator_service", return_value=mock_translator):
@@ -48,8 +48,7 @@ class ActressesRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_get_actress_uses_movie_count_from_detail_response(self):
         mock_client = AsyncMock()
         mock_client.get_actress.return_value = {"id": 1, "name_kanji": "三上", "movie_count": 99}
-        mock_translator = AsyncMock()
-        mock_translator.translate_entities.return_value = None
+        mock_translator = noop_entity_translator()
 
         with patch("routers.actresses.get_info_client", return_value=mock_client), \
              patch("routers.actresses.get_translator_service", return_value=mock_translator):

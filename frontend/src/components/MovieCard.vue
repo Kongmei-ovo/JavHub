@@ -19,6 +19,10 @@ const props = defineProps({
   releaseDate: { type: String, default: '' },
   runtimeMins: { type: [String, Number], default: '' },
   sampleUrl: { type: String, default: '' },
+  displayCode: { type: String, default: '' },
+  canonicalCode: { type: String, default: '' },
+  variantLabels: { type: Array, default: () => [] },
+  variantExplanations: { type: Array, default: () => [] },
 })
 
 defineEmits(['click'])
@@ -26,6 +30,10 @@ defineEmits(['click'])
 const video = computed(() => ({
   content_id: props.contentId,
   dvd_id: props.dvdId || props.contentId,
+  display_code: props.displayCode || props.dvdId || props.contentId,
+  canonical_code: props.canonicalCode,
+  variant_labels: props.variantLabels,
+  variant_explanations: props.variantExplanations,
   title_ja: props.title,
   jacket_thumb_url: props.coverUrl,
   service_code: props.serviceCode,

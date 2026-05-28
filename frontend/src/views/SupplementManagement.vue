@@ -14,6 +14,11 @@
         <button
           class="btn btn-ghost btn-sm"
           type="button"
+          @click="openSourceHealth"
+        >来源状态</button>
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
           @click="openGlobalQueue"
         >全局队列</button>
       </div>
@@ -25,7 +30,7 @@
       :actors="actorChoiceCards"
       :searched="actorSearched"
       :searching="actorSearching"
-      :error="actorPickerError"
+      :error="actorPickerLoadFailed()"
       :actor-avatar="actorAvatar"
       :actor-display-name="actorDisplayName"
       :actor-choice-status="actorChoiceStatus"
@@ -220,6 +225,8 @@
         :source-health-loading="sourceHealthLoading"
         :source-health-rows="sourceHealthRows"
         :source-action-loading="sourceActionLoading"
+        :gfriends-avatar-job="gfriendsAvatarJob"
+        :gfriends-avatar-syncing="gfriendsAvatarSyncing"
         :format-action-time="formatActionTime"
         :smoke-run-label="smokeRunLabel"
         :source-health-label="sourceHealthLabel"
@@ -227,6 +234,35 @@
         :source-health-detail="sourceHealthDetail"
         @refresh-health="loadSourceHealth"
         @run-smoke="runProviderSmoke"
+        @sync-gfriends-avatars="syncGfriendsAvatars"
+        @view-avatar-jobs="viewGfriendsAvatarJobs"
+        @load-smoke-runs="loadProviderSmokeRuns"
+        @pause-source="pauseSource"
+        @resume-source="resumeSource"
+      />
+    </section>
+
+    <section v-else-if="showSourceHealthGlobal" class="global-source-health-view">
+      <SourceHealthPanel
+        v-model:provider-smoke-form="providerSmokeForm"
+        v-model:provider-smoke-report="providerSmokeReport"
+        :provider-source-options="providerSourceOptions"
+        :provider-smoke-loading="providerSmokeLoading"
+        :provider-smoke-runs="providerSmokeRuns"
+        :source-health-loading="sourceHealthLoading"
+        :source-health-rows="sourceHealthRows"
+        :source-action-loading="sourceActionLoading"
+        :gfriends-avatar-job="gfriendsAvatarJob"
+        :gfriends-avatar-syncing="gfriendsAvatarSyncing"
+        :format-action-time="formatActionTime"
+        :smoke-run-label="smokeRunLabel"
+        :source-health-label="sourceHealthLabel"
+        :source-budget-label="sourceBudgetLabel"
+        :source-health-detail="sourceHealthDetail"
+        @refresh-health="loadSourceHealth"
+        @run-smoke="runProviderSmoke"
+        @sync-gfriends-avatars="syncGfriendsAvatars"
+        @view-avatar-jobs="viewGfriendsAvatarJobs"
         @load-smoke-runs="loadProviderSmokeRuns"
         @pause-source="pauseSource"
         @resume-source="resumeSource"
@@ -238,6 +274,7 @@
         <div class="panel-header">
           <div>
             <h2>全局队列</h2>
+            <p v-if="jobFilters.source" class="panel-subtitle">{{ jobFilters.source }} 任务</p>
           </div>
           <div class="filter-bar compact">
             <GlassSelect
@@ -369,6 +406,7 @@ import api from '../api'
 import { ElMessage } from '../utils/message.js'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
+import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
 
 const ActorPickerView = defineAsyncComponent(() => import('../features/supplement/ActorPickerView.vue'))
@@ -391,7 +429,7 @@ export default {
       jobPage: 1,
       jobsTotalCount: 0,
       jobsTotalPages: 1,
-      jobFilters: { status: '', actress_id: '' },
+      jobFilters: { status: '', actress_id: '', source: '' },
       actorContext: null,
       actorContextLoading: false,
       actorSearchKeyword: '',
@@ -399,6 +437,7 @@ export default {
       actorSearching: false,
       actorSearched: false,
       showGlobalQueue: false,
+      showSourceHealthGlobal: false,
       activeWorkspaceSegment: 'movies',
       workspaceSegments: [
         { key: 'movies', label: '作品字段' },
@@ -451,6 +490,9 @@ export default {
       providerSmokeReport: null,
       providerSmokeForm: { source: '', sourceMovieId: '' },
       providerSmokeRuns: [],
+      gfriendsAvatarJob: null,
+      gfriendsAvatarSyncing: false,
+      gfriendsAvatarPolling: null,
       hasInitialized: false,
       wasDeactivated: false,
       lastAppliedRouteKey: '',
@@ -460,7 +502,7 @@ export default {
   },
   computed: {
     showActorPicker() {
-      return !this.actorContext && !this.showGlobalQueue
+      return !this.actorContext && !this.showGlobalQueue && !this.showSourceHealthGlobal
     },
     recentActorJobs() {
       const seen = new Set()
@@ -513,6 +555,10 @@ export default {
         })),
       ]
     },
+    isGfriendsAvatarJobRunning() {
+      const status = this.gfriendsAvatarJob?.status
+      return status === 'queued' || status === 'running'
+    },
   },
   watch: {
     '$route.fullPath': {
@@ -526,7 +572,7 @@ export default {
     this.hasInitialized = true
     this.applyRouteState({ force: true })
     this.loadStats()
-    if (!this.$route.query.actress_id && this.$route.query.tab !== 'jobs') {
+    if (!this.$route.query.actress_id && !['jobs', 'sources'].includes(this.$route.query.tab)) {
       this.loadRecentActorJobs()
     }
   },
@@ -544,9 +590,11 @@ export default {
   deactivated() {
     this.wasDeactivated = true
     this._stopSupplementPolling()
+    this._stopGfriendsAvatarPolling()
   },
   beforeUnmount() {
     this._stopSupplementPolling()
+    this._stopGfriendsAvatarPolling()
   },
   methods: {
     supplementQueryKey(query = this.$route.query) {
@@ -558,6 +606,7 @@ export default {
       return JSON.stringify({
         tab: field('tab'),
         actress_id: field('actress_id'),
+        source: field('source'),
         q: field('q'),
       })
     },
@@ -588,13 +637,16 @@ export default {
       this.lastAppliedRouteKey = routeKey
       const tab = this.$route.query.tab
       const actressId = this.$route.query.actress_id
+      const source = typeof this.$route.query.source === 'string' ? this.$route.query.source.trim() : ''
       const q = typeof this.$route.query.q === 'string' ? this.$route.query.q.trim() : ''
+      this.jobFilters.source = source
       if (this.movieFilters.q !== q) {
         this.movieFilters.q = q
         this.moviePage = 1
       }
       if (actressId) {
         this.showGlobalQueue = false
+        this.showSourceHealthGlobal = false
         this.activeWorkspaceSegment = this.segmentFromTab(tab)
         await this.applyActorContext(actressId)
         await this.loadWorkspaceSegment(this.activeWorkspaceSegment)
@@ -604,10 +656,16 @@ export default {
       this.jobFilters.actress_id = ''
       this.movieFilters.actress_id = ''
       if (tab === 'jobs') {
+        this.showSourceHealthGlobal = false
         this.showGlobalQueue = true
         await this.loadJobs()
+      } else if (tab === 'sources') {
+        this.showGlobalQueue = false
+        this.showSourceHealthGlobal = true
+        await this.loadSourceHealth()
       } else {
         this.showGlobalQueue = false
+        this.showSourceHealthGlobal = false
       }
     },
     segmentFromTab(tab) {
@@ -668,6 +726,9 @@ export default {
         return `${this.jobLabel(actor._recentJob)} · ${this.statusLabel(actor._recentJob.status)}`
       }
       return '选择后进入补全工作台'
+    },
+    actorPickerLoadFailed() {
+      return this.actorPickerError === 'load_failed'
     },
     async searchActorContext() {
       const keyword = this.actorSearchKeyword.trim()
@@ -740,22 +801,49 @@ export default {
       this.actorContext = null
       this.supplementStatus = null
       this.jobFilters.actress_id = ''
+      this.jobFilters.source = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       this.actorSearchKeyword = ''
       this.actorSearchResults = []
       this.actorSearched = false
       this.showGlobalQueue = false
+      this.showSourceHealthGlobal = false
       await this.replaceSupplementRoute()
       this.loadRecentActorJobs({ silent: true })
     },
     async openGlobalQueue() {
       this.showGlobalQueue = true
+      this.showSourceHealthGlobal = false
       this.actorContext = null
       this.jobFilters.actress_id = ''
+      this.jobFilters.source = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs' })
+      if (!routeChanged) await this.loadJobs()
+    },
+    async openSourceHealth() {
+      this.showGlobalQueue = false
+      this.showSourceHealthGlobal = true
+      this.actorContext = null
+      this.jobFilters.actress_id = ''
+      this.jobFilters.source = ''
+      this.movieFilters.actress_id = ''
+      this.movieFilters.q = ''
+      const routeChanged = await this.replaceSupplementRoute({ tab: 'sources' })
+      if (!routeChanged) await this.loadSourceHealth()
+    },
+    async viewGfriendsAvatarJobs() {
+      this.showSourceHealthGlobal = false
+      this.showGlobalQueue = true
+      this.actorContext = null
+      this.jobFilters.actress_id = ''
+      this.jobFilters.status = ''
+      this.jobFilters.source = 'gfriends'
+      this.movieFilters.actress_id = ''
+      this.movieFilters.q = ''
+      const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs', source: 'gfriends' })
       if (!routeChanged) await this.loadJobs()
     },
     goActorContext() {
@@ -978,10 +1066,64 @@ export default {
         this.sourceHealth = healthResp.data || healthResp || []
         this.sourceBudgets = budgetResp.data || budgetResp || []
         this.providerSmokeRuns = smokeRunsResp.data || smokeRunsResp || []
+        await this.loadGfriendsAvatarJob({ silent: true })
       } catch (e) {
         console.error('Load source health failed:', e)
       } finally {
         if (showLoading) this.sourceHealthLoading = false
+      }
+    },
+    async loadGfriendsAvatarJob({ silent = false } = {}) {
+      try {
+        const resp = await api.listSupplementJobs({ page: 1, page_size: 1, source: 'gfriends' })
+        const data = resp.data || resp
+        this.gfriendsAvatarJob = (data.data || [])[0] || null
+        if (this.gfriendsAvatarJob && this.isGfriendsAvatarJobRunning && !this.gfriendsAvatarPolling) {
+          this._startGfriendsAvatarPolling()
+        } else if (!silent) {
+          this._stopGfriendsAvatarPolling()
+        }
+      } catch (e) {
+        console.error('Load gfriends avatar job failed:', e)
+      }
+    },
+    async syncGfriendsAvatars() {
+      if (this.gfriendsAvatarSyncing || this.isGfriendsAvatarJobRunning) return
+      const confirmed = await requestConfirm({
+        title: '同步演员头像？',
+        message: '会拉取 gfriends Filetree、匹配本地演员、写入头像覆盖，并校验图片可访问性。',
+        details: '这是全局维护任务，不绑定具体演员。已有运行中的头像同步任务时会复用该任务。',
+        confirmText: '开始同步',
+      })
+      if (!confirmed) return
+
+      this.gfriendsAvatarSyncing = true
+      try {
+        const resp = await api.startGfriendsAvatarSyncJob()
+        const data = resp.data || resp
+        ElMessage.success(data.existing ? '已有头像同步任务，已切换到任务状态' : '已加入头像同步队列')
+        await this.loadGfriendsAvatarJob()
+        this._startGfriendsAvatarPolling()
+      } catch (e) {
+        console.error('Start gfriends avatar sync failed:', e)
+      } finally {
+        this.gfriendsAvatarSyncing = false
+      }
+    },
+    _startGfriendsAvatarPolling() {
+      this._stopGfriendsAvatarPolling()
+      this.gfriendsAvatarPolling = setInterval(async () => {
+        await this.loadGfriendsAvatarJob({ silent: true })
+        if (!this.isGfriendsAvatarJobRunning) {
+          this._stopGfriendsAvatarPolling()
+          await this.loadSourceHealth({ silent: true })
+        }
+      }, 4000)
+    },
+    _stopGfriendsAvatarPolling() {
+      if (this.gfriendsAvatarPolling) {
+        clearInterval(this.gfriendsAvatarPolling)
+        this.gfriendsAvatarPolling = null
       }
     },
     async loadProviderSmokeRuns() {
@@ -1100,6 +1242,7 @@ export default {
         const params = { page: this.jobPage, page_size: 20 }
         if (this.jobFilters.status) params.status = this.jobFilters.status
         if (this.jobFilters.actress_id) params.actress_id = this.jobFilters.actress_id
+        if (this.jobFilters.source) params.source = this.jobFilters.source
         const resp = await api.listSupplementJobs(params)
         const data = resp.data || resp
         this.jobs = data.data || []
@@ -1391,6 +1534,12 @@ p {
   font-size: var(--type-panel-title);
   color: var(--text-primary);
   letter-spacing: 0;
+}
+
+.panel-subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .soft-count {

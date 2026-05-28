@@ -19,7 +19,7 @@
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
               </svg>
-              {{ variantInfo.canonical.length }} 部作品
+              {{ actorMovieCountLabel }}
             </span>
             <span v-if="isActorFavorited" class="meta-item meta-item--favorite">已收藏</span>
             <span v-if="isActorSubscribed" class="meta-item meta-item--subscribed">已订阅</span>
@@ -136,24 +136,24 @@
               class="switch-btn"
               :class="{ active: !showVariants }"
               @click="showVariants = false"
-            >标准版</button>
+            >合并版本</button>
             <button
               class="switch-btn"
               :class="{ active: showVariants }"
               @click="showVariants = true"
-            >变体 <span class="variant-badge">{{ variantCount }}</span></button>
+            >展开版本 <span class="variant-badge">{{ variantCount }}</span></button>
           </div>
-          <span class="movie-count">{{ displayMovies.length }} 部</span>
+          <span class="movie-count">{{ sectionMovieCountLabel }}</span>
         </div>
       </div>
 
       <!-- Year groups -->
-      <div v-for="group in yearGroups" :key="group.year" :id="'year-' + group.year" class="year-group">
+      <div v-for="group in visibleYearGroups" :key="group.year" :id="'year-' + group.year" class="year-group">
         <div class="year-header">
           <span class="year-label">{{ group.year }}</span>
-          <span class="year-count">{{ group.movies.length }} 部</span>
+          <span class="year-count">{{ yearGroupCountLabel(group) }}</span>
         </div>
-        <div class="movies-grid">
+        <div v-if="group.movies.length > 0" class="movies-grid">
           <div
             v-for="movie in group.movies"
             :key="movie.code || movie.id"
@@ -161,6 +161,11 @@
           >
             <MovieCard
               :contentId="movie.code || movie.id"
+              :dvdId="movie.display_code || movie.code || movie.id"
+              :displayCode="movie.display_code || movie.code || movie.id"
+              :canonicalCode="movie.canonical_code || ''"
+              :variantLabels="movie.variant_labels || []"
+              :variantExplanations="movie.variant_explanations || []"
               :coverUrl="cardImageUrl(movie)"
               :title="movie.title || ''"
               :serviceCode="displayServiceCode(movie)"
@@ -169,11 +174,12 @@
               :sampleUrl="movie._raw?.sample_url || ''"
               @click="openModal(movie)"
             />
-            <span v-if="movie._variant" class="variant-label">
-              {{ variantLabel(movie._variant) }}
+            <span v-if="movie.variant_group_count > 1 && !showVariants" class="variant-label">
+              另 {{ movie.variant_group_count - 1 }} 个版本
             </span>
           </div>
         </div>
+        <div v-else class="year-empty">该年份暂无作品</div>
       </div>
       <div v-if="hasMoreMovies" class="load-more-wrap">
         <button
@@ -181,7 +187,7 @@
           :disabled="loadingMoreMovies"
           @click="loadMoreMovies"
         >
-          {{ loadingMoreMovies ? '加载中...' : `加载更多 (${movies.length}/${totalCount || movies.length})` }}
+          {{ loadingMoreMovies ? '加载中...' : loadMoreMoviesLabel }}
         </button>
       </div>
     </div>
@@ -199,15 +205,16 @@
 
     <!-- Year Navigator (right side) -->
     <transition name="nav-fade">
-      <div v-if="yearGroups.length > 1" class="year-nav">
+      <div v-if="yearNavItems.length > 1" class="year-nav">
         <button
-          v-for="group in yearGroups"
-          :key="group.year"
+          v-for="item in yearNavItems"
+          :key="item.year"
           class="year-nav-item"
-          :class="{ active: activeYear === group.year }"
-          @click="scrollToYear(group.year)"
+          :class="{ active: activeYear === item.year, loading: item.loading }"
+          :title="yearNavTitle(item)"
+          @click="scrollToYear(item.year)"
         >
-          {{ group.year.toString().slice(2) }}
+          {{ item.year.toString().slice(2) }}
         </button>
       </div>
     </transition>
@@ -217,10 +224,9 @@
 
 <script>
 import api from '../api'
-import { actressImgUrl, jacketHdUrl } from '../utils/imageUrl.js'
+import { actressImgUrl } from '../utils/imageUrl.js'
 import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
-import { groupByVariant, variantLabel } from '../utils/videoVariant.js'
 import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import MovieCard from '../components/MovieCard.vue'
@@ -236,11 +242,15 @@ export default {
       actressData: null,
       movies: [],
       totalCount: 0,
+      catalogTotalCount: 0,
       moviePage: 1,
       movieTotalPages: 1,
       loadingMoreMovies: false,
       loading: false,
       activeYear: null,
+      yearRange: [],
+      yearLoadState: {},
+      yearLoadingYear: null,
       showVariants: false,
       supplementStatus: null,
       candidateSummary: { candidate: 0, needsMagnet: 0, ready: 0 },
@@ -258,26 +268,72 @@ export default {
       if (!this.actressData) return this.actorName
       return displayName(this.actressData, 'name_kanji', 'name_romaji') || this.actorName
     },
-    variantInfo() {
-      return groupByVariant(this.movies)
-    },
     displayMovies() {
-      if (this.showVariants) return this.variantInfo.variants
-      return this.variantInfo.canonical
+      if (this.showVariants) return this.flattenVariantGroups(this.movies)
+      return this.movies
     },
     variantCount() {
-      return this.variantInfo.totalVariants
+      return this.movies.reduce((sum, movie) => sum + Math.max(0, Number(movie.variant_group_count || 1) - 1), 0)
+    },
+    loadedMovieCount() {
+      return this.displayMovies.length
+    },
+    actorMovieCountLabel() {
+      const total = this.catalogTotalCount || this.totalCount
+      if (total > 0) return `${total} 部作品`
+      return `${this.loadedMovieCount} 部作品`
+    },
+    sectionMovieCountLabel() {
+      const total = this.catalogTotalCount || this.totalCount
+      if (total > this.loadedMovieCount) return `已显示 ${this.loadedMovieCount}/${total} 部`
+      return `${this.loadedMovieCount} 部`
+    },
+    loadMoreMoviesLabel() {
+      const total = this.catalogTotalCount || this.totalCount
+      if (total > this.movies.length) return `加载更多 (${this.movies.length}/${total})`
+      return `加载更多 (${this.movies.length})`
     },
     yearGroups() {
       const groups = {}
       for (const m of this.displayMovies) {
-        const year = m.date ? m.date.slice(0, 4) : '未知'
+        const year = this.movieYear(m)
         if (!groups[year]) groups[year] = []
         groups[year].push(m)
       }
       return Object.keys(groups)
         .sort((a, b) => b.localeCompare(a))
         .map(year => ({ year, movies: groups[year] }))
+    },
+    visibleYearGroups() {
+      const groupsByYear = new Map(this.yearGroups.map(group => [group.year, group]))
+      for (const [year, state] of Object.entries(this.yearLoadState)) {
+        if (state?.loaded && !groupsByYear.has(year)) {
+          groupsByYear.set(year, { year, movies: [] })
+        }
+      }
+      return Array.from(groupsByYear.values())
+        .map(group => {
+          const state = this.yearLoadState[group.year] || {}
+          return {
+            ...group,
+            totalCount: Number.isInteger(state.totalCount) ? state.totalCount : null,
+          }
+        })
+        .sort((a, b) => b.year.localeCompare(a.year))
+    },
+    yearNavItems() {
+      const loadedYears = this.yearGroups.map(group => group.year).filter(year => year !== '未知')
+      const years = this.yearRange.length ? this.yearRange : loadedYears
+      return years.map(year => {
+        const group = this.yearGroups.find(item => item.year === year)
+        const state = this.yearLoadState[year] || {}
+        return {
+          year,
+          loaded: Boolean(group || state.loaded),
+          loading: this.yearLoadingYear === year,
+          count: Number.isInteger(state.totalCount) ? state.totalCount : (group ? group.movies.length : null),
+        }
+      })
     },
     actressId() {
       return this.$route.query.actress_id || this.actressData?.id || null
@@ -335,6 +391,10 @@ export default {
       this.actressData = null
       this.supplementStatus = null
       this.candidateSummary = { candidate: 0, needsMagnet: 0, ready: 0 }
+      this.yearRange = []
+      this.yearLoadState = {}
+      this.yearLoadingYear = null
+      this.activeYear = null
       this._stopSupplementPolling()
       if (!this.actorName) return
       await this.loadActressInfo()
@@ -368,6 +428,12 @@ export default {
       return {
         code: m.dvd_id || m.content_id || '',
         id: m.content_id || m.dvd_id || '',
+        display_code: m.display_code || m.dvd_id || m.content_id || '',
+        canonical_code: m.canonical_code || '',
+        variant_labels: Array.isArray(m.variant_labels) ? m.variant_labels : [],
+        variant_explanations: Array.isArray(m.variant_explanations) ? m.variant_explanations : [],
+        variant_group_count: Number(m.variant_group_count || 1),
+        variant_group_items: Array.isArray(m.variant_group_items) ? m.variant_group_items : [],
         title: m.title_en || m.title_ja || m.canonical_number || '',
         cover_url: m.jacket_thumb_url || '',
         date: m.release_date || '',
@@ -377,20 +443,112 @@ export default {
         _dataOrigin: m.data_origin || null,
       }
     },
-    async fetchActorMoviePage(page) {
+    async fetchActorMoviePage(page, { pageSize = MOVIE_PAGE_SIZE, year = null, sortBy = 'release_date:desc', includeTotal = false } = {}) {
+      const requestOptions = {
+        include_supplement: '1',
+        include_total: includeTotal,
+        variant_mode: 'grouped',
+        variant_scope: 'indexed',
+        include_variant_explanations: 1,
+      }
+      if (year) requestOptions.year = Number(year)
+      if (sortBy) requestOptions.sort_by = sortBy
       if (this.actressId) {
-        const resp = await api.getActressVideos(this.actressId, page, MOVIE_PAGE_SIZE, { include_supplement: '1', include_total: false })
+        const resp = await api.getActressVideos(this.actressId, page, pageSize, requestOptions)
         return resp.data
       }
-      const resp = await api.searchVideos({ actress_name: this.actorName, page, page_size: MOVIE_PAGE_SIZE })
+      const resp = await api.searchVideos({
+        actress_name: this.actorName,
+        page,
+        page_size: pageSize,
+        include_total: includeTotal,
+        variant_mode: 'grouped',
+        variant_scope: 'indexed',
+        include_variant_explanations: 1,
+        year: year ? Number(year) : undefined,
+        sort_by: sortBy,
+      })
       return resp.data
     },
-    appendMoviePage(data) {
+    appendMoviePage(data, { trustTotals = false } = {}) {
       const incoming = (data.data || []).map(m => this.normalizeMovie(m))
-      this.movies.push(...incoming)
-      this.totalCount = Number.isInteger(data.total_count) ? data.total_count : this.movies.length
-      this.movieTotalPages = Number.isInteger(data.total_pages) ? data.total_pages : 1
+      this.mergeMovies(incoming)
+      if (trustTotals && Number.isInteger(data.total_count) && data.total_count >= 0) {
+        this.totalCount = data.total_count
+        if (!this.catalogTotalCount) this.catalogTotalCount = data.total_count
+      } else if (!this.totalCount) {
+        this.totalCount = this.movies.length
+      }
+      if (trustTotals && Number.isInteger(data.total_pages) && data.total_pages >= 0) {
+        this.movieTotalPages = data.total_pages
+      } else if (!this.movieTotalPages) {
+        this.movieTotalPages = 1
+      }
       this.$nextTick(() => this._setupYearObserver())
+    },
+    mergeMovies(incoming) {
+      const seen = new Set(this.movies.map(movie => this.movieKey(movie)))
+      for (const movie of incoming) {
+        const key = this.movieKey(movie)
+        if (seen.has(key)) continue
+        seen.add(key)
+        this.movies.push(movie)
+      }
+    },
+    movieKey(movie) {
+      return movie.id || movie.code || `${movie.title}:${movie.date}`
+    },
+    flattenVariantGroups(movies) {
+      const flattened = []
+      const seen = new Set()
+      for (const movie of movies) {
+        const items = Array.isArray(movie.variant_group_items) && movie.variant_group_items.length
+          ? movie.variant_group_items
+          : [movie._raw || movie]
+        for (const raw of items) {
+          const normalized = raw === movie._raw ? movie : this.normalizeMovie(raw)
+          const key = this.movieKey(normalized)
+          if (seen.has(key)) continue
+          seen.add(key)
+          flattened.push(normalized)
+        }
+      }
+      return flattened
+    },
+    movieYear(movie) {
+      return movie.date ? String(movie.date).slice(0, 4) : '未知'
+    },
+    movieYearFromApiItem(item) {
+      const date = item?.release_date || item?.date || ''
+      const year = String(date).slice(0, 4)
+      return /^\d{4}$/.test(year) ? year : null
+    },
+    buildYearRange(latestYear, earliestYear) {
+      const latest = Number(latestYear)
+      const earliest = Number(earliestYear)
+      if (!Number.isInteger(latest) || !Number.isInteger(earliest)) return []
+      const start = Math.max(latest, earliest)
+      const end = Math.min(latest, earliest)
+      const years = []
+      for (let year = start; year >= end; year -= 1) years.push(String(year))
+      return years
+    },
+    async loadYearBounds(seedData = null) {
+      const latestYear = this.movieYearFromApiItem(seedData?.data?.[0])
+        || this.yearGroups.find(group => group.year !== '未知')?.year
+      if (!latestYear) return
+      let earliestYear = latestYear
+      try {
+        const oldest = await this.fetchActorMoviePage(1, {
+          pageSize: 1,
+          sortBy: 'release_date:asc',
+          includeTotal: false,
+        })
+        earliestYear = this.movieYearFromApiItem(oldest?.data?.[0]) || latestYear
+      } catch (e) {
+        console.warn('Load actor year bounds failed:', e)
+      }
+      this.yearRange = this.buildYearRange(latestYear, earliestYear)
     },
     async loadActorMovies() {
       this.loading = true
@@ -399,8 +557,13 @@ export default {
         this.moviePage = 1
         this.movieTotalPages = 1
         this.totalCount = 0
-        const first = await this.fetchActorMoviePage(1)
-        this.appendMoviePage(first)
+        this.catalogTotalCount = 0
+        this.yearRange = []
+        this.yearLoadState = {}
+        this.yearLoadingYear = null
+        const first = await this.fetchActorMoviePage(1, { includeTotal: true })
+        this.appendMoviePage(first, { trustTotals: true })
+        this.loadYearBounds(first)
       } catch (e) {
         console.error('Load actor movies failed:', e)
       } finally {
@@ -421,10 +584,50 @@ export default {
         this.loadingMoreMovies = false
       }
     },
+    async loadYearMovies(year) {
+      const targetYear = String(year || '').trim()
+      if (!/^\d{4}$/.test(targetYear) || this.yearLoadingYear === targetYear) return
+      const currentState = this.yearLoadState[targetYear]
+      if (currentState?.loaded) return
+      this.yearLoadingYear = targetYear
+      this.yearLoadState = {
+        ...this.yearLoadState,
+        [targetYear]: { ...(currentState || {}), loading: true },
+      }
+      try {
+        const data = await this.fetchActorMoviePage(1, {
+          year: targetYear,
+          sortBy: 'release_date:desc',
+          includeTotal: true,
+        })
+        const incoming = (data.data || []).map(m => this.normalizeMovie(m))
+        this.mergeMovies(incoming)
+        this.yearLoadState = {
+          ...this.yearLoadState,
+          [targetYear]: {
+            loaded: true,
+            loading: false,
+            totalCount: Number.isInteger(data.total_count) ? data.total_count : incoming.length,
+            totalPages: Number.isInteger(data.total_pages) ? data.total_pages : 1,
+          },
+        }
+        this.$nextTick(() => this._setupYearObserver())
+      } catch (e) {
+        console.error('Load actor year movies failed:', e)
+        this.yearLoadState = {
+          ...this.yearLoadState,
+          [targetYear]: { loaded: false, loading: false, totalCount: null },
+        }
+      } finally {
+        this.yearLoadingYear = null
+      }
+    },
     _setupYearObserver() {
       if (this._yearObserver) this._yearObserver.disconnect()
-      if (!this.yearGroups.length) return
-      this.activeYear = this.yearGroups[0].year
+      if (!this.visibleYearGroups.length) return
+      if (!this.activeYear || !this.visibleYearGroups.some(group => group.year === this.activeYear)) {
+        this.activeYear = this.visibleYearGroups[0].year
+      }
       this._yearObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
@@ -433,20 +636,38 @@ export default {
           }
         }
       }, { rootMargin: '-80px 0px -70% 0px' })
-      for (const group of this.yearGroups) {
+      for (const group of this.visibleYearGroups) {
         const el = document.getElementById('year-' + group.year)
         if (el) this._yearObserver.observe(el)
       }
     },
-    scrollToYear(year) {
-      const el = document.getElementById('year-' + year)
+    async scrollToYear(year) {
+      const targetYear = String(year)
+      this.activeYear = targetYear
+      let el = document.getElementById('year-' + targetYear)
+      if (!el) {
+        await this.loadYearMovies(year)
+        await this.$nextTick()
+        el = document.getElementById('year-' + targetYear)
+      }
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
+    yearGroupCountLabel(group) {
+      if (Number.isInteger(group.totalCount) && group.totalCount > group.movies.length) {
+        return `${group.movies.length}/${group.totalCount} 部`
+      }
+      return `${group.movies.length} 部`
+    },
+    yearNavTitle(item) {
+      if (item.loading) return `${item.year} 加载中`
+      if (Number.isInteger(item.count)) return `${item.year} · ${item.count} 部`
+      return `${item.year}`
     },
     openModal(movie) {
       openVideoModal(movie._raw || movie, this.$route.fullPath || this.$route.path)
     },
     cardImageUrl(movie) {
-      return jacketHdUrl(movie.cover_url) || movie.cover_url || ''
+      return movie.cover_url || movie.jacket_thumb_url || movie.jacket_full_url || ''
     },
     displayServiceCode(movie) {
       if (movie._raw?.data_origin === 'supplement') return ''
@@ -827,6 +1048,18 @@ export default {
   gap: 20px;
 }
 
+.year-empty {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .load-more-wrap {
   display: flex;
   justify-content: center;
@@ -878,6 +1111,12 @@ export default {
 .year-nav-item.active {
   background: var(--accent);
   color: var(--text-on-accent);
+}
+
+.year-nav-item.loading {
+  color: var(--text-secondary);
+  opacity: 0.72;
+  cursor: wait;
 }
 
 .nav-fade-enter-active { transition: opacity 0.3s ease; }

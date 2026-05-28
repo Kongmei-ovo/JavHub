@@ -106,32 +106,56 @@
       <div v-for="(group, year) in groupedByYear" :key="year" class="year-section">
         <div class="year-header page-rail page-rail--gallery">{{ year === 'null' ? '未知' : year }}</div>
         <div class="results-grid page-rail page-rail--gallery">
-          <MovieCard
+          <div
             v-for="item in group"
             :key="item.content_id || item.dvd_id"
-            :contentId="item.dvd_id || item.content_id"
-            :coverUrl="cardImageUrl(item)"
-            :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
-            :releaseDate="item.release_date || ''"
-            :runtimeMins="item.runtime_mins || ''"
-            @click="openModal(item)"
-          />
+            class="result-card-group"
+          >
+            <MovieCard
+              v-bind="movieCardVariantProps(item)"
+              :coverUrl="cardImageUrl(item)"
+              :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
+              :releaseDate="item.release_date || ''"
+              :runtimeMins="item.runtime_mins || ''"
+              @click="openModal(item)"
+            />
+            <VariantGroupDisclosure
+              :variantGroupCount="Number(item.variant_group_count || 0)"
+              :variantGroupItems="visibleVariantItems(item)"
+              :expanded="isVariantGroupExpanded(item)"
+              :itemKey="variantGroupKey(item)"
+              @toggle="toggleVariantGroup"
+              @openVariant="openModal"
+            />
+          </div>
         </div>
       </div>
     </template>
 
     <!-- 结果网格：普通模式 -->
     <div v-else-if="results.length > 0" class="results-grid page-rail page-rail--gallery">
-      <MovieCard
+      <div
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
-        :contentId="item.dvd_id || item.content_id"
-        :coverUrl="cardImageUrl(item)"
-        :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
-        :releaseDate="item.release_date || ''"
-        :runtimeMins="item.runtime_mins || ''"
-        @click="openModal(item)"
-      />
+        class="result-card-group"
+      >
+        <MovieCard
+          v-bind="movieCardVariantProps(item)"
+          :coverUrl="cardImageUrl(item)"
+          :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja || ''"
+          :releaseDate="item.release_date || ''"
+          :runtimeMins="item.runtime_mins || ''"
+          @click="openModal(item)"
+        />
+        <VariantGroupDisclosure
+          :variantGroupCount="Number(item.variant_group_count || 0)"
+          :variantGroupItems="visibleVariantItems(item)"
+          :expanded="isVariantGroupExpanded(item)"
+          :itemKey="variantGroupKey(item)"
+          @toggle="toggleVariantGroup"
+          @openVariant="openModal"
+        />
+      </div>
     </div>
 
     <!-- 空状态 -->
@@ -167,12 +191,14 @@ import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
+import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
+import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 
 const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect, VariantGroupDisclosure },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -202,6 +228,7 @@ export default {
       page: 1,
       total: 0,
       totalPages: 1,
+      expandedVariantGroups: {},
       searchSequence: createRequestSequence()
     }
   },
@@ -349,7 +376,13 @@ export default {
       this.page = 1
     },
     buildParams() {
-      const params = { page: this.page, page_size: PAGE_SIZE }
+      const params = {
+        page: this.page,
+        page_size: PAGE_SIZE,
+        variant_mode: 'grouped',
+        variant_scope: 'indexed',
+        include_variant_explanations: 1,
+      }
       if (this.serviceCode) params.service_code = this.serviceCode
 
       // 根据类型填充参数：支持 ID (数字) 和名称 (字符串)
@@ -424,7 +457,21 @@ export default {
     openModal(video) {
       openVideoModal(video, this.$route.fullPath || this.$route.path)
     },
-    cardImageUrl(item) { return videoCardCoverUrl(item) }
+    cardImageUrl(item) { return videoCardCoverUrl(item) },
+    movieCardVariantProps,
+    variantGroupKey,
+    visibleVariantItems,
+    isVariantGroupExpanded(item) {
+      const key = variantGroupKey(item)
+      return Boolean(key && this.expandedVariantGroups[key])
+    },
+    toggleVariantGroup(key) {
+      if (!key) return
+      this.expandedVariantGroups = {
+        ...this.expandedVariantGroups,
+        [key]: !this.expandedVariantGroups[key],
+      }
+    }
   }
 }
 </script>
@@ -552,6 +599,7 @@ export default {
 .year-section { margin-bottom: 8px; }
 .year-header { font-size: 13px; font-weight: 700; color: var(--text-secondary); padding: 12px 0 8px 12px; letter-spacing: 0.05em; border-left: 3px solid var(--border-light); font-family: var(--font-mono); }
 .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px !important; padding-block: 0 24px; }
+.result-card-group { min-width: 0; }
 
 @media (max-width: 768px) {
   .toolbar-left {

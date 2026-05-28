@@ -64,7 +64,9 @@ export function openVideoModal(video, routePath = null, api = defaultApi) {
   }
 
   if (fetchPrimaryDetails && api?.getVideo) {
-    api.getVideo(contentId)
+    const serviceCode = String(video?.service_code || '').trim()
+    const detailOptions = serviceCode ? { service_code: serviceCode } : undefined
+    api.getVideo(contentId, detailOptions)
       .then(response => {
         if (isCurrentRequest(requestId, contentId)) {
           modalState.selectedVideo = {

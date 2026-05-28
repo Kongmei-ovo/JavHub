@@ -391,6 +391,34 @@ class TranslationJobsTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failed_item["status"], "failed")
         self.assertEqual(failed_item["attempts"], 1)
 
+    async def test_build_title_translation_plan_indexes_known_titles_and_pends_missing_translations(self):
+        from translations.jobs import _build_title_translation_plan
+
+        def known_translation(content_id, source):
+            if content_id == "KNOWN-001" and source == "既存タイトル":
+                return {"translated_text": "既存译文", "provider": "mapping", "model": None}
+            return {}
+
+        items = [
+            {"content_id": "", "title_ja": "番号なし"},
+            {"content_id": "KNOWN-001", "title_ja": "既存タイトル", "_source_page": 4},
+            {"content_id": "NEW-001", "title_ja": "新規タイトル"},
+            {"dvd_id": "DVD-002", "title_en": "English Title", "_translation_scope": "custom:scope"},
+        ]
+
+        with patch("translations.jobs._title_known_translation", side_effect=known_translation):
+            plan = _build_title_translation_plan(items, force=False, source_page=9)
+
+        self.assertEqual(plan.skipped, 2)
+        self.assertEqual([entry["item_id"] for entry in plan.index_entries], ["known001", "new001", "dvd002"])
+        self.assertEqual(plan.index_entries[0]["translated_text"], "既存译文")
+        self.assertEqual(plan.index_entries[0]["status"], "machine_translated")
+        self.assertEqual(plan.index_entries[0]["source_page"], 4)
+        self.assertEqual(plan.index_entries[1]["status"], "untranslated")
+        self.assertEqual(plan.index_entries[1]["source_page"], 9)
+        self.assertEqual([item["item_id"] for item in plan.pending], ["new001", "dvd002"])
+        self.assertEqual(plan.pending[1]["scope"], "custom:scope")
+
     async def test_title_job_uses_selected_baidu_without_google_fallback(self):
         from database import add_translation_job, get_translation_workbench_item
         from translations.jobs import _translate_titles
