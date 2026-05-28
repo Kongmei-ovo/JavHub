@@ -12,50 +12,41 @@ from telegram_bot.keyboards import (
 
 import logging
 
-log = logging.getLogger('telegram.bot')
+logger = logging.getLogger(__name__)
 
 
 async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 /search 命令：发送封面卡片第一页"""
-    import traceback
-    import sys
-    print(f"[SEARCH HANDLER] invoked, args={context.args}", flush=True)
-    sys.stderr.flush()
-    log.info(f"[SEARCH HANDLER] invoked, args={context.args}")
+    logger.info("[SEARCH HANDLER] invoked, args=%s", context.args)
     try:
         if not context.args:
-            print("[SEARCH HANDLER] no args, sending usage", flush=True)
-            log.info("[SEARCH HANDLER] no args, sending usage")
+            logger.info("[SEARCH HANDLER] no args, sending usage")
             await update.message.reply_text(
                 "用法：/search <番号或关键词>\n"
                 "例：/search abc-123\n"
                 "   /search 步兵"
             )
-            print("[SEARCH HANDLER] usage sent ok", flush=True)
             return
 
         keyword = " ".join(context.args).strip()
-        print(f"[SEARCH HANDLER] keyword={keyword}", flush=True)
-        log.info(f"[SEARCH HANDLER] keyword={keyword}")
+        logger.info("[SEARCH HANDLER] keyword=%s", keyword)
         page = 1
         page_size = 3
 
         info_client = get_info_client()
-        print("[SEARCH HANDLER] calling JavInfoApi", flush=True)
-        log.info("[SEARCH HANDLER] calling JavInfoApi")
+        logger.info("[SEARCH HANDLER] calling JavInfoApi")
         # 番号精确匹配：content_id 参数映射到 JavInfoApi 的 dvd_id 字段
         result = await info_client.search_videos(content_id=keyword, page=page, page_size=page_size)
         if result.get("total_count", 0) == 0:
             # 番号搜不到再走关键词搜索
             result = await info_client.search_videos(q=keyword, page=page, page_size=page_size)
-        print(f"[SEARCH HANDLER] got result, total={result.get('total_count', 0)}", flush=True)
-        log.info(f"[SEARCH HANDLER] got result, total={result.get('total_count', 0)}")
+        logger.info("[SEARCH HANDLER] got result, total=%s", result.get("total_count", 0))
 
         total = result.get("total_count", 0)
         data = result.get("data", [])
 
         if total == 0 or not data:
-            print(f"[SEARCH HANDLER] no results for {keyword}", flush=True)
+            logger.info("[SEARCH HANDLER] no results for %s", keyword)
             await update.message.reply_text(f"未找到「{keyword}」相关影片")
             return
 
@@ -66,14 +57,13 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             detail = await info_client.get_video(content_id)
         except Exception as exc:
-            log.debug("[SEARCH HANDLER] detail fetch failed for %s: %s", content_id, exc)
+            logger.debug("[SEARCH HANDLER] detail fetch failed for %s: %s", content_id, exc)
             detail = first
         caption = _build_caption(detail, keyword, page, total_pages)
         cover_url = jacket_full_url(detail.get("jacket_thumb_url")) or detail.get("jacket_full_url") or detail.get("jacket_thumb_url")
         has_actress = bool(first.get("actress_name"))
 
-        print(f"[SEARCH HANDLER] sending reply_photo, cover={bool(cover_url)}", flush=True)
-        log.info(f"[SEARCH HANDLER] sending reply_photo, cover={bool(cover_url)}")
+        logger.info("[SEARCH HANDLER] sending reply_photo, cover=%s", bool(cover_url))
         if cover_url:
             await update.message.reply_photo(
                 photo=cover_url,
@@ -87,18 +77,13 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 parse_mode="HTML",
                 reply_markup=search_card_keyboard(keyword, page, total_pages, has_actress),
             )
-        print("[SEARCH HANDLER] reply sent ok", flush=True)
-        log.info("[SEARCH HANDLER] reply sent ok")
+        logger.info("[SEARCH HANDLER] reply sent ok")
     except Exception as e:
-        import sys
-        print(f"[SEARCH HANDLER] EXCEPTION: {e}\n{traceback.format_exc()}", flush=True)
-        sys.stderr.flush()
-        log.error(f"[SEARCH HANDLER] exception: {e}\n{traceback.format_exc()}")
+        logger.exception("[SEARCH HANDLER] exception")
         try:
             await update.message.reply_text(f"搜索出错：{str(e)}")
         except Exception:
-            print("[SEARCH HANDLER] failed to send error reply", flush=True)
-            log.error("[SEARCH HANDLER] failed to send error reply")
+            logger.exception("[SEARCH HANDLER] failed to send error reply")
 
 
 def _build_caption(video: dict, keyword: str, page: int, total_pages: int) -> str:
@@ -197,7 +182,7 @@ async def _send_search_page(query, keyword: str, page: int) -> None:
         try:
             await query.edit_message_text(text=f"未找到「{keyword}」相关影片")
         except Exception as exc:
-            log.debug("Failed to edit empty search result message: %s", exc)
+            logger.debug("Failed to edit empty search result message: %s", exc)
         return
 
     total_pages = (total + page_size - 1) // page_size
@@ -219,7 +204,7 @@ async def _send_search_page(query, keyword: str, page: int) -> None:
                 reply_markup=search_card_keyboard(keyword, page, total_pages, has_actress),
             )
     except Exception as exc:
-        log.debug("Failed to update search page: %s", exc)
+        logger.debug("Failed to update search page: %s", exc)
 
 
 async def _show_confirm(query, keyword: str, page: int) -> None:
@@ -252,7 +237,7 @@ async def _show_confirm(query, keyword: str, page: int) -> None:
                 reply_markup=confirm_download_keyboard(content_id, keyword, page),
             )
     except Exception as exc:
-        log.debug("Failed to show download confirmation: %s", exc)
+        logger.debug("Failed to show download confirmation: %s", exc)
 
 
 async def _show_detail(query, keyword: str, page: int) -> None:
@@ -285,7 +270,7 @@ async def _show_detail(query, keyword: str, page: int) -> None:
                 reply_markup=detail_keyboard(content_id, keyword, page, has_actress),
             )
     except Exception as exc:
-        log.debug("Failed to show video detail: %s", exc)
+        logger.debug("Failed to show video detail: %s", exc)
 
 
 async def _do_download(query, content_id: str, keyword: str, page: int) -> None:
@@ -308,27 +293,23 @@ async def _do_download(query, content_id: str, keyword: str, page: int) -> None:
             reply_markup=back_to_search_keyboard(keyword, page),
         )
     except Exception as exc:
-        log.debug("Failed to show download candidate result: %s", exc)
+        logger.debug("Failed to show download candidate result: %s", exc)
 
 
 async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 /id 命令：番号精确搜索"""
-    import traceback
-    log = logging.getLogger('telegram.bot')
-    print(f"[ID HANDLER] invoked, args={context.args}", flush=True)
-    log.info(f"[ID HANDLER] invoked, args={context.args}")
+    logger.info("[ID HANDLER] invoked, args=%s", context.args)
     try:
         if not context.args:
             await update.message.reply_text("用法：/id <番号>\n例：/id MIAA-784\n   /id abc-123")
             return
         content_id = " ".join(context.args).strip()
-        print(f"[ID HANDLER] content_id={content_id}", flush=True)
-        log.info(f"[ID HANDLER] content_id={content_id}")
+        logger.info("[ID HANDLER] content_id=%s", content_id)
         page = 1
         page_size = 3
         info_client = get_info_client()
         result = await info_client.search_videos(content_id=content_id, page=page, page_size=page_size)
-        print(f"[ID HANDLER] got result, total={result.get('total_count', 0)}", flush=True)
+        logger.info("[ID HANDLER] got result, total=%s", result.get("total_count", 0))
         total = result.get("total_count", 0)
         data = result.get("data", [])
         if total == 0 or not data:
@@ -340,7 +321,7 @@ async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         try:
             detail = await info_client.get_video(cid)
         except Exception as exc:
-            log.debug("[ID HANDLER] detail fetch failed for %s: %s", cid, exc)
+            logger.debug("[ID HANDLER] detail fetch failed for %s: %s", cid, exc)
             detail = first
         caption = _build_caption(detail, content_id, page, total_pages)
         cover_url = jacket_full_url(detail.get("jacket_thumb_url")) or detail.get("jacket_full_url") or detail.get("jacket_thumb_url")
@@ -355,15 +336,13 @@ async def search_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 text=caption, parse_mode="HTML",
                 reply_markup=search_card_keyboard(content_id, page, total_pages, has_actress),
             )
-        print("[ID HANDLER] reply sent ok", flush=True)
+        logger.info("[ID HANDLER] reply sent ok")
     except Exception as e:
-        print(f"[ID HANDLER] EXCEPTION: {e}\n{traceback.format_exc()}", flush=True)
-        sys.stderr.flush()
-        log.error(f"[ID HANDLER] exception: {e}\n{traceback.format_exc()}")
+        logger.exception("[ID HANDLER] exception")
         try:
             await update.message.reply_text(f"搜索出错：{str(e)}")
         except Exception:
-            print("[ID HANDLER] failed to send error reply", flush=True)
+            logger.exception("[ID HANDLER] failed to send error reply")
 
 # 兼容旧 export：download_callback = 统一的 callback_handler
 download_callback = callback_handler

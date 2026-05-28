@@ -255,6 +255,11 @@
                 <span>确认策略</span>
                 <strong>保守唯一</strong>
               </div>
+              <div class="state-item">
+                <span>番号索引</span>
+                <strong>{{ variantIndexSummary }}</strong>
+                <small v-if="variantIndexLastBuilt">更新 {{ formatTime(variantIndexLastBuilt) }}</small>
+              </div>
             </div>
           </article>
       </section>
@@ -356,6 +361,23 @@
             </div>
         </article>
 
+        <article class="workbench-panel">
+            <div class="panel-head">
+              <div>
+                <h2>番号版本索引</h2>
+                <p>{{ variantIndexJobSummary }}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" :disabled="rebuildingVariantIndex" @click="rebuildVariantIndex">
+                {{ rebuildingVariantIndex ? '启动中...' : '重建索引' }}
+              </button>
+            </div>
+            <div class="mini-stats">
+              <div><strong>{{ overview.variant_index?.group_count || 0 }}</strong><span>作品组</span></div>
+              <div><strong>{{ overview.variant_index?.item_count || 0 }}</strong><span>版本项</span></div>
+              <div><strong>{{ overview.variant_index?.last_job?.status || 'none' }}</strong><span>最近作业</span></div>
+            </div>
+        </article>
+
         <article class="workbench-panel history-panel diagnostic-wide">
         <div class="panel-head">
           <div>
@@ -402,6 +424,7 @@ export default {
       processingNow: false,
       refreshingMissing: false,
       purgingCache: false,
+      rebuildingVariantIndex: false,
       selectedCachePurgeScope: 'video',
       activeSegment: 'workbench',
       cachePurgeScopes: [
@@ -555,6 +578,21 @@ export default {
       if (!scheduler) return '未知'
       if (scheduler.effective_enabled) return '已启用'
       return scheduler.disabled_reason || '未启用'
+    },
+    variantIndexLastBuilt() {
+      return this.overview?.variant_index?.last_built_at || ''
+    },
+    variantIndexSummary() {
+      const index = this.overview?.variant_index || {}
+      return `${index.group_count || 0} 组 / ${index.item_count || 0} 项`
+    },
+    variantIndexJobSummary() {
+      const job = this.overview?.variant_index?.last_job || {}
+      if (!job.status) return '尚未重建。'
+      const processed = Number(job.processed || 0)
+      const total = Number(job.total || 0)
+      const progress = total ? `${processed}/${total}` : `${processed}`
+      return `${job.status} · ${progress} · ${this.formatTime(job.updated_at) || this.formatTime(job.created_at) || ''}`
     },
     responseHitRate() {
       return this.formatHitRate(this.cacheStats?.metrics?.response)
@@ -729,6 +767,19 @@ export default {
         console.error('Purge cache failed:', e)
       } finally {
         this.purgingCache = false
+      }
+    },
+    async rebuildVariantIndex() {
+      if (this.rebuildingVariantIndex) return
+      this.rebuildingVariantIndex = true
+      try {
+        await api.startVideoVariantIndexJob()
+        this.$message?.success?.('番号版本索引已开始重建')
+        await this.loadOverview()
+      } catch (e) {
+        console.error('Rebuild variant index failed:', e)
+      } finally {
+        this.rebuildingVariantIndex = false
       }
     },
     goWorkbenchAction(action) {

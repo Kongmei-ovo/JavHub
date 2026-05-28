@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from test_support.builders import page_response
 from test_support.cache import FakeRedisMixin
 
 
@@ -12,13 +13,13 @@ class SeriesRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         from routers.series import list_series
 
         client = AsyncMock()
-        client.list_series_page.return_value = {
-            "data": [{"id": 1, "name_ja": "シリーズ"}],
-            "page": 3,
-            "page_size": 24,
-            "total_count": 100,
-            "total_pages": 5,
-        }
+        client.list_series_page.return_value = page_response(
+            [{"id": 1, "name_ja": "シリーズ"}],
+            page=3,
+            page_size=24,
+            total_count=100,
+            total_pages=5,
+        )
         translator = AsyncMock()
 
         with patch("routers.series.get_info_client", return_value=client), \

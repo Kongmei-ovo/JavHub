@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable
 
+from services.javinfo_import_settings import normalize_javinfo_import_db_settings
+
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_STORAGE_DIR = ROOT_DIR / "data" / "javinfo_imports"
@@ -81,32 +83,7 @@ def _redact_settings(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    normalized = {
-        "host": "localhost",
-        "port": 5432,
-        "database": "r18",
-        "maintenance_database": "postgres",
-        "user": "javhub",
-        "password": "",
-        "max_parallel_jobs": 2,
-        "keep_previous_databases": 1,
-    }
-    normalized.update(settings or {})
-    for key in ("host", "database", "maintenance_database", "user", "password"):
-        normalized[key] = str(normalized.get(key) or "").strip()
-    try:
-        normalized["port"] = int(normalized.get("port") or 5432)
-    except Exception:
-        normalized["port"] = 5432
-    try:
-        normalized["max_parallel_jobs"] = max(1, min(int(normalized.get("max_parallel_jobs") or 2), 8))
-    except Exception:
-        normalized["max_parallel_jobs"] = 2
-    try:
-        normalized["keep_previous_databases"] = max(0, min(int(normalized.get("keep_previous_databases", 1)), 5))
-    except Exception:
-        normalized["keep_previous_databases"] = 1
-    return normalized
+    return normalize_javinfo_import_db_settings(settings)
 
 
 def _pg_env(settings: dict[str, Any]) -> dict[str, str]:

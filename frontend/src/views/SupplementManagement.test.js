@@ -85,6 +85,31 @@ test('supplement management exposes source health and manual correction controls
   assert.match(source, /人工校正记录/)
 })
 
+test('supplement management exposes global gfriends avatar sync controls', () => {
+  assert.match(source, /openSourceHealth\(\)/)
+  assert.match(source, /showSourceHealthGlobal/)
+  assert.match(source, /requestConfirm/)
+  assert.match(source, /syncGfriendsAvatars/)
+  assert.match(source, /api\.startGfriendsAvatarSyncJob\(\)/)
+  assert.match(source, /loadGfriendsAvatarJob/)
+  assert.match(source, /_startGfriendsAvatarPolling/)
+  assert.match(source, /source: 'gfriends'/)
+  assert.match(sourceHealthPanel, /头像覆盖作业/)
+  assert.match(sourceHealthPanel, /同步演员头像/)
+  assert.match(sourceHealthPanel, /查看头像任务/)
+  assert.match(sourceHealthPanel, /匹配头像/)
+  assert.match(sourceHealthPanel, /写入覆盖/)
+  assert.match(sourceHealthPanel, /已校验/)
+  assert.match(sourceHealthPanel, /有效头像/)
+  assert.match(sourceHealthPanel, /拉取 gfriends Filetree/)
+  assert.match(sourceHealthPanel, /校验图片健康/)
+})
+
+test('supplement job list names gfriends avatar sync jobs explicitly', () => {
+  assert.match(jobList, /actress_avatar_sync/)
+  assert.match(jobList, /gfriends 头像同步/)
+})
+
 test('supplement management exposes provider smoke diagnostics', () => {
   assert.match(sourceHealthPanel, /运行诊断/)
   assert.match(source, /runProviderSmoke/)

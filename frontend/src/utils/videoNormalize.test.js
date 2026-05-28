@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeVideo, videoCodeOf } from './videoNormalize.js'
+import { normalizeVideo, videoCodeOf, videoCoverCandidates } from './videoNormalize.js'
 
 test('normalizeVideo maps alternate card fields into canonical video fields', () => {
   const video = normalizeVideo({
@@ -46,4 +46,28 @@ test('videoCodeOf skips empty string identifiers while preserving numeric zero',
   assert.equal(videoCodeOf({ content_id: '', dvd_id: 'DVD-001' }), 'DVD-001')
   assert.equal(videoCodeOf({ content_id: '', dvd_id: '', code: 'CODE-001' }), 'CODE-001')
   assert.equal(videoCodeOf({ content_id: 0, dvd_id: 'DVD-001' }), '0')
+})
+
+test('videoCoverCandidates tries original DMM cover before derived HD candidates', () => {
+  const candidates = videoCoverCandidates({
+    jacket_thumb_url: 'https://pics.dmm.co.jp/mono/movie/144ohdr0077r/144ohdr0077rps.jpg',
+  })
+
+  assert.deepEqual(candidates, [
+    'https://pics.dmm.co.jp/mono/movie/144ohdr0077r/144ohdr0077rps.jpg',
+    'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/144ohdr0077r/144ohdr0077rps.jpg',
+  ])
+})
+
+test('videoCoverCandidates deduplicates explicit and derived cover urls', () => {
+  const candidates = videoCoverCandidates({
+    jacket_thumb_url: 'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
+    jacket_full_url: 'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
+    cover_url: 'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
+  })
+
+  assert.deepEqual(candidates, [
+    'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
+    'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/miaa00784/miaa00784ps.jpg',
+  ])
 })

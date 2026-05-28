@@ -257,6 +257,39 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
             params={"page": 1, "page_size": 20},
         )
 
+    async def test_get_actress_videos_falls_back_when_supplement_result_has_unknown_total(self):
+        client = InfoClient()
+
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.side_effect = [
+                {"data": [], "total_count": -1, "total_pages": -1},
+                {"data": [{"content_id": "mrec00002"}], "total_count": -1, "total_pages": -1},
+            ]
+
+            result = await client.get_actress_videos(
+                1020504,
+                page=1,
+                page_size=20,
+                include_supplement="1",
+                include_total=False,
+            )
+
+        self.assertEqual(result["data"][0]["content_id"], "mrec00002")
+        self.assertEqual(mock_get.await_count, 2)
+        mock_get.assert_any_await(
+            "/api/v1/actresses/1020504/videos",
+            params={
+                "page": 1,
+                "page_size": 20,
+                "include_total": False,
+                "include_supplement": "1",
+            },
+        )
+        mock_get.assert_any_await(
+            "/api/v1/actresses/1020504/videos",
+            params={"page": 1, "page_size": 20, "include_total": False},
+        )
+
     async def test_get_actress_videos_fallback_preserves_filters(self):
         client = InfoClient()
 
@@ -356,6 +389,18 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
             "/api/v1/supplement/jobs",
             params={"page": 2, "page_size": 50, "status": "failed", "actress_id": 123},
         )
+
+    async def test_create_gfriends_avatar_sync_job_proxies_to_info_client(self):
+        mock_client = AsyncMock()
+        mock_client.proxy_post.return_value = {"job_id": 9, "status": "queued"}
+
+        with patch("routers.supplement.get_info_client", return_value=mock_client):
+            result = await supplement.create_gfriends_avatar_sync_job()
+
+        mock_client.proxy_post.assert_awaited_once_with(
+            "/api/v1/supplement/avatars/gfriends/jobs",
+        )
+        self.assertEqual(result, {"job_id": 9, "status": "queued"})
 
     async def test_retry_job(self):
         mock_client = AsyncMock()

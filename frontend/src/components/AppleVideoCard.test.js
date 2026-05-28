@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalizeVideo, videoCodeOf } from '../utils/videoNormalize.js'
+import { nextTick } from 'vue'
+import { normalizeVideo, videoCodeOf, videoCoverCandidates } from '../utils/videoNormalize.js'
 
 /**
  * Tests for AppleVideoCard behaviour.
@@ -27,7 +28,7 @@ function getSetupBody() {
 }
 
 function runSetup(propsOverride = {}) {
-  const props = {
+  const rawProps = {
     video: {
       content_id: 'MIAA-784',
       title_ja: 'Title',
@@ -35,6 +36,8 @@ function runSetup(propsOverride = {}) {
       release_date: '2026-05-06',
       runtime_mins: 120,
       sample_url: 'sample.mp4',
+      display_code: 'MIAA-784',
+      variant_labels: [],
       ...propsOverride.video,
     },
     coverUrl: '',
@@ -42,14 +45,15 @@ function runSetup(propsOverride = {}) {
     showFavorite: true,
     ...propsOverride,
   }
-  return import('vue').then(({ computed, ref }) => {
+  return import('vue').then(({ computed, reactive, ref, watch }) => {
+    const props = reactive(rawProps)
     const body = getSetupBody()
     // `props` is injected as a parameter, matching what defineProps() would provide.
     const fn = new Function(
-      'computed', 'ref', 'normalizeVideo', 'props',
-      `${body}\nreturn { imageError, wideImage, normalized, coverUrl, titleText, displayCode, fallbackText, serviceLabel, onImageLoad }`
+      'computed', 'ref', 'watch', 'normalizeVideo', 'videoCoverCandidates', 'props',
+      `${body}\nreturn { imageError, wideImage, coverIndex, normalized, coverCandidates, coverUrl, titleText, displayCode, fallbackText, serviceLabel, variantLabels, variantTooltip, onImageError, onImageLoad }`
     )
-    return fn(computed, ref, normalizeVideo, props)
+    return { ...fn(computed, ref, watch, normalizeVideo, videoCoverCandidates, props), props }
   })
 }
 
@@ -71,6 +75,49 @@ test('AppleVideoCard computes coverUrl from video when prop is empty', async () 
 test('AppleVideoCard uses coverUrl prop when provided', async () => {
   const r = await runSetup({ coverUrl: 'override.jpg' })
   assert.equal(r.coverUrl.value, 'override.jpg')
+  assert.deepEqual(r.coverCandidates.value, ['override.jpg', 'cover.jpg'])
+})
+
+test('AppleVideoCard advances through cover candidates before fallback', async () => {
+  const r = await runSetup({
+    video: {
+      jacket_thumb_url: 'first.jpg',
+      jacket_full_url: 'second.jpg',
+    },
+  })
+
+  assert.equal(r.coverUrl.value, 'first.jpg')
+  r.onImageError()
+  assert.equal(r.coverUrl.value, 'second.jpg')
+  assert.equal(r.imageError.value, false)
+  r.onImageError()
+  assert.equal(r.coverUrl.value, '')
+  assert.equal(r.imageError.value, true)
+})
+
+test('AppleVideoCard resets failed cover state when candidates change', async () => {
+  const props = {
+    video: {
+      content_id: 'OLD-001',
+      title_ja: 'Old',
+      jacket_thumb_url: 'old.jpg',
+    },
+    coverUrl: '',
+  }
+  const r = await runSetup(props)
+
+  r.onImageError()
+  assert.equal(r.imageError.value, true)
+  r.props.video = {
+    content_id: 'NEW-001',
+    title_ja: 'New',
+    jacket_thumb_url: 'new.jpg',
+  }
+  await nextTick()
+
+  assert.equal(r.imageError.value, false)
+  assert.equal(r.coverIndex.value, 0)
+  assert.equal(r.coverUrl.value, 'new.jpg')
 })
 
 test('AppleVideoCard uses fallback title when no title fields', async () => {
@@ -87,6 +134,28 @@ test('AppleVideoCard displays dvd_id before internal content_id', async () => {
   const r = await runSetup({ video: { content_id: 'cid-12345', dvd_id: 'MIAA-784' } })
   assert.equal(r.displayCode.value, 'MIAA-784')
   assert.equal(r.fallbackText.value, 'MIAA-784')
+})
+
+test('AppleVideoCard prefers backend display_code over raw identifiers', async () => {
+  const r = await runSetup({ video: { content_id: 'miaa00784', dvd_id: '', display_code: 'MIAA-784' } })
+  assert.equal(r.displayCode.value, 'MIAA-784')
+})
+
+test('AppleVideoCard exposes compact variant labels and explanation tooltip', async () => {
+  const r = await runSetup({
+    video: {
+      variant_labels: [
+        { key: 'digital', label: '数字版', short_label: '数字' },
+        { key: 'bod', label: 'BOD 蓝光按需', short_label: 'BOD' },
+        { key: 'bonus', label: 'FANZA限定特典', short_label: '特典' },
+      ],
+      variant_explanations: [
+        { label: 'BOD 蓝光按需', meaning: 'Blu-ray Disc On Demand', evidence: '官方说明' },
+      ],
+    },
+  })
+  assert.deepEqual(r.variantLabels.value.map(label => label.short_label), ['数字', 'BOD'])
+  assert.match(r.variantTooltip.value, /BOD 蓝光按需：Blu-ray Disc On Demand/)
 })
 
 test('AppleVideoCard shows service badge for known service codes', async () => {
@@ -116,6 +185,12 @@ test('AppleVideoCard keeps cover free of overlay actions', () => {
   assert.doesNotMatch(source, /apple-video-card__preview/, 'cover should not render preview badge')
   assert.doesNotMatch(source, /toggle-favorite/, 'card should not emit favorite toggles')
   assert.ok(source.includes('loading="lazy"'), 'image should use lazy loading')
+})
+
+test('AppleVideoCard renders variant labels on the cover', () => {
+  assert.match(source, /apple-video-card__variant-stack/)
+  assert.match(source, /v-for="label in variantLabels"/)
+  assert.match(source, /:title="variantTooltip"/)
 })
 
 test('AppleVideoCard exposes button semantics on the card root', () => {

@@ -63,7 +63,7 @@
               <div v-else class="no-cover">无封面</div>
             </div>
             <div class="video-info">
-              <div class="video-code" :title="video.title">{{ video._code || extractCode(video.title) }}</div>
+              <div class="video-code" :title="video.title">{{ video.displayCode }}</div>
               <div class="video-title" :title="video.title">{{ video.title }}</div>
             </div>
           </div>
@@ -118,6 +118,7 @@ import { ElMessage } from '../utils/message.js'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'
+import { groupEmbyVideosByYear, groupMissingVideosByYear } from '../utils/inventoryVideoGrouping'
 import api from '../api'
 
 const route = useRoute()
@@ -129,82 +130,11 @@ const missingVideos = ref([])
 const loading = ref(false)
 const activeTab = ref('emby')
 
-// 从 title 提取番号（去除时间戳等后缀）
-function extractCode(title) {
-  if (!title) return ''
-  // 匹配常见番号格式：ABC-123, ABC-123-hack, ABC123 等
-  const match = title.match(/([A-Z]+-\d+)/i)
-  return match ? match[1].toUpperCase() : ''
-}
-
-// 从 title 提取年份（用于年份为空的情况）
-function extractYearFromTitle(title) {
-  if (!title) return null
-  // 匹配 4 位年份数字
-  const match = title.match(/\b(19\d{2}|20\d{2})\b/)
-  return match ? parseInt(match[1]) : null
-}
-
-// 获取影片年份（优先字段值，其次从 title 提取）
-function getVideoYear(video, yearField, dateField) {
-  let year
-  if (yearField === 'release_date') {
-    // 缺失影片用 release_date 字段
-    year = video[yearField] ? parseInt(video[yearField].slice(0, 4)) : null
-    if (!year) year = extractYearFromTitle(video.title)
-  } else {
-    // Emby 影片优先用 production_year，否则用 premiere_date
-    year = video[yearField] || (video[dateField] ? new Date(video[dateField]).getFullYear() : null)
-    if (!year || isNaN(year)) year = extractYearFromTitle(video.title)
-  }
-  return year || null
-}
-
 // Emby 已有影片按年分组（编年正序：最早的在前）
-const groupedEmbyByYear = computed(() => {
-  const groups = {}
-  for (const v of embyVideos.value) {
-    const year = getVideoYear(v, 'production_year', 'premiere_date')
-    const yearKey = year ? String(year) : '未知'
-    if (!groups[yearKey]) groups[yearKey] = []
-    // 附加提取的番号
-    v._code = v._code || extractCode(v.title)
-    groups[yearKey].push(v)
-  }
-  // 编年正序：最早的年份在前
-  return Object.keys(groups)
-    .sort((a, b) => {
-      if (a === '未知') return 1
-      if (b === '未知') return -1
-      return a.localeCompare(b)
-    })
-    .reduce((acc, key) => {
-      acc[key] = groups[key]
-      return acc
-    }, {})
-})
+const groupedEmbyByYear = computed(() => groupEmbyVideosByYear(embyVideos.value))
 
 // 缺失影片按年分组（编年正序）
-const groupedMissingByYear = computed(() => {
-  const groups = {}
-  for (const v of missingVideos.value) {
-    const year = getVideoYear(v, 'release_date', null)
-    const yearKey = year ? String(year) : '未知'
-    if (!groups[yearKey]) groups[yearKey] = []
-    groups[yearKey].push(v)
-  }
-  // 编年正序：最早的年份在前
-  return Object.keys(groups)
-    .sort((a, b) => {
-      if (a === '未知') return 1
-      if (b === '未知') return -1
-      return a.localeCompare(b)
-    })
-    .reduce((acc, key) => {
-      acc[key] = groups[key]
-      return acc
-    }, {})
-})
+const groupedMissingByYear = computed(() => groupMissingVideosByYear(missingVideos.value))
 
 const fetchActor = async () => {
   loading.value = true

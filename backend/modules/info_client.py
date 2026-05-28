@@ -153,7 +153,13 @@ def _transform_video_item(item: dict) -> dict:
 
 
 def _has_result_items(result: Any) -> bool:
-    return isinstance(result, dict) and bool(result.get("data") or result.get("total_count"))
+    if not isinstance(result, dict):
+        return False
+    data = result.get("data")
+    if isinstance(data, list) and data:
+        return True
+    total_count = result.get("total_count")
+    return isinstance(total_count, int) and total_count > 0
 
 
 def _strip_metadata_fields(item: dict) -> dict:
@@ -238,12 +244,14 @@ class InfoClient:
             return data.get("data", [])
         return data if isinstance(data, list) else []
 
-    async def _get_all_pages(self, path: str, page_size: int = 100) -> list[dict]:
+    async def _get_all_pages(self, path: str, page_size: int = 100, cache_bypass: bool = False) -> list[dict]:
         """获取所有分页数据，自动翻页合并"""
         all_items = []
         page = 1
         while True:
             params = {"page": page, "page_size": page_size}
+            if cache_bypass:
+                params["cache"] = "0"
             client = await self._get_client()
             try:
                 response = await client.get(f"{self.api_url}{path}", params=params)
@@ -259,9 +267,12 @@ class InfoClient:
             page += 1
         return all_items
 
-    async def get_total_count(self, path: str) -> int:
+    async def get_total_count(self, path: str, cache_bypass: bool = False) -> int:
         """Fetch total_count from a paginated JavInfoApi list endpoint."""
-        data = await self._get(path, params={"page": 1, "page_size": 1})
+        params: dict[str, Any] = {"page": 1, "page_size": 1}
+        if cache_bypass:
+            params["cache"] = "0"
+        data = await self._get(path, params=params)
         if isinstance(data, dict):
             if data.get("total_count") is not None:
                 return int(data.get("total_count") or 0)
@@ -376,6 +387,7 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
         include_total: bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any]:
         """搜索视频（结果缓存10分钟，有结果才缓存）"""
         # 多tag支持：空格分隔的 category_name 拆成重复参数实现 AND 过滤
@@ -400,65 +412,100 @@ class InfoClient:
             params["dvd_id"] = content_id
         elif dvd_id:
             params["dvd_id"] = dvd_id
+        cache_params = {k: v for k, v in params.items() if v is not None}
+        request_params = dict(cache_params)
+        if cache_bypass:
+            request_params["cache"] = "0"
+
         if random:
             params["random"] = random
+            cache_params = {k: v for k, v in params.items() if v is not None}
+            request_params = dict(cache_params)
+            if cache_bypass:
+                request_params["cache"] = "0"
             # 随机查询跳过缓存，每次直接请求 JavInfoApi 获取新的随机顺序
-            result = await self._get("/api/v1/videos/search", {k: v for k, v in params.items() if v is not None})
+            result = await self._get("/api/v1/videos/search", request_params)
             if "data" in result and isinstance(result["data"], list):
                 result["data"] = [_transform_video_item(item) for item in result["data"]]
             return result
         elif sort_by:
             # JavInfoApi expects "field:dir" format; if already contains ":" (from frontend format), pass as-is
             params["sort_by"] = sort_by if ':' in sort_by else f"{sort_by}:{sort_order or 'asc'}"
-        cached = cache.get_search({k: v for k, v in params.items() if v is not None}, page)
-        if cached is not None:
-            return cached
-        result = await self._get("/api/v1/videos/search", {k: v for k, v in params.items() if v is not None})
+            cache_params = {k: v for k, v in params.items() if v is not None}
+            request_params = dict(cache_params)
+            if cache_bypass:
+                request_params["cache"] = "0"
+        if not cache_bypass:
+            cached = cache.get_search(cache_params, page)
+            if cached is not None:
+                return cached
+        result = await self._get("/api/v1/videos/search", request_params)
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         # 只缓存有结果的搜索，空结果不缓存（避免"搜过=永远没有"）
-        if result.get("total_count", 0) > 0 or bool(result.get("data")):
-            cache.set_search({k: v for k, v in params.items() if v is not None}, page, result)
+        if not cache_bypass and (result.get("total_count", 0) > 0 or bool(result.get("data"))):
+            cache.set_search(cache_params, page, result)
         return result
 
-    async def list_videos(self, page: int = 1, page_size: int = 20, include_total: bool = False) -> dict[str, Any]:
+    async def list_videos(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        include_total: bool = False,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
         """获取视频列表，默认跳过总数并复用 JavInfoApi 搜索缓存路径。"""
-        result = await self.search_videos(
-            page=page,
-            page_size=page_size,
-            sort_by="release_date",
-            sort_order="desc",
-            include_total=include_total,
-        )
+        search_kwargs: dict[str, Any] = {
+            "page": page,
+            "page_size": page_size,
+            "sort_by": "release_date",
+            "sort_order": "desc",
+            "include_total": include_total,
+        }
+        if cache_bypass:
+            search_kwargs["cache_bypass"] = True
+        result = await self.search_videos(**search_kwargs)
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         return result
 
-    async def get_video(self, content_id: str, service_code: str | None = None) -> dict[str, Any]:
+    async def get_video(
+        self,
+        content_id: str,
+        service_code: str | None = None,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
         """获取视频详情（缓存24小时）"""
         # JavInfoApi 的 content_id 保留原始格式（部分含下划线如 h_1330gtrp004r）
         normalized = content_id.replace("-", "").lower()
         cache_key = f"{normalized}:service:{service_code}" if service_code else normalized
-        cached = cache.get_video(cache_key)
-        if cached is not None:
-            data = _strip_metadata_fields(cached)
-            if _has_complete_enhancement_fields(data):
-                return data
-            if not _has_partial_enhancement_fields(data):
-                cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
-                self.queue_video_detail_enrichment(content_id, data)
-                return data
+        if not cache_bypass:
+            cached = cache.get_video(cache_key)
+            if cached is not None:
+                data = _strip_metadata_fields(cached)
+                if _has_complete_enhancement_fields(data):
+                    return data
+                if not _has_partial_enhancement_fields(data):
+                    cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
+                    self.queue_video_detail_enrichment(content_id, data)
+                    return data
 
-            try:
-                return await self._fetch_video_detail(content_id, normalized, cache_key, service_code)
-            except Exception:
-                cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
-                self.queue_video_detail_enrichment(content_id, data)
-                return data
+                try:
+                    return await self._fetch_video_detail(content_id, normalized, cache_key, service_code)
+                except Exception:
+                    cache.set_video(cache_key, data, ttl=PENDING_METADATA_VIDEO_TTL)
+                    self.queue_video_detail_enrichment(content_id, data)
+                    return data
 
-        return await self._fetch_video_detail(content_id, normalized, cache_key, service_code)
+        return await self._fetch_video_detail(
+            content_id,
+            normalized,
+            cache_key,
+            service_code,
+            cache_bypass=cache_bypass,
+        )
 
     async def _fetch_video_detail(
         self,
@@ -466,15 +513,19 @@ class InfoClient:
         normalized: str,
         cache_key: str,
         service_code: str | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any]:
         params = {}
         if service_code:
             params["service_code"] = service_code
+        if cache_bypass:
+            params["cache"] = "0"
         result = await self._get(f"/api/v1/videos/{normalized}", params=params or None)
         # 转换图片URL
         data = _strip_metadata_fields(_transform_video_item(result))
-        cache_ttl = PENDING_METADATA_VIDEO_TTL if not _has_complete_enhancement_fields(data) else cache.DEFAULT_VIDEO_TTL
-        cache.set_video(cache_key, data, ttl=cache_ttl)
+        if not cache_bypass:
+            cache_ttl = PENDING_METADATA_VIDEO_TTL if not _has_complete_enhancement_fields(data) else cache.DEFAULT_VIDEO_TTL
+            cache.set_video(cache_key, data, ttl=cache_ttl)
         self.queue_video_detail_enrichment(content_id, data)
         return data
 
@@ -506,6 +557,7 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
         has_valid_avatar: str | int | bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any]:
         """获取演员列表（支持 q 关键词搜索）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
@@ -513,6 +565,8 @@ class InfoClient:
             params["q"] = q
         if has_valid_avatar is not None:
             params["has_valid_avatar"] = has_valid_avatar
+        if cache_bypass:
+            params["cache"] = "0"
         return await self._get("/api/v1/actresses", params=params)
 
     async def get_actress(self, actress_id: int) -> dict[str, Any]:
@@ -529,6 +583,7 @@ class InfoClient:
         year: int | None = None,
         sort_by: str | None = None,
         include_total: bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any]:
         """获取演员作品列表（支持补全层查询）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
@@ -542,6 +597,8 @@ class InfoClient:
             params["year"] = year
         if sort_by:
             params["sort_by"] = sort_by
+        if cache_bypass:
+            params["cache"] = "0"
         result = await self._get(
             f"/api/v1/actresses/{actress_id}/videos",
             params=params,
@@ -560,17 +617,22 @@ class InfoClient:
 
     # === 枚举数据 ===
 
-    async def list_makers(self, q: str | None = None) -> list[dict]:
+    async def list_makers(self, q: str | None = None, cache_bypass: bool = False) -> list[dict]:
         """获取所有厂商（缓存24小时，支持 q 搜索）"""
         if q:
             # 搜索不走缓存
-            result = await self._get("/api/v1/makers", params={"q": q, "page_size": 100})
+            params: dict[str, Any] = {"q": q, "page_size": 100}
+            if cache_bypass:
+                params["cache"] = "0"
+            result = await self._get("/api/v1/makers", params=params)
             return result.get("data", []) if isinstance(result, dict) else result
-        cached = cache.get_enum_list("makers")
-        if cached is not None:
-            return cached
-        data = await self._get_all_pages("/api/v1/makers")
-        cache.set_enum_list("makers", data)
+        if not cache_bypass:
+            cached = cache.get_enum_list("makers")
+            if cached is not None:
+                return cached
+        data = await self._get_all_pages("/api/v1/makers", cache_bypass=cache_bypass)
+        if not cache_bypass:
+            cache.set_enum_list("makers", data)
         return data
 
     async def list_makers_page(
@@ -579,6 +641,7 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
         include_total: bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any] | list[dict]:
         """获取厂商分页列表，上游支持分页时避免全量拉取。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
@@ -586,21 +649,28 @@ class InfoClient:
             params["include_total"] = include_total
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         result = await self._get("/api/v1/makers", params=params)
         if isinstance(result, dict):
             return result
         return result if isinstance(result, list) else []
 
-    async def list_series(self, q: str | None = None) -> list[dict]:
+    async def list_series(self, q: str | None = None, cache_bypass: bool = False) -> list[dict]:
         """获取所有系列（缓存24小时，支持 q 搜索）"""
         if q:
-            result = await self._get("/api/v1/series", params={"q": q, "page_size": 100})
+            params: dict[str, Any] = {"q": q, "page_size": 100}
+            if cache_bypass:
+                params["cache"] = "0"
+            result = await self._get("/api/v1/series", params=params)
             return result.get("data", []) if isinstance(result, dict) else result
-        cached = cache.get_enum_list("series")
-        if cached is not None:
-            return cached
-        data = await self._get_all_pages("/api/v1/series")
-        cache.set_enum_list("series", data)
+        if not cache_bypass:
+            cached = cache.get_enum_list("series")
+            if cached is not None:
+                return cached
+        data = await self._get_all_pages("/api/v1/series", cache_bypass=cache_bypass)
+        if not cache_bypass:
+            cache.set_enum_list("series", data)
         return data
 
     async def list_series_page(
@@ -609,6 +679,7 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
         include_total: bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any]:
         """获取系列分页列表，避免为推荐页拉取完整系列枚举。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
@@ -616,6 +687,8 @@ class InfoClient:
             params["include_total"] = include_total
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         result = await self._get("/api/v1/series", params=params)
         if isinstance(result, dict):
             return result
@@ -628,28 +701,38 @@ class InfoClient:
             "total_pages": 1,
         }
 
-    async def list_categories(self, q: str | None = None) -> list[dict]:
+    async def list_categories(self, q: str | None = None, cache_bypass: bool = False) -> list[dict]:
         """获取所有题材（缓存24小时，支持 q 搜索）"""
         if q:
-            result = await self._get("/api/v1/categories", params={"q": q, "page_size": 100})
+            params: dict[str, Any] = {"q": q, "page_size": 100}
+            if cache_bypass:
+                params["cache"] = "0"
+            result = await self._get("/api/v1/categories", params=params)
             return result.get("data", []) if isinstance(result, dict) else result
-        cached = cache.get_enum_list("categories")
-        if cached is not None:
-            return cached
-        data = await self._get_all_pages("/api/v1/categories")
-        cache.set_enum_list("categories", data)
+        if not cache_bypass:
+            cached = cache.get_enum_list("categories")
+            if cached is not None:
+                return cached
+        data = await self._get_all_pages("/api/v1/categories", cache_bypass=cache_bypass)
+        if not cache_bypass:
+            cache.set_enum_list("categories", data)
         return data
 
-    async def list_labels(self, q: str | None = None) -> list[dict]:
+    async def list_labels(self, q: str | None = None, cache_bypass: bool = False) -> list[dict]:
         """获取所有品牌（缓存24小时，支持 q 搜索）"""
         if q:
-            result = await self._get("/api/v1/labels", params={"q": q, "page_size": 100})
+            params: dict[str, Any] = {"q": q, "page_size": 100}
+            if cache_bypass:
+                params["cache"] = "0"
+            result = await self._get("/api/v1/labels", params=params)
             return result.get("data", []) if isinstance(result, dict) else result
-        cached = cache.get_enum_list("labels")
-        if cached is not None:
-            return cached
-        data = await self._get_all_pages("/api/v1/labels")
-        cache.set_enum_list("labels", data)
+        if not cache_bypass:
+            cached = cache.get_enum_list("labels")
+            if cached is not None:
+                return cached
+        data = await self._get_all_pages("/api/v1/labels", cache_bypass=cache_bypass)
+        if not cache_bypass:
+            cache.set_enum_list("labels", data)
         return data
 
     async def list_labels_page(
@@ -658,6 +741,7 @@ class InfoClient:
         page: int = 1,
         page_size: int = 20,
         include_total: bool | None = None,
+        cache_bypass: bool = False,
     ) -> dict[str, Any] | list[dict]:
         """获取品牌分页列表，上游支持分页时避免全量拉取。"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
@@ -665,6 +749,8 @@ class InfoClient:
             params["include_total"] = include_total
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         result = await self._get("/api/v1/labels", params=params)
         if isinstance(result, dict):
             return result
@@ -738,25 +824,49 @@ class InfoClient:
 
     # === 辅助数据 (v1.2.0) ===
 
-    async def list_directors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    async def list_directors(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
         """获取导演列表（支持 q 搜索）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         return await self._get("/api/v1/directors", params=params)
 
-    async def list_actors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    async def list_actors(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
         """获取男演员列表（支持 q 搜索）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         return await self._get("/api/v1/actors", params=params)
 
-    async def list_authors(self, q: str | None = None, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    async def list_authors(
+        self,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
         """获取作者列表（支持 q 搜索）"""
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if q:
             params["q"] = q
+        if cache_bypass:
+            params["cache"] = "0"
         return await self._get("/api/v1/authors", params=params)
 
     # === 统计 ===
