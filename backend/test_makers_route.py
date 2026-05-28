@@ -4,9 +4,9 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from routers import makers
 from test_support.cache import FakeRedisMixin
+from test_support.client import create_test_client
 
 
 class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
@@ -101,7 +101,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
         with patch("routers.makers.get_info_client", return_value=mock_client), \
              patch("routers.makers.get_translator_service", return_value=mock_translator):
-            http = TestClient(app)
+            http = create_test_client(app)
             first = http.get("/api/v1/makers")
             cached = http.get("/api/v1/makers")
             fresh = http.get("/api/v1/makers?cache=0")

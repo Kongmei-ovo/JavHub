@@ -525,8 +525,8 @@ class DownloaderClientProtocolTests(unittest.IsolatedAsyncioTestCase):
 class DownloaderRouteTests(unittest.TestCase):
     def test_downloaders_route_is_not_captured_by_task_id_route(self):
         from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from routers.downloads import router
+        from test_support.client import create_test_client
 
         app = FastAPI()
         app.include_router(router)
@@ -535,7 +535,7 @@ class DownloaderRouteTests(unittest.TestCase):
             "routers.downloads.get_downloaders_config",
             return_value={"default_id": "openlist", "clients": [], "types": []},
         ):
-            resp = TestClient(app).get("/api/v1/downloads/downloaders")
+            resp = create_test_client(app).get("/api/v1/downloads/downloaders")
 
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["default_id"], "openlist")

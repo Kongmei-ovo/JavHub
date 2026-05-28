@@ -4,11 +4,11 @@ import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
 from routers import videos
 from routers.videos import router, search_videos
 from test_support.cache import FakeRedisMixin
+from test_support.client import create_test_client
 
 
 def _search_kwargs(**overrides):
@@ -309,7 +309,7 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
         with patch("routers.videos.get_info_client", return_value=client), \
              patch("routers.videos.get_translator_service", return_value=translator):
-            http = TestClient(app)
+            http = create_test_client(app)
             first = http.get("/api/v1/videos/search?q=abc&include_total=false")
             cached = http.get("/api/v1/videos/search?q=abc&include_total=false")
             fresh = http.get("/api/v1/videos/search?q=abc&include_total=false&cache=0")

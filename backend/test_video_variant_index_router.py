@@ -4,9 +4,9 @@ import unittest
 from unittest.mock import patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from routers.video_variant_index import router
+from test_support.client import create_test_client
 from test_support.postgres import TempPostgresMixin
 
 
@@ -17,13 +17,13 @@ class VideoVariantIndexRouterTest(TempPostgresMixin, unittest.TestCase):
 
         with patch("routers.video_variant_index.start_variant_index_job") as start_job:
             start_job.return_value = {"id": 1, "status": "queued"}
-            created = TestClient(app).post("/api/v1/video-variants/index/jobs")
+            created = create_test_client(app).post("/api/v1/video-variants/index/jobs")
 
         self.assertEqual(created.status_code, 200)
         self.assertEqual(created.json()["id"], 1)
         self.assertEqual(created.json()["status"], "queued")
 
-        client = TestClient(app)
+        client = create_test_client(app)
         jobs = client.get("/api/v1/video-variants/index/jobs")
         stats = client.get("/api/v1/video-variants/index/stats")
 
