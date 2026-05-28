@@ -538,6 +538,26 @@ import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'
+import {
+  PROVIDER_KEYS,
+  PROVIDER_META,
+  firstNetworkProvider,
+  normalizeProvider,
+  providerLabel,
+  providerOrderLabel,
+} from '../utils/translationProviders.js'
+import {
+  coveragePercent,
+  durationText,
+  formatNumber,
+  jobProgressValue,
+  jobStatusClass,
+  jobTypeLabel,
+  percentValue,
+  statusLabel,
+  workbenchStatusClass,
+  workbenchStatusLabel,
+} from '../utils/translationJobPresentation.js'
 
 const BASE_BATCH_ORDER = ['cache', 'mapping']
 const TRANSLATION_STATS_CACHE_KEY = 'javhub_translation_stats_cache'
@@ -566,15 +586,6 @@ const WORKBENCH_STATUS_OPTIONS = [
   { value: 'manual_edited', label: '人工修改' },
   { value: 'invalid', label: '无效' },
 ]
-const PROVIDER_META = {
-  google_free: { label: 'Google 免费接口', hint: '无密钥，适合标题和短名称批量翻译。' },
-  baidu: { label: '百度翻译', hint: '使用百度通用文本翻译 API，适合已有免费 key 的低成本翻译。' },
-  deepl: { label: 'DeepL', hint: '质量更高，需要配置密钥。' },
-  microsoft: { label: 'Microsoft 翻译', hint: 'Azure 翻译接口，需要密钥和可选区域。' },
-  ai: { label: '智能兜底', hint: '使用设置页当前公共智能模型，适合低成本源效果不好时补充。' },
-}
-const PROVIDER_KEYS = Object.keys(PROVIDER_META)
-
 function cloneTranslationConfig() {
   return JSON.parse(JSON.stringify(DEFAULT_CONFIG.translation))
 }
@@ -1247,100 +1258,20 @@ export default {
       if (!state.enabled) return '未启用'
       return state.ready ? '可用' : '待配置'
     },
-    providerLabel(key) {
-      return {
-        cache: '缓存',
-        mapping: '映射',
-        google_free: 'Google 免费接口',
-        baidu: '百度翻译',
-        deepl: 'DeepL',
-        microsoft: 'Microsoft 翻译',
-        ai: '智能兜底',
-        openai_compatible: '智能兜底',
-        translation_service: '批量源',
-        import: '导入',
-        manual: '人工',
-      }[key] || key || ''
-    },
-    providerOrderLabel(order) {
-      const labels = (order || []).map(key => this.providerLabel(key)).filter(Boolean)
-      return labels.length ? labels.join(' -> ') : '未记录'
-    },
-    normalizeProvider(provider) {
-      const key = provider === 'openai_compatible' ? 'ai' : provider
-      return PROVIDER_META[key] ? key : 'google_free'
-    },
-    firstNetworkProvider(order) {
-      if (!Array.isArray(order)) return ''
-      const found = order.find(key => PROVIDER_META[key === 'openai_compatible' ? 'ai' : key])
-      return found ? this.normalizeProvider(found) : ''
-    },
-    percentValue(item = {}) {
-      const total = Number(item.total || 0)
-      if (!total) return 0
-      const translated = Number(item.translated || 0)
-      return Math.max(0, Math.min(100, Math.round((translated / total) * 100)))
-    },
-    coveragePercent(item = {}) {
-      return `${this.percentValue(item)}%`
-    },
-    formatNumber(value) {
-      return new Intl.NumberFormat('zh-CN').format(Number(value || 0))
-    },
-    jobTypeLabel(type) {
-      return {
-        library_titles: '库内影片标题',
-        workbench_retry: '工作台重试',
-        metadata_names: '全部元数据名称',
-        metadata_categories: '题材名称',
-        metadata_series: '系列名称',
-        metadata_makers: '厂商名称',
-        metadata_labels: '厂牌名称',
-        metadata_actresses: '演员名称',
-      }[type] || type || '未知作业'
-    },
-    workbenchStatusLabel(status) {
-      return {
-        untranslated: '未翻译',
-        machine_translated: '机翻',
-        reviewed: '已校对',
-        manual_edited: '人工修改',
-        failed: '失败',
-        invalid: '无效',
-      }[status] || '未翻译'
-    },
-    workbenchStatusClass(status) {
-      return `status-${status || 'untranslated'}`
-    },
-    statusLabel(status) {
-      return {
-        pending: '等待中',
-        running: '运行中',
-        paused: '已暂停',
-        completed: '已完成',
-        failed: '失败',
-        idle: '空闲',
-      }[status] || '空闲'
-    },
-    jobStatusClass(status) {
-      return `status-${status || 'idle'}`
-    },
-    durationText(value) {
-      if (value === null || value === undefined) return '—'
-      const seconds = Math.max(0, Number(value) || 0)
-      if (seconds < 60) return `${seconds}s`
-      const minutes = Math.floor(seconds / 60)
-      const rest = seconds % 60
-      if (minutes < 60) return rest ? `${minutes}m ${rest}s` : `${minutes}m`
-      const hours = Math.floor(minutes / 60)
-      const minuteRest = minutes % 60
-      return minuteRest ? `${hours}h ${minuteRest}m` : `${hours}h`
-    },
-    jobProgressValue(job = null) {
-      const value = Number(job?.progress_percent || 0)
-      if (!Number.isFinite(value)) return 0
-      return Math.max(0, Math.min(100, Math.round(value)))
-    },
+    providerLabel,
+    providerOrderLabel,
+    normalizeProvider,
+    firstNetworkProvider,
+    percentValue,
+    coveragePercent,
+    formatNumber,
+    jobTypeLabel,
+    workbenchStatusLabel,
+    workbenchStatusClass,
+    statusLabel,
+    jobStatusClass,
+    durationText,
+    jobProgressValue,
     formatTime(value) {
       if (!value) return '—'
       const date = new Date(value)

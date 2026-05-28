@@ -145,6 +145,15 @@ from database.favorite import (
     list_favorites,
     list_collections,
 )
+from database.video_variant_index import (
+    replace_variant_groups,
+    get_variant_group_by_content_ids,
+    add_variant_group_job,
+    update_variant_group_job,
+    get_variant_group_job,
+    list_variant_group_jobs,
+    variant_group_stats,
+)
 
 __all__ = [
     "get_db_orig",
@@ -156,6 +165,13 @@ __all__ = [
     "is_favorite",
     "list_favorites",
     "list_collections",
+    "replace_variant_groups",
+    "get_variant_group_by_content_ids",
+    "add_variant_group_job",
+    "update_variant_group_job",
+    "get_variant_group_job",
+    "list_variant_group_jobs",
+    "variant_group_stats",
     "count_download_candidates",
     "get_translation",
     "get_translations_bulk",

@@ -221,6 +221,34 @@ class JavInfoImportServiceSettingsTest(unittest.TestCase):
 
         self.assertEqual(_normalize_settings({})["user"], "javhub")
 
+    def test_normalize_settings_matches_shared_import_db_helper(self):
+        from services.javinfo_import import _normalize_settings
+        from services.javinfo_import_settings import normalize_javinfo_import_db_settings
+
+        raw = {
+            "host": " db.example ",
+            "port": "not-a-port",
+            "database": " r18_new ",
+            "maintenance_database": "",
+            "user": " javhub ",
+            "password": " secret ",
+            "max_parallel_jobs": "99",
+            "keep_previous_databases": "-1",
+        }
+        expected = {
+            "host": "db.example",
+            "port": 5432,
+            "database": "r18_new",
+            "maintenance_database": "postgres",
+            "user": "javhub",
+            "password": "secret",
+            "max_parallel_jobs": 8,
+            "keep_previous_databases": 0,
+        }
+
+        self.assertEqual(normalize_javinfo_import_db_settings(raw), expected)
+        self.assertEqual(_normalize_settings(raw), expected)
+
     def test_connection_command_uses_deployable_user_default(self):
         from services.javinfo_import import build_psql_command
 
@@ -988,16 +1016,13 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
 
 class JavInfoImportRouterTest(unittest.TestCase):
     def _client(self, manager):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from routers.javinfo_imports import router
+        from test_support.client import create_router_test_client
 
-        app = FastAPI()
-        app.include_router(router)
         patcher = patch("routers.javinfo_imports.get_import_manager", return_value=manager)
         patcher.start()
         self.addCleanup(patcher.stop)
-        return TestClient(app)
+        return create_router_test_client(router)
 
     def _migrations_client(self, client):
         patcher = patch("routers.javinfo_imports.get_info_client", return_value=client)
@@ -1220,12 +1245,8 @@ class JavInfoImportRouterTest(unittest.TestCase):
 
 class ConfigExportRouterTest(unittest.TestCase):
     def test_config_export_downloads_sanitized_yaml(self):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from routers.config import router
-
-        app = FastAPI()
-        app.include_router(router)
+        from test_support.client import create_router_test_client
 
         with patch(
             "routers.config.config.get_all",
@@ -1241,7 +1262,7 @@ class ConfigExportRouterTest(unittest.TestCase):
                 "telegram": {"bot_token": "secret-token"},
             },
         ):
-            response = TestClient(app).get("/api/v1/config/export")
+            response = create_router_test_client(router).get("/api/v1/config/export")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("attachment", response.headers["content-disposition"])

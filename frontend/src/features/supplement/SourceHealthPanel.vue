@@ -6,11 +6,61 @@
       </div>
       <div class="source-health-toolbar">
         <button class="btn btn-ghost btn-sm" type="button" @click="$emit('refresh-health')">刷新</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-avatar-jobs')">查看头像任务</button>
         <button class="btn btn-primary btn-sm" type="button" :disabled="providerSmokeLoading" @click="$emit('run-smoke')">
           {{ providerSmokeLoading ? '诊断中...' : '运行诊断' }}
         </button>
       </div>
     </div>
+    <section class="avatar-sync-panel">
+      <div class="avatar-sync-head">
+        <div>
+          <h3>头像覆盖作业</h3>
+          <p>gfriends Filetree 匹配本地演员头像，并校验图片健康。</p>
+        </div>
+        <span class="status-pill" :class="`status-${gfriendsAvatarJob?.status || 'idle'}`">
+          {{ avatarJobStatusLabel(gfriendsAvatarJob?.status) }}
+        </span>
+      </div>
+      <div class="avatar-sync-actions">
+        <button
+          class="btn btn-primary btn-sm"
+          type="button"
+          :disabled="gfriendsAvatarSyncing || avatarJobRunning"
+          @click="$emit('sync-gfriends-avatars')"
+        >{{ gfriendsAvatarSyncing || avatarJobRunning ? '同步中...' : '同步演员头像' }}</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-avatar-jobs')">查看头像任务</button>
+      </div>
+      <div class="avatar-sync-steps" :class="{ active: avatarJobRunning }">
+        <span v-if="avatarJobRunning" class="mini-spinner" aria-hidden="true"></span>
+        <span>拉取 gfriends Filetree</span>
+        <span>匹配本地演员</span>
+        <span>写入头像覆盖</span>
+        <span>校验图片健康</span>
+      </div>
+      <div class="avatar-sync-metrics">
+        <div>
+          <strong>{{ gfriendsAvatarJob?.total_found ?? 0 }}</strong>
+          <span>匹配头像</span>
+        </div>
+        <div>
+          <strong>{{ gfriendsAvatarJob?.inserted_count ?? 0 }}</strong>
+          <span>写入覆盖</span>
+        </div>
+        <div>
+          <strong>{{ gfriendsAvatarJob?.updated_count ?? 0 }}</strong>
+          <span>已校验</span>
+        </div>
+        <div>
+          <strong>{{ gfriendsAvatarJob?.matched_r18 ?? 0 }}</strong>
+          <span>有效头像</span>
+        </div>
+      </div>
+      <p v-if="gfriendsAvatarJob?.last_error" class="avatar-sync-error">{{ gfriendsAvatarJob.last_error }}</p>
+      <p v-else class="avatar-sync-footnote">
+        {{ gfriendsAvatarJob?.created_at ? `最近任务 #${gfriendsAvatarJob.id} · ${formatActionTime(gfriendsAvatarJob.finished_at || gfriendsAvatarJob.started_at || gfriendsAvatarJob.created_at)}` : '暂无头像同步任务' }}
+      </p>
+    </section>
     <div class="provider-smoke-controls">
       <GlassSelect
         :model-value="providerSmokeForm.source"
@@ -144,6 +194,8 @@ export default {
     sourceHealthLoading: { type: Boolean, default: false },
     sourceHealthRows: { type: Array, default: () => [] },
     sourceActionLoading: { type: String, default: '' },
+    gfriendsAvatarJob: { type: Object, default: null },
+    gfriendsAvatarSyncing: { type: Boolean, default: false },
     formatActionTime: { type: Function, required: true },
     smokeRunLabel: { type: Function, required: true },
     sourceHealthLabel: { type: Function, required: true },
@@ -155,11 +207,23 @@ export default {
     'update:providerSmokeReport',
     'refresh-health',
     'run-smoke',
+    'sync-gfriends-avatars',
+    'view-avatar-jobs',
     'load-smoke-runs',
     'pause-source',
     'resume-source',
   ],
+  computed: {
+    avatarJobRunning() {
+      const status = this.gfriendsAvatarJob?.status
+      return status === 'queued' || status === 'running'
+    },
+  },
   methods: {
+    avatarJobStatusLabel(status) {
+      const map = { queued: '排队中', running: '同步中', succeeded: '已完成', failed: '失败', idle: '待开始' }
+      return map[status] || status || '待开始'
+    },
     updateProviderSmokeForm(patch) {
       this.$emit('update:providerSmokeForm', { ...this.providerSmokeForm, ...patch })
     },
@@ -223,6 +287,86 @@ export default {
 .filter-input:focus {
   border-color: var(--border-light);
   background: rgba(255, 255, 255, 0.07);
+}
+
+.avatar-sync-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.avatar-sync-head,
+.avatar-sync-actions,
+.avatar-sync-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.avatar-sync-head {
+  justify-content: space-between;
+}
+
+.avatar-sync-head h3 {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.avatar-sync-head p,
+.avatar-sync-footnote,
+.avatar-sync-error {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.avatar-sync-error {
+  color: var(--badge-error-text);
+  overflow-wrap: anywhere;
+}
+
+.avatar-sync-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.avatar-sync-metrics div {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.avatar-sync-metrics strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.avatar-sync-metrics span,
+.avatar-sync-steps span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.avatar-sync-steps.active span {
+  color: var(--text-secondary);
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--white-20);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .provider-smoke-panel {
@@ -434,6 +578,30 @@ export default {
   white-space: nowrap;
 }
 
+.status-succeeded {
+  color: var(--badge-success-text);
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+}
+
+.status-running,
+.status-queued {
+  color: var(--badge-warning-text);
+  background: var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
+}
+
+.status-failed {
+  color: var(--badge-error-text);
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+}
+
+.status-idle {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .health-healthy {
   color: #6ee7a8;
   background: rgba(52, 199, 89, 0.12);
@@ -503,7 +671,8 @@ export default {
   }
 
   .provider-smoke-controls,
-  .provider-smoke-run {
+  .provider-smoke-run,
+  .avatar-sync-metrics {
     grid-template-columns: 1fr;
   }
 }

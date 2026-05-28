@@ -6,9 +6,9 @@
   <div v-else class="ios-list job-list">
     <article v-for="job in jobs" :key="job.id" class="ios-row job-row">
       <div class="job-main">
-        <div class="job-avatar">{{ job.source_actor_name?.slice(0, 1) || String(job.local_actress_id || '?').slice(0, 1) }}</div>
+        <div class="job-avatar">{{ jobAvatarLabel(job) }}</div>
         <div class="job-copy">
-          <strong>{{ jobLabel(job) }}</strong>
+          <strong>{{ displayJobLabel(job) }}</strong>
           <span>#{{ job.id }} · {{ job.created_at ? new Date(job.created_at).toLocaleString() : '' }}</span>
           <small v-if="jobAttemptMeta(job)" class="job-meta">{{ jobAttemptMeta(job) }}</small>
           <small v-if="job.last_error" :class="job.status === 'failed' ? 'job-error' : 'job-warning'">
@@ -53,6 +53,17 @@ export default {
   },
   emits: ['retry', 'cancel', 'actor'],
   methods: {
+    isGfriendsAvatarSyncJob(job) {
+      return job?.source === 'gfriends' && job?.job_type === 'actress_avatar_sync'
+    },
+    displayJobLabel(job) {
+      if (this.isGfriendsAvatarSyncJob(job)) return 'gfriends 头像同步'
+      return this.jobLabel(job)
+    },
+    jobAvatarLabel(job) {
+      if (this.isGfriendsAvatarSyncJob(job)) return 'G'
+      return job.source_actor_name?.slice(0, 1) || String(job.local_actress_id || '?').slice(0, 1)
+    },
     jobAttemptMeta(job) {
       const pieces = []
       if (job.attempt_count) pieces.push(`尝试 ${job.attempt_count}/3`)

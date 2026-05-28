@@ -215,6 +215,7 @@ import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { requestConfirm } from '../utils/confirmDialog'
+import { candidateKey, candidateName, confidenceText } from '../utils/actorMappingPresentation.js'
 
 const activeTab = ref('review')
 const search = ref('')
@@ -335,10 +336,6 @@ function candidateConfidenceClass(candidate) {
   }
 }
 
-function confidenceText(value) {
-  return `${Math.round((Number(value) || 0) * 100)}%`
-}
-
 function aiConfidenceLabel(candidate) {
   const confidence = Number(candidate.confidence || 0)
   if (confidence >= 0.9) return '高置信'
@@ -384,14 +381,6 @@ function mappingReasonLabel(mapping) {
     manual: '人工',
   }
   return labels[source] || source || '待审核'
-}
-
-function candidateKey(candidate) {
-  return String(candidate.id || candidate.javinfo_actress_id || candidate.javinfo_actress_name)
-}
-
-function candidateName(candidate) {
-  return candidate.javinfo_actress_name || candidate.name_kanji || candidate.name_romaji || candidate.name_ja || candidate.name_en || candidate.name || String(candidate.id || '')
 }
 
 function candidateAvatar(candidate) {

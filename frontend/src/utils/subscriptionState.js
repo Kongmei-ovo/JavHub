@@ -43,7 +43,9 @@ export const subscriptionState = {
             state.registry.delete(String(actressId))
             state.items = state.items.filter(item => item.id !== existing.id)
             await this.refresh()
-            if (this.listener) this.listener({ actressId, subscribed: false })
+            for (const listener of this.listeners) {
+                listener({ actressId, subscribed: false })
+            }
             return false
         }
         const resp = await api.toggleSubscription({
@@ -57,12 +59,20 @@ export const subscriptionState = {
             state.registry.delete(String(actressId))
         }
         await this.refresh()
-        if (this.listener) this.listener({ actressId, subscribed })
+        for (const listener of this.listeners) {
+            listener({ actressId, subscribed })
+        }
         return subscribed
     },
 
     listener: null,
-    subscribe(callback) { this.listener = callback },
+    listeners: new Set(),
+    subscribe(callback) {
+        this.listeners.add(callback)
+        return () => {
+            this.listeners.delete(callback)
+        }
+    },
 
     count: computed(() => state.registry.size),
 

@@ -207,18 +207,53 @@
 
     <!-- 搜索结果网格 -->
     <div v-else-if="results.length > 0" class="results-grid page-rail page-rail--gallery">
-      <MovieCard
+      <div
         v-for="item in results"
         :key="item.content_id || item.dvd_id"
-        :contentId="item.dvd_id || item.content_id"
-        :coverUrl="cardImageUrl(item)"
-        :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja"
-        :serviceCode="item.service_code || ''"
-        :releaseDate="item.release_date || ''"
-        :runtimeMins="item.runtime_mins || ''"
-        :sampleUrl="item.sample_url || ''"
-        @click="openModal(item)"
-      />
+        class="result-card-group"
+      >
+        <MovieCard
+          :contentId="item.display_code || item.dvd_id || item.content_id"
+          :dvdId="item.display_code || item.dvd_id || item.content_id"
+          :displayCode="item.display_code || item.dvd_id || item.content_id"
+          :canonicalCode="item.canonical_code || ''"
+          :variantLabels="item.variant_labels || []"
+          :variantExplanations="item.variant_explanations || []"
+          :coverUrl="cardImageUrl(item)"
+          :title="item.title_en_translated || item.title_ja_translated || item.title_en || item.title_ja"
+          :serviceCode="item.service_code || ''"
+          :releaseDate="item.release_date || ''"
+          :runtimeMins="item.runtime_mins || ''"
+          :sampleUrl="item.sample_url || ''"
+          @click="openModal(item)"
+        />
+        <button
+          v-if="item.variant_group_count > 1"
+          class="variant-expand-btn"
+          type="button"
+          @click.stop="toggleVariantGroup(item)"
+        >
+          <span v-if="isVariantGroupExpanded(item)">收起版本</span>
+          <span v-else>另 {{ item.variant_group_count - 1 }} 个版本</span>
+        </button>
+        <div v-if="isVariantGroupExpanded(item)" class="variant-inline-list">
+          <button
+            v-for="variant in variantGroupItems(item)"
+            :key="variant.content_id || variant.dvd_id"
+            class="variant-inline-item"
+            type="button"
+            @click.stop="openModal(variant)"
+          >
+            <span class="variant-inline-code">{{ variant.display_code || variant.dvd_id || variant.content_id }}</span>
+            <span class="variant-inline-labels">
+              <span
+                v-for="label in (variant.variant_labels || []).slice(0, 2)"
+                :key="label.key || label.label"
+              >{{ label.short_label || label.label }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 空状态 -->
@@ -260,6 +295,7 @@ import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { openVideoModal } from '../utils/modalState'
 import { createRequestSequence } from '../utils/requestSequence.js'
 import { loadSearchPreferences } from '../utils/searchPreferences.js'
+import { variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 import {
   buildSearchApiParams,
   canonicalizeSearchState,
@@ -338,6 +374,7 @@ export default {
       searchSettingsReady: false,
       appliedSearchPrefsKey: '',
       appliedConfigPageSize: null,
+      expandedVariantGroups: {},
       searchSequence: createRequestSequence()
     }
   },
@@ -520,7 +557,11 @@ export default {
       this.doSearch()
     },
     buildSearchParams(page) {
-      return buildSearchApiParams({ ...this.searchState, page }, { pageSize: this.pageSize })
+      return {
+        ...buildSearchApiParams({ ...this.searchState, page }, { pageSize: this.pageSize }),
+        variant_mode: 'grouped',
+        include_variant_explanations: 1,
+      }
     },
     replaceSearchRoute(patch = {}, { replace = false } = {}) {
       const query = searchQueryFromState({ ...this.searchState, ...patch })
@@ -550,6 +591,7 @@ export default {
         if (!this.searchSequence.isCurrent(token)) return
         const data = resp.data
         this.results = data.data || []
+        this.expandedVariantGroups = {}
         this.total = this.sortState.random ? -1 : (data.total_count ?? 0)
         this.totalPages = data.total_pages || 1
       } catch (e) {
@@ -596,6 +638,22 @@ export default {
     },
     cardImageUrl(item) {
       return videoCardCoverUrl(item)
+    },
+    variantGroupKey,
+    isVariantGroupExpanded(item) {
+      const key = this.variantGroupKey(item)
+      return Boolean(key && this.expandedVariantGroups[key])
+    },
+    toggleVariantGroup(item) {
+      const key = this.variantGroupKey(item)
+      if (!key) return
+      this.expandedVariantGroups = {
+        ...this.expandedVariantGroups,
+        [key]: !this.expandedVariantGroups[key],
+      }
+    },
+    variantGroupItems(item) {
+      return visibleVariantItems(item)
     }
   }
 }
@@ -1127,6 +1185,77 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 30px;
   padding-block: 40px;
+}
+
+.result-card-group {
+  min-width: 0;
+}
+
+.variant-expand-btn {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 32px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
+  background: var(--surface-control);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-pro);
+}
+
+.variant-expand-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  background: var(--surface-control-hover);
+}
+
+.variant-inline-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.variant-inline-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.variant-inline-code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.variant-inline-labels {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.variant-inline-labels span {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--badge-info-bg);
+  border: 1px solid var(--badge-info-border);
+  color: var(--badge-info-text);
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .pagination-bar {

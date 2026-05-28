@@ -21,6 +21,22 @@ async def _stream_json(response) -> dict:
     return json.loads(body.decode("utf-8"))
 
 
+def test_validate_mapping_type_rejects_unknown_with_stable_message():
+    from fastapi import HTTPException
+    from routers.translation import _validate_mapping_type
+
+    self_describing_order = "actress, category, label, maker, series, title"
+    assert _validate_mapping_type("title") == "title"
+
+    try:
+        _validate_mapping_type("bad")
+    except HTTPException as exc:
+        assert exc.status_code == 400
+        assert exc.detail == f"type must be one of: {self_describing_order}"
+    else:
+        raise AssertionError("invalid translation type should be rejected")
+
+
 class TranslationRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_all_stats_uses_short_response_cache(self):
         from database import upsert_translation

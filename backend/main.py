@@ -38,6 +38,7 @@ from routers.authors import router as authors_router
 from routers.labels import router as labels_router
 from routers.operations import router as operations_router
 from routers.javinfo_imports import router as javinfo_imports_router
+from routers.video_variant_index import router as video_variant_index_router
 
 app = FastAPI(title="AV Downloader API")
 
@@ -144,6 +145,7 @@ app.include_router(authors_router)
 app.include_router(labels_router)
 app.include_router(operations_router)
 app.include_router(javinfo_imports_router)
+app.include_router(video_variant_index_router)
 
 
 @app.on_event("startup")

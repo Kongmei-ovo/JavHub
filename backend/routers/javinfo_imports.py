@@ -114,6 +114,12 @@ async def _restore_after_upload(manager, job_id: int) -> None:
     job = await manager.restore_job(job_id)
     if job.get("status") == "completed":
         cache.purge_all()
+        try:
+            from services.video_variant_index import start_variant_index_job
+
+            start_variant_index_job()
+        except Exception:
+            pass
 
 
 @router.post("/migrations")
