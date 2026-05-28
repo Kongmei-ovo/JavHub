@@ -386,7 +386,7 @@ import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { ElMessage } from '../utils/message.js'
 import { requestConfirm } from '../utils/confirmDialog'
-import { candidateKey, candidateName, confidenceText } from '../utils/actorMappingPresentation.js'
+import { candidateKey, candidateName, confidenceText, initials } from '../utils/inventoryPresentation.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -857,10 +857,6 @@ function inventoryActorCardActor(actor) {
     name_kanji: inventoryActorName(actor),
     image_url: inventoryActorAvatar(actor),
   }
-}
-
-function initials(name) {
-  return String(name || '?').slice(0, 1).toUpperCase()
 }
 
 function candidateStatusLabel(status) {

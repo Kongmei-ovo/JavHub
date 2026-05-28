@@ -215,7 +215,7 @@ import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { requestConfirm } from '../utils/confirmDialog'
-import { candidateKey, candidateName, confidenceText } from '../utils/actorMappingPresentation.js'
+import { candidateKey, candidateName, confidenceText, initials } from '../utils/inventoryPresentation.js'
 
 const activeTab = ref('review')
 const search = ref('')
@@ -385,10 +385,6 @@ function mappingReasonLabel(mapping) {
 
 function candidateAvatar(candidate) {
   return actressImgUrl(candidate.javinfo_avatar_url || candidate.image_url || candidate.avatar_url) || ''
-}
-
-function initials(name) {
-  return String(name || '?').slice(0, 1).toUpperCase()
 }
 
 async function searchJavInfo(actor) {
