@@ -6,11 +6,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from test_support.client import ASGITestClient, create_router_test_client
+from test_support.client import ASGIClient, create_router_test_client
 
 
 class HealthRouteTest(unittest.TestCase):
-    def _client(self) -> ASGITestClient:
+    def _client(self) -> ASGIClient:
         from routers.health import router
 
         return create_router_test_client(router)

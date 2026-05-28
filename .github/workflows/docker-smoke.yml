@@ -34,6 +34,7 @@ jobs:
           JAVINFOAPI_PORT: "18080"
           POSTGRES_PASSWORD: smoke-password
           DB_PASSWORD: smoke-password
+          JAVHUB_DB_PASSWORD: smoke-password
           SUPPLEMENT_ADMIN_TOKEN: smoke-token
         run: docker compose up -d --wait --wait-timeout 180
 

@@ -42,6 +42,7 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
                 {"actress_id": 1, "actress_name": "A"},
                 {"actress_id": 1, "actress_name": "A"},
             ])) as missing, \
+            patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 4})) as variant_stats, \
             patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 2})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[{"id": 5}])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
@@ -62,6 +63,7 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         candidates.assert_called_once()
         jobs.assert_called_once_with(limit=10)
         missing.assert_called_once()
+        variant_stats.assert_called_once()
         mapping.assert_called_once()
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()
@@ -86,6 +88,7 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             patch.object(operations, "download_candidate_stats", Mock(return_value={"total": 0})) as candidates, \
             patch.object(operations, "get_inventory_jobs", Mock(return_value=[])) as jobs, \
             patch.object(operations, "get_all_missing_videos", Mock(return_value=[])) as missing, \
+            patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 0})) as variant_stats, \
             patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 0})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
@@ -105,6 +108,7 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         candidates.assert_called_once()
         jobs.assert_called_once_with(limit=10)
         missing.assert_called_once()
+        variant_stats.assert_called_once()
         mapping.assert_called_once_with([])
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()

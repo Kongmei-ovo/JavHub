@@ -881,6 +881,7 @@ test('translation jobs has a standalone navigation page and settings no longer o
   assert.match(translationJobs, /批量作业默认不使用智能兜底/)
   assert.match(translationJobs, /translationProviders\.js/)
   assert.match(translationProviders, /ai: \{ label: '智能兜底'/)
+  assert.match(translationProviders, /providerOrderLabel/)
   assert.match(translationJobs, /batch_concurrency/)
   assert.match(translationJobs, /batch_size/)
   assert.match(translationJobs, /batch_char_limit/)
