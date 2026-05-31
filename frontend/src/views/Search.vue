@@ -812,10 +812,9 @@ export default {
 
 .sort-strip-label {
   font-size: var(--type-caption);
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .sort-result-count {
@@ -990,12 +989,24 @@ export default {
   min-height: 32px;
   max-width: min(100%, 280px);
   padding: 0 10px 0 12px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-subtle);
+  background: var(--surface-control);
   color: var(--text-secondary);
   font-size: var(--type-caption);
   cursor: pointer;
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.applied-chip:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-control-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .applied-chip span {
@@ -1053,10 +1064,9 @@ export default {
 
 .panel-field label {
   font-size: var(--type-caption);
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   padding-left: 4px;
 }
 
@@ -1203,12 +1213,17 @@ export default {
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .variant-expand-btn:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   background: var(--surface-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .variant-inline-list {
@@ -1224,11 +1239,23 @@ export default {
   gap: 8px;
   min-height: 34px;
   padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-control);
   color: var(--text-secondary);
   cursor: pointer;
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.variant-inline-item:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-control-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .variant-inline-code {
@@ -1467,6 +1494,15 @@ export default {
     margin-top: 12px;
     padding: 18px;
     border-radius: 18px;
+  }
+  .variant-inline-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px;
+  }
+  .variant-inline-labels {
+    justify-content: flex-start;
   }
   .panel-footer {
     margin-top: 20px;

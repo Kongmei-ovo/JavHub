@@ -29,3 +29,27 @@ test('search cards pass backend display code and variant labels into MovieCard',
   assert.match(source, /:variantLabels="item\.variant_labels \|\| \[\]"/)
   assert.match(source, /:variantExplanations="item\.variant_explanations \|\| \[\]"/)
 })
+
+test('search filter chrome uses shared liquid glass controls without uppercase microcopy', () => {
+  const sortLabelBlock = source.match(/\.sort-strip-label\s*\{[^}]*\}/)?.[0] || ''
+  const panelLabelBlock = source.match(/\.panel-field label\s*\{[^}]*\}/)?.[0] || ''
+  const appliedChipBlock = source.match(/\.applied-chip\s*\{[^}]*\}/)?.[0] || ''
+  const variantButtonBlock = source.match(/\.variant-expand-btn\s*\{[^}]*\}/)?.[0] || ''
+  const variantRowBlock = source.match(/\.variant-inline-item\s*\{[^}]*\}/)?.[0] || ''
+  const mobileBlock = source.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
+
+  assert.match(sortLabelBlock, /letter-spacing:\s*0/)
+  assert.doesNotMatch(sortLabelBlock, /text-transform:\s*uppercase/)
+  assert.match(panelLabelBlock, /letter-spacing:\s*0/)
+  assert.doesNotMatch(panelLabelBlock, /text-transform:\s*uppercase/)
+  assert.match(appliedChipBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(appliedChipBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(appliedChipBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(variantButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(variantRowBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(variantRowBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantRowBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(mobileBlock, /\.variant-inline-item\s*\{[\s\S]*grid-template-columns:\s*1fr/)
+  assert.doesNotMatch(source, /\.variant-inline-item\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.04\)/)
+})
