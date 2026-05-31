@@ -32,6 +32,10 @@ test('theme materials include refractive liquid glass layers', () => {
     '--glass-blur-control',
     '--glass-blur-surface',
     '--glass-saturate-control',
+    '--app-backdrop-texture',
+    '--content-material',
+    '--content-material-border',
+    '--chrome-floating-shadow',
   ]
 
   for (const [key, theme] of Object.entries(THEMES)) {
@@ -45,6 +49,8 @@ test('theme materials include refractive liquid glass layers', () => {
   assert.notEqual(THEMES['apple-dark'].vars['--glass-control-bg'], 'rgba(255, 255, 255, 0.060)')
   assert.match(THEMES['apple-dark'].vars['--glass-control-bg'], /rgba\(18,\s*19,\s*21,\s*0\.36\)/)
   assert.match(THEMES['apple-light'].vars['--glass-control-shadow'], /0 10px 26px/)
+  assert.match(THEMES['apple-light'].vars['--app-backdrop-texture'], /linear-gradient/)
+  assert.match(THEMES['apple-dark'].vars['--content-material'], /rgba\(10,\s*10,\s*12,\s*0\.72\)/)
 })
 
 test('global controls use shared liquid glass material instead of flat tint', () => {

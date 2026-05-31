@@ -80,6 +80,7 @@ const SHARED_TOKENS = {
   '--skeleton-base': 'var(--skeleton-track)',
   '--skeleton-highlight': 'var(--skeleton-glint)',
   '--sidebar-width': '224px',
+  '--app-chrome-inset': '12px',
 }
 
 const STATUS_TOKENS = {
@@ -187,6 +188,10 @@ export const THEMES = {
       '--glass-blur-sheet': '28px',
       '--glass-saturate-control': '170%',
       '--glass-saturate-surface': '165%',
+      '--app-backdrop-texture': 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(242,242,247,0.84)), repeating-linear-gradient(135deg, rgba(29,29,31,0.018) 0, rgba(29,29,31,0.018) 1px, transparent 1px, transparent 6px)',
+      '--content-material': 'rgba(255, 255, 255, 0.66)',
+      '--content-material-border': 'rgba(255, 255, 255, 0.82)',
+      '--chrome-floating-shadow': '0 22px 58px rgba(29,29,31,0.12), inset 0 1px 0 rgba(255,255,255,0.78), inset 0 -1px 0 rgba(29,29,31,0.045)',
       '--shadow-card': '0 1px 2px rgba(29, 29, 31, 0.04), 0 18px 46px rgba(29, 29, 31, 0.08)',
       '--shadow-hover': '0 18px 48px rgba(29, 29, 31, 0.13)',
       '--shadow-floating': '0 20px 52px rgba(29, 29, 31, 0.13)',
@@ -254,6 +259,10 @@ export const THEMES = {
       '--glass-blur-sheet': '26px',
       '--glass-saturate-control': '145%',
       '--glass-saturate-surface': '140%',
+      '--app-backdrop-texture': 'linear-gradient(180deg, rgba(18,18,20,0.96), rgba(5,5,6,1)), repeating-linear-gradient(135deg, rgba(255,255,255,0.026) 0, rgba(255,255,255,0.026) 1px, transparent 1px, transparent 6px)',
+      '--content-material': 'rgba(10, 10, 12, 0.72)',
+      '--content-material-border': 'rgba(255, 255, 255, 0.090)',
+      '--chrome-floating-shadow': '0 26px 70px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.24)',
       '--shadow-card': '0 1px 0 rgba(255, 255, 255, 0.03), 0 22px 54px rgba(0, 0, 0, 0.40)',
       '--shadow-hover': '0 24px 64px rgba(0, 0, 0, 0.52)',
       '--shadow-floating': '0 24px 68px rgba(0, 0, 0, 0.48)',

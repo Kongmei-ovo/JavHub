@@ -598,6 +598,14 @@ export default {
   --modal-panel-border: rgba(255, 255, 255, 0.18);
   --modal-gallery-bg: rgba(0, 0, 0, 0.22);
   --modal-overlay-bg: rgba(0, 0, 0, 0.20);
+  --modal-action-primary-bg: var(--glass-active-material);
+  --modal-action-secondary-bg: var(--material-glass-control);
+  --modal-action-secondary-bg-hover: var(--material-glass-control-hover);
+  --modal-action-border: var(--glass-control-border);
+  --modal-action-border-hover: var(--glass-control-border-hover);
+  --modal-action-color: var(--text-primary);
+  --modal-action-shadow: var(--glass-control-shadow);
+  --modal-action-shadow-hover: var(--glass-control-shadow-hover);
   position: fixed;
   inset: 0;
   background: var(--modal-overlay-bg);
@@ -700,16 +708,61 @@ export default {
 .modal-code-block { border-bottom: 1px solid rgba(255, 255, 255, 0.15); padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .modal-actions { display: flex; align-items: center; gap: 12px; }
 .modal-code { font-size: var(--type-entity-title); font-weight: 700; color: #ffffff; font-family: var(--font-mono); letter-spacing: 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-.preview-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.9); color: #000; border-radius: 40px; font-size: var(--type-body); font-weight: 600; text-decoration: none; transition: var(--transition-pro); flex-shrink: 0; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-.preview-btn:hover { background: #fff; transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
-.stream-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.9); color: #000; border-radius: 40px; font-size: var(--type-body); font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-.stream-btn:hover:not(:disabled) { background: #fff; transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
+.preview-btn,
+.stream-btn,
+.favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--modal-action-secondary-bg);
+  color: var(--modal-action-color);
+  border: 1px solid var(--modal-action-border);
+  border-radius: var(--radius-control);
+  font-size: var(--type-body);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: var(--modal-action-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.preview-btn,
+.stream-btn {
+  background: var(--modal-action-primary-bg);
+  border-color: var(--active-border);
+}
+
+.preview-btn:hover,
+.stream-btn:hover:not(:disabled),
+.favorite-btn:hover {
+  background: var(--modal-action-secondary-bg-hover);
+  border-color: var(--modal-action-border-hover);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--modal-action-shadow-hover);
+}
+
+.preview-btn:hover,
+.stream-btn:hover:not(:disabled) {
+  background: var(--modal-action-primary-bg);
+}
+
+.preview-btn:active,
+.stream-btn:active:not(:disabled),
+.favorite-btn:active {
+  transform: translateY(0) scale(0.98);
+}
 .stream-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .stream-btn svg { width: 16px; height: 16px; }
-.favorite-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border-radius: 40px; font-size: var(--type-body); font-weight: 600; transition: var(--transition-pro); flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.15); cursor: pointer; }
-.favorite-btn:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.2); }
-.favorite-btn.is-active { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.42); color: #ffffff; }
-.favorite-btn.is-active:hover { background: rgba(255, 255, 255, 0.28); }
+.favorite-btn.is-active {
+  background: var(--modal-action-primary-bg);
+  border-color: var(--active-border);
+  color: var(--modal-action-color);
+}
+.favorite-btn.is-active:hover { background: var(--modal-action-primary-bg); }
 .favorite-btn svg { width: 16px; height: 16px; transition: transform 0.3s var(--ease-pro); }
 .favorite-btn:active svg { transform: scale(0.8); }
 .modal-title-block { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 16px; }
@@ -764,6 +817,12 @@ export default {
 .lightbox-prev:disabled, .lightbox-next:disabled { opacity: 0.1; cursor: not-allowed; }
 .lightbox-counter { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 15px; letter-spacing: 0.1em; font-family: var(--font-mono); }
 .stream-actions { margin-top: 12px; }
+.favorite-btn,
+.stream-download-btn {
+  background: var(--modal-action-secondary-bg);
+  color: var(--modal-action-color);
+  border: 1px solid var(--modal-action-border);
+}
 .stream-download-btn {
   width: 100%;
   justify-content: center;
@@ -771,20 +830,23 @@ export default {
   align-items: center;
   gap: 10px;
   padding: 14px 28px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 40px;
+  border-radius: var(--radius-control);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition-pro);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  box-shadow: var(--modal-action-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .stream-download-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--modal-action-secondary-bg-hover);
+  border-color: var(--modal-action-border-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  box-shadow: var(--modal-action-shadow-hover);
+}
+.stream-download-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .stream-download-btn:disabled {
   opacity: 0.5;

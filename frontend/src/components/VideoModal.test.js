@@ -100,6 +100,22 @@ test('modal material stays readable and consistent over busy result grids', () =
   assert.match(source, /\.modal-container\s*\{[\s\S]*-webkit-backdrop-filter:\s*none/)
 })
 
+test('modal actions use liquid glass control tokens instead of hardcoded pills', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const actionBlock = source.match(/\.preview-btn,\s*\n\.stream-btn,\s*\n\.favorite-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  const primaryBlock = source.match(/\.preview-btn,\s*\n\.stream-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  const secondaryBlock = source.match(/\.favorite-btn,\s*\n\.stream-download-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(source, /--modal-action-primary-bg:\s*var\(--glass-active-material\)/)
+  assert.match(source, /--modal-action-secondary-bg:\s*var\(--material-glass-control\)/)
+  assert.match(actionBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(actionBlock, /box-shadow:\s*var\(--modal-action-shadow\)/)
+  assert.match(primaryBlock, /background:\s*var\(--modal-action-primary-bg\)/)
+  assert.match(secondaryBlock, /background:\s*var\(--modal-action-secondary-bg\)/)
+  assert.doesNotMatch(source, /\.preview-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
+  assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
+})
+
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 

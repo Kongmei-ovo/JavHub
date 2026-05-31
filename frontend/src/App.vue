@@ -387,22 +387,37 @@ export default {
   width: 100%;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
+  isolation: isolate;
+}
+
+.app-layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--app-backdrop-texture);
+  pointer-events: none;
+  z-index: var(--z-base);
 }
 
 /* ===== Sidebar ===== */
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
+  height: calc(100dvh - (var(--app-chrome-inset) * 2));
+  margin: var(--app-chrome-inset) 0 var(--app-chrome-inset) var(--app-chrome-inset);
   background: var(--surface-nav);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.08);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  border-right: 1px solid var(--surface-nav-border);
+  border: 1px solid var(--surface-nav-border);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--chrome-floating-shadow);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease, min-width 0.3s ease, background 0.3s ease;
   z-index: var(--z-nav);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sidebar.collapsed {
@@ -592,7 +607,13 @@ export default {
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
-  background: var(--bg-primary);
+  margin: var(--app-chrome-inset);
+  background: var(--content-material);
+  border: 1px solid var(--content-material-border);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  position: relative;
+  z-index: var(--z-raised);
 }
 
 .main-content:focus {
@@ -603,15 +624,17 @@ export default {
 .bottom-nav {
   display: none;
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
   background: var(--surface-nav);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  border-top: 1px solid var(--border-light);
+  border: 1px solid var(--surface-nav-border);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--chrome-floating-shadow);
   z-index: var(--z-nav);
-  padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  padding: 6px;
 }
 
 .bottom-nav-item {
@@ -626,7 +649,8 @@ export default {
   font-size: 10px;
   font-weight: 500;
   padding: 6px 0;
-  min-height: 52px;
+  min-height: 50px;
+  border-radius: 22px;
   transition: all 0.25s ease;
   border: 0;
   background: transparent;
@@ -636,7 +660,11 @@ export default {
 .bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
 .bottom-nav-item:hover { color: var(--text-primary); }
 .bottom-nav-item:hover svg { transform: translateY(-1px); }
-.bottom-nav-item.active { color: var(--text-primary); }
+.bottom-nav-item.active {
+  color: var(--text-primary);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
+}
 .bottom-nav-item.active svg { filter: none; }
 
 .mobile-more-overlay {
@@ -648,6 +676,11 @@ export default {
   .sidebar { display: none; }
   .bottom-nav { display: flex; }
   .main-content {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg-primary);
+    box-shadow: none;
     padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   }
   .mobile-more-overlay {
