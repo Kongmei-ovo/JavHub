@@ -659,9 +659,12 @@ export default {
 .collection-manager {
   margin: 0 0 22px;
   padding: 14px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   background: var(--surface-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   text-align: left;
 }
 
@@ -696,18 +699,32 @@ export default {
   min-width: 0;
   min-height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   background: var(--surface-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: var(--transition);
+}
+
+.collection-form input:focus {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-input-focus);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .btn-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 34px;
   padding: 6px 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   background: var(--surface-control);
   color: var(--text-primary);
@@ -715,22 +732,29 @@ export default {
   font: inherit;
   font-size: 12px;
   font-weight: 650;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: var(--transition);
 }
 
-.btn-mini.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--text-on-accent);
+.btn-mini:hover:not(:disabled) {
+  background: var(--surface-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.btn-mini.primary,
+.btn-mini.active {
+  background: var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .btn-mini.danger {
   color: #ff375f;
-}
-
-.btn-mini.active {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
-  color: var(--text-on-accent);
 }
 
 .btn-mini:disabled {
@@ -750,9 +774,12 @@ export default {
   gap: 10px;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .collection-row div:first-child {
@@ -783,18 +810,19 @@ export default {
 /* Segmented Control - Apple Look */
 .segmented-control {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--material-glass-control);
   padding: 4px;
   border-radius: 14px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-light);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .segment-item {
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   padding: 8px 20px;
@@ -802,33 +830,35 @@ export default {
   font-weight: 600;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s var(--ease-pro);
+  transition: var(--transition);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .segment-item:hover {
+  background: var(--surface-control-hover);
   color: var(--text-primary);
 }
 
 .segment-item.active {
-  background: var(--white-10);
+  background: var(--glass-active-material);
   color: var(--text-primary);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  border: 1px solid var(--border-light);
+  box-shadow: var(--glass-active-shadow);
+  border: 1px solid var(--glass-active-border);
 }
 
 .tab-badge {
   font-size: var(--type-badge);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
   padding: 1px 6px;
   border-radius: 8px;
   font-weight: 500;
 }
 
 .segment-item.active .tab-badge {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--surface-control-hover);
 }
 
 .curate-content {
@@ -927,8 +957,7 @@ export default {
   font-size: var(--type-control);
   color: var(--text-muted);
   margin-bottom: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .entity-cloud {
@@ -943,26 +972,29 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: var(--transition);
   font: inherit;
   text-align: left;
 }
 
 .entity-bubble:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-light);
+  background: var(--surface-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
 }
 
 .entity-bubble.selected {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.12);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .entity-name {
@@ -974,7 +1006,8 @@ export default {
 .entity-type-tag {
   font-size: var(--type-badge);
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -1015,9 +1048,19 @@ export default {
 }
 
 .empty-icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
   margin-bottom: 24px;
-  opacity: 0.4;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-xl);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  opacity: 0.78;
 }
 
 .curate-empty h3 {
@@ -1035,27 +1078,33 @@ export default {
 }
 
 .btn-explore {
-  background: var(--text-primary);
-  color: var(--text-on-accent);
-  border: none;
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-active-border);
   padding: 14px 48px;
   border-radius: 24px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s var(--ease-pro);
+  box-shadow: var(--glass-active-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: var(--transition);
 }
 
 .btn-explore:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 /* Skeleton loading */
 .skeleton-card {
-  background: var(--bg-card);
+  background: var(--surface-card);
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .skeleton-cover {
@@ -1102,6 +1151,8 @@ export default {
   }
   .entity-bubble {
     min-height: 44px;
+    min-width: 0;
+    justify-content: space-between;
   }
   .entity-fav-btn {
     width: 44px;
