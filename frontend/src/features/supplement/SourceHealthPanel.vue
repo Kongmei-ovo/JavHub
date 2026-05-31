@@ -277,16 +277,21 @@ export default {
   min-height: 44px;
   padding: 0 14px;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid transparent;
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   outline: none;
   font-size: 13px;
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 
 .filter-input:focus {
-  border-color: var(--border-light);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--active-border);
+  background: var(--surface-input-focus);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .avatar-sync-panel {
@@ -294,9 +299,12 @@ export default {
   gap: 12px;
   margin-bottom: 14px;
   padding: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .avatar-sync-head,
@@ -339,9 +347,12 @@ export default {
 
 .avatar-sync-metrics div {
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .avatar-sync-metrics strong {
@@ -381,9 +392,12 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .provider-smoke-summary div {
@@ -413,9 +427,12 @@ export default {
   gap: 7px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .provider-smoke-card.failed {
@@ -458,9 +475,12 @@ export default {
   gap: 10px;
   margin-bottom: 14px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .provider-smoke-history-head {
@@ -486,12 +506,23 @@ export default {
   align-items: center;
   min-width: 0;
   padding: 9px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: inherit;
   cursor: pointer;
   text-align: left;
+  transition: transform var(--motion-fast), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.provider-smoke-run:hover {
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .provider-smoke-run span,
@@ -515,9 +546,12 @@ export default {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .source-health-card strong {
@@ -539,9 +573,12 @@ export default {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .source-budget-meter strong {

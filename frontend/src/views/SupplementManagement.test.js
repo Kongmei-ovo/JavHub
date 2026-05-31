@@ -9,6 +9,16 @@ const sourceHealthPanel = readFileSync(new URL('../features/supplement/SourceHea
 const supplementFeatureSource = [source, actorPicker, jobList, sourceHealthPanel].join('\n')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
+function cssBlock(content, selector) {
+  const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  const match = blocks.find(([, selectors]) => selectors
+    .split(',')
+    .map(part => part.trim())
+    .includes(selector))
+  assert.ok(match, `${selector} block should exist`)
+  return match[2]
+}
+
 test('supplement management shows and controls actor context when routed from an actor', () => {
   assert.match(source, /v-if="actorContext"/)
   assert.match(source, /class="actor-context-card"/)
@@ -134,6 +144,17 @@ test('supplement management exposes provider smoke diagnostics', () => {
   assert.match(sourceHealthPanel, /字段分/)
 })
 
+test('source health styles stay in the lazy child chunk', () => {
+  assert.match(source, /const SourceHealthPanel = defineAsyncComponent/)
+  assert.doesNotMatch(source, /\.avatar-sync-panel\s*\{/)
+  assert.doesNotMatch(source, /\.provider-smoke-summary\s*\{/)
+  assert.doesNotMatch(source, /\.provider-smoke-card\s*\{/)
+  assert.doesNotMatch(source, /\.provider-smoke-history\s*\{/)
+  assert.doesNotMatch(source, /\.provider-smoke-run\s*\{/)
+  assert.doesNotMatch(source, /\.source-health-card\s*\{/)
+  assert.doesNotMatch(source, /\.source-budget-meter\s*\{/)
+})
+
 test('supplement management preserves a global queue entry point', () => {
   assert.match(source, /showGlobalQueue/)
   assert.match(source, /openGlobalQueue\(\)/)
@@ -179,4 +200,43 @@ test('supplement management avoids a remount-style refresh when re-entered', () 
   assert.match(source, /lastAppliedRouteKey/)
   assert.match(source, /replaceSupplementRoute/)
   assert.doesNotMatch(source, /class="supplement-page apple-reveal"/)
+})
+
+test('supplement source diagnostics use shared Apple glass materials', () => {
+  const input = cssBlock(sourceHealthPanel, '.filter-input')
+  const inputFocus = cssBlock(sourceHealthPanel, '.filter-input:focus')
+  const avatarPanel = cssBlock(sourceHealthPanel, '.avatar-sync-panel')
+  const avatarMetric = cssBlock(sourceHealthPanel, '.avatar-sync-metrics div')
+  const smokeSummary = cssBlock(sourceHealthPanel, '.provider-smoke-summary')
+  const smokeHistory = cssBlock(sourceHealthPanel, '.provider-smoke-history')
+  const smokeRun = cssBlock(sourceHealthPanel, '.provider-smoke-run')
+  const smokeRunHover = cssBlock(sourceHealthPanel, '.provider-smoke-run:hover')
+  const smokeCard = cssBlock(sourceHealthPanel, '.provider-smoke-card')
+  const sourceCard = cssBlock(sourceHealthPanel, '.source-health-card')
+  const budgetMeter = cssBlock(sourceHealthPanel, '.source-budget-meter')
+
+  assert.match(input, /background:\s*var\(--surface-control\)/)
+  assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(inputFocus, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
+
+  for (const block of [avatarPanel, smokeSummary, smokeHistory, sourceCard]) {
+    assert.match(block, /background:\s*var\(--surface-card\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  }
+
+  for (const block of [avatarMetric, smokeRun, smokeCard, budgetMeter]) {
+    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  }
+
+  assert.match(smokeRunHover, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(smokeRunHover, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(smokeRunHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 })
