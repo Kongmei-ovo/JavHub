@@ -20,6 +20,13 @@ function cssBlock(selector) {
   return match[1]
 }
 
+function sourceBlock(source, selector) {
+  const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
+  const match = source.match(pattern)
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('theme materials include refractive liquid glass layers', () => {
   const requiredTokens = [
     '--glass-control-material',
@@ -95,4 +102,37 @@ test('secondary utility controls avoid one-off fog materials', () => {
   assert.match(actor, /\.year-nav\s*\{[\s\S]*background:\s*var\(--material-glass-sheet\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.match(duplicates, /\.action-btn\.ignore\s*\{[\s\S]*background:\s*var\(--material-glass-control\)/)
   assert.match(home, /\.dialog-close-btn\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+})
+
+test('home dashboard metrics use shared liquid glass controls', () => {
+  const statCardBlock = sourceBlock(home, '.stat-card')
+  const statCardHoverBlock = sourceBlock(home, '.stat-card:hover')
+  const statIconBlock = sourceBlock(home, '.stat-icon')
+  const candidateMetricBlock = sourceBlock(home, '.candidate-metric')
+  const candidateMetricHoverBlock = sourceBlock(home, '.candidate-metric:hover')
+  const mobileBlock = home.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
+
+  assert.match(statCardBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(statCardBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(statCardBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(statCardBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(statCardHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(statCardHoverBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(statCardHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.doesNotMatch(statCardBlock, /blur\(20px\)|var\(--bg-card\)|rgba\(255,\s*255,\s*255,\s*0\.05\)/)
+
+  assert.match(statIconBlock, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(statIconBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(statIconBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.doesNotMatch(statIconBlock, /!important|rgba\(255,\s*255,\s*255/)
+
+  assert.match(candidateMetricBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(candidateMetricBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(candidateMetricBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(candidateMetricBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(candidateMetricHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(candidateMetricHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  assert.match(mobileBlock, /\.candidate-overview\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(mobileBlock, /\.candidate-metric\s*\{[\s\S]*min-width:\s*0/)
 })

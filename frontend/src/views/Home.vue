@@ -1607,24 +1607,25 @@ export default {
 /* ===== Stats Bar ===== */
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
 
 .stat-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); /* Top highlight */
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition);
   animation: statEntrance 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 .stat-card:nth-child(1) { animation-delay: 0.05s; }
@@ -1636,8 +1637,10 @@ export default {
   to { opacity: 1; transform: translateY(0); }
 }
 .stat-card:hover {
-  transform: translateY(-4px) !important;
-  border-color: var(--border-light);
+  transform: translateY(-3px);
+  background: var(--surface-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .stat-icon {
@@ -1648,9 +1651,10 @@ export default {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary) !important;
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  color: var(--text-secondary);
 }
 .stat-icon svg { width: 24px; height: 24px; }
 
@@ -1682,17 +1686,24 @@ export default {
   margin: -8px 0 18px;
 }
 .candidate-metric {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  background: var(--bg-card);
+  background: var(--surface-control);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
+  min-width: 0;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: var(--transition);
 }
 .candidate-metric:hover {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   background: var(--surface-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-2px);
 }
 .metric-value {
   display: block;
@@ -2504,10 +2515,12 @@ export default {
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .stat-card { padding: 14px; gap: 12px; }
   .stat-num { font-size: var(--type-section-title); }
   .stat-icon { width: 40px; height: 40px; }
+  .candidate-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .candidate-metric { min-width: 0; }
   .tasks-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .header-actions .btn,
   .tab-btn,
