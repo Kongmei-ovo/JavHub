@@ -10,6 +10,12 @@ test('genres page only loads data needed for the initial tab', () => {
   assert.doesNotMatch(source, /const initialLoads = \[[\s\S]*this\.loadActresses\(\),[\s\S]*\]/)
 })
 
+test('genres page does not import the motion vendor bundle for lightweight bubbles', () => {
+  assert.doesNotMatch(source, /from 'gsap'/)
+  assert.doesNotMatch(source, /from "gsap"/)
+  assert.doesNotMatch(source, /gsap\./)
+})
+
 test('genres page loads categories lazily when the genre tab is opened', () => {
   assert.match(source, /if \(tab === 'genre' && !this\.categories\.length && !this\.loading\) \{[\s\S]*this\.loadCategories\(\)/)
 })

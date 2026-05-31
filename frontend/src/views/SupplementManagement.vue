@@ -708,6 +708,15 @@ export default {
     jobActorInitial(job) {
       return (job.source_actor_name || String(job.local_actress_id || '?')).slice(0, 1)
     },
+    recentActorFromJob(job) {
+      const id = job.local_actress_id
+      return {
+        id,
+        name: job.source_actor_name || `演员 ${id}`,
+        name_kanji: job.source_actor_name || '',
+        _recentJob: job,
+      }
+    },
     actorDisplayName(actor) {
       if (!actor) return ''
       return displayName(actor, 'name_kanji', 'name_romaji')
@@ -1205,7 +1214,7 @@ export default {
         const resp = await api.listSupplementJobs({ page: 1, page_size: 16 })
         const data = resp.data || resp
         this.recentJobs = data.data || []
-        await this.loadRecentActors()
+        this.recentActors = this.recentActorJobs.map(this.recentActorFromJob)
         this.recentActorsLoadedAt = Date.now()
       } catch (e) {
         console.error('Load recent supplement jobs failed:', e)
@@ -1217,23 +1226,6 @@ export default {
       } finally {
         if (showLoading) this.recentJobsLoading = false
       }
-    },
-    async loadRecentActors() {
-      const jobs = this.recentActorJobs
-      const actors = []
-      for (const job of jobs) {
-        try {
-          const resp = await api.getActress(job.local_actress_id)
-          actors.push({ ...(resp.data || resp), _recentJob: job })
-        } catch (e) {
-          actors.push({
-            id: job.local_actress_id,
-            name: job.source_actor_name || `演员 ${job.local_actress_id}`,
-            _recentJob: job,
-          })
-        }
-      }
-      this.recentActors = actors
     },
     async loadJobs({ silent = false } = {}) {
       const showLoading = !silent

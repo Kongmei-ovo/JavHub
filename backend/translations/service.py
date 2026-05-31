@@ -7,6 +7,7 @@ from typing import Any
 from config import config
 from database import (
     get_cached_translation,
+    get_cached_translations_bulk,
     get_translation,
     get_translations_bulk,
     upsert_cached_translation,
@@ -265,18 +266,32 @@ class TranslatorService:
             entries.append((item, key, original, entity_scope, text_scope))
 
         translations = get_translations_bulk([entry[3] for entry in entries]) if entries else {}
+        cache_pairs: list[tuple[str, str]] = []
+        for _item, _key, original, mapping_scope, text_scope in entries:
+            trans = translations.get(mapping_scope)
+            mapping = trans.get(entity_type, {}) if trans else {}
+            if original not in mapping:
+                cache_pairs.append((text_scope, original))
+        cached_translations = get_cached_translations_bulk(cache_pairs) if cache_pairs else {}
         for item, key, original, mapping_scope, text_scope in entries:
             trans = translations.get(mapping_scope)
             mapping = trans.get(entity_type, {}) if trans else {}
-            translated = await self.translate_text(
-                original,
-                scope=text_scope,
-                mapping=mapping,
-                context=f"{entity_type} name",
-                use_ai=use_ai,
-                persist_ai=use_ai,
-                allow_network=allow_network,
-            )
+            if original in mapping:
+                translated = mapping[original]
+            else:
+                cached = cached_translations.get((text_scope, original))
+                translated = cached.get("translated_text") if cached else None
+            if not translated and (allow_network or use_ai):
+                translated = await self.translate_text(
+                    original,
+                    scope=text_scope,
+                    mapping={},
+                    context=f"{entity_type} name",
+                    use_ai=use_ai,
+                    persist_ai=use_ai,
+                    allow_network=allow_network,
+                )
+            translated = translated or original
             _apply_translated_name(item, key, original, translated)
         return items
 

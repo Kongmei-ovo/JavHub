@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+import asyncio
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Optional, Dict
 from database import (
@@ -10,8 +11,10 @@ from database import (
     delete_download_task,
     download_candidate_stats,
     download_candidate_summary,
+    download_candidate_summary_with_sources,
     list_candidate_process_runs,
     list_download_candidates,
+    list_download_candidates_page,
     set_download_candidate_status,
     update_download_candidate_magnet,
     upsert_download_candidate,
@@ -29,6 +32,8 @@ from services.candidate_processor import (
     process_candidates,
     retry_failed_candidates_from_run,
 )
+from services import cache as response_cache
+from services.cache import should_bypass_response_cache
 
 router = APIRouter(prefix="/api/v1/downloads", tags=["downloads"])
 
@@ -119,10 +124,22 @@ async def create_download(req: CreateDownloadRequest) -> Dict[str, Any]:
     return {"id": task_id, "status": "downloading"}
 
 @router.get("")
-async def list_downloads() -> Dict[str, Any]:
+async def list_downloads(cache_control: Optional[str] = Query(None, alias="cache")) -> Dict[str, Any]:
     """获取下载列表"""
-    tasks = get_download_tasks()
-    return {"data": tasks, "total": len(tasks)}
+    bypass_cache = should_bypass_response_cache(cache_control)
+    cache_params = {"generation": await response_cache.get_data_generation_async("download_tasks")}
+
+    async def produce() -> Dict[str, Any]:
+        tasks = await asyncio.to_thread(get_download_tasks)
+        return {"data": tasks, "total": len(tasks)}
+
+    return await response_cache.get_or_set_response(
+        "download_tasks",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=bypass_cache,
+    )
 
 
 @router.get("/downloaders")
@@ -159,35 +176,57 @@ async def list_candidates(
     limit: int = 200,
     page: int = 1,
     page_size: Optional[int] = None,
+    include_stats: bool = False,
+    cache_control: Optional[str] = Query(None, alias="cache"),
 ) -> Dict[str, Any]:
     """下载候选列表。候选是人工确认前的安全队列。"""
     size = max(1, min(int(page_size or limit or 200), 200))
     current_page = max(1, int(page or 1))
-    total = count_download_candidates(
-        status=status,
-        actress_id=actress_id,
-        source=source,
-        q=q,
-        needs_magnet=needs_magnet,
-    )
-    rows = list_download_candidates(
-        status=status,
-        actress_id=actress_id,
-        source=source,
-        q=q,
-        needs_magnet=needs_magnet,
-        limit=size,
-        offset=(current_page - 1) * size,
-    )
-    total_pages = max(1, (total + size - 1) // size)
-    return {
-        "data": rows,
-        "total": total,
+    bypass_cache = should_bypass_response_cache(cache_control)
+    cache_params = {
+        "generation": await response_cache.get_data_generation_async("download_candidates"),
+        "status": status,
+        "actress_id": actress_id,
+        "source": source,
+        "q": q,
+        "needs_magnet": needs_magnet,
         "page": current_page,
         "page_size": size,
-        "total_pages": total_pages,
-        "stats": download_candidate_stats(),
+        "include_stats": include_stats,
     }
+
+    async def produce() -> Dict[str, Any]:
+        page_result = await asyncio.to_thread(
+            list_download_candidates_page,
+            status=status,
+            actress_id=actress_id,
+            source=source,
+            q=q,
+            needs_magnet=needs_magnet,
+            limit=size,
+            offset=(current_page - 1) * size,
+            include_stats=include_stats,
+        )
+        total = int(page_result["total"] or 0)
+        total_pages = max(1, (total + size - 1) // size)
+        result = {
+            "data": page_result["data"],
+            "total": total,
+            "page": current_page,
+            "page_size": size,
+            "total_pages": total_pages,
+        }
+        if include_stats and "stats" in page_result:
+            result["stats"] = page_result["stats"]
+        return result
+
+    return await response_cache.get_or_set_response(
+        "download_candidates_page",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=bypass_cache,
+    )
 
 
 @router.get("/candidates/summary")
@@ -197,18 +236,42 @@ async def candidate_summary(
     source: Optional[str] = None,
     q: Optional[str] = None,
     needs_magnet: Optional[bool] = None,
+    include_sources: bool = False,
+    cache_control: Optional[str] = Query(None, alias="cache"),
 ) -> Dict[str, Any]:
-    return download_candidate_summary(
-        status=status,
-        actress_id=actress_id,
-        source=source,
-        q=q,
-        needs_magnet=needs_magnet,
+    bypass_cache = should_bypass_response_cache(cache_control)
+    cache_params = {
+        "generation": await response_cache.get_data_generation_async("download_candidates"),
+        "status": status,
+        "actress_id": actress_id,
+        "source": source,
+        "q": q,
+        "needs_magnet": needs_magnet,
+        "include_sources": include_sources,
+    }
+
+    async def produce() -> Dict[str, Any]:
+        summary_func = download_candidate_summary_with_sources if include_sources else download_candidate_summary
+        return await asyncio.to_thread(
+            summary_func,
+            status=status,
+            actress_id=actress_id,
+            source=source,
+            q=q,
+            needs_magnet=needs_magnet,
+        )
+
+    return await response_cache.get_or_set_response(
+        "download_candidates_summary",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=bypass_cache,
     )
 
 
 @router.get("/candidates/runs")
-async def list_candidate_runs(limit: int = 20) -> Dict[str, Any]:
+def list_candidate_runs(limit: int = 20) -> Dict[str, Any]:
     limit = max(1, min(int(limit or 20), 100))
     rows = list_candidate_process_runs(limit=limit)
     return {"data": rows, "total": len(rows)}
@@ -232,7 +295,7 @@ async def retry_candidate_run_failed(
 
 
 @router.get("/candidates/{candidate_id}")
-async def get_candidate(candidate_id: int) -> Dict[str, Any]:
+def get_candidate(candidate_id: int) -> Dict[str, Any]:
     candidate = get_download_candidate(candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")

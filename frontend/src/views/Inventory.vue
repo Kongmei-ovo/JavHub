@@ -324,8 +324,8 @@ const fetchMappingSummary = async () => {
     const summary = await api.getActorMappingSummary()
     mappingSummary.value = summary.data || {}
     mappingCoverageText.value = `${Math.round((mappingSummary.value.coverage || 0) * 100)}%`
-    const candidates = await api.listDownloadCandidates({ source: 'inventory', status: 'candidate' })
-    candidateStats.value = candidates.data.stats || {}
+    const candidates = await api.getDownloadCandidateSummary({ status: 'candidate', source: 'inventory' })
+    candidateStats.value = candidates.data || {}
   } catch (e) {
     mappingSummary.value = {}
     candidateStats.value = {}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import tempfile
 import unittest
 from pathlib import Path
@@ -288,6 +289,73 @@ class HealthRouteTest(unittest.TestCase):
         self.assertEqual(body["javinfo"]["api_url"], "http://127.0.0.1:8080")
         self.assertFalse(body["javinfo"]["legacy"])
         self.assertEqual(body["javinfo"]["error"], "")
+
+
+class HealthReadinessConcurrencyTest(unittest.IsolatedAsyncioTestCase):
+    async def test_readiness_probes_javinfo_while_database_check_is_running(self):
+        from routers import health
+
+        release_db = threading.Event()
+        probe_observation: dict[str, bool] = {}
+        cfg = SimpleNamespace(
+            config_loaded=True,
+            config_load_error="",
+            config_path=Path("/tmp/config.yaml"),
+            javinfo_api_url="http://127.0.0.1:8080",
+            _config={
+                "downloaders": {
+                    "default_id": "openlist",
+                    "clients": [{"id": "openlist", "type": "openlist", "enabled": True}],
+                },
+            },
+        )
+
+        def database_status():
+            release_db.wait(timeout=1)
+            return {
+                "backend": "postgres",
+                "connectable": True,
+                "host": "state-postgres",
+                "port": 5432,
+                "database": "javhub",
+                "user": "javhub",
+                "error": "",
+            }
+
+        async def probe_javinfo(_api_url: str):
+            probe_observation["db_still_running"] = not release_db.is_set()
+            return {"reachable": True, "version": "1.2.3", "error": ""}
+
+        timer = threading.Timer(0.05, release_db.set)
+        timer.start()
+        try:
+            with patch("routers.health.config", cfg, create=True), \
+                patch("routers.health._database_status", Mock(side_effect=database_status)), \
+                patch("routers.health._probe_javinfo", new=AsyncMock(side_effect=probe_javinfo)), \
+                patch("routers.health._cache_status", Mock(return_value={"backend": "redis", "error": ""})), \
+                patch("routers.health._downloader_summary", Mock(return_value={
+                    "default_id": "openlist",
+                    "default_available": True,
+                    "registered": 1,
+                    "available": 1,
+                    "error": "",
+                })), \
+                patch("routers.health._source_registry_summary", Mock(return_value={"registered": 1, "available": 1, "error": ""})), \
+                patch("routers.health._scheduler_summary", Mock(return_value={
+                    "enabled": True,
+                    "policy": "rules",
+                    "effective_enabled": True,
+                    "disabled_reason": "",
+                    "running": False,
+                    "next_run_time": None,
+                })):
+                response = await health.readiness_check()
+        finally:
+            release_db.set()
+            timer.cancel()
+
+        self.assertEqual(response["status"], "ok")
+        self.assertTrue(probe_observation["db_still_running"])
 
 
 if __name__ == "__main__":

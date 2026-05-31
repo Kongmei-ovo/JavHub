@@ -264,6 +264,60 @@ def list_actor_mappings(
         return [_hydrate_mapping_row(row) for row in cursor.fetchall()]
 
 
+def list_actor_mappings_for_actor_ids(actor_ids: list[str | int]) -> list[dict]:
+    ids = [str(actor_id) for actor_id in actor_ids if str(actor_id or "").strip()]
+    if not ids:
+        return []
+    placeholders = ",".join("?" for _ in ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f'''
+            SELECT * FROM actor_mappings
+            WHERE emby_actor_id IN ({placeholders})
+            ORDER BY
+                CASE status WHEN 'confirmed' THEN 0 WHEN 'candidate' THEN 1 ELSE 2 END,
+                updated_at DESC,
+                created_at DESC
+            ''',
+            ids,
+        )
+        return [_hydrate_mapping_row(row) for row in cursor.fetchall()]
+
+
+def mapping_state_for_actor_ids(actor_ids: list[str | int]) -> dict:
+    ids = [str(actor_id) for actor_id in actor_ids if str(actor_id or "").strip()]
+    if not ids:
+        return {"decided_actor_ids": set(), "ignored_pairs": set()}
+    placeholders = ",".join("?" for _ in ids)
+    decided_actor_ids: set[str] = set()
+    ignored_pairs: set[tuple[str, int]] = set()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f'''
+            SELECT emby_actor_id, javinfo_actress_id, status
+            FROM actor_mappings
+            WHERE emby_actor_id IN ({placeholders})
+              AND status IN ('confirmed', 'ignored')
+            ''',
+            ids,
+        )
+        rows = cursor.fetchall()
+    for row in rows:
+        emby_actor_id = str(row.get("emby_actor_id") or "")
+        status = row.get("status")
+        javinfo_actress_id = row.get("javinfo_actress_id")
+        if status == "confirmed" or (status == "ignored" and javinfo_actress_id is None):
+            decided_actor_ids.add(emby_actor_id)
+        if status == "ignored" and javinfo_actress_id is not None:
+            try:
+                ignored_pairs.add((emby_actor_id, int(javinfo_actress_id)))
+            except Exception:
+                continue
+    return {"decided_actor_ids": decided_actor_ids, "ignored_pairs": ignored_pairs}
+
+
 def get_confirmed_actor_mapping(emby_actor_id: str | int) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -316,6 +370,65 @@ def mapping_summary(snapshot_actors: list[dict] | None = None) -> dict:
             candidate_count = cursor.fetchone()["count"]
         confirmed = sum(1 for aid in ids if by_actor.get(aid) == "confirmed")
         ignored = sum(1 for aid in ids if by_actor.get(aid) == "ignored")
+    return {
+        "total": total,
+        "confirmed": confirmed,
+        "ignored": ignored,
+        "candidate": candidate_count,
+        "unmapped": max(total - confirmed - ignored, 0),
+        "coverage": (confirmed / total) if total else 0,
+    }
+
+
+def mapping_summary_for_snapshot(snapshot_key: str | None) -> dict:
+    """Return mapping coverage without loading every snapshot actor into Python."""
+    if not snapshot_key:
+        return {
+            "total": 0,
+            "confirmed": 0,
+            "ignored": 0,
+            "candidate": 0,
+            "unmapped": 0,
+            "coverage": 0,
+        }
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT COUNT(*) AS cnt
+            FROM emby_actors
+            WHERE snapshot_key = ?
+            ''',
+            (snapshot_key,),
+        )
+        total = int(cursor.fetchone()["cnt"] or 0)
+        cursor.execute(
+            '''
+            SELECT m.status, COUNT(DISTINCT m.emby_actor_id) AS cnt
+            FROM actor_mappings m
+            JOIN emby_actors a
+              ON a.actress_id::text = m.emby_actor_id
+             AND a.snapshot_key = ?
+            WHERE m.status IN ('confirmed', 'ignored')
+            GROUP BY m.status
+            ''',
+            (snapshot_key,),
+        )
+        status_counts = {row["status"]: int(row["cnt"] or 0) for row in cursor.fetchall()}
+        cursor.execute(
+            '''
+            SELECT COUNT(*) AS cnt
+            FROM actor_mappings m
+            JOIN emby_actors a
+              ON a.actress_id::text = m.emby_actor_id
+             AND a.snapshot_key = ?
+            WHERE m.status = 'candidate'
+            ''',
+            (snapshot_key,),
+        )
+        candidate_count = int(cursor.fetchone()["cnt"] or 0)
+    confirmed = int(status_counts.get("confirmed", 0))
+    ignored = int(status_counts.get("ignored", 0))
     return {
         "total": total,
         "confirmed": confirmed,

@@ -74,6 +74,24 @@ class LogsRouteTest(TempPostgresMixin, unittest.TestCase):
         )
         list_logs.assert_called_once_with(limit=1, level="ERROR", q="inventory", offset=2)
 
+    def test_logs_use_short_response_cache_with_bypass(self):
+        client = self._client()
+        with mock.patch("database.log.list_logs", side_effect=[
+            ([{"id": 1, "level": "INFO", "message": "cached", "created_at": "now"}], 1),
+            ([{"id": 2, "level": "INFO", "message": "fresh", "created_at": "now"}], 1),
+        ]) as list_logs:
+            first = client.get("/api/v1/logs", params={"limit": 1})
+            second = client.get("/api/v1/logs", params={"limit": 1})
+            bypassed = client.get("/api/v1/logs", params={"limit": 1, "cache": "0"})
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(bypassed.status_code, 200)
+        self.assertEqual(list_logs.call_count, 2)
+        self.assertEqual(first.json()["data"][0]["message"], "cached")
+        self.assertEqual(second.json()["data"][0]["message"], "cached")
+        self.assertEqual(bypassed.json()["data"][0]["message"], "fresh")
+
     def test_clear_logs_is_loaded_from_database_layer(self):
         with (
             mock.patch("routers.logs.get_db_orig", create=True, side_effect=AssertionError("router touched db")),

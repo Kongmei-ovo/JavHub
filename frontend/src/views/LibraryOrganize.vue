@@ -86,7 +86,7 @@
               <span>去处理</span>
             </button>
             <button class="priority-row" type="button" @click="setTab('inventory')">
-              <span class="priority-mark">{{ missingVideos.length }}</span>
+              <span class="priority-mark">{{ missingTotal }}</span>
               <div>
                 <strong>处理缺失影片</strong>
                 <small>把库存缺口转成库存来源下载候选。</small>
@@ -102,7 +102,7 @@
               <span>审核</span>
             </button>
             <button class="priority-row" type="button" @click="setTab('duplicates')">
-              <span class="priority-mark danger">{{ duplicates.length }}</span>
+              <span class="priority-mark danger">{{ duplicateTotal }}</span>
               <div>
                 <strong>清理重复条目</strong>
                 <small>逐条删除或忽略可疑重复，保留人工判断。</small>
@@ -328,7 +328,9 @@
             <h2>重复清理</h2>
             <p>来自最新 Emby 快照或实时检测的可疑重复条目。</p>
           </div>
-          <button class="btn btn-ghost btn-sm" type="button" @click="loadDuplicates">重新扫描</button>
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="loadingDuplicates" @click="loadDuplicates">
+            {{ loadingDuplicates ? '扫描中...' : '重新扫描' }}
+          </button>
         </div>
         <div v-if="duplicates.length" class="duplicate-list">
           <article v-for="item in duplicates" :key="item.emby_item_id" class="duplicate-group">
@@ -351,6 +353,7 @@
             </div>
           </article>
         </div>
+        <div v-else-if="loadingDuplicates" class="empty-inline">扫描重复条目中...</div>
         <div v-else class="empty-inline">暂无可疑重复。</div>
       </section>
 
@@ -407,8 +410,10 @@ const loadingMappings = ref(false)
 const mappingSearch = ref('')
 const generatingCandidates = ref(false)
 const autoMatching = ref(false)
+const AUTO_MATCH_BATCH_LIMIT = 500
 const lastAutoMatch = ref(null)
 const missingVideos = ref([])
+const missingTotal = ref(0)
 const inventoryCandidates = ref([])
 const inventoryCandidateStats = ref({})
 const candidateSearch = ref('')
@@ -416,6 +421,9 @@ const candidateStatus = ref('candidate')
 const candidateNeedsMagnet = ref(null)
 const mutatingCandidateId = ref(null)
 const duplicates = ref([])
+const duplicateTotal = ref(0)
+const duplicatesDeferred = ref(false)
+const loadingDuplicates = ref(false)
 const jobs = ref([])
 const collecting = ref(false)
 const comparing = ref(false)
@@ -434,19 +442,19 @@ const actorSortOptions = [
 
 const tabs = computed(() => [
   { value: 'queue', label: '待处理', count: queueCount.value },
-  { value: 'inventory', label: '库存对比', count: missingVideos.value.length },
+  { value: 'inventory', label: '库存对比', count: missingTotal.value },
   { value: 'check', label: '单片检测', count: null },
   { value: 'mapping', label: '演员映射', count: mappingSummary.value.unmapped || 0 },
   { value: 'candidates', label: '库存候选', count: inventoryCandidateStats.value.candidate || 0 },
-  { value: 'duplicates', label: '重复清理', count: duplicates.value.length },
+  { value: 'duplicates', label: '重复清理', count: duplicateTotal.value },
   { value: 'jobs', label: '作业历史', count: jobs.value.length },
 ])
 
 const queueCount = computed(() => (
   Number(mappingSummary.value.unmapped || 0)
-  + Number(missingVideos.value.length || 0)
+  + Number(missingTotal.value || 0)
   + Number(inventoryCandidateStats.value.candidate || 0)
-  + Number(duplicates.value.length || 0)
+  + Number(duplicateTotal.value || 0)
 ))
 
 const isJobRunning = computed(() => collecting.value || comparing.value)
@@ -458,16 +466,16 @@ const queueSummary = computed(() => queueCount.value ? `当前有 ${queueCount.v
 const statusMetrics = computed(() => [
   { key: 'inventory', label: '演员', value: inventoryActors.value.length, hint: snapshotKey.value ? '来自最新快照' : '等待采集', urgent: false },
   { key: 'mapping', label: '待映射', value: mappingSummary.value.unmapped || 0, hint: `覆盖率 ${coverageText.value}`, urgent: Number(mappingSummary.value.unmapped || 0) > 0 },
-  { key: 'inventory', label: '缺失影片', value: missingVideos.value.length, hint: '库存对比产出', urgent: missingVideos.value.length > 0 },
+  { key: 'inventory', label: '缺失影片', value: missingTotal.value, hint: '库存对比产出', urgent: missingTotal.value > 0 },
   { key: 'candidates', label: '库存候选', value: inventoryCandidateStats.value.candidate || 0, hint: `${inventoryCandidateStats.value.needs_magnet || 0} 个待补磁力`, urgent: Number(inventoryCandidateStats.value.candidate || 0) > 0 },
-  { key: 'duplicates', label: '重复条目', value: duplicates.value.length, hint: '待人工清理', urgent: duplicates.value.length > 0 },
+  { key: 'duplicates', label: '重复条目', value: duplicateTotal.value, hint: '待人工清理', urgent: duplicateTotal.value > 0 },
   { key: 'jobs', label: '最近作业', value: jobs.value.length, hint: jobs.value[0]?.status || '暂无记录', urgent: jobs.value[0]?.status === 'failed' },
 ])
 
 const flowSteps = computed(() => [
   { index: '1', key: 'inventory', title: '采集快照', hint: snapshotKey.value ? '快照已就绪' : '先采集 Emby' },
   { index: '2', key: 'mapping', title: '确认映射', hint: `${mappingSummary.value.unmapped || 0} 位待处理` },
-  { index: '3', key: 'inventory', title: '全量对比', hint: `${missingVideos.value.length} 个缺口` },
+  { index: '3', key: 'inventory', title: '全量对比', hint: `${missingTotal.value} 个缺口` },
   { index: '4', key: 'candidates', title: '处理候选', hint: `${inventoryCandidateStats.value.candidate || 0} 个库存候选` },
 ])
 
@@ -496,20 +504,55 @@ function syncTabFromRoute() {
 async function reloadAll() {
   error.value = ''
   try {
-    await Promise.all([
-      loadSnapshot(),
-      loadInventoryActors(),
-      loadMappingSummary(),
-      loadUnmappedActors(),
-      loadMissingVideos(),
-      loadInventoryCandidates(),
-      loadDuplicates(),
-      loadJobs(),
-    ])
+    await loadOverview()
   } catch (err) {
     error.value = err?.message || '加载失败'
   } finally {
     loadingInitial.value = false
+  }
+}
+
+function overviewParams() {
+  const params = {
+    actor_sort: actorSort.value,
+    candidate_status: candidateStatus.value || undefined,
+  }
+  if (actorSearch.value) params.actor_search = actorSearch.value
+  if (mappingSearch.value) params.mapping_search = mappingSearch.value
+  if (candidateSearch.value) params.candidate_search = candidateSearch.value
+  if (candidateNeedsMagnet.value !== null) params.candidate_needs_magnet = candidateNeedsMagnet.value
+  return params
+}
+
+function applyOverview(data) {
+  snapshotKey.value = data?.snapshot?.snapshot_key || ''
+  inventoryActors.value = data?.actors?.data || []
+  mappingSummary.value = data?.mapping?.summary || {}
+  unmappedActors.value = data?.mapping?.unmapped?.data || []
+  missingVideos.value = data?.missing?.data || []
+  missingTotal.value = Number(data?.missing?.total || missingVideos.value.length || 0)
+  inventoryCandidates.value = data?.candidates?.data || []
+  const stats = data?.candidates?.stats || {}
+  inventoryCandidateStats.value = {
+    ...stats,
+    candidate: stats.candidate_by_source?.inventory ?? stats.by_source?.inventory ?? inventoryCandidates.value.filter(item => item.status === 'candidate').length,
+  }
+  duplicates.value = data?.duplicates?.data || []
+  duplicatesDeferred.value = Boolean(data?.duplicates?.deferred)
+  duplicateTotal.value = Number(data?.duplicates?.total || duplicates.value.length || 0)
+  jobs.value = data?.jobs?.data || []
+  ensureDuplicateTabLoaded()
+}
+
+async function loadOverview() {
+  loadingActors.value = true
+  loadingMappings.value = true
+  try {
+    const resp = await api.getLibraryOrganizeOverview(overviewParams())
+    applyOverview(resp.data || {})
+  } finally {
+    loadingActors.value = false
+    loadingMappings.value = false
   }
 }
 
@@ -556,8 +599,9 @@ async function loadUnmappedActors() {
 }
 
 async function loadMissingVideos() {
-  const resp = await api.listInventoryMissing()
+  const resp = await api.listInventoryMissing({ page: 1, page_size: 80 })
   missingVideos.value = resp.data?.data || []
+  missingTotal.value = Number(resp.data?.total || missingVideos.value.length || 0)
 }
 
 async function loadInventoryCandidates() {
@@ -565,22 +609,40 @@ async function loadInventoryCandidates() {
     source: 'inventory',
     page: 1,
     page_size: 80,
+    include_stats: false,
   }
   if (candidateStatus.value) params.status = candidateStatus.value
   if (candidateSearch.value) params.q = candidateSearch.value
   if (candidateNeedsMagnet.value !== null) params.needs_magnet = candidateNeedsMagnet.value
   const resp = await api.listDownloadCandidates(params)
   inventoryCandidates.value = resp.data?.data || []
-  const stats = resp.data?.stats || {}
+  const summaryResp = await api.getDownloadCandidateSummary({ status: 'candidate', source: 'inventory' })
+  const stats = summaryResp.data || {}
   inventoryCandidateStats.value = {
     ...stats,
-    candidate: stats.candidate_by_source?.inventory ?? stats.by_source?.inventory ?? inventoryCandidates.value.filter(item => item.status === 'candidate').length,
+    candidate: stats.candidate ?? inventoryCandidates.value.filter(item => item.status === 'candidate').length,
   }
 }
 
 async function loadDuplicates() {
-  const resp = await api.getDuplicates()
-  duplicates.value = resp.data?.data || []
+  if (loadingDuplicates.value) return
+  loadingDuplicates.value = true
+  try {
+    const resp = await api.getDuplicates()
+    duplicates.value = resp.data?.data || []
+    duplicateTotal.value = Number(resp.data?.total || duplicates.value.length || 0)
+    duplicatesDeferred.value = false
+  } finally {
+    loadingDuplicates.value = false
+  }
+}
+
+function ensureDuplicateTabLoaded() {
+  if (activeTab.value === 'duplicates' && duplicatesDeferred.value && !loadingDuplicates.value) {
+    loadDuplicates().catch(err => {
+      error.value = err?.message || '重复扫描加载失败'
+    })
+  }
 }
 
 async function loadJobs() {
@@ -663,6 +725,7 @@ function clearActorDetail() {
 async function fillVideo(video) {
   await api.fillInventoryVideo(video.content_id)
   ElMessage.success('已加入库存候选')
+  missingTotal.value = Math.max(0, missingTotal.value - 1)
   await Promise.all([loadInventoryCandidates(), loadMissingVideos()])
 }
 
@@ -699,7 +762,7 @@ async function runAutoMatch() {
   const confirmed = await requestConfirm({
     title: '执行自动匹配?',
     message: '系统会自动确认高置信演员映射，并生成需要人工审核的候选。',
-    details: ['影响范围：全部待映射演员', '可先使用“自动匹配预演”查看预计结果'],
+    details: [`影响范围：本批最多 ${AUTO_MATCH_BATCH_LIMIT} 个待映射演员`, '可先使用“自动匹配预演”查看预计结果'],
     tone: 'warning',
     confirmText: '执行自动匹配',
   })
@@ -710,7 +773,7 @@ async function runAutoMatch() {
 async function runAutoMatchRequest(dryRun) {
   autoMatching.value = true
   try {
-    const resp = await api.autoMatchActorMappings({ dry_run: dryRun, limit: 100000 })
+    const resp = await api.autoMatchActorMappings({ dry_run: dryRun, limit: AUTO_MATCH_BATCH_LIMIT })
     lastAutoMatch.value = resp.data || {}
     if (!dryRun) await Promise.all([loadMappingSummary(), loadUnmappedActors(), loadInventoryActors()])
   } finally {
@@ -799,14 +862,25 @@ async function rejectCandidate(candidate) {
 const duplicateItems = item => item.items?.length ? item.items : [item]
 
 function removeDuplicateItem(embyItemId) {
+  let removedGroup = false
   duplicates.value = duplicates.value
     .map(group => {
       const items = duplicateItems(group).filter(item => item.emby_item_id !== embyItemId)
-      if (!group.items) return group.emby_item_id === embyItemId ? null : group
-      if (items.length < 2) return null
+      if (!group.items) {
+        if (group.emby_item_id === embyItemId) {
+          removedGroup = true
+          return null
+        }
+        return group
+      }
+      if (items.length < 2) {
+        removedGroup = true
+        return null
+      }
       return { ...group, emby_item_id: items[0].emby_item_id, emby_name: items[0].emby_name, duplicate_count: items.length, items }
     })
     .filter(Boolean)
+  if (removedGroup) duplicateTotal.value = Math.max(0, duplicateTotal.value - 1)
 }
 
 async function deleteDuplicate(item) {
@@ -870,6 +944,7 @@ function jobTypeLabel(type) {
 }
 
 watch(() => route.query, syncTabFromRoute, { deep: true })
+watch(activeTab, ensureDuplicateTabLoaded)
 
 onMounted(async () => {
   syncTabFromRoute()

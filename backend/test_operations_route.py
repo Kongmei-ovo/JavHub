@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -30,20 +31,18 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             actor_mapping={"enabled": False},
         )), \
             patch.object(operations, "get_latest_snapshot_key", Mock(return_value="snap-1")) as latest, \
-            patch.object(operations, "get_snapshot_actors", Mock(return_value={
-                "data": [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}],
-            })) as actors, \
+            patch.object(operations, "count_snapshot_actors", Mock(return_value=2)) as actor_count, \
             patch.object(operations, "download_candidate_stats", Mock(return_value={"total": 7})) as candidates, \
             patch.object(operations, "get_inventory_jobs", Mock(return_value=[
                 {"id": 10, "status": "running"},
                 {"id": 11, "status": "failed"},
             ])) as jobs, \
-            patch.object(operations, "get_all_missing_videos", Mock(return_value=[
-                {"actress_id": 1, "actress_name": "A"},
-                {"actress_id": 1, "actress_name": "A"},
-            ])) as missing, \
+            patch.object(operations, "missing_videos_summary", Mock(return_value={
+                "total": 2,
+                "top_actresses": [{"actress_id": 1, "actress_name": "A", "missing_count": 2}],
+            })) as missing, \
             patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 4})) as variant_stats, \
-            patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 2})) as mapping, \
+            patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 2})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[{"id": 5}])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
                 "enabled": True,
@@ -59,16 +58,76 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first, second)
         self.assertEqual(captured, {"namespace": "operations_overview", "params": {}, "ttl": 15})
         self.assertEqual(latest.call_count, 1)
-        actors.assert_called_once_with("snap-1", page_size=100000)
+        actor_count.assert_called_once_with("snap-1")
         candidates.assert_called_once()
         jobs.assert_called_once_with(limit=10)
-        missing.assert_called_once()
+        missing.assert_called_once_with(limit=8)
         variant_stats.assert_called_once()
-        mapping.assert_called_once()
+        mapping.assert_called_once_with("snap-1")
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()
         self.assertEqual(client.proxy_get.await_count, 4)
+        self.assertEqual(first["snapshot"]["actor_count"], 2)
+        self.assertEqual(first["missing"]["total"], 2)
+        self.assertEqual(first["missing"]["top_actresses"][0]["missing_count"], 2)
         self.assertEqual(first["supplement"], {
+            "available": True,
+            "stats": {"total_jobs": 12},
+            "queued": 3,
+            "running": 1,
+            "failed": 2,
+        })
+
+    async def test_overview_fetches_supplement_statuses_concurrently(self):
+        from routers import operations
+
+        started: list[tuple[str, str | None]] = []
+        all_started = asyncio.Event()
+        counts = {"queued": 3, "running": 1, "failed": 2}
+
+        async def proxy_get(path, params=None):
+            status = (params or {}).get("status")
+            started.append((path, status))
+            if len(started) == 4:
+                all_started.set()
+            await asyncio.wait_for(all_started.wait(), timeout=0.1)
+            if path == "/api/v1/supplement/stats":
+                return {"total_jobs": 12}
+            return {"total": counts[status]}
+
+        client = SimpleNamespace(proxy_get=AsyncMock(side_effect=proxy_get))
+
+        with patch.object(operations, "config", SimpleNamespace(
+            automation={"enabled": True},
+            actor_mapping={"enabled": True},
+        )), \
+            patch.object(operations, "get_latest_snapshot_key", Mock(return_value=None)), \
+            patch.object(operations, "count_snapshot_actors", Mock(return_value=0)), \
+            patch.object(operations, "download_candidate_stats", Mock(return_value={"total": 0})), \
+            patch.object(operations, "get_inventory_jobs", Mock(return_value=[])), \
+            patch.object(operations, "missing_videos_summary", Mock(return_value={"total": 0, "top_actresses": []})), \
+            patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 0})), \
+            patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 0})), \
+            patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])), \
+            patch.object(operations, "_candidate_schedule_state", Mock(return_value={
+                "enabled": True,
+                "policy": "rules",
+                "effective_enabled": True,
+                "disabled_reason": "",
+            })), \
+            patch("modules.info_client.get_info_client", Mock(return_value=client)):
+            result = await operations.operations_overview(cache_control="0")
+
+        self.assertEqual(
+            started,
+            [
+                ("/api/v1/supplement/stats", None),
+                ("/api/v1/supplement/jobs", "queued"),
+                ("/api/v1/supplement/jobs", "running"),
+                ("/api/v1/supplement/jobs", "failed"),
+            ],
+        )
+        self.assertEqual(result["supplement"], {
             "available": True,
             "stats": {"total_jobs": 12},
             "queued": 3,
@@ -84,12 +143,12 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             actor_mapping={"enabled": True},
         )), \
             patch.object(operations, "get_latest_snapshot_key", Mock(return_value=None)) as latest, \
-            patch.object(operations, "get_snapshot_actors", Mock()) as actors, \
+            patch.object(operations, "count_snapshot_actors", Mock(return_value=0)) as actor_count, \
             patch.object(operations, "download_candidate_stats", Mock(return_value={"total": 0})) as candidates, \
             patch.object(operations, "get_inventory_jobs", Mock(return_value=[])) as jobs, \
-            patch.object(operations, "get_all_missing_videos", Mock(return_value=[])) as missing, \
+            patch.object(operations, "missing_videos_summary", Mock(return_value={"total": 0, "top_actresses": []})) as missing, \
             patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 0})) as variant_stats, \
-            patch.object(operations, "mapping_summary", Mock(return_value={"mapped": 0})) as mapping, \
+            patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 0})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
                 "enabled": False,
@@ -104,12 +163,12 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["supplement"], {"available": False, "error": "javinfo down"})
         self.assertEqual(latest.call_count, 1)
-        actors.assert_not_called()
+        actor_count.assert_called_once_with(None)
         candidates.assert_called_once()
         jobs.assert_called_once_with(limit=10)
-        missing.assert_called_once()
+        missing.assert_called_once_with(limit=8)
         variant_stats.assert_called_once()
-        mapping.assert_called_once_with([])
+        mapping.assert_called_once_with(None)
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()
         info_client.assert_called_once()

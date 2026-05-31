@@ -6,6 +6,7 @@ import httpx
 from unittest.mock import AsyncMock, patch
 
 from modules.info_client import InfoClient
+from test_support.cache import fake_redis_backend
 
 
 class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
@@ -235,6 +236,29 @@ class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
             include_total=False,
         )
         self.assertEqual(data["total_count"], -1)
+
+    async def test_get_total_count_reuses_short_cache_for_same_path(self):
+        client = InfoClient()
+
+        with fake_redis_backend(prefix="total-count-prefix"), \
+             patch.object(client, "_get", AsyncMock(return_value={"total_count": 1866871})) as get_mock:
+            first = await client.get_total_count("/api/v1/videos")
+            second = await client.get_total_count("/api/v1/videos")
+
+        self.assertEqual(first, 1866871)
+        self.assertEqual(second, 1866871)
+        get_mock.assert_awaited_once_with("/api/v1/videos", params={"page": 1, "page_size": 1})
+
+    async def test_get_total_count_cache_bypass_skips_total_cache_and_upstream_cache(self):
+        client = InfoClient()
+
+        with fake_redis_backend(prefix="total-count-bypass-prefix"), \
+             patch.object(client, "_get", AsyncMock(return_value={"total_count": 12})) as get_mock:
+            await client.get_total_count("/api/v1/videos", cache_bypass=True)
+            await client.get_total_count("/api/v1/videos", cache_bypass=True)
+
+        self.assertEqual(get_mock.await_count, 2)
+        get_mock.assert_awaited_with("/api/v1/videos", params={"page": 1, "page_size": 1, "cache": "0"})
 
     async def test_search_videos_caches_no_total_results_when_data_is_present(self):
         client = InfoClient()

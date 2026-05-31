@@ -10,18 +10,35 @@ export const state = reactive({
   registry: new Map(),
   // 存储完整的收藏对象列表
   items: [],
-  initialized: false
+  initialized: false,
+  detailsLoaded: false,
+  metadataTypesLoaded: new Set()
 })
+
+function normalizeFavoriteItems(items, includeMetadata) {
+  return items.map(item => {
+    const normalized = {
+      entity_type: String(item.entity_type || ''),
+      entity_id: String(item.entity_id ?? ''),
+      created_at: item.created_at
+    }
+    if (includeMetadata) {
+      normalized.metadata = item.metadata || {}
+    }
+    return normalized
+  })
+}
 
 export const favoriteState = {
   /**
-   * 初始化：从后端拉取所有收藏
+   * 初始化：默认只从后端拉取收藏索引，避免所有页面背完整 metadata。
    */
-  async init() {
-    if (state.initialized) return
+  async init(options = {}) {
+    const includeMetadata = Boolean(options.includeMetadata)
+    if (state.initialized && (!includeMetadata || state.detailsLoaded)) return
     try {
-      const resp = await api.getFavorites()
-      const items = resp.data || []
+      const resp = await api.getFavorites(undefined, { include_metadata: includeMetadata })
+      const items = normalizeFavoriteItems(resp.data || [], includeMetadata)
 
       state.items = items
       state.registry = new Map()
@@ -35,6 +52,10 @@ export const favoriteState = {
       })
 
       state.initialized = true
+      state.detailsLoaded = includeMetadata
+      state.metadataTypesLoaded = includeMetadata
+        ? new Set(items.map(item => item.entity_type).filter(Boolean))
+        : new Set()
       console.info(`[FavoriteState] Initialized with ${items.length} items.`)
     } catch (err) {
       console.error('[FavoriteState] Init failed:', err)
@@ -44,9 +65,56 @@ export const favoriteState = {
   /**
    * 刷新数据
    */
-  async refresh() {
+  async refresh(options = {}) {
     state.initialized = false
-    await this.init()
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
+    await this.init(options)
+  },
+
+  async loadMetadataForTypes(types = []) {
+    if (!state.initialized) {
+      await this.init()
+    }
+    const requestedTypes = [...new Set(types.map(type => String(type || '').trim()).filter(Boolean))]
+    const missingTypes = requestedTypes.filter(type => !state.metadataTypesLoaded.has(type))
+    if (missingTypes.length === 0) return
+
+    const responses = await Promise.all(
+      missingTypes.map(async type => {
+        const resp = await api.getFavorites(type, { include_metadata: true })
+        return [type, resp.data || []]
+      })
+    )
+    const detailByKey = new Map()
+    responses.forEach(([_type, items]) => {
+      items.forEach(item => {
+        const type = String(item.entity_type || '')
+        const id = String(item.entity_id ?? '')
+        if (type && id) {
+          detailByKey.set(`${type}:${id}`, {
+            entity_type: type,
+            entity_id: id,
+            metadata: item.metadata || {},
+            created_at: item.created_at,
+          })
+        }
+      })
+    })
+
+    const existingKeys = new Set()
+    state.items = state.items.map(item => {
+      const key = `${item.entity_type}:${item.entity_id}`
+      existingKeys.add(key)
+      const detail = detailByKey.get(key)
+      return detail ? { ...item, metadata: detail.metadata, created_at: detail.created_at || item.created_at } : item
+    })
+    detailByKey.forEach((detail, key) => {
+      if (!existingKeys.has(key)) {
+        state.items.push(detail)
+      }
+    })
+    state.metadataTypesLoaded = new Set([...state.metadataTypesLoaded, ...missingTypes])
   },
 
   /**
@@ -83,12 +151,15 @@ export const favoriteState = {
         bucket.add(String(id))
         const exists = state.items.some(item => item.entity_type === normalizedType && String(item.entity_id) === String(id))
         if (!exists) {
-          state.items.unshift({
+          const nextItem = {
             entity_type: normalizedType,
             entity_id: String(id),
-            metadata,
             created_at: new Date().toISOString()
-          })
+          }
+          if (state.detailsLoaded) {
+            nextItem.metadata = metadata
+          }
+          state.items.unshift(nextItem)
         }
       } else {
         bucket.delete(String(id))

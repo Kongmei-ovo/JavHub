@@ -7,8 +7,8 @@ from typing import Iterable
 
 from database import (
     candidate_content_id,
+    download_candidate_content_keys,
     is_video_exempt,
-    list_download_candidates,
     upsert_candidate_from_video,
 )
 
@@ -115,10 +115,7 @@ class WatchlistPipeline:
         """Fetch complete filmography and upsert candidates for missing movies."""
         stats = PipelineStats()
         videos = await self.fetch_actress_videos(actress_id, page_size=page_size)
-        existing_candidates = {
-            (row.get("content_id"), row.get("source"))
-            for row in list_download_candidates(actress_id=actress_id, source=trigger_source, limit=100000)
-        }
+        existing_candidates = download_candidate_content_keys(actress_id=actress_id, source=trigger_source)
         emby = None if emby_snapshot is not None else await self._emby()
 
         for video in videos:

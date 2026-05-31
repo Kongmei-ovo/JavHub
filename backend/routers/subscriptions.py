@@ -1,7 +1,17 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any
-from database import add_subscription, get_subscriptions, delete_subscription
+from database import (
+    add_subscription,
+    delete_subscription,
+    download_candidate_counts_by_actress,
+    get_subscriptions,
+    list_download_candidates,
+    list_download_candidates_by_actress_ids,
+)
+from services import cache as response_cache
+from services.cache import should_bypass_response_cache
 
 router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
 
@@ -11,9 +21,27 @@ class CreateSubscriptionRequest(BaseModel):
     auto_download: bool = False
 
 @router.get("")
-async def list_subscriptions() -> dict[str, Any]:
+async def list_subscriptions(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
+    cache_params = {
+        "subscriptions": await response_cache.get_data_generation_async("subscriptions"),
+        "download_candidates": await response_cache.get_data_generation_async("download_candidates"),
+    }
+
+    async def produce() -> dict[str, Any]:
+        return await asyncio.to_thread(_list_subscriptions_payload)
+
+    return await response_cache.get_or_set_response(
+        "subscriptions",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=should_bypass_response_cache(cache_control),
+    )
+
+
+def _list_subscriptions_payload() -> dict[str, Any]:
     subscriptions = get_subscriptions()
-    from database import list_download_candidates
+    counts_by_actress = download_candidate_counts_by_actress(status="candidate", source="subscription")
     for sub in subscriptions:
         actress_id = sub.get("actress_id")
         if not actress_id:
@@ -21,14 +49,9 @@ async def list_subscriptions() -> dict[str, Any]:
             sub["needs_magnet_count"] = 0
             sub["mapping_status"] = "javinfo"
             continue
-        rows = list_download_candidates(
-            status="candidate",
-            actress_id=actress_id,
-            source="subscription",
-            limit=100000,
-        )
-        sub["candidate_count"] = len(rows)
-        sub["needs_magnet_count"] = sum(1 for row in rows if not row.get("magnet"))
+        counts = counts_by_actress.get(int(actress_id), {})
+        sub["candidate_count"] = int(counts.get("candidate_count") or 0)
+        sub["needs_magnet_count"] = int(counts.get("needs_magnet_count") or 0)
         # 订阅本身 already uses JavInfo actress id, so it is mapped by definition.
         sub["mapping_status"] = "javinfo"
     return {"data": subscriptions, "total": len(subscriptions)}
@@ -83,27 +106,43 @@ async def check_subscriptions() -> dict[str, Any]:
     return await check_all_subscriptions_report()
 
 @router.get("/new_movies")
-async def get_new_movies() -> dict[str, Any]:
+async def get_new_movies(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
     """获取所有订阅的新片（不在 Emby 库中的），按 actress_id 分组"""
+    cache_params = {
+        "subscriptions": await response_cache.get_data_generation_async("subscriptions"),
+        "download_candidates": await response_cache.get_data_generation_async("download_candidates"),
+    }
+
+    async def produce() -> dict[str, Any]:
+        return await asyncio.to_thread(_new_movies_payload)
+
+    return await response_cache.get_or_set_response(
+        "subscription_new_movies",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=should_bypass_response_cache(cache_control),
+    )
+
+
+def _new_movies_payload() -> dict[str, Any]:
     subscriptions = get_subscriptions()
-    from database import list_download_candidates
 
     result = {}  # {actress_id: [movies]}
+    enabled_subscriptions = [
+        sub for sub in subscriptions
+        if sub.get("enabled") and sub.get("actress_id")
+    ]
+    rows_by_actress = list_download_candidates_by_actress_ids(
+        [int(sub["actress_id"]) for sub in enabled_subscriptions],
+        status="candidate",
+        source="subscription",
+        limit_per_actress=100,
+    )
 
-    for sub in subscriptions:
-        if not sub.get("enabled"):
-            continue
-
-        actress_id = sub.get("actress_id")
-        if not actress_id:
-            continue
-
-        rows = list_download_candidates(
-            status="candidate",
-            actress_id=actress_id,
-            source="subscription",
-            limit=100,
-        )
+    for sub in enabled_subscriptions:
+        actress_id = int(sub["actress_id"])
+        rows = rows_by_actress.get(actress_id, [])
         if rows:
             result[actress_id] = [
                 {

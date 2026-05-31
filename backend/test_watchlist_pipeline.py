@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from test_support.postgres import TempPostgresMixin
 
@@ -65,6 +65,18 @@ class DownloadCandidateDatabaseTest(TempPostgresMixin, unittest.TestCase):
         rows = list_download_candidates(source="subscription")
         self.assertEqual(rows[0]["status"], "failed")
 
+    def test_download_candidate_content_keys_returns_lightweight_existing_set(self):
+        from database import download_candidate_content_keys, upsert_download_candidate
+
+        upsert_download_candidate(content_id="SIVR-438", source="subscription", actress_id=901)
+        upsert_download_candidate(content_id="ABP-588", source="subscription", actress_id=901)
+        upsert_download_candidate(content_id="MIAA-999", source="inventory", actress_id=901)
+        upsert_download_candidate(content_id="SSIS-001", source="subscription", actress_id=902)
+
+        keys = download_candidate_content_keys(actress_id=901, source="subscription")
+
+        self.assertEqual(keys, {("SIVR-438", "subscription"), ("ABP-588", "subscription")})
+
 
 class ActorMappingDatabaseTest(TempPostgresMixin, unittest.TestCase):
     def test_confirm_ignore_and_delete_mapping(self):
@@ -116,6 +128,86 @@ class ActorMappingDatabaseTest(TempPostgresMixin, unittest.TestCase):
 
         self.assertEqual(summary["candidate"], 1)
         self.assertEqual(summary["unmapped"], 2)
+
+    def test_mapping_summary_for_snapshot_counts_without_actor_rows(self):
+        from database import (
+            confirm_actor_mapping,
+            create_snapshot_key,
+            ignore_actor_mapping,
+            mapping_summary_for_snapshot,
+            save_emby_actors_snapshot,
+            upsert_actor_mapping,
+        )
+
+        snapshot_key = create_snapshot_key()
+        save_emby_actors_snapshot(snapshot_key, [
+            {"actress_id": 901, "actress_name": "Mapped", "video_count": 3},
+            {"actress_id": 902, "actress_name": "Ignored", "video_count": 2},
+            {"actress_id": 903, "actress_name": "Candidate", "video_count": 1},
+            {"actress_id": 904, "actress_name": "Open", "video_count": 1},
+        ])
+        confirm_actor_mapping("901", "Mapped", 1, "Mapped")
+        ignore_actor_mapping("902", "Ignored")
+        upsert_actor_mapping("903", "Candidate", 3, "Candidate", status="candidate", source="name_match")
+        upsert_actor_mapping("999", "Other Snapshot", 9, "Other", status="candidate", source="name_match")
+
+        summary = mapping_summary_for_snapshot(snapshot_key)
+
+        self.assertEqual(summary["total"], 4)
+        self.assertEqual(summary["confirmed"], 1)
+        self.assertEqual(summary["ignored"], 1)
+        self.assertEqual(summary["candidate"], 1)
+        self.assertEqual(summary["unmapped"], 2)
+        self.assertEqual(summary["coverage"], 0.25)
+
+    def test_mapping_state_for_actor_ids_returns_lightweight_decisions_and_ignored_pairs(self):
+        from database import (
+            confirm_actor_mapping,
+            ignore_actor_mapping,
+            mapping_state_for_actor_ids,
+            upsert_actor_mapping,
+        )
+
+        confirm_actor_mapping("901", "Confirmed", 1, "Confirmed")
+        ignore_actor_mapping("902", "Ignored Actor")
+        ignore_actor_mapping("903", "Ignored Pair", 3, "Ignored Pair")
+        upsert_actor_mapping("904", "Candidate", 4, "Candidate", status="candidate", source="name_match")
+
+        state = mapping_state_for_actor_ids(["901", "902", "903", "904", "999"])
+
+        self.assertEqual(state["decided_actor_ids"], {"901", "902"})
+        self.assertEqual(state["ignored_pairs"], {("903", 3)})
+
+
+class InventoryDatabasePerformanceTest(TempPostgresMixin, unittest.TestCase):
+    def test_missing_video_helpers_support_indexed_lookup_and_summary(self):
+        from database import (
+            add_missing_video,
+            get_missing_video,
+            list_missing_videos_page,
+            missing_videos_summary,
+            upsert_inventory_actor,
+        )
+
+        upsert_inventory_actor(901, "Actor A", primary_name="Primary A")
+        upsert_inventory_actor(902, "Actor B")
+        add_missing_video("A-001", 901, "A First", "2026-02-01", "a1.jpg")
+        add_missing_video("A-002", 901, "A Second", "2026-03-01", "a2.jpg")
+        add_missing_video("B-001", 902, "B First", "2026-01-01", "b1.jpg")
+
+        one = get_missing_video("A-001")
+        page = list_missing_videos_page(limit=2, offset=0)
+        summary = missing_videos_summary(limit=2)
+
+        self.assertEqual(one["title"], "A First")
+        self.assertEqual(page["total"], 3)
+        self.assertEqual([row["content_id"] for row in page["data"]], ["A-002", "A-001"])
+        self.assertEqual(summary["total"], 3)
+        self.assertEqual(summary["top_actresses"][0], {
+            "actress_id": 901,
+            "actress_name": "Primary A",
+            "missing_count": 2,
+        })
 
 
 class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
@@ -181,7 +273,7 @@ class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         )
         update_actor_mapping_ai_review("901", 123, "same_person", 0.94, "名称一致且作品数充足", "gpt-test")
 
-        result = await inventory.list_unmapped_actor_mappings()
+        result = inventory.list_unmapped_actor_mappings()
 
         self.assertEqual(result["total"], 1)
         actor = result["data"][0]
@@ -280,6 +372,52 @@ class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         info_client.list_actresses.assert_not_called()
         self.assertEqual(len(list_actor_mappings(status="candidate")), 0)
 
+    async def test_generate_candidates_pages_snapshot_until_limit(self):
+        from services import actor_mapping_candidates
+
+        calls = []
+        state_calls = []
+
+        def snapshot_page(snapshot_key, search=None, page=1, page_size=50, **_kwargs):
+            calls.append({"snapshot_key": snapshot_key, "search": search, "page": page, "page_size": page_size})
+            if page == 1:
+                return {
+                    "data": [
+                        {"actress_id": 901, "actress_name": "A"},
+                        {"actress_id": 902, "actress_name": "B"},
+                    ],
+                    "total_pages": 2,
+                }
+            return {
+                "data": [{"actress_id": 903, "actress_name": "C"}],
+                "total_pages": 2,
+            }
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {"data": []}
+
+        def mapping_state(actor_ids):
+            state_calls.append(list(actor_ids))
+            return {"decided_actor_ids": {"901"}, "ignored_pairs": set()}
+
+        with patch.object(actor_mapping_candidates, "get_latest_snapshot_key", return_value="snap-1"), \
+            patch.object(actor_mapping_candidates, "mapping_state_for_actor_ids", Mock(side_effect=mapping_state)), \
+            patch.object(actor_mapping_candidates, "get_snapshot_actors", side_effect=snapshot_page), \
+            patch.object(actor_mapping_candidates, "upsert_actor_mapping", side_effect=AssertionError("no candidates should be created")):
+            result = await actor_mapping_candidates.generate_actor_mapping_candidates(
+                search="actor",
+                limit=2,
+                info_client=info_client,
+            )
+
+        self.assertEqual(calls, [
+            {"snapshot_key": "snap-1", "search": "actor", "page": 1, "page_size": 100},
+            {"snapshot_key": "snap-1", "search": "actor", "page": 2, "page_size": 100},
+        ])
+        self.assertEqual(state_calls, [["901", "902"], ["903"]])
+        self.assertEqual(result["checked"], 2)
+        self.assertEqual(info_client.list_actresses.await_count, 2)
+
     async def test_generate_candidates_keeps_actor_with_only_ignored_candidate_visible(self):
         from database import (
             create_snapshot_key,
@@ -297,7 +435,7 @@ class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         }])
         ignore_actor_mapping("901", "糸井瑠花", 456, "別人")
 
-        result = await inventory.list_unmapped_actor_mappings()
+        result = inventory.list_unmapped_actor_mappings()
 
         self.assertEqual(len(list_actor_mappings(status="ignored")), 1)
         self.assertEqual(result["total"], 1)
@@ -463,6 +601,61 @@ class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         self.assertEqual(len(result["errors"]), 1)
         self.assertIn("javinfo down", result["errors"][0]["error"])
 
+    async def test_auto_match_pages_snapshot_until_limit(self):
+        from services import actor_mapping_candidates
+
+        calls = []
+        state_calls = []
+
+        def snapshot_page(snapshot_key, search=None, page=1, page_size=50, **_kwargs):
+            calls.append({"snapshot_key": snapshot_key, "search": search, "page": page, "page_size": page_size})
+            if page == 1:
+                return {
+                    "data": [
+                        {"actress_id": 901, "actress_name": "A"},
+                        {"actress_id": 902, "actress_name": "B"},
+                    ],
+                    "total_pages": 2,
+                }
+            return {
+                "data": [{"actress_id": 903, "actress_name": "C"}],
+                "total_pages": 2,
+            }
+
+        info_client = AsyncMock()
+        info_client.list_actresses.return_value = {"data": []}
+
+        def mapping_state(actor_ids):
+            state_calls.append(list(actor_ids))
+            return {"decided_actor_ids": {"901"}, "ignored_pairs": set()}
+
+        with patch.object(actor_mapping_candidates, "get_latest_snapshot_key", return_value="snap-1"), \
+            patch.object(actor_mapping_candidates, "mapping_state_for_actor_ids", Mock(side_effect=mapping_state)), \
+            patch.object(actor_mapping_candidates, "get_snapshot_actors", side_effect=snapshot_page):
+            result = await actor_mapping_candidates.auto_match_actor_mappings(
+                search="actor",
+                limit=2,
+                info_client=info_client,
+            )
+
+        self.assertEqual(calls, [
+            {"snapshot_key": "snap-1", "search": "actor", "page": 1, "page_size": 100},
+            {"snapshot_key": "snap-1", "search": "actor", "page": 2, "page_size": 100},
+        ])
+        self.assertEqual(state_calls, [["901", "902"], ["903"]])
+        self.assertEqual(result["checked"], 2)
+        self.assertEqual(result["skipped"], 3)
+        self.assertEqual(info_client.list_actresses.await_count, 2)
+
+    async def test_auto_match_clamps_unbounded_limit(self):
+        from services import actor_mapping_candidates
+
+        with patch.object(actor_mapping_candidates, "get_latest_snapshot_key", return_value=None):
+            result = await actor_mapping_candidates.auto_match_actor_mappings(limit=100000)
+
+        self.assertEqual(result["checked"], 0)
+        self.assertEqual(result["limit"], 2000)
+
 
 class WatchlistPipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_subscription_pipeline_creates_candidate_for_missing_movie(self):
@@ -491,6 +684,34 @@ class WatchlistPipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["candidates"][0]["dvd_id"], "SIVR-438")
         info_client.get_actress_videos.assert_awaited_once()
         self.assertEqual(info_client.get_actress_videos.await_args.kwargs["include_supplement"], "1")
+
+    async def test_subscription_pipeline_uses_lightweight_candidate_key_lookup(self):
+        from services import watchlist_pipeline
+
+        info_client = AsyncMock()
+        info_client.get_actress_videos.return_value = {
+            "data": [
+                {
+                    "content_id": "sivr438",
+                    "dvd_id": "SIVR-438",
+                    "title_ja": "Title",
+                    "release_date": "2026-05-01",
+                }
+            ]
+        }
+        emby_client = AsyncMock()
+        emby_client.check_exists.return_value = False
+
+        with patch.object(
+            watchlist_pipeline,
+            "download_candidate_content_keys",
+            Mock(return_value={("sivr438", "subscription")}),
+        ) as key_lookup:
+            pipeline = watchlist_pipeline.WatchlistPipeline(info_client=info_client, emby_client=emby_client)
+            result = await pipeline.generate_candidates_for_actress(1, "Actor", "subscription")
+
+        key_lookup.assert_called_once_with(actress_id=1, source="subscription")
+        self.assertEqual(result["existing"], 1)
 
 
 class SupplementCandidatePipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
@@ -743,6 +964,22 @@ class SupplementCandidatePipelineTest(TempPostgresMixin, unittest.IsolatedAsynci
 
 
 class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_list_downloads_uses_short_response_cache_with_bypass(self):
+        from routers import downloads
+
+        with patch.object(downloads, "get_download_tasks", side_effect=[
+            [{"id": 1, "status": "pending"}],
+            [{"id": 2, "status": "downloading"}],
+        ]) as tasks:
+            first = await downloads.list_downloads()
+            second = await downloads.list_downloads()
+            bypassed = await downloads.list_downloads(cache_control="0")
+
+        self.assertEqual(tasks.call_count, 2)
+        self.assertEqual(first["data"][0]["id"], 1)
+        self.assertEqual(second["data"][0]["id"], 1)
+        self.assertEqual(bypassed["data"][0]["id"], 2)
+
     async def test_approve_candidate_requires_magnet_and_creates_download_task(self):
         from database import get_download_candidate, update_download_candidate_magnet, upsert_download_candidate
         from routers import downloads
@@ -809,7 +1046,7 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
         upsert_download_candidate(content_id="SUPP-001", source="supplement", status="candidate")
         upsert_download_candidate(content_id="SUPP-002", source="supplement", status="sent")
 
-        result = await downloads.list_candidates(status="candidate", needs_magnet=True)
+        result = await downloads.list_candidates(status="candidate", needs_magnet=True, include_stats=True)
 
         self.assertEqual(result["total"], 2)
         self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
@@ -837,6 +1074,92 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
         self.assertEqual(result["page_size"], 2)
         self.assertEqual(result["total_pages"], 3)
         self.assertEqual(len(result["data"]), 2)
+
+    async def test_list_candidates_defaults_to_page_only_without_stats_scan(self):
+        from routers import downloads
+
+        with patch.object(downloads, "list_download_candidates_page", return_value={
+            "data": [{"id": 1, "content_id": "SIVR-438"}],
+            "total": 1,
+        }) as page_helper, \
+            patch.object(downloads, "count_download_candidates", side_effect=AssertionError("extra count query")), \
+            patch.object(downloads, "list_download_candidates", side_effect=AssertionError("extra list query")), \
+            patch.object(downloads, "download_candidate_stats", side_effect=AssertionError("extra stats query")):
+            result = await downloads.list_candidates(status="candidate", page=2, page_size=10)
+
+        page_helper.assert_called_once_with(
+            status="candidate",
+            actress_id=None,
+            source=None,
+            q=None,
+            needs_magnet=None,
+            limit=10,
+            offset=10,
+            include_stats=False,
+        )
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["data"][0]["content_id"], "SIVR-438")
+        self.assertNotIn("stats", result)
+
+    async def test_list_candidates_can_include_stats_when_requested(self):
+        from routers import downloads
+
+        with patch.object(downloads, "list_download_candidates_page", return_value={
+            "data": [{"id": 1, "content_id": "SIVR-438"}],
+            "total": 1,
+            "stats": {"candidate": 1},
+        }) as page_helper:
+            result = await downloads.list_candidates(status="candidate", page=1, page_size=10, include_stats=True)
+
+        page_helper.assert_called_once_with(
+            status="candidate",
+            actress_id=None,
+            source=None,
+            q=None,
+            needs_magnet=None,
+            limit=10,
+            offset=0,
+            include_stats=True,
+        )
+        self.assertEqual(result["stats"], {"candidate": 1})
+
+    async def test_list_candidates_uses_short_response_cache_with_bypass(self):
+        from routers import downloads
+
+        with patch.object(downloads, "list_download_candidates_page", side_effect=[
+            {
+                "data": [{"id": 1, "content_id": "SIVR-438"}],
+                "total": 1,
+            },
+            {
+                "data": [{"id": 2, "content_id": "ABP-588"}],
+                "total": 1,
+            },
+        ]) as page_helper:
+            first = await downloads.list_candidates(status="candidate", page=1, page_size=10)
+            second = await downloads.list_candidates(status="candidate", page=1, page_size=10)
+            bypassed = await downloads.list_candidates(status="candidate", page=1, page_size=10, cache_control="0")
+
+        self.assertEqual(page_helper.call_count, 2)
+        self.assertEqual(first["data"][0]["content_id"], "SIVR-438")
+        self.assertEqual(second["data"][0]["content_id"], "SIVR-438")
+        self.assertEqual(bypassed["data"][0]["content_id"], "ABP-588")
+
+    async def test_candidate_summary_uses_short_response_cache_with_bypass(self):
+        from routers import downloads
+
+        with patch.object(downloads, "download_candidate_summary", side_effect=[
+            {"total": 1, "candidate": 1},
+            {"total": 2, "candidate": 2},
+        ]) as summary:
+            first = await downloads.candidate_summary(status="candidate")
+            second = await downloads.candidate_summary(status="candidate")
+            bypassed = await downloads.candidate_summary(status="candidate", cache_control="0")
+
+        self.assertEqual(summary.call_count, 2)
+        self.assertEqual(first["total"], 1)
+        self.assertEqual(second["total"], 1)
+        self.assertEqual(bypassed["total"], 2)
 
     async def test_candidate_summary_uses_filtered_aggregate_counts(self):
         from database import download_candidate_summary, upsert_download_candidate
@@ -892,12 +1215,43 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
         self.assertEqual(db_summary, expected)
         self.assertEqual(route_summary, expected)
 
+    async def test_candidate_summary_can_include_source_counts(self):
+        from database import upsert_download_candidate
+        from routers import downloads
+
+        upsert_download_candidate(content_id="SUB-001", source="subscription", status="candidate")
+        upsert_download_candidate(content_id="SUB-002", source="subscription", status="sent")
+        upsert_download_candidate(content_id="INV-001", source="inventory", status="candidate")
+        upsert_download_candidate(content_id="SUP-001", source="supplement", status="candidate")
+
+        result = await downloads.candidate_summary(status="candidate", include_sources=True, cache_control="0")
+
+        self.assertEqual(result["candidate"], 3)
+        self.assertEqual(result["by_source"], {
+            "inventory": 1,
+            "subscription": 1,
+            "supplement": 1,
+        })
+        self.assertEqual(result["candidate_by_source"], result["by_source"])
+
+    def test_list_download_candidates_page_skips_stats_by_default(self):
+        from database import download_candidate
+
+        with patch.object(
+            download_candidate,
+            "_download_candidate_stats_with_cursor",
+            side_effect=AssertionError("page query should not scan global candidate stats by default"),
+        ):
+            result = download_candidate.list_download_candidates_page(limit=10, offset=0)
+
+        self.assertNotIn("stats", result)
+
     async def test_get_candidate_returns_single_row(self):
         from database import upsert_download_candidate
         from routers import downloads
 
         candidate = upsert_download_candidate(content_id="SIVR-438", source="subscription", status="candidate")
-        result = await downloads.get_candidate(candidate["id"])
+        result = downloads.get_candidate(candidate["id"])
 
         self.assertEqual(result["data"]["id"], candidate["id"])
         self.assertEqual(result["data"]["source"], "subscription")
@@ -931,19 +1285,19 @@ class ActorMappingRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
     async def test_confirm_ignore_and_list_mapping_api(self):
         from routers import inventory
 
-        await inventory.confirm_mapping(inventory.ActorMappingRequest(
+        inventory.confirm_mapping(inventory.ActorMappingRequest(
             emby_actor_id="emby-1",
             emby_actor_name="Emby Name",
             javinfo_actress_id=123,
             javinfo_actress_name="Jav Name",
         ))
-        await inventory.ignore_mapping(inventory.ActorMappingRequest(
+        inventory.ignore_mapping(inventory.ActorMappingRequest(
             emby_actor_id="emby-2",
             emby_actor_name="Ignored",
         ))
 
-        confirmed = await inventory.list_mappings(status="confirmed")
-        ignored = await inventory.list_mappings(status="ignored")
+        confirmed = inventory.list_mappings(status="confirmed")
+        ignored = inventory.list_mappings(status="ignored")
 
         self.assertEqual(len(confirmed["data"]), 1)
         self.assertEqual(confirmed["data"][0]["javinfo_actress_id"], 123)
@@ -968,6 +1322,66 @@ class SubscriptionRouterCandidateStatsTest(TempPostgresMixin, unittest.IsolatedA
         self.assertEqual(result["data"][0]["candidate_count"], 1)
         self.assertEqual(result["data"][0]["needs_magnet_count"], 1)
         self.assertEqual(result["data"][0]["mapping_status"], "javinfo")
+
+    async def test_list_subscriptions_uses_bulk_candidate_counts(self):
+        from database import add_subscription
+        from routers import subscriptions
+
+        add_subscription(123, "Actor")
+
+        with patch.object(subscriptions, "download_candidate_counts_by_actress", return_value={
+            123: {"candidate_count": 2, "needs_magnet_count": 1},
+        }) as counts, \
+            patch.object(subscriptions, "list_download_candidates", side_effect=AssertionError("N+1 candidate query")):
+            result = await subscriptions.list_subscriptions()
+
+        counts.assert_called_once_with(status="candidate", source="subscription")
+        self.assertEqual(result["data"][0]["candidate_count"], 2)
+        self.assertEqual(result["data"][0]["needs_magnet_count"], 1)
+
+    async def test_list_subscriptions_uses_short_response_cache_with_bypass(self):
+        from routers import subscriptions
+
+        with patch.object(subscriptions, "_list_subscriptions_payload", side_effect=[
+            {"data": [{"id": 1, "actress_name": "cached"}], "total": 1},
+            {"data": [{"id": 2, "actress_name": "fresh"}], "total": 1},
+        ]) as payload:
+            first = await subscriptions.list_subscriptions()
+            second = await subscriptions.list_subscriptions()
+            bypassed = await subscriptions.list_subscriptions(cache_control="0")
+
+        self.assertEqual(payload.call_count, 2)
+        self.assertEqual(first["data"][0]["actress_name"], "cached")
+        self.assertEqual(second["data"][0]["actress_name"], "cached")
+        self.assertEqual(bypassed["data"][0]["actress_name"], "fresh")
+
+    async def test_new_movies_groups_subscription_candidates_in_bulk(self):
+        from database import add_subscription, upsert_download_candidate
+        from routers import subscriptions
+
+        add_subscription(123, "Actor")
+        add_subscription(456, "Other")
+        upsert_download_candidate(
+            content_id="SIVR-438",
+            dvd_id="SIVR-438",
+            title="First",
+            actress_id=123,
+            source="subscription",
+            status="candidate",
+        )
+        upsert_download_candidate(
+            content_id="ABP-588",
+            dvd_id="ABP-588",
+            title="Second",
+            actress_id=456,
+            source="subscription",
+            status="candidate",
+        )
+
+        result = await subscriptions.get_new_movies()
+
+        self.assertEqual(result["data"][123][0]["dvd_id"], "SIVR-438")
+        self.assertEqual(result["data"][456][0]["dvd_id"], "ABP-588")
 
     async def test_check_subscriptions_returns_structured_report(self):
         from database import add_subscription
@@ -1105,6 +1519,73 @@ class InventoryMappingGuardTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
         self.assertEqual(job["result"]["mapped"], 1)
         self.assertEqual(job["result"]["missing"], 1)
         self.assertEqual(job["result"]["candidates"], 1)
+
+    async def test_full_compare_pages_snapshot_actors(self):
+        from scheduler import inventory_tasks
+
+        calls = []
+
+        def snapshot_page(snapshot_key, page=1, page_size=50, **_kwargs):
+            calls.append({"snapshot_key": snapshot_key, "page": page, "page_size": page_size})
+            if page == 1:
+                return {
+                    "data": [
+                        {"actress_id": 901, "actress_name": "Mapped"},
+                        {"actress_id": 902, "actress_name": "Unmapped"},
+                    ],
+                    "total": 3,
+                    "page": 1,
+                    "page_size": page_size,
+                    "total_pages": 2,
+                }
+            return {
+                "data": [{"actress_id": 903, "actress_name": "Mapped 2"}],
+                "total": 3,
+                "page": 2,
+                "page_size": page_size,
+                "total_pages": 2,
+            }
+
+        fake_pipeline = AsyncMock()
+        fake_pipeline.fetch_actress_videos.side_effect = [
+            [
+                {"content_id": "SIVR-438", "dvd_id": "SIVR-438", "title_ja": "Mapped 1"},
+                {"content_id": "ABP-588", "dvd_id": "ABP-588", "title_ja": "Mapped 2"},
+            ],
+            [
+                {"content_id": "MIAA-999", "dvd_id": "MIAA-999", "title_ja": "Mapped 3"},
+            ],
+        ]
+
+        with patch.object(inventory_tasks, "update_inventory_job") as update_job, \
+            patch.object(inventory_tasks, "update_inventory_progress"), \
+            patch.object(inventory_tasks, "get_latest_snapshot_key", return_value="snap-1"), \
+            patch.object(inventory_tasks, "get_snapshot_actors", side_effect=snapshot_page), \
+            patch.object(inventory_tasks, "get_confirmed_actor_mapping", side_effect=lambda actor_id: (
+                {"javinfo_actress_id": actor_id + 1000, "javinfo_actress_name": f"Jav {actor_id}"}
+                if actor_id in {901, 903}
+                else None
+            )), \
+            patch.object(inventory_tasks, "update_inventory_actor_stats"), \
+            patch.object(inventory_tasks, "get_snapshot_videos", return_value=[
+                {"filename": "SIVR-438.mp4", "title": "SIVR-438"},
+                {"filename": "ABP-588.mp4", "title": "ABP-588"},
+                {"filename": "MIAA-999.mp4", "title": "MIAA-999"},
+            ]), \
+            patch.object(inventory_tasks, "WatchlistPipeline", return_value=fake_pipeline), \
+            patch.object(inventory_tasks, "add_missing_video", side_effect=AssertionError("no missing rows expected")):
+            await inventory_tasks.run_compare_job(5, "snap-1")
+
+        self.assertEqual(calls, [
+            {"snapshot_key": "snap-1", "page": 1, "page_size": 100},
+            {"snapshot_key": "snap-1", "page": 2, "page_size": 100},
+        ])
+        self.assertEqual(fake_pipeline.fetch_actress_videos.await_count, 2)
+        completed = update_job.call_args_list[-1]
+        self.assertEqual(completed.args[1], "completed")
+        self.assertEqual(completed.kwargs["result"]["scanned"], 3)
+        self.assertEqual(completed.kwargs["result"]["mapped"], 2)
+        self.assertEqual(completed.kwargs["result"]["unmapped"], 1)
 
     async def test_inventory_actor_detail_includes_mapping_status(self):
         from database import confirm_actor_mapping, upsert_inventory_actor

@@ -11,7 +11,7 @@ from database import (
     confirm_actor_mapping,
     get_latest_snapshot_key,
     get_snapshot_actors,
-    list_actor_mappings,
+    mapping_state_for_actor_ids,
     update_actor_mapping_ai_review,
     upsert_actor_mapping,
 )
@@ -81,23 +81,6 @@ def score_actor_mapping_candidate(emby_name: str, candidate: dict[str, Any]) -> 
 def actor_mapping_confidence(emby_name: str, candidate: dict[str, Any]) -> float:
     best = score_actor_mapping_candidate(emby_name, candidate)["confidence"]
     return round(best, 3)
-
-
-def _existing_actor_mapping_state() -> tuple[set[str], set[tuple[str, int]]]:
-    decided_actor_ids = set()
-    ignored_pairs = set()
-    for row in list_actor_mappings(limit=100000):
-        emby_actor_id = str(row.get("emby_actor_id") or "")
-        status = row.get("status")
-        javinfo_actress_id = row.get("javinfo_actress_id")
-        if status == "confirmed" or (status == "ignored" and javinfo_actress_id is None):
-            decided_actor_ids.add(emby_actor_id)
-        if status == "ignored" and javinfo_actress_id is not None:
-            try:
-                ignored_pairs.add((emby_actor_id, int(javinfo_actress_id)))
-            except Exception:
-                continue
-    return decided_actor_ids, ignored_pairs
 
 
 def _score_rows(
@@ -424,6 +407,20 @@ def _candidate_payload(
     return payload
 
 
+def _snapshot_actor_pages(snapshot_key: str, search: str | None = None, page_size: int = 100):
+    page = 1
+    safe_page_size = max(1, min(int(page_size or 100), 500))
+    while True:
+        result = get_snapshot_actors(snapshot_key, search=search, page=page, page_size=safe_page_size)
+        actors = result.get("data", [])
+        if not actors:
+            break
+        yield actors
+        if page >= int(result.get("total_pages") or page):
+            break
+        page += 1
+
+
 def _is_auto_confirmable(scored: list[dict[str, Any]], auto_confirm_confidence: float, auto_confirm_gap: float) -> bool:
     if not scored:
         return False
@@ -449,46 +446,51 @@ async def generate_actor_mapping_candidates(
     if not snapshot_key:
         return {"snapshot_key": None, "checked": 0, "created": 0, "candidates": []}
 
-    decisions, ignored_pairs = _existing_actor_mapping_state()
-    actors = get_snapshot_actors(snapshot_key, search=search, page_size=100000).get("data", [])
     client = info_client or get_info_client()
     checked = 0
     created = 0
     candidates: list[dict[str, Any]] = []
 
-    for actor in actors:
-        emby_actor_id = str(actor.get("actress_id") or "")
-        emby_actor_name = str(actor.get("actress_name") or "").strip()
-        if not emby_actor_id or not emby_actor_name or emby_actor_id in decisions:
-            continue
-        checked += 1
+    for actors in _snapshot_actor_pages(snapshot_key, search=search):
+        page_actor_ids = [str(actor.get("actress_id") or "") for actor in actors]
+        state = mapping_state_for_actor_ids(page_actor_ids)
+        decisions = state["decided_actor_ids"]
+        ignored_pairs = state["ignored_pairs"]
+        for actor in actors:
+            emby_actor_id = str(actor.get("actress_id") or "")
+            emby_actor_name = str(actor.get("actress_name") or "").strip()
+            if not emby_actor_id or not emby_actor_name or emby_actor_id in decisions:
+                continue
+            checked += 1
 
-        result = await client.list_actresses(q=emby_actor_name, page=1, page_size=max(per_actor * 3, 10))
-        rows = result.get("data", []) if isinstance(result, dict) else []
-        scored = [
-            item for item in _score_rows(emby_actor_name, rows, min_confidence)
-            if (emby_actor_id, int(item["row"]["id"])) not in ignored_pairs
-        ]
+            result = await client.list_actresses(q=emby_actor_name, page=1, page_size=max(per_actor * 3, 10))
+            rows = result.get("data", []) if isinstance(result, dict) else []
+            scored = [
+                item for item in _score_rows(emby_actor_name, rows, min_confidence)
+                if (emby_actor_id, int(item["row"]["id"])) not in ignored_pairs
+            ]
 
-        for item in scored[:per_actor]:
-            row = item["row"]
-            reason = _mapping_reason(item)
-            mapping_id = upsert_actor_mapping(
-                emby_actor_id=emby_actor_id,
-                emby_actor_name=emby_actor_name,
-                javinfo_actress_id=int(row["id"]),
-                javinfo_actress_name=_candidate_name(row),
-                confidence=item["confidence"],
-                status="candidate",
-                source=reason,
-                javinfo_avatar_url=item.get("javinfo_avatar_url"),
-                movie_count=item.get("movie_count"),
-                confidence_breakdown=item.get("confidence_breakdown"),
-                confidence_label=item.get("confidence_label"),
-                risk_flags=item.get("risk_flags"),
-            )
-            created += 1
-            candidates.append(_candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason))
+            for item in scored[:per_actor]:
+                row = item["row"]
+                reason = _mapping_reason(item)
+                mapping_id = upsert_actor_mapping(
+                    emby_actor_id=emby_actor_id,
+                    emby_actor_name=emby_actor_name,
+                    javinfo_actress_id=int(row["id"]),
+                    javinfo_actress_name=_candidate_name(row),
+                    confidence=item["confidence"],
+                    status="candidate",
+                    source=reason,
+                    javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                    movie_count=item.get("movie_count"),
+                    confidence_breakdown=item.get("confidence_breakdown"),
+                    confidence_label=item.get("confidence_label"),
+                    risk_flags=item.get("risk_flags"),
+                )
+                created += 1
+                candidates.append(_candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason))
+            if checked >= limit:
+                break
         if checked >= limit:
             break
 
@@ -502,7 +504,7 @@ async def generate_actor_mapping_candidates(
 
 async def auto_match_actor_mappings(
     search: str | None = None,
-    limit: int = 100000,
+    limit: int = 500,
     dry_run: bool = False,
     snapshot_key: str | None = None,
     per_actor: int | None = None,
@@ -512,11 +514,13 @@ async def auto_match_actor_mappings(
     info_client=None,
 ) -> dict[str, Any]:
     """Generate mapping candidates and conservatively confirm exact unique matches."""
+    bounded_limit = max(1, min(int(limit or 500), 2000))
     snapshot_key = snapshot_key or get_latest_snapshot_key()
     if not snapshot_key:
         return {
             "snapshot_key": None,
             "dry_run": dry_run,
+            "limit": bounded_limit,
             "checked": 0,
             "auto_confirmed": 0,
             "candidates_created": 0,
@@ -535,8 +539,6 @@ async def auto_match_actor_mappings(
         else config.actor_mapping_auto_confirm_confidence
     )
     auto_confirm_gap = auto_confirm_gap if auto_confirm_gap is not None else config.actor_mapping_auto_confirm_gap
-    decisions, ignored_pairs = _existing_actor_mapping_state()
-    actors = get_snapshot_actors(snapshot_key, search=search, page_size=100000).get("data", [])
     client = info_client or get_info_client()
 
     checked = 0
@@ -548,95 +550,103 @@ async def auto_match_actor_mappings(
     candidates: list[dict[str, Any]] = []
     confirmed: list[dict[str, Any]] = []
 
-    for actor in actors:
-        emby_actor_id = str(actor.get("actress_id") or "")
-        emby_actor_name = str(actor.get("actress_name") or "").strip()
-        if not emby_actor_id or not emby_actor_name:
-            skipped += 1
-            continue
-        if emby_actor_id in decisions:
-            skipped += 1
-            continue
-        if checked >= limit:
-            break
+    for actors in _snapshot_actor_pages(snapshot_key, search=search):
+        page_actor_ids = [str(actor.get("actress_id") or "") for actor in actors]
+        state = mapping_state_for_actor_ids(page_actor_ids)
+        decisions = state["decided_actor_ids"]
+        ignored_pairs = state["ignored_pairs"]
+        for actor in actors:
+            emby_actor_id = str(actor.get("actress_id") or "")
+            emby_actor_name = str(actor.get("actress_name") or "").strip()
+            if not emby_actor_id or not emby_actor_name:
+                skipped += 1
+                continue
+            if emby_actor_id in decisions:
+                skipped += 1
+                continue
+            if checked >= bounded_limit:
+                break
 
-        checked += 1
-        try:
-            result = await client.list_actresses(q=emby_actor_name, page=1, page_size=max(per_actor * 3, 10))
-        except Exception as exc:
-            errors.append({
-                "emby_actor_id": emby_actor_id,
-                "emby_actor_name": emby_actor_name,
-                "error": str(exc),
-            })
-            continue
+            checked += 1
+            try:
+                result = await client.list_actresses(q=emby_actor_name, page=1, page_size=max(per_actor * 3, 10))
+            except Exception as exc:
+                errors.append({
+                    "emby_actor_id": emby_actor_id,
+                    "emby_actor_name": emby_actor_name,
+                    "error": str(exc),
+                })
+                continue
 
-        rows = result.get("data", []) if isinstance(result, dict) else []
-        scored = [
-            item for item in _score_rows(emby_actor_name, rows, min_confidence)
-            if (emby_actor_id, int(item["row"]["id"])) not in ignored_pairs
-        ]
-        if not scored:
-            skipped += 1
-            continue
+            rows = result.get("data", []) if isinstance(result, dict) else []
+            scored = [
+                item for item in _score_rows(emby_actor_name, rows, min_confidence)
+                if (emby_actor_id, int(item["row"]["id"])) not in ignored_pairs
+            ]
+            if not scored:
+                skipped += 1
+                continue
 
-        top_gap = scored[0]["confidence"] - scored[1]["confidence"] if len(scored) > 1 else None
-        should_confirm = _is_auto_confirmable(scored, auto_confirm_confidence, auto_confirm_gap)
-        if not should_confirm and scored[0]["exact"]:
-            ambiguous += 1
+            top_gap = scored[0]["confidence"] - scored[1]["confidence"] if len(scored) > 1 else None
+            should_confirm = _is_auto_confirmable(scored, auto_confirm_confidence, auto_confirm_gap)
+            if not should_confirm and scored[0]["exact"]:
+                ambiguous += 1
 
-        items_to_persist = scored[:1] if should_confirm else scored[:per_actor]
-        for index, item in enumerate(items_to_persist):
-            is_auto_confirm = index == 0 and should_confirm
-            reason = _mapping_reason(
-                item,
-                top_gap=top_gap,
-                auto_confirm=is_auto_confirm,
-                auto_confirm_gap=auto_confirm_gap,
-            )
-            mapping_id = None
-            if not dry_run:
-                row = item["row"]
+            items_to_persist = scored[:1] if should_confirm else scored[:per_actor]
+            for index, item in enumerate(items_to_persist):
+                is_auto_confirm = index == 0 and should_confirm
+                reason = _mapping_reason(
+                    item,
+                    top_gap=top_gap,
+                    auto_confirm=is_auto_confirm,
+                    auto_confirm_gap=auto_confirm_gap,
+                )
+                mapping_id = None
+                if not dry_run:
+                    row = item["row"]
+                    if is_auto_confirm:
+                        mapping_id = confirm_actor_mapping(
+                            emby_actor_id=emby_actor_id,
+                            emby_actor_name=emby_actor_name,
+                            javinfo_actress_id=int(row["id"]),
+                            javinfo_actress_name=_candidate_name(row),
+                            confidence=item["confidence"],
+                            source="auto_match",
+                            javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                            movie_count=item.get("movie_count"),
+                            confidence_breakdown=item.get("confidence_breakdown"),
+                            confidence_label=item.get("confidence_label"),
+                            risk_flags=item.get("risk_flags"),
+                        )
+                    else:
+                        mapping_id = upsert_actor_mapping(
+                            emby_actor_id=emby_actor_id,
+                            emby_actor_name=emby_actor_name,
+                            javinfo_actress_id=int(row["id"]),
+                            javinfo_actress_name=_candidate_name(row),
+                            confidence=item["confidence"],
+                            status="candidate",
+                            source=reason,
+                            javinfo_avatar_url=item.get("javinfo_avatar_url"),
+                            movie_count=item.get("movie_count"),
+                            confidence_breakdown=item.get("confidence_breakdown"),
+                            confidence_label=item.get("confidence_label"),
+                            risk_flags=item.get("risk_flags"),
+                        )
+                payload = _candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason)
                 if is_auto_confirm:
-                    mapping_id = confirm_actor_mapping(
-                        emby_actor_id=emby_actor_id,
-                        emby_actor_name=emby_actor_name,
-                        javinfo_actress_id=int(row["id"]),
-                        javinfo_actress_name=_candidate_name(row),
-                        confidence=item["confidence"],
-                        source="auto_match",
-                        javinfo_avatar_url=item.get("javinfo_avatar_url"),
-                        movie_count=item.get("movie_count"),
-                        confidence_breakdown=item.get("confidence_breakdown"),
-                        confidence_label=item.get("confidence_label"),
-                        risk_flags=item.get("risk_flags"),
-                    )
+                    auto_confirmed += 1
+                    confirmed.append(payload)
                 else:
-                    mapping_id = upsert_actor_mapping(
-                        emby_actor_id=emby_actor_id,
-                        emby_actor_name=emby_actor_name,
-                        javinfo_actress_id=int(row["id"]),
-                        javinfo_actress_name=_candidate_name(row),
-                        confidence=item["confidence"],
-                        status="candidate",
-                        source=reason,
-                        javinfo_avatar_url=item.get("javinfo_avatar_url"),
-                        movie_count=item.get("movie_count"),
-                        confidence_breakdown=item.get("confidence_breakdown"),
-                        confidence_label=item.get("confidence_label"),
-                        risk_flags=item.get("risk_flags"),
-                    )
-            payload = _candidate_payload(emby_actor_id, emby_actor_name, item, mapping_id, reason)
-            if is_auto_confirm:
-                auto_confirmed += 1
-                confirmed.append(payload)
-            else:
-                candidates_created += 1
-                candidates.append(payload)
+                    candidates_created += 1
+                    candidates.append(payload)
+        if checked >= bounded_limit:
+            break
 
     return {
         "snapshot_key": snapshot_key,
         "dry_run": dry_run,
+        "limit": bounded_limit,
         "checked": checked,
         "auto_confirmed": auto_confirmed,
         "candidates_created": candidates_created,

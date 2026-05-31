@@ -29,6 +29,9 @@ dist/
 # Claude
 .claude/
 
+# Codex local workspace settings
+.codex/
+
 # Misc
 *.png
 截屏*
@@ -53,6 +56,7 @@ redis-dump.rdb
 # Docs (internal design specs)
 docs/*
 !docs/backup-restore.md
+!docs/cloudflare-access-tunnel.md
 
 # Logs
 *.log

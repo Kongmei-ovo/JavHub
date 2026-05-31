@@ -3,6 +3,7 @@ from __future__ import annotations
 """翻译映射数据库层"""
 import json
 import hashlib
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -19,6 +20,15 @@ _VALID_COLUMNS = {"actress_json", "category_json", "series_json", "title_json", 
 
 # 内存缓存：避免同一请求周期内重复查询同一 translation
 _translation_cache: dict[str, Optional[dict]] = {}
+
+
+def _bump_translation_workbench_generation() -> None:
+    try:
+        from services.cache import set_data_generation
+
+        set_data_generation("translation_workbench", time.time_ns())
+    except Exception:
+        pass
 
 
 def _is_undefined_table_error(exc: Exception) -> bool:
@@ -347,6 +357,7 @@ def upsert_translation(content_id: str, mapping: dict) -> bool:
               json.dumps(merged["title"], ensure_ascii=False),
               json.dumps(merged["maker"], ensure_ascii=False),
               json.dumps(merged["label"], ensure_ascii=False)))
+    _bump_translation_workbench_generation()
     return True
 
 
@@ -385,10 +396,14 @@ def bulk_upsert_title_translations(entries: list[tuple[str, str, str]]) -> int:
             ON CONFLICT(content_id) DO UPDATE SET
                 title_json = excluded.title_json,
                 updated_at = CURRENT_TIMESTAMP
+            WHERE translation_mappings.title_json IS DISTINCT FROM excluded.title_json
             ''',
             payload,
         )
-    return len(payload)
+        written = max(0, cursor.rowcount)
+    if written:
+        _bump_translation_workbench_generation()
+    return written
 
 
 def bulk_upsert_metadata_translations(entries: list[tuple[str, str, str, str]]) -> int:
@@ -437,10 +452,13 @@ def bulk_upsert_metadata_translations(entries: list[tuple[str, str, str, str]]) 
                 ON CONFLICT(content_id) DO UPDATE SET
                     {col} = excluded.{col},
                     updated_at = CURRENT_TIMESTAMP
+                WHERE translation_mappings.{col} IS DISTINCT FROM excluded.{col}
                 ''',
                 payload,
             )
-            written += len(payload)
+            written += max(0, cursor.rowcount)
+    if written:
+        _bump_translation_workbench_generation()
     return written
 
 
@@ -609,6 +627,38 @@ def get_cached_translation(scope: str, source_text: str) -> Optional[dict]:
         )
         row = cursor.fetchone()
         return dict(row) if row else None
+
+
+def get_cached_translations_bulk(pairs: list[tuple[str, str]]) -> dict[tuple[str, str], dict]:
+    unique_pairs = list(dict.fromkeys(
+        (str(scope or ""), str(source_text or ""))
+        for scope, source_text in pairs
+        if str(scope or "") and str(source_text or "")
+    ))
+    if not unique_pairs:
+        return {}
+
+    result: dict[tuple[str, str], dict] = {}
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for start in range(0, len(unique_pairs), 500):
+            chunk = unique_pairs[start:start + 500]
+            clauses = []
+            params = []
+            for scope, source_text in chunk:
+                clauses.append("(scope = ? AND source_text_hash = ?)")
+                params.extend([scope, translation_text_hash(source_text)])
+            cursor.execute(
+                f'''
+                SELECT scope, source_text_hash, source_text, translated_text, provider, model, status, updated_at
+                FROM translation_cache
+                WHERE status = 'completed' AND ({' OR '.join(clauses)})
+                ''',
+                params,
+            )
+            for row in cursor.fetchall():
+                result[(str(row["scope"]), str(row["source_text"]))] = dict(row)
+    return result
 
 
 def upsert_cached_translation(
@@ -815,6 +865,7 @@ def upsert_translation_workbench_item(
                 source_page,
             ),
         )
+    _bump_translation_workbench_generation()
     return get_translation_workbench_item(item_type, normalized_id)
 
 
@@ -930,6 +981,7 @@ def bulk_upsert_translation_workbench_items(entries: list[dict], *, preserve_rev
             ''',
             payload,
         )
+    _bump_translation_workbench_generation()
     return len(normalized)
 
 
@@ -1116,6 +1168,8 @@ def mark_translation_workbench_failed(entries: list[dict], *, error: str = "tran
                 ),
             )
             count += 1
+    if count:
+        _bump_translation_workbench_generation()
     return count
 
 

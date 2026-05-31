@@ -14,6 +14,8 @@ DMM_IMAGE_BASE_URL = "https://pics.dmm.co.jp"
 DMM_SAMPLE_BASE_URL = "https://cc3001.dmm.co.jp"
 PENDING_METADATA_VIDEO_TTL = 300
 MAX_UPSTREAM_MESSAGE_LENGTH = 200
+TOTAL_COUNT_CACHE_NAMESPACE = "javinfo_total_count"
+TOTAL_COUNT_CACHE_TTL = 300
 
 
 class JavInfoError(Exception):
@@ -245,10 +247,9 @@ class InfoClient:
         return data if isinstance(data, list) else []
 
     async def _get_all_pages(self, path: str, page_size: int = 100, cache_bypass: bool = False) -> list[dict]:
-        """获取所有分页数据，自动翻页合并"""
-        all_items = []
-        page = 1
-        while True:
+        """获取所有分页数据，自动翻页合并。"""
+
+        async def fetch_page(page: int) -> tuple[list[dict], int]:
             params = {"page": page, "page_size": page_size}
             if cache_bypass:
                 params["cache"] = "0"
@@ -259,26 +260,47 @@ class InfoClient:
                 raise _map_request_error(path, exc) from exc
             data = _decode_javinfo_json(path, response)
             items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-            all_items.extend(items)
-            # 检查是否还有下一页
             total_pages = data.get("total_pages", 1) if isinstance(data, dict) else 1
-            if page >= total_pages or not items:
-                break
-            page += 1
+            return items, max(1, int(total_pages or 1))
+
+        all_items, total_pages = await fetch_page(1)
+        if total_pages <= 1 or not all_items:
+            return all_items
+
+        # JavInfoApi caps simple entity endpoints at small page sizes. Fetching the
+        # remaining pages in bounded batches keeps cold enum loads from serializing
+        # ten or hundreds of upstream round trips.
+        concurrency = 8
+        for start in range(2, total_pages + 1, concurrency):
+            pages = range(start, min(start + concurrency, total_pages + 1))
+            results = await asyncio.gather(*(fetch_page(page) for page in pages))
+            for items, _total_pages in results:
+                all_items.extend(items)
         return all_items
 
     async def get_total_count(self, path: str, cache_bypass: bool = False) -> int:
         """Fetch total_count from a paginated JavInfoApi list endpoint."""
-        params: dict[str, Any] = {"page": 1, "page_size": 1}
+        async def produce() -> int:
+            params: dict[str, Any] = {"page": 1, "page_size": 1}
+            if cache_bypass:
+                params["cache"] = "0"
+            data = await self._get(path, params=params)
+            if isinstance(data, dict):
+                if data.get("total_count") is not None:
+                    return int(data.get("total_count") or 0)
+                items = data.get("data", [])
+                return len(items) if isinstance(items, list) else 0
+            return len(data) if isinstance(data, list) else 0
+
         if cache_bypass:
-            params["cache"] = "0"
-        data = await self._get(path, params=params)
-        if isinstance(data, dict):
-            if data.get("total_count") is not None:
-                return int(data.get("total_count") or 0)
-            items = data.get("data", [])
-            return len(items) if isinstance(items, list) else 0
-        return len(data) if isinstance(data, list) else 0
+            return await produce()
+
+        return int(await cache.get_or_set_response(
+            TOTAL_COUNT_CACHE_NAMESPACE,
+            {"path": path},
+            produce,
+            ttl=TOTAL_COUNT_CACHE_TTL,
+        ) or 0)
 
     def _auth_headers(self) -> dict[str, str]:
         """返回补全管理接口认证头（如果 token 已配置）"""

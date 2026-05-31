@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 from routers import categories
@@ -85,6 +86,39 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, [{"id": 1}])
         http.get.assert_awaited_once()
         self.assertEqual(http.get.await_args.kwargs["params"]["cache"], "0")
+
+    async def test_info_client_all_pages_fetches_remaining_pages_concurrently(self):
+        from modules.info_client import InfoClient
+
+        client = InfoClient()
+        started_tail_pages: set[int] = set()
+        all_tail_pages_started = asyncio.Event()
+
+        def response_for(page: int):
+            response = Mock()
+            response.status_code = 200
+            response.json.return_value = {
+                "data": [{"id": page}],
+                "total_pages": 4,
+            }
+            return response
+
+        async def fake_get(_url, params):
+            page = int(params["page"])
+            if page > 1:
+                started_tail_pages.add(page)
+                if started_tail_pages == {2, 3, 4}:
+                    all_tail_pages_started.set()
+                await asyncio.wait_for(all_tail_pages_started.wait(), timeout=0.1)
+            return response_for(page)
+
+        http = Mock()
+        http.get = fake_get
+
+        with patch.object(client, "_get_client", AsyncMock(return_value=http)):
+            result = await client._get_all_pages("/api/v1/categories")
+
+        self.assertEqual([item["id"] for item in result], [1, 2, 3, 4])
 
 
 if __name__ == "__main__":

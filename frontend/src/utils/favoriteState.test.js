@@ -11,6 +11,8 @@ test('favorite registry stores server-provided entity types without object prope
     state.registry = {}
     state.items = []
     state.initialized = false
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
     favoriteState.listener = null
     favoriteState.listeners?.clear?.()
   })
@@ -34,6 +36,129 @@ test('favorite registry stores server-provided entity types without object prope
   assert.equal(Object.prototype.polluted, undefined)
 })
 
+test('favorite init loads the lightweight index without keeping large metadata', async (t) => {
+  const originalGetFavorites = api.getFavorites
+  const calls = []
+  t.after(() => {
+    api.getFavorites = originalGetFavorites
+    state.registry = new Map()
+    state.items = []
+    state.initialized = false
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
+    favoriteState.listener = null
+    favoriteState.listeners?.clear?.()
+  })
+
+  api.getFavorites = async (...args) => {
+    calls.push(args)
+    return {
+      data: [
+        {
+          entity_type: 'video',
+          entity_id: 'MIAA-784::mono',
+          metadata: { title: 'large', blob: 'x'.repeat(20_000) },
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    }
+  }
+  state.registry = new Map()
+  state.items = []
+  state.initialized = false
+  state.detailsLoaded = false
+
+  await favoriteState.init()
+
+  assert.deepEqual(calls[0], [undefined, { include_metadata: false }])
+  assert.equal(favoriteState.isFavorited('video', 'MIAA-784::mono'), true)
+  assert.equal(state.items[0].metadata, undefined)
+  assert.equal(state.detailsLoaded, false)
+})
+
+test('favorite refresh can explicitly load full metadata for the favorites page', async (t) => {
+  const originalGetFavorites = api.getFavorites
+  const calls = []
+  t.after(() => {
+    api.getFavorites = originalGetFavorites
+    state.registry = new Map()
+    state.items = []
+    state.initialized = false
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
+    favoriteState.listener = null
+    favoriteState.listeners?.clear?.()
+  })
+
+  api.getFavorites = async (...args) => {
+    calls.push(args)
+    return {
+      data: [
+        {
+          entity_type: 'actress',
+          entity_id: '123',
+          metadata: { name_kanji: 'Actor' },
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    }
+  }
+  state.registry = new Map()
+  state.items = []
+  state.initialized = false
+  state.detailsLoaded = false
+
+  await favoriteState.refresh({ includeMetadata: true })
+
+  assert.deepEqual(calls[0], [undefined, { include_metadata: true }])
+  assert.deepEqual(state.items[0].metadata, { name_kanji: 'Actor' })
+  assert.equal(state.detailsLoaded, true)
+})
+
+test('favorite metadata loader fetches only requested entity types and preserves lightweight videos', async (t) => {
+  const originalGetFavorites = api.getFavorites
+  const calls = []
+  t.after(() => {
+    api.getFavorites = originalGetFavorites
+    state.registry = new Map()
+    state.items = []
+    state.initialized = false
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
+    favoriteState.listener = null
+    favoriteState.listeners?.clear?.()
+  })
+
+  api.getFavorites = async (...args) => {
+    calls.push(args)
+    return {
+      data: [
+        {
+          entity_type: 'actress',
+          entity_id: '123',
+          metadata: { name_kanji: 'Actor' },
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    }
+  }
+  state.registry = new Map()
+  state.items = [
+    { entity_type: 'video', entity_id: 'MIAA-784::mono', created_at: '2026-01-02T00:00:00Z' },
+    { entity_type: 'actress', entity_id: '123', created_at: '2026-01-01T00:00:00Z' },
+  ]
+  state.initialized = true
+  state.detailsLoaded = false
+  state.metadataTypesLoaded = new Set()
+
+  await favoriteState.loadMetadataForTypes(['actress'])
+
+  assert.deepEqual(calls, [['actress', { include_metadata: true }]])
+  assert.equal(state.items.find(item => item.entity_type === 'video').metadata, undefined)
+  assert.deepEqual(state.items.find(item => item.entity_type === 'actress').metadata, { name_kanji: 'Actor' })
+  assert.equal(state.metadataTypesLoaded.has('actress'), true)
+})
+
 test('favorite state notifies listeners in order and can unsubscribe one listener', async (t) => {
   const originalToggleFavorite = api.toggleFavorite
   const events = []
@@ -42,6 +167,8 @@ test('favorite state notifies listeners in order and can unsubscribe one listene
     state.registry = new Map()
     state.items = []
     state.initialized = false
+    state.detailsLoaded = false
+    state.metadataTypesLoaded = new Set()
     favoriteState.listener = null
     favoriteState.listeners?.clear?.()
   })

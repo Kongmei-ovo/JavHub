@@ -185,6 +185,10 @@ export default {
     return api.get('/inventory/actors', { params })
   },
 
+  getLibraryOrganizeOverview(params = {}) {
+    return api.get('/inventory/overview', { params })
+  },
+
   getInventoryActor(actressId) {
     return api.get(`/inventory/actors/${numericPathSegment(actressId, 'actressId')}`)
   },
@@ -201,8 +205,8 @@ export default {
     return api.get('/inventory/jobs')
   },
 
-  listInventoryMissing() {
-    return api.get('/inventory/missing')
+  listInventoryMissing(params = {}) {
+    return api.get('/inventory/missing', { params })
   },
 
   fillInventoryVideo(contentId) {
@@ -591,12 +595,16 @@ export default {
 
   // ========== 收藏管理 ==========
 
-  getFavorites(entity_type) {
-    return api.get('/v1/favorites', { params: { entity_type } })
+  getFavorites(entity_type, options = {}) {
+    return api.get('/v1/favorites', { params: { entity_type, ...options } })
   },
 
   getFavoriteVideos() {
     return api.get('/v1/favorites/videos')
+  },
+
+  getFavoriteVideosPage(params = {}) {
+    return api.get('/v1/favorites/videos/page', { params })
   },
 
   toggleFavorite(data) {

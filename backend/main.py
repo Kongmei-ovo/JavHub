@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from database import init_db
 from config import config as _cfg
+from middlewares.performance import RequestTimingMiddleware
 
 # 配置日志
 logging.basicConfig(
@@ -93,6 +94,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+app.add_middleware(RequestTimingMiddleware, slow_request_ms=500)
 
 # 速率限制中间件
 if _cfg.rate_limit_enabled:

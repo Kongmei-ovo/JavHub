@@ -15,11 +15,17 @@ DEFAULT_RESPONSE_TTL = 600       # 10min
 
 _metrics: dict[str, Any] = {}
 _backend: Any | None = None
+_GENERATION_LOCAL_TTL = 1.0
+_RESPONSE_LOCAL_TTL = 2.0
+_RESPONSE_LOCAL_MAX = 1024
+_generation_cache: dict[str, tuple[float, int]] = {}
+_response_local_cache: dict[str, tuple[float, Any]] = {}
 
 
 @dataclass
 class _ResponseLockEntry:
     lock: asyncio.Lock
+    bypass_task: asyncio.Task[Any] | None = None
     users: int = 0
 
 
@@ -40,7 +46,9 @@ class RedisCacheBackend:
                 "Redis cache backend selected but redis package is not installed. "
                 "Install redis and set JAVHUB_REDIS_URL."
             ) from exc
+        self._url = url
         self._client = redis.Redis.from_url(url, decode_responses=True)
+        self._async_client: Any | None | bool = None
         self._prefix = os.getenv("JAVHUB_REDIS_PREFIX", "javhub-cache").strip() or "javhub-cache"
 
     def get_json(self, key: str) -> Any | None:
@@ -56,6 +64,27 @@ class RedisCacheBackend:
             return
         body = json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
         self._client.set(redis_key, body, ex=max(1, int(ttl)))
+
+    async def aget_json(self, key: str) -> Any | None:
+        client = self._get_async_client()
+        if client is None:
+            return await asyncio.to_thread(self.get_json, key)
+        value = await client.get(self._redis_key(key))
+        if value is None:
+            return None
+        return json.loads(value)
+
+    async def aset_json(self, key: str, data: Any, ttl: int) -> None:
+        client = self._get_async_client()
+        if client is None:
+            await asyncio.to_thread(self.set_json, key, data, ttl)
+            return
+        redis_key = self._redis_key(key)
+        if ttl <= 0:
+            await client.delete(redis_key)
+            return
+        body = json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
+        await client.set(redis_key, body, ex=max(1, int(ttl)))
 
     def get_entry_stats(self) -> dict[str, Any]:
         by_kind = {"video": 0, "search": 0, "enum": 0, "response": 0, "other": 0}
@@ -98,6 +127,18 @@ class RedisCacheBackend:
             return None
         return key[len(prefix):]
 
+    def _get_async_client(self) -> Any | None:
+        if self._async_client is False:
+            return None
+        if self._async_client is None:
+            try:
+                from redis import asyncio as redis_asyncio
+            except (ImportError, AttributeError):
+                self._async_client = False
+                return None
+            self._async_client = redis_asyncio.Redis.from_url(self._url, decode_responses=True)
+        return self._async_client
+
     def _scan(self, pattern: str) -> list[Any]:
         return list(self._client.scan_iter(match=self._redis_key(pattern), count=1000))
 
@@ -134,6 +175,8 @@ def reset_backend() -> None:
     global _backend
     _backend = None
     _response_locks.clear()
+    _generation_cache.clear()
+    _response_local_cache.clear()
 
 
 def get_backend() -> Any:
@@ -170,6 +213,23 @@ def _get_json(key: str) -> Any | None:
 
 def _set_json(key: str, data: Any, ttl: int) -> None:
     get_backend().set_json(key, data, ttl)
+
+
+async def _get_json_async(key: str) -> Any | None:
+    backend = get_backend()
+    getter = getattr(backend, "aget_json", None)
+    if callable(getter):
+        return await getter(key)
+    return await asyncio.to_thread(backend.get_json, key)
+
+
+async def _set_json_async(key: str, data: Any, ttl: int) -> None:
+    backend = get_backend()
+    setter = getattr(backend, "aset_json", None)
+    if callable(setter):
+        await setter(key, data, ttl)
+        return
+    await asyncio.to_thread(backend.set_json, key, data, ttl)
 
 
 # === Video ===
@@ -209,13 +269,48 @@ def _search_key(params: dict, page: int) -> str:
 # === Response ===
 
 def get_response(namespace: str, params: dict | None = None) -> Any | None:
-    data = _get_json(_response_key(namespace, params or {}))
+    key = _response_key(namespace, params or {})
+    data = _get_local_response(key)
+    if data is None:
+        data = _get_json(key)
+        if data is not None:
+            _set_local_response(key, data)
     _record_metric("response", data is not None, namespace=namespace)
     return data
 
 
 def set_response(namespace: str, params: dict | None, data: Any, ttl: int = DEFAULT_RESPONSE_TTL) -> None:
-    _set_json(_response_key(namespace, params or {}), data, ttl)
+    key = _response_key(namespace, params or {})
+    _set_json(key, data, ttl)
+    if ttl <= 0:
+        _response_local_cache.pop(key, None)
+    else:
+        _set_local_response(key, data, ttl=ttl)
+
+
+async def get_response_async(namespace: str, params: dict | None = None) -> Any | None:
+    key = _response_key(namespace, params or {})
+    data = _get_local_response(key)
+    if data is None:
+        data = await _get_json_async(key)
+        if data is not None:
+            _set_local_response(key, data)
+    _record_metric("response", data is not None, namespace=namespace)
+    return data
+
+
+async def set_response_async(
+    namespace: str,
+    params: dict | None,
+    data: Any,
+    ttl: int = DEFAULT_RESPONSE_TTL,
+) -> None:
+    key = _response_key(namespace, params or {})
+    await _set_json_async(key, data, ttl)
+    if ttl <= 0:
+        _response_local_cache.pop(key, None)
+    else:
+        _set_local_response(key, data, ttl=ttl)
 
 
 async def get_or_set_response(
@@ -226,14 +321,32 @@ async def get_or_set_response(
     bypass: bool = False,
 ) -> Any:
     cache_params = params or {}
+    key = _response_key(namespace, cache_params)
     if bypass:
-        return await producer()
+        lock_entry = _response_locks.get(key)
+        if lock_entry is None:
+            lock_entry = _ResponseLockEntry(lock=asyncio.Lock())
+            _response_locks[key] = lock_entry
 
-    cached = get_response(namespace, cache_params)
+        task = lock_entry.bypass_task
+        if task is None:
+            task = asyncio.create_task(producer())
+            lock_entry.bypass_task = task
+        elif not task.done():
+            _record_singleflight_wait()
+
+        lock_entry.users += 1
+        try:
+            return await task
+        finally:
+            lock_entry.users -= 1
+            if lock_entry.users == 0 and not lock_entry.lock.locked():
+                _response_locks.pop(key, None)
+
+    cached = await get_response_async(namespace, cache_params)
     if cached is not None:
         return cached
 
-    key = _response_key(namespace, cache_params)
     lock_entry = _response_locks.get(key)
     if lock_entry is None:
         lock_entry = _ResponseLockEntry(lock=asyncio.Lock())
@@ -244,11 +357,11 @@ async def get_or_set_response(
     lock_entry.users += 1
     try:
         async with lock_entry.lock:
-            cached = get_response(namespace, cache_params)
+            cached = await get_response_async(namespace, cache_params)
             if cached is not None:
                 return cached
             data = await producer()
-            set_response(namespace, cache_params, data, ttl=ttl)
+            await set_response_async(namespace, cache_params, data, ttl=ttl)
             return data
     finally:
         lock_entry.users -= 1
@@ -260,6 +373,36 @@ def _response_key(namespace: str, params: dict) -> str:
     stable = json.dumps(params, sort_keys=True, default=str, separators=(",", ":"))
     h = hashlib.sha256(stable.encode()).hexdigest()
     return f"response:{namespace}:{h}"
+
+
+def _get_local_response(key: str) -> Any | None:
+    entry = _response_local_cache.get(key)
+    if entry is None:
+        return None
+    expires_at, data = entry
+    if expires_at < time.monotonic():
+        _response_local_cache.pop(key, None)
+        return None
+    return data
+
+
+def _set_local_response(key: str, data: Any, ttl: int | float = _RESPONSE_LOCAL_TTL) -> None:
+    ttl_seconds = max(0.0, min(float(ttl), _RESPONSE_LOCAL_TTL))
+    if ttl_seconds <= 0:
+        _response_local_cache.pop(key, None)
+        return
+    if len(_response_local_cache) >= _RESPONSE_LOCAL_MAX:
+        _prune_local_response_cache()
+    _response_local_cache[key] = (time.monotonic() + ttl_seconds, data)
+
+
+def _prune_local_response_cache() -> None:
+    now = time.monotonic()
+    expired = [key for key, (expires_at, _data) in _response_local_cache.items() if expires_at < now]
+    for key in expired:
+        _response_local_cache.pop(key, None)
+    while len(_response_local_cache) >= _RESPONSE_LOCAL_MAX:
+        _response_local_cache.pop(next(iter(_response_local_cache)), None)
 
 
 def should_bypass_response_cache(value: Any) -> bool:
@@ -326,16 +469,51 @@ def set_enum_list(enum_type: str, data: list, ttl: int = DEFAULT_ENUM_TTL) -> No
 # === Data Generations ===
 
 def get_data_generation(namespace: str) -> int:
+    local = _get_local_generation(namespace)
+    if local is not None:
+        return local
     data = _get_json(_generation_key(namespace))
-    return int(data) if isinstance(data, int) else 0
+    generation = int(data) if isinstance(data, int) else 0
+    _set_local_generation(namespace, generation)
+    return generation
+
+
+async def get_data_generation_async(namespace: str) -> int:
+    local = _get_local_generation(namespace)
+    if local is not None:
+        return local
+    data = await _get_json_async(_generation_key(namespace))
+    generation = int(data) if isinstance(data, int) else 0
+    _set_local_generation(namespace, generation)
+    return generation
 
 
 def set_data_generation(namespace: str, generation: int, ttl: int = DEFAULT_ENUM_TTL) -> None:
-    _set_json(_generation_key(namespace), int(generation), ttl)
+    value = int(generation)
+    _set_json(_generation_key(namespace), value, ttl)
+    if ttl <= 0:
+        _generation_cache.pop(namespace, None)
+    else:
+        _set_local_generation(namespace, value)
 
 
 def _generation_key(namespace: str) -> str:
     return f"generation:{namespace}"
+
+
+def _get_local_generation(namespace: str) -> int | None:
+    entry = _generation_cache.get(namespace)
+    if entry is None:
+        return None
+    expires_at, generation = entry
+    if expires_at < time.monotonic():
+        _generation_cache.pop(namespace, None)
+        return None
+    return generation
+
+
+def _set_local_generation(namespace: str, generation: int) -> None:
+    _generation_cache[namespace] = (time.monotonic() + _GENERATION_LOCAL_TTL, int(generation))
 
 
 # === Stats ===
@@ -357,14 +535,18 @@ def purge_video_cache() -> int:
 
 def purge_response_cache() -> int:
     """清除最终响应缓存，返回清除数量"""
+    _response_local_cache.clear()
     return int(get_backend().purge_response_cache())
 
 
 def purge_enum_cache() -> int:
     """清除枚举原始缓存和对应的最终响应缓存，返回清除数量"""
+    _response_local_cache.clear()
     return int(get_backend().purge_enum_cache())
 
 
 def purge_all() -> int:
     """清除所有缓存"""
+    _generation_cache.clear()
+    _response_local_cache.clear()
     return int(get_backend().purge_all())

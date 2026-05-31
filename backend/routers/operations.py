@@ -1,6 +1,7 @@
 """Operations overview API for the inventory workflow."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -8,13 +9,13 @@ from fastapi.params import Query as QueryParam
 
 from config import config
 from database import (
+    count_snapshot_actors,
     download_candidate_stats,
-    get_all_missing_videos,
     get_inventory_jobs,
     get_latest_snapshot_key,
-    get_snapshot_actors,
     list_candidate_process_runs,
-    mapping_summary,
+    mapping_summary_for_snapshot,
+    missing_videos_summary,
     variant_group_stats,
 )
 from services import cache
@@ -31,10 +32,10 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
 
     async def produce() -> dict[str, Any]:
         snapshot_key = get_latest_snapshot_key()
-        snapshot_actors = get_snapshot_actors(snapshot_key, page_size=100000).get("data", []) if snapshot_key else []
+        snapshot_actor_count = count_snapshot_actors(snapshot_key)
         candidate_stats = download_candidate_stats()
         jobs = get_inventory_jobs(limit=10)
-        missing = get_all_missing_videos()
+        missing = missing_videos_summary(limit=8)
         variant_index = variant_group_stats()
 
         supplement: dict[str, Any] = {"available": False}
@@ -42,18 +43,20 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
             from modules.info_client import get_info_client
 
             client = get_info_client()
-            stats = await client.proxy_get("/api/v1/supplement/stats", params=None)
-            queued = await client.proxy_get(
-                "/api/v1/supplement/jobs",
-                params={"page": 1, "page_size": 1, "status": "queued"},
-            )
-            running = await client.proxy_get(
-                "/api/v1/supplement/jobs",
-                params={"page": 1, "page_size": 1, "status": "running"},
-            )
-            failed = await client.proxy_get(
-                "/api/v1/supplement/jobs",
-                params={"page": 1, "page_size": 1, "status": "failed"},
+            stats, queued, running, failed = await asyncio.gather(
+                client.proxy_get("/api/v1/supplement/stats", params=None),
+                client.proxy_get(
+                    "/api/v1/supplement/jobs",
+                    params={"page": 1, "page_size": 1, "status": "queued"},
+                ),
+                client.proxy_get(
+                    "/api/v1/supplement/jobs",
+                    params={"page": 1, "page_size": 1, "status": "running"},
+                ),
+                client.proxy_get(
+                    "/api/v1/supplement/jobs",
+                    params={"page": 1, "page_size": 1, "status": "failed"},
+                ),
             )
             supplement = {
                 "available": True,
@@ -70,15 +73,15 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
             "automation": config.automation,
             "snapshot": {
                 "snapshot_key": snapshot_key,
-                "actor_count": len(snapshot_actors),
+                "actor_count": snapshot_actor_count,
             },
             "mapping": {
-                **mapping_summary(snapshot_actors),
+                **mapping_summary_for_snapshot(snapshot_key),
                 "auto_match": config.actor_mapping,
             },
             "missing": {
-                "total": len(missing),
-                "top_actresses": _top_missing_actresses(missing),
+                "total": missing["total"],
+                "top_actresses": missing["top_actresses"],
             },
             "candidates": {
                 **candidate_stats,
@@ -119,25 +122,6 @@ async def run_candidate_processing_now() -> dict[str, Any]:
         "manual_noop": action == "manual_policy",
         "effective": action not in {"manual_policy", "busy"},
     }
-
-
-def _top_missing_actresses(rows: list[dict], limit: int = 8) -> list[dict]:
-    grouped: dict[str, dict] = {}
-    for row in rows:
-        key = str(row.get("actress_id") or "")
-        if not key:
-            continue
-        item = grouped.setdefault(
-            key,
-            {
-                "actress_id": row.get("actress_id"),
-                "actress_name": row.get("actress_name") or "",
-                "missing_count": 0,
-            },
-        )
-        item["missing_count"] += 1
-    return sorted(grouped.values(), key=lambda item: item["missing_count"], reverse=True)[:limit]
-
 
 def _total_from_response(value: Any) -> int:
     if not isinstance(value, dict):

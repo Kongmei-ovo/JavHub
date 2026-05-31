@@ -61,6 +61,8 @@ TOTAL_ENDPOINTS = {
 }
 _STATS_CACHE_NAMESPACE = "translation_stats"
 _STATS_CACHE_TTL = 300
+_ITEMS_CACHE_NAMESPACE = "translation_items"
+_ITEMS_CACHE_TTL = 5
 
 
 def _valid_type_message() -> str:
@@ -88,6 +90,27 @@ def _translation_export_payload(mapping_type: str, data: dict[str, Any]) -> dict
         "_dst": dst,
         "data": data,
     }
+
+
+def _translation_items_payload(
+    *,
+    item_type: str | None,
+    q: str | None,
+    status: str | None,
+    page: int,
+    page_size: int,
+    seeded: int,
+) -> dict[str, Any]:
+    result = list_translation_workbench_items(
+        item_type=item_type,
+        q=q,
+        status=status if status and status != "all" else None,
+        page=page,
+        page_size=page_size,
+    )
+    result["stats"] = translation_workbench_stats(item_type)
+    result["seeded"] = seeded
+    return result
 
 
 def _unwrap_translation_payload(mapping_type: str, data: dict[str, Any]) -> tuple[dict[str, Any], str, str]:
@@ -485,25 +508,16 @@ async def all_stats(cache_control: str | None = Query(None, alias="cache")):
     cache_bypass = cache.should_bypass_response_cache(_cache_control)
 
     async def produce():
-        stats = {t: get_translation_count(t) for t in VALID_TYPES}
         info = get_info_client()
-        totals: dict[str, int] = {}
-        if cache_bypass:
-            total_results = await asyncio.gather(
-                *(info.get_total_count(path, cache_bypass=True) for path in TOTAL_ENDPOINTS.values()),
-                return_exceptions=True,
-            )
-        else:
-            total_results = await asyncio.gather(
-                *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
-                return_exceptions=True,
-            )
-        for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results):
-            totals[mapping_type] = 0 if isinstance(result, Exception) else int(result or 0)
+        local_snapshot, totals = await asyncio.gather(
+            asyncio.to_thread(_translation_local_stats_snapshot),
+            _translation_total_counts(info, cache_bypass=cache_bypass),
+        )
+        stats = dict(local_snapshot["counts"])
 
         coverage: dict[str, dict[str, int]] = {}
         for mapping_type in VALID_TYPES:
-            local = get_translation_coverage_counts(mapping_type)
+            local = local_snapshot["coverage_counts"].get(mapping_type, {})
             total = totals.get(mapping_type, 0)
             translated = min(total, int(local.get("translated", 0) or 0)) if total else int(local.get("translated", 0) or 0)
             item = {
@@ -521,9 +535,9 @@ async def all_stats(cache_control: str | None = Query(None, alias="cache")):
         ai_cfg = config.ai
         ai_provider = str(ai_cfg.get("provider") or "openai_compatible")
         provider_cfg = ai_cfg.get(ai_provider, {}) if isinstance(ai_cfg.get(ai_provider), dict) else {}
-        stats["ai_cache"] = get_translation_cache_count()
+        stats["ai_cache"] = local_snapshot["ai_cache"]
         stats["coverage"] = coverage
-        stats["workbench"] = translation_workbench_stats()
+        stats["workbench"] = local_snapshot["workbench"]
         stats["providers"] = {
             "cache": {"enabled": "cache" in config.translation_provider_order, "ready": True},
             "mapping": {"enabled": "mapping" in config.translation_provider_order, "ready": True},
@@ -571,6 +585,32 @@ async def all_stats(cache_control: str | None = Query(None, alias="cache")):
     return await cache.get_or_set_response(_STATS_CACHE_NAMESPACE, {}, produce, ttl=_STATS_CACHE_TTL)
 
 
+def _translation_local_stats_snapshot() -> dict[str, Any]:
+    return {
+        "counts": {t: get_translation_count(t) for t in VALID_TYPES},
+        "coverage_counts": {t: get_translation_coverage_counts(t) for t in VALID_TYPES},
+        "ai_cache": get_translation_cache_count(),
+        "workbench": translation_workbench_stats(),
+    }
+
+
+async def _translation_total_counts(info: Any, *, cache_bypass: bool = False) -> dict[str, int]:
+    if cache_bypass:
+        total_results = await asyncio.gather(
+            *(info.get_total_count(path, cache_bypass=True) for path in TOTAL_ENDPOINTS.values()),
+            return_exceptions=True,
+        )
+    else:
+        total_results = await asyncio.gather(
+            *(info.get_total_count(path) for path in TOTAL_ENDPOINTS.values()),
+            return_exceptions=True,
+        )
+    return {
+        mapping_type: 0 if isinstance(result, Exception) else int(result or 0)
+        for mapping_type, result in zip(TOTAL_ENDPOINTS.keys(), total_results)
+    }
+
+
 @router.get("/items")
 async def list_translation_items(
     item_type: str | None = Query(None, alias="type"),
@@ -578,6 +618,7 @@ async def list_translation_items(
     status: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    cache_control: str | None = Query(None, alias="cache"),
 ):
     item_type = str(item_type).strip() if isinstance(item_type, str) and item_type.strip() else None
     q = str(q).strip() if isinstance(q, str) and q.strip() else None
@@ -591,28 +632,49 @@ async def list_translation_items(
     except Exception:
         page_size = 50
     item_type = _validate_mapping_type(item_type, optional=True)
-    seeded = 0
-    if item_type:
-        seeded += sync_translation_workbench_from_mappings(
+
+    async def produce():
+        seeded = 0
+        if item_type:
+            seeded += await asyncio.to_thread(
+                sync_translation_workbench_from_mappings,
+                item_type=item_type,
+                q=q,
+                limit=None,
+            )
+        if item_type and q:
+            try:
+                seeded += await _seed_workbench_from_javinfo(item_type, q.strip())
+            except Exception:
+                logger.debug("JavInfo metadata seeding skipped")
+        return await asyncio.to_thread(
+            _translation_items_payload,
             item_type=item_type,
             q=q,
-            limit=None,
+            status=status,
+            page=page,
+            page_size=page_size,
+            seeded=seeded,
         )
-    if item_type and q:
-        try:
-            seeded += await _seed_workbench_from_javinfo(item_type, q.strip())
-        except Exception:
-            logger.debug("JavInfo metadata seeding skipped")
-    result = list_translation_workbench_items(
-        item_type=item_type,
-        q=q,
-        status=status if status and status != "all" else None,
-        page=page,
-        page_size=page_size,
+
+    bypass_cache = cache.should_bypass_response_cache(cache_control)
+    if bypass_cache:
+        return await produce()
+
+    cache_params = {
+        "generation": await cache.get_data_generation_async("translation_workbench"),
+        "type": item_type,
+        "q": q,
+        "status": status,
+        "page": page,
+        "page_size": page_size,
+    }
+    return await cache.get_or_set_response(
+        _ITEMS_CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_ITEMS_CACHE_TTL,
     )
-    result["stats"] = translation_workbench_stats(item_type)
-    result["seeded"] = seeded
-    return result
 
 
 @router.post("/items/retry")

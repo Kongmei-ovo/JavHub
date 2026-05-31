@@ -272,6 +272,55 @@ class TranslationRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(listed["data"][0]["translated_text"], "三上悠亚")
         self.assertEqual(listed["data"][0]["provider"], "mapping")
 
+    async def test_workbench_default_list_uses_short_response_cache_with_bypass(self):
+        from routers import translation
+
+        with patch.object(translation, "_translation_items_payload", side_effect=[
+            {"data": [{"item_id": "first"}], "total_count": 1, "page": 1, "page_size": 50, "total_pages": 1, "seeded": 0},
+            {"data": [{"item_id": "fresh"}], "total_count": 1, "page": 1, "page_size": 50, "total_pages": 1, "seeded": 0},
+        ]) as payload:
+            first = await translation.list_translation_items(page=1, page_size=50)
+            second = await translation.list_translation_items(page=1, page_size=50)
+            bypassed = await translation.list_translation_items(page=1, page_size=50, cache_control="0")
+
+        self.assertEqual(payload.call_count, 2)
+        self.assertEqual(first["data"][0]["item_id"], "first")
+        self.assertEqual(second["data"][0]["item_id"], "first")
+        self.assertEqual(bypassed["data"][0]["item_id"], "fresh")
+
+    async def test_workbench_cached_list_skips_authoritative_mapping_sync(self):
+        from routers import translation
+
+        with patch.object(translation, "sync_translation_workbench_from_mappings", return_value=4) as sync, \
+             patch.object(
+                 translation,
+                 "_translation_items_payload",
+                 return_value={
+                     "data": [{"item_id": "cached"}],
+                     "total_count": 1,
+                     "page": 1,
+                     "page_size": 50,
+                     "total_pages": 1,
+                     "seeded": 4,
+                 },
+             ) as payload:
+            first = await translation.list_translation_items(item_type="category", page=1, page_size=50)
+            second = await translation.list_translation_items(item_type="category", page=1, page_size=50)
+
+        self.assertEqual(first, second)
+        self.assertEqual(sync.call_count, 1)
+        self.assertEqual(payload.call_count, 1)
+
+    async def test_upsert_translation_invalidates_workbench_response_generation(self):
+        from database import upsert_translation
+        from services import cache
+
+        before = cache.get_data_generation("translation_workbench")
+
+        upsert_translation("category:7", {"category": {"ドラマ": "剧情"}})
+
+        self.assertGreater(cache.get_data_generation("translation_workbench"), before)
+
     async def test_workbench_list_syncs_all_authoritative_mapping_rows_with_pagination(self):
         from database import upsert_translation
         from routers.translation import list_translation_items

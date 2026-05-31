@@ -1,12 +1,23 @@
 """日志数据库层"""
+import time
 from typing import Any, Optional
 from database.base import get_db
+
+
+def _bump_logs_generation() -> None:
+    try:
+        from services.cache import set_data_generation
+
+        set_data_generation("logs", time.time_ns())
+    except Exception:
+        pass
 
 
 def add_log(level: str, message: str):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("INSERT INTO logs (level, message, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)", (level, message))
+    _bump_logs_generation()
 
 
 def _log_filters(level: Optional[str] = None, q: Optional[str] = None) -> tuple[str, list[Any]]:
@@ -51,3 +62,4 @@ def clear_logs():
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM logs")
+    _bump_logs_generation()

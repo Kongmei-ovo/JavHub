@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import httpx
@@ -229,12 +230,21 @@ async def health_check():
 @router.get("/health/readiness")
 async def readiness_check():
     config_status = _config_status()
-    database_status = _database_status()
-    javinfo_status = await _javinfo_status()
-    cache_status = _cache_status()
-    downloader_status = _downloader_summary()
-    sources_status = _with_source_attempt_defaults(_source_registry_summary())
-    scheduler_status = _scheduler_summary()
+    (
+        database_status,
+        javinfo_status,
+        cache_status,
+        downloader_status,
+        sources_status,
+        scheduler_status,
+    ) = await asyncio.gather(
+        asyncio.to_thread(_database_status),
+        _javinfo_status(),
+        asyncio.to_thread(_cache_status),
+        asyncio.to_thread(_downloader_summary),
+        asyncio.to_thread(lambda: _with_source_attempt_defaults(_source_registry_summary())),
+        asyncio.to_thread(_scheduler_summary),
+    )
 
     degraded = (
         not config_status["loaded"]

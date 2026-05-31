@@ -48,6 +48,16 @@ test('supplement management defaults to an actor-first selection view', () => {
   assert.match(source, /recentActorJobs/)
 })
 
+test('supplement management builds recent actor cards without fanout actor detail requests', () => {
+  const loadRecentActorJobsBlock = source.match(/async loadRecentActorJobs\(\{ silent = false \} = \{\}\) \{[\s\S]*?\n    \},/)?.[0] || ''
+
+  assert.match(loadRecentActorJobsBlock, /api\.listSupplementJobs\(\{ page: 1, page_size: 16 \}\)/)
+  assert.match(loadRecentActorJobsBlock, /this\.recentActors = this\.recentActorJobs\.map\(this\.recentActorFromJob\)/)
+  assert.match(source, /recentActorFromJob\(job\)/)
+  assert.doesNotMatch(loadRecentActorJobsBlock, /loadRecentActors|api\.getActress/)
+  assert.doesNotMatch(source, /api\.getActress\(job\.local_actress_id\)/)
+})
+
 test('supplement management uses an actor workspace with segmented panels', () => {
   assert.match(source, /class="actor-workspace-hero apple-surface"/)
   assert.match(source, /workspaceSegments/)

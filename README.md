@@ -133,6 +133,17 @@ curl -fsS http://localhost:3000/health
 curl -fsS http://localhost:18080/health
 ```
 
+### Public Web Testing With Cloudflare Access
+
+For public testing without adding application-level users yet, put Cloudflare
+Access and Cloudflare Tunnel in front of JavHub. The optional
+`docker-compose.cloudflare.yml` override adds a `cloudflared` container that
+routes the private compose service `http://javhub:80` to a Cloudflare-protected
+hostname.
+
+See [docs/cloudflare-access-tunnel.md](docs/cloudflare-access-tunnel.md) for
+the setup steps and public exposure checklist.
+
 ### PostgreSQL Notes
 
 PostgreSQL is included by default for two separate data domains: JavInfoApi and
@@ -319,6 +330,7 @@ JavHub/
 ├── scripts/              # service helpers and container entrypoint
 ├── Dockerfile            # unified frontend + backend image
 ├── docker-compose.yml    # single-machine deployment example
+├── docker-compose.cloudflare.yml # Cloudflare Tunnel deployment override
 ├── nginx.conf            # static serving and /api proxy
 └── config.yaml.example
 ```

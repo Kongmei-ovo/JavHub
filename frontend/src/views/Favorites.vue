@@ -128,6 +128,13 @@
         </div>
       </div>
 
+      <div v-if="(activeTab === 'video' || activeTab === 'all') && videoHasMore" class="load-more-row">
+        <button class="btn-mini" type="button" :disabled="videoLoadingMore" @click="loadMoreVideos">
+          {{ videoLoadingMore ? '加载中...' : '继续加载影片' }}
+          <span>{{ videoItems.length }} / {{ videoTotal }}</span>
+        </button>
+      </div>
+
       <!-- 演员收藏：肖像卡片 -->
       <div v-if="actorFavoriteItems.length > 0" class="entity-section actor-favorites-section">
         <div v-if="activeTab === 'all'" class="section-label">演员</div>
@@ -205,7 +212,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
@@ -225,6 +232,7 @@ const TYPE_LABELS = {
   series: '系列',
   maker: '工作室',
 }
+const FAVORITE_VIDEO_PAGE_SIZE = 48
 
 export default {
   name: 'Favorites',
@@ -233,8 +241,9 @@ export default {
     const router = useRouter()
     const activeTab = ref('all')
     const videoLoading = ref(false)
+    const videoLoadingMore = ref(false)
     const videoItems = ref([])
-    const actorMetaMap = ref({})
+    const videoTotal = ref(0)
     const collections = ref([])
     const collectionsLoading = ref(false)
     const editingCollectionId = ref(null)
@@ -249,7 +258,7 @@ export default {
       state.items.forEach(item => {
         counts[item.entity_type] = (counts[item.entity_type] || 0) + 1
       })
-      counts.video = videoItems.value.length || counts.video || 0
+      counts.video = videoTotal.value || videoItems.value.length || counts.video || 0
       return counts
     })
 
@@ -262,25 +271,51 @@ export default {
       { id: 'maker', label: '工作室', count: typeCounts.value.maker || 0 },
     ])
 
-    // 从新接口加载完整影片数据
-    const loadVideos = async () => {
-      videoLoading.value = true
+    // 分页加载完整影片数据，避免收藏多时一次性 fanout 所有详情请求
+    const mapFavoriteVideo = (v) => ({
+      entity_type: 'video',
+      entity_id: v._favorite_entity_id || (v.service_code ? `${v.content_id || v.dvd_id}::${v.service_code}` : (v.content_id || v.dvd_id)),
+      metadata: v,
+      created_at: v._created_at
+    })
+    const loadVideos = async ({ reset = true } = {}) => {
+      const loadingRef = reset ? videoLoading : videoLoadingMore
+      loadingRef.value = true
       try {
-        const resp = await api.getFavoriteVideos()
-        videoItems.value = (resp.data || []).map(v => ({
-          entity_type: 'video',
-          entity_id: v._favorite_entity_id || (v.service_code ? `${v.content_id || v.dvd_id}::${v.service_code}` : (v.content_id || v.dvd_id)),
-          metadata: v,
-          created_at: v._created_at
-        }))
+        const offset = reset ? 0 : videoItems.value.length
+        const resp = await api.getFavoriteVideosPage({ limit: FAVORITE_VIDEO_PAGE_SIZE, offset })
+        const payload = resp.data || {}
+        const rows = Array.isArray(payload) ? payload : (payload.data || [])
+        const mapped = rows.map(mapFavoriteVideo)
+        videoTotal.value = Number(payload.total ?? (reset ? mapped.length : videoItems.value.length + mapped.length))
+        if (reset) {
+          videoItems.value = mapped
+        } else {
+          const byId = new Map(videoItems.value.map(item => [String(item.entity_id), item]))
+          mapped.forEach(item => { byId.set(String(item.entity_id), item) })
+          videoItems.value = [...byId.values()]
+        }
       } catch (e) {
         console.error('Failed to load favorite videos:', e)
       } finally {
-        videoLoading.value = false
+        loadingRef.value = false
+      }
+    }
+    const loadMoreVideos = () => loadVideos({ reset: false })
+    const videoHasMore = computed(() => videoTotal.value > videoItems.value.length)
+
+    const loadNonVideoFavoriteMetadata = async () => {
+      try {
+        await favoriteState.init()
+        const types = [...new Set(state.items.map(item => item.entity_type).filter(type => type && type !== 'video'))]
+        await favoriteState.loadMetadataForTypes(types)
+      } catch (err) {
+        console.error('Failed to load favorite metadata:', err)
       }
     }
 
     onMounted(() => {
+      loadNonVideoFavoriteMetadata()
       loadVideos()
       loadCollections()
       subscriptionState.refresh().catch(err => {
@@ -303,16 +338,18 @@ export default {
     })
 
     const actorSourceItems = computed(() => state.items.filter(i => i.entity_type === 'actress'))
+    const favoriteActorFromItem = (item) => {
+      const metadata = item.metadata || {}
+      return {
+        id: item.entity_id,
+        actress_id: item.entity_id,
+        ...metadata,
+        name: metadata.name || entityDisplayName(item) || String(item.entity_id),
+      }
+    }
     const actorFavoriteItems = computed(() => {
       if (activeTab.value !== 'all' && activeTab.value !== 'actress') return []
-      return actorSourceItems.value.map(item => {
-        const cached = actorMetaMap.value[String(item.entity_id)]
-        const fallback = {
-          id: item.entity_id,
-          ...(item.metadata || {}),
-        }
-        return { ...item, actor: cached || fallback }
-      })
+      return actorSourceItems.value.map(item => ({ ...item, actor: favoriteActorFromItem(item) }))
     })
     const otherEntityItems = computed(() => nonVideoItems.value.filter(i => i.entity_type !== 'actress'))
 
@@ -403,7 +440,7 @@ export default {
         await favoriteState.toggle(item.entity_type, item.entity_id)
       }
       selectedFavoriteKeys.value = new Set()
-      await favoriteState.refresh()
+      await loadNonVideoFavoriteMetadata()
       await loadVideos()
     }
 
@@ -505,43 +542,6 @@ export default {
       }
     }
 
-    const enrichFavoriteActor = async (item) => {
-      const id = String(item.entity_id)
-      if (!id || actorMetaMap.value[id]) return
-      const metadata = item.metadata || {}
-      try {
-        if (/^\d+$/.test(id)) {
-          const resp = await api.getActress(id)
-          actorMetaMap.value = { ...actorMetaMap.value, [id]: resp.data || resp }
-          return
-        }
-        const name = entityDisplayName(item)
-        if (name) {
-          const resp = await api.searchActors(name)
-          const results = resp.data?.data || resp.data || []
-          const match = results.find(actor => actorName(actor) === name) || results[0]
-          if (match) {
-            actorMetaMap.value = { ...actorMetaMap.value, [id]: match }
-            return
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to enrich favorite actor:', err)
-      }
-      actorMetaMap.value = {
-        ...actorMetaMap.value,
-        [id]: { id, ...metadata, name: entityDisplayName(item) || id },
-      }
-    }
-
-    watch(
-      actorSourceItems,
-      (items) => {
-        items.forEach(item => { enrichFavoriteActor(item) })
-      },
-      { immediate: true }
-    )
-
     return {
       state,
       count: favoriteState.count,
@@ -550,7 +550,10 @@ export default {
       selectedFavoriteKeys,
       tabs,
       videoLoading,
+      videoLoadingMore,
       videoItems,
+      videoTotal,
+      videoHasMore,
       displayVideoItems,
       nonVideoItems,
       actorFavoriteItems,
@@ -572,6 +575,7 @@ export default {
       setActiveTab,
       handleFavoriteItemClick,
       removeSelectedFavorites,
+      loadMoreVideos,
       isFavorited,
       toggleFavorite,
       cardImageUrl,
@@ -596,7 +600,6 @@ export default {
       editCollection,
       saveCollection,
       removeCollection,
-      enrichFavoriteActor,
     }
   }
 }
@@ -841,6 +844,21 @@ export default {
 
 .favorites-grid-loading {
   opacity: 0.5;
+}
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin: -14px 0 32px;
+}
+
+.load-more-row .btn-mini {
+  gap: 8px;
+}
+
+.load-more-row span {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .favorite-selectable {

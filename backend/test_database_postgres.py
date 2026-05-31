@@ -61,6 +61,103 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
         self.assertGreaterEqual(sum(1 for name, _args in calls if name == "close"), 2)
         self.assertEqual(create_indexes.call_count, 2)
 
+    def test_create_indexes_covers_download_task_polling_order(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        self.assertIn(
+            "CREATE INDEX IF NOT EXISTS idx_download_tasks_created_at ON download_tasks(created_at DESC)",
+            joined,
+        )
+
+    def test_create_indexes_covers_favorite_lightweight_ordering(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        self.assertIn(
+            "CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC)",
+            joined,
+        )
+        self.assertIn(
+            "CREATE INDEX IF NOT EXISTS idx_favorites_type_created_at ON favorites(entity_type, created_at DESC)",
+            joined,
+        )
+
+    def test_create_indexes_covers_missing_summary_ordering(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        self.assertIn(
+            "CREATE INDEX IF NOT EXISTS idx_actress_missing_summary_missing_count ON actress_missing_summary(missing_count DESC)",
+            joined,
+        )
+
+    def test_create_indexes_covers_recent_list_ordering(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        for sql in [
+            "CREATE INDEX IF NOT EXISTS idx_subscriptions_created_at ON subscriptions(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_created_at ON inventory_jobs(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_videos_actress_release ON inventory_videos(actress_id, release_date DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_exempt_videos_created_at ON exempt_videos(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_emby_actors_updated_at ON emby_actors(updated_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_actor_mappings_updated_created ON actor_mappings(updated_at DESC, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_video_variant_group_jobs_created ON video_variant_group_jobs(created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_translation_jobs_created ON translation_jobs(created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_download_candidate_events_created ON download_candidate_events(created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_candidate_process_runs_created_id ON candidate_process_runs(created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_collections_created_at ON collections(created_at DESC)",
+        ]:
+            with self.subTest(sql=sql):
+                self.assertIn(sql, joined)
+
+    def test_create_indexes_covers_duplicate_snapshot_scan(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        for sql in [
+            "CREATE INDEX IF NOT EXISTS idx_ignored_duplicates_emby_item_id ON ignored_duplicates(emby_item_id)",
+            "CREATE INDEX IF NOT EXISTS idx_emby_snapshots_snapshot_title_item ON emby_snapshots(snapshot_key, title, emby_item_id)",
+        ]:
+            with self.subTest(sql=sql):
+                self.assertIn(sql, joined)
+
 
 if __name__ == "__main__":
     unittest.main()

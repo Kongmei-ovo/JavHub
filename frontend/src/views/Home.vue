@@ -854,21 +854,22 @@ export default {
         if (this.candidateFilter.needs_magnet !== null) params.needs_magnet = this.candidateFilter.needs_magnet
         params.page = this.candidatePage
         params.page_size = this.candidatePageSize
+        params.include_stats = false
         const resp = await api.listDownloadCandidates(params)
         this.candidates = resp.data.data || []
-        this.candidateStats = resp.data.stats || this.candidateStats
         this.candidateTotal = Number(resp.data.total || this.candidates.length) || 0
         this.candidateTotalPages = Number(resp.data.total_pages || 1) || 1
         this.selectedCandidateIds = this.selectedCandidateIds.filter(id => this.candidates.some(c => c.id === id))
         this.syncCandidateRoute()
+        await this.loadCandidateSummary()
       } catch (e) {
         console.error('Failed to load candidates:', e)
       }
     },
     async loadCandidateSummary() {
       try {
-        const resp = await api.listDownloadCandidates({ status: 'candidate' })
-        this.candidateStats = resp.data.stats || this.candidateStats
+        const resp = await api.getDownloadCandidateSummary({ status: 'candidate', include_sources: true })
+        this.candidateStats = resp.data || this.candidateStats
       } catch (e) {
         console.error('Failed to load candidate summary:', e)
       }

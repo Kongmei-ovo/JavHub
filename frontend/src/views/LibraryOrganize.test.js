@@ -67,3 +67,35 @@ test('library organize nested controls keep glass treatment across light and dar
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-header\)/)
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-status\)/)
 })
+
+test('library organize first load uses compact overview instead of eight-way fanout', () => {
+  const reloadAllBlock = source.match(/async function reloadAll\(\) \{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(reloadAllBlock, /loadOverview\(\)/)
+  assert.doesNotMatch(reloadAllBlock, /Promise\.all\(\[/)
+  assert.match(source, /async function loadOverview\(\)/)
+  assert.match(source, /api\.getLibraryOrganizeOverview/)
+})
+
+test('library organize uses overview totals instead of first page array length for queue metrics', () => {
+  assert.match(source, /const missingTotal = ref\(0\)/)
+  assert.match(source, /const duplicateTotal = ref\(0\)/)
+  assert.match(source, /missingTotal\.value = Number\(data\?\.missing\?\.total \|\| missingVideos\.value\.length \|\| 0\)/)
+  assert.match(source, /duplicateTotal\.value = Number\(data\?\.duplicates\?\.total \|\| duplicates\.value\.length \|\| 0\)/)
+  assert.match(source, /\{ value: 'inventory', label: '库存对比', count: missingTotal\.value \}/)
+  assert.match(source, /\{ value: 'duplicates', label: '重复清理', count: duplicateTotal\.value \}/)
+  assert.match(source, /Number\(missingTotal\.value \|\| 0\)/)
+  assert.match(source, /Number\(duplicateTotal\.value \|\| 0\)/)
+})
+
+test('library organize defers duplicate scan until duplicate tab is opened', () => {
+  assert.match(source, /const duplicatesDeferred = ref\(false\)/)
+  assert.match(source, /duplicatesDeferred\.value = Boolean\(data\?\.duplicates\?\.deferred\)/)
+  assert.match(source, /function ensureDuplicateTabLoaded\(\)/)
+  assert.match(source, /activeTab\.value === 'duplicates'[\s\S]*duplicatesDeferred\.value[\s\S]*loadDuplicates\(\)/)
+  assert.match(source, /watch\(activeTab, ensureDuplicateTabLoaded\)/)
+})
+
+test('library organize requests a bounded missing-video page', () => {
+  assert.match(source, /api\.listInventoryMissing\(\{ page: 1, page_size: 80 \}\)/)
+})

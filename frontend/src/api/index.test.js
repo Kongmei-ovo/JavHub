@@ -460,6 +460,36 @@ test('favorite collection APIs use collection management endpoints', async (t) =
   assert.equal(calls[3].method, 'delete')
 })
 
+test('favorite list API forwards lightweight metadata preference', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: [] }
+  })
+
+  const { default: api } = await import(`./index.js?favorite-lightweight-${Date.now()}`)
+  await api.getFavorites('actress', { include_metadata: false, cache: '0' })
+
+  assert.equal(capturedConfig.url, '/v1/favorites')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, { entity_type: 'actress', include_metadata: false, cache: '0' })
+})
+
+test('favorite videos page API forwards bounded paging params', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  })
+
+  const { default: api } = await import(`./index.js?favorite-videos-page-${Date.now()}`)
+  await api.getFavoriteVideosPage({ limit: 48, offset: 96, cache: '0' })
+
+  assert.equal(capturedConfig.url, '/v1/favorites/videos/page')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, { limit: 48, offset: 96, cache: '0' })
+})
+
 test('health check bypasses api prefix because backend exposes bare health path', async (t) => {
   let capturedConfig = null
   installAxiosAdapter(t, async (config) => {
@@ -914,8 +944,8 @@ test('actor mapping APIs send expected requests', async (t) => {
 
   assert.equal(calls[0].url, '/inventory/actor-mappings')
   assert.deepEqual(calls[0].params, { status: 'confirmed' })
-  await api.listActorMappings({ status: 'candidate', limit: 100000 })
-  assert.deepEqual(calls.at(-1).params, { status: 'candidate', limit: 100000 })
+  await api.listActorMappings({ status: 'candidate', limit: 500 })
+  assert.deepEqual(calls.at(-1).params, { status: 'candidate', limit: 500 })
   assert.equal(calls[1].url, '/inventory/actor-mappings/summary')
   assert.equal(calls[2].url, '/inventory/actor-mappings/unmapped')
   assert.deepEqual(calls[2].params, { search: '瑠花' })
@@ -948,6 +978,50 @@ test('listInventoryActors sends GET to inventory actor portraits source', async 
   assert.equal(capturedConfig.url, '/inventory/actors')
   assert.equal(capturedConfig.method, 'get')
   assert.deepEqual(capturedConfig.params, { search: 'AIKA', page: 2, page_size: 36, sort_by: 'total_videos', sort_order: 'desc' })
+})
+
+test('library organize overview API sends compact first screen request', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { snapshot: {}, actors: { data: [] } } }
+  })
+
+  const { default: api } = await import(`./index.js?library-organize-overview-${Date.now()}`)
+  await api.getLibraryOrganizeOverview({
+    actor_search: 'AIKA',
+    actor_sort: 'total_videos',
+    mapping_search: '三上',
+    candidate_status: 'candidate',
+    candidate_search: 'SIVR',
+    candidate_needs_magnet: true,
+  })
+
+  assert.equal(capturedConfig.url, '/inventory/overview')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, {
+    actor_search: 'AIKA',
+    actor_sort: 'total_videos',
+    mapping_search: '三上',
+    candidate_status: 'candidate',
+    candidate_search: 'SIVR',
+    candidate_needs_magnet: true,
+  })
+})
+
+test('inventory missing API accepts pagination params', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  })
+
+  const { default: api } = await import(`./index.js?inventory-missing-${Date.now()}`)
+  await api.listInventoryMissing({ page: 2, page_size: 80 })
+
+  assert.equal(capturedConfig.url, '/inventory/missing')
+  assert.equal(capturedConfig.method, 'get')
+  assert.deepEqual(capturedConfig.params, { page: 2, page_size: 80 })
 })
 
 test('translation job APIs send expected requests', async (t) => {

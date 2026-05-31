@@ -224,6 +224,8 @@ const loading = ref(false)
 const loadingMappings = ref(false)
 const generatingCandidates = ref(false)
 const autoMatching = ref(false)
+const AUTO_MATCH_BATCH_LIMIT = 500
+const MAPPING_LIST_LIMIT = 500
 const mappingSummary = ref({})
 const unmappedActors = ref([])
 const mappings = ref([])
@@ -279,7 +281,7 @@ async function loadMappings() {
   try {
     const statuses = ['confirmed', 'ignored']
     const responses = await Promise.all(
-      statuses.map(status => api.listActorMappings({ status, limit: 100000 }))
+      statuses.map(status => api.listActorMappings({ status, limit: MAPPING_LIST_LIMIT }))
     )
     mappings.value = responses.flatMap(resp => resp.data.data || [])
   } finally {
@@ -523,7 +525,7 @@ async function runAutoMatchRequest(dryRun) {
   try {
     const resp = await api.autoMatchActorMappings({
       dry_run: dryRun,
-      limit: 100000,
+      limit: AUTO_MATCH_BATCH_LIMIT,
     })
     lastAutoMatch.value = resp.data || {}
     const action = dryRun ? '预演完成' : '自动匹配完成'
@@ -542,7 +544,7 @@ async function runAutoMatch() {
   const confirmed = await requestConfirm({
     title: '执行自动匹配?',
     message: '系统会根据当前规则自动确认高置信演员映射，并生成需要人工审核的候选。',
-    details: ['影响范围：全部待映射演员', '可先使用“自动匹配预演”查看预计结果'],
+    details: [`影响范围：本批最多 ${AUTO_MATCH_BATCH_LIMIT} 个待映射演员`, '可先使用“自动匹配预演”查看预计结果'],
     tone: 'warning',
     confirmText: '执行自动匹配'
   })

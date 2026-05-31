@@ -1,5 +1,6 @@
 """收藏与收藏夹数据库层"""
 import json
+import time
 from typing import List, Optional, Dict
 
 import psycopg2
@@ -17,6 +18,15 @@ class CollectionNameExistsError(ValueError):
 
 class CollectionNotFoundError(ValueError):
     pass
+
+
+def _bump_favorites_generation() -> None:
+    try:
+        from services.cache import set_data_generation
+
+        set_data_generation("favorites", time.time_ns())
+    except Exception:
+        pass
 
 
 def _normalize_collection_name(name: str) -> str:
@@ -89,7 +99,9 @@ def cleanup_legacy_video_favorites() -> int:
             "DELETE FROM favorites WHERE entity_type = ? AND entity_id = ?",
             [("video", entity_id) for entity_id in legacy_ids],
         )
-        return len(legacy_ids)
+        removed = len(legacy_ids)
+    _bump_favorites_generation()
+    return removed
 
 
 def toggle_favorite(entity_type: str, entity_id: str, metadata: Optional[Dict] = None) -> bool:
@@ -106,13 +118,15 @@ def toggle_favorite(entity_type: str, entity_id: str, metadata: Optional[Dict] =
                 "DELETE FROM favorites WHERE entity_type = ? AND entity_id = ?",
                 (entity_type, entity_id)
             )
-            return False
+            is_favorited = False
         else:
             cursor.execute(
                 "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
                 (entity_type, entity_id, json.dumps(metadata or {}))
             )
-            return True
+            is_favorited = True
+    _bump_favorites_generation()
+    return is_favorited
 
 
 def is_favorite(entity_type: str, entity_id: str) -> bool:
@@ -147,6 +161,83 @@ def list_favorites(entity_type: Optional[str] = None) -> List[Dict]:
                 item['metadata'] = {}
             result.append(item)
         return result
+
+
+def list_favorite_index(entity_type: Optional[str] = None) -> List[Dict]:
+    """Return the lightweight favorite registry without metadata blobs."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if entity_type:
+            cursor.execute(
+                "SELECT entity_type, entity_id, created_at FROM favorites WHERE entity_type = ? ORDER BY created_at DESC",
+                (entity_type,),
+            )
+        else:
+            cursor.execute(
+                "SELECT entity_type, entity_id, created_at FROM favorites ORDER BY created_at DESC"
+            )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def _favorite_row(row, include_metadata: bool) -> Dict:
+    item = dict(row)
+    if include_metadata:
+        try:
+            item["metadata"] = json.loads(item.pop("metadata_json") or "{}")
+        except json.JSONDecodeError:
+            item["metadata"] = {}
+    else:
+        item.pop("metadata_json", None)
+    return item
+
+
+def list_favorites_page(
+    entity_type: Optional[str] = None,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    include_metadata: bool = True,
+) -> Dict:
+    page_size = max(1, min(int(limit or 50), 200))
+    start = max(0, int(offset or 0))
+    metadata_column = ", metadata_json" if include_metadata else ""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if entity_type:
+            cursor.execute(
+                "SELECT COUNT(*) AS cnt FROM favorites WHERE entity_type = ?",
+                (entity_type,),
+            )
+            total = int(cursor.fetchone()["cnt"] or 0)
+            cursor.execute(
+                f"""
+                SELECT entity_type, entity_id{metadata_column}, created_at
+                FROM favorites
+                WHERE entity_type = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (entity_type, page_size, start),
+            )
+        else:
+            cursor.execute("SELECT COUNT(*) AS cnt FROM favorites")
+            total = int(cursor.fetchone()["cnt"] or 0)
+            cursor.execute(
+                f"""
+                SELECT entity_type, entity_id{metadata_column}, created_at
+                FROM favorites
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (page_size, start),
+            )
+        rows = cursor.fetchall()
+    return {
+        "data": [_favorite_row(row, include_metadata) for row in rows],
+        "total": total,
+        "limit": page_size,
+        "offset": start,
+    }
 
 
 def list_collections() -> List[Dict]:

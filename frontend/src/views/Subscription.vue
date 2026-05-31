@@ -249,14 +249,11 @@ const sheetLoading = ref(false)
 const subscribing = ref(false)
 const expandedVariantGroups = ref({})
 
-const newMovieMap = ref({})
 const actressMetaMap = ref({})
 const lastCheckReport = ref(null)
 
 const totalNewMovies = computed(() => {
-  let c = 0
-  for (const m of Object.values(newMovieMap.value)) c += m.length
-  return c
+  return subs.value.reduce((sum, sub) => sum + Number(sub.candidate_count || 0), 0)
 })
 
 const totalNeedsMagnet = computed(() => subs.value.reduce(
@@ -302,7 +299,10 @@ function subOriginalName(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
   return meta?.name_kanji || sub.actress_name || ''
 }
-function newMovieCount(actressId) { return (newMovieMap.value[actressId] || []).length }
+function newMovieCount(actressId) {
+  const sub = subs.value.find(item => String(item.actress_id) === String(actressId))
+  return Number(sub?.candidate_count || 0)
+}
 function movieCoverUrl(movie) { return movie.jacket_thumb_url || movie.jacket_full_url || movie.cover_url || '' }
 function subCardMeta(sub) {
   const count = subMeta(sub)?.movie_count
@@ -317,6 +317,21 @@ function subCardBadges(sub) {
   if (candidates) badges.push({ label: `${candidates} 候选`, tone: 'warning' })
   if (sub.auto_download) badges.push({ label: '自动策略', tone: 'success' })
   return badges
+}
+
+function subscriptionSheetActor(sub, meta = null) {
+  const actorMeta = meta || {}
+  return {
+    id: sub.actress_id,
+    actress_id: sub.actress_id,
+    name_kanji: actorMeta.name_kanji || sub.actress_name || '',
+    image_url: actorMeta.image_url || '',
+    movie_count: actorMeta.movie_count,
+    name_romaji: actorMeta.name_romaji || '',
+    name_kana: actorMeta.name_kana || '',
+    name_kanji_translated: actorMeta.name_kanji_translated || '',
+    name_romaji_translated: actorMeta.name_romaji_translated || '',
+  }
 }
 
 function shuffleArray(arr) {
@@ -358,12 +373,16 @@ async function openActorSheet(actor) {
 
 async function openSubSheet(sub) {
   discoverOpen.value = false
-  const meta = actressMetaMap.value[sub.actress_id]
-  sheetActor.value = { id: sub.actress_id, name_kanji: meta?.name_kanji || sub.actress_name || '', image_url: meta?.image_url || '', movie_count: meta?.movie_count, name_romaji: meta?.name_romaji || '', name_kana: meta?.name_kana || '', name_kanji_translated: meta?.name_kanji_translated || '', name_romaji_translated: meta?.name_romaji_translated || '' }
+  const existingMeta = actressMetaMap.value[sub.actress_id] || null
+  sheetActor.value = subscriptionSheetActor(sub, existingMeta)
   sheetSub.value = sub
   sheetMovies.value = []; sheetLoading.value = true
   try {
-    const r = await api.getActressVideos(sub.actress_id, 1, 30, { include_supplement: '1', variant_mode: 'grouped', variant_scope: 'indexed', include_variant_explanations: 1 })
+    const [meta, r] = await Promise.all([
+      loadSubscriptionActorMeta(sub),
+      api.getActressVideos(sub.actress_id, 1, 30, { include_supplement: '1', variant_mode: 'grouped', variant_scope: 'indexed', include_variant_explanations: 1 }),
+    ])
+    if (meta) sheetActor.value = subscriptionSheetActor(sub, meta)
     const all = r.data?.data || []
     sheetMovies.value = shuffleArray(all).slice(0, 12)
   } catch (e) { console.error(e) } finally { sheetLoading.value = false }
@@ -421,30 +440,25 @@ async function loadSubs() {
   try {
     const r = await api.getSubscriptions()
     subs.value = r.data?.data || r.data || []
-    await enrichActressMeta()
-    await loadNewMovieBadges()
   }
   catch (e) { console.error(e) } finally { loading.value = false }
 }
 
-async function enrichActressMeta() {
-  const ids = subs.value.filter(s => s.actress_id).map(s => s.actress_id)
-  if (!ids.length) { actressMetaMap.value = {}; return }
-  const map = {}; const sem = { count: 0 }
-  const fetchOne = async (id) => {
-    while (sem.count >= 8) await new Promise(r => setTimeout(r, 50))
-    sem.count++
-    try { const r = await api.getActress(id); return { id, data: r.data || r } }
-    catch { return { id, data: null } } finally { sem.count-- }
+async function loadSubscriptionActorMeta(sub) {
+  if (!sub?.actress_id) return null
+  const cached = actressMetaMap.value[sub.actress_id]
+  if (cached) return cached
+  try {
+    const r = await api.getActress(sub.actress_id)
+    const data = r.data || r
+    if (data) {
+      actressMetaMap.value = { ...actressMetaMap.value, [sub.actress_id]: data }
+      return data
+    }
+  } catch (e) {
+    console.error(e)
   }
-  const results = await Promise.all(ids.map(fetchOne))
-  for (const { id, data } of results) { if (data) map[id] = data }
-  actressMetaMap.value = map
-}
-
-async function loadNewMovieBadges() {
-  try { const r = await api.getNewMovies(); newMovieMap.value = r.data?.data || {} }
-  catch (e) { console.error(e) }
+  return null
 }
 
 async function checkAllNow() {
@@ -479,7 +493,7 @@ async function checkNow(sub) {
     if (created > 0) ElMessage.success(`新增 ${created} 个候选，已有 ${existing} 个，已在库 ${inLibrary} 个`)
     else if (existing > 0) ElMessage.info(`没有新增候选，已有 ${existing} 个待处理`)
     else ElMessage.info(`暂无缺失候选，已在库 ${inLibrary} 个`)
-    await loadSubs(); await loadNewMovieBadges()
+    await loadSubs()
   } catch (e) { ElMessage.error('检查失败') } finally { checkingId.value = null }
 }
 

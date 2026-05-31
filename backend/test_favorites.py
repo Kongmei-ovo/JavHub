@@ -130,7 +130,163 @@ class FavoriteCollectionsRouterTest(TempPostgresMixin, unittest.TestCase):
         self.assertTrue(all(len(item.get("variant_group_items") or []) == 2 for item in body))
 
 
+class FavoriteListRouteCacheTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_get_favorites_defaults_to_lightweight_index_cache_with_bypass(self):
+        from routers import favorites
+
+        with patch.object(favorites.favorite, "list_favorite_index", side_effect=[
+            [{"entity_id": "first"}],
+            [{"entity_id": "fresh"}],
+        ]) as list_favorite_index, patch.object(favorites.favorite, "list_favorites") as list_favorites:
+            first = await favorites.get_favorites()
+            second = await favorites.get_favorites()
+            bypassed = await favorites.get_favorites(cache_control="0")
+
+        self.assertEqual(list_favorite_index.call_count, 2)
+        list_favorites.assert_not_called()
+        self.assertEqual(first[0]["entity_id"], "first")
+        self.assertNotIn("metadata", first[0])
+        self.assertEqual(second[0]["entity_id"], "first")
+        self.assertEqual(bypassed[0]["entity_id"], "fresh")
+
+    async def test_get_favorites_can_include_metadata_for_curated_page(self):
+        from routers import favorites
+
+        full_item = {"entity_id": "full", "metadata": {"title": "large"}}
+        with patch.object(favorites.favorite, "list_favorites", return_value=[full_item]) as list_favorites, \
+            patch.object(favorites.favorite, "list_favorite_index") as list_favorite_index:
+            response = await favorites.get_favorites(include_metadata=True)
+
+        list_favorites.assert_called_once_with(None)
+        list_favorite_index.assert_not_called()
+        self.assertEqual(response, [full_item])
+
+    async def test_get_favorite_videos_uses_short_response_cache_with_bypass(self):
+        from routers import favorites
+
+        item = {
+            "entity_id": "miaa784::mono",
+            "metadata": {"content_id": "miaa784", "service_code": "mono"},
+            "created_at": "2026-05-28 00:00:00",
+        }
+        info_client = AsyncMock()
+        info_client.get_video.side_effect = [
+            {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "cached"},
+            {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "fresh"},
+            {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "uncached"},
+        ]
+        translator = AsyncMock()
+        translator.translate_video.side_effect = lambda _content_id, data, **_kwargs: data
+
+        with patch.object(favorites.favorite, "list_favorites", return_value=[item]) as list_favorites, \
+            patch.object(favorites, "get_info_client", return_value=info_client), \
+            patch.object(favorites, "get_translator_service", return_value=translator):
+            first = await favorites.get_favorite_videos()
+            second = await favorites.get_favorite_videos()
+            bypassed = await favorites.get_favorite_videos(cache_control="0")
+
+        self.assertEqual(list_favorites.call_count, 2)
+        self.assertEqual(info_client.get_video.await_count, 2)
+        self.assertEqual(first[0]["title_ja"], "cached")
+        self.assertEqual(second[0]["title_ja"], "cached")
+        self.assertEqual(bypassed[0]["title_ja"], "fresh")
+
+    async def test_get_favorite_videos_page_enriches_only_requested_rows(self):
+        from routers import favorites
+
+        page = {
+            "data": [
+                {
+                    "entity_id": "first::mono",
+                    "metadata": {"content_id": "first", "service_code": "mono"},
+                    "created_at": "2026-05-28 02:00:00",
+                },
+                {
+                    "entity_id": "second::digital",
+                    "metadata": {"content_id": "second", "service_code": "digital"},
+                    "created_at": "2026-05-28 01:00:00",
+                },
+            ],
+            "total": 25,
+            "limit": 2,
+            "offset": 10,
+        }
+        info_client = AsyncMock()
+        info_client.get_video.side_effect = [
+            {"content_id": "first", "dvd_id": "FIRST-001", "title_ja": "First"},
+            {"content_id": "second", "dvd_id": "SECOND-001", "title_ja": "Second"},
+        ]
+        translator = AsyncMock()
+        translator.translate_video.side_effect = lambda _content_id, data, **_kwargs: data
+
+        with patch.object(favorites.favorite, "list_favorites_page", return_value=page) as list_page, \
+            patch.object(favorites.favorite, "list_favorites") as list_all, \
+            patch.object(favorites, "get_info_client", return_value=info_client), \
+            patch.object(favorites, "get_translator_service", return_value=translator):
+            response = await favorites.get_favorite_videos_page(limit=2, offset=10, cache_control="0")
+
+        list_page.assert_called_once_with("video", limit=2, offset=10, include_metadata=True)
+        list_all.assert_not_called()
+        self.assertEqual(info_client.get_video.await_count, 2)
+        self.assertEqual(response["total"], 25)
+        self.assertEqual(response["limit"], 2)
+        self.assertEqual(response["offset"], 10)
+        self.assertTrue(response["has_more"])
+        self.assertEqual([item["content_id"] for item in response["data"]], ["first", "second"])
+
+
 class FavoriteCollectionsDatabaseTest(TempPostgresMixin, unittest.TestCase):
+    def test_list_favorite_index_omits_metadata_json_for_global_state(self):
+        from database import favorite
+        from database.base import get_db
+
+        large_metadata = {"title": "Large", "blob": "x" * 20_000}
+        favorite.toggle_favorite("video", "MIAA-784::mono", large_metadata)
+        favorite.toggle_favorite("actress", "123", {"name_kanji": "Actor"})
+
+        index_items = favorite.list_favorite_index()
+
+        self.assertEqual(len(index_items), 2)
+        self.assertTrue(all("metadata" not in item for item in index_items))
+        self.assertTrue(all("metadata_json" not in item for item in index_items))
+        self.assertEqual({item["entity_type"] for item in index_items}, {"video", "actress"})
+        self.assertTrue(all("created_at" in item for item in index_items))
+
+        with get_db() as conn:
+            plan_rows = conn.execute(
+                "EXPLAIN (FORMAT TEXT) SELECT entity_type, entity_id, created_at FROM favorites ORDER BY created_at DESC"
+            ).fetchall()
+        plan_text = "\n".join(row["QUERY PLAN"] for row in plan_rows)
+        self.assertNotIn("metadata_json", plan_text)
+
+    def test_list_favorites_page_bounds_metadata_rows_for_video_paging(self):
+        from database import favorite
+        from database.base import get_db
+
+        with get_db() as conn:
+            for index in range(4):
+                conn.execute(
+                    """
+                    INSERT INTO favorites (entity_type, entity_id, metadata_json, created_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        "video",
+                        f"ITEM-{index}::mono",
+                        '{"content_id":"ITEM-%d","service_code":"mono"}' % index,
+                        f"2026-05-28 00:0{index}:00+00",
+                    ),
+                )
+
+        page = favorite.list_favorites_page("video", limit=2, offset=1, include_metadata=True)
+
+        self.assertEqual(page["total"], 4)
+        self.assertEqual(page["limit"], 2)
+        self.assertEqual(page["offset"], 1)
+        self.assertEqual(len(page["data"]), 2)
+        self.assertTrue(all("metadata" in item for item in page["data"]))
+        self.assertTrue(all("metadata_json" not in item for item in page["data"]))
+
     def test_cleanup_removes_legacy_video_favorites(self):
         from database import favorite
         from database.base import get_db

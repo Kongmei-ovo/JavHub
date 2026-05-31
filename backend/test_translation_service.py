@@ -324,9 +324,9 @@ class TranslatorServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
         from translations import service as service_module
 
         service = self.service()
-        service.translate_text = AsyncMock(side_effect=lambda text, **_kwargs: text)
 
-        with patch.object(service_module, "get_translations_bulk", return_value={}):
+        with patch.object(service_module, "get_translations_bulk", return_value={}), \
+             patch.object(service_module, "get_cached_translations_bulk", return_value={}) as cache_lookup:
             await service.translate_entities(
                 [
                     {"id": 1, "name_ja": "企画"},
@@ -337,8 +337,32 @@ class TranslatorServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
                 allow_network=False,
             )
 
-        scopes = [call.kwargs["scope"] for call in service.translate_text.await_args_list]
-        self.assertEqual(scopes, ["label:1", "label:2"])
+        cache_lookup.assert_called_once_with([("label:1", "企画"), ("label:2", "単体")])
+
+    async def test_translate_entities_prefetches_translation_cache_in_bulk(self):
+        from translations import service as service_module
+
+        service = self.service()
+        items = [
+            {"id": 1, "name_ja": "企画"},
+            {"id": 2, "name_ja": "単体"},
+        ]
+
+        with patch.object(service_module, "get_translations_bulk", return_value={}), \
+             patch.object(service_module, "get_cached_translations_bulk", return_value={
+                 ("label:1", "企画"): {"translated_text": "企划"},
+                 ("label:2", "単体"): {"translated_text": "单体"},
+             }) as cache_lookup:
+            data = await service.translate_entities(
+                items,
+                entity_type="label",
+                keys=["name_ja", "name_en", "name"],
+                allow_network=False,
+            )
+
+        cache_lookup.assert_called_once_with([("label:1", "企画"), ("label:2", "単体")])
+        self.assertEqual(data[0]["name_ja_translated"], "企划")
+        self.assertEqual(data[1]["name_ja_translated"], "单体")
 
     async def test_translate_videos_prefetches_content_and_entity_mappings_in_bulk(self):
         from translations import service as service_module

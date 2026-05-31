@@ -1,23 +1,38 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import Any
+import asyncio
 import json
-from database import get_all_missing_summaries, get_missing_summary
+from database import get_all_missing_summaries, get_missing_summary, list_missing_summary_index
 from modules.emby_client import get_emby_client
 from modules.info_client import get_info_client
+from services import cache as response_cache
+from services.cache import should_bypass_response_cache
 
 router = APIRouter(prefix="/api/v1/missing", tags=["missing"])
 
 @router.get("/actresses")
-async def list_missing_actresses() -> dict[str, Any]:
+async def list_missing_actresses(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
     """获取缺失演员摘要列表"""
-    summaries = get_all_missing_summaries()
-    return {
-        "data": summaries,
-        "total": len(summaries),
-    }
+    bypass_cache = should_bypass_response_cache(cache_control)
+    cache_params = {"generation": await response_cache.get_data_generation_async("missing_summaries")}
+
+    async def produce() -> dict[str, Any]:
+        summaries = await asyncio.to_thread(list_missing_summary_index)
+        return {
+            "data": summaries,
+            "total": len(summaries),
+        }
+
+    return await response_cache.get_or_set_response(
+        "missing_actresses",
+        cache_params,
+        produce,
+        ttl=5,
+        bypass=bypass_cache,
+    )
 
 @router.get("/actresses/{actress_id}")
-async def get_missing_actress_detail(actress_id: int) -> dict[str, Any]:
+def get_missing_actress_detail(actress_id: int) -> dict[str, Any]:
     """获取某演员的缺失影片详情（按年份分组）"""
     summary = get_missing_summary(actress_id)
     if not summary:

@@ -1,7 +1,17 @@
 """库存对比数据库层"""
 import json
+import time
 from typing import Optional
 from database.base import get_db
+
+
+def _bump_missing_summary_generation() -> None:
+    try:
+        from services.cache import set_data_generation
+
+        set_data_generation("missing_summaries", time.time_ns())
+    except Exception:
+        pass
 
 
 # === Missing Summary ===
@@ -14,6 +24,7 @@ def save_missing_summary(actress_id: int, actress_name: str, total: int, missing
             "INSERT INTO actress_missing_summary (actress_id, actress_name, total_in_javinfo, missing_count, missing_videos_json, last_updated) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
             (actress_id, actress_name, total, missing, videos_json)
         )
+        _bump_missing_summary_generation()
 
 def get_all_missing_summaries() -> list:
     with get_db() as conn:
@@ -21,6 +32,22 @@ def get_all_missing_summaries() -> list:
         cursor.execute("SELECT * FROM actress_missing_summary ORDER BY missing_count DESC")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
+
+
+def list_missing_summary_index() -> list:
+    """Return missing actor summaries without the large per-actor video JSON blob."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, actress_id, actress_name, total_in_javinfo, missing_count, last_updated
+            FROM actress_missing_summary
+            ORDER BY missing_count DESC
+            """
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
 
 def get_missing_summary(actress_id: int) -> Optional[dict]:
     with get_db() as conn:
@@ -136,6 +163,19 @@ def get_inventory_actors() -> list:
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
+def get_inventory_actors_by_ids(actress_ids: list[int]) -> list:
+    ids = sorted({int(actress_id) for actress_id in actress_ids if actress_id is not None})
+    if not ids:
+        return []
+    placeholders = ",".join("?" for _ in ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT * FROM inventory_actors WHERE actress_id IN ({placeholders})",
+            ids,
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
 def get_inventory_actor(actress_id: int) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -201,6 +241,59 @@ def get_all_missing_videos() -> list:
         cursor.execute("SELECT * FROM missing_videos ORDER BY release_date DESC")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
+
+def get_missing_video(content_id: str) -> Optional[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM missing_videos WHERE content_id = ?", (content_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+def list_missing_videos_page(limit: int = 80, offset: int = 0) -> dict:
+    page_size = max(1, min(int(limit or 80), 500))
+    start = max(0, int(offset or 0))
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM missing_videos")
+        total = int(cursor.fetchone()[0] or 0)
+        cursor.execute(
+            "SELECT * FROM missing_videos ORDER BY release_date DESC LIMIT ? OFFSET ?",
+            (page_size, start),
+        )
+        rows = cursor.fetchall()
+    return {"data": [dict(row) for row in rows], "total": total, "limit": page_size, "offset": start}
+
+def missing_videos_summary(limit: int = 8) -> dict:
+    page_size = max(1, min(int(limit or 8), 50))
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS cnt FROM missing_videos")
+        total = int(cursor.fetchone()["cnt"] or 0)
+        cursor.execute(
+            '''
+            SELECT m.actress_id,
+                   COALESCE(i.primary_name, i.actress_name, MIN(m.title), '') AS actress_name,
+                   COUNT(*) AS missing_count
+            FROM missing_videos m
+            LEFT JOIN inventory_actors i ON i.actress_id = m.actress_id
+            GROUP BY m.actress_id, i.primary_name, i.actress_name
+            ORDER BY missing_count DESC, actress_name ASC
+            LIMIT ?
+            ''',
+            (page_size,),
+        )
+        rows = cursor.fetchall()
+    return {
+        "total": total,
+        "top_actresses": [
+            {
+                "actress_id": row["actress_id"],
+                "actress_name": row["actress_name"] or "",
+                "missing_count": int(row["missing_count"] or 0),
+            }
+            for row in rows
+        ],
+    }
 
 def delete_missing_video(content_id: str):
     with get_db() as conn:

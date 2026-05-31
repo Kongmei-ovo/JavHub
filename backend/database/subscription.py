@@ -1,5 +1,16 @@
 """订阅数据库层"""
+import time
+
 from database.base import get_db
+
+
+def _bump_subscriptions_generation() -> None:
+    try:
+        from services.cache import set_data_generation
+
+        set_data_generation("subscriptions", time.time_ns())
+    except Exception:
+        pass
 
 
 def add_subscription(actress_id: int, actress_name: str, auto_download: bool = False) -> int:
@@ -9,7 +20,9 @@ def add_subscription(actress_id: int, actress_name: str, auto_download: bool = F
             "INSERT INTO subscriptions (actress_id, actress_name, auto_download, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
             (actress_id, actress_name, auto_download)
         )
-        return cursor.lastrowid
+        sub_id = cursor.lastrowid
+    _bump_subscriptions_generation()
+    return sub_id
 
 
 def get_subscriptions() -> list:
@@ -25,13 +38,19 @@ def cleanup_legacy_subscriptions() -> int:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM subscriptions WHERE COALESCE(enabled, 1) = 0")
-        return cursor.rowcount
+        removed = cursor.rowcount
+    if removed:
+        _bump_subscriptions_generation()
+    return removed
 
 
 def delete_subscription(subscription_id: int):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM subscriptions WHERE id = ?", (subscription_id,))
+        changed = cursor.rowcount
+    if changed:
+        _bump_subscriptions_generation()
 
 
 def is_subscribed(actress_id: int) -> bool:
@@ -51,15 +70,22 @@ def toggle_subscription(actress_id: int, actress_name: str, auto_download: bool 
         if row:
             if row["enabled"]:
                 cursor.execute("DELETE FROM subscriptions WHERE id = ?", (row["id"],))
-                return {"subscribed": False, "id": row["id"]}
-            cursor.execute("UPDATE subscriptions SET enabled = 1 WHERE id = ?", (row["id"],))
-            return {"subscribed": True, "id": row["id"]}
+                result = {"subscribed": False, "id": row["id"]}
+                changed = True
+            else:
+                cursor.execute("UPDATE subscriptions SET enabled = 1 WHERE id = ?", (row["id"],))
+                result = {"subscribed": True, "id": row["id"]}
+                changed = True
         else:
             cursor.execute(
                 "INSERT INTO subscriptions (actress_id, actress_name, auto_download, enabled, created_at) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)",
                 (actress_id, actress_name, auto_download)
             )
-            return {"subscribed": True, "id": cursor.lastrowid}
+            result = {"subscribed": True, "id": cursor.lastrowid}
+            changed = True
+    if changed:
+        _bump_subscriptions_generation()
+    return result
 
 
 def update_last_check(subscription_id: int, last_found: str = ""):
@@ -70,6 +96,9 @@ def update_last_check(subscription_id: int, last_found: str = ""):
             "UPDATE subscriptions SET last_check = CURRENT_TIMESTAMP, last_found = ? WHERE id = ?",
             (last_found, subscription_id)
         )
+        changed = cursor.rowcount
+    if changed:
+        _bump_subscriptions_generation()
 
 
 def get_subscription_by_actress(actress_id: int) -> dict | None:
@@ -92,3 +121,6 @@ def update_subscription(subscription_id: int, **kwargs):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(f"UPDATE subscriptions SET {set_clause} WHERE id = ?", values)
+        changed = cursor.rowcount
+    if changed:
+        _bump_subscriptions_generation()

@@ -59,6 +59,14 @@ class CacheServiceTest(FakeRedisMixin, unittest.TestCase):
         self.assertEqual(cache.get_enum_list("makers"), [{"id": 2}])
         self.assertEqual(cache.get_video("abc-123"), {"content_id": "ABC-123"})
 
+    def test_purge_response_cache_removes_local_response_entries(self):
+        cache.set_response("categories", {}, [{"id": 1}], ttl=60)
+        self.assertEqual(cache.get_response("categories", {}), [{"id": 1}])
+
+        self.assertEqual(cache.purge_response_cache(), 1)
+
+        self.assertIsNone(cache.get_response("categories", {}))
+
     def test_purge_enum_cache_removes_enum_and_response_entries(self):
         cache.set_response("categories", {}, [{"id": 1}], ttl=60)
         cache.set_enum_list("makers", [{"id": 2}])
@@ -243,6 +251,29 @@ class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTest
         self.assertEqual(result, {"data": [{"id": 2}]})
         self.assertEqual(cache.get_response("makers", {"page": 1}), {"data": [{"id": 1}]})
 
+    async def test_concurrent_bypass_requests_share_one_inflight_producer_without_storing(self):
+        cache.set_response("makers", {"page": 1}, {"data": [{"id": 1}]}, ttl=60)
+        calls = 0
+
+        async def producer():
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0.01)
+            return {"data": [{"id": 2}]}
+
+        results = await asyncio.gather(
+            *(
+                cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60, bypass=True)
+                for _ in range(5)
+            )
+        )
+
+        self.assertEqual(results, [{"data": [{"id": 2}]}] * 5)
+        self.assertEqual(calls, 1)
+        self.assertEqual(cache.get_response("makers", {"page": 1}), {"data": [{"id": 1}]})
+        self.assertGreaterEqual(cache.get_stats()["metrics"]["singleflight_waits"], 4)
+        self.assertEqual(cache.get_stats()["singleflight_locks"], 0)
+
     async def test_high_cardinality_response_misses_do_not_retain_idle_locks(self):
         calls = 0
 
@@ -257,6 +288,150 @@ class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTest
 
         self.assertEqual(calls, 50)
         self.assertEqual(cache.get_stats()["singleflight_locks"], 0)
+
+
+class AsyncResponseCacheBackendTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        cache.reset_backend()
+        cache.reset_metrics()
+
+    async def asyncTearDown(self):
+        cache.reset_backend()
+
+    async def test_get_or_set_response_uses_async_backend_for_cache_hit(self):
+        class AsyncOnlyBackend:
+            name = "async-only"
+
+            def __init__(self):
+                self.values = {
+                    cache._response_key("makers", {"page": 1}): {"data": [{"id": 1}]}
+                }
+                self.async_get_calls = 0
+                self.sync_get_calls = 0
+
+            def get_json(self, _key):
+                self.sync_get_calls += 1
+                raise AssertionError("sync get_json should not be used")
+
+            async def aget_json(self, key):
+                self.async_get_calls += 1
+                return self.values.get(key)
+
+        backend = AsyncOnlyBackend()
+        cache._backend = backend
+
+        async def producer():
+            raise AssertionError("producer should not be called on cache hit")
+
+        result = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
+
+        self.assertEqual(result, {"data": [{"id": 1}]})
+        self.assertEqual(backend.async_get_calls, 1)
+        self.assertEqual(backend.sync_get_calls, 0)
+
+    async def test_get_or_set_response_uses_async_backend_for_cache_miss_store(self):
+        class AsyncOnlyBackend:
+            name = "async-only"
+
+            def __init__(self):
+                self.values = {}
+                self.async_get_calls = 0
+                self.async_set_calls = 0
+                self.sync_get_calls = 0
+                self.sync_set_calls = 0
+
+            def get_json(self, _key):
+                self.sync_get_calls += 1
+                raise AssertionError("sync get_json should not be used")
+
+            def set_json(self, _key, _data, _ttl):
+                self.sync_set_calls += 1
+                raise AssertionError("sync set_json should not be used")
+
+            async def aget_json(self, key):
+                self.async_get_calls += 1
+                return self.values.get(key)
+
+            async def aset_json(self, key, data, _ttl):
+                self.async_set_calls += 1
+                self.values[key] = data
+
+        backend = AsyncOnlyBackend()
+        cache._backend = backend
+
+        async def producer():
+            return {"data": [{"id": 2}]}
+
+        result = await cache.get_or_set_response("makers", {"page": 2}, producer, ttl=60)
+
+        self.assertEqual(result, {"data": [{"id": 2}]})
+        self.assertEqual(backend.values[cache._response_key("makers", {"page": 2})], result)
+        self.assertEqual(backend.async_get_calls, 2)
+        self.assertEqual(backend.async_set_calls, 1)
+        self.assertEqual(backend.sync_get_calls, 0)
+        self.assertEqual(backend.sync_set_calls, 0)
+
+    async def test_async_data_generation_uses_short_local_cache_and_updates_on_set(self):
+        class GenerationBackend:
+            name = "generation"
+
+            def __init__(self):
+                self.values = {cache._generation_key("subscriptions"): 7}
+                self.async_get_calls = 0
+                self.sync_set_calls = 0
+
+            def get_json(self, key):
+                return self.values.get(key)
+
+            def set_json(self, key, data, _ttl):
+                self.sync_set_calls += 1
+                self.values[key] = data
+
+            async def aget_json(self, key):
+                self.async_get_calls += 1
+                return self.values.get(key)
+
+        backend = GenerationBackend()
+        cache._backend = backend
+
+        first = await cache.get_data_generation_async("subscriptions")
+        second = await cache.get_data_generation_async("subscriptions")
+        cache.set_data_generation("subscriptions", 9)
+        third = await cache.get_data_generation_async("subscriptions")
+
+        self.assertEqual((first, second, third), (7, 7, 9))
+        self.assertEqual(backend.async_get_calls, 1)
+        self.assertEqual(backend.sync_set_calls, 1)
+
+    async def test_async_response_hits_use_short_local_cache(self):
+        class ResponseBackend:
+            name = "response"
+
+            def __init__(self):
+                self.values = {
+                    cache._response_key("makers", {"page": 1}): {"data": [{"id": 1}]}
+                }
+                self.async_get_calls = 0
+
+            def get_json(self, key):
+                return self.values.get(key)
+
+            async def aget_json(self, key):
+                self.async_get_calls += 1
+                return self.values.get(key)
+
+        backend = ResponseBackend()
+        cache._backend = backend
+
+        async def producer():
+            raise AssertionError("producer should not be called on cache hit")
+
+        first = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
+        second = await cache.get_or_set_response("makers", {"page": 1}, producer, ttl=60)
+
+        self.assertEqual(first, {"data": [{"id": 1}]})
+        self.assertEqual(second, first)
+        self.assertEqual(backend.async_get_calls, 1)
 
 
 if __name__ == "__main__":

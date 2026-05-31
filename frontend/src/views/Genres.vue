@@ -48,12 +48,12 @@
       />
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
-        <template v-for="tag in mobileDisplayedTags" :key="tag.id">
+        <template v-for="(tag, index) in mobileDisplayedTags" :key="`${tag.id}-${genreAnimationToken}`">
           <button
             class="bubble"
             type="button"
             :data-id="tag.id"
-            :style="bubbleStyle(tag)"
+            :style="bubbleStyle(tag, index)"
             @click="goGenre(tag)"
           >
             <div class="bubble-content">
@@ -143,11 +143,11 @@
       />
 
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
-        <template v-for="item in displayedSeries" :key="item.id">
+        <template v-for="(item, index) in displayedSeries" :key="`${item.id}-${seriesAnimationToken}`">
           <button
             class="bubble"
             type="button"
-            :style="bubbleStyle(item)"
+            :style="bubbleStyle(item, index)"
             @click="goSeries(item)"
           >
             <div class="bubble-content">
@@ -161,7 +161,6 @@
 </template>
 
 <script>
-import gsap from 'gsap'
 import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
@@ -206,10 +205,10 @@ export default {
       categories: [],
       shuffledTags: [],
       displayedTags: [],
+      genreAnimationToken: 0,
       loading: false,
       categoryError: '',
       cfg: { ...DEFAULT_CFG },
-      moveThrottle: false,  // 节流阀，避免 handleMouseMove 每帧都跑
       // 演员
       actressRawPage: [],       // 后端返回的原始这一页数据
       displayedActresses: [],
@@ -220,6 +219,7 @@ export default {
       // 系列
       seriesRawPage: [],
       displayedSeries: [],
+      seriesAnimationToken: 0,
       seriesLoading: false,
       seriesError: '',
       seriesPage: 1,
@@ -337,21 +337,19 @@ export default {
       if (tab === 'series' && !this.seriesRawPage.length && !this.seriesLoading) {
         this.loadSeries(this.seriesPage)
       }
-      if (tab === 'series' && !this._seriesGsapInited) {
-        this._seriesGsapInited = true
-        this.$nextTick(() => this.initCloudGsap(this.$refs.seriesCloudRef))
-      }
     },
-    bubbleStyle() {
+    bubbleStyle(_item, index = 0) {
       const size = this.cfg.baseSize
       const fill = this.cfg.fillPercent / 100
       if (this.isMobileViewport) {
         return {
+          '--bubble-index': index,
           fontSize: `clamp(13px, ${size * 0.86}px, 15px)`,
           padding: `clamp(7px, ${Math.round(size * fill * 0.44)}px, 10px) clamp(11px, ${Math.round(size * fill * 0.9)}px, 16px)`,
         }
       }
       return {
+        '--bubble-index': index,
         fontSize: `${size}px`,
         padding: `${Math.round(size * fill * 0.6)}px ${Math.round(size * fill * 1.2)}px`,
       }
@@ -364,6 +362,7 @@ export default {
         this.categories = Array.isArray(resp.data) ? resp.data : (resp.data.data || [])
         this.shuffledTags = shuffle(this.categories)
         this.displayedTags = this.shuffledTags.slice(0, this.cfg.bubbleCount)
+        this.genreAnimationToken += 1
         this.categoryError = ''
       } catch (e) {
         console.error('Load categories failed:', e)
@@ -372,111 +371,16 @@ export default {
         this.categoryError = 'load_failed'
       } finally {
         this.loading = false
-        this.$nextTick(() => this.initGsap())
       }
     },
     async reloadGenreData() {
       this.categoryError = ''
       await this.loadCategories()
     },
-    initGsap() {
-      const cloud = this.$refs.tagCloudRef
-      if (!cloud) return
-      const bubbles = cloud.querySelectorAll('.bubble')
-
-      gsap.fromTo(bubbles,
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.25, stagger: 0.005, ease: 'back.out(1.7)' }
-      )
-
-      // 浮动动画已迁移至 CSS @keyframes bubble-float（全量复用，无 GSAP tween）
-      cloud.addEventListener('mousemove', this.handleMouseMove)
-      cloud.addEventListener('mouseleave', this.handleMouseLeave)
-    },
-    initCloudGsap(cloudEl) {
-      if (!cloudEl) return
-      // 浮动动画已迁移至 CSS @keyframes bubble-float
-    },
-    handleMouseMove(e) {
-      if (this.moveThrottle) return
-      this.moveThrottle = true
-      const cloud = this.$refs.tagCloudRef
-      if (!cloud) { this.moveThrottle = false; return }
-      const mouseX = e.clientX
-      const mouseY = e.clientY
-
-      requestAnimationFrame(() => {
-        const bubbles = cloud.querySelectorAll('.bubble')
-
-        bubbles.forEach(bubble => {
-          const r = bubble.getBoundingClientRect()
-          const cx = r.left + r.width / 2
-          const cy = r.top + r.height / 2
-          const dist = Math.hypot(mouseX - cx, mouseY - cy)
-          const maxDist = 120
-
-          if (dist < maxDist) {
-            gsap.to(bubble, {
-              zIndex: 10,
-              duration: 0.3,
-              ease: 'power2.out',
-              overwrite: 'auto',
-            })
-          } else {
-            gsap.to(bubble, {
-              rotationX: 0,
-              rotationY: 0,
-              zIndex: 1,
-              duration: 0.4,
-              ease: 'power2.out',
-              overwrite: 'auto',
-            })
-          }
-        })
-
-        this.moveThrottle = false
-      })
-    },
-    handleMouseLeave() {
-      const cloud = this.$refs.tagCloudRef
-      if (!cloud) return
-      const bubbles = cloud.querySelectorAll('.bubble')
-      gsap.to(bubbles, {
-        rotationX: 0,
-        rotationY: 0,
-        zIndex: 1,
-        duration: 0.5,
-        ease: 'power2.out',
-        stagger: 0.002
-      })
-    },
     reshuffle() {
-      const cloud = this.$refs.tagCloudRef
-      if (cloud) {
-        const bubbles = cloud.querySelectorAll('.bubble')
-        gsap.killTweensOf(bubbles)
-        gsap.to(bubbles, { scale: 0, opacity: 0, duration: 0.08, stagger: 0, ease: 'power2.in' })
-      }
       this.shuffledTags = shuffle(this.categories)
       this.displayedTags = this.shuffledTags.slice(0, this.cfg.bubbleCount)
-      this.$nextTick(() => {
-        const newBubbles = this.$refs.tagCloudRef?.querySelectorAll('.bubble')
-        if (!newBubbles?.length) return
-        gsap.fromTo(newBubbles,
-          { scale: 0, opacity: 0, rotation: 0 },
-          {
-            scale: 1,
-            opacity: 0.88,
-            duration: 0.55,
-            stagger: {
-              each: 0.012,
-              from: 'center',
-              grid: 'auto',
-            },
-            ease: 'back.out(1.7)',
-          }
-        )
-      })
+      this.genreAnimationToken += 1
     },
     goGenre(tag) {
       const name = displayName(tag, 'name_ja', 'name_en') || tag.name || ''
@@ -541,6 +445,7 @@ export default {
         const raw = resp.data
         this.seriesRawPage = Array.isArray(raw.data) ? raw.data : (Array.isArray(raw) ? raw : [])
         this.displayedSeries = shuffle([...this.seriesRawPage])
+        this.seriesAnimationToken += 1
         this.seriesTotalPages = raw.total_pages || 1
         this.seriesPage = page
       } catch (e) {
@@ -579,18 +484,6 @@ export default {
       this.mobileMediaQuery.removeEventListener('change', this.handleMobileViewportChange)
     } else if (this.mobileMediaQuery?.removeListener) {
       this.mobileMediaQuery.removeListener(this.handleMobileViewportChange)
-    }
-    const cloud = this.$refs.tagCloudRef
-    if (cloud) {
-      cloud.removeEventListener('mousemove', this.handleMouseMove)
-      cloud.removeEventListener('mouseleave', this.handleMouseLeave)
-      const bubbles = cloud.querySelectorAll('.bubble')
-      gsap.killTweensOf(bubbles)
-    }
-    const seriesCloud = this.$refs.seriesCloudRef
-    if (seriesCloud) {
-      const bubbles = seriesCloud.querySelectorAll('.bubble')
-      gsap.killTweensOf(bubbles)
     }
   }
 }
@@ -762,6 +655,10 @@ export default {
   box-shadow: var(--glass-control-shadow);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
+  opacity: 0;
+  transform: scale(0.92);
+  animation: bubble-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: min(calc(var(--bubble-index, 0) * 5ms), 180ms);
 }
 
 .bubble:hover {
@@ -781,6 +678,17 @@ export default {
   color: var(--text-primary);
   border-color: var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
+}
+
+@keyframes bubble-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

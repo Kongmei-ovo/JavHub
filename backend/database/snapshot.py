@@ -85,6 +85,25 @@ def get_snapshot_actors(snapshot_key: str, search: str = None, sort_by: str = No
             "total_pages": (total + page_size - 1) // page_size if total > 0 else 1
         }
 
+def count_snapshot_actors(snapshot_key: str | None) -> int:
+    if not snapshot_key:
+        return 0
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS cnt FROM emby_actors WHERE snapshot_key = ?", (snapshot_key,))
+        row = cursor.fetchone()
+        return int(row["cnt"] if row else 0)
+
+def get_snapshot_actor(snapshot_key: str, actress_id: int) -> Optional[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM emby_actors WHERE snapshot_key = ? AND actress_id = ? LIMIT 1",
+            (snapshot_key, actress_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
 def get_snapshot_videos(snapshot_key: str, actress_id: int) -> list:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -106,7 +125,13 @@ def get_snapshot_duplicate_candidates(snapshot_key: str) -> list:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT DISTINCT emby_item_id, title, filename FROM emby_snapshots WHERE snapshot_key = ? ORDER BY title, emby_item_id",
+            """
+            SELECT DISTINCT s.emby_item_id, s.title, s.filename
+            FROM emby_snapshots s
+            LEFT JOIN ignored_duplicates i ON i.emby_item_id = s.emby_item_id
+            WHERE s.snapshot_key = ? AND i.emby_item_id IS NULL
+            ORDER BY s.title, s.emby_item_id
+            """,
             (snapshot_key,)
         )
         rows = cursor.fetchall()
@@ -115,14 +140,26 @@ def get_snapshot_duplicate_candidates(snapshot_key: str) -> list:
 
 # === Find Similar Actresses ===
 
-def find_similar_actresses(snapshot_key: str, name: str = None, threshold: float = 0.6) -> list:
+def find_similar_actresses(
+    snapshot_key: str,
+    name: str = None,
+    threshold: float = 0.6,
+    limit: int = 50,
+    candidate_limit: int = 250,
+) -> list:
     """查找名字相似的演员（用于发现重复演员）"""
-    result = get_snapshot_actors(snapshot_key, page_size=10000)
-    all_actors = result["data"]
-    if name:
-        candidates = [a for a in all_actors if name.lower() in a["actress_name"].lower()]
-    else:
-        candidates = all_actors
+    size = max(2, min(int(candidate_limit or 250), 1000))
+    max_results = max(1, min(int(limit or 50), 200))
+    search = name.strip() if isinstance(name, str) and name.strip() else None
+    result = get_snapshot_actors(
+        snapshot_key,
+        search=search,
+        sort_by="total_videos",
+        sort_order="desc",
+        page=1,
+        page_size=size,
+    )
+    candidates = result["data"]
 
     similar = []
     checked = set()
@@ -138,5 +175,9 @@ def find_similar_actresses(snapshot_key: str, name: str = None, threshold: float
                     "similarity": round(ratio, 2)
                 })
                 checked.add(b["actress_id"])
+                if len(similar) >= max_results:
+                    break
+        if len(similar) >= max_results:
+            break
     similar.sort(key=lambda x: x["similarity"], reverse=True)
-    return similar
+    return similar[:max_results]

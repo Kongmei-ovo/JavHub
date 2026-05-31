@@ -144,6 +144,7 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(normalize, /置信/)
   assert.match(normalize, /autoMatchActorMappings/)
   assert.match(normalize, /自动匹配预演/)
+  assert.doesNotMatch(normalize, /limit:\s*100000/)
   assert.match(normalize, /import \{ requestConfirm \} from '\.\.\/utils\/confirmDialog'/)
   assert.match(normalize, /requestConfirm\(\{[\s\S]*title: '执行自动匹配\?'/)
   assert.match(normalize, /精确但歧义/)
@@ -170,7 +171,7 @@ test('actor portrait cards unify favorites subscriptions and supplement actor pi
   assert.match(entities, /label: '资料库演员'/)
   assert.match(entities, /label: 'Emby演员'/)
   assert.match(favorites, /otherEntityItems/)
-  assert.match(favorites, /enrichFavoriteActor/)
+  assert.match(favorites, /favoriteActorFromItem/)
   assert.doesNotMatch(favorites, /:show-favorite="true"/)
   assert.doesNotMatch(favorites, /:show-subscribe="actorCardCanSubscribe\(item\)"/)
   assert.doesNotMatch(favorites, /@subscribe="toggleActorSubscription\(item\)"/)
@@ -231,6 +232,24 @@ test('favorites page exposes edit mode for batch unfavorite', () => {
   assert.match(favorites, /<div\s+v-for="item in actorFavoriteItems"[\s\S]*<ActorPortraitCard[\s\S]*<button[\s\S]*select-check/)
 })
 
+test('favorites page pages video details and loads full metadata only for non-video favorites', () => {
+  assert.match(favorites, /FAVORITE_VIDEO_PAGE_SIZE/)
+  assert.match(favorites, /api\.getFavoriteVideosPage/)
+  assert.match(favorites, /loadMoreVideos/)
+  assert.match(favorites, /loadNonVideoFavoriteMetadata/)
+  assert.match(favorites, /favoriteState\.loadMetadataForTypes\(types\)/)
+  assert.doesNotMatch(favorites, /favoriteState\.refresh\(\{ includeMetadata: true \}\)/)
+})
+
+test('favorites page avoids actor detail fanout on initial render', () => {
+  assert.match(favorites, /actorSourceItems/)
+  assert.match(favorites, /item\.metadata \|\| \{\}/)
+  assert.doesNotMatch(favorites, /api\.getActress\(/)
+  assert.doesNotMatch(favorites, /api\.searchActors\(/)
+  assert.doesNotMatch(favorites, /enrichFavoriteActor/)
+  assert.doesNotMatch(favorites, /watch\(\s*actorSourceItems/)
+})
+
 test('subscription management keeps shared subscription state in sync', () => {
   assert.match(subscription, /import subscriptionState from '..\/utils\/subscriptionState'/)
   assert.match(subscription, /await subscriptionState\.refresh\(\)/)
@@ -247,6 +266,29 @@ test('subscription routes missing movies into download candidates', () => {
   assert.match(subscription, /existing/)
   assert.match(subscription, /include_supplement: '1'/)
   assert.doesNotMatch(subscription, /api\.createDownload\(\{ code:/)
+})
+
+test('subscription page defers actor metadata loading until a subscription is opened', () => {
+  const loadSubsBlock = subscription.match(/async function loadSubs\(\) \{[\s\S]*?\n\}/)?.[0] || ''
+  const openSubSheetBlock = subscription.match(/async function openSubSheet\(sub\) \{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(loadSubsBlock, /api\.getSubscriptions\(\)/)
+  assert.doesNotMatch(loadSubsBlock, /enrichActressMeta|api\.getActress/)
+  assert.doesNotMatch(subscription, /Promise\.all\(ids\.map\(fetchOne\)\)/)
+
+  assert.match(subscription, /async function loadSubscriptionActorMeta\(sub\)/)
+  assert.match(subscription, /api\.getActress\(sub\.actress_id\)/)
+  assert.match(openSubSheetBlock, /loadSubscriptionActorMeta\(sub\)/)
+})
+
+test('subscription page uses list-level candidate counts instead of loading full new movie payloads', () => {
+  const totalNewMoviesBlock = subscription.match(/const totalNewMovies = computed\(\(\) => \{[\s\S]*?\n\}\)/)?.[0] || ''
+  const loadSubsBlock = subscription.match(/async function loadSubs\(\) \{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(totalNewMoviesBlock, /subs\.value\.reduce/)
+  assert.match(subscription, /sub\.candidate_count/)
+  assert.doesNotMatch(loadSubsBlock, /loadNewMovieBadges|api\.getNewMovies/)
+  assert.doesNotMatch(subscription, /api\.getNewMovies\(|function loadNewMovieBadges|newMovieMap/)
 })
 
 test('movie cards keep cover media free of quick actions', () => {
@@ -338,9 +380,28 @@ test('library organizer unifies inventory check duplicates and actor mapping', (
   assert.match(libraryOrganize, /checkLibrary/)
   assert.match(libraryOrganize, /listUnmappedActors/)
   assert.match(libraryOrganize, /triggerInventoryJob/)
-  assert.match(libraryOrganize, /getInventorySnapshotLatest/)
+  assert.match(libraryOrganize, /getLibraryOrganizeOverview/)
   assert.match(libraryOrganize, /goActorDetail/)
   assert.match(libraryOrganize, /actor_id/)
+  assert.doesNotMatch(libraryOrganize, /limit:\s*100000/)
+})
+
+test('downloads page summary uses the lightweight candidate summary endpoint', () => {
+  const summaryBlock = home.match(/async loadCandidateSummary\(\) \{[\s\S]*?\n    \},/)?.[0] || ''
+  const listBlock = home.match(/async loadCandidates\(\) \{[\s\S]*?\n    \},/)?.[0] || ''
+
+  assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)
+  assert.match(summaryBlock, /this\.candidateStats = resp\.data \|\| this\.candidateStats/)
+  assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
+  assert.doesNotMatch(listBlock, /resp\.data\.stats/)
+  assert.match(listBlock, /params\.include_stats = false/)
+})
+
+test('inventory page summary uses lightweight candidate counts instead of candidate rows', () => {
+  const summaryBlock = inventory.match(/const fetchMappingSummary = async \(\) => \{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', source: 'inventory' \}\)/)
+  assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
 })
 
 test('duplicates page renders duplicate groups from Emby snapshots', () => {
@@ -502,7 +563,7 @@ test('inline style cleanup keeps only dynamic previews in settings and genres', 
   assert.match(config, /preview-bubble[\s\S]*:style="previewBubbleStyle\(index\)"/)
   assert.doesNotMatch(config, /legendary-dot|rarity-color-input|rarity-thresholds/)
   assert.match(genres, /:style="cloudStyle"/)
-  assert.match(genres, /:style="bubbleStyle\(tag\)"/)
+  assert.match(genres, /:style="bubbleStyle\(tag, index\)"/)
 })
 
 test('appearance controls keep compact state without discovery material parsing', () => {

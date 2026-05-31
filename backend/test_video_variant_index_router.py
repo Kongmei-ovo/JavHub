@@ -27,6 +27,25 @@ class VideoVariantIndexRouterTest(TempPostgresMixin, unittest.TestCase):
         self.assertEqual(stats.status_code, 200)
         self.assertIn("group_count", stats.json())
 
+    def test_variant_index_stats_uses_short_response_cache_with_bypass(self):
+        client = create_router_test_client(router)
+
+        with patch("routers.video_variant_index.variant_group_stats", side_effect=[
+            {"group_count": 1, "item_count": 2},
+            {"group_count": 3, "item_count": 4},
+        ]) as stats:
+            first = client.get("/api/v1/video-variants/index/stats")
+            second = client.get("/api/v1/video-variants/index/stats")
+            bypassed = client.get("/api/v1/video-variants/index/stats?cache=0")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(bypassed.status_code, 200)
+        self.assertEqual(first.json()["group_count"], 1)
+        self.assertEqual(second.json()["group_count"], 1)
+        self.assertEqual(bypassed.json()["group_count"], 3)
+        self.assertEqual(stats.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
