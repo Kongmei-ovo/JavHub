@@ -116,6 +116,20 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
 })
 
+test('modal detail labels use inherited modal text tokens without uppercase tracking', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const sectionTitleBlock = source.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
+  const metaLabelBlock = source.match(/\.meta-label\s*\{[^}]*\}/)?.[0] || ''
+
+  assert.match(source, /--modal-text-muted:\s*rgba\(255,\s*255,\s*255,\s*0\.58\)/)
+  assert.match(sectionTitleBlock, /color:\s*var\(--modal-text-muted\)/)
+  assert.match(sectionTitleBlock, /letter-spacing:\s*0/)
+  assert.doesNotMatch(sectionTitleBlock, /text-transform:\s*uppercase/)
+  assert.match(metaLabelBlock, /color:\s*var\(--modal-text-muted\)/)
+  assert.match(metaLabelBlock, /letter-spacing:\s*0/)
+  assert.doesNotMatch(metaLabelBlock, /text-transform:\s*uppercase/)
+})
+
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
 

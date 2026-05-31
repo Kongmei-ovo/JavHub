@@ -40,22 +40,84 @@ export default {
 
 <style scoped>
 .modal-section { margin-top: 0; }
-.section-title { font-size: 12px; font-weight: 700; margin-bottom: 20px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.12em; }
-.magnets-list { display: flex; flex-direction: column; gap: 12px; }
-.magnet-item { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-lg); border: 1px solid rgba(255, 255, 255, 0.08); transition: var(--transition-pro); }
-.magnet-item:hover { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); }
-.magnet-info { display: flex; align-items: center; gap: 12px; }
-.magnet-badge { padding: 4px 10px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.15); font-size: 11px; font-weight: 700; border-radius: 6px; }
-.magnet-badge.hd { background: rgba(50, 215, 75, 0.15); color: #32D74B; border-color: rgba(50, 215, 75, 0.3); }
-.magnet-badge.sub { background: rgba(255, 159, 10, 0.15); color: #FF9F0A; border-color: rgba(255, 159, 10, 0.3); }
-.magnet-size { font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: var(--font-mono); }
-.magnet-actions { display: flex; gap: 12px; }
-.btn-copy { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 18px; border-radius: 40px; cursor: pointer; color: rgba(255, 255, 255, 0.8); font-size: 13px; transition: var(--transition-pro); }
-.btn-copy:hover { border-color: white; color: white; background: rgba(255, 255, 255, 0.1); }
-.btn-download { background: rgba(255, 255, 255, 0.9); color: #000; border: none; padding: 8px 24px; border-radius: 40px; cursor: pointer; font-size: 14px; font-weight: 600; transition: var(--transition-pro); }
-.btn-download:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2); }
-.no-magnets { text-align: center; padding: 32px; color: rgba(255, 255, 255, 0.3); font-size: 15px; border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: var(--radius-lg); }
-.skeleton { background: rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; border-radius: 8px; }
-.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
+.section-title { font-size: var(--type-caption); font-weight: 650; line-height: 1.3; margin-bottom: 14px; color: var(--modal-text-muted, var(--text-muted)); letter-spacing: 0; }
+.magnets-list { display: flex; flex-direction: column; gap: 10px; }
+.magnet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--material-glass-control);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-control-border);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+.magnet-item:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+.magnet-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.magnet-badge { padding: 4px 10px; background: var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid var(--badge-info-border); font-size: var(--type-micro); font-weight: 650; border-radius: var(--radius-sm); }
+.magnet-badge.hd { background: var(--badge-success-bg); color: var(--badge-success-text); border-color: var(--badge-success-border); }
+.magnet-badge.sub { background: var(--badge-warning-bg); color: var(--badge-warning-text); border-color: var(--badge-warning-border); }
+.magnet-size { font-size: var(--type-body); color: var(--text-muted); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.magnet-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-copy,
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--compact-toolbar-height);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  padding: 8px 18px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: var(--type-control);
+  font-weight: 600;
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+.btn-copy:hover,
+.btn-download:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+.btn-copy:active,
+.btn-download:active { transform: translateY(0) scale(0.98); }
+.btn-download { background: var(--glass-active-material); border-color: var(--active-border); }
+.btn-download:hover { background: var(--glass-active-material); }
+.no-magnets { text-align: center; padding: 28px; color: var(--text-muted); font-size: var(--type-body); border: 1px dashed var(--glass-control-border); border-radius: var(--radius-lg); background: var(--material-glass-control); box-shadow: var(--glass-control-shadow); }
+.skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+@media (max-width: 768px) {
+  .section-title { margin-bottom: 12px; }
+  .magnet-item {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+  .magnet-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .btn-copy,
+  .btn-download {
+    width: 100%;
+    padding-inline: 12px;
+  }
+}
 </style>
