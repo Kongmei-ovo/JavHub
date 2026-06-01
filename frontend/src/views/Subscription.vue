@@ -707,10 +707,16 @@ onMounted(loadSubs)
 .pill-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
 
 .pill-btn-primary {
-  background: var(--accent); color: var(--text-on-accent); border-color: transparent;
+  background: var(--glass-active-material); color: var(--text-primary); border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
 }
 
-.pill-btn-primary:hover { background: var(--accent-light); }
+.pill-btn-primary:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+}
 
 .empty-action {
   margin-top: 16px;
@@ -813,13 +819,16 @@ onMounted(loadSubs)
 .top-action-btn.danger { color: #FF375F; border-color: var(--subscription-danger-border); }
 .top-action-btn.danger:hover { background: var(--subscription-danger-bg); }
 .top-action-btn.primary {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border-color: transparent;
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
 }
 .top-action-btn.primary:hover {
-  background: var(--accent-light);
-  color: var(--text-on-accent);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .discover-sheet {
@@ -996,10 +1005,16 @@ onMounted(loadSubs)
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .action-btn.primary {
-  background: var(--accent); color: var(--text-on-accent); border-color: transparent;
+  background: var(--glass-active-material); color: var(--text-primary); border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
 }
 
-.action-btn.primary:hover { background: var(--accent-light); }
+.action-btn.primary:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+}
 
 /* ===== Sheet Transitions ===== */
 .sheet-enter-active { transition: opacity 0.3s ease; }

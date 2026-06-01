@@ -72,3 +72,22 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
   assert.match(sheetTopBarBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.doesNotMatch(sheetTopBarBlock, /rgba\(22,\s*22,\s*24,\s*0\.7\)|blur\(20px\)/)
 })
+
+test('subscription primary actions use active glass instead of solid accent fills', () => {
+  for (const selector of ['.pill-btn-primary', '.top-action-btn.primary', '.action-btn.primary']) {
+    const block = cssBlock(selector)
+    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${selector} should use active glass material`)
+    assert.match(block, /color:\s*var\(--text-primary\)/, `${selector} should keep text on glass`)
+    assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should use active glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${selector} should use active glass shadow`)
+    assert.doesNotMatch(block, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)|border-color:\s*transparent/, `${selector} should not keep legacy solid primary styles`)
+  }
+
+  for (const selector of ['.pill-btn-primary:hover', '.top-action-btn.primary:hover', '.action-btn.primary:hover']) {
+    const block = cssBlock(selector)
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${selector} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${selector} should use shared hover shadow`)
+    assert.doesNotMatch(block, /background:\s*var\(--accent-light\)|color:\s*var\(--text-on-accent\)/, `${selector} should not keep legacy solid hover styles`)
+  }
+})
