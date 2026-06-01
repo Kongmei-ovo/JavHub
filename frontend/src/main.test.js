@@ -19,3 +19,8 @@ test('frontend package no longer ships unused Element Plus dependencies', () => 
   assert.ok(!packageJson.dependencies?.['@element-plus/icons-vue'])
   assert.doesNotMatch(viteConfig, /element-plus|@element-plus/)
 })
+
+test('Vue app exposes the lightweight message proxy to options API pages', () => {
+  assert.match(source, /import\s+\{\s*ElMessage\s+\}\s+from\s+'\.\/utils\/message\.js'/)
+  assert.match(source, /app\.config\.globalProperties\.\$message\s*=\s*ElMessage/)
+})

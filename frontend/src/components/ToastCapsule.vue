@@ -28,6 +28,20 @@ defineEmits(['close', 'organize'])
 
 <style scoped>
 .toast-capsule {
+  --toast-sheet-bg: var(--material-glass-sheet);
+  --toast-sheet-border: var(--glass-control-border);
+  --toast-control-bg: var(--material-glass-control);
+  --toast-control-bg-hover: var(--material-glass-control-hover);
+  --toast-control-border: var(--glass-control-border);
+  --toast-control-border-hover: var(--glass-control-border-hover);
+  --toast-control-shadow: var(--glass-control-shadow);
+  --toast-control-shadow-hover: var(--glass-control-shadow-hover);
+  --toast-action-bg: var(--glass-active-material);
+  --toast-action-bg-hover: var(--material-glass-control-hover);
+  --toast-action-border: var(--glass-active-border);
+  --toast-action-border-hover: var(--glass-control-border-hover);
+  --toast-action-shadow: var(--glass-active-shadow);
+  --toast-action-text: var(--text-primary);
   position: fixed;
   bottom: 40px;
   left: 50%;
@@ -37,11 +51,11 @@ defineEmits(['close', 'organize'])
   align-items: center;
   gap: 12px;
   padding: 10px 10px 10px 20px;
-  background: var(--material-glass-sheet);
+  background: var(--toast-sheet-bg);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  border: 1px solid var(--border-light);
-  border-radius: 100px;
+  border: 1px solid var(--toast-sheet-border);
+  border-radius: var(--radius-control);
   box-shadow: var(--shadow-sheet);
   min-width: 240px;
   max-width: 90vw;
@@ -65,52 +79,58 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-action {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: none;
+  background: var(--toast-action-bg);
+  color: var(--toast-action-text);
+  border: 1px solid var(--toast-action-border);
   padding: 6px 14px;
-  border-radius: 100px;
+  border-radius: var(--radius-control);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: var(--transition-pro);
+  box-shadow: var(--toast-action-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
 }
 
 .toast-action:hover {
-  background: var(--accent-light);
-  transform: scale(1.05);
+  background: var(--toast-action-bg-hover);
+  border-color: var(--toast-action-border-hover);
+  box-shadow: var(--toast-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .toast-close {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--surface-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--toast-control-bg);
+  border: 1px solid var(--toast-control-border);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: var(--transition-pro);
-  box-shadow: var(--glass-control-shadow);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  box-shadow: var(--toast-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .toast-close:hover {
-  background: var(--surface-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--toast-control-bg-hover);
+  border-color: var(--toast-control-border-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--toast-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 /* Animations */
 .toast-slide-enter-active {
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--motion-standard), transform var(--motion-standard);
 }
 .toast-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--motion-standard), transform var(--motion-standard);
 }
 .toast-slide-enter-from {
   opacity: 0;

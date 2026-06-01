@@ -1,0 +1,57 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+
+const source = readFileSync(new URL('./ToastCapsule.vue', import.meta.url), 'utf8')
+
+function sourceBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
+test('toast capsule uses shared Apple glass sheet and controls', () => {
+  const capsuleBlock = sourceBlock('.toast-capsule')
+  const actionBlock = sourceBlock('.toast-action')
+  const actionHoverBlock = sourceBlock('.toast-action:hover')
+  const closeBlock = sourceBlock('.toast-close')
+  const closeHoverBlock = sourceBlock('.toast-close:hover')
+  const enterBlock = sourceBlock('.toast-slide-enter-active')
+  const leaveBlock = sourceBlock('.toast-slide-leave-active')
+
+  assert.match(source, /--toast-sheet-bg:\s*var\(--material-glass-sheet\)/)
+  assert.match(source, /--toast-control-bg:\s*var\(--material-glass-control\)/)
+  assert.match(source, /--toast-action-bg:\s*var\(--glass-active-material\)/)
+
+  assert.match(capsuleBlock, /background:\s*var\(--toast-sheet-bg\)/)
+  assert.match(capsuleBlock, /border:\s*1px solid var\(--toast-sheet-border\)/)
+  assert.match(capsuleBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
+  assert.match(capsuleBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+
+  assert.match(actionBlock, /background:\s*var\(--toast-action-bg\)/)
+  assert.match(actionBlock, /border:\s*1px solid var\(--toast-action-border\)/)
+  assert.match(actionBlock, /box-shadow:\s*var\(--toast-action-shadow\)/)
+  assert.match(actionBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(actionBlock, /background:\s*var\(--accent\)|border:\s*none|transition:\s*var\(--transition-pro\)/)
+
+  assert.match(actionHoverBlock, /background:\s*var\(--toast-action-bg-hover\)/)
+  assert.match(actionHoverBlock, /border-color:\s*var\(--toast-action-border-hover\)/)
+  assert.match(actionHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
+
+  assert.match(closeBlock, /background:\s*var\(--toast-control-bg\)/)
+  assert.match(closeBlock, /border:\s*1px solid var\(--toast-control-border\)/)
+  assert.match(closeBlock, /box-shadow:\s*var\(--toast-control-shadow\)/)
+  assert.match(closeBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(closeBlock, /background:\s*var\(--surface-control\)|transition:\s*var\(--transition-pro\)/)
+
+  assert.match(closeHoverBlock, /background:\s*var\(--toast-control-bg-hover\)/)
+  assert.match(closeHoverBlock, /border-color:\s*var\(--toast-control-border-hover\)/)
+  assert.match(closeHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
+  assert.doesNotMatch(closeHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+
+  for (const block of [enterBlock, leaveBlock]) {
+    assert.doesNotMatch(block, /transition:\s*all\b|var\(--transition-pro\)/)
+    assert.match(block, /transition:\s*opacity var\(--motion-standard\),\s*transform var\(--motion-standard\)/)
+  }
+})
