@@ -19,6 +19,16 @@ defineEmits(['action'])
 
 <style scoped>
 .apple-empty-state {
+  --apple-state-orb-bg: var(--material-glass-control);
+  --apple-state-orb-border: var(--glass-control-border);
+  --apple-state-orb-shadow: var(--glass-control-shadow);
+  --apple-state-action-bg: var(--glass-active-material);
+  --apple-state-action-bg-hover: var(--material-glass-control-hover);
+  --apple-state-action-border: var(--glass-active-border);
+  --apple-state-action-border-hover: var(--glass-control-border-hover);
+  --apple-state-action-shadow: var(--glass-active-shadow);
+  --apple-state-action-shadow-hover: var(--glass-control-shadow-hover);
+  --apple-state-action-text: var(--text-primary);
   max-width: 460px;
   margin: 48px auto;
   padding: 38px 32px;
@@ -31,11 +41,9 @@ defineEmits(['action'])
   height: 56px;
   margin: 0 auto 18px;
   border-radius: 20px;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb), 0.18), transparent 42%),
-    var(--surface-control);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--apple-state-orb-bg);
+  border: 1px solid var(--apple-state-orb-border);
+  box-shadow: var(--apple-state-orb-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -57,15 +65,20 @@ p {
   min-height: var(--touch-target);
   padding: 0 18px;
   border-radius: var(--radius-control);
-  border: 1px solid transparent;
-  background: var(--accent);
-  color: var(--text-on-accent);
+  border: 1px solid var(--apple-state-action-border);
+  background: var(--apple-state-action-bg);
+  color: var(--apple-state-action-text);
+  box-shadow: var(--apple-state-action-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
 }
 
 .empty-action:hover {
   transform: translateY(-1px);
-  background: var(--accent-light);
+  background: var(--apple-state-action-bg-hover);
+  border-color: var(--apple-state-action-border-hover);
+  box-shadow: var(--apple-state-action-shadow-hover);
 }
 </style>

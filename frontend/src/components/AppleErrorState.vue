@@ -30,6 +30,13 @@ defineEmits(['retry'])
 
 <style scoped>
 .apple-error-state {
+  --apple-state-action-bg: var(--glass-active-material);
+  --apple-state-action-bg-hover: var(--material-glass-control-hover);
+  --apple-state-action-border: var(--glass-active-border);
+  --apple-state-action-border-hover: var(--glass-control-border-hover);
+  --apple-state-action-shadow: var(--glass-active-shadow);
+  --apple-state-action-shadow-hover: var(--glass-control-shadow-hover);
+  --apple-state-action-text: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -63,16 +70,21 @@ button {
   min-height: var(--touch-target);
   padding: 0 14px;
   border-radius: var(--radius-control);
-  border: 1px solid transparent;
-  background: var(--accent);
-  color: var(--text-on-accent);
+  border: 1px solid var(--apple-state-action-border);
+  background: var(--apple-state-action-bg);
+  color: var(--apple-state-action-text);
+  box-shadow: var(--apple-state-action-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
 }
 
 button:hover {
   transform: translateY(-1px);
-  background: var(--accent-light);
+  background: var(--apple-state-action-bg-hover);
+  border-color: var(--apple-state-action-border-hover);
+  box-shadow: var(--apple-state-action-shadow-hover);
 }
 
 button:disabled {
