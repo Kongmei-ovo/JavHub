@@ -1207,23 +1207,33 @@ export default {
   min-height: 32px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition-pro);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .variant-expand-btn:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
+}
+
+.variant-expand-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.variant-expand-btn:focus-visible,
+.variant-inline-item:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.14);
 }
 
 .variant-inline-list {
@@ -1241,21 +1251,25 @@ export default {
   padding: 6px 8px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .variant-inline-item:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   color: var(--text-primary);
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.variant-inline-item:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .variant-inline-code {

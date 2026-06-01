@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
 
+function sourceBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('search page requests grouped variants with explanations by default', () => {
   assert.match(source, /variant_mode:\s*'grouped'/)
   assert.match(source, /include_variant_explanations:\s*1/)
@@ -31,11 +38,9 @@ test('search cards pass backend display code and variant labels into MovieCard',
 })
 
 test('search filter chrome uses shared liquid glass controls without uppercase microcopy', () => {
-  const sortLabelBlock = source.match(/\.sort-strip-label\s*\{[^}]*\}/)?.[0] || ''
-  const panelLabelBlock = source.match(/\.panel-field label\s*\{[^}]*\}/)?.[0] || ''
-  const appliedChipBlock = source.match(/\.applied-chip\s*\{[^}]*\}/)?.[0] || ''
-  const variantButtonBlock = source.match(/\.variant-expand-btn\s*\{[^}]*\}/)?.[0] || ''
-  const variantRowBlock = source.match(/\.variant-inline-item\s*\{[^}]*\}/)?.[0] || ''
+  const sortLabelBlock = sourceBlock('.sort-strip-label')
+  const panelLabelBlock = sourceBlock('.panel-field label')
+  const appliedChipBlock = sourceBlock('.applied-chip')
   const mobileBlock = source.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
 
   assert.match(sortLabelBlock, /letter-spacing:\s*0/)
@@ -45,11 +50,33 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   assert.match(appliedChipBlock, /background:\s*var\(--surface-control\)/)
   assert.match(appliedChipBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(appliedChipBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(variantButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(variantButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(variantRowBlock, /background:\s*var\(--surface-control\)/)
-  assert.match(variantRowBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(variantRowBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
   assert.match(mobileBlock, /\.variant-inline-item\s*\{[\s\S]*grid-template-columns:\s*1fr/)
   assert.doesNotMatch(source, /\.variant-inline-item\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.04\)/)
+})
+
+test('search inline variant controls use shared glass materials and explicit motion', () => {
+  const variantButtonBlock = sourceBlock('.variant-expand-btn')
+  const variantButtonHoverBlock = sourceBlock('.variant-expand-btn:hover')
+  const variantButtonActiveBlock = sourceBlock('.variant-expand-btn:active')
+  const variantRowBlock = sourceBlock('.variant-inline-item')
+  const variantRowHoverBlock = sourceBlock('.variant-inline-item:hover')
+
+  for (const [block, name] of [[variantButtonBlock, 'variant button'], [variantRowBlock, 'variant row']]) {
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat controls`)
+  }
+
+  for (const [block, name] of [[variantButtonHoverBlock, 'variant button hover'], [variantRowHoverBlock, 'variant row hover']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lightly lift`)
+  }
+
+  assert.match(variantButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.doesNotMatch(source, /\.variant-expand-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
 })

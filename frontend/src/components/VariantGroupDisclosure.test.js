@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./VariantGroupDisclosure.vue', import.meta.url), 'utf8')
 
+function sourceBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('VariantGroupDisclosure declares the required props and emits', () => {
   assert.match(source, /variantGroupCount/)
   assert.match(source, /variantGroupItems/)
@@ -25,4 +32,31 @@ test('VariantGroupDisclosure renders backend-provided variant rows without fetch
   assert.match(source, /\$emit\('openVariant', variant\)/)
   assert.doesNotMatch(source, /api\./)
   assert.doesNotMatch(source, /openVideoModal/)
+})
+
+test('VariantGroupDisclosure uses shared glass control materials and explicit motion', () => {
+  const toggleBlock = sourceBlock('.variant-group-disclosure__toggle')
+  const toggleHoverBlock = sourceBlock('.variant-group-disclosure__toggle:hover')
+  const toggleActiveBlock = sourceBlock('.variant-group-disclosure__toggle:active')
+  const rowBlock = sourceBlock('.variant-group-disclosure__row')
+  const rowHoverBlock = sourceBlock('.variant-group-disclosure__row:hover')
+
+  for (const [block, name] of [[toggleBlock, 'toggle'], [rowBlock, 'row']]) {
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|rgba\(255,\s*255,\s*255,\s*0\.04\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat surfaces`)
+  }
+
+  for (const [block, name] of [[toggleHoverBlock, 'toggle hover'], [rowHoverBlock, 'row hover']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should add light lift`)
+  }
+
+  assert.match(toggleActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.doesNotMatch(source, /transition:\s*var\(--transition-pro\)/)
 })

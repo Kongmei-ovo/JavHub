@@ -74,18 +74,33 @@ function variantKey(variant) {
   min-height: 32px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition-pro);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .variant-group-disclosure__toggle:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.variant-group-disclosure__toggle:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.variant-group-disclosure__toggle:focus-visible,
+.variant-group-disclosure__row:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.14);
 }
 
 .variant-group-disclosure__list {
@@ -101,17 +116,28 @@ function variantKey(variant) {
   gap: 8px;
   min-height: 34px;
   padding: 6px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .variant-group-disclosure__row:hover {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.variant-group-disclosure__row:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .variant-group-disclosure__code {
