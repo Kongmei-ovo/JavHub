@@ -154,6 +154,41 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
   }
 })
 
+test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const overlayBlock = sourceBlock(source, '.gallery-lightbox')
+  const imageBlock = sourceBlock(source, '.lightbox-img')
+  const counterBlock = sourceBlock(source, '.lightbox-counter')
+  const closeBlock = sourceBlock(source, '.lightbox-close')
+  const navBlock = sourceBlock(source, '.lightbox-prev, .lightbox-next')
+
+  assert.match(source, /--modal-lightbox-bg:\s*var\(--surface-scrim,\s*var\(--scrim\)\)/)
+  assert.match(source, /--modal-lightbox-image-shadow:\s*var\(--shadow-sheet\)/)
+  assert.match(overlayBlock, /background:\s*var\(--modal-lightbox-bg\)/)
+  assert.match(overlayBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(overlayBlock, /-webkit-backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(overlayBlock, /transition:\s*opacity var\(--motion-standard\),\s*backdrop-filter var\(--motion-standard\)/)
+  assert.doesNotMatch(overlayBlock, /rgba\(0,\s*0,\s*0,\s*0\.95\)|blur\(20px\)|transition:\s*var\(--transition-pro\)/)
+
+  assert.match(imageBlock, /box-shadow:\s*var\(--modal-lightbox-image-shadow\)/)
+  assert.match(imageBlock, /border:\s*1px solid var\(--modal-lightbox-border\)/)
+  assert.doesNotMatch(imageBlock, /0 20px 80px rgba\(0,\s*0,\s*0,\s*0\.8\)/)
+
+  assert.match(counterBlock, /background:\s*var\(--modal-chip-bg\)/)
+  assert.match(counterBlock, /border:\s*1px solid var\(--modal-chip-border\)/)
+  assert.match(counterBlock, /box-shadow:\s*var\(--modal-chip-shadow\)/)
+  assert.match(counterBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(counterBlock, /letter-spacing:\s*0/)
+  assert.match(counterBlock, /color:\s*var\(--modal-chip-color\)/)
+  assert.doesNotMatch(counterBlock, /rgba\(255,\s*255,\s*255,\s*0\.5\)|letter-spacing:\s*0\.1em/)
+
+  for (const block of [closeBlock, navBlock]) {
+    assert.match(block, /color:\s*var\(--modal-chip-color\)/)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+    assert.doesNotMatch(block, /color:\s*#fff|transition:\s*var\(--transition-pro\)/)
+  }
+})
+
 test('modal detail labels use inherited modal text tokens without uppercase tracking', () => {
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const sectionTitleBlock = source.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''

@@ -615,6 +615,9 @@ export default {
   --modal-chip-muted: rgba(255, 255, 255, 0.46);
   --modal-chip-shadow: var(--glass-control-shadow);
   --modal-chip-shadow-hover: var(--glass-control-shadow-hover);
+  --modal-lightbox-bg: var(--surface-scrim, var(--scrim));
+  --modal-lightbox-border: var(--glass-control-border);
+  --modal-lightbox-image-shadow: var(--shadow-sheet);
   position: fixed;
   inset: 0;
   background: var(--modal-overlay-bg);
@@ -817,17 +820,17 @@ export default {
 .skeleton-line { height: 16px; margin-bottom: 12px; width: 100%; }
 .w-60 { width: 60% !important; }
 .w-80 { width: 80% !important; }
-.gallery-lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); display: flex; align-items: center; justify-content: center; z-index: var(--z-lightbox); animation: lightbox-in 0.3s var(--ease-pro); backdrop-filter: blur(20px); }
-@keyframes lightbox-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; backdrop-filter: blur(20px); } }
+.gallery-lightbox { position: fixed; inset: 0; background: var(--modal-lightbox-bg); display: flex; align-items: center; justify-content: center; z-index: var(--z-lightbox); animation: lightbox-in 0.3s var(--ease-pro); transition: opacity var(--motion-standard), backdrop-filter var(--motion-standard); backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface)); -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface)); }
+@keyframes lightbox-in { from { opacity: 0; backdrop-filter: blur(0) saturate(1); -webkit-backdrop-filter: blur(0) saturate(1); } to { opacity: 1; backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface)); -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface)); } }
 .lightbox-img-wrap { max-width: 95vw; max-height: 90vh; display: flex; align-items: center; justify-content: center; }
-.lightbox-img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); }
-.lightbox-close { position: absolute; top: 32px; right: 32px; background: var(--modal-chip-bg); border: var(--stroke-pro) solid var(--modal-chip-border); width: 48px; height: 48px; border-radius: 50%; font-size: 28px; color: #fff; cursor: pointer; transition: var(--transition-pro); z-index: 2; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.lightbox-img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: var(--radius-lg); border: 1px solid var(--modal-lightbox-border); box-shadow: var(--modal-lightbox-image-shadow); }
+.lightbox-close { position: absolute; top: 32px; right: 32px; background: var(--modal-chip-bg); border: var(--stroke-pro) solid var(--modal-chip-border); width: 48px; height: 48px; border-radius: 50%; font-size: 28px; color: var(--modal-chip-color); cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast); z-index: 2; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .lightbox-close:hover { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); box-shadow: var(--modal-chip-shadow-hover); transform: scale(1.1); }
-.lightbox-prev, .lightbox-next { position: absolute; top: 50%; transform: translateY(-50%); background: var(--modal-chip-bg); border: 1px solid var(--modal-chip-border); width: 60px; height: 100px; font-size: 40px; color: #fff; cursor: pointer; transition: var(--transition-pro); display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.lightbox-prev, .lightbox-next { position: absolute; top: 50%; transform: translateY(-50%); background: var(--modal-chip-bg); border: 1px solid var(--modal-chip-border); width: 60px; height: 100px; font-size: 40px; color: var(--modal-chip-color); cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast); display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .lightbox-prev { left: 32px; } .lightbox-next { right: 32px; }
 .lightbox-prev:hover, .lightbox-next:hover { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); box-shadow: var(--modal-chip-shadow-hover); }
 .lightbox-prev:disabled, .lightbox-next:disabled { opacity: 0.1; cursor: not-allowed; }
-.lightbox-counter { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 15px; letter-spacing: 0.1em; font-family: var(--font-mono); }
+.lightbox-counter { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); background: var(--modal-chip-bg); border: 1px solid var(--modal-chip-border); border-radius: var(--radius-control); color: var(--modal-chip-color); font-size: 15px; letter-spacing: 0; font-family: var(--font-mono); padding: 8px 14px; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .stream-actions { margin-top: 12px; }
 .favorite-btn,
 .stream-download-btn {
