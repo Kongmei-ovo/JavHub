@@ -371,20 +371,24 @@ a:hover {
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--glass-control-border);
-  transition: background 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
   outline: none;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 .btn-primary {
-  background: var(--accent);
-  border-color: rgba(var(--accent-rgb), 0.24);
-  color: var(--text-on-accent);
-  box-shadow: none;
+  background: var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .btn-primary:hover {
-  background: var(--accent-light);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .btn-ghost {
   background: var(--material-glass-control);
