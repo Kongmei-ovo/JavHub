@@ -118,3 +118,45 @@ test('search pagination controls use shared glass materials and explicit motion'
   assert.match(jumpInputFocusBlock, /background:\s*var\(--material-glass-control-hover\)/)
   assert.doesNotMatch(source, /\.page-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-input\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
 })
+
+test('search primary action buttons use active glass instead of solid accent fills', () => {
+  const capsuleButtonBlock = sourceBlock('.capsule-search-btn')
+  const capsuleButtonHoverBlock = sourceBlock('.capsule-search-btn:hover')
+  const capsuleButtonActiveBlock = sourceBlock('.capsule-search-btn:active')
+  const clearButtonBlock = sourceBlock('.btn-clear')
+  const clearButtonHoverBlock = sourceBlock('.btn-clear:hover')
+  const clearButtonActiveBlock = sourceBlock('.btn-clear:active')
+  const applyButtonBlock = sourceBlock('.btn-apply')
+  const applyButtonHoverBlock = sourceBlock('.btn-apply:hover')
+  const applyButtonActiveBlock = sourceBlock('.btn-apply:active')
+
+  for (const [block, name] of [[capsuleButtonBlock, 'capsule search button'], [applyButtonBlock, 'apply button']]) {
+    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${name} should use active glass material`)
+    assert.match(block, /border:\s*1px solid var\(--glass-active-border\)/, `${name} should use active glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
+    assert.match(block, /color:\s*var\(--text-primary\)/, `${name} should keep text on glass, not accent fill`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.doesNotMatch(block, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)|border:\s*none|transition:\s*all\b|box-shadow:\s*none/, `${name} should not keep the legacy solid primary`)
+  }
+
+  assert.match(clearButtonBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(clearButtonBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(clearButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(clearButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(clearButtonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(clearButtonBlock, /background:\s*var\(--surface-control\)|transition:\s*all\b/)
+
+  for (const [block, name] of [[capsuleButtonHoverBlock, 'capsule hover'], [clearButtonHoverBlock, 'clear hover'], [applyButtonHoverBlock, 'apply hover']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+  }
+
+  assert.match(capsuleButtonHoverBlock, /transform:\s*translateY\(-1px\)\s*scale\(1\.02\)/)
+  assert.match(clearButtonHoverBlock, /transform:\s*translateY\(-1px\)/)
+  assert.match(applyButtonHoverBlock, /transform:\s*translateY\(-1px\)/)
+  assert.match(capsuleButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.96\)/)
+  assert.match(clearButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(applyButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+})

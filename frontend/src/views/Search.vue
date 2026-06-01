@@ -758,29 +758,32 @@ export default {
 }
 
 .capsule-search-btn {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: none;
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-active-border);
   border-radius: 50%;
   width: 44px;
   height: 44px;
   padding: 0;
   cursor: pointer;
-  transition: all 0.3s var(--ease-pro);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: none;
+  box-shadow: var(--glass-active-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .capsule-search-btn:hover {
-  background: var(--accent-light);
-  transform: scale(1.04);
-  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .capsule-search-btn:active {
-  transform: scale(0.9);
+  transform: translateY(0) scale(0.96);
 }
 
 /* 筛选盘 (Filter Tray) */
@@ -1134,43 +1137,55 @@ export default {
 }
 
 .btn-clear {
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 10px 24px;
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s var(--ease-pro);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .btn-clear:hover {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   color: var(--text-primary);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.btn-clear:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .btn-apply {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: none;
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-active-border);
   padding: 10px 36px;
   border-radius: var(--radius-control);
   font-weight: 650;
   cursor: pointer;
   font-size: 14px;
-  box-shadow: none;
-  transition: all 0.3s var(--ease-pro);
+  box-shadow: var(--glass-active-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .btn-apply:hover {
   transform: translateY(-1px);
-  background: var(--accent-light);
-  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.18);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.btn-apply:active {
+  transform: translateY(0) scale(0.99);
 }
 
 /* 极速响应动效 */
