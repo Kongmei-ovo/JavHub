@@ -2,6 +2,7 @@ import logging
 import sys
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from database import init_db
 from config import config as _cfg
@@ -95,6 +96,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(RequestTimingMiddleware, slow_request_ms=500)
 
 # 速率限制中间件

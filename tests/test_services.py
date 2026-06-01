@@ -42,6 +42,82 @@ def test_services_render_plists_injects_javinfo_source_proxy(tmp_path):
     assert "<string>http://127.0.0.1:1082</string>" in contents
 
 
+def test_services_render_plists_serves_frontend_preview_on_public_port(tmp_path):
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "render-plists"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    frontend_plist = home_dir / "Library" / "LaunchAgents" / "com.kongmei.javhub.frontend.plist"
+    contents = frontend_plist.read_text()
+    assert "<string>preview</string>" in contents
+    assert "<string>--host</string>" in contents
+    assert "<string>0.0.0.0</string>" in contents
+    assert "<string>--port</string>" in contents
+    assert "<string>5174</string>" in contents
+    assert "<string>dev</string>" not in contents
+
+
+def test_services_restart_frontend_builds_before_kickstart(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    npm_log = tmp_path / "npm.log"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "npm",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$NPM_LOG\"\n"
+        "exit 0\n",
+    )
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "restart", "frontend"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "NPM_LOG": str(npm_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert npm_log.read_text().splitlines() == ["run build"]
+    launchctl_calls = launchctl_log.read_text()
+    assert "bootout gui/" in launchctl_calls
+    assert "bootstrap gui/" in launchctl_calls
+    assert "kickstart -k gui/" in launchctl_calls
+
+
 def test_services_status_prints_http_health_summary(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()

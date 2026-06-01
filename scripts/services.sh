@@ -182,7 +182,12 @@ EOF
   <array>
     <string>/opt/homebrew/bin/npm</string>
     <string>run</string>
-    <string>dev</string>
+    <string>preview</string>
+    <string>--</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--port</string>
+    <string>5174</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${ROOT_DIR}/frontend</string>
@@ -206,6 +211,13 @@ EOF
   if command -v plutil >/dev/null 2>&1; then
     plutil -lint "${JAVINFO_PLIST}" "${BACKEND_PLIST}" "${FRONTEND_PLIST}" >/dev/null
   fi
+}
+
+build_frontend() {
+  if [[ "${JAVHUB_SKIP_FRONTEND_BUILD:-0}" == "1" ]]; then
+    return
+  fi
+  (cd "${ROOT_DIR}/frontend" && npm run build)
 }
 
 is_loaded() {
@@ -237,6 +249,15 @@ bootstrap_label() {
 kickstart_label() {
   local label="$1"
   bootstrap_label "${label}"
+  launchctl kickstart -k "gui/${UID_VALUE}/${label}" >/dev/null
+}
+
+restart_label() {
+  local label="$1"
+  local plist
+  plist="$(plist_for_label "${label}")"
+  stop_label "${label}"
+  launchctl bootstrap "gui/${UID_VALUE}" "${plist}" 2>/dev/null || true
   launchctl kickstart -k "gui/${UID_VALUE}/${label}" >/dev/null
 }
 
@@ -290,6 +311,9 @@ ensure_services() {
   while IFS= read -r label; do
     bootstrap_label "${label}"
     if ! is_running "${label}"; then
+      if [[ "${label}" == "${FRONTEND_LABEL}" ]]; then
+        build_frontend
+      fi
       launchctl kickstart "gui/${UID_VALUE}/${label}" >/dev/null 2>&1 || true
     fi
   done < <(all_labels)
@@ -340,15 +364,19 @@ restart_services() {
   fi
   if [[ $# -eq 0 ]]; then
     write_plists
+    build_frontend
     while IFS= read -r label; do
-      kickstart_label "${label}"
+      restart_label "${label}"
     done < <(all_labels)
     return
   fi
   local label
   label="$(label_for_service "$1")" || return $?
   write_plists
-  kickstart_label "${label}"
+  if [[ "${label}" == "${FRONTEND_LABEL}" ]]; then
+    build_frontend
+  fi
+  restart_label "${label}"
 }
 
 stop_services() {
