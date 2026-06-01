@@ -343,8 +343,12 @@ function emitSubscribe() {
 
 .actor-portrait-card__action {
   margin-top: 4px;
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .actor-portrait-card--compact {

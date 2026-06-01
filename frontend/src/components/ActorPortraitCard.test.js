@@ -11,6 +11,13 @@ function cssRule(selector) {
   return match[1]
 }
 
+function exactCssRule(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const matches = Array.from(source.matchAll(new RegExp(`\\n${escaped} \\{([\\s\\S]*?)\\n\\}`, 'g')))
+  assert.ok(matches.length, `Expected exact CSS rule for ${selector}`)
+  return matches[matches.length - 1][1]
+}
+
 test('ActorPortraitCard exposes the planned public interface', () => {
   assert.match(source, /defineProps\(/)
   for (const prop of [
@@ -78,7 +85,15 @@ test('ActorPortraitCard supports badges and action label for reused actor flows'
   assert.match(source, /v-for="badge in normalizedBadges"/)
   assert.match(source, /actor-portrait-card__badge--/)
   assert.match(source, /actionLabel/)
+  const actionRule = exactCssRule('.actor-portrait-card__action')
+
   assert.match(source, /actor-portrait-card__action/)
+  assert.match(actionRule, /background:\s*var\(--glass-active-material\)/)
+  assert.match(actionRule, /color:\s*var\(--text-primary\)/)
+  assert.match(actionRule, /border:\s*1px solid var\(--glass-active-border\)/)
+  assert.match(actionRule, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.match(actionRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(actionRule, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)/)
 })
 
 test('ActorPortraitCard suppresses duplicate subtitle text', () => {
