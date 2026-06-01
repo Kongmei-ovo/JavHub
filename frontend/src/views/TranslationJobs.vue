@@ -1363,7 +1363,11 @@ export default {
   gap: 3px;
   padding: 3px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .segmented-control button {
@@ -1379,14 +1383,14 @@ export default {
 }
 
 .segmented-control button:hover {
-  background: var(--accent-bg);
+  background: var(--surface-control-hover);
   color: var(--text-primary);
 }
 
 .segmented-control button.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--glass-active-material);
   color: var(--text-primary);
-  box-shadow: inset 0 0 0 1px var(--border-light), 0 4px 12px var(--black-20);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .workspace-panel {
@@ -1438,9 +1442,12 @@ export default {
 .metadata-overview,
 .signal-card,
 .job-control-card {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .coverage-hero {
@@ -1706,7 +1713,7 @@ export default {
 }
 
 .job-control-card.empty {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--material-glass-subtle);
 }
 
 .job-control-head,
@@ -1754,8 +1761,10 @@ export default {
   display: grid;
   align-content: center;
   gap: 5px;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .job-control-metrics span,
@@ -1875,9 +1884,12 @@ export default {
   padding: 10px 12px;
   display: grid;
   gap: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .notice-row strong {
@@ -1906,18 +1918,22 @@ export default {
   width: 100%;
   min-height: 40px;
   padding: 8px 11px;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-control);
   color: var(--text-primary);
   outline: none;
   font: inherit;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .input:focus {
-  border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-input-focus);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .input:disabled {
@@ -1949,9 +1965,12 @@ export default {
 .boxed {
   min-height: 40px;
   padding: 8px 11px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .provider-list {
@@ -1990,11 +2009,12 @@ export default {
   min-height: 26px;
   padding: 4px 9px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
+  box-shadow: var(--glass-inner-shadow);
   white-space: nowrap;
 }
 
@@ -2044,7 +2064,7 @@ export default {
 
 .status-invalid {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--material-glass-subtle);
 }
 
 .panel-footer-actions {
@@ -2126,9 +2146,12 @@ export default {
 .review-stats div {
   min-height: 50px;
   padding: 9px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .review-stats strong {
@@ -2307,10 +2330,13 @@ export default {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-control-border);
+  background: var(--surface-control);
   color: var(--text-secondary);
   font-size: 12px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .message-line.success {

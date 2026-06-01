@@ -12,6 +12,7 @@ const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.m
 const actor = readFileSync(new URL('../views/Actor.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8')
+const translationJobs = readFileSync(new URL('../views/TranslationJobs.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
@@ -135,4 +136,40 @@ test('home dashboard metrics use shared liquid glass controls', () => {
 
   assert.match(mobileBlock, /\.candidate-overview\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
   assert.match(mobileBlock, /\.candidate-metric\s*\{[\s\S]*min-width:\s*0/)
+})
+
+test('translation jobs workbench surfaces use shared Apple glass controls', () => {
+  const segmentedBlock = sourceBlock(translationJobs, '.segmented-control')
+  const segmentedActiveBlock = sourceBlock(translationJobs, '.segmented-control button.active')
+  const overviewSurfaceBlock = translationJobs.match(/\.coverage-hero,\n\.metadata-overview,\n\.signal-card,\n\.job-control-card\s*\{([\s\S]*?)\n\}/)?.[1] || ''
+  const inputBlock = sourceBlock(translationJobs, '.input')
+  const inputFocusBlock = sourceBlock(translationJobs, '.input:focus')
+  const noticeBlock = sourceBlock(translationJobs, '.notice-row')
+  const reviewStatsBlock = sourceBlock(translationJobs, '.review-stats div')
+
+  assert.match(segmentedBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(segmentedBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(segmentedBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(segmentedBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(segmentedActiveBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(segmentedActiveBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(segmentedBlock, /rgba\(255,\s*255,\s*255,\s*0\.045\)/)
+  assert.doesNotMatch(segmentedActiveBlock, /rgba\(255,\s*255,\s*255,\s*0\.12\)/)
+
+  assert.match(overviewSurfaceBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(overviewSurfaceBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(overviewSurfaceBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(overviewSurfaceBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.doesNotMatch(overviewSurfaceBlock, /var\(--border\)|rgba\(255,\s*255,\s*255,\s*0\.035\)/)
+
+  for (const block of [inputBlock, noticeBlock, reviewStatsBlock]) {
+    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255,\s*0\.0[345]\)|var\(--border\)/)
+  }
+
+  assert.match(inputFocusBlock, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
 })
