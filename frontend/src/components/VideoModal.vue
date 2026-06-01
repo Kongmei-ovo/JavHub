@@ -607,6 +607,14 @@ export default {
   --modal-action-color: var(--text-primary);
   --modal-action-shadow: var(--glass-control-shadow);
   --modal-action-shadow-hover: var(--glass-control-shadow-hover);
+  --modal-chip-bg: var(--material-glass-control);
+  --modal-chip-bg-hover: var(--material-glass-control-hover);
+  --modal-chip-border: var(--glass-control-border);
+  --modal-chip-border-hover: var(--glass-control-border-hover);
+  --modal-chip-color: rgba(255, 255, 255, 0.82);
+  --modal-chip-muted: rgba(255, 255, 255, 0.46);
+  --modal-chip-shadow: var(--glass-control-shadow);
+  --modal-chip-shadow-hover: var(--glass-control-shadow-hover);
   position: fixed;
   inset: 0;
   background: var(--modal-overlay-bg);
@@ -669,8 +677,8 @@ export default {
   position: absolute;
   top: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--modal-chip-bg);
+  border: 1px solid var(--modal-chip-border);
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -678,13 +686,16 @@ export default {
   cursor: pointer;
   color: white;
   z-index: 10;
+  box-shadow: var(--modal-chip-shadow);
   transition: var(--transition-pro);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--modal-chip-bg-hover);
+  border-color: var(--modal-chip-border-hover);
+  box-shadow: var(--modal-chip-shadow-hover);
   transform: scale(1.1) rotate(90deg);
 }
 
@@ -783,17 +794,17 @@ export default {
 .actress-list { display: flex; flex-wrap: wrap; gap: 20px; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
 .actress-avatar-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
-.actress-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.15); transition: var(--transition-pro); }
-.actress-avatar-item:hover .actress-avatar { border-color: rgba(255, 255, 255, 0.6); transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+.actress-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: var(--transition-pro); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.actress-avatar-item:hover .actress-avatar { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); transform: translateY(-4px); box-shadow: var(--modal-chip-shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; font-size: 24px; color: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); }
+.avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--modal-chip-muted); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .actress-name { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: rgba(255, 255, 255, 0.8); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; transition: color 0.2s; }
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-name .name-translated { font-size: 11px; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-avatar-item:hover .actress-name { color: #ffffff; }
-.actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: rgba(255, 255, 255, 0.08); border-radius: 40px; font-size: 13px; color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); transition: var(--transition-pro); text-align: center; }
+.actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: var(--modal-chip-bg); border-radius: 40px; font-size: 13px; color: var(--modal-chip-color); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: var(--transition-pro); text-align: center; backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .actress-tag.clickable { text-decoration: none; text-decoration-color: transparent; }
-.actress-tag:hover { border-color: rgba(255, 255, 255, 0.4); color: white; background: rgba(255, 255, 255, 0.15); }
+.actress-tag:hover { border-color: var(--modal-chip-border-hover); color: white; background: var(--modal-chip-bg-hover); box-shadow: var(--modal-chip-shadow-hover); }
 .tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }
 .meta-provider { font-size: 12px; color: rgba(255, 255, 255, 0.4); margin-left: 4px; }
 .summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
@@ -810,11 +821,11 @@ export default {
 @keyframes lightbox-in { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; backdrop-filter: blur(20px); } }
 .lightbox-img-wrap { max-width: 95vw; max-height: 90vh; display: flex; align-items: center; justify-content: center; }
 .lightbox-img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); }
-.lightbox-close { position: absolute; top: 32px; right: 32px; background: rgba(255,255,255,0.1); border: var(--stroke-pro) solid rgba(255,255,255,0.1); width: 48px; height: 48px; border-radius: 50%; font-size: 28px; color: #fff; cursor: pointer; transition: var(--transition-pro); z-index: 2; }
-.lightbox-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
-.lightbox-prev, .lightbox-next { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.05); border: none; width: 60px; height: 100px; font-size: 40px; color: #fff; cursor: pointer; transition: var(--transition-pro); display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+.lightbox-close { position: absolute; top: 32px; right: 32px; background: var(--modal-chip-bg); border: var(--stroke-pro) solid var(--modal-chip-border); width: 48px; height: 48px; border-radius: 50%; font-size: 28px; color: #fff; cursor: pointer; transition: var(--transition-pro); z-index: 2; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.lightbox-close:hover { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); box-shadow: var(--modal-chip-shadow-hover); transform: scale(1.1); }
+.lightbox-prev, .lightbox-next { position: absolute; top: 50%; transform: translateY(-50%); background: var(--modal-chip-bg); border: 1px solid var(--modal-chip-border); width: 60px; height: 100px; font-size: 40px; color: #fff; cursor: pointer; transition: var(--transition-pro); display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .lightbox-prev { left: 32px; } .lightbox-next { right: 32px; }
-.lightbox-prev:hover, .lightbox-next:hover { background: rgba(255,255,255,0.15); }
+.lightbox-prev:hover, .lightbox-next:hover { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); box-shadow: var(--modal-chip-shadow-hover); }
 .lightbox-prev:disabled, .lightbox-next:disabled { opacity: 0.1; cursor: not-allowed; }
 .lightbox-counter { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 15px; letter-spacing: 0.1em; font-family: var(--font-mono); }
 .stream-actions { margin-top: 12px; }

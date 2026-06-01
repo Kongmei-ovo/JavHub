@@ -26,6 +26,13 @@ function summaryDisplayFor(video) {
   return summaryDisplay.call({ video })
 }
 
+function sourceBlock(source, selector) {
+  const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`)
+  const match = source.match(pattern)
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('metadataLoaded resolves when JavInfo detail loading finishes with empty metadata', () => {
   assert.equal(metadataLoadedFor({
     content_id: 'MIAA-784',
@@ -114,6 +121,37 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   assert.match(secondaryBlock, /background:\s*var\(--modal-action-secondary-bg\)/)
   assert.doesNotMatch(source, /\.preview-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
   assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
+})
+
+test('modal people chips and lightbox controls use shared glass surfaces', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const closeBlock = sourceBlock(source, '.modal-close')
+  const avatarBlock = sourceBlock(source, '.actress-avatar')
+  const avatarHoverBlock = sourceBlock(source, '.actress-avatar-item:hover .actress-avatar')
+  const placeholderBlock = sourceBlock(source, '.avatar-placeholder')
+  const tagBlock = sourceBlock(source, '.actress-tag')
+  const tagHoverBlock = sourceBlock(source, '.actress-tag:hover')
+  const lightboxCloseBlock = sourceBlock(source, '.lightbox-close')
+  const lightboxNavBlock = sourceBlock(source, '.lightbox-prev, .lightbox-next')
+
+  assert.match(source, /--modal-chip-bg:\s*var\(--material-glass-control\)/)
+  assert.match(source, /--modal-chip-bg-hover:\s*var\(--material-glass-control-hover\)/)
+  assert.match(source, /--modal-chip-border:\s*var\(--glass-control-border\)/)
+  assert.match(source, /--modal-chip-shadow:\s*var\(--glass-control-shadow\)/)
+
+  for (const block of [closeBlock, avatarBlock, placeholderBlock, tagBlock, lightboxCloseBlock, lightboxNavBlock]) {
+    assert.match(block, /background:\s*var\(--modal-chip-bg\)/)
+    assert.match(block, /border(?:|:\s*var\(--stroke-pro\) solid|:\s*1px solid)\s*[^;]*var\(--modal-chip-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--modal-chip-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255,\s*0\.(?:05|08|1|15|2)\)|blur\(20px\)/)
+  }
+
+  for (const block of [avatarHoverBlock, tagHoverBlock]) {
+    assert.match(block, /background:\s*var\(--modal-chip-bg-hover\)/)
+    assert.match(block, /border-color:\s*var\(--modal-chip-border-hover\)/)
+    assert.match(block, /box-shadow:\s*var\(--modal-chip-shadow-hover\)/)
+  }
 })
 
 test('modal detail labels use inherited modal text tokens without uppercase tracking', () => {
