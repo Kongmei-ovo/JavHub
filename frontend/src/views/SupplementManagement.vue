@@ -1376,7 +1376,6 @@ export default {
 .supplement-page {}
 
 .supplement-topbar,
-.section-title-row,
 .panel-header,
 .actor-workspace-hero {
   display: flex;
@@ -1423,84 +1422,17 @@ p {
   flex-wrap: wrap;
 }
 
-.supplement-hero {
-  display: block;
-  padding: 28px;
-  margin-bottom: 26px;
-  border-radius: var(--radius-sheet);
-}
-
-.hero-copy h2 {
-  max-width: 620px;
-  font-size: var(--type-page-title);
-  line-height: 1.08;
-  color: var(--text-primary);
-  letter-spacing: 0;
-}
-
-.hero-copy p:last-child {
-  max-width: 560px;
-  margin-top: 12px;
-  color: var(--text-secondary);
-  font-size: var(--type-body);
-  line-height: 1.7;
-}
-
-.search-shell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.04);
-}
-
-.actor-filter-bar {
-  padding: 10px;
-  margin-bottom: 16px;
-  border-radius: 999px;
-}
-
-.compact-search {
-  width: 100%;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.035);
-}
-
-.actor-filter-bar .btn {
-  min-width: 68px;
-  justify-content: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.search-shell svg {
-  width: 20px;
-  height: 20px;
-  margin-left: 8px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.search-shell input,
 .filter-input {
   min-height: 44px;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid transparent;
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   outline: none;
-}
-
-.search-shell input {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  font-size: 15px;
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 
 .filter-input {
@@ -1509,19 +1441,11 @@ p {
 }
 
 .filter-input:focus {
-  border-color: var(--border-light);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--active-border);
+  background: var(--surface-input-focus);
+  box-shadow: var(--glass-active-shadow);
 }
 
-.section-block {
-  margin-top: 26px;
-}
-
-.section-title-row {
-  margin-bottom: 14px;
-}
-
-.section-title-row h2,
 .panel-header h2 {
   font-size: var(--type-panel-title);
   color: var(--text-primary);
@@ -1534,46 +1458,7 @@ p {
   font-size: 12px;
 }
 
-.soft-count {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.actor-result-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.actor-result-card,
-.recent-actor-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 230px;
-  padding: 20px 16px;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  text-align: center;
-  transition: transform var(--motion-standard), border-color var(--motion-standard), background var(--motion-standard), box-shadow var(--motion-standard);
-}
-
-.actor-result-card:hover,
-.recent-actor-row:hover {
-  transform: translateY(-5px);
-  border-color: var(--border-light);
-  background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating);
-}
-
-.actor-result-avatar,
-.workspace-avatar,
-.recent-avatar,
-.job-avatar {
+.workspace-avatar {
   overflow: hidden;
   background: var(--bg-secondary);
   color: var(--text-secondary);
@@ -1584,14 +1469,6 @@ p {
   font-weight: 800;
 }
 
-.actor-result-avatar {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.12), 0 18px 36px rgba(0, 0, 0, 0.42);
-}
-
-.actor-result-avatar img,
 .workspace-avatar img {
   width: 100%;
   height: 100%;
@@ -1599,26 +1476,17 @@ p {
   object-position: top center;
 }
 
-.actor-result-main,
-.recent-main,
-.job-copy,
 .movie-row-main {
   display: grid;
   gap: 4px;
   min-width: 0;
 }
 
-.actor-result-main strong,
-.recent-main strong,
-.job-copy strong,
 .movie-row-main strong {
   color: var(--text-primary);
   font-size: 14px;
 }
 
-.actor-result-main span,
-.recent-main span,
-.job-copy span,
 .movie-row-main span,
 .movie-row-main small {
   color: var(--text-muted);
@@ -1628,39 +1496,18 @@ p {
   white-space: nowrap;
 }
 
-.actor-result-status {
-  margin-left: auto;
-  color: var(--text-secondary);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.recent-actor-list {
-  display: grid;
-  gap: 10px;
-}
-
-.recent-avatar,
-.job-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-}
-
-.recent-time {
-  margin-left: auto;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
 .empty-panel {
   padding: 28px;
   text-align: center;
 }
 
 .empty-panel.inner {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .empty-panel h3 {
@@ -1815,8 +1662,11 @@ p {
   gap: 16px;
   padding: 13px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .workspace-panel :deep(.ios-row) {
@@ -1826,8 +1676,11 @@ p {
   gap: 16px;
   padding: 13px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .job-main {
@@ -1874,16 +1727,6 @@ p {
   font-size: 12px;
 }
 
-.job-copy small {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.job-copy small.job-error {
-  color: var(--badge-error-text);
-}
-
 .workspace-panel :deep(.job-copy small) {
   color: var(--text-muted);
   font-size: 12px;
@@ -1892,10 +1735,6 @@ p {
 
 .workspace-panel :deep(.job-copy small.job-error) {
   color: var(--badge-error-text);
-}
-
-.job-copy small.job-warning {
-  color: var(--badge-warning-text);
 }
 
 .workspace-panel :deep(.job-copy small.job-warning) {
@@ -2058,9 +1897,11 @@ p {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 22px;
-  background: rgba(0, 0, 0, 0.82);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(20px);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .diagnostics-header h2 {
@@ -2090,8 +1931,10 @@ p {
   display: grid;
   gap: 1px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .diagnostics-row {
@@ -2099,7 +1942,11 @@ p {
   grid-template-columns: 140px 110px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -2111,7 +1958,8 @@ p {
 .diagnostics-row-head {
   color: var(--text-primary);
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .diagnostics-value {
@@ -2130,8 +1978,11 @@ p {
 .detail-source-item {
   padding: 8px 11px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
+  background: var(--surface-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -2173,9 +2024,12 @@ p {
   grid-template-columns: 120px minmax(120px, 1fr) minmax(180px, 2fr);
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .manual-action-item strong {
@@ -2192,19 +2046,9 @@ p {
 @media (max-width: 860px) {
   .supplement-topbar,
   .actor-workspace-hero,
-  .panel-header,
-  .section-title-row {
+  .panel-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .supplement-hero {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-
-  .hero-copy h2 {
-    font-size: var(--type-page-title-mobile);
   }
 
   .workspace-status {

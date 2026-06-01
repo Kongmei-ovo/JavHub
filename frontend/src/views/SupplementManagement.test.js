@@ -202,6 +202,73 @@ test('supplement management avoids a remount-style refresh when re-entered', () 
   assert.doesNotMatch(source, /class="supplement-page apple-reveal"/)
 })
 
+test('supplement actor picker keeps search glass in the lazy child', () => {
+  const pickerSearch = cssBlock(actorPicker, '.search-shell')
+
+  assert.match(pickerSearch, /background:\s*var\(--surface-control\)/)
+  assert.match(pickerSearch, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(pickerSearch, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(pickerSearch, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+
+  assert.doesNotMatch(source, /\.supplement-hero\s*\{/)
+  assert.doesNotMatch(source, /\.actor-filter-bar\s*\{/)
+  assert.doesNotMatch(source, /\.compact-search\s*\{/)
+  assert.doesNotMatch(source, /\.actor-result-card\s*,/)
+  assert.doesNotMatch(source, /\.recent-actor-row\s*\{/)
+  assert.doesNotMatch(source, /\.recent-actor-list\s*\{/)
+})
+
+test('supplement workspace rows and filters use shared Apple glass controls', () => {
+  const input = cssBlock(source, '.filter-input')
+  const inputFocus = cssBlock(source, '.filter-input:focus')
+  const movieRow = cssBlock(source, '.ios-row')
+  const deepJobRow = cssBlock(source, '.workspace-panel :deep(.ios-row)')
+  const jobRow = cssBlock(jobList, '.ios-row')
+  const emptyInner = cssBlock(source, '.empty-panel.inner')
+
+  assert.match(input, /background:\s*var\(--surface-control\)/)
+  assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(inputFocus, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
+
+  for (const block of [movieRow, deepJobRow, jobRow, emptyInner]) {
+    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  }
+})
+
+test('supplement diagnostics modal avoids legacy flat surfaces', () => {
+  const header = cssBlock(source, '.diagnostics-header')
+  const table = cssBlock(source, '.diagnostics-table')
+  const row = cssBlock(source, '.diagnostics-row')
+  const headRow = cssBlock(source, '.diagnostics-row-head')
+  const identityChip = cssBlock(source, '.identity-chip')
+  const manualAction = cssBlock(source, '.manual-action-item')
+
+  assert.match(header, /background:\s*var\(--surface-card\)/)
+  assert.match(header, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(header, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(header, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+
+  assert.match(table, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(table, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(table, /background:\s*var\(--surface-control\)/)
+
+  for (const block of [row, identityChip, manualAction]) {
+    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  }
+
+  assert.match(headRow, /background:\s*var\(--glass-active-material\)/)
+  assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)
+})
+
 test('supplement source diagnostics use shared Apple glass materials', () => {
   const input = cssBlock(sourceHealthPanel, '.filter-input')
   const inputFocus = cssBlock(sourceHealthPanel, '.filter-input:focus')

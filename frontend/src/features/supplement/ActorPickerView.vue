@@ -150,10 +150,19 @@ export default {
   min-width: 0;
   min-height: 42px;
   padding: 0 13px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--actor-control-radius);
-  background: rgba(255, 255, 255, 0.045);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.04);
+  background: var(--surface-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.search-shell:focus-within {
+  border-color: var(--active-border);
+  background: var(--surface-input-focus);
+  box-shadow: var(--glass-active-shadow);
 }
 
 .search-shell svg {
