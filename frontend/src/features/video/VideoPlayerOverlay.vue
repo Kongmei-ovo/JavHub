@@ -66,16 +66,36 @@ export default {
 </script>
 
 <style scoped>
-.vp-overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); animation: fadeIn 0.4s var(--ease-pro); }
-.vp-container { position: relative; width: 90vw; max-width: 1080px; display: flex; flex-direction: column; gap: 24px; }
-.vp-close { position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.08); border: var(--stroke-pro) solid rgba(255,255,255,0.12); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7); cursor: pointer; transition: var(--transition-pro); }
-.vp-close:hover { background: rgba(255,255,255,0.15); color: #fff; transform: rotate(90deg); }
-.vp-player-wrap { border-radius: 20px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.8); background: #000; border: var(--stroke-pro) solid rgba(255,255,255,0.1); }
-.vp-video { display: block; width: 100%; border-radius: 20px; background: #000; }
-.vp-info { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
-.vp-title { font-size: 14px; color: rgba(255,255,255,0.5); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); }
-.vp-speed-ctrl { display: flex; align-items: center; gap: 8px; }
-.vp-speed-btn { font-size: 13px; padding: 5px 14px; background: rgba(255,255,255,0.07); border: var(--stroke-pro) solid rgba(255,255,255,0.1); border-radius: 40px; color: rgba(255,255,255,0.5); cursor: pointer; transition: var(--transition-pro); }
-.vp-speed-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); }
-.vp-speed-btn.active { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); font-weight: 700; }
+.vp-overlay {
+  --vp-control-bg: var(--material-glass-control);
+  --vp-control-bg-hover: var(--material-glass-control-hover);
+  --vp-control-border: var(--glass-control-border);
+  --vp-control-border-hover: var(--glass-control-border-hover);
+  --vp-control-shadow: var(--glass-control-shadow);
+  --vp-control-shadow-hover: var(--glass-control-shadow-hover);
+  --vp-sheet-bg: var(--material-glass-sheet);
+  --vp-sheet-border: var(--glass-control-border);
+  --vp-player-bg: #000;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-scrim, var(--scrim));
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  animation: fadeIn 0.4s var(--ease-pro);
+}
+.vp-container { position: relative; width: 90vw; max-width: 1080px; display: flex; flex-direction: column; gap: 18px; }
+.vp-close { position: absolute; top: -58px; right: 0; background: var(--vp-control-bg); border: var(--stroke-pro) solid var(--vp-control-border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); cursor: pointer; transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast); }
+.vp-close:hover { background: var(--vp-control-bg-hover); border-color: var(--vp-control-border-hover); box-shadow: var(--vp-control-shadow-hover); color: var(--text-primary); transform: rotate(90deg); }
+.vp-player-wrap { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sheet); background: var(--vp-player-bg); border: var(--stroke-pro) solid var(--vp-sheet-border); }
+.vp-video { display: block; width: 100%; border-radius: 20px; background: var(--vp-player-bg); }
+.vp-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--vp-control-bg); border: 1px solid var(--vp-control-border); border-radius: var(--radius-lg); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.vp-title { min-width: 0; font-size: 14px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-speed-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.vp-speed-btn { font-size: 13px; padding: 5px 14px; background: var(--vp-control-bg); border: var(--stroke-pro) solid var(--vp-control-border); border-radius: 40px; color: var(--text-secondary); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); cursor: pointer; transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast); }
+.vp-speed-btn:hover { background: var(--vp-control-bg-hover); border-color: var(--vp-control-border-hover); box-shadow: var(--vp-control-shadow-hover); color: var(--text-primary); }
+.vp-speed-btn.active { background: var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); color: var(--text-primary); font-weight: 700; }
 </style>
