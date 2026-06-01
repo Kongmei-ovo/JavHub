@@ -1331,24 +1331,26 @@ export default {
 }
 
 .page-btn {
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 12px;
   border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 13px;
-  transition: var(--transition-pro);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 .page-btn:hover:not(:disabled) {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
+.page-btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
@@ -1359,42 +1361,44 @@ export default {
   padding: 6px 8px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-input);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-size: 12px;
   text-align: center;
-  transition: var(--transition-pro);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 .jump-input:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--surface-input-focus);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 .jump-input::-webkit-inner-spin-button,
 .jump-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 .jump-btn {
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 14px;
   border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 12px;
-  transition: var(--transition-pro);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
 }
 .jump-btn:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
+.jump-btn:active { transform: translateY(0) scale(0.99); }
 
 .page-info {
   font-size: 13px;

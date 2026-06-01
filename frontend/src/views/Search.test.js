@@ -80,3 +80,41 @@ test('search inline variant controls use shared glass materials and explicit mot
   assert.match(variantButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.doesNotMatch(source, /\.variant-expand-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
 })
+
+test('search pagination controls use shared glass materials and explicit motion', () => {
+  const pageButtonBlock = sourceBlock('.page-btn')
+  const pageButtonHoverBlock = sourceBlock('.page-btn:hover:not(:disabled)')
+  const pageButtonActiveBlock = sourceBlock('.page-btn:active:not(:disabled)')
+  const jumpInputBlock = sourceBlock('.jump-input')
+  const jumpInputFocusBlock = sourceBlock('.jump-input:focus')
+  const jumpButtonBlock = sourceBlock('.jump-btn')
+  const jumpButtonHoverBlock = sourceBlock('.jump-btn:hover')
+  const jumpButtonActiveBlock = sourceBlock('.jump-btn:active')
+
+  for (const [block, name] of [[pageButtonBlock, 'page button'], [jumpButtonBlock, 'jump button']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy pagination material`)
+  }
+
+  for (const [block, name] of [[pageButtonHoverBlock, 'page button hover'], [jumpButtonHoverBlock, 'jump button hover']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lightly lift`)
+  }
+
+  assert.match(pageButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(jumpButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+
+  assert.match(jumpInputBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(jumpInputBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(jumpInputBlock, /transition:\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(jumpInputBlock, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-input\)/)
+  assert.match(jumpInputFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(jumpInputFocusBlock, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.doesNotMatch(source, /\.page-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-input\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
+})
