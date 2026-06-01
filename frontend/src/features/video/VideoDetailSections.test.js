@@ -9,6 +9,8 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   const titleBlock = gallerySource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = gallerySource.match(/\.gallery-item\s*\{[^}]*\}/)?.[0] || ''
   const hoverBlock = gallerySource.match(/\.gallery-item:hover\s*\{[^}]*\}/)?.[0] || ''
+  const imageBlock = gallerySource.match(/\.gallery-item img\s*\{[^}]*\}/)?.[0] || ''
+  const imageHoverBlock = gallerySource.match(/\.gallery-item:hover img\s*\{[^}]*\}/)?.[0] || ''
   const skeletonBlock = gallerySource.match(/\.skeleton\s*\{[^}]*\}/)?.[0] || ''
   const skeletonAfterBlock = gallerySource.match(/\.skeleton::after\s*\{[^}]*\}/)?.[0] || ''
 
@@ -21,9 +23,11 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   assert.match(itemBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(hoverBlock, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(hoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(imageBlock, /transition:\s*transform var\(--motion-standard\),\s*filter var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.match(imageHoverBlock, /transform:\s*scale\(1\.015\)/)
   assert.match(skeletonBlock, /background:\s*var\(--skeleton-base\)/)
   assert.match(skeletonAfterBlock, /var\(--skeleton-highlight\)/)
-  assert.doesNotMatch(gallerySource, /rgba\(255,\s*255,\s*255,\s*0\.05\)/)
+  assert.doesNotMatch(gallerySource, /rgba\(255,\s*255,\s*255,\s*0\.05\)|transition:\s*var\(--transition-pro\)|transition:\s*all\b/)
 })
 
 test('video magnet section uses shared glass controls and mobile-safe rows', () => {

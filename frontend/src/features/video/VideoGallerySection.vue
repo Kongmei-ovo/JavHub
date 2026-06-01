@@ -59,8 +59,8 @@ export default {
   box-shadow: var(--glass-control-shadow-hover);
 }
 .gallery-item:active { transform: translateY(0) scale(0.99); }
-.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: var(--transition-pro); }
-.gallery-item:hover img { filter: saturate(1.08); }
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--motion-standard), filter var(--motion-standard), opacity var(--motion-fast); }
+.gallery-item:hover img { filter: saturate(1.08); transform: scale(1.015); }
 .skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
