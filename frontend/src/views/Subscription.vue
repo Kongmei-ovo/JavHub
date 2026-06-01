@@ -525,6 +525,21 @@ onMounted(loadSubs)
 <style scoped>
 .sub-page {
   min-height: 100dvh;
+  --subscription-control-bg: var(--material-glass-control);
+  --subscription-control-bg-hover: var(--material-glass-control-hover);
+  --subscription-control-border: var(--glass-control-border);
+  --subscription-control-border-hover: var(--glass-control-border-hover);
+  --subscription-control-shadow: var(--glass-control-shadow);
+  --subscription-control-shadow-hover: var(--glass-control-shadow-hover);
+  --subscription-sheet-bg: var(--material-glass-sheet);
+  --subscription-sheet-border: var(--glass-control-border);
+  --subscription-sticky-bg: var(--material-glass-elevated);
+  --subscription-overlay-bg: var(--scrim);
+  --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
+  --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
+  --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
+  --subscription-danger-bg: color-mix(in srgb, #ff375f 12%, transparent);
+  --subscription-danger-border: color-mix(in srgb, #ff375f 34%, var(--glass-control-border));
 }
 
 .sub-hero {
@@ -561,8 +576,11 @@ onMounted(loadSubs)
   min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--subscription-control-border);
+  background: var(--subscription-control-bg);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   font-size: var(--type-caption);
   font-weight: 600;
@@ -599,17 +617,19 @@ onMounted(loadSubs)
 
 .search-bar {
   display: flex; align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--subscription-control-bg);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--subscription-control-border);
+  box-shadow: var(--subscription-control-shadow);
   border-radius: 14px; padding: 0 14px; height: 44px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
 .search-bar:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.03);
+  background: var(--subscription-control-bg-hover);
+  border-color: var(--subscription-control-border-hover);
+  box-shadow: var(--subscription-control-shadow-hover);
 }
 
 .search-icon { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
@@ -627,7 +647,7 @@ onMounted(loadSubs)
   transition: background 0.15s;
 }
 
-.clear-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
+.clear-btn:hover { background: var(--subscription-control-bg-hover); color: var(--text-secondary); }
 
 /* ===== Card Grid ===== */
 .card-grid {
@@ -639,15 +659,16 @@ onMounted(loadSubs)
 /* ===== Skeleton ===== */
 .skel-card {
   border-radius: 16px; overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(80px) saturate(200%);
-  -webkit-backdrop-filter: blur(80px) saturate(200%);
+  background: var(--subscription-control-bg);
+  border: 1px solid var(--subscription-control-border);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .skel-cover {
   aspect-ratio: 3/4;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--skeleton-track);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -659,7 +680,7 @@ onMounted(loadSubs)
 .skel-line {
   height: 12px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--skeleton-track);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -673,14 +694,17 @@ onMounted(loadSubs)
 .pill-btn {
   display: inline-flex; align-items: center; justify-content: center;
   height: 28px; padding: 0 14px; border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--subscription-control-border);
+  background: var(--subscription-control-bg);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-primary); font-size: var(--type-caption); font-weight: 600;
   cursor: pointer; flex-shrink: 0;
-  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.pill-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.pill-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
 
 .pill-btn-primary {
   background: var(--accent); color: var(--text-on-accent); border-color: transparent;
@@ -721,8 +745,23 @@ onMounted(loadSubs)
    SHEET — iOS 26 Liquid Glass
    ================================================================ */
 .sheet-overlay {
+  --subscription-control-bg: var(--material-glass-control);
+  --subscription-control-bg-hover: var(--material-glass-control-hover);
+  --subscription-control-border: var(--glass-control-border);
+  --subscription-control-border-hover: var(--glass-control-border-hover);
+  --subscription-control-shadow: var(--glass-control-shadow);
+  --subscription-control-shadow-hover: var(--glass-control-shadow-hover);
+  --subscription-sheet-bg: var(--material-glass-sheet);
+  --subscription-sheet-border: var(--glass-control-border);
+  --subscription-sticky-bg: var(--material-glass-elevated);
+  --subscription-overlay-bg: var(--scrim);
+  --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
+  --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
+  --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
+  --subscription-danger-bg: color-mix(in srgb, #ff375f 12%, transparent);
+  --subscription-danger-border: color-mix(in srgb, #ff375f 34%, var(--glass-control-border));
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--subscription-overlay-bg);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   z-index: var(--z-modal);
@@ -731,12 +770,13 @@ onMounted(loadSubs)
 
 .sheet {
   width: 90vw; max-width: 960px; max-height: 92vh;
-  background: rgba(22, 22, 24, 0.85);
-  backdrop-filter: blur(80px) saturate(200%);
-  -webkit-backdrop-filter: blur(80px) saturate(200%);
+  background: var(--subscription-sheet-bg);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border-radius: 24px 24px 0 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--subscription-sheet-border);
   border-bottom: none;
+  box-shadow: var(--shadow-sheet);
   overflow-y: auto; overflow-x: hidden;
 }
 
@@ -745,9 +785,10 @@ onMounted(loadSubs)
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 20px 0;
   position: sticky; top: 0; z-index: 5;
-  background: rgba(22, 22, 24, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--subscription-sticky-bg);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  border-bottom: 1px solid var(--subscription-sheet-border);
 }
 
 .sheet-top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -755,19 +796,22 @@ onMounted(loadSubs)
 .top-action-btn {
   display: inline-flex; align-items: center; gap: 5px;
   height: 32px; padding: 0 14px; border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--subscription-control-border);
+  background: var(--subscription-control-bg);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   font-size: var(--type-caption); font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.top-action-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+.top-action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-primary); }
 .top-action-btn:active { transform: scale(0.96); }
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.top-action-btn.danger { color: #FF375F; border-color: rgba(255, 55, 95, 0.25); }
-.top-action-btn.danger:hover { background: rgba(255, 55, 95, 0.1); }
+.top-action-btn.danger { color: #FF375F; border-color: var(--subscription-danger-border); }
+.top-action-btn.danger:hover { background: var(--subscription-danger-bg); }
 .top-action-btn.primary {
   background: var(--accent);
   color: var(--text-on-accent);
@@ -783,7 +827,7 @@ onMounted(loadSubs)
 }
 
 .discover-overlay {
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--subscription-discover-overlay-bg);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -816,7 +860,7 @@ onMounted(loadSubs)
   transform: translate(-50%, -50%);
   width: 120px; height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ambient-hero) 0%, transparent 70%);
   filter: blur(30px);
   pointer-events: none;
 }
@@ -824,8 +868,11 @@ onMounted(loadSubs)
 .sheet-avatar {
   width: 96px; height: 96px;
   border-radius: 50%; overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--subscription-control-bg);
+  border: 1px solid var(--subscription-control-border);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   position: relative;
 }
 
@@ -856,8 +903,11 @@ onMounted(loadSubs)
 .name-pill {
   display: inline-flex; align-items: center;
   height: 24px; padding: 0 10px; border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--subscription-control-bg);
+  border: 1px solid var(--subscription-control-border);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   font-size: var(--type-caption); font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -882,20 +932,23 @@ onMounted(loadSubs)
 .toggle-pill {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   height: 36px; padding: 0 18px; border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--subscription-control-border);
+  background: var(--subscription-control-bg);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-muted); font-size: var(--type-control); font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.toggle-pill:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
+.toggle-pill:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-secondary); }
 
 .toggle-pill.on {
-  background: rgba(50, 215, 75, 0.1);
-  border-color: rgba(50, 215, 75, 0.25);
+  background: var(--subscription-success-bg);
+  border-color: var(--subscription-success-border);
   color: #32D74B;
-  box-shadow: 0 0 20px rgba(50, 215, 75, 0.08);
+  box-shadow: var(--subscription-control-shadow-hover);
 }
 
 .toggle-pill svg { flex-shrink: 0; }
@@ -928,14 +981,17 @@ onMounted(loadSubs)
   width: 100%;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 48px; border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--subscription-control-border);
+  background: var(--subscription-control-bg);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-primary); font-size: var(--type-card-title); font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.action-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
 .action-btn:active { transform: scale(0.98); }
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
