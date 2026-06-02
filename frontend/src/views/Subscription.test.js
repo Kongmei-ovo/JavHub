@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlock(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -11,20 +13,28 @@ function cssBlock(selector) {
   return match[1]
 }
 
+test('subscription page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/subscription\/subscription\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 600, 'Subscription.vue should stay below 600 lines')
+  assert.ok(externalStyle.split('\n').length > 530, 'external stylesheet should contain the moved subscription styles')
+})
+
 test('subscription chrome and sheets use shared Apple glass controls', () => {
   const pageBlock = cssBlock('.sub-page')
   const sheetOverlayBlock = cssBlock('.sheet-overlay')
   const sheetBlock = cssBlock('.sheet')
   const sheetTopBarBlock = cssBlock('.sheet-top-bar')
 
-  assert.match(pageBlock, /--subscription-control-bg:\s*var\(--material-glass-control\)/)
-  assert.match(pageBlock, /--subscription-control-bg-hover:\s*var\(--material-glass-control-hover\)/)
+  for (const block of [pageBlock, sheetOverlayBlock]) {
+    assert.match(block, /--subscription-control-bg:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
+    assert.match(block, /--subscription-control-bg-hover:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+    assert.match(block, /--subscription-active-bg:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
+    assert.match(block, /--subscription-active-bg-hover:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+    assert.match(block, /--subscription-sheet-bg:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
+    assert.match(block, /--subscription-sticky-bg:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-elevated\)/)
+  }
   assert.match(pageBlock, /--subscription-control-border:\s*var\(--glass-control-border\)/)
   assert.match(pageBlock, /--subscription-control-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(pageBlock, /--subscription-sheet-bg:\s*var\(--material-glass-sheet\)/)
-  assert.match(sheetOverlayBlock, /--subscription-control-bg:\s*var\(--material-glass-control\)/)
-  assert.match(sheetOverlayBlock, /--subscription-sheet-bg:\s*var\(--material-glass-sheet\)/)
-  assert.match(sheetOverlayBlock, /--subscription-sticky-bg:\s*var\(--material-glass-elevated\)/)
 
   for (const selector of [
     '.hero-metrics span',
@@ -76,7 +86,7 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
 test('subscription primary actions use active glass instead of solid accent fills', () => {
   for (const selector of ['.pill-btn-primary', '.top-action-btn.primary', '.action-btn.primary']) {
     const block = cssBlock(selector)
-    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${selector} should use active glass material`)
+    assert.match(block, /background:\s*var\(--subscription-active-bg\)/, `${selector} should use active glass material`)
     assert.match(block, /color:\s*var\(--text-primary\)/, `${selector} should keep text on glass`)
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should use active glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${selector} should use active glass shadow`)
@@ -85,7 +95,7 @@ test('subscription primary actions use active glass instead of solid accent fill
 
   for (const selector of ['.pill-btn-primary:hover', '.top-action-btn.primary:hover', '.action-btn.primary:hover']) {
     const block = cssBlock(selector)
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${selector} should use shared hover material`)
+    assert.match(block, /background:\s*var\(--subscription-active-bg-hover\)/, `${selector} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${selector} should use shared hover shadow`)
     assert.doesNotMatch(block, /background:\s*var\(--accent-light\)|color:\s*var\(--text-on-accent\)/, `${selector} should not keep legacy solid hover styles`)

@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/normalize/normalize.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssRule(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -10,6 +12,12 @@ function cssRule(selector) {
   assert.ok(match, `Expected CSS rule for ${selector}`)
   return match[1]
 }
+
+test('normalize page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/normalize\/normalize\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 600, 'Normalize.vue should stay below 600 lines')
+  assert.ok(externalStyle.split('\n').length > 350, 'external stylesheet should contain the moved normalize styles')
+})
 
 test('normalize actor mapping workbench uses shared Apple glass controls', () => {
   const autoMatchPanel = cssRule('.auto-match-panel')

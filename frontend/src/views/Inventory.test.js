@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/inventory/inventory.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlocks(content, selector) {
   const contentWithoutComments = content.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -19,6 +21,12 @@ function cssBlocks(content, selector) {
 function cssBlock(content, selector) {
   return cssBlocks(content, selector).join('\n')
 }
+
+test('inventory page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/inventory\/inventory\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 520, 'Inventory.vue should stay below 520 lines')
+  assert.ok(externalStyle.split('\n').length > 450, 'external stylesheet should contain the moved inventory styles')
+})
 
 test('inventory controls use shared Apple glass materials', () => {
   assert.match(source, /class="progress-ring-bg"[\s\S]*stroke="var\(--glass-control-border\)"/)

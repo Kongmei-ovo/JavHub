@@ -105,16 +105,29 @@ async def check_subscriptions() -> dict[str, Any]:
     from services.subscription import check_all_subscriptions_report
     return await check_all_subscriptions_report()
 
+def _bounded_int(value: Any, default: int, *, minimum: int, maximum: int) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        number = default
+    return max(minimum, min(number, maximum))
+
+
 @router.get("/new_movies")
-async def get_new_movies(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
+async def get_new_movies(
+    limit_per_actress: int = Query(20),
+    cache_control: str | None = Query(None, alias="cache"),
+) -> dict[str, Any]:
     """获取所有订阅的新片（不在 Emby 库中的），按 actress_id 分组"""
+    safe_limit_per_actress = _bounded_int(limit_per_actress, 20, minimum=1, maximum=50)
     cache_params = {
         "subscriptions": await response_cache.get_data_generation_async("subscriptions"),
         "download_candidates": await response_cache.get_data_generation_async("download_candidates"),
+        "limit_per_actress": safe_limit_per_actress,
     }
 
     async def produce() -> dict[str, Any]:
-        return await asyncio.to_thread(_new_movies_payload)
+        return await asyncio.to_thread(_new_movies_payload, safe_limit_per_actress)
 
     return await response_cache.get_or_set_response(
         "subscription_new_movies",
@@ -125,7 +138,8 @@ async def get_new_movies(cache_control: str | None = Query(None, alias="cache"))
     )
 
 
-def _new_movies_payload() -> dict[str, Any]:
+def _new_movies_payload(limit_per_actress: int = 20) -> dict[str, Any]:
+    safe_limit_per_actress = _bounded_int(limit_per_actress, 20, minimum=1, maximum=50)
     subscriptions = get_subscriptions()
 
     result = {}  # {actress_id: [movies]}
@@ -137,7 +151,7 @@ def _new_movies_payload() -> dict[str, Any]:
         [int(sub["actress_id"]) for sub in enabled_subscriptions],
         status="candidate",
         source="subscription",
-        limit_per_actress=100,
+        limit_per_actress=safe_limit_per_actress,
     )
 
     for sub in enabled_subscriptions:
@@ -157,7 +171,10 @@ def _new_movies_payload() -> dict[str, Any]:
                 for row in rows
             ]
 
-    return {"data": result}
+    return {
+        "data": result,
+        "limit_per_actress": safe_limit_per_actress,
+    }
 
 class UpdateSubscriptionRequest(BaseModel):
     enabled: bool | None = None

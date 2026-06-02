@@ -28,7 +28,7 @@ const handleClick = () => {
 .stat-card {
   display: flex;
   align-items: center;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
   padding: 24px 32px;
@@ -39,7 +39,7 @@ const handleClick = () => {
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 .stat-card:hover {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   transform: translateY(-3px);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);

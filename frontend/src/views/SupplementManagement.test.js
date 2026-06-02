@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 const actorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const jobList = readFileSync(new URL('../features/supplement/SupplementJobList.vue', import.meta.url), 'utf8')
 const sourceHealthPanel = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
@@ -26,6 +28,12 @@ test('supplement management shows and controls actor context when routed from an
   assert.match(source, /clearActorContext\(\)/)
   assert.match(source, /goActorContext\(\)/)
   assert.match(source, /applyJobActorContext\(job\)/)
+})
+
+test('supplement management keeps heavyweight styles in an external scoped stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/supplement\/supplementManagement\.css"><\/style>/)
+  assert.ok(externalStyle.length > 15000, 'external supplement stylesheet should carry the moved workspace CSS')
+  assert.ok(vueSource.split('\n').length < 1500, 'SupplementManagement.vue should stay small enough to review and parse quickly')
 })
 
 test('supplement management keeps jobs and movies scoped to actor context', () => {

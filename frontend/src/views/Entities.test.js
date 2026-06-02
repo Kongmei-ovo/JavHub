@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Entities.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Entities.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8')
 
 function cssRule(selector) {
@@ -11,6 +13,12 @@ function cssRule(selector) {
   assert.ok(match, `Expected CSS rule for ${selector}`)
   return match[1]
 }
+
+test('entities page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/entities\/entities\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 420, 'Entities.vue should stay below 420 lines')
+  assert.ok(externalStyle.split('\n').length > 500, 'external stylesheet should contain the moved entities styles')
+})
 
 test('entities portrait directories reuse actor portrait cards with API image fields', () => {
   assert.match(source, /import ActorPortraitCard from '\.\.\/components\/ActorPortraitCard\.vue'/)

@@ -332,8 +332,8 @@ export default {
     return api.post(`/v1/subscriptions/${id}/check`)
   },
 
-  getNewMovies() {
-    return api.get('/v1/subscriptions/new_movies')
+  getNewMovies(params = {}) {
+    return api.get('/v1/subscriptions/new_movies', { params })
   },
 
   toggleSubscription(data) {

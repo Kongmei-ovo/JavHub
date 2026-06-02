@@ -209,7 +209,7 @@ test('AppleVideoCard renders variant labels on the cover', () => {
 test('AppleVideoCard variant labels use shared Apple glass material', () => {
   const variantPill = cssBlock('.apple-video-card__variant-pill')
 
-  assert.match(variantPill, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(variantPill, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
   assert.match(variantPill, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(variantPill, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(variantPill, /color:\s*var\(--text-primary\)/)
@@ -223,18 +223,18 @@ test('AppleVideoCard card shell and cover use shared Apple glass materials', () 
   const cover = cssBlock('.apple-video-card__cover')
   const fallback = cssBlock('.apple-video-card__fallback')
 
-  assert.match(card, /background:\s*var\(--material-glass-control\)/)
+  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
   assert.match(cardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(cardHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(cardHover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(cardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(cardHover, /var\(--border-light\)|var\(--surface-card-hover\)|var\(--shadow-floating\)|var\(--glass-surface-shadow\)/)
 
   for (const [block, label] of [[cover, 'cover'], [fallback, 'fallback']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${label} should use shared control material`)
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${label} should use shared control material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${label} should use shared control shadow`)
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
   }

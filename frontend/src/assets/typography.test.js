@@ -5,8 +5,14 @@ import { readdirSync, readFileSync } from 'node:fs'
 const sources = [
   ['main.css', readFileSync(new URL('./main.css', import.meta.url), 'utf8')],
   ['App.vue', readFileSync(new URL('../App.vue', import.meta.url), 'utf8')],
-  ['Search.vue', readFileSync(new URL('../views/Search.vue', import.meta.url), 'utf8')],
-  ['Home.vue', readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8')],
+  ['Search.vue', [
+    readFileSync(new URL('../views/Search.vue', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
+  ].join('\n')],
+  ['Home.vue', [
+    readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  ].join('\n')],
 ]
 
 function productionStyleSources(path = new URL('../', import.meta.url)) {

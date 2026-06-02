@@ -71,7 +71,7 @@ const handleImgError = (e) => {
 
 <style scoped>
 .actress-card {
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
@@ -86,7 +86,7 @@ const handleImgError = (e) => {
 
 .actress-card:hover {
   transform: translateY(-5px);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -139,7 +139,7 @@ const handleImgError = (e) => {
   display: inline-flex; align-items: center; gap: 3px;
   height: 22px; padding: 0 8px;
   border-radius: var(--radius-sm);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
@@ -156,7 +156,7 @@ const handleImgError = (e) => {
   top: 8px; right: 8px;
   width: 24px; height: 24px;
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);

@@ -4,20 +4,53 @@ import { readFileSync } from 'node:fs'
 import packageJson from '../../package.json' with { type: 'json' }
 import { THEMES, THEME_KEYS, applyTheme, resolveThemeKey, toggleTheme, isDarkTheme } from '../assets/themes.js'
 
-const subscription = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
-const normalize = readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8')
-const inventory = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
+const subscription = [
+  readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8'),
+].join('\n')
+const normalize = [
+  readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/normalize/normalize.css', import.meta.url), 'utf8'),
+].join('\n')
+const inventory = [
+  readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/inventory/inventory.css', import.meta.url), 'utf8'),
+].join('\n')
 const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8')
-const libraryOrganize = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
-const home = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
-const operations = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
-const favorites = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
-const entities = readFileSync(new URL('./Entities.vue', import.meta.url), 'utf8')
-const actor = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
-const config = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
+const libraryOrganizeVue = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
+const libraryOrganize = [
+  libraryOrganizeVue,
+  readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
+].join('\n')
+const home = [
+  readFileSync(new URL('./Home.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+].join('\n')
+const operations = [
+  readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8'),
+].join('\n')
+const favorites = [
+  readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/favorites/favorites.css', import.meta.url), 'utf8'),
+].join('\n')
+const entities = [
+  readFileSync(new URL('./Entities.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8'),
+].join('\n')
+const actor = [
+  readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8'),
+].join('\n')
+const configVue = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
+const configStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
+const config = [configVue, configStyle].join('\n')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
-const search = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
+const search = [
+  readFileSync(new URL('./Search.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
+].join('\n')
 const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
 const supplement = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
 const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
@@ -29,7 +62,10 @@ const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8')
 const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
-const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8')
+const videoModal = [
+  readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8'),
+].join('\n')
 const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
@@ -52,7 +88,7 @@ const dockerfile = readFileSync(new URL('../../../Dockerfile', import.meta.url),
 const gitignore = readFileSync(new URL('../../../.gitignore', import.meta.url), 'utf8')
 
 function loadConfigOptions() {
-  const match = config.match(/<script>([\s\S]*?)<\/script>/)
+  const match = configVue.match(/<script>([\s\S]*?)<\/script>/)
   assert.ok(match, 'Config.vue should have an options script block')
   const script = match[1]
     .replace(/^import\s+.*$/gm, '')
@@ -605,6 +641,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.match(mainCss, /\.btn-ghost[\s\S]*border: 1px solid var\(--glass-control-border/)
   assert.match(app, /background: var\(--surface-nav\)/)
   assert.match(app, /\.theme-toggle[\s\S]*backdrop-filter: blur/)
+  assert.match(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--surface-input\) !important/)
   assert.match(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid var\(--glass-control-border\) !important/)
   assert.doesNotMatch(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid transparent !important/)
 
@@ -789,7 +826,7 @@ test('operations overview uses a restrained Apple operations layout', () => {
   assert.match(operations, /diagnostic-grid/)
   assert.match(operations, /hero-stat-grid/)
   assert.match(operations, /--operations-panel-gap:\s*clamp\(12px,\s*1\.4vw,\s*18px\)/)
-  assert.match(operations, /\.workbench-panel[\s\S]*background:\s*var\(--material-glass-sheet\)/)
+  assert.match(operations, /\.workbench-panel[\s\S]*background:[\s\S]*var\(--material-glass-sheet\)/)
   assert.match(operations, /\.hero-stat-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(132px,\s*1fr\)\)/)
   assert.doesNotMatch(operations, /status-cell\.urgent/)
   assert.doesNotMatch(operations, /title:\s*'活动中心'/)
@@ -1198,7 +1235,7 @@ test('global dropdowns use the unified glass select control', () => {
   assert.doesNotMatch(glassSelect, /Math\.min\(menuRef\.value\.scrollHeight[\s\S]*360\)/)
   assert.match(mainCss, /\.glass-select--compact[\s\S]*--glass-select-height: 38px/)
   assert.match(mainCss, /\.glass-select__button[\s\S]*min-height: var\(--glass-select-height\)/)
-  assert.match(mainCss, /\.glass-select__button[\s\S]*background: var\(--material-glass-control, var\(--glass-control-bg, rgba\(255, 255, 255, 0\.05\)\)\)/)
+  assert.match(mainCss, /\.glass-select__button[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control, var\(--glass-control-bg, rgba\(255, 255, 255, 0\.05\)\)\)/)
   assert.match(mainCss, /\.glass-select__menu[\s\S]*border-radius: var\(--glass-select-menu-radius, var\(--radius-lg\)\)/)
   assert.match(mainCss, /\.glass-select__menu[\s\S]*backdrop-filter: blur/)
 })

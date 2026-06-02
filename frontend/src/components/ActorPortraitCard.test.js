@@ -57,12 +57,12 @@ test('ActorPortraitCard shell and portrait well use shared Apple glass surfaces'
   const focusRule = cssRule('.actor-portrait-card:focus-visible')
   const mediaRule = cssRule('.actor-portrait-card__media')
 
-  assert.match(cardRule, /background:\s*var\(--material-glass-control\)/)
+  assert.match(cardRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(cardRule, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(cardRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(cardRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
 
-  assert.match(hoverRule, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(hoverRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(hoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
@@ -129,7 +129,7 @@ test('ActorPortraitCard supports badges and action label for reused actor flows'
 
   assert.match(source, /actor-portrait-card__action/)
   assert.match(sharedBadgeRule, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(neutralBadgeRule, /background:\s*var\(--material-glass-control\)/)
+  assert.match(neutralBadgeRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(neutralBadgeRule, /border-color:\s*var\(--glass-control-border\)/)
   assert.match(neutralBadgeRule, /color:\s*var\(--text-secondary\)/)
   assert.match(favoriteBadgeRule, /background:\s*var\(--badge-error-bg\)/)
@@ -148,7 +148,7 @@ test('ActorPortraitCard supports badges and action label for reused actor flows'
   ]) {
     assert.doesNotMatch(rule, /#ff375f|#188038|#946200|rgba\(/i, `${name} should use semantic tokens`)
   }
-  assert.match(actionRule, /background:\s*var\(--glass-active-material\)/)
+  assert.match(actionRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
   assert.match(actionRule, /color:\s*var\(--text-primary\)/)
   assert.match(actionRule, /border:\s*1px solid var\(--glass-active-border\)/)
   assert.match(actionRule, /box-shadow:\s*var\(--glass-active-shadow\)/)
@@ -169,7 +169,7 @@ test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for act
 
   assert.match(source, /:fill="favorited \? 'currentColor' : 'none'"/)
   assert.match(source, /class="actor-portrait-card__favorite"[\s\S]*stroke="currentColor"/)
-  assert.match(sharedActionRule, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(sharedActionRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
   assert.match(sharedActionRule, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(sharedActionRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(sharedActionRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)

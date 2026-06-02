@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlocks(content, selector) {
   const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -19,6 +21,23 @@ function lastCssBlock(content, selector) {
   const blocks = cssBlocks(content, selector)
   return blocks.at(-1)
 }
+
+function backgroundIncludes(token) {
+  return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  return css
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
+}
+
+test('operations page keeps heavyweight styles in an external scoped stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/operations\/operations\.css"><\/style>/)
+  assert.ok(externalStyle.length > 18000, 'external operations stylesheet should carry the moved workspace CSS')
+  assert.ok(vueSource.split('\n').length < 900, 'Operations.vue should stay small enough to review and parse quickly')
+})
 
 test('operations workbench controls use shared Apple glass tokens', () => {
   const segmentButton = lastCssBlock(source, '.operations-segments button')
@@ -45,21 +64,21 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   assert.match(operationsPage, /--operations-soft-line:\s*var\(--glass-control-border\)/)
 
   assert.match(segmentButton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(segmentButton, /background:\s*var\(--material-glass-control\)/)
+  assert.match(segmentButton, backgroundIncludes('material-glass-control'))
   assert.match(segmentButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(segmentButton, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(segmentHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(segmentHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(segmentHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.match(segmentActive, /background:\s*var\(--glass-active-material\)/)
+  assert.match(segmentActive, backgroundIncludes('glass-active-material'))
   assert.match(segmentActive, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.match(blockHeadButton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(blockHeadButton, /background:\s*var\(--material-glass-control\)/)
+  assert.match(blockHeadButton, backgroundIncludes('material-glass-control'))
   assert.match(blockHeadButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
   for (const block of [actionCard, queueFocus, compactList, runList, compactRow, runRow]) {
     assert.match(block, /border:\s*1px solid var\(--operations-soft-line\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, backgroundIncludes('material-glass-control'))
   }
 
   for (const block of [compactRow, runRow]) {
@@ -68,14 +87,14 @@ test('operations workbench controls use shared Apple glass tokens', () => {
 
   for (const block of [stateItem, miniStat, backendPill]) {
     assert.match(block, /border:\s*1px solid var\(--operations-line\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, backgroundIncludes('material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
 
   for (const block of [actionCardHover, sharedHover]) {
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'))
   }
 
   for (const block of warningBlocks) {
@@ -87,4 +106,8 @@ test('operations workbench controls use shared Apple glass tokens', () => {
     assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
     assert.doesNotMatch(block, /background:\s*(?:transparent|none)/)
   }
+})
+
+test('operations glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })

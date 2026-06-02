@@ -8,7 +8,12 @@ const subscription = styleSource('./Subscription.vue')
 const globalStyles = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 
 function styleSource(path) {
-  const source = readFileSync(new URL(path, import.meta.url), 'utf8')
+  const fileUrl = new URL(path, import.meta.url)
+  const source = readFileSync(fileUrl, 'utf8')
+  const external = source.match(/<style[^>]*src="([^"]+)"[^>]*><\/style>/)
+  if (external) {
+    return readFileSync(new URL(external[1], fileUrl), 'utf8')
+  }
   const match = source.match(/<style[^>]*>([\s\S]*?)<\/style>/)
   assert.ok(match, `${path} should include a style block`)
   return match[1]

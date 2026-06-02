@@ -43,7 +43,7 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
 
   for (const [block, name] of [[toggleBlock, 'toggle'], [rowBlock, 'row']]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
     assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
@@ -51,7 +51,7 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
   }
 
   for (const [block, name] of [[toggleHoverBlock, 'toggle hover'], [rowHoverBlock, 'row hover']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should add light lift`)

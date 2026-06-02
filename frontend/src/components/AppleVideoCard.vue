@@ -136,7 +136,7 @@ function handleKeydown(event) {
   overflow: hidden;
   container-type: inline-size;
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   transition: transform var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), background var(--motion-standard);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -146,7 +146,7 @@ function handleKeydown(event) {
 .apple-video-card:hover {
   transform: translateY(-3px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -158,7 +158,7 @@ function handleKeydown(event) {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
 }
 
@@ -201,7 +201,7 @@ function handleKeydown(event) {
   max-width: 72px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
   border: 1px solid var(--glass-edge);
   color: var(--text-primary);
   font-size: 10px;
@@ -221,7 +221,7 @@ function handleKeydown(event) {
   justify-content: center;
   padding: 18px;
   color: var(--text-muted);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   text-align: center;
   font-family: var(--font-mono);

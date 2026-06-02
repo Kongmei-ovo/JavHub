@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssRule(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -21,6 +23,12 @@ function cssGroupedRule(selector) {
 function darkRule(selector) {
   return cssGroupedRule(`:global(:root[data-theme="dark"] ${selector}`)
 }
+
+test('library organize keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/library\/libraryOrganize\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 1100, 'LibraryOrganize.vue should stay below 1100 lines')
+  assert.ok(externalStyle.split('\n').length > 800, 'external stylesheet should contain the moved page styles')
+})
 
 test('library organize top chrome uses the shared Apple glass material', () => {
   assert.match(source, /class="organize-header apple-surface"/)

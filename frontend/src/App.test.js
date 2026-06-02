@@ -5,6 +5,13 @@ import { readFileSync } from 'node:fs'
 const source = readFileSync(new URL('./App.vue', import.meta.url), 'utf8')
 const routerSource = readFileSync(new URL('./router/index.js', import.meta.url), 'utf8')
 
+function sourceBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\n\\}`))
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('App lazy loads the global video modal only when opened', () => {
   assert.match(source, /defineAsyncComponent/)
   assert.match(source, /const VideoModal = defineAsyncComponent\(\(\) => import\('\.\/components\/VideoModal\.vue'\)\)/)
@@ -92,7 +99,35 @@ test('favorite toast subscription is cleaned up when app unmounts', () => {
 test('app chrome separates floating liquid navigation from calm content material', () => {
   assert.match(source, /\.app-layout::before\s*\{[\s\S]*background:\s*var\(--app-backdrop-texture\)/)
   assert.match(source, /\.sidebar\s*\{[\s\S]*margin:\s*var\(--app-chrome-inset\) 0 var\(--app-chrome-inset\) var\(--app-chrome-inset\)[\s\S]*border-radius:\s*var\(--radius-sheet\)[\s\S]*box-shadow:\s*var\(--chrome-floating-shadow\)/)
+  assert.match(source, /\.sidebar\s*\{[\s\S]*position:\s*relative[\s\S]*isolation:\s*isolate/)
+  assert.match(source, /\.sidebar::after\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\)[\s\S]*opacity:\s*var\(--surface-overlay-opacity\)[\s\S]*pointer-events:\s*none/)
+  assert.match(source, /\.sidebar-header\s*\{[\s\S]*z-index:\s*1/)
+  assert.match(source, /\.sidebar-nav\s*\{[\s\S]*z-index:\s*1/)
   assert.match(source, /\.main-content\s*\{[\s\S]*margin:\s*var\(--app-chrome-inset\)[\s\S]*background:\s*var\(--content-material\)[\s\S]*border:\s*1px solid var\(--content-material-border\)/)
   assert.match(source, /\.bottom-nav\s*\{[\s\S]*left:\s*max\(12px,\s*env\(safe-area-inset-left,\s*0px\)\)[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right,\s*0px\)\)[\s\S]*border-radius:\s*var\(--radius-sheet\)[\s\S]*box-shadow:\s*var\(--chrome-floating-shadow\)/)
-  assert.match(source, /\.bottom-nav-item\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)[\s\S]*box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.match(source, /\.bottom-nav\s*\{[\s\S]*overflow:\s*hidden[\s\S]*isolation:\s*isolate/)
+  assert.match(source, /\.bottom-nav::after\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\)[\s\S]*opacity:\s*var\(--surface-overlay-opacity\)[\s\S]*pointer-events:\s*none/)
+  assert.match(source, /\.bottom-nav-item\s*\{[\s\S]*position:\s*relative[\s\S]*z-index:\s*1/)
+  assert.match(source, /\.bottom-nav-item\.active\s*\{[\s\S]*background:[\s\S]*var\(--glass-active-material\)[\s\S]*box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.match(source, /\.mobile-more-sheet\s*\{[\s\S]*position:\s*relative[\s\S]*isolation:\s*isolate[\s\S]*overflow:\s*hidden/)
+  assert.match(source, /\.mobile-more-sheet::after\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\)[\s\S]*opacity:\s*var\(--surface-overlay-opacity\)[\s\S]*pointer-events:\s*none/)
+  assert.match(source, /\.mobile-more-sheet > \*\s*\{[\s\S]*z-index:\s*1/)
+})
+
+test('app navigation controls use layered liquid glass materials', () => {
+  const layeredControl = /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/
+  const layeredControlHover = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/
+  const layeredActive = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/
+  const layeredSheet = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/
+
+  assert.match(sourceBlock('.theme-toggle'), layeredControl)
+  assert.match(sourceBlock('.theme-toggle:hover'), layeredControlHover)
+  assert.match(sourceBlock('.theme-toggle__orb'), layeredActive)
+  assert.match(sourceBlock('.nav-item.active'), layeredActive)
+  assert.match(sourceBlock('.bottom-nav-item.active'), layeredActive)
+  assert.match(sourceBlock('.mobile-more-sheet'), layeredSheet)
+  assert.match(sourceBlock('.mobile-more-close'), layeredControl)
+  assert.match(sourceBlock('.mobile-theme-toggle'), layeredControl)
+  assert.match(sourceBlock('.mobile-more-item'), layeredControl)
+  assert.match(sourceBlock('.mobile-more-item.active'), layeredActive)
 })

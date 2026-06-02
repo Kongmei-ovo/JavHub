@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/favorites/favorites.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlock(selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
@@ -17,6 +19,12 @@ function cssGroupedBlock(selector) {
   assert.ok(match, `${selector} should exist in Favorites.vue`)
   return match[1]
 }
+
+test('favorites page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/favorites\/favorites\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 700, 'Favorites.vue should stay below 700 lines')
+  assert.ok(externalStyle.split('\n').length > 550, 'external stylesheet should contain the moved favorites styles')
+})
 
 test('favorites curation chrome uses shared Apple glass materials', () => {
   const collectionManager = cssBlock('.collection-manager')

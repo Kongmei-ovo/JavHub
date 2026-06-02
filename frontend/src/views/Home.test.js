@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlocks(content, selector) {
   const searchable = content.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -20,17 +22,28 @@ function cssBlock(content, selector) {
   return cssBlocks(content, selector).join('\n')
 }
 
+function backgroundIncludes(token) {
+  return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
 function assertGlassControl(block, label) {
   assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${label} should use the shared glass border`)
-  assert.match(block, /background:\s*var\(--material-glass-control\)/, `${label} should use the shared glass control material`)
+  assert.match(block, backgroundIncludes('material-glass-control'), `${label} should use the shared glass control material`)
   assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${label} should use the shared control shadow`)
   assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${label} should use shared control blur`)
 }
 
 function assertGlassControlHover(block, label) {
-  assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${label} should use the shared hover material`)
+  assert.match(block, backgroundIncludes('material-glass-control-hover'), `${label} should use the shared hover material`)
   assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use the shared hover border`)
   assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${label} should use the shared hover shadow`)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  return css
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
 }
 
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
@@ -39,6 +52,12 @@ test('home lazy-loads downloader management outside the base downloads chunk', (
   assert.match(source, /components:\s*\{ CandidateRunPanel, DownloaderManagementPanel \}/)
   assert.match(source, /<DownloaderManagementPanel[\s\S]*v-else-if="activeTab === 'downloaders'"/)
   assert.doesNotMatch(source, /<div\s+v-else-if="activeTab === 'downloaders'"\s+class="downloaders-panel apple-reveal"/)
+})
+
+test('home page keeps heavyweight styles in an external scoped stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/home\/home\.css"><\/style>/)
+  assert.ok(externalStyle.length > 20000, 'external home stylesheet should carry the moved workspace CSS')
+  assert.ok(vueSource.split('\n').length < 1500, 'Home.vue should stay small enough to review and parse quickly')
 })
 
 test('home candidate controls use shared Apple glass tokens', () => {
@@ -55,12 +74,12 @@ test('home candidate controls use shared Apple glass tokens', () => {
   const chipActive = cssBlock(source, '.chip.active')
 
   assert.match(downloadTabs, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(downloadTabs, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(downloadTabs, backgroundIncludes('material-glass-sheet'))
   assert.match(downloadTabs, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 
   for (const block of [tabButton, candidateSearch, bulkToolbar, chip]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, backgroundIncludes('material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
     assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
@@ -68,19 +87,19 @@ test('home candidate controls use shared Apple glass tokens', () => {
   }
 
   for (const block of [tabHover]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'))
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
 
   for (const block of [tabActive, chipActive]) {
-    assert.match(block, /background:\s*var\(--glass-active-material\)/)
+    assert.match(block, backgroundIncludes('glass-active-material'))
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/)
   }
 
   for (const block of [candidateSearchFocus]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'))
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
   }
 
@@ -154,7 +173,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   }
 
   assert.match(inlineDialog, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(inlineDialog, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(inlineDialog, backgroundIncludes('material-glass-sheet'))
   assert.match(inlineDialog, /box-shadow:\s*var\(--shadow-sheet\)/)
   assert.doesNotMatch(inlineDialog, /var\(--border-light\)/)
 
@@ -165,7 +184,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   assert.match(coverCode, /color:\s*var\(--media-caption-text\)/)
   assert.doesNotMatch(coverCode, /color:\s*white|#fff|#ffffff/i)
 
-  assert.match(actionChipPrimary, /background:\s*var\(--glass-active-material\)/)
+  assert.match(actionChipPrimary, backgroundIncludes('glass-active-material'))
   assert.match(actionChipPrimary, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(actionChipPrimary, /color:\s*var\(--text-primary\)/)
   assert.match(actionChipPrimary, /box-shadow:\s*var\(--glass-active-shadow\)/)
@@ -179,7 +198,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   assert.match(inlineDialogOverlay, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(inlineDialogOverlay, /z-index:\s*\d+|rgba\(0,\s*0,\s*0/)
 
-  assert.match(eventDot, /background:\s*var\(--glass-active-material\)/)
+  assert.match(eventDot, backgroundIncludes('glass-active-material'))
   assert.match(eventDot, /border:\s*1px solid var\(--glass-active-border\)/)
   assert.match(eventDot, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(eventDot, /background:\s*var\(--accent\)/)
@@ -190,4 +209,8 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   assert.match(detailError, /background:\s*var\(--badge-error-bg\)/)
   assert.match(detailError, /color:\s*var\(--badge-error-text\)/)
   assert.doesNotMatch(`${taskError}\n${detailError}`, /#ef5350|#EF5350/)
+})
+
+test('home glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })

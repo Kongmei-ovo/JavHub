@@ -1383,6 +1383,17 @@ class SubscriptionRouterCandidateStatsTest(TempPostgresMixin, unittest.IsolatedA
         self.assertEqual(result["data"][123][0]["dvd_id"], "SIVR-438")
         self.assertEqual(result["data"][456][0]["dvd_id"], "ABP-588")
 
+    async def test_new_movies_defaults_to_compact_candidate_batches(self):
+        from routers import subscriptions
+
+        with patch.object(subscriptions, "get_subscriptions", return_value=[
+            {"id": 1, "actress_id": 123, "actress_name": "Actor", "enabled": True},
+        ]), patch.object(subscriptions, "list_download_candidates_by_actress_ids", return_value={}) as rows:
+            result = await subscriptions.get_new_movies()
+
+        rows.assert_called_once_with([123], status="candidate", source="subscription", limit_per_actress=20)
+        self.assertEqual(result["limit_per_actress"], 20)
+
     async def test_check_subscriptions_returns_structured_report(self):
         from database import add_subscription
         from routers import subscriptions

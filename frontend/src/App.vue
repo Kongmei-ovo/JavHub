@@ -418,6 +418,21 @@ export default {
   z-index: var(--z-nav);
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  isolation: isolate;
+}
+
+.sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise);
+  opacity: var(--surface-overlay-opacity);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .sidebar.collapsed {
@@ -426,6 +441,8 @@ export default {
 }
 
 .sidebar-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -466,7 +483,10 @@ export default {
   padding: 3px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   color: var(--text-primary);
   cursor: pointer;
@@ -476,7 +496,10 @@ export default {
 }
 
 .theme-toggle:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -489,7 +512,10 @@ export default {
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
   transform: translateX(-4px);
@@ -516,6 +542,8 @@ export default {
 .collapse-btn:focus-visible { outline: 3px solid rgba(var(--accent-rgb), 0.18); outline-offset: 2px; }
 
 .sidebar-nav {
+  position: relative;
+  z-index: 1;
   flex: 1;
   padding: 12px 8px;
   display: flex;
@@ -566,7 +594,10 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .nav-item.active {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   border: 1px solid var(--active-border);
   box-shadow: var(--glass-active-shadow);
@@ -601,6 +632,8 @@ export default {
   text-align: center;
 }
 .sidebar-footer {
+  position: relative;
+  z-index: 1;
   padding: 16px;
   border-top: 1px solid var(--surface-nav-border);
 }
@@ -640,9 +673,26 @@ export default {
   box-shadow: var(--chrome-floating-shadow);
   z-index: var(--z-nav);
   padding: 6px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.bottom-nav::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise);
+  opacity: var(--surface-overlay-opacity);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .bottom-nav-item {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -667,7 +717,10 @@ export default {
 .bottom-nav-item:hover svg { transform: translateY(-1px); }
 .bottom-nav-item.active {
   color: var(--text-primary);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 .bottom-nav-item.active svg { filter: none; }
@@ -700,14 +753,36 @@ export default {
     padding: 0 12px calc(74px + env(safe-area-inset-bottom, 0px));
   }
   .mobile-more-sheet {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     width: 100%;
     padding: 10px 10px 14px;
     border: 1px solid var(--border-light);
     border-radius: 22px;
-    background: var(--material-glass-sheet);
+    background:
+      var(--surface-specular-edge-strong),
+      var(--surface-noise),
+      var(--material-glass-sheet);
     box-shadow: var(--shadow-sheet);
     backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
     -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  }
+  .mobile-more-sheet::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      var(--surface-specular-edge),
+      var(--surface-noise);
+    opacity: var(--surface-overlay-opacity);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .mobile-more-sheet > * {
+    position: relative;
+    z-index: 1;
   }
   .mobile-more-grabber {
     width: 38px;
@@ -735,7 +810,10 @@ export default {
     height: 36px;
     border-radius: 999px;
     border: 1px solid var(--glass-control-border);
-    background: var(--material-glass-control);
+    background:
+      var(--surface-specular-edge),
+      var(--surface-noise),
+      var(--material-glass-control);
     color: var(--text-primary);
     font-size: 22px;
     line-height: 1;
@@ -750,7 +828,10 @@ export default {
     justify-content: space-between;
     border: 1px solid var(--glass-control-border);
     border-radius: 16px;
-    background: var(--material-glass-control);
+    background:
+      var(--surface-specular-edge),
+      var(--surface-noise),
+      var(--material-glass-control);
     color: var(--text-primary);
     box-shadow: var(--glass-control-shadow);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -780,7 +861,10 @@ export default {
     gap: 8px;
     border: 1px solid var(--glass-control-border);
     border-radius: 16px;
-    background: var(--material-glass-control);
+    background:
+      var(--surface-specular-edge),
+      var(--surface-noise),
+      var(--material-glass-control);
     box-shadow: var(--glass-control-shadow);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -796,7 +880,10 @@ export default {
   .mobile-more-item.active {
     color: var(--text-primary);
     border-color: var(--glass-active-border);
-    background: var(--glass-active-material);
+    background:
+      var(--surface-specular-edge-strong),
+      var(--surface-noise),
+      var(--glass-active-material);
     box-shadow: var(--glass-active-shadow);
   }
   .mobile-more-enter-active,

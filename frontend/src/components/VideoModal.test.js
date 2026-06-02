@@ -2,8 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
+const vueSource = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
+
 function metadataLoadedFor(video) {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const match = source.match(/metadataLoaded\(\) \{([\s\S]*?)\n    \},\n    directorsDisplay/)
   assert.ok(match, 'metadataLoaded computed property should be present')
   const metadataLoaded = new Function(`return function metadataLoaded() {${match[1]}\n}`)()
@@ -11,7 +14,6 @@ function metadataLoadedFor(video) {
 }
 
 function galleryThumbsFor(video) {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const match = source.match(/galleryThumbs\(\) \{([\s\S]*?)\n    \},\n  \},/)
   assert.ok(match, 'galleryThumbs computed property should be present')
   const galleryThumbs = new Function(`return function galleryThumbs() {${match[1]}\n}`)()
@@ -19,7 +21,6 @@ function galleryThumbsFor(video) {
 }
 
 function summaryDisplayFor(video) {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const match = source.match(/summaryDisplay\(\) \{([\s\S]*?)\n    \},\n    magnets/)
   assert.ok(match, 'summaryDisplay computed property should be present')
   const summaryDisplay = new Function(`return function summaryDisplay() {${match[1]}\n}`)()
@@ -32,6 +33,12 @@ function sourceBlock(source, selector) {
   assert.ok(match, `${selector} should exist`)
   return match[1]
 }
+
+test('video modal keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/videoModal\/videoModal\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 700, 'VideoModal.vue should stay below 700 lines')
+  assert.ok(externalStyle.split('\n').length > 500, 'external stylesheet should contain the moved modal styles')
+})
 
 test('metadataLoaded resolves when JavInfo detail loading finishes with empty metadata', () => {
   assert.equal(metadataLoadedFor({
@@ -72,8 +79,6 @@ test('summaryDisplay prefers translated summary', () => {
 })
 
 test('modal overlay teleports globally and can render inline on the detail page', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /<teleport to="body" :disabled="inline">\s*<div v-if="visible" class="modal-overlay"/)
   assert.match(source, /inline:\s*\{ type: Boolean, default: false \}/)
   assert.match(source, /\.modal-overlay\.inline\s*\{[\s\S]*position:\s*static/)
@@ -81,8 +86,6 @@ test('modal overlay teleports globally and can render inline on the detail page'
 })
 
 test('modal sheet keeps a visible translucent fallback without relying on backdrop filtering', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /--modal-sheet-bg/)
   assert.match(source, /--modal-panel-bg/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
@@ -92,7 +95,6 @@ test('modal sheet keeps a visible translucent fallback without relying on backdr
 })
 
 test('modal material stays readable and consistent over busy result grids', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const overlayBlock = source.match(/\.modal-overlay\s*\{[^}]*\}/)?.[0] || ''
 
   assert.match(source, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
@@ -111,7 +113,6 @@ test('modal material stays readable and consistent over busy result grids', () =
 })
 
 test('modal actions use liquid glass control tokens instead of hardcoded pills', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const actionBlock = source.match(/\.preview-btn,\s*\n\.stream-btn,\s*\n\.favorite-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
   const primaryBlock = source.match(/\.preview-btn,\s*\n\.stream-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
   const favoriteActiveBlock = source.match(/\.favorite-btn\.is-active\s*\{[\s\S]*?\n\}/)?.[0] || ''
@@ -131,7 +132,6 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
 })
 
 test('modal people chips and lightbox controls use shared glass surfaces', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const closeBlock = sourceBlock(source, '.modal-close')
   const avatarBlock = sourceBlock(source, '.actress-avatar')
   const avatarHoverBlock = sourceBlock(source, '.actress-avatar-item:hover .actress-avatar')
@@ -167,7 +167,6 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
 })
 
 test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const overlayBlock = sourceBlock(source, '.gallery-lightbox')
   const imageBlock = sourceBlock(source, '.lightbox-img')
   const counterBlock = sourceBlock(source, '.lightbox-counter')
@@ -202,7 +201,6 @@ test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => 
 })
 
 test('modal detail labels use inherited modal text tokens without uppercase tracking', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const sectionTitleBlock = source.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const metaLabelBlock = source.match(/\.meta-label\s*\{[^}]*\}/)?.[0] || ''
 
@@ -216,7 +214,6 @@ test('modal detail labels use inherited modal text tokens without uppercase trac
 })
 
 test('modal detail typography and dividers use modal semantic text tokens', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const modalCodeBlock = sourceBlock(source, '.modal-code-block')
   const modalCode = sourceBlock(source, '.modal-code')
   const titleBlock = sourceBlock(source, '.modal-title-block')
@@ -290,7 +287,6 @@ test('modal detail typography and dividers use modal semantic text tokens', () =
 })
 
 test('modal sheet edge highlights use modal border tokens', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const overlay = sourceBlock(source, '.modal-overlay')
   const darkOverlay = source.match(/:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{([^}]*)\}/)?.[1] || ''
   const container = source.match(/\n\.modal-container\s*\{([^}]*)\}/)?.[1] || ''
@@ -311,8 +307,6 @@ test('modal sheet edge highlights use modal border tokens', () => {
 })
 
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /defineAsyncComponent/)
   assert.match(source, /const VideoPlayerOverlay = defineAsyncComponent\(\(\) => import\('\.\.\/features\/video\/VideoPlayerOverlay\.vue'\)\)/)
   assert.match(source, /const HlsPlayerOverlay = defineAsyncComponent\(\(\) => import\('\.\.\/features\/video\/HlsPlayerOverlay\.vue'\)\)/)
@@ -323,21 +317,15 @@ test('modal keeps media player and hls libraries out of the base modal chunk', (
 })
 
 test('modal uses the lightweight message proxy after removing the Element Plus plugin', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /import \{ ElMessage \} from '\.\.\/utils\/message\.js'/)
   assert.doesNotMatch(source, /\$message/)
 })
 
 test('modal declares emitted events for async component listeners', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /emits:\s*\[\s*'close',\s*'download',\s*'navigate'\s*\]/)
 })
 
 test('modal favorites are keyed by concrete service version', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /function videoFavoriteId\(video = \{\}\)/)
   assert.match(source, /return id && serviceCode \? `\$\{id\}::\$\{serviceCode\}` : id/)
   assert.match(source, /favoriteState\.isFavorited\('video', id\)/)
@@ -345,8 +333,6 @@ test('modal favorites are keyed by concrete service version', () => {
 })
 
 test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /class="tag-list"/)
   assert.match(source, /class="tag-label"/)
   assert.match(source, /\.tag-list\s*\{[\s\S]*display:\s*flex/)
@@ -357,8 +343,6 @@ test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () =>
 })
 
 test('mobile modal sheet uses stable poster sizing and momentum scrolling', () => {
-  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
-
   assert.match(source, /-webkit-overflow-scrolling:\s*touch/)
   assert.match(source, /\.modal-gallery\s*\{[\s\S]*height:\s*min\(42dvh,\s*320px\)/)
   assert.match(source, /\.gallery-img\s*\{[\s\S]*height:\s*100%[\s\S]*object-fit:\s*contain/)

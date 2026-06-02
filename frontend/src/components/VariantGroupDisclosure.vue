@@ -74,7 +74,7 @@ function variantKey(variant) {
   min-height: 32px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
@@ -88,7 +88,7 @@ function variantKey(variant) {
 .variant-group-disclosure__toggle:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
@@ -118,7 +118,7 @@ function variantKey(variant) {
   padding: 6px 8px;
   border: 1px solid var(--glass-control-border);
   border-radius: 8px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
@@ -130,7 +130,7 @@ function variantKey(variant) {
 
 .variant-group-disclosure__row:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);

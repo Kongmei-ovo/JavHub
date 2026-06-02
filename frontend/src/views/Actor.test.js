@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlock(selector) {
   const searchable = source.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -15,6 +17,12 @@ function cssBlock(selector) {
   assert.ok(blocks.length, `${selector} should exist in Actor.vue`)
   return blocks.join('\n')
 }
+
+test('actor page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/actor\/actor\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 850, 'Actor.vue should stay below 850 lines')
+  assert.ok(externalStyle.split('\n').length > 500, 'external stylesheet should contain the moved actor styles')
+})
 
 test('actor page treats supplement as part of the default catalog', () => {
   assert.equal(source.includes('包含补全'), false)

@@ -17,14 +17,14 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   const focus = cssRule('.actress-card:focus-visible')
   const media = cssRule('.card-cover')
 
-  assert.match(card, /background:\s*var\(--material-glass-control\)/)
+  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(card, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\)/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--glass-surface-shadow\)|var\(--glass-blur-surface\)|transition:\s*all|blur\(80px\)|rgba\(255,\s*255,\s*255,\s*0\.04\)/)
 
-  assert.match(hover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(hover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(hover, /var\(--surface-card-hover\)|var\(--shadow-floating\)|rgba\(0,\s*0,\s*0,\s*0\.4\)/)
@@ -45,7 +45,7 @@ test('ActressCard badges and meta colors use theme status tokens', () => {
   const candidateMeta = cssRule('.meta-candidate')
 
   for (const block of [coverBadge, coverHeart]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)

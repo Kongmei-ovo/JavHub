@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlock(selector) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -84,4 +86,10 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
 
   assert.match(previewBubble, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(previewBubble, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
+})
+
+test('settings page keeps heavyweight styles in an external scoped stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
+  assert.ok(externalStyle.length > 20000, 'external settings stylesheet should carry the moved workspace CSS')
+  assert.ok(vueSource.split('\n').length < 1800, 'Config.vue should stay small enough to review and parse quickly')
 })

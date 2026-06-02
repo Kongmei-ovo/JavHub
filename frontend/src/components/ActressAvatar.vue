@@ -40,7 +40,7 @@ const initials = computed(() => {
 .avatar-placeholder {
   width: 100%;
   height: 100%;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   display: flex;
   align-items: center;
   justify-content: center;

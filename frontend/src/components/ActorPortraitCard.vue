@@ -149,7 +149,7 @@ function emitSubscribe() {
   padding: 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   color: var(--text-primary);
   cursor: pointer;
@@ -167,7 +167,7 @@ function emitSubscribe() {
 .actor-portrait-card:hover {
   transform: translateY(-5px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -227,7 +227,7 @@ function emitSubscribe() {
   padding: 0;
   border: 1px solid var(--glass-edge);
   border-radius: 50%;
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
   color: var(--text-muted);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -249,7 +249,7 @@ function emitSubscribe() {
 .actor-portrait-card__favorite:hover,
 .actor-portrait-card__subscribe:hover {
   transform: scale(1.07);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -326,7 +326,7 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card__badge--neutral {
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border-color: var(--glass-control-border);
   color: var(--text-secondary);
 }
@@ -352,7 +352,7 @@ function emitSubscribe() {
 
 .actor-portrait-card__action {
   margin-top: 4px;
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);

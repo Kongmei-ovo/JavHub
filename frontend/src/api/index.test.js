@@ -372,6 +372,20 @@ test('getActressVideos defaults to skipping total count', async (t) => {
   assert.deepEqual(capturedConfig.params, { page: 1, page_size: 20, include_total: false })
 })
 
+test('subscription new movies API forwards compact batch params', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: {} } }
+  })
+
+  const { default: api } = await import(`./index.js?subscription-new-movies-${Date.now()}`)
+  await api.getNewMovies({ limit_per_actress: 12, cache: '0' })
+
+  assert.equal(capturedConfig.url, '/v1/subscriptions/new_movies')
+  assert.deepEqual(capturedConfig.params, { limit_per_actress: 12, cache: '0' })
+})
+
 test('numeric path APIs reject path-like identifiers before sending requests', async (t) => {
   const calls = []
   installAxiosAdapter(t, async (config) => {

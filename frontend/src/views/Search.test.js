@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
+const externalStyle = readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}`
 
 function sourceBlock(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -10,6 +12,16 @@ function sourceBlock(selector) {
   assert.ok(match, `${selector} should exist`)
   return match[1]
 }
+
+function backgroundIncludes(token) {
+  return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
+test('search page keeps large scoped styles in a feature stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/search\/search\.css"><\/style>/)
+  assert.ok(vueSource.split('\n').length < 800, 'Search.vue should stay below 800 lines')
+  assert.ok(externalStyle.split('\n').length > 850, 'external stylesheet should contain the moved search styles')
+})
 
 test('search page requests grouped variants with explanations by default', () => {
   assert.match(source, /variant_mode:\s*'grouped'/)
@@ -75,16 +87,16 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     assert.doesNotMatch(block, /var\(--border\)/)
   }
 
-  assert.match(commandCapsuleBlock, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(commandCapsuleBlock, backgroundIncludes('material-glass-sheet'))
   assert.match(commandCapsuleBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(commandCapsuleBlock, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(commandCapsuleBlock, /var\(--shadow-floating\)/)
-  assert.match(commandCapsuleFocusedBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(commandCapsuleFocusedBlock, backgroundIncludes('glass-active-material'))
   assert.match(commandCapsuleFocusedBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(commandCapsuleFocusedBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(commandCapsuleFocusedBlock, /var\(--shadow-floating\)/)
 
-  assert.match(advancedPanelBlock, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(advancedPanelBlock, backgroundIncludes('material-glass-sheet'))
   assert.match(advancedPanelBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(advancedPanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
   assert.match(panelFooterBlock, /border-top:\s*1px solid var\(--glass-edge\)/)
@@ -103,7 +115,7 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     [panelInputBlock, 'panel input'],
     [trayTagBlock, 'tray tag'],
   ]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass control`)
+    assert.match(block, backgroundIncludes('material-glass-control'), `${name} should use shared glass control`)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
@@ -114,7 +126,7 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     [filterItemHoverBlock, 'filter item hover'],
     [appliedChipHoverBlock, 'applied chip hover'],
   ]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
   }
@@ -129,14 +141,14 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     [randomPillActiveBlock, 'random pill active'],
     [filterItemActiveBlock, 'filter item active'],
   ]) {
-    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${name} should use active glass material`)
+    assert.match(block, backgroundIncludes('glass-active-material'), `${name} should use active glass material`)
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${name} should use active glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
   }
-  assert.match(sortPillActiveHoverBlock, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(sortPillActiveHoverBlock, backgroundIncludes('material-glass-control-hover'))
   assert.match(sortPillActiveHoverBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(panelInputFocusBlock, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(panelInputFocusBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(panelInputFocusBlock, backgroundIncludes('glass-active-material'))
   assert.match(panelInputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.match(mobileBlock, /\.variant-inline-item\s*\{[\s\S]*grid-template-columns:\s*1fr/)
@@ -152,7 +164,7 @@ test('search inline variant controls use shared glass materials and explicit mot
 
   for (const [block, name] of [[variantButtonBlock, 'variant button'], [variantRowBlock, 'variant row']]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, backgroundIncludes('material-glass-control'), `${name} should use shared glass material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
     assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
@@ -160,7 +172,7 @@ test('search inline variant controls use shared glass materials and explicit mot
   }
 
   for (const [block, name] of [[variantButtonHoverBlock, 'variant button hover'], [variantRowHoverBlock, 'variant row hover']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lightly lift`)
@@ -181,7 +193,7 @@ test('search pagination controls use shared glass materials and explicit motion'
   const jumpButtonActiveBlock = sourceBlock('.jump-btn:active')
 
   for (const [block, name] of [[pageButtonBlock, 'page button'], [jumpButtonBlock, 'jump button']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
+    assert.match(block, backgroundIncludes('material-glass-control'), `${name} should use shared glass material`)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
@@ -190,7 +202,7 @@ test('search pagination controls use shared glass materials and explicit motion'
   }
 
   for (const [block, name] of [[pageButtonHoverBlock, 'page button hover'], [jumpButtonHoverBlock, 'jump button hover']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lightly lift`)
@@ -199,12 +211,12 @@ test('search pagination controls use shared glass materials and explicit motion'
   assert.match(pageButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(jumpButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
 
-  assert.match(jumpInputBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(jumpInputBlock, backgroundIncludes('material-glass-control'))
   assert.match(jumpInputBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(jumpInputBlock, /transition:\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(jumpInputBlock, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-input\)/)
   assert.match(jumpInputFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(jumpInputFocusBlock, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(jumpInputFocusBlock, backgroundIncludes('material-glass-control-hover'))
   assert.doesNotMatch(source, /\.page-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)|\.jump-input\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
 })
 
@@ -220,7 +232,7 @@ test('search primary action buttons use active glass instead of solid accent fil
   const applyButtonActiveBlock = sourceBlock('.btn-apply:active')
 
   for (const [block, name] of [[capsuleButtonBlock, 'capsule search button'], [applyButtonBlock, 'apply button']]) {
-    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${name} should use active glass material`)
+    assert.match(block, backgroundIncludes('glass-active-material'), `${name} should use active glass material`)
     assert.match(block, /border:\s*1px solid var\(--glass-active-border\)/, `${name} should use active glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
     assert.match(block, /color:\s*var\(--text-primary\)/, `${name} should keep text on glass, not accent fill`)
@@ -229,7 +241,7 @@ test('search primary action buttons use active glass instead of solid accent fil
     assert.doesNotMatch(block, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)|border:\s*none|transition:\s*all\b|box-shadow:\s*none/, `${name} should not keep the legacy solid primary`)
   }
 
-  assert.match(clearButtonBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(clearButtonBlock, backgroundIncludes('material-glass-control'))
   assert.match(clearButtonBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(clearButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(clearButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -237,7 +249,7 @@ test('search primary action buttons use active glass instead of solid accent fil
   assert.doesNotMatch(clearButtonBlock, /background:\s*var\(--surface-control\)|transition:\s*all\b/)
 
   for (const [block, name] of [[capsuleButtonHoverBlock, 'capsule hover'], [clearButtonHoverBlock, 'clear hover'], [applyButtonHoverBlock, 'apply hover']]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
   }
@@ -256,4 +268,37 @@ test('search loading spinner uses theme glass colors instead of white accent pai
   assert.match(spinnerBlock, /border:\s*2px solid var\(--glass-control-border\)/)
   assert.match(spinnerBlock, /border-top-color:\s*var\(--text-primary\)/)
   assert.doesNotMatch(spinnerBlock, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|#fff|#ffffff|var\(--text-on-accent\)/i)
+})
+
+test('search command and result controls use layered liquid glass backgrounds', () => {
+  const layeredControl = /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/
+  const layeredControlHover = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/
+  const layeredActive = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/
+  const layeredSheet = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/
+
+  assert.match(sourceBlock('.command-capsule'), layeredSheet)
+  assert.match(sourceBlock('.command-capsule.focused'), layeredActive)
+  assert.match(sourceBlock('.capsule-search-btn'), layeredActive)
+  assert.match(sourceBlock('.capsule-search-btn:hover'), layeredControlHover)
+  assert.match(sourceBlock('.sort-pill'), layeredControl)
+  assert.match(sourceBlock('.sort-pill:hover'), layeredControlHover)
+  assert.match(sourceBlock('.sort-pill.active'), layeredActive)
+  assert.match(sourceBlock('.filter-item'), layeredControl)
+  assert.match(sourceBlock('.filter-item:hover'), layeredControlHover)
+  assert.match(sourceBlock('.filter-item.toggle.active'), layeredActive)
+  assert.match(sourceBlock('.applied-chip'), layeredControl)
+  assert.match(sourceBlock('.applied-chip:hover'), layeredControlHover)
+  assert.match(sourceBlock('.advanced-panel'), layeredSheet)
+  assert.match(sourceBlock('.panel-input'), layeredControl)
+  assert.match(sourceBlock('.panel-input:focus'), layeredActive)
+  assert.match(sourceBlock('.variant-expand-btn'), layeredControl)
+  assert.match(sourceBlock('.variant-expand-btn:hover'), layeredControlHover)
+  assert.match(sourceBlock('.variant-inline-item'), layeredControl)
+  assert.match(sourceBlock('.variant-inline-item:hover'), layeredControlHover)
+  assert.match(sourceBlock('.page-btn'), layeredControl)
+  assert.match(sourceBlock('.page-btn:hover:not(:disabled)'), layeredControlHover)
+  assert.match(sourceBlock('.jump-input'), layeredControl)
+  assert.match(sourceBlock('.jump-input:focus'), layeredControlHover)
+  assert.match(sourceBlock('.jump-btn'), layeredControl)
+  assert.match(sourceBlock('.jump-btn:hover'), layeredControlHover)
 })
