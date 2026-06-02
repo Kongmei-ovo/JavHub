@@ -1421,7 +1421,7 @@ onMounted(async () => {
 .mini-check-form input:focus,
 .organize-filters input:focus,
 .check-form input:focus {
-  border-color: var(--accent);
+  border-color: var(--glass-active-border);
   background: var(--glass-active-material);
   box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }

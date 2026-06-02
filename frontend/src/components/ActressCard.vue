@@ -51,7 +51,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { applyImageFallback } from '../utils/imageFallback.js'
+
+const props = defineProps({
   coverUrl: { type: String, default: '' },
   name: { type: String, default: '未知' },
   originalName: { type: String, default: '' },
@@ -63,7 +65,7 @@ defineProps({
 defineEmits(['click'])
 
 const handleImgError = (e) => {
-  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><rect fill="%231a1a2e" width="200" height="280"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23555" font-size="36">?</text></svg>'
+  applyImageFallback(e, { label: props.name?.slice(0, 1) || '?' })
 }
 </script>
 

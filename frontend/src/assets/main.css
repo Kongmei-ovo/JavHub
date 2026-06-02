@@ -670,6 +670,37 @@ a:hover {
   box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
 }
 
+.image-fallback {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  color: var(--text-muted);
+}
+
+.image-fallback::before {
+  content: attr(data-fallback-label);
+  position: absolute;
+  inset: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  font-size: var(--type-caption);
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.image-fallback__media {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .apple-reveal {
   animation: apple-content-reveal var(--motion-reveal);
 }

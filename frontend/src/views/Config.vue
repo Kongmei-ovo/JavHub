@@ -1981,7 +1981,7 @@ export default {
   padding: 8px 0;
   cursor: pointer;
 }
-.form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.form-group.checkbox input { width: 18px; height: 18px; accent-color: var(--glass-active-border); cursor: pointer; }
 .form-group.checkbox label { margin: 0; font-size: var(--type-body); color: var(--text-primary); cursor: pointer; }
 .javinfo-runtime-panel {
   display: grid;
@@ -2093,7 +2093,7 @@ export default {
 .source-check-item input {
   width: 16px;
   height: 16px;
-  accent-color: var(--accent);
+  accent-color: var(--glass-active-border);
 }
 
 .appearance-section .section-header {
@@ -2326,7 +2326,7 @@ export default {
 .threshold-slider {
   width: 100%;
   min-width: 0;
-  accent-color: var(--accent);
+  accent-color: var(--glass-active-border);
   cursor: pointer;
 }
 

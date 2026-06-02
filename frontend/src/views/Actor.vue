@@ -229,6 +229,7 @@ import { displayName } from '../utils/displayLang.js'
 import { openVideoModal } from '../utils/modalState.js'
 import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import MovieCard from '../components/MovieCard.vue'
 
 const MOVIE_PAGE_SIZE = 100
@@ -674,7 +675,7 @@ export default {
       return movie._raw?.service_code || ''
     },
     handleAvatarError(e) {
-      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="%23333" width="120" height="120" rx="60"/><text x="50%" y="55%" text-anchor="middle" dy=".3em" fill="%23999" font-size="40">?</text></svg>'
+      applyImageFallback(e, { label: (this.translatedName || this.actorName || '?').slice(0, 1) })
     },
     async loadSupplementStatus() {
       if (!this.actressId) return
@@ -926,7 +927,7 @@ export default {
   width: 40px;
   height: 40px;
   border: 3px solid var(--glass-control-border);
-  border-top-color: var(--accent);
+  border-top-color: var(--glass-active-border);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 16px;

@@ -846,10 +846,16 @@ async def fill_video(content_id: str):
     return {"success": True, "candidate": candidate}
 
 @router.post("/fill-all")
-async def fill_all_videos(sample_limit: int = 20):
-    """将所有缺失影片转为下载候选，不直接下发下载。"""
+async def fill_all_videos(limit: int = 100, offset: int = 0, sample_limit: int = 20):
+    """将一页缺失影片转为下载候选，不直接下发下载。"""
     from database import upsert_download_candidate
-    missing = get_all_missing_videos()
+    safe_limit = max(1, min(int(limit or 100), 100))
+    safe_offset = max(0, int(offset or 0))
+    page = list_missing_videos_page(limit=safe_limit, offset=safe_offset)
+    missing = page["data"]
+    total = int(page.get("total") or 0)
+    page_limit = int(page.get("limit") or safe_limit)
+    page_offset = int(page.get("offset") or safe_offset)
     info = get_info_client()
     count = 0
     candidates = []
@@ -886,6 +892,10 @@ async def fill_all_videos(sample_limit: int = 20):
     return {
         "success": True,
         "count": count,
+        "total": total,
+        "limit": page_limit,
+        "offset": page_offset,
+        "has_more": page_offset + count < total,
         "sample_count": len(candidates),
         "truncated": count > len(candidates),
         "candidates": candidates,

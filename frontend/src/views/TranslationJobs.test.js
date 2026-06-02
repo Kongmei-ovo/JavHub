@@ -24,6 +24,7 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   const donutHole = cssBlock(source, '.coverage-donut div')
   const darkTokens = source.match(/:global\(:root\[data-theme='dark'\]\)\s*\{([^}]*)\}/)?.[1] || ''
   const overviewTrackFill = cssBlock(source, '.overview-track div')
+  const overviewTrack = cssBlock(source, '.overview-track')
   const segmentedButton = cssBlock(source, '.segmented-control button')
   const segmentedHover = cssBlock(source, '.segmented-control button:hover')
   const compactJob = cssBlock(source, '.compact-job-row')
@@ -47,6 +48,9 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   assert.match(overviewTrackFill, /background:\s*var\(--glass-active-material\)/)
   assert.match(overviewTrackFill, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(overviewTrackFill, /background:\s*var\(--accent\)/)
+  assert.match(overviewTrack, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(overviewTrack, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.doesNotMatch(overviewTrack, /rgba\(var\(--accent-rgb\)/)
 
   for (const block of [segmentedButton, compactJob, historyRow]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)

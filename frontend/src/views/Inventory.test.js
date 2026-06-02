@@ -22,7 +22,9 @@ function cssBlock(content, selector) {
 
 test('inventory controls use shared Apple glass materials', () => {
   assert.match(source, /class="progress-ring-bg"[\s\S]*stroke="var\(--glass-control-border\)"/)
+  assert.match(source, /class="progress-ring-fill"[\s\S]*stroke="var\(--glass-active-border\)"/)
   assert.doesNotMatch(source, /stroke="var\(--border\)"/)
+  assert.doesNotMatch(source, /stroke="var\(--accent\)"/)
 
   const searchBox = cssBlock(source, '.search-box')
   const searchFocus = cssBlock(source, '.search-box:focus-within')

@@ -1024,6 +1024,21 @@ test('inventory missing API accepts pagination params', async (t) => {
   assert.deepEqual(capturedConfig.params, { page: 2, page_size: 80 })
 })
 
+test('inventory fill-all API accepts bounded pagination params', async (t) => {
+  let capturedConfig = null
+  installAxiosAdapter(t, async (config) => {
+    capturedConfig = config
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { success: true } }
+  })
+
+  const { default: api } = await import(`./index.js?inventory-fill-all-${Date.now()}`)
+  await api.fillAllInventoryVideos({ limit: 40, offset: 120, sample_limit: 5 })
+
+  assert.equal(capturedConfig.url, '/inventory/fill-all')
+  assert.equal(capturedConfig.method, 'post')
+  assert.deepEqual(capturedConfig.params, { limit: 40, offset: 120, sample_limit: 5 })
+})
+
 test('translation job APIs send expected requests', async (t) => {
   const calls = []
   installAxiosAdapter(t, async (config) => {

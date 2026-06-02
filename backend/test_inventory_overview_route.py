@@ -515,7 +515,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
         self.assertEqual(upsert.call_args.kwargs["actress_id"], 7)
         self.assertEqual(result["candidate"], {"id": 10})
 
-    async def test_fill_all_returns_bounded_candidate_sample(self):
+    async def test_fill_all_pages_missing_videos_and_returns_bounded_candidate_sample(self):
         from routers import inventory
 
         info_client = Mock()
@@ -525,11 +525,121 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
             {"content_id": "A-003", "dvd_id": "A-003", "title_ja": "C"},
         ])
 
-        with patch.object(inventory, "get_all_missing_videos", Mock(return_value=[
-                {"content_id": "A-001", "actress_id": 1, "title": "A"},
-                {"content_id": "A-002", "actress_id": 1, "title": "B"},
-                {"content_id": "A-003", "actress_id": 1, "title": "C"},
-            ])), \
+        with patch.object(inventory, "list_missing_videos_page", Mock(return_value={
+                "data": [
+                    {"content_id": "A-001", "actress_id": 1, "title": "A"},
+                    {"content_id": "A-002", "actress_id": 1, "title": "B"},
+                    {"content_id": "A-003", "actress_id": 1, "title": "C"},
+                ],
+                "total": 8,
+                "limit": 3,
+                "offset": 0,
+            })) as page, \
+            patch.object(inventory, "get_all_missing_videos", Mock(side_effect=AssertionError("fill-all should page missing videos"))), \
+            patch.object(inventory, "get_info_client", Mock(return_value=info_client)), \
+            patch("database.upsert_download_candidate", Mock(side_effect=[
+                {"id": 1, "content_id": "A-001"},
+                {"id": 2, "content_id": "A-002"},
+                {"id": 3, "content_id": "A-003"},
+            ]), create=True) as upsert:
+            result = await inventory.fill_all_videos(limit=3, sample_limit=2)
+
+        page.assert_called_once_with(limit=3, offset=0)
+        self.assertEqual(upsert.call_count, 3)
+        self.assertEqual(result["success"], True)
+        self.assertEqual(result["count"], 3)
+        self.assertEqual(result["total"], 8)
+        self.assertEqual(result["limit"], 3)
+        self.assertEqual(result["offset"], 0)
+        self.assertEqual(result["has_more"], True)
+        self.assertEqual(result["sample_count"], 2)
+        self.assertEqual(result["truncated"], True)
+        self.assertEqual(result["candidates"], [
+            {"id": 1, "content_id": "A-001"},
+            {"id": 2, "content_id": "A-002"},
+        ])
+
+    async def test_fill_all_clamps_requested_limit(self):
+        from routers import inventory
+
+        info_client = Mock()
+        info_client.get_video = AsyncMock(return_value={
+            "content_id": "A-001",
+            "dvd_id": "A-001",
+            "title_ja": "A",
+        })
+
+        with patch.object(inventory, "list_missing_videos_page", Mock(return_value={
+                "data": [
+                    {"content_id": "A-001", "actress_id": 1, "title": "A"},
+                ],
+                "total": 1,
+                "limit": 100,
+                "offset": 0,
+            })) as page, \
+            patch.object(inventory, "get_all_missing_videos", Mock(side_effect=AssertionError("fill-all should page missing videos"))), \
+            patch.object(inventory, "get_info_client", Mock(return_value=info_client)), \
+            patch("database.upsert_download_candidate", Mock(return_value={"id": 1, "content_id": "A-001"}), create=True):
+            result = await inventory.fill_all_videos(limit=10000, sample_limit=10)
+
+        page.assert_called_once_with(limit=100, offset=0)
+        self.assertEqual(result["limit"], 100)
+        self.assertEqual(result["offset"], 0)
+        self.assertEqual(result["has_more"], False)
+
+    async def test_fill_all_can_resume_from_offset(self):
+        from routers import inventory
+
+        info_client = Mock()
+        info_client.get_video = AsyncMock(side_effect=[
+            {"content_id": "A-004", "dvd_id": "A-004", "title_ja": "D"},
+            {"content_id": "A-005", "dvd_id": "A-005", "title_ja": "E"},
+        ])
+
+        with patch.object(inventory, "list_missing_videos_page", Mock(return_value={
+                "data": [
+                    {"content_id": "A-004", "actress_id": 1, "title": "D"},
+                    {"content_id": "A-005", "actress_id": 1, "title": "E"},
+                ],
+                "total": 5,
+                "limit": 2,
+                "offset": 3,
+            })) as page, \
+            patch.object(inventory, "get_all_missing_videos", Mock(side_effect=AssertionError("fill-all should page missing videos"))), \
+            patch.object(inventory, "get_info_client", Mock(return_value=info_client)), \
+            patch("database.upsert_download_candidate", Mock(side_effect=[
+                {"id": 4, "content_id": "A-004"},
+                {"id": 5, "content_id": "A-005"},
+            ]), create=True):
+            result = await inventory.fill_all_videos(limit=2, offset=3, sample_limit=5)
+
+        page.assert_called_once_with(limit=2, offset=3)
+        self.assertEqual(result["count"], 2)
+        self.assertEqual(result["total"], 5)
+        self.assertEqual(result["offset"], 3)
+        self.assertEqual(result["has_more"], False)
+
+    async def test_fill_all_legacy_sample_limit_defaults_to_first_page(self):
+        from routers import inventory
+
+        info_client = Mock()
+        info_client.get_video = AsyncMock(side_effect=[
+            {"content_id": "A-001", "dvd_id": "A-001", "title_ja": "A"},
+            {"content_id": "A-002", "dvd_id": "A-002", "title_ja": "B"},
+            {"content_id": "A-003", "dvd_id": "A-003", "title_ja": "C"},
+        ])
+
+        with patch.object(inventory, "list_missing_videos_page", Mock(return_value={
+                "data": [
+                    {"content_id": "A-001", "actress_id": 1, "title": "A"},
+                    {"content_id": "A-002", "actress_id": 1, "title": "B"},
+                    {"content_id": "A-003", "actress_id": 1, "title": "C"},
+                ],
+                "total": 3,
+                "limit": 100,
+                "offset": 0,
+            })) as page, \
+            patch.object(inventory, "get_all_missing_videos", Mock(side_effect=AssertionError("fill-all should page missing videos"))), \
             patch.object(inventory, "get_info_client", Mock(return_value=info_client)), \
             patch("database.upsert_download_candidate", Mock(side_effect=[
                 {"id": 1, "content_id": "A-001"},
@@ -538,16 +648,10 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
             ]), create=True) as upsert:
             result = await inventory.fill_all_videos(sample_limit=2)
 
+        page.assert_called_once_with(limit=100, offset=0)
         self.assertEqual(upsert.call_count, 3)
-        self.assertEqual(result["success"], True)
-        self.assertEqual(result["count"], 3)
         self.assertEqual(result["sample_count"], 2)
         self.assertEqual(result["truncated"], True)
-        self.assertEqual(result["candidates"], [
-            {"id": 1, "content_id": "A-001"},
-            {"id": 2, "content_id": "A-002"},
-        ])
-
 
 if __name__ == "__main__":
     unittest.main()

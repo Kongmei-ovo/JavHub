@@ -903,7 +903,7 @@ export default {
 
 .favorites-grid.is-editing :deep(.apple-video-card),
 .favorite-selectable.selected :deep(.actor-portrait-card) {
-  outline: 2px solid rgba(var(--accent-rgb), 0.82);
+  outline: 2px solid var(--glass-active-border);
   outline-offset: 3px;
 }
 

@@ -87,6 +87,9 @@ test('library organize workbench cards use liquid glass depth instead of flat wh
   assert.match(rowRule, /transition:/)
   assert.match(inputRule, /background: var\(--material-glass-control\)/)
   assert.match(inputRule, /box-shadow: var\(--glass-control-shadow\)/)
+  const focusRule = cssGroupedRule('.mini-check-form input:focus,')
+  assert.match(focusRule, /border-color:\s*var\(--glass-active-border\)/)
+  assert.doesNotMatch(focusRule, /border-color:\s*var\(--accent\)/)
 })
 
 test('library organize nested controls keep glass treatment across light and dark themes', () => {

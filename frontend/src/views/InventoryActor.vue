@@ -58,7 +58,7 @@
                 v-if="video.image_tag"
                 :src="embyImageUrl(video.item_id, video.image_tag)"
                 :alt="video.title"
-                @error="$event.target.style.display='none'"
+                @error="handleVideoCoverError($event, video)"
               />
               <div v-else class="no-cover">无封面</div>
             </div>
@@ -119,6 +119,7 @@ import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { openVideoModal } from '../utils/modalState'
 import { groupEmbyVideosByYear, groupMissingVideosByYear } from '../utils/inventoryVideoGrouping'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import api from '../api'
 
 const route = useRoute()
@@ -165,6 +166,10 @@ const embyImageUrl = (itemId, imageTag) => {
   return `/api/proxy/image?url=${encodeURIComponent(
     `${actor.value._emby_api_url}/Items/${itemId}/Images/Primary?tag=${imageTag}`
   )}`
+}
+
+const handleVideoCoverError = (event, video) => {
+  applyImageFallback(event, { label: String(video?.displayCode || video?.title || '?').slice(0, 6) })
 }
 
 const openEmbyItem = (video) => {

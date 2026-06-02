@@ -49,7 +49,7 @@
               v-if="actorContextAvatar"
               :src="actorContextAvatar"
               :alt="actorContextName"
-              @error="$event.target.style.display = 'none'"
+              @error="handleWorkspaceAvatarError"
             />
             <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
           </div>
@@ -405,6 +405,7 @@ import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import { ElMessage } from '../utils/message.js'
 import { actressImgUrl } from '../utils/imageUrl.js'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import { displayName } from '../utils/displayLang.js'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
@@ -597,6 +598,9 @@ export default {
     this._stopGfriendsAvatarPolling()
   },
   methods: {
+    handleWorkspaceAvatarError(e) {
+      applyImageFallback(e, { label: this.actorContextName?.slice(0, 1) || '?' })
+    },
     supplementQueryKey(query = this.$route.query) {
       const field = (key) => {
         const value = query[key]

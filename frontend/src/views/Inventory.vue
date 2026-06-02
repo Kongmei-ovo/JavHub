@@ -16,7 +16,7 @@
               class="progress-ring-fill"
               cx="20" cy="20" r="16"
               fill="none"
-              stroke="var(--accent)"
+              stroke="var(--glass-active-border)"
               stroke-width="3"
               :stroke-dasharray="100"
               :stroke-dashoffset="100 - currentProgress"

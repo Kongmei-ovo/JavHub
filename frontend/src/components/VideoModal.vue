@@ -246,7 +246,7 @@
             :src="formatGalleryUrl(galleryThumbs[currentGalleryIndex])"
             :alt="'剧照 ' + (currentGalleryIndex + 1)"
             class="lightbox-img"
-            @error="$event.target.src = galleryThumbUrl(galleryThumbs[currentGalleryIndex])"
+            @error="handleGalleryImgError"
           />
         </div>
         <button class="lightbox-next" @click="nextGallery" :disabled="galleryThumbs.length <= 1">›</button>
@@ -285,6 +285,7 @@
 import { defineAsyncComponent } from 'vue'
 import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import favoriteState from '../utils/favoriteState'
 import api from '../api'
 import { ElMessage } from '../utils/message.js'
@@ -438,7 +439,18 @@ export default {
     },
 
     displayName,
-    handleImgError(e) { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect fill="%231a1a2e" width="400" height="600"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B6B8A" font-size="14">暂无封面</text></svg>' },
+    handleImgError(e) { applyImageFallback(e, { label: '暂无封面' }) },
+    handleGalleryImgError(e) {
+      const img = e?.target
+      if (!img) return
+      const thumb = galleryThumbUrl(this.galleryThumbs[this.currentGalleryIndex])
+      if (thumb && img.dataset?.galleryThumbFallback !== 'true') {
+        img.dataset.galleryThumbFallback = 'true'
+        img.src = thumb
+        return
+      }
+      applyImageFallback(e, { label: `剧照 ${this.currentGalleryIndex + 1}` })
+    },
     onAvatarError(e) {
       const span = document.createElement('span')
       span.className = 'avatar-placeholder'
@@ -728,7 +740,7 @@ export default {
   color: var(--modal-chip-color);
   z-index: 10;
   box-shadow: var(--modal-chip-shadow);
-  transition: var(--transition-pro);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -835,7 +847,7 @@ export default {
 .actress-list { display: flex; flex-wrap: wrap; gap: 20px; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
 .actress-avatar-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
-.actress-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: var(--transition-pro); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.actress-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .actress-avatar-item:hover .actress-avatar { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); transform: translateY(-4px); box-shadow: var(--modal-chip-shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--modal-chip-muted); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
@@ -843,7 +855,7 @@ export default {
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-name .name-translated { font-size: 11px; color: var(--modal-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-avatar-item:hover .actress-name { color: var(--modal-text-primary); }
-.actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: var(--modal-chip-bg); border-radius: 40px; font-size: 13px; color: var(--modal-chip-color); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: var(--transition-pro); text-align: center; backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
+.actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: var(--modal-chip-bg); border-radius: 40px; font-size: 13px; color: var(--modal-chip-color); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast); text-align: center; backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .actress-tag.clickable { text-decoration: none; text-decoration-color: transparent; }
 .actress-tag:hover { border-color: var(--modal-chip-border-hover); color: var(--modal-text-primary); background: var(--modal-chip-bg-hover); box-shadow: var(--modal-chip-shadow-hover); }
 .tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }

@@ -1613,7 +1613,8 @@ export default {
   height: 10px;
   overflow: hidden;
   border-radius: var(--radius-control);
-  background: rgba(var(--accent-rgb), 0.11);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .overview-track.compact {
@@ -1982,7 +1983,7 @@ export default {
 .provider-row input {
   width: 16px;
   height: 16px;
-  accent-color: var(--accent);
+  accent-color: var(--glass-active-border);
 }
 
 .standalone {

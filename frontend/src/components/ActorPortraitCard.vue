@@ -243,7 +243,7 @@ function emitSubscribe() {
 
 .actor-portrait-card__subscribe {
   left: 9px;
-  color: var(--accent);
+  color: var(--text-muted);
 }
 
 .actor-portrait-card__favorite:hover,

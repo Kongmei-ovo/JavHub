@@ -163,6 +163,7 @@
 <script>
 import api from '../api'
 import { displayName } from '../utils/displayLang.js'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 
 function shuffle(arr) {
@@ -409,7 +410,7 @@ export default {
       return `/api/actors/avatar/${name}`
     },
     handleActressImgError(e) {
-      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="60" fill="%231a1a2e"/><circle cx="60" cy="48" r="20" fill="%23333"/><ellipse cx="60" cy="95" rx="30" ry="22" fill="%23333"/></svg>'
+      applyImageFallback(e, { label: String(e.target?.alt || '?').slice(0, 1) })
     },
     async loadActresses(page = 1) {
       this.actressesLoading = true

@@ -1737,7 +1737,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.candidate-select input { width: 16px; height: 16px; accent-color: var(--accent); }
+.candidate-select input { width: 16px; height: 16px; accent-color: var(--glass-active-border); }
 .candidate-subtitle,
 .candidate-magnet,
 .candidate-reason,

@@ -141,6 +141,11 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
   const lightboxCloseBlock = sourceBlock(source, '.lightbox-close')
   const lightboxNavBlock = sourceBlock(source, '.lightbox-prev, .lightbox-next')
 
+  assert.doesNotMatch(source, /transition:\s*var\(--transition-pro\)/)
+  assert.match(closeBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\)/)
+  assert.match(avatarBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\)/)
+  assert.match(tagBlock, /transition:\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\)/)
+
   assert.match(source, /--modal-chip-bg:\s*var\(--material-glass-control\)/)
   assert.match(source, /--modal-chip-bg-hover:\s*var\(--material-glass-control-hover\)/)
   assert.match(source, /--modal-chip-border:\s*var\(--glass-control-border\)/)

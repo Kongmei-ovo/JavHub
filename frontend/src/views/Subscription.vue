@@ -135,7 +135,7 @@
             <div class="sheet-avatar-wrap">
               <div class="sheet-avatar-glow"></div>
               <div class="sheet-avatar">
-                <img v-if="sheetCoverUrl" :src="sheetCoverUrl" :alt="sheetActor.name_kanji" @error="$event.target.style.display='none'" />
+                <img v-if="sheetCoverUrl" :src="sheetCoverUrl" :alt="sheetActor.name_kanji" @error="handleSheetAvatarError" />
                 <span v-else class="avatar-fallback">{{ (sheetActor.name_kanji || '?')[0] }}</span>
               </div>
             </div>
@@ -220,6 +220,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { actressImgUrl } from '../utils/imageUrl.js'
+import { applyImageFallback } from '../utils/imageFallback.js'
 import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
 import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
@@ -358,6 +359,11 @@ async function doSearch() {
 }
 
 function clearSearch() { searchKeyword.value = ''; searchResults.value = []; searched.value = false }
+
+function handleSheetAvatarError(event) {
+  const label = actorName(sheetActor.value) || sheetActor.value?.name_kanji || '?'
+  applyImageFallback(event, { label: label.slice(0, 1) })
+}
 
 // ===== Sheet =====
 async function openActorSheet(actor) {

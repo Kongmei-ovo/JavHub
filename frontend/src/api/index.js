@@ -213,8 +213,8 @@ export default {
     return api.post(`/inventory/fill/${pathSegment(contentId, 'contentId')}`)
   },
 
-  fillAllInventoryVideos() {
-    return api.post('/inventory/fill-all')
+  fillAllInventoryVideos(params = {}) {
+    return api.post('/inventory/fill-all', null, { params })
   },
 
   listAuthors(params = {}) {

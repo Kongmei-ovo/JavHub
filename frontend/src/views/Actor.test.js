@@ -145,7 +145,8 @@ test('actor page loading and year empty states use shared subtle materials', () 
   const yearEmpty = cssBlock('.year-empty')
 
   assert.match(spinner, /border:\s*3px solid var\(--glass-control-border\)/)
-  assert.match(spinner, /border-top-color:\s*var\(--accent\)/)
+  assert.match(spinner, /border-top-color:\s*var\(--glass-active-border\)/)
+  assert.doesNotMatch(spinner, /border-top-color:\s*var\(--accent\)/)
   assert.doesNotMatch(spinner, /rgba\(255,255,255/)
 
   assert.match(yearHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)

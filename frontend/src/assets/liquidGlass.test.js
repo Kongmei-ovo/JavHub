@@ -9,7 +9,11 @@ const search = readFileSync(new URL('../views/Search.vue', import.meta.url), 'ut
 const genres = readFileSync(new URL('../views/Genres.vue', import.meta.url), 'utf8')
 const config = readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8')
 const videoModal = readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8')
+const actressCard = readFileSync(new URL('../components/ActressCard.vue', import.meta.url), 'utf8')
 const actor = readFileSync(new URL('../views/Actor.vue', import.meta.url), 'utf8')
+const supplementManagement = readFileSync(new URL('../views/SupplementManagement.vue', import.meta.url), 'utf8')
+const inventoryActor = readFileSync(new URL('../views/InventoryActor.vue', import.meta.url), 'utf8')
+const subscription = readFileSync(new URL('../views/Subscription.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8')
 const translationJobs = readFileSync(new URL('../views/TranslationJobs.vue', import.meta.url), 'utf8')
@@ -130,6 +134,22 @@ test('segmented controls and settings rows use shared glass materials', () => {
   assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
 })
 
+test('native form controls use active glass accents instead of raw theme accent paint', () => {
+  for (const [name, source] of [
+    ['Config', config],
+    ['Home', home],
+    ['TranslationJobs', translationJobs],
+  ]) {
+    assert.doesNotMatch(source, /accent-color:\s*var\(--accent\)/, `${name} should not use the raw accent color on native controls`)
+  }
+
+  assert.match(config, /\.form-group\.checkbox input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(config, /\.source-check-item input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(config, /\.threshold-slider\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(home, /\.candidate-select input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(translationJobs, /\.check-row input,\s*[\s\S]*?\.provider-row input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+})
+
 test('video modal sheet uses a translucent material without backdrop-filter differences', () => {
   assert.match(videoModal, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
   assert.match(videoModal, /--modal-sheet-bg:\s*var\(--modal-scrim-sheet\)/)
@@ -138,6 +158,30 @@ test('video modal sheet uses a translucent material without backdrop-filter diff
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none[\s\S]*-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(videoModal, /--modal-(?:panel|gallery|overlay)-bg:\s*rgba\(0,\s*0,\s*0/)
+})
+
+test('image fallback placeholders use theme glass instead of hardcoded SVG data URLs', () => {
+  for (const [name, source] of [
+    ['ActressCard', actressCard],
+    ['VideoModal', videoModal],
+    ['Actor', actor],
+    ['Genres', genres],
+    ['SupplementManagement', supplementManagement],
+    ['InventoryActor', inventoryActor],
+    ['Subscription', subscription],
+  ]) {
+    assert.doesNotMatch(source, /data:image\/svg\+xml/, `${name} should not inject hardcoded SVG fallbacks`)
+    assert.match(source, /applyImageFallback/, `${name} should use the shared image fallback helper`)
+    assert.doesNotMatch(source, /\$event\.target\.style\.display\s*=\s*['"]none['"]/, `${name} should not hide failed media`)
+    assert.doesNotMatch(source, /\$event\.target\.src\s*=/, `${name} should not rewrite failed media inline`)
+  }
+
+  const fallbackBlock = cssBlock('.image-fallback')
+  assert.match(fallbackBlock, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(fallbackBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(fallbackBlock, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(fallbackBlock, /color:\s*var\(--text-muted\)/)
+  assert.doesNotMatch(fallbackBlock, /#|rgba\(0,\s*0,\s*0|rgba\(255,\s*255,\s*255/)
 })
 
 test('secondary utility controls avoid one-off fog materials', () => {

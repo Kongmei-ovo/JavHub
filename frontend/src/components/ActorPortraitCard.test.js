@@ -164,6 +164,7 @@ test('ActorPortraitCard suppresses duplicate subtitle text', () => {
 test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for active favorites', () => {
   const sharedActionRule = cssRule('.actor-portrait-card__favorite,\n.actor-portrait-card__subscribe')
   const favoriteRule = cssRule('.actor-portrait-card__favorite')
+  const subscribeRule = exactCssRule('.actor-portrait-card__subscribe')
   const activeFavoriteRule = cssRule('.actor-portrait-card.is-favorited .actor-portrait-card__favorite')
 
   assert.match(source, /:fill="favorited \? 'currentColor' : 'none'"/)
@@ -176,6 +177,8 @@ test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for act
   assert.doesNotMatch(sharedActionRule, /color:\s*#ff375f/)
   assert.doesNotMatch(favoriteRule, /color:\s*#ff375f/)
   assert.match(favoriteRule, /color:\s*var\(--text-muted\)/)
+  assert.match(subscribeRule, /color:\s*var\(--text-muted\)/)
+  assert.doesNotMatch(subscribeRule, /color:\s*var\(--accent\)/)
   assert.match(activeFavoriteRule, /background:\s*var\(--badge-error-bg\)/)
   assert.match(activeFavoriteRule, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(activeFavoriteRule, /color:\s*var\(--badge-error-text\)/)
