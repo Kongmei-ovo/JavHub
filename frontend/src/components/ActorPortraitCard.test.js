@@ -51,6 +51,34 @@ test('ActorPortraitCard renders accessible lazy portrait media and fallback', ()
   assert.match(source, /@keydown\.space\.prevent="emitOpen"/)
 })
 
+test('ActorPortraitCard shell and portrait well use shared Apple glass surfaces', () => {
+  const cardRule = cssRule('.actor-portrait-card')
+  const hoverRule = cssRule('.actor-portrait-card:hover')
+  const focusRule = cssRule('.actor-portrait-card:focus-visible')
+  const mediaRule = cssRule('.actor-portrait-card__media')
+
+  assert.match(cardRule, /background:\s*var\(--material-glass-control\)/)
+  assert.match(cardRule, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(cardRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(cardRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+
+  assert.match(hoverRule, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(hoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(hoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  assert.match(focusRule, /var\(--glass-active-shadow\)/)
+
+  assert.match(mediaRule, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(mediaRule, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(mediaRule, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+
+  for (const rule of [cardRule, hoverRule, mediaRule]) {
+    assert.doesNotMatch(rule, /var\(--surface-card\)|var\(--surface-card-hover\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
+  }
+
+  assert.doesNotMatch(source, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*var\(--surface-card\)/)
+})
+
 test('ActorPortraitCard emits open and favorite actions separately', () => {
   assert.match(source, /defineEmits\(\['open', 'favorite', 'subscribe'\]\)/)
   assert.match(source, /emit\('open'/)
@@ -74,20 +102,52 @@ test('ActorPortraitCard emits subscribe without opening the card', () => {
 })
 
 test('ActorPortraitCard exposes subscribed state accessibly and stylistically', () => {
+  const activeSubscribeRule = cssRule('.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe')
+
   assert.match(source, /:aria-label="subscribeAriaLabel"/)
   assert.match(source, /:title="subscribeButtonTitle"/)
   assert.match(source, /'is-subscribed': subscribed/)
   assert.match(source, /props\.subscribeTitle \|\| \(props\.subscribed \? '取消订阅演员' : '订阅演员'\)/)
   assert.match(source, /:disabled="subscribeDisabled"/)
+  assert.match(activeSubscribeRule, /background:\s*var\(--badge-success-bg\)/)
+  assert.match(activeSubscribeRule, /border-color:\s*var\(--badge-success-border\)/)
+  assert.match(activeSubscribeRule, /color:\s*var\(--badge-success-text\)/)
+  assert.match(activeSubscribeRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.doesNotMatch(activeSubscribeRule, /#fff|#ffffff|rgba\(255,\s*255,\s*255|rgba\(52,\s*199,\s*89/i)
 })
 
 test('ActorPortraitCard supports badges and action label for reused actor flows', () => {
   assert.match(source, /v-for="badge in normalizedBadges"/)
   assert.match(source, /actor-portrait-card__badge--/)
   assert.match(source, /actionLabel/)
+  const sharedBadgeRule = cssRule('.actor-portrait-card__badge,\n.actor-portrait-card__action')
+  const neutralBadgeRule = exactCssRule('.actor-portrait-card__badge--neutral')
+  const favoriteBadgeRule = exactCssRule('.actor-portrait-card__badge--favorite')
+  const successBadgeRule = cssRule('.actor-portrait-card__badge--subscribed,\n.actor-portrait-card__badge--success')
+  const warningBadgeRule = exactCssRule('.actor-portrait-card__badge--warning')
   const actionRule = exactCssRule('.actor-portrait-card__action')
 
   assert.match(source, /actor-portrait-card__action/)
+  assert.match(sharedBadgeRule, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(neutralBadgeRule, /background:\s*var\(--material-glass-control\)/)
+  assert.match(neutralBadgeRule, /border-color:\s*var\(--glass-control-border\)/)
+  assert.match(neutralBadgeRule, /color:\s*var\(--text-secondary\)/)
+  assert.match(favoriteBadgeRule, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(favoriteBadgeRule, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(favoriteBadgeRule, /color:\s*var\(--badge-error-text\)/)
+  assert.match(successBadgeRule, /background:\s*var\(--badge-success-bg\)/)
+  assert.match(successBadgeRule, /border-color:\s*var\(--badge-success-border\)/)
+  assert.match(successBadgeRule, /color:\s*var\(--badge-success-text\)/)
+  assert.match(warningBadgeRule, /background:\s*var\(--badge-warning-bg\)/)
+  assert.match(warningBadgeRule, /border-color:\s*var\(--badge-warning-border\)/)
+  assert.match(warningBadgeRule, /color:\s*var\(--badge-warning-text\)/)
+  for (const [rule, name] of [
+    [favoriteBadgeRule, 'favorite badge'],
+    [successBadgeRule, 'success badge'],
+    [warningBadgeRule, 'warning badge'],
+  ]) {
+    assert.doesNotMatch(rule, /#ff375f|#188038|#946200|rgba\(/i, `${name} should use semantic tokens`)
+  }
   assert.match(actionRule, /background:\s*var\(--glass-active-material\)/)
   assert.match(actionRule, /color:\s*var\(--text-primary\)/)
   assert.match(actionRule, /border:\s*1px solid var\(--glass-active-border\)/)
@@ -108,9 +168,17 @@ test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for act
 
   assert.match(source, /:fill="favorited \? 'currentColor' : 'none'"/)
   assert.match(source, /class="actor-portrait-card__favorite"[\s\S]*stroke="currentColor"/)
+  assert.match(sharedActionRule, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(sharedActionRule, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(sharedActionRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(sharedActionRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(sharedActionRule, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
   assert.doesNotMatch(sharedActionRule, /color:\s*#ff375f/)
   assert.doesNotMatch(favoriteRule, /color:\s*#ff375f/)
   assert.match(favoriteRule, /color:\s*var\(--text-muted\)/)
-  assert.match(activeFavoriteRule, /background:\s*rgba\(255,\s*55,\s*95,\s*0\.92\)/)
-  assert.match(activeFavoriteRule, /color:\s*#fff/)
+  assert.match(activeFavoriteRule, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(activeFavoriteRule, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(activeFavoriteRule, /color:\s*var\(--badge-error-text\)/)
+  assert.match(activeFavoriteRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.doesNotMatch(activeFavoriteRule, /#fff|#ffffff|rgba\(255,\s*255,\s*255|rgba\(255,\s*55,\s*95/i)
 })

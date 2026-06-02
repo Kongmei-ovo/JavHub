@@ -31,9 +31,12 @@ for (const [name, source] of overlaySources) {
     assert.match(overlayBlock, /--vp-control-border:\s*var\(--glass-control-border\)/)
     assert.match(overlayBlock, /--vp-control-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(overlayBlock, /--vp-sheet-bg:\s*var\(--material-glass-sheet\)/)
+    assert.match(overlayBlock, /--vp-player-blackout:\s*var\(--media-blackout\)/)
+    assert.match(overlayBlock, /--vp-player-bg:\s*var\(--vp-player-blackout\)/)
     assert.match(overlayBlock, /background:\s*var\(--surface-scrim,\s*var\(--scrim\)\)/)
     assert.match(overlayBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
     assert.doesNotMatch(overlayBlock, /rgba\(0,\s*0,\s*0,\s*0\.7\)|blur\(32px\)|saturate\(180%\)/)
+    assert.doesNotMatch(source, /--vp-player-bg:\s*#000|#000000/)
 
     for (const block of [closeBlock, infoBlock, speedBlock]) {
       assert.match(block, /background:\s*var\(--vp-control-bg\)/)

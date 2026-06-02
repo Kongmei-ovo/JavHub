@@ -579,9 +579,10 @@ onMounted(reloadAll)
 }
 .summary-card {
   padding: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: var(--material-glass-elevated);
+  box-shadow: var(--glass-surface-shadow);
 }
 .summary-card strong { display: block; font-size: var(--type-workbench-title); color: var(--text-primary); }
 .summary-card span { color: var(--text-secondary); font-size: var(--type-control); }
@@ -592,9 +593,12 @@ onMounted(reloadAll)
   gap: 12px;
   margin-bottom: 16px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .auto-match-panel strong,
 .auto-match-panel span {
@@ -605,16 +609,40 @@ onMounted(reloadAll)
   color: var(--text-secondary);
   font-size: 12px;
 }
-.tab-bar { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 5px;
+  overflow-x: auto;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+}
 .tab-btn {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   padding: 10px 16px;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
-.tab-btn.active { color: var(--text-primary); border-bottom-color: var(--active-indicator); }
+.tab-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.tab-btn.active {
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
+}
 .panel { min-height: 240px; }
 .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; }
 .review-filter {
@@ -627,18 +655,28 @@ onMounted(reloadAll)
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   padding: 7px 11px;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+.filter-chip:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 .filter-chip.active {
-  border-color: var(--active-border);
-  background: var(--active-bg);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
   color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
 }
 .filter-chip span {
   color: var(--text-muted);
@@ -647,11 +685,19 @@ onMounted(reloadAll)
 .search-input {
   min-width: 0;
   flex: 1;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   padding: 8px 10px;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+}
+.search-input:focus {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.09);
+  outline: none;
 }
 .actor-list { display: flex; flex-direction: column; gap: 12px; }
 .mapping-card {
@@ -659,9 +705,10 @@ onMounted(reloadAll)
   grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
   gap: 16px;
   padding: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: var(--material-glass-elevated);
+  box-shadow: var(--glass-surface-shadow);
 }
 .actor-side { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
 .actor-copy { min-width: 0; }
@@ -673,9 +720,10 @@ onMounted(reloadAll)
 .avatar {
   flex-shrink: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-inner-shadow);
 }
 .avatar img,
 .avatar span {
@@ -711,7 +759,7 @@ onMounted(reloadAll)
 .candidate-search { display: flex; gap: 8px; margin-bottom: 10px; }
 .inline-error {
   margin-bottom: 10px;
-  color: #ffb340;
+  color: var(--badge-warning-text);
   font-size: 12px;
 }
 .candidate-list { display: flex; flex-direction: column; gap: 8px; }
@@ -720,12 +768,13 @@ onMounted(reloadAll)
   flex-direction: column;
   gap: 10px;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--material-glass-elevated);
+  box-shadow: var(--glass-surface-shadow);
 }
-.candidate-card.high { border-color: rgba(52, 199, 89, 0.55); }
-.candidate-card.risky { border-color: rgba(255, 159, 10, 0.55); }
+.candidate-card.high { border-color: var(--badge-success-border); }
+.candidate-card.risky { border-color: var(--badge-warning-border); }
 .candidate-compare {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -801,11 +850,13 @@ onMounted(reloadAll)
   color: var(--text-primary);
 }
 .confidence-badge {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-size: 12px;
   padding: 3px 8px;
+  box-shadow: var(--glass-inner-shadow);
   white-space: nowrap;
 }
 .risk-row {
@@ -815,9 +866,10 @@ onMounted(reloadAll)
   margin-top: 8px;
 }
 .risk-row span {
-  border: 1px solid rgba(255, 159, 10, 0.45);
+  border: 1px solid var(--badge-warning-border);
   border-radius: 999px;
-  color: #ffb340;
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
   font-size: 11px;
   padding: 2px 7px;
 }
@@ -834,9 +886,10 @@ onMounted(reloadAll)
   align-items: center;
   padding: 10px;
   margin-bottom: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--material-glass-elevated);
+  box-shadow: var(--glass-surface-shadow);
 }
 .mapping-target {
   display: flex;
@@ -846,21 +899,25 @@ onMounted(reloadAll)
 }
 .arrow { color: var(--text-muted); font-weight: 700; }
 .status-pill {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  background: var(--material-glass-control);
   padding: 3px 8px;
   color: var(--text-secondary);
   font-size: 12px;
+  box-shadow: var(--glass-inner-shadow);
 }
 .reason-pill {
   display: inline-flex;
   align-items: center;
   margin-left: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  background: var(--material-glass-control);
   padding: 1px 6px;
   color: var(--text-secondary);
   font-size: 11px;
+  box-shadow: var(--glass-inner-shadow);
 }
 .btn {
   padding: 8px 12px;

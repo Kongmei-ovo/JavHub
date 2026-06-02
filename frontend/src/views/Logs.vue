@@ -164,18 +164,18 @@ export default {
   padding: 0 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .toolbar input:focus {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-input-focus);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 .toolbar input { flex: 1; min-width: 180px; max-width: 300px; }
@@ -185,7 +185,7 @@ export default {
   padding: 0 18px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -193,10 +193,10 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
 }
 .toolbar-btn:hover:not(:disabled) {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -208,14 +208,14 @@ export default {
   box-shadow: var(--glass-active-shadow);
 }
 .toolbar-btn.danger {
-  background: var(--surface-control);
-  border-color: rgba(255, 55, 95, 0.28);
-  color: #FF375F;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
   box-shadow: var(--glass-control-shadow);
 }
 .toolbar-btn.danger:hover:not(:disabled) {
-  background: var(--surface-control-hover);
-  border-color: rgba(255, 55, 95, 0.42);
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -231,7 +231,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-card);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -251,7 +251,7 @@ export default {
 }
 
 .logs-container {
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-surface-shadow);
@@ -265,8 +265,8 @@ export default {
 .log-time { color: var(--text-muted); width: 160px; flex-shrink: 0; }
 .log-level { width: 70px; flex-shrink: 0; font-weight: bold; }
 .level-info { color: var(--text-secondary); }
-.level-warning { color: #ff9800; }
-.level-error { color: #f44336; }
+.level-warning { color: var(--badge-warning-text); }
+.level-error { color: var(--badge-error-text); }
 .log-message { flex: 1; word-break: break-all; }
 .loading,
 .empty {
@@ -282,7 +282,7 @@ export default {
 .pagination button {
   min-height: 44px;
   padding: 0 30px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
@@ -291,10 +291,10 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
 }
 .pagination button:hover:not(:disabled) {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);

@@ -30,6 +30,7 @@ const initials = computed(() => {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: var(--glass-control-shadow);
 }
 .actress-avatar img {
   width: 100%;
@@ -39,23 +40,29 @@ const initials = computed(() => {
 .avatar-placeholder {
   width: 100%;
   height: 100%;
-  background: #ddd;
+  background: var(--material-glass-control);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  color: #999;
+  color: var(--text-muted);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .avatar-badge {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  background: #ff4d4f;
-  color: #fff;
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
+  border: 1px solid var(--badge-error-border);
   border-radius: 10px;
   padding: 2px 6px;
   font-size: 11px;
   min-width: 20px;
   text-align: center;
+  box-shadow: var(--glass-control-shadow);
 }
 </style>

@@ -140,6 +140,25 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
             with self.subTest(sql=sql):
                 self.assertIn(sql, joined)
 
+    def test_create_indexes_covers_candidate_and_mapping_filtered_lists(self):
+        from database import base
+
+        calls = []
+        executed: list[str] = []
+        conn = make_recording_connection(calls=calls, executed=executed)
+
+        with patch("database.base.get_db_orig", return_value=conn):
+            base._create_indexes()
+
+        joined = "\n".join(executed)
+        for sql in [
+            "CREATE INDEX IF NOT EXISTS idx_download_candidates_status_source_release_created ON download_candidates(status, source, release_date DESC, created_at ASC, id ASC)",
+            "CREATE INDEX IF NOT EXISTS idx_download_candidate_events_candidate_id_id ON download_candidate_events(candidate_id, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_actor_mappings_status_updated_created ON actor_mappings(status, updated_at DESC, created_at DESC)",
+        ]:
+            with self.subTest(sql=sql):
+                self.assertIn(sql, joined)
+
     def test_create_indexes_covers_duplicate_snapshot_scan(self):
         from database import base
 

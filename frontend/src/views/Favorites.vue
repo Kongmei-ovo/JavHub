@@ -661,7 +661,7 @@ export default {
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -701,19 +701,19 @@ export default {
   padding: 0 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .collection-form input:focus {
   border-color: var(--glass-control-border-hover);
-  background: var(--surface-input-focus);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -726,7 +726,7 @@ export default {
   padding: 6px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -735,11 +735,11 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), opacity var(--motion-fast);
 }
 
 .btn-mini:hover:not(:disabled) {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -754,7 +754,9 @@ export default {
 }
 
 .btn-mini.danger {
-  color: #ff375f;
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
+  background: var(--badge-error-bg);
 }
 
 .btn-mini:disabled {
@@ -776,7 +778,7 @@ export default {
   padding: 8px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -822,23 +824,27 @@ export default {
 }
 
 .segment-item {
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   padding: 8px 20px;
   font-size: var(--type-control);
   font-weight: 600;
   border-radius: 10px;
+  box-shadow: var(--glass-control-shadow);
   cursor: pointer;
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .segment-item:hover {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .segment-item.active {
@@ -858,7 +864,7 @@ export default {
 }
 
 .segment-item.active .tab-badge {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
 }
 
 .curate-content {
@@ -911,10 +917,10 @@ export default {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid rgba(255,255,255,0.68);
+  border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: rgba(20,20,24,0.42);
-  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
   cursor: pointer;
 }
 
@@ -927,15 +933,15 @@ export default {
 .entity-select-dot {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.9);
+  border: 2px solid var(--glass-control-border);
   border-radius: 50%;
 }
 
 .favorite-selectable.selected .select-check span,
 .entity-bubble.selected .entity-select-dot {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: inset 0 0 0 3px #fff;
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 
 /* ===== 非影片收藏区 ===== */
@@ -972,20 +978,20 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
   font: inherit;
   text-align: left;
 }
 
 .entity-bubble:hover {
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
@@ -1013,24 +1019,30 @@ export default {
 }
 
 .entity-fav-btn {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: none;
-  border: none;
+  background: var(--badge-error-bg);
+  border: 1px solid var(--badge-error-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FF375F;
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  opacity: 0.6;
-  transition: all 0.2s;
+  opacity: 0.72;
+  transition: opacity var(--motion-fast), transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
   padding: 0;
 }
 
 .entity-fav-btn:hover {
   opacity: 1;
-  transform: scale(1.15);
+  transform: translateY(-1px) scale(1.05);
+  background: var(--material-glass-control-hover);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .entity-select-dot {
@@ -1088,7 +1100,7 @@ export default {
   box-shadow: var(--glass-active-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .btn-explore:hover {
@@ -1098,7 +1110,7 @@ export default {
 
 /* Skeleton loading */
 .skeleton-card {
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
@@ -1110,7 +1122,7 @@ export default {
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 3/4;
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -1124,7 +1136,7 @@ export default {
 .skeleton-line {
   height: 12px;
   border-radius: 4px;
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 

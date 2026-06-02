@@ -5,13 +5,15 @@ import { readFileSync } from 'node:fs'
 const source = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
-  const blocks = [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-  const match = blocks.find(([, selectors]) => selectors
+  const searchable = source.replace(/\/\*[\s\S]*?\*\//g, '')
+  const blocks = [...searchable.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => selectors
     .split(',')
     .map(part => part.trim())
     .includes(selector))
-  assert.ok(match, `${selector} block should exist in Logs.vue`)
-  return match[2]
+    .map(([, , block]) => block)
+  assert.ok(blocks.length, `${selector} block should exist in Logs.vue`)
+  return blocks.join('\n')
 }
 
 test('logs toolbar uses shared liquid glass controls', () => {
@@ -24,23 +26,30 @@ test('logs toolbar uses shared liquid glass controls', () => {
   const dangerHover = cssBlock('.toolbar-btn.danger:hover:not(:disabled)')
 
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(input, /background:\s*var\(--surface-control\)/)
+  assert.match(input, /background:\s*var\(--material-glass-control\)/)
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(inputFocus, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
+  assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.match(button, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(button, /background:\s*var\(--surface-control\)/)
+  assert.match(button, /background:\s*var\(--material-glass-control\)/)
   assert.match(button, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(button, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(buttonHover, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(buttonHover, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(buttonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.match(primary, /background:\s*var\(--glass-active-material\)/)
   assert.match(primary, /box-shadow:\s*var\(--glass-active-shadow\)/)
-  assert.match(danger, /background:\s*var\(--surface-control\)/)
-  assert.match(danger, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(dangerHover, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(danger, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(danger, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(danger, /color:\s*var\(--badge-error-text\)/)
+  assert.match(dangerHover, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(dangerHover, /border-color:\s*var\(--badge-error-border\)/)
+
+  for (const block of [input, inputFocus, button, buttonHover, danger, dangerHover]) {
+    assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|#FF375F|rgba\(255,\s*55,\s*95/i)
+  }
 })
 
 test('logs summary and list surfaces avoid legacy flat cards', () => {
@@ -50,24 +59,30 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   const empty = cssBlock('.loading')
   const paginationButton = cssBlock('.pagination button')
   const paginationHover = cssBlock('.pagination button:hover:not(:disabled)')
+  const warningLevel = cssBlock('.level-warning')
+  const errorLevel = cssBlock('.level-error')
 
   assert.match(summaryItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(summaryItem, /background:\s*var\(--surface-card\)/)
+  assert.match(summaryItem, /background:\s*var\(--material-glass-control\)/)
   assert.match(summaryItem, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(summaryItem, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
 
-  assert.match(container, /background:\s*var\(--surface-card\)/)
+  assert.match(container, /background:\s*var\(--material-glass-sheet\)/)
   assert.match(container, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(container, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(container, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
-  assert.doesNotMatch(container, /var\(--bg-card\)|var\(--border\)|var\(--shadow-card\)/)
+  assert.doesNotMatch(`${summaryItem}\n${container}`, /var\(--surface-card\)|var\(--bg-card\)|var\(--border\)|var\(--shadow-card\)/)
 
   assert.match(logItem, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
   assert.match(empty, /background:\s*var\(--material-glass-subtle\)/)
 
-  assert.match(paginationButton, /background:\s*var\(--surface-control\)/)
+  assert.match(paginationButton, /background:\s*var\(--material-glass-control\)/)
   assert.match(paginationButton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(paginationButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(paginationHover, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(paginationHover, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(paginationHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  assert.match(warningLevel, /color:\s*var\(--badge-warning-text\)/)
+  assert.match(errorLevel, /color:\s*var\(--badge-error-text\)/)
+  assert.doesNotMatch(`${paginationButton}\n${paginationHover}\n${warningLevel}\n${errorLevel}`, /var\(--surface-control\)|var\(--surface-control-hover\)|#ff9800|#f44336/i)
 })

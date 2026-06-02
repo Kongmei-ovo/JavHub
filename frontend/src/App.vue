@@ -447,7 +447,7 @@ export default {
   font-weight: 650;
   color: var(--text-primary);
   white-space: nowrap;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .sidebar-header-actions {
@@ -548,7 +548,12 @@ export default {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    background 0.2s cubic-bezier(0.2, 0, 0, 1),
+    border-color 0.2s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
+    color 0.2s cubic-bezier(0.2, 0, 0, 1),
+    transform 0.2s cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
   overflow: hidden;
   position: relative;
@@ -651,7 +656,7 @@ export default {
   padding: 6px 0;
   min-height: 50px;
   border-radius: 22px;
-  transition: all 0.25s ease;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   border: 0;
   background: transparent;
   font-family: inherit;

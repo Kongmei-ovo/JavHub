@@ -147,12 +147,10 @@ function emitSubscribe() {
   gap: 12px;
   width: 100%;
   padding: 10px;
-  border: 1px solid var(--glass-edge);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.54)),
-    var(--surface-card);
-  box-shadow: var(--shadow-card), var(--glass-inner-shadow);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -162,20 +160,21 @@ function emitSubscribe() {
     background var(--motion-standard),
     box-shadow var(--motion-standard);
   outline: none;
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .actor-portrait-card:hover {
   transform: translateY(-5px);
-  border-color: var(--glass-edge-strong);
-  background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating), var(--glass-inner-shadow);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .actor-portrait-card:focus-visible {
   box-shadow:
     0 0 0 4px rgba(var(--accent-rgb), 0.14),
-    var(--shadow-floating),
-    var(--glass-inner-shadow);
+    var(--glass-active-shadow);
 }
 
 .actor-portrait-card:active {
@@ -186,13 +185,10 @@ function emitSubscribe() {
   position: relative;
   overflow: hidden;
   aspect-ratio: 3 / 4;
+  border: 1px solid var(--glass-control-border);
   border-radius: calc(var(--radius-card) - 8px);
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.88), transparent 24%),
-    linear-gradient(145deg, rgba(242,242,247,0.94), rgba(214,216,224,0.88));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.92),
-    inset 0 -1px 0 rgba(29,29,31,0.05);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .actor-portrait-card__media img,
@@ -229,13 +225,15 @@ function emitSubscribe() {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid rgba(255,255,255,0.58);
+  border: 1px solid var(--glass-edge);
   border-radius: 50%;
-  background: rgba(255,255,255,0.58);
+  background: var(--material-glass-sheet);
   color: var(--text-muted);
-  box-shadow: 0 8px 20px rgba(29,29,31,0.12), inset 0 1px 0 rgba(255,255,255,0.78);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
 }
 
 .actor-portrait-card__favorite {
@@ -251,7 +249,9 @@ function emitSubscribe() {
 .actor-portrait-card__favorite:hover,
 .actor-portrait-card__subscribe:hover {
   transform: scale(1.07);
-  background: rgba(255,255,255,0.78);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .actor-portrait-card__subscribe:disabled {
@@ -260,13 +260,17 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card.is-subscribed .actor-portrait-card__subscribe {
-  background: rgba(52, 199, 89, 0.88);
-  color: #fff;
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .actor-portrait-card.is-favorited .actor-portrait-card__favorite {
-  background: rgba(255, 55, 95, 0.92);
-  color: #fff;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .actor-portrait-card__body {
@@ -314,6 +318,7 @@ function emitSubscribe() {
   min-height: 22px;
   width: fit-content;
   padding: 0 8px;
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   font-size: var(--type-badge);
   font-weight: 700;
@@ -321,24 +326,28 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card__badge--neutral {
-  background: rgba(var(--accent-rgb), 0.07);
+  background: var(--material-glass-control);
+  border-color: var(--glass-control-border);
   color: var(--text-secondary);
 }
 
 .actor-portrait-card__badge--favorite {
-  background: rgba(255, 55, 95, 0.10);
-  color: #ff375f;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
 }
 
 .actor-portrait-card__badge--subscribed,
 .actor-portrait-card__badge--success {
-  background: rgba(52, 199, 89, 0.12);
-  color: #188038;
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
 }
 
 .actor-portrait-card__badge--warning {
-  background: rgba(255, 159, 10, 0.14);
-  color: #946200;
+  background: var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
+  color: var(--badge-warning-text);
 }
 
 .actor-portrait-card__action {
@@ -374,17 +383,4 @@ function emitSubscribe() {
   font-size: var(--type-micro);
 }
 
-@media (prefers-color-scheme: dark) {
-  .actor-portrait-card {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045)),
-      var(--surface-card);
-  }
-
-  .actor-portrait-card__media {
-    background:
-      radial-gradient(circle at 50% 18%, rgba(255,255,255,0.20), transparent 24%),
-      linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.035));
-  }
-}
 </style>

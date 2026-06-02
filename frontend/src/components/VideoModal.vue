@@ -592,13 +592,52 @@ export default {
 
 <style scoped>
 .modal-overlay {
-  --modal-sheet-bg: rgba(18, 18, 20, 0.64);
-  --modal-sheet-fallback: rgba(18, 18, 20, 0.64);
-  --modal-panel-bg: rgba(0, 0, 0, 0.24);
-  --modal-panel-border: rgba(255, 255, 255, 0.18);
-  --modal-gallery-bg: rgba(0, 0, 0, 0.22);
-  --modal-overlay-bg: rgba(0, 0, 0, 0.20);
-  --modal-text-muted: rgba(255, 255, 255, 0.58);
+  --modal-scrim-core: rgb(0, 0, 0);
+  --modal-scrim-sheet: rgba(18, 18, 20, 0.64);
+  --modal-scrim-panel: color-mix(in srgb, var(--modal-scrim-core) 24%, transparent);
+  --modal-scrim-gallery: color-mix(in srgb, var(--modal-scrim-core) 22%, transparent);
+  --modal-scrim-overlay: color-mix(in srgb, var(--modal-scrim-core) 20%, transparent);
+  --modal-scrim-mobile: color-mix(in srgb, var(--modal-scrim-core) 18%, transparent);
+  --modal-depth-shadow: color-mix(in srgb, var(--modal-scrim-core) 36%, transparent);
+  --modal-text-shadow-strong-color: color-mix(in srgb, var(--modal-scrim-core) 50%, transparent);
+  --modal-text-shadow-soft-color: color-mix(in srgb, var(--modal-scrim-core) 40%, transparent);
+  --modal-text-shadow-strong: 0 2px 10px var(--modal-text-shadow-strong-color);
+  --modal-text-shadow-soft: 0 2px 8px var(--modal-text-shadow-soft-color);
+  --modal-sheet-bg: var(--modal-scrim-sheet);
+  --modal-sheet-fallback: var(--modal-scrim-sheet);
+  --modal-panel-bg: var(--modal-scrim-panel);
+  --modal-gallery-bg: var(--modal-scrim-gallery);
+  --modal-overlay-bg: var(--modal-scrim-overlay);
+  --modal-text-primary: #F5F5F7;
+  --modal-text-secondary-base: color-mix(in srgb, var(--modal-text-primary) 82%, transparent);
+  --modal-text-muted-base: color-mix(in srgb, var(--modal-text-primary) 58%, transparent);
+  --modal-text-faint-base: color-mix(in srgb, var(--modal-text-primary) 40%, transparent);
+  --modal-text-body-base: color-mix(in srgb, var(--modal-text-primary) 90%, transparent);
+  --modal-text-empty-base: color-mix(in srgb, var(--modal-text-primary) 30%, transparent);
+  --modal-divider-base: color-mix(in srgb, var(--modal-text-primary) 10%, transparent);
+  --modal-divider-subtle-base: color-mix(in srgb, var(--modal-text-primary) 6%, transparent);
+  --modal-divider-strong-base: color-mix(in srgb, var(--modal-text-primary) 15%, transparent);
+  --modal-link-underline-base: color-mix(in srgb, var(--modal-text-primary) 30%, transparent);
+  --modal-link-underline-hover-base: color-mix(in srgb, var(--modal-text-primary) 72%, transparent);
+  --modal-skeleton-bg-base: color-mix(in srgb, var(--modal-text-primary) 5%, transparent);
+  --modal-skeleton-shine-base: color-mix(in srgb, var(--modal-text-primary) 5%, transparent);
+  --modal-panel-border-base: color-mix(in srgb, var(--modal-text-primary) 18%, transparent);
+  --modal-container-edge-highlight-base: color-mix(in srgb, var(--modal-text-primary) 18%, transparent);
+  --modal-text-secondary: var(--modal-text-secondary-base);
+  --modal-text-muted: var(--modal-text-muted-base);
+  --modal-text-faint: var(--modal-text-faint-base);
+  --modal-text-body: var(--modal-text-body-base);
+  --modal-text-empty: var(--modal-text-empty-base);
+  --modal-divider: var(--modal-divider-base);
+  --modal-divider-subtle: var(--modal-divider-subtle-base);
+  --modal-divider-strong: var(--modal-divider-strong-base);
+  --modal-link-underline: var(--modal-link-underline-base);
+  --modal-link-underline-hover: var(--modal-link-underline-hover-base);
+  --modal-skeleton-bg: var(--modal-skeleton-bg-base);
+  --modal-skeleton-shine: var(--modal-skeleton-shine-base);
+  --modal-panel-border: var(--modal-panel-border-base);
+  --modal-container-edge-highlight: var(--modal-container-edge-highlight-base);
+  --modal-container-shadow: 0 42px 120px var(--modal-depth-shadow), inset 0 1px 0 var(--modal-container-edge-highlight);
   --modal-action-primary-bg: var(--glass-active-material);
   --modal-action-secondary-bg: var(--material-glass-control);
   --modal-action-secondary-bg-hover: var(--material-glass-control-hover);
@@ -611,8 +650,8 @@ export default {
   --modal-chip-bg-hover: var(--material-glass-control-hover);
   --modal-chip-border: var(--glass-control-border);
   --modal-chip-border-hover: var(--glass-control-border-hover);
-  --modal-chip-color: rgba(255, 255, 255, 0.82);
-  --modal-chip-muted: rgba(255, 255, 255, 0.46);
+  --modal-chip-color: var(--modal-text-secondary);
+  --modal-chip-muted: var(--modal-text-faint);
   --modal-chip-shadow: var(--glass-control-shadow);
   --modal-chip-shadow-hover: var(--glass-control-shadow-hover);
   --modal-lightbox-bg: var(--surface-scrim, var(--scrim));
@@ -628,7 +667,7 @@ export default {
   justify-content: center;
   z-index: var(--z-lightbox);
   padding: 40px;
-  transition: all 0.4s var(--ease-pro);
+  transition: background 0.4s var(--ease-pro), opacity 0.4s var(--ease-pro), transform 0.4s var(--ease-pro);
 }
 
 .modal-overlay.inline {
@@ -653,12 +692,11 @@ export default {
 }
 
 :root[data-theme="dark"] .modal-overlay {
-  --modal-sheet-bg: rgba(14, 14, 16, 0.68);
-  --modal-sheet-fallback: rgba(14, 14, 16, 0.68);
-  --modal-panel-bg: rgba(0, 0, 0, 0.28);
-  --modal-panel-border: rgba(255, 255, 255, 0.14);
-  --modal-gallery-bg: rgba(0, 0, 0, 0.28);
-  --modal-overlay-bg: rgba(0, 0, 0, 0.26);
+  --modal-scrim-sheet: rgba(14, 14, 16, 0.68);
+  --modal-scrim-panel: color-mix(in srgb, var(--modal-scrim-core) 28%, transparent);
+  --modal-panel-border-base: color-mix(in srgb, var(--modal-text-primary) 14%, transparent);
+  --modal-scrim-gallery: color-mix(in srgb, var(--modal-scrim-core) 28%, transparent);
+  --modal-scrim-overlay: color-mix(in srgb, var(--modal-scrim-core) 26%, transparent);
 }
 
 .modal-container {
@@ -673,7 +711,7 @@ export default {
   max-height: 90vh;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 42px 120px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: var(--modal-container-shadow);
 }
 
 .modal-close {
@@ -687,7 +725,7 @@ export default {
   border-radius: 50%;
   font-size: 24px;
   cursor: pointer;
-  color: white;
+  color: var(--modal-chip-color);
   z-index: 10;
   box-shadow: var(--modal-chip-shadow);
   transition: var(--transition-pro);
@@ -716,13 +754,13 @@ export default {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--modal-divider-subtle);
 }
 .gallery-img { width: 100%; max-height: 65vh; object-fit: contain; object-position: top center; }
 .modal-content { padding: 48px 64px 64px; display: flex; flex-direction: column; gap: 48px; }
-.modal-code-block { border-bottom: 1px solid rgba(255, 255, 255, 0.15); padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.modal-code-block { border-bottom: 1px solid var(--modal-divider-strong); padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .modal-actions { display: flex; align-items: center; gap: 12px; }
-.modal-code { font-size: var(--type-entity-title); font-weight: 700; color: #ffffff; font-family: var(--font-mono); letter-spacing: 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+.modal-code { font-size: var(--type-entity-title); font-weight: 700; color: var(--modal-text-primary); font-family: var(--font-mono); letter-spacing: 0; text-shadow: var(--modal-text-shadow-strong); }
 .preview-btn,
 .stream-btn,
 .favorite-btn {
@@ -748,7 +786,7 @@ export default {
 .preview-btn,
 .stream-btn {
   background: var(--modal-action-primary-bg);
-  border-color: var(--active-border);
+  border-color: var(--glass-active-border);
 }
 
 .preview-btn:hover,
@@ -774,24 +812,24 @@ export default {
 .stream-btn svg { width: 16px; height: 16px; }
 .favorite-btn.is-active {
   background: var(--modal-action-primary-bg);
-  border-color: var(--active-border);
+  border-color: var(--glass-active-border);
   color: var(--modal-action-color);
 }
 .favorite-btn.is-active:hover { background: var(--modal-action-primary-bg); }
 .favorite-btn svg { width: 16px; height: 16px; transition: transform 0.3s var(--ease-pro); }
 .favorite-btn:active svg { transform: scale(0.8); }
-.modal-title-block { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 16px; }
-.modal-title { font-size: var(--type-panel-title); color: #ffffff; font-weight: 600; line-height: 1.6; letter-spacing: 0; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+.modal-title-block { border-bottom: 1px solid var(--modal-divider); padding-bottom: 16px; }
+.modal-title { font-size: var(--type-panel-title); color: var(--modal-text-primary); font-weight: 600; line-height: 1.6; letter-spacing: 0; text-shadow: var(--modal-text-shadow-soft); }
 .modal-meta { background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: 1px solid var(--modal-panel-border); }
-.modal-meta::before { content: ''; position: absolute; left: 50%; top: 24px; bottom: 24px; width: 1px; background: rgba(255, 255, 255, 0.08); transform: translateX(-50%); }
-.meta-row { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.modal-meta::before { content: ''; position: absolute; left: 50%; top: 24px; bottom: 24px; width: 1px; background: var(--modal-divider-subtle); transform: translateX(-50%); }
+.meta-row { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--modal-divider-subtle); }
 .meta-row:last-child { border-bottom: none; }
 .modal-meta > div:nth-last-child(-n+2) { border-bottom: none; }
 .meta-label { color: var(--modal-text-muted); font-size: var(--type-control); font-weight: 600; letter-spacing: 0; }
-.meta-value { color: #ffffff; font-size: var(--type-body); font-family: var(--font-mono); font-weight: 500; }
-.meta-value--empty { color: rgba(255, 255, 255, 0.2); font-style: italic; }
-.clickable { color: #ffffff; cursor: pointer; transition: color 0.2s; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 4px; }
-.clickable:hover { color: #ffffff; text-decoration-color: rgba(255,255,255,0.72); }
+.meta-value { color: var(--modal-text-primary); font-size: var(--type-body); font-family: var(--font-mono); font-weight: 500; }
+.meta-value--empty { color: var(--modal-text-empty); font-style: italic; }
+.clickable { color: var(--modal-text-primary); cursor: pointer; transition: color var(--motion-fast), text-decoration-color var(--motion-fast); text-decoration: underline; text-decoration-color: var(--modal-link-underline); text-underline-offset: 4px; }
+.clickable:hover { color: var(--modal-text-primary); text-decoration-color: var(--modal-link-underline-hover); }
 .modal-section { margin-top: 0; }
 .section-title { font-size: var(--type-caption); font-weight: 650; margin-bottom: 14px; color: var(--modal-text-muted); letter-spacing: 0; }
 .actress-list { display: flex; flex-wrap: wrap; gap: 20px; }
@@ -801,19 +839,19 @@ export default {
 .actress-avatar-item:hover .actress-avatar { background: var(--modal-chip-bg-hover); border-color: var(--modal-chip-border-hover); transform: translateY(-4px); box-shadow: var(--modal-chip-shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: var(--modal-chip-bg); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--modal-chip-muted); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
-.actress-name { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: rgba(255, 255, 255, 0.8); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; transition: color 0.2s; }
+.actress-name { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: var(--modal-text-secondary); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; transition: color var(--motion-fast); }
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.actress-name .name-translated { font-size: 11px; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.actress-avatar-item:hover .actress-name { color: #ffffff; }
+.actress-name .name-translated { font-size: 11px; color: var(--modal-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.actress-avatar-item:hover .actress-name { color: var(--modal-text-primary); }
 .actress-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; padding: 8px 18px; background: var(--modal-chip-bg); border-radius: 40px; font-size: 13px; color: var(--modal-chip-color); border: 1px solid var(--modal-chip-border); box-shadow: var(--modal-chip-shadow); transition: var(--transition-pro); text-align: center; backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .actress-tag.clickable { text-decoration: none; text-decoration-color: transparent; }
-.actress-tag:hover { border-color: var(--modal-chip-border-hover); color: white; background: var(--modal-chip-bg-hover); box-shadow: var(--modal-chip-shadow-hover); }
+.actress-tag:hover { border-color: var(--modal-chip-border-hover); color: var(--modal-text-primary); background: var(--modal-chip-bg-hover); box-shadow: var(--modal-chip-shadow-hover); }
 .tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }
-.meta-provider { font-size: 12px; color: rgba(255, 255, 255, 0.4); margin-left: 4px; }
-.summary-text { font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.9); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
-.summary-text--empty { color: rgba(255, 255, 255, 0.3); font-style: italic; }
-.skeleton { background: rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; border-radius: 8px; }
-.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
+.meta-provider { font-size: 12px; color: var(--modal-text-faint); margin-left: 4px; }
+.summary-text { font-size: 15px; line-height: 1.8; color: var(--modal-text-body); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
+.summary-text--empty { color: var(--modal-text-empty); font-style: italic; }
+.skeleton { background: var(--modal-skeleton-bg); position: relative; overflow: hidden; border-radius: 8px; }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--modal-skeleton-shine), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 .skeleton-title { height: 32px; width: 80%; }
 .skeleton-text { height: 20px; width: 60px; }
@@ -873,7 +911,7 @@ export default {
   .modal-overlay {
     align-items: flex-end;
     padding: 0;
-    background: rgba(0, 0, 0, 0.18);
+    background: var(--modal-scrim-mobile);
   }
 
   .modal-container {
@@ -986,7 +1024,7 @@ export default {
   }
 
   .modal-meta > div:nth-last-child(-n+2) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--modal-divider-subtle);
   }
 
   .modal-meta > div:last-child {

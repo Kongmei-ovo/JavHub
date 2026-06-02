@@ -91,3 +91,54 @@ test('subscription primary actions use active glass instead of solid accent fill
     assert.doesNotMatch(block, /background:\s*var\(--accent-light\)|color:\s*var\(--text-on-accent\)/, `${selector} should not keep legacy solid hover styles`)
   }
 })
+
+test('subscription badges and discovery clear control use semantic glass tokens', () => {
+  const badge = cssBlock('.inline-badge')
+  const clearButton = cssBlock('.clear-btn')
+  const clearButtonHover = cssBlock('.clear-btn:hover')
+
+  assert.match(badge, /border:\s*1px solid var\(--badge-error-border\)/)
+  assert.match(badge, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(badge, /color:\s*var\(--badge-error-text\)/)
+  assert.doesNotMatch(badge, /#fff|#ffffff|#ff375f/i)
+
+  assert.match(clearButton, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(clearButton, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(clearButton, /box-shadow:\s*var\(--subscription-control-shadow\)/)
+  assert.match(clearButton, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(clearButton, /background:\s*(?:none|transparent)|border:\s*(?:none|0)/)
+
+  assert.match(clearButtonHover, /background:\s*var\(--subscription-control-bg-hover\)/)
+  assert.match(clearButtonHover, /border-color:\s*var\(--subscription-control-border-hover\)/)
+  assert.match(clearButtonHover, /box-shadow:\s*var\(--subscription-control-shadow-hover\)/)
+})
+
+test('subscription danger actions use semantic error tokens', () => {
+  const pageBlock = cssBlock('.sub-page')
+  const sheetOverlayBlock = cssBlock('.sheet-overlay')
+  const dangerButton = cssBlock('.top-action-btn.danger')
+  const dangerHover = cssBlock('.top-action-btn.danger:hover')
+
+  for (const block of [pageBlock, sheetOverlayBlock]) {
+    assert.match(block, /--subscription-danger-bg:\s*var\(--badge-error-bg\)/)
+    assert.match(block, /--subscription-danger-border:\s*var\(--badge-error-border\)/)
+    assert.doesNotMatch(block, /#ff375f/i)
+  }
+
+  assert.match(dangerButton, /color:\s*var\(--badge-error-text\)/)
+  assert.match(dangerButton, /border-color:\s*var\(--badge-error-border\)/)
+  assert.doesNotMatch(dangerButton, /#ff375f/i)
+  assert.match(dangerHover, /background:\s*var\(--badge-error-bg\)/)
+})
+
+test('subscription loading spinners use shared glass border tokens', () => {
+  const spinnerSmall = cssBlock('.spinner-small')
+  const spinnerTiny = cssBlock('.spinner-tiny')
+
+  assert.match(spinnerSmall, /border:\s*2px solid var\(--glass-control-border\)/)
+  assert.match(spinnerTiny, /border:\s*1\.5px solid var\(--glass-control-border\)/)
+  for (const block of [spinnerSmall, spinnerTiny]) {
+    assert.match(block, /border-top-color:\s*var\(--text-primary\)/)
+    assert.doesNotMatch(block, /var\(--border\)/)
+  }
+})

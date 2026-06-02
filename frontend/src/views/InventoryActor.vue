@@ -217,61 +217,114 @@ onMounted(async () => {
   gap: 12px; margin-bottom: 24px;
 }
 .back-btn {
-  align-self: flex-start; min-height: 44px; background: none; border: none;
-  color: var(--text-primary); cursor: pointer; font-size: 14px;
-  padding: 0 8px;
+  align-self: flex-start;
+  min-height: 44px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--material-glass-control);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 14px;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
 }
-.stats { color: #666; font-size: 14px; }
+.back-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.stats { color: var(--text-secondary); font-size: 14px; }
 .mapping-banner {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   max-width: min(680px, 100%);
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(82, 196, 26, 0.28);
-  background: rgba(82, 196, 26, 0.08);
-  color: #52c41a;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--badge-success-border);
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
   font-size: 13px;
 }
 .mapping-banner.unmapped {
-  border-color: rgba(250, 140, 22, 0.28);
-  background: rgba(250, 140, 22, 0.08);
-  color: #fa8c16;
+  border-color: var(--badge-warning-border);
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
 }
 .mapping-link {
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--material-glass-control);
   color: var(--link-text);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   text-decoration: underline;
   text-decoration-color: var(--link-underline);
   text-underline-offset: 3px;
   min-height: 44px;
-  padding: 0 6px;
+  padding: 0 12px;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+}
+.mapping-link:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  text-decoration-color: var(--link-underline-hover);
 }
 
 /* Tab 样式 */
 .tab-bar {
-  display: flex; gap: 4px; border-bottom: 2px solid var(--border);
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   margin-bottom: 20px;
 }
 .tab-btn {
-  min-height: 44px; padding: 8px 20px; background: none; border: none;
-  border-bottom: 2px solid transparent; margin-bottom: -2px;
-  cursor: pointer; font-size: 14px; color: var(--text-secondary);
-  transition: all 0.2s;
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background: var(--material-glass-control);
+  color: var(--text-secondary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), font-weight var(--motion-fast);
 }
-.tab-btn:hover { color: var(--text-primary); }
+.tab-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
 .tab-btn.active {
-  color: var(--text-primary); border-bottom-color: var(--active-indicator); font-weight: 600;
+  color: var(--text-primary);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
+  font-weight: 600;
 }
 
 /* 影片卡片 */
 .year-section { margin-bottom: 24px; }
 .year-title {
   font-size: 18px; font-weight: bold; margin-bottom: 12px;
-  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  padding-bottom: 8px; border-bottom: 1px solid var(--glass-edge);
 }
 .videos-grid {
   display: grid;
@@ -279,12 +332,24 @@ onMounted(async () => {
   gap: 12px;
 }
 .video-card {
-  background: var(--bg-card); border-radius: 8px; overflow: hidden;
-  cursor: pointer; transition: transform 0.2s;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
-.video-card:hover { transform: translateY(-2px); }
+.video-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+}
 .video-cover {
-  aspect-ratio: 3/4; background: var(--bg-secondary); overflow: hidden;
+  aspect-ratio: 3/4; background: var(--material-glass-subtle); box-shadow: var(--glass-inner-shadow); overflow: hidden;
 }
 .video-cover img { width: 100%; height: 100%; object-fit: cover; }
 .no-cover {
@@ -305,18 +370,35 @@ onMounted(async () => {
 .candidate-btn {
   width: 100%;
   margin-top: 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-card);
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background: var(--material-glass-control);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   padding: 7px 10px;
   min-height: 44px;
   cursor: pointer;
   font-size: 12px;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.candidate-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .candidate-link { text-align: center; margin: 20px 0; }
 
-.loading, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }
+.loading, .empty {
+  text-align: center;
+  padding: 40px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-lg);
+  background: var(--material-glass-subtle);
+  color: var(--text-secondary);
+}
 
 @media (max-width: 768px) {
   .videos-grid {

@@ -1372,22 +1372,28 @@ export default {
 
 .segmented-control button {
   min-height: 32px;
-  border: 0;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
   transition: background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .segmented-control button:hover {
-  background: var(--surface-control-hover);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .segmented-control button.active {
+  border-color: var(--glass-active-border);
   background: var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -1444,7 +1450,7 @@ export default {
 .job-control-card {
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1462,19 +1468,25 @@ export default {
 
 .coverage-donut {
   --coverage-angle: 0deg;
+  --translation-donut-track-base: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  --translation-donut-hole-bg-base: var(--material-glass-sheet);
+  --translation-donut-hole-border-base: var(--glass-control-border);
+  --translation-donut-edge-base: var(--glass-edge);
+  --translation-donut-ring-highlight: color-mix(in srgb, var(--text-primary) 24%, transparent);
+  --translation-donut-glow-base: color-mix(in srgb, var(--accent) 12%, transparent);
   --donut-progress: var(--translation-donut-progress, var(--accent));
-  --donut-track: var(--translation-donut-track, rgba(var(--accent-rgb), 0.12));
-  --donut-hole-bg: var(--translation-donut-hole-bg, rgba(255, 255, 255, 0.94));
-  --donut-hole-border: var(--translation-donut-hole-border, rgba(29, 29, 31, 0.10));
-  --donut-edge: var(--translation-donut-edge, var(--border-light));
-  --donut-glow: var(--translation-donut-glow, rgba(var(--accent-rgb), 0.08));
+  --donut-track: var(--translation-donut-track, var(--translation-donut-track-base));
+  --donut-hole-bg: var(--translation-donut-hole-bg, var(--translation-donut-hole-bg-base));
+  --donut-hole-border: var(--translation-donut-hole-border, var(--translation-donut-hole-border-base));
+  --donut-edge: var(--translation-donut-edge, var(--translation-donut-edge-base));
+  --donut-glow: var(--translation-donut-glow, var(--translation-donut-glow-base));
   width: clamp(132px, 13vw, 160px);
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 50% 50%, transparent 60%, rgba(255, 255, 255, 0.24) 61%, transparent 62%),
+    radial-gradient(circle at 50% 50%, transparent 60%, var(--translation-donut-ring-highlight) 61%, transparent 62%),
     conic-gradient(var(--donut-progress) 0 var(--coverage-angle), var(--donut-track) var(--coverage-angle) 360deg);
   box-shadow: inset 0 0 0 1px var(--donut-edge), 0 18px 34px var(--donut-glow);
 }
@@ -1492,11 +1504,12 @@ export default {
 }
 
 :global(:root[data-theme='dark']) {
-  --translation-donut-track: rgba(255, 255, 255, 0.13);
-  --translation-donut-hole-bg: #1C1C1E;
-  --translation-donut-hole-border: rgba(255, 255, 255, 0.16);
-  --translation-donut-edge: rgba(255, 255, 255, 0.18);
-  --translation-donut-glow: rgba(0, 0, 0, 0.34);
+  --translation-donut-track: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  --translation-donut-hole-bg: var(--material-glass-sheet);
+  --translation-donut-hole-border: var(--glass-control-border);
+  --translation-donut-edge: var(--glass-edge);
+  --translation-donut-glow-depth: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+  --translation-donut-glow: var(--translation-donut-glow-depth);
 }
 
 .coverage-donut strong {
@@ -1610,7 +1623,8 @@ export default {
 .overview-track div {
   height: 100%;
   border-radius: inherit;
-  background: var(--accent);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
   transition: width 0.28s ease;
 }
 
@@ -1783,7 +1797,7 @@ export default {
 
 .job-control-metrics .danger strong,
 .job-error {
-  color: #ff6b78;
+  color: var(--badge-error-text);
 }
 
 .job-control-meta {
@@ -1801,9 +1815,10 @@ export default {
 
 .job-error {
   padding: 9px 10px;
-  border: 1px solid rgba(255, 80, 90, 0.18);
+  border: 1px solid var(--badge-error-border);
+  border-color: var(--badge-error-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 80, 90, 0.08);
+  background: var(--badge-error-bg);
 }
 
 .job-control-actions {
@@ -1819,7 +1834,7 @@ export default {
 
 .result-summary {
   padding-left: 16px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--glass-edge);
 }
 
 .recent-head strong,
@@ -1831,17 +1846,21 @@ export default {
 .compact-job-row,
 .history-row {
   width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .compact-job-row {
   min-height: 52px;
-  padding: 10px 0;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1863,11 +1882,19 @@ export default {
 
 .history-row {
   min-height: 58px;
-  padding: 10px 0;
+  padding: 10px 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
+}
+
+.compact-job-row:hover,
+.history-row:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .history-row div {
@@ -1886,7 +1913,7 @@ export default {
   gap: 3px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1920,7 +1947,7 @@ export default {
   padding: 8px 11px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   outline: none;
   font: inherit;
@@ -1932,7 +1959,7 @@ export default {
 
 .input:focus {
   border-color: var(--glass-control-border-hover);
-  background: var(--surface-input-focus);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -1967,7 +1994,7 @@ export default {
   padding: 8px 11px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1975,17 +2002,32 @@ export default {
 
 .provider-list {
   margin-top: 14px;
-  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
 }
 
 .provider-row {
   min-height: 56px;
-  padding: 10px 0;
+  padding: 10px 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.provider-row:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .provider-row strong {
@@ -2030,19 +2072,19 @@ export default {
 .status-paused {
   color: var(--badge-warning-text);
   background: var(--badge-warning-bg);
-  border-color: rgba(245, 181, 80, 0.28);
+  border-color: var(--badge-warning-border);
 }
 
 .status-completed {
   color: var(--badge-success-text);
   background: var(--badge-success-bg);
-  border-color: rgba(90, 200, 150, 0.28);
+  border-color: var(--badge-success-border);
 }
 
 .status-failed {
-  color: #ff6b78;
-  background: rgba(255, 80, 90, 0.12);
-  border-color: rgba(255, 80, 90, 0.22);
+  color: var(--badge-error-text);
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
 }
 
 .status-untranslated {
@@ -2052,14 +2094,14 @@ export default {
 .status-machine_translated {
   color: var(--badge-warning-text);
   background: var(--badge-warning-bg);
-  border-color: rgba(245, 181, 80, 0.28);
+  border-color: var(--badge-warning-border);
 }
 
 .status-reviewed,
 .status-manual_edited {
   color: var(--badge-success-text);
   background: var(--badge-success-bg);
-  border-color: rgba(90, 200, 150, 0.28);
+  border-color: var(--badge-success-border);
 }
 
 .status-invalid {
@@ -2074,7 +2116,7 @@ export default {
 
 .source-section + .source-section {
   padding-left: 16px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--glass-edge);
 }
 
 .source-section-head {
@@ -2148,7 +2190,7 @@ export default {
   padding: 9px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -2170,7 +2212,8 @@ export default {
 
 .review-table {
   margin-top: 12px;
-  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
 }
 
 .review-head,
@@ -2183,15 +2226,25 @@ export default {
 
 .review-head {
   min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .review-row {
   min-height: 74px;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .review-source {
@@ -2233,7 +2286,7 @@ export default {
 }
 
 .review-actions .danger {
-  color: #ff6b78;
+  color: var(--badge-error-text);
 }
 
 .review-pagination {
@@ -2260,7 +2313,7 @@ export default {
 .review-history-panel {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-edge);
 }
 
 .review-history-row {
@@ -2318,8 +2371,10 @@ export default {
   display: grid;
   place-items: center;
   color: var(--text-secondary);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--glass-control-border);
   border-radius: var(--radius-lg);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .empty-panel.compact {
@@ -2331,7 +2386,7 @@ export default {
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-control-border);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
   box-shadow: var(--glass-control-shadow);
@@ -2346,7 +2401,7 @@ export default {
 
 .message-line.error,
 .error-text {
-  color: #ff6b78;
+  color: var(--badge-error-text);
 }
 
 @media (max-width: 920px) {
@@ -2415,7 +2470,7 @@ export default {
     padding-left: 0;
     border-left: 0;
     padding-top: 14px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--glass-edge);
   }
 
   .overview-signals {

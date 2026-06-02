@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   icon: { type: String, required: true },
   value: { type: [String, Number], required: true },
   label: { type: String, required: true },
@@ -18,7 +18,7 @@ defineProps({
 })
 
 const handleClick = () => {
-  if (defineProps.link) {
+  if (props.link) {
     // navigate using router
   }
 }
@@ -28,20 +28,21 @@ const handleClick = () => {
 .stat-card {
   display: flex;
   align-items: center;
-  background: var(--surface-card);
-  border: 1px solid var(--border-light);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
   padding: 24px 32px;
   cursor: pointer;
-  transition: var(--transition-pro);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 .stat-card:hover {
+  background: var(--material-glass-control-hover);
   transform: translateY(-3px);
-  border-color: var(--border-light);
-  box-shadow: var(--shadow-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .stat-icon {
   font-size: var(--type-display-mobile);
@@ -68,7 +69,7 @@ const handleClick = () => {
 .stat-arrow {
   color: var(--text-muted);
   font-size: 20px;
-  transition: var(--transition-pro);
+  transition: color var(--motion-fast), transform var(--motion-fast);
 }
 .stat-card:hover .stat-arrow {
   color: var(--text-primary);

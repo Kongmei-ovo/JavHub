@@ -831,7 +831,9 @@ export default {
 
 <style scoped>
 .operations-page {
-  --operations-line: var(--border-light);
+  --operations-line: var(--glass-control-border);
+  --operations-soft-line: var(--glass-control-border);
+  --operations-warning-material: linear-gradient(145deg, var(--badge-warning-bg), color-mix(in srgb, var(--badge-warning-bg) 58%, var(--material-glass-subtle)));
 }
 
 .operations-header {
@@ -893,7 +895,7 @@ export default {
 
 .state-item.warning {
   border-color: var(--badge-warning-border);
-  background: var(--badge-warning-bg);
+  background: var(--operations-warning-material);
 }
 
 .action-map-panel {
@@ -913,17 +915,20 @@ export default {
   align-items: center;
   min-height: 58px;
   padding: 9px 10px;
-  border: 1px solid var(--operations-line);
+  border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .action-card:hover {
-  border-color: var(--border);
-  background: var(--surface-card-hover);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .action-card span {
@@ -969,8 +974,8 @@ export default {
 .empty-panel {
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-lg);
-  background: var(--surface-card);
-  box-shadow: var(--shadow-card);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
 }
 
 .workbench-panel {
@@ -1031,21 +1036,22 @@ export default {
   align-items: center;
   min-height: 58px;
   padding: 9px 12px;
-  border: 1px solid var(--operations-line);
+  border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .queue-focus:hover,
 .compact-row:hover,
 .state-item:is(button):hover,
 .block-head button:hover {
-  border-color: var(--border);
-  background: var(--surface-card-hover);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .queue-focus span,
@@ -1117,21 +1123,25 @@ export default {
 
 .block-head button {
   padding: 4px 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
   cursor: pointer;
   transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .compact-list,
 .run-list {
   display: grid;
-  gap: 0;
+  gap: 6px;
   overflow: hidden;
-  border: 1px solid var(--operations-line);
+  border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background: var(--surface-card);
+  background: var(--material-glass-control);
+  padding: 6px;
 }
 
 .compact-row,
@@ -1143,22 +1153,22 @@ export default {
   width: 100%;
   min-height: 36px;
   padding: 8px 10px;
-  border: 0;
-  border-bottom: 1px solid var(--operations-line);
-  background: transparent;
+  border: 1px solid var(--operations-soft-line);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .compact-row:last-child,
 .run-row:last-child {
-  border-bottom: 0;
+  border-bottom: 1px solid var(--operations-soft-line);
 }
 
 .compact-row {
   cursor: pointer;
-  transition: background var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .static-row {
@@ -1209,15 +1219,18 @@ export default {
   padding: 8px 10px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 button.state-item {
   cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .state-item span {
@@ -1253,7 +1266,10 @@ button.state-item {
   padding: 8px 10px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-md);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .mini-stats strong {
@@ -1284,13 +1300,16 @@ button.state-item {
   padding: 4px 8px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-sm);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .cache-entry-stats {
@@ -1405,8 +1424,8 @@ button.state-item {
 }
 
 .operations-page {
-  --operations-line: color-mix(in srgb, var(--border-light) 68%, transparent);
-  --operations-soft-line: color-mix(in srgb, var(--border-light) 42%, transparent);
+  --operations-line: var(--glass-control-border);
+  --operations-soft-line: var(--glass-control-border);
   --operations-panel-gap: clamp(12px, 1.4vw, 18px);
   --operations-panel-pad: clamp(14px, 1.45vw, 20px);
 }
@@ -1467,20 +1486,24 @@ button.state-item {
   min-width: 0;
   min-height: 46px;
   padding: 8px 12px;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: transparent;
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
   transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .operations-segments button:hover {
   border-color: var(--glass-control-border-hover);
   background: var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .operations-segments button.active {
@@ -1622,12 +1645,16 @@ button.state-item {
 .run-list {
   border-color: var(--operations-soft-line);
   background: var(--material-glass-control);
-  box-shadow: none;
+}
+
+.state-item,
+.mini-stats > div {
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .state-item.warning {
   border-color: color-mix(in srgb, var(--badge-warning-border) 72%, transparent);
-  background: linear-gradient(145deg, var(--badge-warning-bg), rgba(255,255,255,0.28));
+  background: var(--operations-warning-material);
 }
 
 .queue-overview {

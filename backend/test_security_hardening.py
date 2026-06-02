@@ -145,6 +145,15 @@ class HardeningRegressionTests(unittest.TestCase):
         self.assertEqual(executed["params"], ("category:%",))
 
 
+class ProxyImageAllowlistTests(unittest.TestCase):
+    def test_allows_dmm_aws_image_hosts_without_opening_unrelated_domains(self):
+        from routers import proxy
+
+        self.assertTrue(proxy._is_url_allowed("https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/id/idps.jpg"))
+        self.assertTrue(proxy._is_url_allowed("https://awsimgsrc.dmm.com/dig/mono/movie/id/idps.jpg"))
+        self.assertFalse(proxy._is_url_allowed("https://example-dmm.com/dig/mono/movie/id/idps.jpg"))
+
+
 class TelegramConfigSecurityTests(unittest.IsolatedAsyncioTestCase):
     async def test_telegram_test_rejects_path_delimiters_before_http_request(self):
         with patch("routers.config.config._config", {"telegram": {"allowed_user_ids": [123456]}}), \

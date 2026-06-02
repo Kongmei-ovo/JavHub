@@ -277,7 +277,7 @@ export default {
   min-height: 44px;
   padding: 0 14px;
   color: var(--text-primary);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   box-shadow: var(--glass-control-shadow);
@@ -289,8 +289,8 @@ export default {
 }
 
 .filter-input:focus {
-  border-color: var(--active-border);
-  background: var(--surface-input-focus);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -301,7 +301,7 @@ export default {
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -349,7 +349,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -374,8 +374,8 @@ export default {
 .mini-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--white-20);
-  border-top-color: var(--accent);
+  border: 2px solid var(--glass-control-border);
+  border-top-color: var(--badge-info-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -394,7 +394,7 @@ export default {
   padding: 12px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -429,14 +429,14 @@ export default {
   padding: 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .provider-smoke-card.failed {
-  border-color: rgba(255, 107, 135, 0.3);
+  border-color: var(--badge-error-border);
 }
 
 .provider-smoke-card-head {
@@ -477,7 +477,7 @@ export default {
   padding: 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -508,7 +508,7 @@ export default {
   padding: 9px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -521,7 +521,7 @@ export default {
 .provider-smoke-run:hover {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -548,7 +548,7 @@ export default {
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -575,7 +575,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -635,28 +635,33 @@ export default {
 }
 
 .status-idle {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--badge-pending-text);
+  background: var(--badge-pending-bg);
+  border-color: var(--badge-pending-border);
 }
 
 .health-healthy {
-  color: #6ee7a8;
-  background: rgba(52, 199, 89, 0.12);
+  color: var(--badge-success-text);
+  background: var(--badge-success-bg);
+  border-color: var(--badge-success-border);
 }
 
 .health-degraded {
-  color: #ffd166;
-  background: rgba(255, 204, 0, 0.12);
+  color: var(--badge-warning-text);
+  background: var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
 }
 
 .health-cooling_down {
-  color: #ff6b87;
-  background: rgba(255, 107, 135, 0.12);
+  color: var(--badge-error-text);
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
 }
 
 .health-paused {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.14);
+  color: var(--badge-pending-text);
+  background: var(--badge-pending-bg);
+  border-color: var(--badge-pending-border);
 }
 
 .health-unknown {
@@ -673,8 +678,8 @@ export default {
 .spinner-large {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--white-20);
-  border-top-color: var(--accent);
+  border: 2px solid var(--glass-control-border);
+  border-top-color: var(--badge-info-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

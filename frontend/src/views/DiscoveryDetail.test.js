@@ -76,6 +76,7 @@ test('discovery detail toolbar actions use shared glass controls without legacy 
   const favoriteButtonBlock = cssBlock('.entity-fav-btn')
   const favoriteButtonHoverBlock = cssBlock('.entity-fav-btn:hover')
   const favoriteButtonActiveBlock = cssBlock('.entity-fav-btn.is-active')
+  const favoriteButtonActiveHoverBlock = cssBlock('.entity-fav-btn.is-active:hover')
   const subscriptionButtonBlock = cssBlock('.entity-sub-btn')
   const subscriptionButtonHoverBlock = cssBlock('.entity-sub-btn:hover')
   const subscriptionButtonActiveBlock = cssBlock('.entity-sub-btn.is-active')
@@ -112,6 +113,27 @@ test('discovery detail toolbar actions use shared glass controls without legacy 
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${name} should use active glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
     assert.doesNotMatch(block, /box-shadow:\s*inset 0 -2px 0 var\(--active-indicator\)/, `${name} should not use old underline-active chrome`)
+  }
+
+  assert.match(favoriteButtonActiveBlock, /color:\s*var\(--badge-error-text\)/, 'favorite active should use semantic favorite/error text')
+  assert.match(favoriteButtonActiveHoverBlock, /color:\s*var\(--badge-error-text\)/, 'favorite active hover should keep semantic favorite/error text')
+  assert.doesNotMatch(favoriteButtonActiveBlock, /#FF375F|#ff375f|rgba\(255,\s*55,\s*95/i)
+  assert.doesNotMatch(favoriteButtonActiveHoverBlock, /#FF375F|#ff375f|rgba\(255,\s*55,\s*95/i)
+  assert.doesNotMatch(source, /#FF375F|#ff375f|rgba\(255,\s*55,\s*95/i)
+})
+
+test('discovery detail chronicle headings use shared glass border tokens', () => {
+  const toolbarBlock = cssBlock('.toolbar')
+  const barDividerBlock = cssBlock('.bar-divider')
+  const paginationBottomBlock = cssBlock('.pagination-bar.bottom')
+  const yearHeaderBlock = cssBlock('.year-header')
+
+  assert.match(toolbarBlock, /border-bottom:\s*1px solid var\(--glass-edge\)/)
+  assert.match(barDividerBlock, /background:\s*var\(--glass-control-border\)/)
+  assert.match(paginationBottomBlock, /border-top:\s*1px solid var\(--glass-edge\)/)
+  assert.match(yearHeaderBlock, /border-left:\s*3px solid var\(--glass-control-border\)/)
+  for (const block of [toolbarBlock, barDividerBlock, paginationBottomBlock, yearHeaderBlock]) {
+    assert.doesNotMatch(block, /var\(--border\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#[0-9a-f]{3,6}/i)
   }
 })
 

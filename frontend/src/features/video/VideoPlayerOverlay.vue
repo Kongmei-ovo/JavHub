@@ -75,7 +75,8 @@ export default {
   --vp-control-shadow-hover: var(--glass-control-shadow-hover);
   --vp-sheet-bg: var(--material-glass-sheet);
   --vp-sheet-border: var(--glass-control-border);
-  --vp-player-bg: #000;
+  --vp-player-blackout: var(--media-blackout);
+  --vp-player-bg: var(--vp-player-blackout);
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);

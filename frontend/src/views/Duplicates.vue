@@ -141,21 +141,34 @@ onMounted(fetchDuplicates)
 }
 .rescan-btn {
   min-height: 44px;
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: 0;
+  background: var(--material-glass-control);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-control-border);
   padding: 0 18px;
   border-radius: 999px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   font-weight: 700;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.rescan-btn:hover {
+  transform: translateY(-1px);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .duplicate-item {
   display: flex;
   gap: 16px;
   padding: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   margin-bottom: 12px;
   min-width: 0;
 }
@@ -204,9 +217,12 @@ onMounted(fetchDuplicates)
   gap: 12px;
   align-items: center;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .duplicate-entry-main {
   min-width: 0;
@@ -225,14 +241,27 @@ onMounted(fetchDuplicates)
   min-width: 72px;
   min-height: 44px;
   padding: 0 16px;
-  border: none;
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
+  background: var(--material-glass-control);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   font-weight: 700;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+}
+.action-btn:hover {
+  transform: translateY(-1px);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .action-btn.delete {
-  background: #ff4d4f;
-  color: #fff;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
 }
 .action-btn.ignore {
   background: var(--material-glass-control);
@@ -245,9 +274,15 @@ onMounted(fetchDuplicates)
 .loading, .error, .empty {
   text-align: center;
   padding: 40px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-lg);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .error {
-  color: #ff4d4f;
+  color: var(--badge-error-text);
 }
 
 @media (max-width: 768px) {

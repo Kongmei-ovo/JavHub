@@ -135,14 +135,19 @@ function handleKeydown(event) {
   cursor: pointer;
   overflow: hidden;
   container-type: inline-size;
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
   transition: transform var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), background var(--motion-standard);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .apple-video-card:hover {
   transform: translateY(-3px);
-  border-color: var(--border-light);
-  background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .apple-video-card:active {
@@ -153,7 +158,8 @@ function handleKeydown(event) {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .apple-video-card__image,
@@ -195,17 +201,18 @@ function handleKeydown(event) {
   max-width: 72px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(16, 18, 24, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge);
+  color: var(--text-primary);
   font-size: 10px;
   font-weight: 650;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  backdrop-filter: blur(10px) saturate(1.25);
-  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .apple-video-card__fallback {
@@ -214,9 +221,8 @@ function handleKeydown(event) {
   justify-content: center;
   padding: 18px;
   color: var(--text-muted);
-  background:
-    radial-gradient(circle at 35% 20%, rgba(var(--accent-rgb), 0.16), transparent 42%),
-    var(--surface-control);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--type-caption);

@@ -13,6 +13,19 @@ import { normalizeVideo, videoCodeOf, videoCoverCandidates } from '../utils/vide
  */
 
 const source = readFileSync(new URL('./AppleVideoCard.vue', import.meta.url), 'utf8')
+const styleSource = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] || ''
+
+function cssBlock(selector) {
+  const searchable = styleSource.replace(/\/\*[\s\S]*?\*\//g, '')
+  const blocks = [...searchable.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => selectors
+      .split(',')
+      .map(part => part.trim())
+      .includes(selector))
+    .map(([, , block]) => block)
+  assert.ok(blocks.length, `${selector} should exist in AppleVideoCard.vue`)
+  return blocks.join('\n')
+}
 
 function getSetupBody() {
   const match = source.match(/<script setup>([\s\S]*?)<\/script>/)
@@ -191,6 +204,40 @@ test('AppleVideoCard renders variant labels on the cover', () => {
   assert.match(source, /apple-video-card__variant-stack/)
   assert.match(source, /v-for="label in variantLabels"/)
   assert.match(source, /:title="variantTooltip"/)
+})
+
+test('AppleVideoCard variant labels use shared Apple glass material', () => {
+  const variantPill = cssBlock('.apple-video-card__variant-pill')
+
+  assert.match(variantPill, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(variantPill, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(variantPill, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantPill, /color:\s*var\(--text-primary\)/)
+  assert.match(variantPill, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(variantPill, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+})
+
+test('AppleVideoCard card shell and cover use shared Apple glass materials', () => {
+  const card = cssBlock('.apple-video-card')
+  const cardHover = cssBlock('.apple-video-card:hover')
+  const cover = cssBlock('.apple-video-card__cover')
+  const fallback = cssBlock('.apple-video-card__fallback')
+
+  assert.match(card, /background:\s*var\(--material-glass-control\)/)
+  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(card, /var\(--surface-card\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
+  assert.match(cardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(cardHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(cardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.doesNotMatch(cardHover, /var\(--border-light\)|var\(--surface-card-hover\)|var\(--shadow-floating\)|var\(--glass-surface-shadow\)/)
+
+  for (const [block, label] of [[cover, 'cover'], [fallback, 'fallback']]) {
+    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${label} should use shared control material`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${label} should use shared control shadow`)
+    assert.doesNotMatch(block, /var\(--surface-control\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
+  }
 })
 
 test('AppleVideoCard exposes button semantics on the card root', () => {

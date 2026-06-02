@@ -34,6 +34,7 @@ test('video magnet section uses shared glass controls and mobile-safe rows', () 
   const titleBlock = magnetSource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = magnetSource.match(/\.magnet-item\s*\{[^}]*\}/)?.[0] || ''
   const actionBlock = magnetSource.match(/\.btn-copy,\s*\n\.btn-download\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  const downloadBlock = [...magnetSource.matchAll(/\.btn-download\s*\{[\s\S]*?\n\}/g)].at(-1)?.[0] || ''
   const mediaBlock = magnetSource.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
 
   assert.match(titleBlock, /color:\s*var\(--modal-text-muted,\s*var\(--text-muted\)\)/)
@@ -46,7 +47,10 @@ test('video magnet section uses shared glass controls and mobile-safe rows', () 
   assert.match(actionBlock, /background:\s*var\(--material-glass-control\)/)
   assert.match(actionBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(actionBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(downloadBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(downloadBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(mediaBlock, /\.magnet-item\s*\{[\s\S]*flex-direction:\s*column/)
   assert.match(mediaBlock, /\.magnet-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
+  assert.doesNotMatch(magnetSource, /var\(--active-border\)/)
   assert.doesNotMatch(magnetSource, /\.btn-download\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
 })

@@ -95,13 +95,16 @@ test('modal material stays readable and consistent over busy result grids', () =
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const overlayBlock = source.match(/\.modal-overlay\s*\{[^}]*\}/)?.[0] || ''
 
-  assert.match(source, /--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
-  assert.match(source, /--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
-  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
-  assert.match(source, /--modal-panel-bg:\s*rgba\(0,\s*0,\s*0,\s*0\.24\)/)
+  assert.match(source, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(source, /--modal-scrim-panel:\s*color-mix\(in srgb,\s*var\(--modal-scrim-core\) 24%,\s*transparent\)/)
+  assert.match(source, /--modal-sheet-bg:\s*var\(--modal-scrim-sheet\)/)
+  assert.match(source, /--modal-sheet-fallback:\s*var\(--modal-scrim-sheet\)/)
+  assert.match(source, /--modal-panel-bg:\s*var\(--modal-scrim-panel\)/)
+  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
   assert.match(overlayBlock, /backdrop-filter:\s*none/)
   assert.match(overlayBlock, /-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(source, /--modal-backdrop-blur/)
+  assert.doesNotMatch(source, /--modal-(?:panel|gallery|overlay)-bg:\s*rgba\(0,\s*0,\s*0/)
   assert.doesNotMatch(overlayBlock, /backdrop-filter:\s*blur/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*-webkit-backdrop-filter:\s*none/)
@@ -111,6 +114,7 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
   const actionBlock = source.match(/\.preview-btn,\s*\n\.stream-btn,\s*\n\.favorite-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
   const primaryBlock = source.match(/\.preview-btn,\s*\n\.stream-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  const favoriteActiveBlock = source.match(/\.favorite-btn\.is-active\s*\{[\s\S]*?\n\}/)?.[0] || ''
   const secondaryBlock = source.match(/\.favorite-btn,\s*\n\.stream-download-btn\s*\{[\s\S]*?\n\}/)?.[0] || ''
 
   assert.match(source, /--modal-action-primary-bg:\s*var\(--glass-active-material\)/)
@@ -118,7 +122,10 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   assert.match(actionBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(actionBlock, /box-shadow:\s*var\(--modal-action-shadow\)/)
   assert.match(primaryBlock, /background:\s*var\(--modal-action-primary-bg\)/)
+  assert.match(primaryBlock, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(favoriteActiveBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(secondaryBlock, /background:\s*var\(--modal-action-secondary-bg\)/)
+  assert.doesNotMatch(source, /var\(--active-border\)/)
   assert.doesNotMatch(source, /\.preview-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
   assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
 })
@@ -194,13 +201,108 @@ test('modal detail labels use inherited modal text tokens without uppercase trac
   const sectionTitleBlock = source.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const metaLabelBlock = source.match(/\.meta-label\s*\{[^}]*\}/)?.[0] || ''
 
-  assert.match(source, /--modal-text-muted:\s*rgba\(255,\s*255,\s*255,\s*0\.58\)/)
+  assert.match(source, /--modal-text-muted:\s*var\(--modal-text-muted-base\)/)
   assert.match(sectionTitleBlock, /color:\s*var\(--modal-text-muted\)/)
   assert.match(sectionTitleBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(sectionTitleBlock, /text-transform:\s*uppercase/)
   assert.match(metaLabelBlock, /color:\s*var\(--modal-text-muted\)/)
   assert.match(metaLabelBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(metaLabelBlock, /text-transform:\s*uppercase/)
+})
+
+test('modal detail typography and dividers use modal semantic text tokens', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const modalCodeBlock = sourceBlock(source, '.modal-code-block')
+  const modalCode = sourceBlock(source, '.modal-code')
+  const titleBlock = sourceBlock(source, '.modal-title-block')
+  const title = sourceBlock(source, '.modal-title')
+  const metaDivider = sourceBlock(source, '.modal-meta::before')
+  const metaRow = sourceBlock(source, '.meta-row')
+  const metaValue = sourceBlock(source, '.meta-value')
+  const metaValueEmpty = sourceBlock(source, '.meta-value--empty')
+  const clickable = sourceBlock(source, '.clickable')
+  const clickableHover = sourceBlock(source, '.clickable:hover')
+  const actressName = sourceBlock(source, '.actress-name')
+  const translatedName = sourceBlock(source, '.actress-name .name-translated')
+  const actressNameHover = sourceBlock(source, '.actress-avatar-item:hover .actress-name')
+  const metaProvider = sourceBlock(source, '.meta-provider')
+  const summary = sourceBlock(source, '.summary-text')
+  const summaryEmpty = sourceBlock(source, '.summary-text--empty')
+  const skeleton = sourceBlock(source, '.skeleton')
+  const skeletonAfter = sourceBlock(source, '.skeleton::after')
+
+  assert.match(source, /--modal-text-primary:\s*#F5F5F7/)
+  assert.match(source, /--modal-text-secondary:\s*var\(--modal-text-secondary-base\)/)
+  assert.match(source, /--modal-divider-subtle:\s*var\(--modal-divider-subtle-base\)/)
+  assert.match(source, /--modal-skeleton-bg:\s*var\(--modal-skeleton-bg-base\)/)
+  assert.match(source, /--modal-text-shadow-strong:\s*0 2px 10px var\(--modal-text-shadow-strong-color\)/)
+  assert.match(source, /--modal-text-shadow-soft:\s*0 2px 8px var\(--modal-text-shadow-soft-color\)/)
+
+  assert.match(modalCodeBlock, /border-bottom:\s*1px solid var\(--modal-divider-strong\)/)
+  assert.match(titleBlock, /border-bottom:\s*1px solid var\(--modal-divider\)/)
+  assert.match(metaDivider, /background:\s*var\(--modal-divider-subtle\)/)
+  assert.match(metaRow, /border-bottom:\s*1px solid var\(--modal-divider-subtle\)/)
+
+  for (const block of [modalCode, title, metaValue, clickable, clickableHover, translatedName, actressNameHover]) {
+    assert.match(block, /color:\s*var\(--modal-text-primary\)/)
+  }
+  assert.match(modalCode, /text-shadow:\s*var\(--modal-text-shadow-strong\)/)
+  assert.match(title, /text-shadow:\s*var\(--modal-text-shadow-soft\)/)
+  assert.doesNotMatch(`${modalCode}\n${title}`, /rgba\(0,\s*0,\s*0|rgba\(0,0,0/)
+
+  assert.match(actressName, /color:\s*var\(--modal-text-secondary\)/)
+  assert.match(metaProvider, /color:\s*var\(--modal-text-faint\)/)
+  assert.match(summary, /color:\s*var\(--modal-text-body\)/)
+  assert.match(metaValueEmpty, /color:\s*var\(--modal-text-empty\)/)
+  assert.match(summaryEmpty, /color:\s*var\(--modal-text-empty\)/)
+  assert.match(clickable, /text-decoration-color:\s*var\(--modal-link-underline\)/)
+  assert.match(clickableHover, /text-decoration-color:\s*var\(--modal-link-underline-hover\)/)
+  assert.match(skeleton, /background:\s*var\(--modal-skeleton-bg\)/)
+  assert.match(skeletonAfter, /var\(--modal-skeleton-shine\)/)
+
+  for (const block of [
+    modalCodeBlock,
+    modalCode,
+    titleBlock,
+    title,
+    metaDivider,
+    metaRow,
+    metaValue,
+    metaValueEmpty,
+    clickable,
+    clickableHover,
+    actressName,
+    translatedName,
+    actressNameHover,
+    metaProvider,
+    summary,
+    summaryEmpty,
+    skeleton,
+    skeletonAfter,
+  ]) {
+    assert.doesNotMatch(block, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+  }
+})
+
+test('modal sheet edge highlights use modal border tokens', () => {
+  const source = readFileSync(new URL('./VideoModal.vue', import.meta.url), 'utf8')
+  const overlay = sourceBlock(source, '.modal-overlay')
+  const darkOverlay = source.match(/:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{([^}]*)\}/)?.[1] || ''
+  const container = source.match(/\n\.modal-container\s*\{([^}]*)\}/)?.[1] || ''
+  assert.ok(container, 'base .modal-container block should exist')
+
+  assert.match(overlay, /--modal-panel-border-base:\s*color-mix\(in srgb,\s*var\(--modal-text-primary\) 18%,\s*transparent\)/)
+  assert.match(overlay, /--modal-panel-border:\s*var\(--modal-panel-border-base\)/)
+  assert.match(overlay, /--modal-container-edge-highlight:\s*var\(--modal-container-edge-highlight-base\)/)
+  assert.match(overlay, /--modal-depth-shadow:\s*color-mix\(in srgb,\s*var\(--modal-scrim-core\) 36%,\s*transparent\)/)
+  assert.match(overlay, /--modal-container-shadow:\s*0 42px 120px var\(--modal-depth-shadow\),\s*inset 0 1px 0 var\(--modal-container-edge-highlight\)/)
+  assert.match(darkOverlay, /--modal-panel-border-base:\s*color-mix\(in srgb,\s*var\(--modal-text-primary\) 14%,\s*transparent\)/)
+
+  assert.match(container, /border:\s*1px solid var\(--modal-panel-border\)/)
+  assert.match(container, /box-shadow:\s*var\(--modal-container-shadow\)/)
+  assert.doesNotMatch(overlay, /rgba\(255,\s*255,\s*255/i)
+  assert.doesNotMatch(darkOverlay, /rgba\(255,\s*255,\s*255/i)
+  assert.doesNotMatch(container, /rgba\(255,\s*255,\s*255/i)
 })
 
 test('modal keeps media player and hls libraries out of the base modal chunk', () => {

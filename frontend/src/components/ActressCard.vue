@@ -1,5 +1,13 @@
 <template>
-  <div class="actress-card" @click="$emit('click')">
+  <article
+    class="actress-card"
+    role="button"
+    tabindex="0"
+    :aria-label="`打开演员 ${name}`"
+    @click="$emit('click')"
+    @keydown.enter.prevent="$emit('click')"
+    @keydown.space.prevent="$emit('click')"
+  >
     <!-- Cover -->
     <div class="card-cover">
       <img
@@ -17,7 +25,7 @@
       </span>
       <!-- Heart top-right -->
       <span v-if="subscribed" class="cover-heart">
-        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#FF375F"/></svg>
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/></svg>
       </span>
       <span v-if="candidateCount > 0" class="candidate-badge">{{ candidateCount }}</span>
     </div>
@@ -39,7 +47,7 @@
         </span>
       </div>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup>
@@ -61,20 +69,35 @@ const handleImgError = (e) => {
 
 <style scoped>
 .actress-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(80px) saturate(200%);
-  -webkit-backdrop-filter: blur(80px) saturate(200%);
-  border-radius: 16px;
+  background: var(--material-glass-control);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-control-shadow);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  outline: none;
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 
 .actress-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-5px);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.actress-card:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(var(--accent-rgb), 0.14),
+    var(--glass-control-shadow),
+    var(--glass-inner-shadow);
+}
+
+.actress-card:active {
+  transform: translateY(-2px) scale(0.99);
 }
 
 /* ===== Cover ===== */
@@ -83,7 +106,8 @@ const handleImgError = (e) => {
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .cover-img {
@@ -91,7 +115,7 @@ const handleImgError = (e) => {
   height: 100%;
   object-fit: cover;
   object-position: center top;
-  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--motion-emphasized);
 }
 
 .actress-card:hover .cover-img {
@@ -102,7 +126,7 @@ const handleImgError = (e) => {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 50%;
-  background: linear-gradient(to top, rgba(10, 10, 12, 0.95) 0%, rgba(10, 10, 12, 0.4) 50%, transparent 100%);
+  background: linear-gradient(to top, var(--surface-scrim) 0%, rgba(var(--accent-rgb), 0.18) 48%, transparent 100%);
   pointer-events: none;
 }
 
@@ -112,12 +136,13 @@ const handleImgError = (e) => {
   top: 8px; left: 8px;
   display: inline-flex; align-items: center; gap: 3px;
   height: 22px; padding: 0 8px;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-sm);
+  background: var(--material-glass-control);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  color: var(--text-primary);
   font-size: var(--type-micro);
   font-weight: 600;
   pointer-events: none;
@@ -128,11 +153,13 @@ const handleImgError = (e) => {
   position: absolute;
   top: 8px; right: 8px;
   width: 24px; height: 24px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-control);
+  background: var(--material-glass-control);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  color: var(--badge-error-text);
   display: flex; align-items: center; justify-content: center;
   pointer-events: none;
 }
@@ -148,11 +175,14 @@ const handleImgError = (e) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ff9f0a;
-  color: #111;
+  background: var(--badge-warning-bg);
+  border: 1px solid var(--badge-warning-border);
+  color: var(--badge-warning-text);
   font-size: var(--type-caption);
   font-weight: 800;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 /* ===== Info ===== */
@@ -196,10 +226,10 @@ const handleImgError = (e) => {
 }
 
 .meta-subscribed {
-  color: #FF375F;
+  color: var(--badge-error-text);
 }
 
 .meta-candidate {
-  color: #ff9f0a;
+  color: var(--badge-warning-text);
 }
 </style>

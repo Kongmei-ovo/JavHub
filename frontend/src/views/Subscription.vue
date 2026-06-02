@@ -538,8 +538,8 @@ onMounted(loadSubs)
   --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
   --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
   --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
-  --subscription-danger-bg: color-mix(in srgb, #ff375f 12%, transparent);
-  --subscription-danger-border: color-mix(in srgb, #ff375f 34%, var(--glass-control-border));
+  --subscription-danger-bg: var(--badge-error-bg);
+  --subscription-danger-border: var(--badge-error-border);
 }
 
 .sub-hero {
@@ -603,8 +603,9 @@ onMounted(loadSubs)
   height: 16px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #ff375f;
-  color: #fff;
+  border: 1px solid var(--badge-error-border);
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
   font-size: var(--type-badge);
   font-weight: 700;
 }
@@ -642,12 +643,31 @@ onMounted(loadSubs)
 .search-input::placeholder { color: var(--text-muted); }
 
 .clear-btn {
-  background: none; border: none; padding: 4px; cursor: pointer;
-  color: var(--text-muted); display: flex; align-items: center; border-radius: 50%;
-  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid var(--subscription-control-border);
+  border-radius: 50%;
+  padding: 0;
+  background: var(--subscription-control-bg);
+  color: var(--text-muted);
+  box-shadow: var(--subscription-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
 }
 
-.clear-btn:hover { background: var(--subscription-control-bg-hover); color: var(--text-secondary); }
+.clear-btn:hover {
+  transform: translateY(-1px);
+  background: var(--subscription-control-bg-hover);
+  border-color: var(--subscription-control-border-hover);
+  box-shadow: var(--subscription-control-shadow-hover);
+  color: var(--text-secondary);
+}
 
 /* ===== Card Grid ===== */
 .card-grid {
@@ -735,13 +755,13 @@ onMounted(loadSubs)
 /* ===== Spinners ===== */
 .spinner-small {
   width: 20px; height: 20px;
-  border: 2px solid var(--border); border-top-color: var(--text-primary);
+  border: 2px solid var(--glass-control-border); border-top-color: var(--text-primary);
   border-radius: 50%; animation: spin 0.6s linear infinite;
 }
 
 .spinner-tiny {
   width: 14px; height: 14px;
-  border: 1.5px solid var(--border); border-top-color: var(--text-primary);
+  border: 1.5px solid var(--glass-control-border); border-top-color: var(--text-primary);
   border-radius: 50%; animation: spin 0.6s linear infinite;
 }
 
@@ -764,8 +784,8 @@ onMounted(loadSubs)
   --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
   --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
   --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
-  --subscription-danger-bg: color-mix(in srgb, #ff375f 12%, transparent);
-  --subscription-danger-border: color-mix(in srgb, #ff375f 34%, var(--glass-control-border));
+  --subscription-danger-bg: var(--badge-error-bg);
+  --subscription-danger-border: var(--badge-error-border);
   position: fixed; inset: 0;
   background: var(--subscription-overlay-bg);
   backdrop-filter: none;
@@ -816,8 +836,8 @@ onMounted(loadSubs)
 .top-action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-primary); }
 .top-action-btn:active { transform: scale(0.96); }
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.top-action-btn.danger { color: #FF375F; border-color: var(--subscription-danger-border); }
-.top-action-btn.danger:hover { background: var(--subscription-danger-bg); }
+.top-action-btn.danger { color: var(--badge-error-text); border-color: var(--badge-error-border); }
+.top-action-btn.danger:hover { background: var(--badge-error-bg); }
 .top-action-btn.primary {
   background: var(--glass-active-material);
   color: var(--text-primary);

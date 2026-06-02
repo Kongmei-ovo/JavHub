@@ -4,6 +4,18 @@ import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./Actor.vue', import.meta.url), 'utf8')
 
+function cssBlock(selector) {
+  const searchable = source.replace(/\/\*[\s\S]*?\*\//g, '')
+  const blocks = [...searchable.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => selectors
+      .split(',')
+      .map(part => part.trim())
+      .includes(selector))
+    .map(([, , block]) => block)
+  assert.ok(blocks.length, `${selector} should exist in Actor.vue`)
+  return blocks.join('\n')
+}
+
 test('actor page treats supplement as part of the default catalog', () => {
   assert.equal(source.includes('包含补全'), false)
   assert.equal(source.includes('supplement-toggle'), false)
@@ -79,4 +91,113 @@ test('actor page uses backend variant groups and can expand all versions', () =>
   assert.doesNotMatch(source, /groupByVariant/)
   assert.doesNotMatch(source, /variantLabel\(/)
   assert.doesNotMatch(source, /from '..\/utils\/videoVariant\.js'/)
+})
+
+test('actor page version and year controls use shared Apple glass materials', () => {
+  const variantSwitch = cssBlock('.variant-switch')
+  const switchButton = cssBlock('.switch-btn')
+  const switchButtonHover = cssBlock('.switch-btn:hover')
+  const switchButtonActive = cssBlock('.switch-btn.active')
+  const variantBadge = cssBlock('.variant-badge')
+  const variantLabel = cssBlock('.variant-label')
+  const yearNav = cssBlock('.year-nav')
+  const yearNavItem = cssBlock('.year-nav-item')
+  const yearNavItemHover = cssBlock('.year-nav-item:hover')
+  const yearNavItemActive = cssBlock('.year-nav-item.active')
+
+  assert.match(variantSwitch, /background:\s*var\(--material-glass-control\)/)
+  assert.match(variantSwitch, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(variantSwitch, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.doesNotMatch(variantSwitch, /rgba\(255,\s*255,\s*255/)
+
+  assert.match(switchButton, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(switchButton, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(switchButtonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(switchButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(switchButtonActive, /background:\s*var\(--glass-active-material\)/)
+  assert.match(switchButtonActive, /border-color:\s*var\(--glass-active-border\)/)
+
+  assert.match(variantBadge, /background:\s*var\(--material-glass-control\)/)
+  assert.match(variantBadge, /border:\s*1px solid var\(--glass-control-border\)/)
+
+  assert.match(variantLabel, /background:\s*var\(--glass-active-material\)/)
+  assert.match(variantLabel, /border:\s*1px solid var\(--glass-active-border\)/)
+  assert.match(variantLabel, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.match(variantLabel, /color:\s*var\(--text-primary\)/)
+  assert.doesNotMatch(variantLabel, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+
+  assert.match(yearNav, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(yearNav, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(yearNavItem, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(yearNavItem, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(yearNavItem, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.doesNotMatch(yearNavItem, /transparent/)
+  assert.match(yearNavItemHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(yearNavItemHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(yearNavItemActive, /background:\s*var\(--glass-active-material\)/)
+  assert.match(yearNavItemActive, /border-color:\s*var\(--glass-active-border\)/)
+  assert.doesNotMatch(yearNavItemHover, /rgba\(255,\s*255,\s*255/)
+})
+
+test('actor page loading and year empty states use shared subtle materials', () => {
+  const spinner = cssBlock('.spinner-large')
+  const yearHeader = cssBlock('.year-header')
+  const yearEmpty = cssBlock('.year-empty')
+
+  assert.match(spinner, /border:\s*3px solid var\(--glass-control-border\)/)
+  assert.match(spinner, /border-top-color:\s*var\(--accent\)/)
+  assert.doesNotMatch(spinner, /rgba\(255,255,255/)
+
+  assert.match(yearHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
+  assert.doesNotMatch(yearHeader, /rgba\(255,\s*255,\s*255/)
+
+  assert.match(yearEmpty, /border:\s*1px dashed var\(--glass-control-border\)/)
+  assert.match(yearEmpty, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(yearEmpty, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.doesNotMatch(yearEmpty, /rgba\(255,\s*255,\s*255/)
+})
+
+test('actor hero and supplement workspace use shared Apple glass controls', () => {
+  const actorHero = cssBlock('.actor-hero')
+  const actorAvatar = cssBlock('.actor-avatar')
+  const actionButton = cssBlock('.actor-action-btn')
+  const actionButtonHover = cssBlock('.actor-action-btn:hover')
+  const actionButtonActive = cssBlock('.actor-action-btn.active')
+  const subscribeButtonActive = cssBlock('.actor-action-btn--subscribe.active')
+  const metaFavorite = cssBlock('.meta-item--favorite')
+  const metaSubscribed = cssBlock('.meta-item--subscribed')
+  const sectionHeader = cssBlock('.section-header')
+  const supplementCard = cssBlock('.supplement-card')
+
+  assert.match(actorHero, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(actorHero, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(actorHero, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.doesNotMatch(actorHero, /var\(--bg-secondary\)|var\(--bg-primary\)/)
+
+  assert.match(actorAvatar, /background:\s*var\(--material-glass-control\)/)
+  assert.match(actorAvatar, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(actorAvatar, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.doesNotMatch(actorAvatar, /var\(--bg-card\)|rgba\(255,\s*255,\s*255/)
+
+  for (const block of [actionButton, metaFavorite, metaSubscribed, supplementCard]) {
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
+    assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-card-hover\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
+  }
+
+  assert.match(actionButtonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(actionButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(actionButtonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.doesNotMatch(actionButtonHover, /var\(--surface-card-hover\)|var\(--glass-edge-strong\)/)
+
+  assert.match(actionButtonActive, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(actionButtonActive, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(actionButtonActive, /color:\s*var\(--badge-error-text\)/)
+  assert.match(subscribeButtonActive, /background:\s*var\(--badge-success-bg\)/)
+  assert.match(subscribeButtonActive, /border-color:\s*var\(--badge-success-border\)/)
+  assert.match(subscribeButtonActive, /color:\s*var\(--badge-success-text\)/)
+  assert.doesNotMatch(`${actionButtonActive}\n${subscribeButtonActive}`, /#ff375f|#34c759|rgba\(255,\s*55,\s*95|rgba\(52,\s*199,\s*89/i)
+
+  assert.match(sectionHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
 })

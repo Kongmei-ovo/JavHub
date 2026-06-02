@@ -520,13 +520,13 @@ export default {
   cursor: pointer;
   padding: 7px 16px;
   border-radius: 999px;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background 0.25s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s cubic-bezier(0.23, 1, 0.32, 1), color 0.25s cubic-bezier(0.23, 1, 0.32, 1), transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .shuffle-btn:hover:not(:disabled) { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); }
 .shuffle-btn:active:not(:disabled) { transform: scale(0.96); }
 .shuffle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-wrap { text-align: center; padding: 60px; color: var(--text-secondary); }
-.spinner-large { width: 40px; height: 40px; border: 3px solid var(--border-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+.spinner-large { width: 40px; height: 40px; border: 3px solid var(--glass-control-border); border-top-color: var(--glass-active-border); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; box-shadow: var(--glass-control-shadow); }
 
 /* Tab Bar */
 .tab-bar {
@@ -572,10 +572,47 @@ export default {
 /* 演员卡片：整个圆形，参照VideoModal */
 .actress-tab { --page-max: 1200px; padding-block: 20px; }
 .actress-grid { display: grid; gap: 20px; justify-items: center; }
-.actress-card { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; font: inherit; cursor: pointer; transition: var(--transition); }
-.actress-card:hover { transform: translateY(-4px); }
-.actress-avatar { width: var(--actress-avatar-size, 80px); height: var(--actress-avatar-size, 80px); border-radius: 24px; overflow: hidden; background: var(--surface-control); border: 1px solid var(--border-light); transition: border-color 0.2s, box-shadow 0.2s; flex-shrink: 0; }
-.actress-card:hover .actress-avatar { border-color: var(--border-light); box-shadow: var(--shadow-hover); }
+.actress-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  min-width: calc(var(--actress-avatar-size, 80px) + 22px);
+  padding: 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: calc(var(--radius-card) - 2px);
+  background: var(--material-glass-subtle);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.actress-card:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-3px);
+}
+.actress-card:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.13);
+}
+.actress-card:active { transform: translateY(-1px) scale(0.985); }
+.actress-avatar {
+  width: var(--actress-avatar-size, 80px);
+  height: var(--actress-avatar-size, 80px);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  flex-shrink: 0;
+}
+.actress-card:hover .actress-avatar { border-color: var(--glass-control-border-hover); box-shadow: var(--glass-control-shadow-hover); }
 .actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
 .actress-card:hover .actress-avatar img { transform: translateY(-2px); }
 .actress-name { font-size: var(--type-caption); font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -590,9 +627,11 @@ export default {
 .actress-skeleton-line {
   position: relative;
   overflow: hidden;
-  background: var(--surface-control);
-  border: 1px solid var(--border-light);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.48);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .actress-skeleton-avatar {
   width: var(--actress-avatar-size, 80px);
@@ -613,7 +652,7 @@ export default {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.38) 46%, transparent 72%);
+  background: linear-gradient(100deg, transparent 0%, var(--material-glass-control-hover) 46%, transparent 72%);
   transform: translateX(-110%);
   animation: actressSkeletonShimmer 1.35s ease-in-out infinite;
 }
@@ -653,7 +692,7 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background 0.4s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1), color 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1), transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
   opacity: 0;
   transform: scale(0.92);

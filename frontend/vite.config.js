@@ -11,6 +11,8 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion)
   },
   build: {
+    cssTarget: ['chrome107', 'firefox103', 'safari15'],
+    cssMinify: false,
     rollupOptions: {
       output: {
         manualChunks(id) {

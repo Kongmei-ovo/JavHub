@@ -96,7 +96,7 @@ export default {
 }
 .btn-copy:active,
 .btn-download:active { transform: translateY(0) scale(0.98); }
-.btn-download { background: var(--glass-active-material); border-color: var(--active-border); }
+.btn-download { background: var(--glass-active-material); border-color: var(--glass-active-border); }
 .btn-download:hover { background: var(--glass-active-material); }
 .no-magnets { text-align: center; padding: 28px; color: var(--text-muted); font-size: var(--type-body); border: 1px dashed var(--glass-control-border); border-radius: var(--radius-lg); background: var(--material-glass-control); box-shadow: var(--glass-control-shadow); }
 .skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); }

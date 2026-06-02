@@ -9,7 +9,7 @@
               class="progress-ring-bg"
               cx="20" cy="20" r="16"
               fill="none"
-              stroke="var(--border)"
+              stroke="var(--glass-control-border)"
               stroke-width="3"
             />
             <circle
@@ -462,7 +462,9 @@ const fetchJobs = async () => {
 </script>
 
 <style scoped>
-.inventory-page {}
+.inventory-page {
+  --inventory-transparent: color-mix(in srgb, var(--glass-control-border) 0%, transparent);
+}
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -504,14 +506,26 @@ const fetchJobs = async () => {
 }
 .inline-link {
   margin-left: 10px;
-  border: 0;
-  background: transparent;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
+  background: var(--material-glass-control);
   color: var(--link-text);
   font-size: 13px;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
   text-decoration: underline;
   text-decoration-color: var(--link-underline);
   text-underline-offset: 3px;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+.inline-link:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .snapshot-warn {
   background: var(--badge-warning-bg);
@@ -535,15 +549,21 @@ const fetchJobs = async () => {
 .search-box {
   display: flex;
   align-items: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
   padding: 0 12px;
   flex: 1;
   max-width: 320px;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .search-box:focus-within {
-  border-color: var(--accent);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-active-shadow);
 }
 .search-icon {
   width: 18px;
@@ -553,22 +573,31 @@ const fetchJobs = async () => {
 }
 .search-input {
   flex: 1;
-  border: none;
+  border: 1px solid var(--inventory-transparent);
   outline: none;
   padding: 8px;
   font-size: 14px;
-  background: transparent;
+  background: var(--inventory-transparent);
   color: var(--text-primary);
 }
 .search-clear {
-  background: none;
-  border: none;
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  border-radius: 50%;
   color: var(--text-muted);
   cursor: pointer;
   font-size: 18px;
   padding: 0 4px;
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
-.search-clear:hover { color: var(--text-primary); }
+.search-clear:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
 .filter-controls {
   display: flex;
   align-items: center;
@@ -618,22 +647,29 @@ const fetchJobs = async () => {
   gap: 16px;
 }
 .actor-card {
-  background: var(--bg-card);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--glass-control-shadow);
+  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .actor-card:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
   transform: translateY(-4px);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .actor-cover {
   position: relative;
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
+  border-bottom: 1px solid var(--glass-control-border);
 }
 .actor-cover img {
   width: 100%;
@@ -684,7 +720,8 @@ const fetchJobs = async () => {
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 3/4;
-  background: var(--bg-card-hover);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
   position: relative;
   overflow: hidden;
 }
@@ -698,7 +735,8 @@ const fetchJobs = async () => {
 }
 .skeleton-line {
   height: 12px;
-  background: var(--surface-card-hover);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
   border-radius: 6px;
   margin-bottom: 6px;
 }
@@ -721,19 +759,21 @@ const fetchJobs = async () => {
   padding: 12px 0 16px;
 }
 .page-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 5px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.2s;
+  box-shadow: var(--glass-control-shadow);
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.2s;
 }
 .page-btn:hover:not(:disabled) {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 .page-btn:disabled {
   opacity: 0.4;
@@ -753,31 +793,41 @@ const fetchJobs = async () => {
 .jump-input {
   width: 50px;
   padding: 4px 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
   font-size: 12px;
   text-align: center;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.jump-input:focus {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-active-shadow);
+  outline: none;
 }
 .jump-input::-webkit-inner-spin-button,
 .jump-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
 }
 .jump-btn {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s;
+  box-shadow: var(--glass-control-shadow);
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.2s;
 }
 .jump-btn:hover {
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 /* 作业历史 */
@@ -787,8 +837,10 @@ const fetchJobs = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--glass-control-shadow);
 }
 .job-type { font-weight: bold; }
 .job-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 12px; }
@@ -796,20 +848,36 @@ const fetchJobs = async () => {
 
 .dialog-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.62); display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
+  background: var(--surface-scrim); display: flex; align-items: center; justify-content: center;
+  z-index: var(--z-modal);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .jobs-dialog {
-  background: var(--material-glass-sheet); border: 1px solid var(--border); border-radius: var(--radius-lg); width: min(600px, calc(100vw - 32px)); max-height: 80vh;
+  background: var(--material-glass-sheet); border: 1px solid var(--glass-edge); border-radius: var(--radius-lg); width: min(600px, calc(100vw - 32px)); max-height: 80vh;
   display: flex; flex-direction: column;
+  box-shadow: var(--shadow-sheet), var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
 }
 .dialog-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  padding: 16px 20px; border-bottom: 1px solid var(--glass-edge);
 }
 .dialog-header h3 { margin: 0; }
 .close-btn {
-  background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);
+  width: var(--touch-target);
+  height: var(--touch-target);
+  background: var(--material-glass-control); border: 1px solid var(--glass-control-border); border-radius: 50%; font-size: 24px; cursor: pointer; color: var(--text-muted);
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+.close-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: rotate(90deg);
 }
 .jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }
 

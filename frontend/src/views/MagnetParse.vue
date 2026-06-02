@@ -299,12 +299,12 @@ export default {
 .parse-console {
   width: 100%;
   padding: clamp(18px, 2.5vw, 24px);
-  background:
-    linear-gradient(180deg, rgba(var(--accent-rgb), 0.045), transparent 42%),
-    var(--surface-card);
-  border: 1px solid var(--border);
+  background: var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .console-head,
@@ -365,9 +365,10 @@ export default {
 .summary-item {
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .summary-item strong {
@@ -402,27 +403,51 @@ export default {
   animation: slideUp 0.3s ease;
 }
 
-.magnets-card { overflow: hidden; }
+.magnets-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-card);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
 
 .magnets-header {
   padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-edge);
 }
 
-.magnets-list { display: flex; flex-direction: column; }
+.magnets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
 
 .magnet-row {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 14px 20px;
-  background: var(--bg-secondary);
-  transition: var(--transition);
+  padding: 14px 16px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
-.magnet-row:nth-child(even) { background: var(--bg-card); }
-.magnet-row:hover { background: var(--bg-card-hover); }
+.magnet-row:nth-child(even) { background: var(--material-glass-control); }
+.magnet-row:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
 
 .magnet-row.added {
   background: var(--badge-success-bg);
@@ -434,11 +459,13 @@ export default {
   justify-content: center;
   width: 30px;
   height: 30px;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--surface-card);
+  background: var(--material-glass-subtle);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .magnet-left {
@@ -476,8 +503,9 @@ export default {
 .status-pill {
   flex: 0 0 auto;
   padding: 3px 7px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
+  background: var(--material-glass-subtle);
   color: var(--text-muted);
   font-size: var(--type-micro);
   font-weight: 700;
@@ -496,7 +524,10 @@ export default {
   padding: 18px 20px;
   border: 1px solid var(--badge-warning-border);
   border-radius: var(--radius-card);
-  background: var(--badge-warning-bg);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .issue-head {
@@ -520,6 +551,11 @@ export default {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
   color: var(--text-secondary);
   font-size: var(--type-caption);
 }
@@ -538,6 +574,10 @@ export default {
 .empty-state {
   width: 100%;
   padding: 44px 20px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-card);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
   color: var(--text-muted);
   font-size: var(--type-body);
   text-align: center;

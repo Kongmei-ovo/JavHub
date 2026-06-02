@@ -44,6 +44,12 @@ test('theme materials include refractive liquid glass layers', () => {
     '--content-material',
     '--content-material-border',
     '--chrome-floating-shadow',
+    '--media-blackout',
+    '--media-edge-mask-strong',
+    '--media-edge-mask-clear',
+    '--media-caption-scrim-clear',
+    '--media-caption-scrim-strong',
+    '--media-caption-text',
   ]
 
   for (const [key, theme] of Object.entries(THEMES)) {
@@ -59,6 +65,19 @@ test('theme materials include refractive liquid glass layers', () => {
   assert.match(THEMES['apple-light'].vars['--glass-control-shadow'], /0 10px 26px/)
   assert.match(THEMES['apple-light'].vars['--app-backdrop-texture'], /linear-gradient/)
   assert.match(THEMES['apple-dark'].vars['--content-material'], /rgba\(10,\s*10,\s*12,\s*0\.72\)/)
+  assert.notEqual(THEMES['apple-light'].vars['--media-blackout'], '#000000')
+  assert.notEqual(THEMES['apple-dark'].vars['--media-blackout'], '#000000')
+  assert.match(mainCss, /--media-blackout:\s*#030304/)
+  assert.match(THEMES['apple-light'].vars['--media-edge-mask-strong'], /color-mix\(in srgb,\s*var\(--text-primary\) 76%,\s*transparent\)/)
+  assert.match(THEMES['apple-dark'].vars['--media-edge-mask-strong'], /color-mix\(in srgb,\s*var\(--text-primary\) 72%,\s*transparent\)/)
+  assert.equal(THEMES['apple-light'].vars['--media-edge-mask-clear'], 'transparent')
+  assert.equal(THEMES['apple-dark'].vars['--media-edge-mask-clear'], 'transparent')
+  assert.equal(THEMES['apple-light'].vars['--media-caption-scrim-clear'], 'transparent')
+  assert.equal(THEMES['apple-dark'].vars['--media-caption-scrim-clear'], 'transparent')
+  assert.match(THEMES['apple-light'].vars['--media-caption-scrim-strong'], /color-mix\(in srgb,\s*var\(--media-blackout\) 82%,\s*transparent\)/)
+  assert.match(THEMES['apple-dark'].vars['--media-caption-scrim-strong'], /color-mix\(in srgb,\s*var\(--media-blackout\) 86%,\s*transparent\)/)
+  assert.equal(THEMES['apple-light'].vars['--media-caption-text'], '#F5F5F7')
+  assert.equal(THEMES['apple-dark'].vars['--media-caption-text'], '#F5F5F7')
 })
 
 test('global controls use shared liquid glass material instead of flat tint', () => {
@@ -86,8 +105,10 @@ test('global controls use shared liquid glass material instead of flat tint', ()
   assert.match(cssBlock('.glass-select__menu'), /background:\s*var\(--material-glass-sheet\)/)
   assert.match(cssBlock('.apple-surface'), /background:\s*var\(--surface-card\)/)
   assert.match(cssBlock('.apple-surface'), /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(search, /\.sort-pill\s*\{[\s\S]*background:\s*var\(--surface-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(search, /\.filter-item\s*\{[\s\S]*background:\s*var\(--surface-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(search, /\.sort-pill\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(search, /\.sort-pill:hover\s*\{[\s\S]*background:\s*var\(--material-glass-control-hover\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(search, /\.filter-item\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(search, /\.filter-item:hover\s*\{[\s\S]*background:\s*var\(--material-glass-control-hover\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 })
 
 test('active states resolve to refractive glass rather than flat rgba tint', () => {
@@ -110,11 +131,13 @@ test('segmented controls and settings rows use shared glass materials', () => {
 })
 
 test('video modal sheet uses a translucent material without backdrop-filter differences', () => {
-  assert.match(videoModal, /--modal-sheet-bg:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
-  assert.match(videoModal, /--modal-sheet-fallback:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
-  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-sheet-bg:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
+  assert.match(videoModal, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(videoModal, /--modal-sheet-bg:\s*var\(--modal-scrim-sheet\)/)
+  assert.match(videoModal, /--modal-sheet-fallback:\s*var\(--modal-scrim-sheet\)/)
+  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none[\s\S]*-webkit-backdrop-filter:\s*none/)
+  assert.doesNotMatch(videoModal, /--modal-(?:panel|gallery|overlay)-bg:\s*rgba\(0,\s*0,\s*0/)
 })
 
 test('secondary utility controls avoid one-off fog materials', () => {
@@ -131,25 +154,25 @@ test('home dashboard metrics use shared liquid glass controls', () => {
   const candidateMetricHoverBlock = sourceBlock(home, '.candidate-metric:hover')
   const mobileBlock = home.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
 
-  assert.match(statCardBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(statCardBlock, /background:\s*var\(--material-glass-control\)/)
   assert.match(statCardBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(statCardBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(statCardBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(statCardHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(statCardHoverBlock, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(statCardHoverBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(statCardHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.doesNotMatch(statCardBlock, /blur\(20px\)|var\(--bg-card\)|rgba\(255,\s*255,\s*255,\s*0\.05\)/)
+  assert.doesNotMatch(statCardBlock, /blur\(20px\)|var\(--surface-control\)|var\(--bg-card\)|rgba\(255,\s*255,\s*255,\s*0\.05\)/)
 
   assert.match(statIconBlock, /background:\s*var\(--material-glass-subtle\)/)
   assert.match(statIconBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(statIconBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(statIconBlock, /!important|rgba\(255,\s*255,\s*255/)
 
-  assert.match(candidateMetricBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(candidateMetricBlock, /background:\s*var\(--material-glass-control\)/)
   assert.match(candidateMetricBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(candidateMetricBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(candidateMetricBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(candidateMetricHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(candidateMetricHoverBlock, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(candidateMetricHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
   assert.match(mobileBlock, /\.candidate-overview\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
@@ -174,20 +197,21 @@ test('translation jobs workbench surfaces use shared Apple glass controls', () =
   assert.doesNotMatch(segmentedBlock, /rgba\(255,\s*255,\s*255,\s*0\.045\)/)
   assert.doesNotMatch(segmentedActiveBlock, /rgba\(255,\s*255,\s*255,\s*0\.12\)/)
 
-  assert.match(overviewSurfaceBlock, /background:\s*var\(--surface-control\)/)
+  assert.match(overviewSurfaceBlock, /background:\s*var\(--material-glass-control\)/)
   assert.match(overviewSurfaceBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(overviewSurfaceBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(overviewSurfaceBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.doesNotMatch(overviewSurfaceBlock, /var\(--border\)|rgba\(255,\s*255,\s*255,\s*0\.035\)/)
+  assert.doesNotMatch(overviewSurfaceBlock, /var\(--surface-control\)|var\(--border\)|rgba\(255,\s*255,\s*255,\s*0\.035\)/)
 
   for (const block of [inputBlock, noticeBlock, reviewStatsBlock]) {
-    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255,\s*0\.0[345]\)|var\(--border\)/)
+    assert.doesNotMatch(block, /var\(--surface-control\)|rgba\(255,\s*255,\s*255,\s*0\.0[345]\)|var\(--border\)/)
   }
 
-  assert.match(inputFocusBlock, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocusBlock, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(inputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(inputFocusBlock, /var\(--surface-input-focus\)/)
 })

@@ -38,18 +38,107 @@ test('search cards pass backend display code and variant labels into MovieCard',
 })
 
 test('search filter chrome uses shared liquid glass controls without uppercase microcopy', () => {
+  const commandCapsuleBlock = sourceBlock('.command-capsule')
+  const commandCapsuleFocusedBlock = sourceBlock('.command-capsule.focused')
+  const capsuleDividerBlock = sourceBlock('.capsule-divider')
   const sortLabelBlock = sourceBlock('.sort-strip-label')
   const panelLabelBlock = sourceBlock('.panel-field label')
+  const sortResultCountBlock = sourceBlock('.sort-result-count')
+  const barDividerBlock = sourceBlock('.bar-divider')
+  const sortPillBlock = sourceBlock('.sort-pill')
+  const sortPillHoverBlock = sourceBlock('.sort-pill:hover')
+  const sortPillActiveBlock = sourceBlock('.sort-pill.active')
+  const sortPillActiveHoverBlock = sourceBlock('.sort-pill.active:hover')
+  const randomPillActiveBlock = sourceBlock('.sort-pill.random.active')
+  const sortClearButtonBlock = sourceBlock('.sort-clear-btn')
+  const sortClearButtonHoverBlock = sourceBlock('.sort-clear-btn:hover')
+  const filterItemBlock = sourceBlock('.filter-item')
+  const filterItemHoverBlock = sourceBlock('.filter-item:hover')
+  const filterItemActiveBlock = sourceBlock('.filter-item.toggle.active')
   const appliedChipBlock = sourceBlock('.applied-chip')
+  const appliedChipHoverBlock = sourceBlock('.applied-chip:hover')
+  const advancedPanelBlock = sourceBlock('.advanced-panel')
+  const panelFooterBlock = sourceBlock('.panel-footer')
+  const panelInputBlock = sourceBlock('.panel-input')
+  const panelInputFocusBlock = sourceBlock('.panel-input:focus')
+  const trayTagBlock = sourceBlock('.tray-tag')
   const mobileBlock = source.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
 
   assert.match(sortLabelBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(sortLabelBlock, /text-transform:\s*uppercase/)
   assert.match(panelLabelBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(panelLabelBlock, /text-transform:\s*uppercase/)
-  assert.match(appliedChipBlock, /background:\s*var\(--surface-control\)/)
-  assert.match(appliedChipBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(appliedChipBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(capsuleDividerBlock, /background:\s*var\(--glass-control-border\)/)
+  assert.match(sortResultCountBlock, /border-right:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(barDividerBlock, /background:\s*var\(--glass-control-border\)/)
+  for (const block of [capsuleDividerBlock, sortResultCountBlock, barDividerBlock]) {
+    assert.doesNotMatch(block, /var\(--border\)/)
+  }
+
+  assert.match(commandCapsuleBlock, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(commandCapsuleBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(commandCapsuleBlock, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.doesNotMatch(commandCapsuleBlock, /var\(--shadow-floating\)/)
+  assert.match(commandCapsuleFocusedBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(commandCapsuleFocusedBlock, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(commandCapsuleFocusedBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--glass-surface-shadow\)/)
+  assert.doesNotMatch(commandCapsuleFocusedBlock, /var\(--shadow-floating\)/)
+
+  assert.match(advancedPanelBlock, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(advancedPanelBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(advancedPanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
+  assert.match(panelFooterBlock, /border-top:\s*1px solid var\(--glass-edge\)/)
+  assert.doesNotMatch(panelFooterBlock, /var\(--border\)/)
+
+  assert.doesNotMatch(source, /\.sort-pill[\s\S]*?background:\s*var\(--surface-control\)|\.sort-pill[\s\S]*?background:\s*var\(--surface-control-hover\)|\.sort-pill[\s\S]*?var\(--active-border\)/)
+  assert.doesNotMatch(source, /\.filter-item[\s\S]*?background:\s*var\(--surface-control\)|\.filter-item[\s\S]*?background:\s*var\(--surface-control-hover\)|\.filter-item[\s\S]*?var\(--active-border\)/)
+  assert.doesNotMatch(source, /\.applied-chip[\s\S]*?background:\s*var\(--surface-control\)|\.applied-chip[\s\S]*?background:\s*var\(--surface-control-hover\)/)
+  assert.doesNotMatch(source, /\.panel-input[\s\S]*?background:\s*var\(--surface-input\)|\.panel-input[\s\S]*?background:\s*var\(--surface-input-focus\)|\.panel-input[\s\S]*?border-color:\s*var\(--accent\)/)
+
+  for (const [block, name] of [
+    [sortPillBlock, 'sort pill'],
+    [sortClearButtonBlock, 'sort clear'],
+    [filterItemBlock, 'filter item'],
+    [appliedChipBlock, 'applied chip'],
+    [panelInputBlock, 'panel input'],
+    [trayTagBlock, 'tray tag'],
+  ]) {
+    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use shared glass control`)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
+  }
+
+  for (const [block, name] of [
+    [sortPillHoverBlock, 'sort pill hover'],
+    [filterItemHoverBlock, 'filter item hover'],
+    [appliedChipHoverBlock, 'applied chip hover'],
+  ]) {
+    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+  }
+
+  assert.match(sortClearButtonHoverBlock, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(sortClearButtonHoverBlock, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(sortClearButtonHoverBlock, /color:\s*var\(--badge-error-text\)/)
+  assert.doesNotMatch(sortClearButtonHoverBlock, /#FF375F|rgba\(255,\s*55,\s*95/i)
+
+  for (const [block, name] of [
+    [sortPillActiveBlock, 'sort pill active'],
+    [randomPillActiveBlock, 'random pill active'],
+    [filterItemActiveBlock, 'filter item active'],
+  ]) {
+    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${name} should use active glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${name} should use active glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
+  }
+  assert.match(sortPillActiveHoverBlock, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(sortPillActiveHoverBlock, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(panelInputFocusBlock, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(panelInputFocusBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(panelInputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
+
   assert.match(mobileBlock, /\.variant-inline-item\s*\{[\s\S]*grid-template-columns:\s*1fr/)
   assert.doesNotMatch(source, /\.variant-inline-item\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.04\)/)
 })
@@ -159,4 +248,12 @@ test('search primary action buttons use active glass instead of solid accent fil
   assert.match(capsuleButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.96\)/)
   assert.match(clearButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(applyButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+})
+
+test('search loading spinner uses theme glass colors instead of white accent paint', () => {
+  const spinnerBlock = sourceBlock('.spinner')
+
+  assert.match(spinnerBlock, /border:\s*2px solid var\(--glass-control-border\)/)
+  assert.match(spinnerBlock, /border-top-color:\s*var\(--text-primary\)/)
+  assert.doesNotMatch(spinnerBlock, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|#fff|#ffffff|var\(--text-on-accent\)/i)
 })

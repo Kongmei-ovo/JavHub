@@ -1425,7 +1425,7 @@ p {
 .filter-input {
   min-height: 44px;
   color: var(--text-primary);
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   box-shadow: var(--glass-control-shadow);
@@ -1441,8 +1441,8 @@ p {
 }
 
 .filter-input:focus {
-  border-color: var(--active-border);
-  background: var(--surface-input-focus);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -1460,7 +1460,11 @@ p {
 
 .workspace-avatar {
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -1502,7 +1506,7 @@ p {
 }
 
 .empty-panel.inner {
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-control-shadow);
@@ -1589,23 +1593,44 @@ p {
   padding: 5px;
   margin: 4px 0 16px;
   border-radius: 999px;
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .segmented-control button {
   min-width: 96px;
   padding: 9px 16px;
   color: var(--text-secondary);
-  background: transparent;
-  border: 0;
+  background: var(--material-glass-subtle);
+  border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
-  transition: background var(--motion-fast), color var(--motion-fast);
+  box-shadow: var(--glass-inner-shadow);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+
+.segmented-control button:hover,
+.segmented-control button:focus-visible {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .segmented-control button.active {
   color: var(--text-primary);
-  background: var(--active-bg);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  background: var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.segmented-control button:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .workspace-panel {
@@ -1662,7 +1687,7 @@ p {
   gap: 16px;
   padding: 13px 14px;
   border-radius: 16px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1676,7 +1701,7 @@ p {
   gap: 16px;
   padding: 13px 14px;
   border-radius: 16px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1702,7 +1727,11 @@ p {
   height: 42px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -1864,8 +1893,8 @@ p {
 .spinner-large {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--white-20);
-  border-top-color: var(--accent);
+  border: 2px solid var(--glass-control-border);
+  border-top-color: var(--badge-info-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1873,12 +1902,14 @@ p {
 .diagnostics-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: var(--z-modal);
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: 56px 24px;
-  background: rgba(0, 0, 0, 0.58);
+  background: var(--surface-scrim);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   overflow: auto;
 }
 
@@ -1897,7 +1928,7 @@ p {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 22px;
-  background: var(--surface-card);
+  background: var(--material-glass-sheet);
   border-bottom: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -1933,7 +1964,7 @@ p {
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
 }
 
@@ -1942,7 +1973,7 @@ p {
   grid-template-columns: 140px 110px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1978,7 +2009,7 @@ p {
 .detail-source-item {
   padding: 8px 11px;
   border-radius: 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -2010,8 +2041,8 @@ p {
 }
 
 .btn.danger {
-  color: #ff6b87;
-  border-color: rgba(255, 107, 135, 0.28);
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
 }
 
 .manual-action-list {
@@ -2026,7 +2057,7 @@ p {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

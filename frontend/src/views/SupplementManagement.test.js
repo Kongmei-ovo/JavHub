@@ -88,6 +88,26 @@ test('supplement management uses an actor workspace with segmented panels', () =
   assert.match(source, /source: 'supplement'/)
 })
 
+test('supplement workspace segmented controls use shared Apple glass materials', () => {
+  const segmented = cssBlock(source, '.segmented-control')
+  assert.match(segmented, /background:\s*var\(--material-glass-control\)/)
+  assert.match(segmented, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(segmented, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(segmented, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+
+  const segmentButton = cssBlock(source, '.segmented-control button')
+  assert.match(segmentButton, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(segmentButton, /border:\s*1px solid transparent/)
+  assert.match(segmentButton, /transition:\s*background var\(--motion-fast\)/)
+  assert.doesNotMatch(segmentButton, /background:\s*transparent|border:\s*0|transition:\s*all/)
+
+  const activeButton = cssBlock(source, '.segmented-control button.active')
+  assert.match(activeButton, /background:\s*var\(--glass-active-material\)/)
+  assert.match(activeButton, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(activeButton, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(activeButton, /inset 0 -2px 0/)
+})
+
 test('supplement management exposes source health and manual correction controls', () => {
   assert.match(source, /api\.listSupplementSourcesHealth\(\)/)
   assert.match(source, /api\.listSupplementSourcesBudgets\(\)/)
@@ -204,11 +224,16 @@ test('supplement management avoids a remount-style refresh when re-entered', () 
 
 test('supplement actor picker keeps search glass in the lazy child', () => {
   const pickerSearch = cssBlock(actorPicker, '.search-shell')
+  const pickerSearchFocus = cssBlock(actorPicker, '.search-shell:focus-within')
 
-  assert.match(pickerSearch, /background:\s*var\(--surface-control\)/)
+  assert.doesNotMatch(actorPicker, /var\(--surface-control\)|var\(--surface-input-focus\)|var\(--active-border\)/)
+  assert.match(pickerSearch, /background:\s*var\(--material-glass-control\)/)
   assert.match(pickerSearch, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(pickerSearch, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(pickerSearch, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(pickerSearchFocus, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(pickerSearchFocus, /background:\s*var\(--glass-active-material\)/)
+  assert.match(pickerSearchFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.doesNotMatch(source, /\.supplement-hero\s*\{/)
   assert.doesNotMatch(source, /\.actor-filter-bar\s*\{/)
@@ -224,20 +249,41 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   const movieRow = cssBlock(source, '.ios-row')
   const deepJobRow = cssBlock(source, '.workspace-panel :deep(.ios-row)')
   const jobRow = cssBlock(jobList, '.ios-row')
+  const workspaceAvatar = cssBlock(source, '.workspace-avatar')
+  const deepJobAvatar = cssBlock(source, '.workspace-panel :deep(.job-avatar)')
+  const jobAvatar = cssBlock(jobList, '.job-avatar')
   const emptyInner = cssBlock(source, '.empty-panel.inner')
+  const sourceSpinner = cssBlock(source, '.spinner-large')
+  const jobSpinner = cssBlock(jobList, '.spinner-large')
 
-  assert.match(input, /background:\s*var\(--surface-control\)/)
+  assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--bg-secondary\)|var\(--white-20\)|rgba\(255,\s*107,\s*135|#ff6b87|var\(--active-border\)/)
+  assert.doesNotMatch(jobList, /var\(--surface-control\)|var\(--bg-secondary\)|var\(--white-20\)/)
+
+  assert.match(input, /background:\s*var\(--material-glass-control\)/)
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(inputFocus, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   for (const block of [movieRow, deepJobRow, jobRow, emptyInner]) {
-    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  }
+
+  for (const block of [workspaceAvatar, deepJobAvatar, jobAvatar]) {
+    assert.match(block, /background:\s*var\(--material-glass-subtle\)/)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  }
+
+  for (const block of [sourceSpinner, jobSpinner]) {
+    assert.match(block, /border:\s*2px solid var\(--glass-control-border\)/)
+    assert.match(block, /border-top-color:\s*var\(--badge-info-text\)/)
   }
 })
 
@@ -247,19 +293,21 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   const row = cssBlock(source, '.diagnostics-row')
   const headRow = cssBlock(source, '.diagnostics-row-head')
   const identityChip = cssBlock(source, '.identity-chip')
+  const detailSourceItem = cssBlock(source, '.detail-source-item')
+  const dangerButton = cssBlock(source, '.btn.danger')
   const manualAction = cssBlock(source, '.manual-action-item')
 
-  assert.match(header, /background:\s*var\(--surface-card\)/)
+  assert.match(header, /background:\s*var\(--material-glass-sheet\)/)
   assert.match(header, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
   assert.match(header, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(header, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 
   assert.match(table, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(table, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(table, /background:\s*var\(--surface-control\)/)
+  assert.match(table, /background:\s*var\(--material-glass-control\)/)
 
-  for (const block of [row, identityChip, manualAction]) {
-    assert.match(block, /background:\s*var\(--surface-control\)/)
+  for (const block of [row, identityChip, detailSourceItem, manualAction]) {
+    assert.match(block, /background:\s*var\(--material-glass-control\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -267,9 +315,13 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
 
   assert.match(headRow, /background:\s*var\(--glass-active-material\)/)
   assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.match(dangerButton, /color:\s*var\(--badge-error-text\)/)
+  assert.match(dangerButton, /border-color:\s*var\(--badge-error-border\)/)
+  assert.doesNotMatch(dangerButton, /#ff6b87|rgba\(255,\s*107,\s*135/i)
 })
 
 test('supplement source diagnostics use shared Apple glass materials', () => {
+  const diagnosticsOverlay = cssBlock(source, '.diagnostics-overlay')
   const input = cssBlock(sourceHealthPanel, '.filter-input')
   const inputFocus = cssBlock(sourceHealthPanel, '.filter-input:focus')
   const avatarPanel = cssBlock(sourceHealthPanel, '.avatar-sync-panel')
@@ -279,31 +331,79 @@ test('supplement source diagnostics use shared Apple glass materials', () => {
   const smokeRun = cssBlock(sourceHealthPanel, '.provider-smoke-run')
   const smokeRunHover = cssBlock(sourceHealthPanel, '.provider-smoke-run:hover')
   const smokeCard = cssBlock(sourceHealthPanel, '.provider-smoke-card')
+  const smokeCardFailed = cssBlock(sourceHealthPanel, '.provider-smoke-card.failed')
   const sourceCard = cssBlock(sourceHealthPanel, '.source-health-card')
   const budgetMeter = cssBlock(sourceHealthPanel, '.source-budget-meter')
+  const miniSpinner = cssBlock(sourceHealthPanel, '.mini-spinner')
+  const largeSpinner = cssBlock(sourceHealthPanel, '.spinner-large')
 
-  assert.match(input, /background:\s*var\(--surface-control\)/)
+  assert.doesNotMatch(sourceHealthPanel, /var\(--surface-card\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--white-20\)|rgba\(255,\s*107,\s*135/)
+  assert.match(diagnosticsOverlay, /z-index:\s*var\(--z-modal\)/)
+  assert.match(diagnosticsOverlay, /background:\s*var\(--surface-scrim\)/)
+  assert.match(diagnosticsOverlay, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(diagnosticsOverlay, /z-index:\s*\d+|rgba\(0,\s*0,\s*0/)
+
+  assert.match(input, /background:\s*var\(--material-glass-control\)/)
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(inputFocus, /background:\s*var\(--surface-input-focus\)/)
+  assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   for (const block of [avatarPanel, smokeSummary, smokeHistory, sourceCard]) {
-    assert.match(block, /background:\s*var\(--surface-card\)/)
+    assert.match(block, /background:\s*var\(--material-glass-sheet\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-surface-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   }
 
   for (const block of [avatarMetric, smokeRun, smokeCard, budgetMeter]) {
-    assert.match(block, /background:\s*var\(--surface-control\)/)
+    assert.match(block, /background:\s*var\(--material-glass-control\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
 
-  assert.match(smokeRunHover, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(smokeRunHover, /background:\s*var\(--material-glass-control-hover\)/)
   assert.match(smokeRunHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(smokeRunHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(smokeCardFailed, /border-color:\s*var\(--badge-error-border\)/)
+
+  for (const block of [miniSpinner, largeSpinner]) {
+    assert.match(block, /border:\s*2px solid var\(--glass-control-border\)/)
+    assert.match(block, /border-top-color:\s*var\(--badge-info-text\)/)
+  }
+})
+
+test('supplement source status pills use shared semantic badge tokens', () => {
+  const idle = cssBlock(sourceHealthPanel, '.status-idle')
+  const healthy = cssBlock(sourceHealthPanel, '.health-healthy')
+  const degraded = cssBlock(sourceHealthPanel, '.health-degraded')
+  const coolingDown = cssBlock(sourceHealthPanel, '.health-cooling_down')
+  const paused = cssBlock(sourceHealthPanel, '.health-paused')
+
+  assert.match(idle, /color:\s*var\(--badge-pending-text\)/)
+  assert.match(idle, /background:\s*var\(--badge-pending-bg\)/)
+  assert.match(idle, /border-color:\s*var\(--badge-pending-border\)/)
+
+  assert.match(healthy, /color:\s*var\(--badge-success-text\)/)
+  assert.match(healthy, /background:\s*var\(--badge-success-bg\)/)
+  assert.match(healthy, /border-color:\s*var\(--badge-success-border\)/)
+
+  assert.match(degraded, /color:\s*var\(--badge-warning-text\)/)
+  assert.match(degraded, /background:\s*var\(--badge-warning-bg\)/)
+  assert.match(degraded, /border-color:\s*var\(--badge-warning-border\)/)
+
+  assert.match(coolingDown, /color:\s*var\(--badge-error-text\)/)
+  assert.match(coolingDown, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(coolingDown, /border-color:\s*var\(--badge-error-border\)/)
+
+  assert.match(paused, /color:\s*var\(--badge-pending-text\)/)
+  assert.match(paused, /background:\s*var\(--badge-pending-bg\)/)
+  assert.match(paused, /border-color:\s*var\(--badge-pending-border\)/)
+
+  for (const block of [idle, healthy, degraded, coolingDown, paused]) {
+    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|#[0-9a-f]{3,6}/i)
+  }
 })

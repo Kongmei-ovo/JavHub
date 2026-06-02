@@ -72,34 +72,42 @@ export default {
   min-width: 0;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
 }
 .check-form input:focus {
-  border-color: var(--border-light);
-  background: var(--bg-card-hover);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 .check-form button {
   min-height: 44px;
   min-width: 96px;
   padding: 0 20px;
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: 1px solid var(--accent);
+  background: var(--material-glass-control);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
-  transition: background var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast), opacity var(--motion-fast);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), opacity var(--motion-fast);
 }
 .check-form button:hover:not(:disabled) {
-  background: var(--accent-light);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .check-form button:disabled {
@@ -107,20 +115,25 @@ export default {
   cursor: not-allowed;
 }
 .result {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
   padding: 20px;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 .exists { color: var(--badge-success-text); }
 .not-exists { color: var(--text-secondary); }
 .item {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
   padding: 12px;
   margin-top: 10px;
   border-radius: var(--radius-sm);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .item p + p {
   margin-top: 6px;

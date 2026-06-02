@@ -968,10 +968,11 @@ onMounted(async () => {
   margin-bottom: 14px;
   padding: clamp(22px, 3vw, 34px);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(255,255,255,0.98), transparent 32%),
-    radial-gradient(circle at 82% 2%, rgba(180, 192, 211, 0.22), transparent 31%),
-    linear-gradient(145deg, rgba(255,255,255,0.82), rgba(246,246,248,0.58));
+  border: 1px solid var(--glass-edge-strong);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .organize-header::before {
@@ -979,12 +980,12 @@ onMounted(async () => {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.52;
-  background-image:
-    linear-gradient(rgba(29,29,31,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(29,29,31,0.024) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(90deg, rgba(0,0,0,0.78), transparent 74%);
+  opacity: 0.42;
+  background: var(--material-glass-subtle);
+  --organize-header-mask-start: var(--media-edge-mask-strong);
+  --organize-header-mask-end: var(--media-edge-mask-clear);
+  mask-image: linear-gradient(90deg, var(--organize-header-mask-start), var(--organize-header-mask-end) 74%);
+  -webkit-mask-image: linear-gradient(90deg, var(--organize-header-mask-start), var(--organize-header-mask-end) 74%);
 }
 
 .organize-header__copy,
@@ -1122,10 +1123,12 @@ onMounted(async () => {
   gap: 14px;
   margin-bottom: 14px;
   padding: 14px 16px;
+  border: 1px solid var(--glass-edge-strong);
   border-radius: var(--radius-card);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.72), rgba(255,255,255,0.44)),
-    var(--surface-card);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .setup-banner strong,
@@ -1149,22 +1152,26 @@ onMounted(async () => {
   gap: 7px;
   min-height: 38px;
   padding: 0 13px;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: transparent;
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--type-control);
   font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
 .tab-btn:hover {
-  border-color: var(--glass-control-border);
+  border-color: var(--glass-control-border-hover);
   background: var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .tab-btn.active {
@@ -1458,9 +1465,7 @@ onMounted(async () => {
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background:
-    radial-gradient(circle at 45% 18%, rgba(255,255,255,0.84), transparent 26%),
-    linear-gradient(145deg, rgba(242,242,247,0.88), rgba(214,216,224,0.82));
+  background: var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -1540,11 +1545,10 @@ onMounted(async () => {
 .poster-fallback {
   width: 58px;
   aspect-ratio: 3 / 4;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
   object-fit: cover;
-  background:
-    radial-gradient(circle at 45% 18%, rgba(255,255,255,0.84), transparent 26%),
-    linear-gradient(145deg, rgba(242,242,247,0.88), rgba(214,216,224,0.82));
+  background: var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -1691,17 +1695,13 @@ onMounted(async () => {
 }
 
 :global(:root[data-theme="dark"] .organize-header) {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(255,255,255,0.18), transparent 34%),
-    radial-gradient(circle at 84% 4%, rgba(255,255,255,0.10), transparent 28%),
-    linear-gradient(145deg, rgba(255,255,255,0.115), rgba(14,15,18,0.72) 48%, rgba(255,255,255,0.070));
+  border-color: var(--glass-edge-strong);
+  background: var(--material-glass-elevated);
 }
 
 :global(:root[data-theme="dark"] .organize-header::before) {
-  opacity: 0.28;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+  opacity: 0.22;
+  background: var(--material-glass-subtle);
 }
 
 :global(:root[data-theme="dark"] .organize-status),
@@ -1709,9 +1709,8 @@ onMounted(async () => {
 :global(:root[data-theme="dark"] .workbench-panel),
 :global(:root[data-theme="dark"] .loading-panel),
 :global(:root[data-theme="dark"] .empty-panel) {
-  border-color: rgba(255,255,255,0.16);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.155), rgba(18,19,21,0.54) 50%, rgba(255,255,255,0.085));
+  border-color: var(--glass-edge);
+  background: var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 
@@ -1733,9 +1732,8 @@ onMounted(async () => {
 :global(:root[data-theme="dark"] .mini-check-form input),
 :global(:root[data-theme="dark"] .organize-filters input),
 :global(:root[data-theme="dark"] .check-form input) {
-  border-color: rgba(255,255,255,0.14);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.135), rgba(18,19,21,0.46) 50%, rgba(255,255,255,0.075));
+  border-color: var(--glass-control-border);
+  background: var(--material-glass-control);
 }
 
 :global(:root[data-theme="dark"] .status-cell:hover),
@@ -1743,16 +1741,16 @@ onMounted(async () => {
 :global(:root[data-theme="dark"] .flow-steps button:hover),
 :global(:root[data-theme="dark"] .candidate-pills button:hover),
 :global(:root[data-theme="dark"] .chip:hover) {
-  border-color: rgba(255,255,255,0.24);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.18), rgba(24,25,28,0.54) 50%, rgba(255,255,255,0.10));
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 :global(:root[data-theme="dark"] .mini-check-form input:focus),
 :global(:root[data-theme="dark"] .organize-filters input:focus),
 :global(:root[data-theme="dark"] .check-form input:focus) {
-  border-color: rgba(255,255,255,0.30);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(255,255,255,0.08);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.10);
 }
 
 @media (max-width: 980px) {

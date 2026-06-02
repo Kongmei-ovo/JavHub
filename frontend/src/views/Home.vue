@@ -359,205 +359,36 @@
       </div>
     </div>
 
-    <div v-else-if="activeTab === 'downloaders'" class="downloaders-panel apple-reveal">
-      <div class="downloader-toolbar apple-surface">
-        <div class="downloader-toolbar-copy">
-          <strong>下载源</strong>
-          <span>默认 {{ defaultDownloaderLabel }} · {{ enabledDownloaderCount }} 个已启用</span>
-        </div>
-        <div class="downloader-toolbar-actions">
-          <button class="icon-action" type="button" title="刷新下载源" aria-label="刷新下载源" @click="loadDownloaders">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-            </svg>
-          </button>
-          <button class="icon-action primary" type="button" title="新增下载源" aria-label="新增下载源" @click="openNewDownloader">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="downloaders-list apple-surface">
-        <article
-          v-for="client in downloaderClients"
-          :key="client.id"
-          class="downloader-row"
-          :class="{ disabled: !client.enabled, default: client.id === downloaders.default_id }"
-          role="button"
-          tabindex="0"
-          @click="editDownloader(client)"
-          @keyup.enter="editDownloader(client)"
-        >
-          <div class="downloader-row-main">
-            <div class="downloader-avatar" :class="{ muted: !client.enabled }">
-              {{ downloaderTypeMark(client.type) }}
-            </div>
-            <div class="downloader-copy">
-              <div class="downloader-title-line">
-                <strong>{{ client.name || downloaderTypeLabel(client.type) }}</strong>
-                <span>{{ downloaderTypeLabel(client.type) }}</span>
-              </div>
-              <div class="downloader-summary">
-                <span :title="client.address || ''">{{ shortDownloaderAddress(client.address) || '未配置地址' }}</span>
-                <span :title="client.default_path || ''">{{ downloaderPathSummary(client) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="downloader-status-group">
-            <span v-if="client.id === downloaders.default_id" class="downloader-pill default">默认</span>
-            <span class="downloader-pill" :class="client.enabled ? 'enabled' : 'muted'">{{ client.enabled ? '启用' : '停用' }}</span>
-            <span
-              v-if="downloaderTestMessages[client.id]"
-              class="downloader-pill test"
-              :class="{ ok: downloaderTestMessages[client.id].ok }"
-              :title="downloaderTestMessages[client.id].message"
-            >
-              {{ downloaderTestMessages[client.id].ok ? '已连接' : '失败' }}
-            </span>
-          </div>
-
-          <label class="switch-mini switch-apple" title="启用下载源" @click.stop>
-            <input type="checkbox" v-model="client.enabled" />
-            <span></span>
-          </label>
-
-          <div class="downloader-row-actions" @click.stop>
-            <button class="icon-action compact" type="button" :disabled="testingDownloaderId === client.id" title="测试连接" aria-label="测试连接" @click="testDownloader(client)">
-              <svg v-if="testingDownloaderId !== client.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M22 12h-4l-3 8-6-16-3 8H2"/>
-              </svg>
-              <svg v-else class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M21 12a9 9 0 11-6.2-8.56"/>
-              </svg>
-            </button>
-            <button class="icon-action compact" type="button" :disabled="client.id === downloaders.default_id" title="设为默认" aria-label="设为默认" @click="setDefaultDownloader(client.id)">
-              <svg viewBox="0 0 24 24" :fill="client.id === downloaders.default_id ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.7">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-            </button>
-            <button class="icon-action compact" type="button" title="编辑" aria-label="编辑" @click="editDownloader(client)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/>
-              </svg>
-            </button>
-            <button class="icon-action compact danger" type="button" :disabled="downloaderClients.length <= 1" title="删除" aria-label="删除" @click="removeDownloader(client.id)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
-                <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-              </svg>
-            </button>
-          </div>
-        </article>
-
-        <div v-if="downloaderClients.length === 0" class="downloaders-empty">
-          <strong>还没有下载源</strong>
-          <span>添加一个下载器后就可以作为默认下载目标。</span>
-        </div>
-      </div>
-
-      <div class="downloaders-footer apple-surface">
-        <span>{{ downloaderClients.length }} 个下载源 · {{ enabledDownloaderCount }} 个启用</span>
-        <button class="btn btn-primary" type="button" :disabled="savingDownloaders" @click="saveDownloaders">
-          {{ savingDownloaders ? '保存中...' : '保存更改' }}
-        </button>
-      </div>
-
-      <div v-if="downloaderEditor.open" class="inline-dialog-overlay downloader-sheet-overlay" @click.self="closeDownloaderEditor">
-        <div class="inline-dialog downloader-sheet">
-          <div class="inline-dialog-header">
-            <div>
-              <h2>{{ downloaderEditor.mode === 'new' ? '新增下载源' : '编辑下载源' }}</h2>
-              <p>{{ downloaderEditor.draft?.name || downloaderTypeLabel(downloaderEditor.draft?.type) }}</p>
-            </div>
-            <button class="dialog-close-btn" type="button" aria-label="关闭" @click="closeDownloaderEditor">×</button>
-          </div>
-
-          <div v-if="downloaderEditor.draft" class="downloader-sheet-body">
-            <section class="downloader-sheet-section">
-              <div class="sheet-section-title">
-                <strong>基础信息</strong>
-                <span>名称、类型、地址、路径</span>
-              </div>
-              <div class="downloader-sheet-grid">
-                <label>
-                  名称
-                  <input class="input" v-model="downloaderEditor.draft.name" placeholder="家庭 qBittorrent" />
-                </label>
-                <label>
-                  类型
-                  <select class="input" v-model="downloaderEditor.draft.type" @change="syncDownloaderDraftDefaults">
-                    <option v-for="type in downloaderTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
-                  </select>
-                </label>
-                <label class="wide-field">
-                  地址
-                  <input class="input" v-model="downloaderEditor.draft.address" :placeholder="downloaderAddressPlaceholder(downloaderEditor.draft.type)" />
-                </label>
-                <label class="wide-field">
-                  下载路径
-                  <input class="input" v-model="downloaderEditor.draft.default_path" :placeholder="downloaderPathPlaceholder(downloaderEditor.draft.type)" />
-                </label>
-              </div>
-            </section>
-
-            <section class="downloader-sheet-section">
-              <div class="sheet-section-title">
-                <strong>连接与选项</strong>
-                <span>凭据、标签、超时、偏好</span>
-              </div>
-              <div class="downloader-sheet-grid">
-                <label>
-                  用户名
-                  <input class="input" v-model="downloaderEditor.draft.username" autocomplete="off" />
-                </label>
-                <label>
-                  密码
-                  <input class="input" type="password" v-model="downloaderEditor.draft.password" autocomplete="new-password" :placeholder="downloaderEditor.draft.password_configured ? '留空不覆盖已有密码' : ''" />
-                </label>
-                <label v-if="downloaderEditor.draft.type === 'openlist' || downloaderEditor.draft.type === 'aria2'">
-                  Token
-                  <input class="input" type="password" v-model="downloaderEditor.draft.token" autocomplete="new-password" :placeholder="downloaderEditor.draft.token_configured ? '留空不覆盖已有 Token' : tokenPlaceholder(downloaderEditor.draft.type)" />
-                </label>
-                <label v-if="downloaderEditor.draft.type === 'qbittorrent'">
-                  分类
-                  <input class="input" v-model="downloaderEditor.draft.category" placeholder="可选" />
-                </label>
-                <label v-if="supportsDownloaderTags(downloaderEditor.draft.type)">
-                  标签
-                  <input class="input" v-model="downloaderEditor.draft.tags" placeholder="javhub,auto" />
-                </label>
-                <label>
-                  超时
-                  <input class="input" type="number" min="1" v-model.number="downloaderEditor.draft.timeout" />
-                </label>
-              </div>
-              <div class="downloader-sheet-options">
-                <label>
-                  <input type="checkbox" v-model="downloaderEditor.draft.enabled" />
-                  启用
-                </label>
-                <label>
-                  <input type="checkbox" v-model="downloaderEditor.draft.paused" />
-                  添加后暂停
-                </label>
-              </div>
-            </section>
-          </div>
-
-          <div class="inline-dialog-actions">
-            <button class="btn btn-ghost" type="button" @click="closeDownloaderEditor">取消</button>
-            <button class="btn btn-primary" type="button" @click="applyDownloaderEditor">完成</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DownloaderManagementPanel
+      v-else-if="activeTab === 'downloaders'"
+      :downloaders="downloaders"
+      :downloader-types="downloaderTypes"
+      :downloader-clients="downloaderClients"
+      :enabled-downloader-count="enabledDownloaderCount"
+      :default-downloader-label="defaultDownloaderLabel"
+      :saving-downloaders="savingDownloaders"
+      :testing-downloader-id="testingDownloaderId"
+      :downloader-test-messages="downloaderTestMessages"
+      :downloader-editor="downloaderEditor"
+      :downloader-type-label="downloaderTypeLabel"
+      :downloader-type-mark="downloaderTypeMark"
+      :short-downloader-address="shortDownloaderAddress"
+      :downloader-path-summary="downloaderPathSummary"
+      :supports-downloader-tags="supportsDownloaderTags"
+      :downloader-address-placeholder="downloaderAddressPlaceholder"
+      :downloader-path-placeholder="downloaderPathPlaceholder"
+      :token-placeholder="tokenPlaceholder"
+      @refresh="loadDownloaders"
+      @create="openNewDownloader"
+      @edit="editDownloader"
+      @test="testDownloader"
+      @set-default="setDefaultDownloader"
+      @remove="removeDownloader"
+      @save="saveDownloaders"
+      @close-editor="closeDownloaderEditor"
+      @sync-draft-defaults="syncDownloaderDraftDefaults"
+      @apply-editor="applyDownloaderEditor"
+    />
 
     <!-- 空状态 -->
     <div v-else-if="activeTab === 'tasks'" class="empty-state">
@@ -644,13 +475,16 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import CandidateRunPanel from '../features/candidates/CandidateRunPanel.vue'
 
+const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
+
 export default {
   name: 'Home',
-  components: { CandidateRunPanel },
+  components: { CandidateRunPanel, DownloaderManagementPanel },
   data() {
     return {
       activeTab: ['candidates', 'downloaders'].includes(this.$route.query.tab) ? this.$route.query.tab : 'tasks',
@@ -1613,8 +1447,8 @@ export default {
 }
 
 .stat-card {
-  background: var(--surface-control);
   border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1638,8 +1472,8 @@ export default {
 }
 .stat-card:hover {
   transform: translateY(-3px);
-  background: var(--surface-control-hover);
   border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -1662,7 +1496,7 @@ export default {
 .stat-num {
   font-family: var(--font-mono);
   font-size: var(--type-entity-title);
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
@@ -1689,7 +1523,7 @@ export default {
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -1701,7 +1535,7 @@ export default {
 }
 .candidate-metric:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
 }
@@ -1720,17 +1554,22 @@ export default {
 
 /* ===== Filter Bar ===== */
 .filter-bar {
-  background: var(--surface-control);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   padding: 10px 16px;
   margin-bottom: 16px;
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: var(--transition);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .filter-bar:hover {
-  background: var(--surface-control-hover);
-  border-color: var(--border-light);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 .filter-hint { font-size: 13px; color: var(--text-secondary); }
 .filter-hint strong { color: var(--text-primary); }
@@ -1740,37 +1579,55 @@ export default {
   gap: 4px;
   padding: 4px;
   margin-bottom: 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-card);
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .tab-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 0;
+  border: 1px solid var(--glass-control-border);
   border-radius: 8px;
   padding: 8px 14px;
-  background: transparent;
+  background: var(--material-glass-control);
   color: var(--text-secondary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+}
+.tab-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 .tab-btn.active {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 .tab-badge {
   min-width: 18px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: #ff375f;
-  color: #fff;
+  border: 1px solid var(--badge-error-border);
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
   font-size: 11px;
   font-weight: 700;
 }
 .tab-badge.subtle {
-  background: rgba(82, 196, 26, 0.18);
-  color: #52c41a;
+  border-color: var(--badge-success-border);
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
 }
 .candidate-toolbar {
   display: flex;
@@ -1780,16 +1637,22 @@ export default {
 }
 .candidate-search-input {
   min-width: min(260px, 100%);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-size: 13px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .candidate-search-input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .bulk-toolbar {
   display: flex;
@@ -1798,42 +1661,57 @@ export default {
   gap: 8px;
   margin-bottom: 16px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 8px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: 12px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
 .link-btn.danger {
   color: #ef5350;
 }
 .chip {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+}
+.chip:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 .chip.active {
   color: var(--text-primary);
-  border-color: var(--active-border);
-  background: var(--active-bg);
-  box-shadow: inset 0 -2px 0 var(--active-indicator);
+  border-color: var(--glass-active-border);
+  background: var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
 }
 .chip:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 .action-chip {
-  border-color: rgba(82, 196, 26, 0.35);
-  color: #52c41a;
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
 }
 .action-chip.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow);
 }
 .candidate-card .task-cover img {
   width: 100%;
@@ -1853,8 +1731,11 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .candidate-select input { width: 16px; height: 16px; accent-color: var(--accent); }
 .candidate-subtitle,
@@ -1887,358 +1768,26 @@ export default {
   margin-top: 8px;
 }
 .link-btn {
-  border: 0;
-  padding: 0;
-  background: transparent;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--material-glass-control);
   color: var(--link-text);
   font-size: 12px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   text-decoration: underline;
   text-decoration-color: var(--link-underline);
   text-underline-offset: 3px;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
 }
-.link-btn:hover { text-decoration-color: var(--link-underline-hover); }
-
-.downloaders-panel {
-  display: grid;
-  gap: 16px;
-}
-.downloader-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
-}
-.downloader-toolbar-copy strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-.downloader-toolbar-copy span {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-.downloader-toolbar-actions {
-  display: flex;
-  gap: 8px;
-}
-.icon-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), opacity var(--motion-fast);
-}
-.icon-action svg {
-  width: 17px;
-  height: 17px;
-}
-.icon-action:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: var(--border-light);
-  background: rgba(255, 255, 255, 0.09);
-}
-.icon-action.primary {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border-color: var(--accent);
-}
-.icon-action.compact {
-  width: 38px;
-  height: 38px;
-  background: transparent;
-}
-.icon-action.danger {
-  color: var(--badge-error-text);
-}
-.icon-action:disabled {
-  opacity: 0.38;
-  cursor: not-allowed;
-}
-.downloaders-list {
-  display: grid;
-  overflow: hidden;
-}
-.downloader-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  align-items: center;
-  gap: 14px;
-  min-height: 86px;
-  padding: 14px 16px;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-  cursor: pointer;
-  transition: background var(--motion-fast), opacity var(--motion-fast);
-}
-.downloader-row:last-child {
-  border-bottom: 0;
-}
-.downloader-row:hover,
-.downloader-row:focus-visible {
-  background: rgba(255, 255, 255, 0.045);
-  outline: none;
-}
-.downloader-row.disabled {
-  opacity: 0.68;
-}
-.downloader-row-main {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  min-width: 0;
-}
-.downloader-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  border-radius: 14px;
-  border: 1px solid var(--border-light);
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18), transparent 36%),
-    rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-}
-.downloader-avatar.muted {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.035);
-}
-.downloader-copy {
-  min-width: 0;
-}
-.downloader-title-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-.downloader-title-line strong {
-  min-width: 0;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.downloader-title-line span {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.downloader-summary {
-  display: flex;
-  gap: 10px;
-  margin-top: 6px;
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.downloader-summary span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.downloader-summary span + span::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 3px;
-  margin: 0 9px 2px 0;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-.downloader-status-group {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.downloader-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px 9px;
-  border: 1px solid var(--badge-pending-border);
-  border-radius: 999px;
-  background: var(--badge-pending-bg);
-  color: var(--badge-pending-text);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.downloader-pill.default,
-.downloader-pill.enabled,
-.downloader-pill.test.ok {
-  border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
-  color: var(--badge-success-text);
-}
-.downloader-pill.test {
-  max-width: 88px;
-  border-color: var(--badge-error-border);
-  background: var(--badge-error-bg);
-  color: var(--badge-error-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.downloaders-empty {
-  display: grid;
-  gap: 6px;
-  padding: 34px 18px;
-  text-align: center;
-}
-.downloaders-empty strong {
-  color: var(--text-primary);
-  font-size: 15px;
-}
-.downloaders-empty span {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-.switch-mini {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-}
-.switch-mini input {
-  position: absolute;
-  opacity: 0;
-}
-.switch-mini span {
-  position: absolute;
-  inset: 9px 0;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-}
-.switch-mini span::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition: transform 160ms ease, background 160ms ease;
-}
-.switch-mini input:checked + span {
-  border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
-}
-.switch-mini input:checked + span::after {
-  transform: translateX(20px);
-  background: var(--badge-success-text);
-}
-.switch-apple {
-  align-self: center;
-}
-.downloader-row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
-.downloaders-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-}
-.downloaders-footer span {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.downloader-sheet {
-  display: flex;
-  flex-direction: column;
-  width: min(720px, 100%);
-  max-height: min(820px, calc(100vh - 48px));
-}
-.downloader-sheet-body {
-  display: grid;
-  gap: 14px;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 4px;
-}
-.downloader-sheet-section {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.035);
-}
-.sheet-section-title strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-.sheet-section-title span {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.downloader-sheet-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.downloader-sheet-grid label {
-  display: grid;
-  gap: 6px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-.downloader-sheet-grid .wide-field {
-  grid-column: 1 / -1;
-}
-.downloader-sheet-grid .input {
-  width: 100%;
-  min-height: 44px;
-}
-.downloader-sheet-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-.downloader-sheet-options label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.spin-icon {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.link-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  text-decoration-color: var(--link-underline-hover);
 }
 
 /* ===== Tasks Grid ===== */
@@ -2266,9 +1815,20 @@ export default {
   padding: 0 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .page-btn:disabled {
@@ -2290,7 +1850,11 @@ export default {
 .task-cover {
   position: relative;
   aspect-ratio: 16/9;
-  background: var(--bg-secondary);
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   overflow: hidden;
 }
 
@@ -2300,7 +1864,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-muted);
 }
 
@@ -2310,9 +1878,11 @@ export default {
   left: 0;
   right: 0;
   padding: 8px 10px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  --home-cover-scrim-clear: var(--media-caption-scrim-clear);
+  --home-cover-scrim-strong: var(--media-caption-scrim-strong);
+  background: linear-gradient(180deg, var(--home-cover-scrim-clear), var(--home-cover-scrim-strong));
 }
-.cover-code { font-size: 13px; font-weight: 600; color: white; }
+.cover-code { font-size: 13px; font-weight: 600; color: var(--media-caption-text); }
 
 .progress-overlay {
   position: absolute;
@@ -2346,34 +1916,36 @@ export default {
 }
 .task-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .task-time { font-size: 11px; color: var(--text-muted); }
-.task-error { font-size: 11px; color: #EF5350; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-error { font-size: 11px; color: var(--badge-error-text); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .task-actions {
   display: flex;
   gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-control-border);
 }
 .task-actions .btn { flex: 1; justify-content: center; font-size: 12px; padding: 6px 10px; }
 
 .inline-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface-scrim);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .inline-dialog {
   width: min(560px, 100%);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: 20px;
   background: var(--material-glass-sheet);
   box-shadow: var(--shadow-sheet);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   padding: 18px;
 }
 .inline-dialog-header {
@@ -2411,17 +1983,23 @@ export default {
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
   padding: 12px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   outline: none;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .magnet-editor-input:focus {
-  border-color: var(--accent);
+  border-color: var(--glass-active-border);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-active-shadow);
 }
 .inline-dialog-actions {
   display: flex;
@@ -2448,10 +2026,13 @@ export default {
   margin-bottom: 12px;
 }
 .candidate-detail-grid > div {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 10px;
   padding: 10px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .candidate-detail-grid span {
   display: block;
@@ -2467,20 +2048,24 @@ export default {
 .candidate-detail-error {
   margin-bottom: 12px;
   padding: 10px;
+  border: 1px solid var(--badge-error-border);
   border-radius: 10px;
-  background: rgba(239, 83, 80, 0.1);
-  color: #ef5350;
+  background: var(--badge-error-bg);
+  color: var(--badge-error-text);
   font-size: 12px;
 }
 .candidate-detail-magnet {
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   overflow-wrap: anywhere;
 }
 .event-timeline {
@@ -2497,7 +2082,9 @@ export default {
   height: 10px;
   margin-top: 4px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--glass-active-material);
+  border: 1px solid var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
 }
 .event-row strong {
   color: var(--text-primary);
@@ -2569,46 +2156,6 @@ export default {
   }
   .candidate-detail-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .downloader-toolbar,
-  .downloaders-footer,
-  .downloader-toolbar-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .downloader-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    min-height: 118px;
-    align-items: start;
-  }
-  .downloader-row-main {
-    grid-column: 1 / -1;
-  }
-  .downloader-status-group {
-    justify-content: flex-start;
-  }
-  .switch-apple {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .downloader-row-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  .downloaders-footer .btn {
-    width: 100%;
-  }
-  .downloader-sheet {
-    width: 100%;
-    max-height: calc(100vh - 96px);
-  }
-  .downloader-sheet-grid {
-    grid-template-columns: 1fr;
-  }
-  .downloader-sheet-grid .wide-field {
-    grid-column: auto;
   }
 }
 </style>

@@ -368,10 +368,11 @@ export default {
   margin-bottom: 16px;
   padding: clamp(22px, 3vw, 34px);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 14% 10%, rgba(255,255,255,0.98), transparent 32%),
-    radial-gradient(circle at 78% 0%, rgba(180, 192, 211, 0.20), transparent 30%),
-    linear-gradient(145deg, rgba(255,255,255,0.82), rgba(246,246,248,0.58));
+  border: 1px solid var(--glass-edge-strong);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .entities-hero::before {
@@ -379,12 +380,12 @@ export default {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.52;
-  background-image:
-    linear-gradient(rgba(29,29,31,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(29,29,31,0.024) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(90deg, rgba(0,0,0,0.75), transparent 72%);
+  opacity: 0.42;
+  background: var(--material-glass-subtle);
+  --entities-hero-mask-start: var(--media-edge-mask-strong);
+  --entities-hero-mask-end: var(--media-edge-mask-clear);
+  mask-image: linear-gradient(90deg, var(--entities-hero-mask-start), var(--entities-hero-mask-end) 72%);
+  -webkit-mask-image: linear-gradient(90deg, var(--entities-hero-mask-start), var(--entities-hero-mask-end) 72%);
 }
 
 .entities-hero__copy,
@@ -443,24 +444,29 @@ export default {
   place-items: center;
   min-height: 46px;
   padding: 7px 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: transparent;
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--type-control);
   font-weight: 650;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast), border-color var(--motion-fast);
 }
 
 .entity-tab:hover {
-  background: rgba(255,255,255,0.46);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .entity-tab.active {
-  border-color: rgba(255,255,255,0.88);
+  border-color: var(--glass-active-border);
   background: var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -502,16 +508,16 @@ export default {
   padding: 0 13px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: rgba(255,255,255,0.48);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(18px) saturate(170%);
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
 }
 
 .search-box:focus-within {
-  border-color: rgba(29,29,31,0.22);
-  background: rgba(255,255,255,0.68);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.09);
 }
 
@@ -538,16 +544,21 @@ export default {
   place-items: center;
   width: 30px;
   height: 30px;
-  border: 0;
+  border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: rgba(29,29,31,0.07);
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
 
 .search-box button:hover {
-  background: rgba(29,29,31,0.12);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
   color: var(--text-primary);
 }
 
@@ -572,17 +583,19 @@ export default {
   display: grid;
   min-height: 142px;
   overflow: hidden;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.68), rgba(255,255,255,0.42) 52%, rgba(255,255,255,0.52)),
-    var(--surface-card);
+  border: 1px solid var(--glass-edge-strong);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   transition: transform var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), background var(--motion-standard);
 }
 
 .entity-list-card:hover {
   transform: translateY(-3px);
-  border-color: var(--glass-edge-strong);
-  background: var(--surface-card-hover);
-  box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-elevated);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
 }
 
 .entity-list-card__open {
@@ -611,11 +624,13 @@ export default {
   max-width: 100%;
   min-height: 21px;
   padding: 3px 8px;
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
-  background: rgba(var(--accent-rgb), 0.07);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-size: var(--type-badge);
   font-weight: 750;
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .entity-list-card__open strong,
@@ -664,25 +679,28 @@ export default {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--glass-edge);
   border-radius: 50%;
-  background: var(--surface-control);
-  color: #ff375f;
+  background: var(--material-glass-sheet);
+  color: var(--badge-error-text);
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
-  backdrop-filter: blur(16px) saturate(170%);
-  -webkit-backdrop-filter: blur(16px) saturate(170%);
-  transition: transform var(--motion-fast), background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .entity-list-card__favorite:hover {
   transform: scale(1.06);
-  background: var(--surface-control-hover);
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .entity-list-card__favorite.active {
-  background: rgba(255,55,95,0.92);
-  color: #fff;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
 }
 
 .entity-list-card__favorite svg {
@@ -786,48 +804,30 @@ export default {
 }
 
 :global(:root[data-theme="dark"] .entities-hero) {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(255,255,255,0.18), transparent 34%),
-    radial-gradient(circle at 84% 4%, rgba(255,255,255,0.10), transparent 28%),
-    linear-gradient(145deg, rgba(255,255,255,0.115), rgba(14,15,18,0.72) 48%, rgba(255,255,255,0.070));
+  border-color: var(--glass-edge-strong);
+  background: var(--material-glass-elevated);
 }
 
 :global(:root[data-theme="dark"] .entities-hero::before) {
-  opacity: 0.28;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+  opacity: 0.22;
+  background: var(--material-glass-subtle);
 }
 
-:global(:root[data-theme="dark"] .search-box),
 :global(:root[data-theme="dark"] .entity-list-card) {
-  border-color: rgba(255,255,255,0.16);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.155), rgba(18,19,21,0.54) 50%, rgba(255,255,255,0.085));
+  border-color: var(--glass-edge);
+  background: var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 
-:global(:root[data-theme="dark"] .search-box:focus-within) {
-  border-color: rgba(255,255,255,0.28);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.19), rgba(26,27,30,0.58) 50%, rgba(255,255,255,0.11));
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(255,255,255,0.08);
-}
-
-:global(:root[data-theme="dark"] .search-box button) {
-  background: rgba(255,255,255,0.09);
-}
-
-:global(:root[data-theme="dark"] .search-box button:hover) {
-  background: rgba(255,255,255,0.15);
-}
-
 :global(:root[data-theme="dark"] .entity-list-card:hover) {
-  background: var(--surface-card-hover);
+  border-color: var(--glass-edge-strong);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
 }
 
 :global(:root[data-theme="dark"] .entity-list-card__type) {
-  background: rgba(255,255,255,0.09);
+  border-color: var(--glass-control-border);
+  background: var(--material-glass-control);
 }
 
 @media (max-width: 1180px) {

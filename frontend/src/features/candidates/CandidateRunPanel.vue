@@ -68,10 +68,13 @@ export default {
 
 <style scoped>
 .candidate-run-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-card);
   padding: 16px;
-  background: var(--bg-card);
+  background: var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 .candidate-run-head,
 .candidate-run-row,
@@ -106,13 +109,25 @@ export default {
   justify-content: space-between;
   padding: 12px;
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  border: 1px solid var(--glass-control-border);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
 }
 .candidate-run-main {
   min-width: 170px;
 }
 .candidate-run-stats {
   flex-wrap: wrap;
+}
+.candidate-run-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 .candidate-run-actions {
   margin-left: auto;

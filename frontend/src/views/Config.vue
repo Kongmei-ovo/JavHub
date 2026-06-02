@@ -1690,7 +1690,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   scrollbar-width: thin;
-  scrollbar-color: var(--border-light) transparent;
+  scrollbar-color: var(--glass-edge) transparent;
 }
 
 .tab-item {
@@ -1746,8 +1746,8 @@ export default {
 .spinner-large {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--accent);
+  border: 3px solid var(--glass-control-border);
+  border-top-color: var(--glass-active-border);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1817,18 +1817,21 @@ export default {
 }
 
 .card-content {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
   padding: 32px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
 
 .form-slot {
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
   border-radius: var(--radius-md);
   padding: 24px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
 }
 .settings-card-header {
   display: flex;
@@ -1846,7 +1849,7 @@ export default {
 
 .settings-sub-section {
   padding: 24px 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-edge);
 }
 .settings-sub-section:first-child {
   border-top: none;
@@ -1876,7 +1879,7 @@ export default {
   background: var(--material-glass-sheet);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-edge);
   padding: 20px 0;
   z-index: 100;
   display: flex;
@@ -1938,13 +1941,38 @@ export default {
 .input-password-wrap { position: relative; display: flex; align-items: center; }
 .input-password-wrap .input { padding-right: 58px; }
 .input-eye-btn {
-  position: absolute; right: 8px; background: none; border: none;
-  cursor: pointer; color: var(--text-muted); padding: 4px;
-  display: flex; align-items: center; justify-content: center;
-  width: 44px;
-  height: 44px;
+  position: absolute;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
-.input-eye-btn:hover { color: var(--text-primary); }
+.input-eye-btn:hover {
+  background: var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.input-eye-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+.input-eye-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.14);
+}
 
 .form-group.checkbox {
   display: flex;
@@ -1961,9 +1989,10 @@ export default {
   margin-top: 4px;
   margin-bottom: 12px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--bg-card);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 .javinfo-runtime-row {
   display: grid;
@@ -2045,11 +2074,21 @@ export default {
   margin: 0 !important;
   min-height: 38px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--bg-card);
+  background: var(--material-glass-control);
   color: var(--text-primary) !important;
   cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.source-check-item:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 .source-check-item input {
   width: 16px;
@@ -2066,17 +2105,18 @@ export default {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .preference-section {
   padding: 18px;
   border-radius: 22px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .preference-section-header,
@@ -2120,9 +2160,10 @@ export default {
 .scope-card {
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .scope-card.compact-card {
@@ -2153,9 +2194,9 @@ export default {
 .appearance-chip {
   min-height: 26px;
   padding: 4px 9px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--surface-control);
+  background: var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
@@ -2261,11 +2302,10 @@ export default {
   margin-bottom: 10px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background:
-    radial-gradient(circle at top left, rgba(255,255,255,0.10), transparent 32%),
-    var(--material-glass-subtle);
+  background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .preview-bubble {
@@ -2273,14 +2313,14 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 30px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   color: var(--text-primary);
-  background: var(--surface-card);
+  background: var(--material-glass-control);
   font-size: var(--preview-font);
   font-weight: 700;
   line-height: 1;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .threshold-slider {
@@ -2299,7 +2339,7 @@ export default {
 .tuning-control {
   min-width: 0;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
   background: var(--material-glass-subtle);
 }
@@ -2352,7 +2392,7 @@ export default {
 
 .import-file-drop {
   padding: 10px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--glass-control-border);
   border-radius: 12px;
   background: var(--material-glass-subtle);
 }
@@ -2387,9 +2427,10 @@ export default {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 12px;
   background: var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .import-progress-head,
@@ -2413,9 +2454,9 @@ export default {
   margin: 0;
   padding: 10px;
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   color: var(--text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
@@ -2440,9 +2481,10 @@ export default {
 .import-job-row {
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--surface-card);
+  background: var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
 }
 
 .import-job-row span {
@@ -2502,7 +2544,7 @@ export default {
 /* Fade Slide Transition */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-slide-enter-from {

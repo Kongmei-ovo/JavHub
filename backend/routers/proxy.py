@@ -13,6 +13,7 @@ ALLOWED_IMAGE_DOMAINS = {
     "javcdn.com",
     "javlink.com",
     "dmm.co.jp",
+    "awsimgsrc.dmm.com",
     "amazonaws.com",
 }
 

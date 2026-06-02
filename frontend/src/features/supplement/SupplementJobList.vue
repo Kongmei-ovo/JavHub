@@ -90,8 +90,8 @@ export default {
 .spinner-large {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--white-20);
-  border-top-color: var(--accent);
+  border: 2px solid var(--glass-control-border);
+  border-top-color: var(--badge-info-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -115,7 +115,7 @@ export default {
   padding: 13px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: var(--surface-control);
+  background: var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -136,8 +136,12 @@ export default {
   height: 42px;
   overflow: hidden;
   color: var(--text-secondary);
-  background: var(--bg-secondary);
+  background: var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
   border-radius: 50%;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   flex-shrink: 0;
   font-weight: 800;
 }
