@@ -675,6 +675,7 @@ def _create_indexes():
         "CREATE INDEX IF NOT EXISTS idx_collections_created_at ON collections(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_subscriptions_created_at ON subscriptions(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_actress_missing_summary_missing_count ON actress_missing_summary(missing_count DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_inventory_actors_missing_count_name ON inventory_actors(missing_count DESC, actress_name)",
         "CREATE INDEX IF NOT EXISTS idx_missing_videos_actress_id ON missing_videos(actress_id)",
         "CREATE INDEX IF NOT EXISTS idx_missing_videos_release_date ON missing_videos(release_date DESC)",
         "CREATE INDEX IF NOT EXISTS idx_missing_videos_actress_release ON missing_videos(actress_id, release_date DESC)",

@@ -1672,7 +1672,7 @@ export default {
 }
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
 .link-btn.danger {
-  color: #ef5350;
+  color: var(--badge-error-text);
 }
 .chip {
   border: 1px solid var(--glass-control-border);
@@ -1750,9 +1750,9 @@ export default {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.candidate-magnet.empty { color: #fa8c16; }
+.candidate-magnet.empty { color: var(--badge-warning-text); }
 .candidate-reason { color: var(--text-secondary); }
-.candidate-task-link { color: #52c41a; }
+.candidate-task-link { color: var(--badge-success-text); }
 .candidate-event { color: var(--text-secondary); }
 .task-downloader {
   margin-top: 6px;

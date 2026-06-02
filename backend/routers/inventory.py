@@ -11,6 +11,7 @@ from database import (
     add_inventory_job, get_inventory_jobs, get_inventory_job,
     get_actor_aliases, add_actor_alias, get_canonical_actress_id, get_actor_primary_name,
     set_actor_primary_name, get_latest_snapshot_key, count_snapshot_actors, get_snapshot_actor, get_snapshot_actors,
+    get_snapshot_actors_with_inventory_stats,
     list_actor_mappings_for_actor_ids,
     find_similar_actresses, list_download_candidates, list_download_candidates_page, count_download_candidates,
     download_candidate_summary, download_candidate_stats, mapping_summary_for_snapshot
@@ -153,22 +154,29 @@ def _inventory_actors_payload(
         order = "asc" if sort_order == "asc" else "desc"
     else:
         sort_field, order = _actor_sort_params(actor_sort)
-    result = get_snapshot_actors(
-        snapshot_key,
-        search=search,
-        sort_by=sort_field,
-        sort_order=order,
-        page=page,
-        page_size=page_size,
-    )
+    if sort_field == "missing_count":
+        result = get_snapshot_actors_with_inventory_stats(
+            snapshot_key,
+            search=search,
+            sort_order=order,
+            page=page,
+            page_size=page_size,
+        )
+    else:
+        result = get_snapshot_actors(
+            snapshot_key,
+            search=search,
+            sort_by=sort_field,
+            sort_order=order,
+            page=page,
+            page_size=page_size,
+        )
     aliases = _alias_map()
     actor_ids = sorted({int(actor["actress_id"]) for actor in result["data"]})
     canonical_ids = sorted({_resolve_canonical_id(actor_id, aliases) for actor_id in actor_ids})
     inventory_ids = sorted({*actor_ids, *canonical_ids})
     inventory_map = {a["actress_id"]: a for a in get_inventory_actors_by_ids(inventory_ids)}
     enriched = [_enrich_snapshot_actor(actor, inventory_map, aliases) for actor in result["data"]]
-    if sort_field == "missing_count":
-        enriched.sort(key=lambda item: item["missing_count"], reverse=order == "desc")
     return {
         "data": enriched,
         "total": result["total"],

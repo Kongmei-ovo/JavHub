@@ -542,8 +542,9 @@ onMounted(loadSubs)
   --subscription-sticky-bg: var(--material-glass-elevated);
   --subscription-overlay-bg: var(--scrim);
   --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
-  --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
-  --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
+  --subscription-success-bg: var(--badge-success-bg);
+  --subscription-success-border: var(--badge-success-border);
+  --subscription-success-text: var(--badge-success-text);
   --subscription-danger-bg: var(--badge-error-bg);
   --subscription-danger-border: var(--badge-error-border);
 }
@@ -788,8 +789,9 @@ onMounted(loadSubs)
   --subscription-sticky-bg: var(--material-glass-elevated);
   --subscription-overlay-bg: var(--scrim);
   --subscription-discover-overlay-bg: color-mix(in srgb, var(--scrim) 38%, transparent);
-  --subscription-success-bg: color-mix(in srgb, #32d74b 14%, transparent);
-  --subscription-success-border: color-mix(in srgb, #32d74b 34%, var(--glass-control-border));
+  --subscription-success-bg: var(--badge-success-bg);
+  --subscription-success-border: var(--badge-success-border);
+  --subscription-success-text: var(--badge-success-text);
   --subscription-danger-bg: var(--badge-error-bg);
   --subscription-danger-border: var(--badge-error-border);
   position: fixed; inset: 0;
@@ -982,7 +984,7 @@ onMounted(loadSubs)
 .toggle-pill.on {
   background: var(--subscription-success-bg);
   border-color: var(--subscription-success-border);
-  color: #32D74B;
+  color: var(--subscription-success-text);
   box-shadow: var(--subscription-control-shadow-hover);
 }
 

@@ -63,7 +63,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
     def test_inventory_actors_payload_bulk_resolves_alias_display_names(self):
         from routers import inventory
 
-        with patch.object(inventory, "get_snapshot_actors", Mock(return_value={
+        with patch.object(inventory, "get_snapshot_actors_with_inventory_stats", Mock(return_value={
                 "data": [
                     {"actress_id": 10, "actress_name": "Alias A", "total_videos": 5, "image_tag": ""},
                     {"actress_id": 20, "actress_name": "Primary B", "total_videos": 3, "image_tag": ""},
@@ -73,6 +73,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
                 "page_size": 50,
                 "total_pages": 1,
             })) as snapshot_actors, \
+            patch.object(inventory, "get_snapshot_actors", Mock(side_effect=AssertionError("missing_count sort should use joined snapshot stats"))), \
             patch.object(inventory, "get_inventory_actors_by_ids", Mock(return_value=[
                 {"actress_id": 10, "missing_count": 4, "primary_name": ""},
                 {"actress_id": 20, "missing_count": 1, "primary_name": "Canonical B"},
@@ -94,7 +95,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
     def test_inventory_actors_payload_fetches_inventory_rows_for_current_page_only(self):
         from routers import inventory
 
-        with patch.object(inventory, "get_snapshot_actors", Mock(return_value={
+        with patch.object(inventory, "get_snapshot_actors_with_inventory_stats", Mock(return_value={
                 "data": [
                     {"actress_id": 10, "actress_name": "Alias A", "total_videos": 5, "image_tag": ""},
                     {"actress_id": 20, "actress_name": "Primary B", "total_videos": 3, "image_tag": ""},
@@ -104,6 +105,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
                 "page_size": 50,
                 "total_pages": 1,
             })), \
+            patch.object(inventory, "get_snapshot_actors", Mock(side_effect=AssertionError("missing_count sort should use joined snapshot stats"))), \
             patch.object(inventory, "get_inventory_actors_by_ids", Mock(return_value=[
                 {"actress_id": 10, "missing_count": 4, "primary_name": ""},
                 {"actress_id": 20, "missing_count": 1, "primary_name": "Canonical B"},
@@ -117,6 +119,43 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
         inventory_actors.assert_called_once_with([10, 20])
         self.assertEqual([actor["display_name"] for actor in result["data"]], ["Canonical B", "Canonical B"])
         self.assertEqual([actor["missing_count"] for actor in result["data"]], [4, 1])
+
+    def test_inventory_actors_payload_sorts_missing_count_in_database_before_paging(self):
+        from routers import inventory
+
+        with patch.object(inventory, "get_snapshot_actors_with_inventory_stats", Mock(return_value={
+                "data": [
+                    {"actress_id": 30, "actress_name": "High", "total_videos": 9, "image_tag": "", "missing_count": 8},
+                    {"actress_id": 20, "actress_name": "Mid", "total_videos": 7, "image_tag": "", "missing_count": 5},
+                ],
+                "total": 5,
+                "page": 2,
+                "page_size": 2,
+                "total_pages": 3,
+            }), create=True) as snapshot_with_stats, \
+            patch.object(inventory, "get_snapshot_actors", Mock(side_effect=AssertionError("missing_count sort should happen before paging"))), \
+            patch.object(inventory, "get_inventory_actors_by_ids", Mock(return_value=[
+                {"actress_id": 20, "missing_count": 5, "primary_name": ""},
+                {"actress_id": 30, "missing_count": 8, "primary_name": ""},
+            ])), \
+            patch.object(inventory, "get_actor_aliases", Mock(return_value=[])):
+            result = inventory._inventory_actors_payload(
+                "snap-1",
+                search="ai",
+                actor_sort="missing_count",
+                page=2,
+                page_size=2,
+            )
+
+        snapshot_with_stats.assert_called_once_with(
+            "snap-1",
+            search="ai",
+            sort_order="desc",
+            page=2,
+            page_size=2,
+        )
+        self.assertEqual([actor["actress_id"] for actor in result["data"]], [30, 20])
+        self.assertEqual(result["total_pages"], 3)
 
     def test_unmapped_actor_payload_reuses_mapping_snapshot(self):
         from routers import inventory
@@ -252,16 +291,17 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
         from routers import inventory
 
         with patch.object(inventory, "get_latest_snapshot_key", Mock(return_value="snap-1")), \
-            patch.object(inventory, "get_snapshot_actors", Mock(return_value={
+            patch.object(inventory, "get_snapshot_actors_with_inventory_stats", Mock(return_value={
                 "data": [
-                    {"actress_id": 1, "actress_name": "A", "total_videos": 5, "image_tag": ""},
-                    {"actress_id": 2, "actress_name": "B", "total_videos": 5, "image_tag": ""},
+                    {"actress_id": 2, "actress_name": "B", "total_videos": 5, "image_tag": "", "missing_count": 1},
+                    {"actress_id": 1, "actress_name": "A", "total_videos": 5, "image_tag": "", "missing_count": 5},
                 ],
                 "total": 2,
                 "page": 1,
                 "page_size": 50,
                 "total_pages": 1,
-            })), \
+            })) as snapshot_actors, \
+            patch.object(inventory, "get_snapshot_actors", Mock(side_effect=AssertionError("missing_count sort should use joined snapshot stats"))), \
             patch.object(inventory, "get_inventory_actors_by_ids", Mock(return_value=[
                 {"actress_id": 1, "missing_count": 5},
                 {"actress_id": 2, "missing_count": 1},
@@ -269,6 +309,7 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
             patch.object(inventory, "get_actor_aliases", Mock(return_value=[])):
             result = await inventory.list_actors(sort_by="missing_count", sort_order="asc", cache_control="0")
 
+        self.assertEqual(snapshot_actors.call_args.kwargs["sort_order"], "asc")
         self.assertEqual([actor["actress_id"] for actor in result["data"]], [2, 1])
 
     async def test_list_actors_uses_short_response_cache_with_bypass(self):
@@ -293,13 +334,14 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
 
         with patch.object(inventory, "get_latest_snapshot_key", Mock(return_value="snap-1")) as latest, \
             patch.object(inventory, "count_snapshot_actors", Mock(return_value=1)) as actor_count, \
-            patch.object(inventory, "get_snapshot_actors", Mock(return_value={
+            patch.object(inventory, "get_snapshot_actors_with_inventory_stats", Mock(return_value={
                 "data": [{"actress_id": 1, "actress_name": "A", "total_videos": 5, "image_tag": "tag"}],
                 "total": 1,
                 "page": 1,
                 "page_size": 60,
                 "total_pages": 1,
             })) as snapshot_actors, \
+            patch.object(inventory, "get_snapshot_actors", Mock(side_effect=AssertionError("missing_count sort should use joined snapshot stats"))), \
             patch.object(inventory, "get_inventory_actors_by_ids", Mock(return_value=[
                 {"actress_id": 1, "missing_count": 2, "primary_name": "Primary A"},
             ])) as inventory_actors, \
@@ -343,7 +385,6 @@ class InventoryOverviewRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCas
         actor_count.assert_called_once_with("snap-1")
         self.assertEqual(snapshot_actors.call_args.kwargs, {
             "search": None,
-            "sort_by": "missing_count",
             "sort_order": "desc",
             "page": 1,
             "page_size": 60,

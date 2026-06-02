@@ -91,3 +91,18 @@ def test_database_initializer_helpers_exist():
         "_init_emby_snapshot_tables",
     ]:
         assert callable(getattr(base, name))
+
+
+def test_create_indexes_registers_inventory_missing_count_sort_index(monkeypatch):
+    calls: list[tuple[str, tuple]] = []
+    conn = make_recording_connection(calls=calls)
+    created: list[str] = []
+
+    monkeypatch.setattr(base, "get_db_orig", lambda: conn)
+    monkeypatch.setattr(base, "_create_index_if_possible", lambda _cursor, sql_text: created.append(sql_text))
+
+    base._create_indexes()
+
+    joined = "\n".join(created)
+    assert "idx_inventory_actors_missing_count_name" in joined
+    assert "inventory_actors(missing_count DESC, actress_name)" in joined

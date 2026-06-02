@@ -2,7 +2,14 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
+const vueSource = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
+let externalStyle = ''
+try {
+  externalStyle = readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8')
+} catch {
+  externalStyle = ''
+}
+const source = `${vueSource}\n${externalStyle}`
 
 function cssBlocks(content, selector) {
   const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -141,4 +148,27 @@ test('translation form and status surfaces use shared glass and badge tokens', (
   }
 
   assert.doesNotMatch(source, /var\(--surface-control\)|var\(--surface-input-focus\)|#ff6b78|rgba\(255,\s*80,\s*90|rgba\(245,\s*181,\s*80|rgba\(90,\s*200,\s*150/i)
+})
+
+test('translation long lists skip unnecessary row rendering work', () => {
+  assert.match(
+    source,
+    /v-for="item in reviewItems"[\s\S]*v-memo="\[item\.item_type,\s*item\.item_id,\s*item\.edit_text,\s*item\.status,\s*item\.provider,\s*item\.updated_at,\s*item\.last_error\]"/,
+  )
+  assert.match(
+    source,
+    /v-for="job in jobs"[\s\S]*v-memo="\[job\.id,\s*job\.status,\s*job\.progress_percent,\s*job\.translated,\s*job\.failed,\s*selectedJob\?\.id\]"/,
+  )
+
+  for (const selector of ['.review-row', '.history-row']) {
+    const block = cssBlock(source, selector)
+    assert.match(block, /content-visibility:\s*auto/)
+    assert.match(block, /contain-intrinsic-size:\s*1px\s+(?:74|58)px/)
+  }
+})
+
+test('translation page keeps heavyweight styles in an external scoped stylesheet', () => {
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/translations\/translationJobs\.css"><\/style>/)
+  assert.ok(externalStyle.length > 20000, 'external translation stylesheet should carry the moved workspace CSS')
+  assert.ok(vueSource.split('\n').length < 1500, 'TranslationJobs.vue should stay small enough to review and parse quickly')
 })

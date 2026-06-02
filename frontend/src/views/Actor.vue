@@ -1212,26 +1212,30 @@ export default {
 
 .badge-running {
   background: var(--badge-pending-bg);
+  border: 1px solid var(--badge-pending-border);
   color: var(--badge-pending-text);
 }
 
 .badge-failed {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  background: var(--badge-error-bg);
+  border: 1px solid var(--badge-error-border);
+  color: var(--badge-error-text);
 }
 
 .badge-ok {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
+  background: var(--badge-success-bg);
+  border: 1px solid var(--badge-success-border);
+  color: var(--badge-success-text);
 }
 
 .supplement-error {
   margin-bottom: 12px;
   padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--badge-error-border);
+  background: var(--badge-error-bg);
   border-radius: 8px;
   font-size: 13px;
-  color: #f87171;
+  color: var(--badge-error-text);
 }
 
 .supplement-counters {

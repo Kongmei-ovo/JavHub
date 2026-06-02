@@ -16,7 +16,11 @@ const inventoryActor = readFileSync(new URL('../views/InventoryActor.vue', impor
 const subscription = readFileSync(new URL('../views/Subscription.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
 const home = readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8')
-const translationJobs = readFileSync(new URL('../views/TranslationJobs.vue', import.meta.url), 'utf8')
+const translationJobs = [
+  readFileSync(new URL('../views/TranslationJobs.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
+].join('\n')
+const libraryOrganize = readFileSync(new URL('../views/LibraryOrganize.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
@@ -188,6 +192,19 @@ test('secondary utility controls avoid one-off fog materials', () => {
   assert.match(actor, /\.year-nav\s*\{[\s\S]*background:\s*var\(--material-glass-sheet\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.match(duplicates, /\.action-btn\.ignore\s*\{[\s\S]*background:\s*var\(--material-glass-control\)/)
   assert.match(home, /\.dialog-close-btn\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+})
+
+test('page status colors use semantic badge tokens instead of hardcoded hues', () => {
+  const bannedStatusPaint = /(?:#(?:ef5350|fa8c16|52c41a|32D74B|32d74b|b45309|f87171|4ade80)|rgba\((?:239,\s*68,\s*68|34,\s*197,\s*94|245,\s*158,\s*11|244,\s*63,\s*94|255,\s*181,\s*71))/i
+  for (const [name, source] of [
+    ['Actor', actor],
+    ['Config', config],
+    ['Home', home],
+    ['LibraryOrganize', libraryOrganize],
+    ['Subscription', subscription],
+  ]) {
+    assert.doesNotMatch(source, bannedStatusPaint, `${name} should use badge semantic status tokens`)
+  }
 })
 
 test('home dashboard metrics use shared liquid glass controls', () => {

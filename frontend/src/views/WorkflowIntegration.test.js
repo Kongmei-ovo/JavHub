@@ -40,7 +40,10 @@ const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 const viteConfig = readFileSync(new URL('../../vite.config.js', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
-const translationJobs = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
+const translationJobs = [
+  readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
+].join('\n')
 const dockerCompose = readFileSync(new URL('../../../docker-compose.yml', import.meta.url), 'utf8')
 const dockerBuildWorkflow = readFileSync(new URL('../../../.github/workflows/docker-build.yml', import.meta.url), 'utf8')
 const dockerSmokeWorkflow = readFileSync(new URL('../../../.github/workflows/docker-smoke.yml', import.meta.url), 'utf8')

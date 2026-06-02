@@ -176,6 +176,51 @@ def get_inventory_actors_by_ids(actress_ids: list[int]) -> list:
         )
         return [dict(row) for row in cursor.fetchall()]
 
+def get_snapshot_actors_with_inventory_stats(
+    snapshot_key: str,
+    search: str = None,
+    sort_order: str = "desc",
+    page: int = 1,
+    page_size: int = 50,
+) -> dict:
+    """Page snapshot actors after joining inventory counts for correct missing_count sorting."""
+    safe_page = max(1, int(page or 1))
+    safe_page_size = max(1, min(int(page_size or 50), 500))
+    offset = (safe_page - 1) * safe_page_size
+    where_clause = "WHERE e.snapshot_key = ?"
+    params: list = [snapshot_key]
+    if search:
+        where_clause += " AND e.actress_name LIKE ?"
+        params.append(f"%{search}%")
+    order_dir = "ASC" if sort_order == "asc" else "DESC"
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT COUNT(*) AS cnt FROM emby_actors e {where_clause}", params)
+        total = int(cursor.fetchone()["cnt"] or 0)
+        cursor.execute(
+            f"""
+            SELECT e.*,
+                   COALESCE(i.missing_count, 0) AS missing_count,
+                   COALESCE(i.primary_name, '') AS primary_name
+            FROM emby_actors e
+            LEFT JOIN inventory_actors i ON i.actress_id = e.actress_id
+            {where_clause}
+            ORDER BY COALESCE(i.missing_count, 0) {order_dir}, e.actress_name ASC
+            LIMIT ? OFFSET ?
+            """,
+            params + [safe_page_size, offset],
+        )
+        rows = cursor.fetchall()
+
+    return {
+        "data": [dict(row) for row in rows],
+        "total": total,
+        "page": safe_page,
+        "page_size": safe_page_size,
+        "total_pages": (total + safe_page_size - 1) // safe_page_size if total > 0 else 1,
+    }
+
 def get_inventory_actor(actress_id: int) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()

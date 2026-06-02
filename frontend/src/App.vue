@@ -762,7 +762,8 @@ export default {
   .mobile-theme-toggle span:last-child {
     color: var(--text-muted);
     font-size: 11px;
-    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0;
   }
   .mobile-more-grid {
     display: grid;

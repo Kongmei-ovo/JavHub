@@ -1782,7 +1782,7 @@ export default {
 }
 
 .config-status-banner.warning {
-  border-color: rgba(255, 181, 71, 0.45);
+  border-color: var(--badge-warning-border);
 }
 
 .config-section {
@@ -1861,8 +1861,7 @@ export default {
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
 }
 
 .form-group { margin-bottom: 20px; }
@@ -2013,9 +2012,9 @@ export default {
   display: grid;
   gap: 8px;
   padding: 12px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  border: 1px solid var(--badge-warning-border);
   border-radius: 12px;
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--badge-warning-bg);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
@@ -2134,7 +2133,6 @@ export default {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .preference-section-header h3 {
@@ -2200,7 +2198,7 @@ export default {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .appearance-setting-list {
@@ -2368,9 +2366,9 @@ export default {
   display: grid;
   gap: 4px;
   padding: 12px 14px;
-  border: 1px solid rgba(244, 63, 94, 0.28);
+  border: 1px solid var(--badge-error-border);
   border-radius: 12px;
-  background: rgba(244, 63, 94, 0.08);
+  background: var(--badge-error-bg);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
@@ -2382,8 +2380,8 @@ export default {
 }
 
 .import-warning-direct {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--badge-warning-border);
+  background: var(--badge-warning-bg);
 }
 
 .compact-number {
@@ -2474,8 +2472,8 @@ export default {
 .import-job-list-title {
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .import-job-row {

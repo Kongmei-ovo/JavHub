@@ -61,10 +61,9 @@ const handleClick = () => {
 }
 .stat-label {
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .stat-arrow {
   color: var(--text-muted);

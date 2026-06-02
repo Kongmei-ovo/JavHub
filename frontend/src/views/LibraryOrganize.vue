@@ -1081,7 +1081,7 @@ onMounted(async () => {
 }
 
 .status-cell.urgent .status-value {
-  color: #b45309;
+  color: var(--badge-warning-text);
 }
 
 .status-value {

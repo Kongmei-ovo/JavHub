@@ -37,3 +37,13 @@ test('Production UI styles avoid transition-all repaint traps', () => {
     )
   }
 })
+
+test('Apple-style microcopy avoids forced uppercase labels', () => {
+  for (const [name, source] of productionStyleSources()) {
+    assert.doesNotMatch(
+      source,
+      /text-transform:\s*uppercase\b/,
+      `${name} should use natural-case microcopy instead of forced uppercase labels`
+    )
+  }
+})

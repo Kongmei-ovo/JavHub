@@ -276,9 +276,8 @@ export default {
   margin-bottom: 10px;
   color: var(--text-muted);
   font-size: var(--type-caption);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .parse-hero h1 {
