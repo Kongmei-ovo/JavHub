@@ -213,9 +213,9 @@ test('segmented controls and settings rows use shared glass materials', () => {
   assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
 
-  assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+  assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 })
 
 test('native form controls use active glass accents instead of raw theme accent paint', () => {
