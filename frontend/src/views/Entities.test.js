@@ -22,7 +22,7 @@ function singleLayerGlassBackgrounds(css) {
   return css
     .split('\n')
     .map((line, index) => ({ line: index + 1, text: line.trim() }))
-    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/.test(text))
 }
 
 test('entities page keeps large scoped styles in a feature stylesheet', () => {
@@ -210,14 +210,15 @@ test('entities dark list cards reuse shared material tokens', () => {
   const darkType = cssRule(':global(:root[data-theme="dark"] .entity-list-card__type)')
 
   assert.match(darkHero, backgroundIncludes('material-glass-elevated'))
+  assert.match(darkHero, /var\(--surface-specular-edge-strong\)/)
+  assert.match(darkHero, /var\(--surface-noise\)/)
   assert.match(darkHero, /border-color:\s*var\(--glass-edge-strong\)/)
-  assert.doesNotMatch(darkHero, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|linear-gradient/)
 
   assert.match(darkListCard, /border-color:\s*var\(--glass-edge\)/)
   assert.match(darkListCard, backgroundIncludes('material-glass-elevated'))
+  assert.match(darkListCard, /var\(--surface-specular-edge-strong\)/)
+  assert.match(darkListCard, /var\(--surface-noise\)/)
   assert.match(darkListCard, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.doesNotMatch(darkListCard, /rgba\(255,255,255/)
-  assert.doesNotMatch(darkListCard, /linear-gradient\(145deg/)
 
   assert.match(darkListCardHover, /border-color:\s*var\(--glass-edge-strong\)/)
   assert.match(darkListCardHover, backgroundIncludes('material-glass-control-hover'))

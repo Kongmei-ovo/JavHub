@@ -141,7 +141,10 @@ onMounted(fetchDuplicates)
 }
 .rescan-btn {
   min-height: 44px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
   padding: 0 18px;
@@ -155,7 +158,10 @@ onMounted(fetchDuplicates)
 }
 .rescan-btn:hover {
   transform: translateY(-1px);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -163,7 +169,10 @@ onMounted(fetchDuplicates)
   display: flex;
   gap: 16px;
   padding: 16px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-control-shadow);
@@ -219,7 +228,10 @@ onMounted(fetchDuplicates)
   padding: 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -243,7 +255,10 @@ onMounted(fetchDuplicates)
   padding: 0 16px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -254,7 +269,10 @@ onMounted(fetchDuplicates)
 }
 .action-btn:hover {
   transform: translateY(-1px);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -264,7 +282,10 @@ onMounted(fetchDuplicates)
   color: var(--badge-error-text);
 }
 .action-btn.ignore {
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-secondary);
   box-shadow: var(--glass-control-shadow);
@@ -276,7 +297,10 @@ onMounted(fetchDuplicates)
   padding: 40px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

@@ -10,7 +10,10 @@
   padding: 28px 30px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-xl);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
@@ -28,7 +31,10 @@
   height: 116px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   flex-shrink: 0;
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
@@ -78,7 +84,10 @@
   padding: 3px 9px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
 }
@@ -99,7 +108,10 @@
   padding: 8px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -114,7 +126,10 @@
 .actor-action-btn:hover {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -183,7 +198,10 @@
   display: inline-flex;
   gap: 4px;
   padding: 4px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-control-shadow);
@@ -209,14 +227,20 @@
 }
 
 .switch-btn:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
 .switch-btn.active {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   font-weight: 600;
@@ -226,7 +250,10 @@
 .variant-badge {
   font-size: 11px;
   padding: 1px 6px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 10px;
   font-weight: 600;
@@ -246,7 +273,10 @@
   bottom: 8px;
   left: 8px;
   padding: 2px 8px;
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -326,7 +356,10 @@
   flex-direction: column;
   gap: 2px;
   z-index: 100;
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--glass-edge);
@@ -351,14 +384,20 @@
 }
 
 .year-nav-item:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
 .year-nav-item.active {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -400,7 +439,10 @@
   margin-top: 0;
   margin-bottom: 20px;
   padding: 20px 24px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
   box-shadow: var(--glass-control-shadow);

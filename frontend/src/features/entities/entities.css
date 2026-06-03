@@ -263,7 +263,10 @@
 .entity-list-card:hover {
   transform: translateY(-3px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
 }
 
@@ -483,7 +486,10 @@
 
 :global(:root[data-theme="dark"] .entities-hero) {
   border-color: var(--glass-edge-strong);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
 }
 
 :global(:root[data-theme="dark"] .entities-hero::before) {
@@ -493,7 +499,10 @@
 
 :global(:root[data-theme="dark"] .entity-list-card) {
   border-color: var(--glass-edge);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 
