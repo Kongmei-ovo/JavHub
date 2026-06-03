@@ -16,9 +16,20 @@ function cssBlock(selector) {
     .join('\n')
 }
 
+function backgroundIncludes(token) {
+  return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  return css
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/.test(text))
+}
+
 test('settings secret reveal controls use shared Apple glass button chrome', () => {
   const base = cssBlock('.input-eye-btn')
-  assert.match(base, /background:\s*var\(--material-glass-control\)/)
+  assert.match(base, backgroundIncludes('material-glass-control'))
   assert.match(base, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(base, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(base, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -26,7 +37,7 @@ test('settings secret reveal controls use shared Apple glass button chrome', () 
   assert.doesNotMatch(base, /background:\s*none|border:\s*none|transition:\s*all/)
 
   const hover = cssBlock('.input-eye-btn:hover')
-  assert.match(hover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(hover, backgroundIncludes('material-glass-control-hover'))
   assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
@@ -54,19 +65,19 @@ test('settings workspace panels use shared Apple glass materials instead of lega
     assert.doesNotMatch(block, /var\(--bg-card\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|var\(--surface-card\)/)
   }
 
-  assert.match(cardContent, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(cardContent, backgroundIncludes('material-glass-sheet'))
   assert.match(cardContent, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(cardContent, /box-shadow:\s*var\(--glass-surface-shadow\)/)
 
   for (const block of [formSlot, runtimePanel, preferenceStack, preferenceSection, scopeCard, importProgress, importJobRow]) {
-    assert.match(block, /background:\s*var\(--material-glass-(?:subtle|control)\)/)
+    assert.match(block, /background:[\s\S]*var\(--material-glass-(?:subtle|control)\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
   }
 
-  assert.match(sourceCheck, /background:\s*var\(--material-glass-control\)/)
+  assert.match(sourceCheck, backgroundIncludes('material-glass-control'))
   assert.match(sourceCheck, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(importDrop, /border:\s*1px dashed var\(--glass-control-border\)/)
-  assert.match(importLogTail, /background:\s*var\(--material-glass-control\)/)
+  assert.match(importLogTail, backgroundIncludes('material-glass-control'))
   assert.match(settingsTabs, /scrollbar-color:\s*var\(--glass-edge\) transparent/)
   assert.doesNotMatch(settingsTabs, /var\(--border-light\)/)
 })
@@ -80,7 +91,7 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
   assert.match(spinner, /border-top-color:\s*var\(--glass-active-border\)/)
   assert.doesNotMatch(spinner, /rgba\(255,\s*255,\s*255/)
 
-  assert.match(auraPreview, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(auraPreview, backgroundIncludes('material-glass-subtle'))
   assert.match(auraPreview, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(auraPreview, /radial-gradient|rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
 
@@ -92,4 +103,8 @@ test('settings page keeps heavyweight styles in an external scoped stylesheet', 
   assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
   assert.ok(externalStyle.length > 20000, 'external settings stylesheet should carry the moved workspace CSS')
   assert.ok(vueSource.split('\n').length < 1800, 'Config.vue should stay small enough to review and parse quickly')
+})
+
+test('settings glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })

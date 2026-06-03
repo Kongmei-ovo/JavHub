@@ -14,7 +14,10 @@
   padding: clamp(22px, 3vw, 34px);
   overflow: hidden;
   border: 1px solid var(--glass-edge-strong);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -91,7 +94,10 @@
   padding: 7px 8px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--type-control);
@@ -105,14 +111,20 @@
 
 .entity-tab:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
 .entity-tab.active {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
@@ -153,7 +165,10 @@
   padding: 0 13px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -162,7 +177,10 @@
 
 .search-box:focus-within {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.09);
 }
 
@@ -201,7 +219,10 @@
 }
 
 .search-box button:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   color: var(--text-primary);
@@ -229,7 +250,10 @@
   min-height: 142px;
   overflow: hidden;
   border: 1px solid var(--glass-edge-strong);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -239,7 +263,10 @@
 .entity-list-card:hover {
   transform: translateY(-3px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
 }
 
@@ -271,7 +298,10 @@
   padding: 3px 8px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-secondary);
   font-size: var(--type-badge);
   font-weight: 750;
@@ -326,7 +356,10 @@
   padding: 0;
   border: 1px solid var(--glass-edge);
   border-radius: 50%;
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   color: var(--badge-error-text);
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
@@ -337,7 +370,10 @@
 
 .entity-list-card__favorite:hover {
   transform: scale(1.06);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -450,7 +486,10 @@
 
 :global(:root[data-theme="dark"] .entities-hero) {
   border-color: var(--glass-edge-strong);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
 }
 
 :global(:root[data-theme="dark"] .entities-hero::before) {
@@ -460,19 +499,28 @@
 
 :global(:root[data-theme="dark"] .entity-list-card) {
   border-color: var(--glass-edge);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 
 :global(:root[data-theme="dark"] .entity-list-card:hover) {
   border-color: var(--glass-edge-strong);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
 }
 
 :global(:root[data-theme="dark"] .entity-list-card__type) {
   border-color: var(--glass-control-border);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
 }
 
 @media (max-width: 1180px) {

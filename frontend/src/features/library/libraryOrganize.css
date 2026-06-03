@@ -14,7 +14,10 @@
   padding: clamp(22px, 3vw, 34px);
   overflow: hidden;
   border: 1px solid var(--glass-edge-strong);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -79,7 +82,10 @@
   height: 38px;
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -96,7 +102,10 @@
   padding: 1px;
   overflow: hidden;
   border-color: var(--glass-edge);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
 }
@@ -107,7 +116,10 @@
   padding: 12px;
   border: 0;
   border-radius: calc(var(--radius-card) - 7px);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -116,7 +128,10 @@
 }
 
 .status-cell:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
@@ -170,7 +185,10 @@
   padding: 14px 16px;
   border: 1px solid var(--glass-edge-strong);
   border-radius: var(--radius-card);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -188,7 +206,10 @@
   padding: 6px;
   overflow-x: auto;
   border-radius: var(--radius-card);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
 }
 
 .tab-btn {
@@ -199,7 +220,10 @@
   padding: 0 13px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--type-control);
@@ -214,14 +238,20 @@
 
 .tab-btn:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
 .tab-btn.active {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
@@ -248,7 +278,10 @@
   min-width: 0;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -315,7 +348,10 @@
   min-width: 0;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-inner-shadow);
   transition:
     background var(--motion-fast),
@@ -346,7 +382,10 @@
 
 .priority-row:hover,
 .flow-steps button:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -395,7 +434,10 @@
   height: 42px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-weight: 700;
@@ -429,7 +471,10 @@
   width: 26px;
   height: 26px;
   border-radius: var(--radius-sm);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   font-family: var(--font-mono);
   box-shadow: var(--glass-inner-shadow);
 }
@@ -453,7 +498,10 @@
   padding: 0 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
@@ -467,7 +515,10 @@
 .organize-filters input:focus,
 .check-form input:focus {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 
@@ -551,7 +602,10 @@
   padding: 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -644,7 +698,10 @@
   padding: 5px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   white-space: nowrap;
@@ -655,13 +712,19 @@
 .candidate-pills button:hover,
 .chip:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
 .chip.active {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -673,7 +736,10 @@
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -741,7 +807,10 @@
 
 :global(:root[data-theme="dark"] .organize-header) {
   border-color: var(--glass-edge-strong);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
 }
 
 :global(:root[data-theme="dark"] .organize-header::before) {
@@ -755,7 +824,10 @@
 :global(:root[data-theme="dark"] .loading-panel),
 :global(:root[data-theme="dark"] .empty-panel) {
   border-color: var(--glass-edge);
-  background: var(--material-glass-elevated);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 
@@ -778,7 +850,10 @@
 :global(:root[data-theme="dark"] .organize-filters input),
 :global(:root[data-theme="dark"] .check-form input) {
   border-color: var(--glass-control-border);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
 }
 
 :global(:root[data-theme="dark"] .status-cell:hover),
@@ -787,7 +862,10 @@
 :global(:root[data-theme="dark"] .candidate-pills button:hover),
 :global(:root[data-theme="dark"] .chip:hover) {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 

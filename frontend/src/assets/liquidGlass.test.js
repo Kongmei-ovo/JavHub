@@ -213,9 +213,9 @@ test('segmented controls and settings rows use shared glass materials', () => {
   assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
 
-  assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+  assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 })
 
 test('native form controls use active glass accents instead of raw theme accent paint', () => {
@@ -269,8 +269,15 @@ test('image fallback placeholders use theme glass instead of hardcoded SVG data 
 })
 
 test('secondary utility controls avoid one-off fog materials', () => {
-  assert.match(actor, /\.year-nav\s*\{[\s\S]*background:\s*var\(--material-glass-sheet\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
-  assert.match(duplicates, /\.action-btn\.ignore\s*\{[\s\S]*background:\s*var\(--material-glass-control\)/)
+  const actorYearNav = sourceBlock(actor, '.year-nav')
+  assert.match(actorYearNav, backgroundIncludes('material-glass-sheet'))
+  assert.match(actorYearNav, /var\(--surface-specular-edge-strong\)/)
+  assert.match(actorYearNav, /var\(--surface-noise\)/)
+  assert.match(actorYearNav, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  const duplicateIgnoreButton = sourceBlock(duplicates, '.action-btn.ignore')
+  assert.match(duplicateIgnoreButton, backgroundIncludes('material-glass-control'))
+  assert.match(duplicateIgnoreButton, /var\(--surface-specular-edge\)/)
+  assert.match(duplicateIgnoreButton, /var\(--surface-noise\)/)
   assert.match(home, /\.dialog-close-btn\s*\{[\s\S]*background:[\s\S]*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
 })
 
@@ -329,30 +336,40 @@ test('translation jobs workbench surfaces use shared Apple glass controls', () =
   const noticeBlock = sourceBlock(translationJobs, '.notice-row')
   const reviewStatsBlock = sourceBlock(translationJobs, '.review-stats div')
 
-  assert.match(segmentedBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(segmentedBlock, backgroundIncludes('material-glass-control'))
+  assert.match(segmentedBlock, /var\(--surface-specular-edge\)/)
+  assert.match(segmentedBlock, /var\(--surface-noise\)/)
   assert.match(segmentedBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(segmentedBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(segmentedBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(segmentedActiveBlock, /background:\s*var\(--glass-active-material\)/)
+  assert.match(segmentedActiveBlock, backgroundIncludes('glass-active-material'))
+  assert.match(segmentedActiveBlock, /var\(--surface-specular-edge-strong\)/)
+  assert.match(segmentedActiveBlock, /var\(--surface-noise\)/)
   assert.match(segmentedActiveBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(segmentedBlock, /rgba\(255,\s*255,\s*255,\s*0\.045\)/)
   assert.doesNotMatch(segmentedActiveBlock, /rgba\(255,\s*255,\s*255,\s*0\.12\)/)
 
-  assert.match(overviewSurfaceBlock, /background:\s*var\(--material-glass-control\)/)
+  assert.match(overviewSurfaceBlock, backgroundIncludes('material-glass-control'))
+  assert.match(overviewSurfaceBlock, /var\(--surface-specular-edge\)/)
+  assert.match(overviewSurfaceBlock, /var\(--surface-noise\)/)
   assert.match(overviewSurfaceBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(overviewSurfaceBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(overviewSurfaceBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
   assert.doesNotMatch(overviewSurfaceBlock, /var\(--surface-control\)|var\(--border\)|rgba\(255,\s*255,\s*255,\s*0\.035\)/)
 
   for (const block of [inputBlock, noticeBlock, reviewStatsBlock]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.match(block, backgroundIncludes('material-glass-control'))
+    assert.match(block, /var\(--surface-specular-edge\)/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
     assert.doesNotMatch(block, /var\(--surface-control\)|rgba\(255,\s*255,\s*255,\s*0\.0[345]\)|var\(--border\)/)
   }
 
-  assert.match(inputFocusBlock, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(inputFocusBlock, backgroundIncludes('material-glass-control-hover'))
+  assert.match(inputFocusBlock, /var\(--surface-specular-edge-strong\)/)
+  assert.match(inputFocusBlock, /var\(--surface-noise\)/)
   assert.match(inputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(inputFocusBlock, /var\(--surface-input-focus\)/)
 })

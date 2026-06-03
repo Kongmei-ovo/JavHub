@@ -20,6 +20,15 @@ function cssBlock(selector) {
   return cssBlocks(source, selector).join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  return new RegExp(`background:\\s*(?:[^;]*,\\s*)*var\\(${token}\\)(?:\\s*,[^;]*)?;`).test(block)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/gm
+  return [...css.matchAll(singleLayerGlass)].map(match => match[0])
+}
+
 test('duplicates page uses shared Apple glass surfaces and actions', () => {
   const rescanButton = cssBlock('.rescan-btn')
   const duplicateItem = cssBlock('.duplicate-item')
@@ -32,7 +41,7 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
 
   for (const block of [rescanButton, duplicateItem, duplicateEntry, actionButton, ignoreButton, stateBlock]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
     assert.doesNotMatch(block, /border:\s*(?:0|none)|background:\s*(?:none|transparent)/)
@@ -45,4 +54,23 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
 
   assert.match(errorBlock, /color:\s*var\(--badge-error-text\)/)
   assert.doesNotMatch(errorBlock, /#ff4d4f/i)
+})
+
+test('duplicates glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(source), [])
+
+  for (const selector of [
+    '.rescan-btn',
+    '.rescan-btn:hover',
+    '.duplicate-item',
+    '.duplicate-entry',
+    '.action-btn',
+    '.action-btn:hover',
+    '.action-btn.ignore',
+    '.loading',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
+  }
 })

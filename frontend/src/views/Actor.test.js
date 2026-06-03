@@ -18,6 +18,15 @@ function cssBlock(selector) {
   return blocks.join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  return new RegExp(`background:\\s*(?:[^;]*,\\s*)*var\\(${token}\\)(?:\\s*,[^;]*)?;`).test(block)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/gm
+  return [...css.matchAll(singleLayerGlass)].map(match => match[0])
+}
+
 test('actor page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/actor\/actor\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 850, 'Actor.vue should stay below 850 lines')
@@ -113,22 +122,22 @@ test('actor page version and year controls use shared Apple glass materials', ()
   const yearNavItemHover = cssBlock('.year-nav-item:hover')
   const yearNavItemActive = cssBlock('.year-nav-item.active')
 
-  assert.match(variantSwitch, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(variantSwitch, '--material-glass-control'))
   assert.match(variantSwitch, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(variantSwitch, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(variantSwitch, /rgba\(255,\s*255,\s*255/)
 
   assert.match(switchButton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(switchButton, /background:\s*var\(--material-glass-subtle\)/)
-  assert.match(switchButtonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(switchButtonHover, '--material-glass-control-hover'))
   assert.match(switchButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(switchButtonActive, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(switchButtonActive, '--glass-active-material'))
   assert.match(switchButtonActive, /border-color:\s*var\(--glass-active-border\)/)
 
-  assert.match(variantBadge, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(variantBadge, '--material-glass-control'))
   assert.match(variantBadge, /border:\s*1px solid var\(--glass-control-border\)/)
 
-  assert.match(variantLabel, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(variantLabel, '--glass-active-material'))
   assert.match(variantLabel, /border:\s*1px solid var\(--glass-active-border\)/)
   assert.match(variantLabel, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.match(variantLabel, /color:\s*var\(--text-primary\)/)
@@ -140,9 +149,9 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.match(yearNavItem, /background:\s*var\(--material-glass-subtle\)/)
   assert.match(yearNavItem, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(yearNavItem, /transparent/)
-  assert.match(yearNavItemHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(yearNavItemHover, '--material-glass-control-hover'))
   assert.match(yearNavItemHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.match(yearNavItemActive, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(yearNavItemActive, '--glass-active-material'))
   assert.match(yearNavItemActive, /border-color:\s*var\(--glass-active-border\)/)
   assert.doesNotMatch(yearNavItemHover, /rgba\(255,\s*255,\s*255/)
 })
@@ -178,24 +187,24 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   const sectionHeader = cssBlock('.section-header')
   const supplementCard = cssBlock('.supplement-card')
 
-  assert.match(actorHero, /background:\s*var\(--material-glass-sheet\)/)
+  assert.ok(backgroundIncludes(actorHero, '--material-glass-sheet'))
   assert.match(actorHero, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(actorHero, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(actorHero, /var\(--bg-secondary\)|var\(--bg-primary\)/)
 
-  assert.match(actorAvatar, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(actorAvatar, '--material-glass-control'))
   assert.match(actorAvatar, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(actorAvatar, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(actorAvatar, /var\(--bg-card\)|rgba\(255,\s*255,\s*255/)
 
   for (const block of [actionButton, metaFavorite, metaSubscribed, supplementCard]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-card-hover\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
   }
 
-  assert.match(actionButtonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(actionButtonHover, '--material-glass-control-hover'))
   assert.match(actionButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(actionButtonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(actionButtonHover, /var\(--surface-card-hover\)|var\(--glass-edge-strong\)/)
@@ -209,4 +218,29 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   assert.doesNotMatch(`${actionButtonActive}\n${subscribeButtonActive}`, /#ff375f|#34c759|rgba\(255,\s*55,\s*95|rgba\(52,\s*199,\s*89/i)
 
   assert.match(sectionHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
+})
+
+test('actor glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
+
+  for (const selector of [
+    '.actor-hero',
+    '.actor-avatar',
+    '.meta-item--favorite',
+    '.actor-action-btn',
+    '.actor-action-btn:hover',
+    '.variant-switch',
+    '.switch-btn:hover',
+    '.switch-btn.active',
+    '.variant-badge',
+    '.variant-label',
+    '.year-nav',
+    '.year-nav-item:hover',
+    '.year-nav-item.active',
+    '.supplement-card',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
+  }
 })
