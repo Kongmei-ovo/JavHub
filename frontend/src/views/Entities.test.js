@@ -14,6 +14,17 @@ function cssRule(selector) {
   return match[1]
 }
 
+function backgroundIncludes(token) {
+  return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
+function singleLayerGlassBackgrounds(css) {
+  return css
+    .split('\n')
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
+}
+
 test('entities page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/entities\/entities\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 420, 'Entities.vue should stay below 420 lines')
@@ -125,7 +136,7 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   const favoriteButtonHover = cssRule('.entity-list-card__favorite:hover')
   const favoriteButtonActive = cssRule('.entity-list-card__favorite.active')
 
-  assert.match(hero, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(hero, backgroundIncludes('material-glass-sheet'))
   assert.match(hero, /border:\s*1px solid var\(--glass-edge-strong\)/)
   assert.match(hero, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(hero, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
@@ -135,53 +146,53 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   assert.match(heroBefore, /mask-image:\s*linear-gradient\(90deg,\s*var\(--entities-hero-mask-start\),\s*var\(--entities-hero-mask-end\) 72%\)/)
   assert.doesNotMatch(heroBefore, /rgba\(0,\s*0,\s*0|rgba\(0,0,0|#000|#000000/i)
 
-  assert.match(listCard, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(listCard, backgroundIncludes('material-glass-sheet'))
   assert.match(listCard, /border:\s*1px solid var\(--glass-edge-strong\)/)
   assert.match(listCard, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(listCard, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.doesNotMatch(listCard, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|var\(--surface-card\)/)
-  assert.match(listCardHover, /background:\s*var\(--material-glass-elevated\)/)
+  assert.match(listCardHover, backgroundIncludes('material-glass-elevated'))
   assert.match(listCardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(listCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(listCardHover, /var\(--surface-card-hover\)|var\(--shadow-floating\)/)
 
   assert.match(entityTab, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(entityTab, /background:\s*var\(--material-glass-control\)/)
+  assert.match(entityTab, backgroundIncludes('material-glass-control'))
   assert.match(entityTab, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(entityTab, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(entityTabHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(entityTabHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(entityTabHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(entityTabHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.match(entityTabActive, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(entityTabActive, /background:\s*var\(--glass-active-material\)/)
+  assert.match(entityTabActive, backgroundIncludes('glass-active-material'))
 
-  assert.match(searchBox, /background:\s*var\(--material-glass-control\)/)
+  assert.match(searchBox, backgroundIncludes('material-glass-control'))
   assert.match(searchBox, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(searchFocus, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(searchFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(searchFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(searchFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.09\)/)
 
-  assert.match(searchClear, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(searchClear, backgroundIncludes('material-glass-subtle'))
   assert.match(searchClear, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(searchClear, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(searchClear, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(searchClearHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(searchClearHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(searchClearHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(searchClearHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
-  assert.match(entityType, /background:\s*var\(--material-glass-control\)/)
+  assert.match(entityType, backgroundIncludes('material-glass-control'))
   assert.match(entityType, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(entityType, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 
-  assert.match(favoriteButton, /background:\s*var\(--material-glass-sheet\)/)
+  assert.match(favoriteButton, backgroundIncludes('material-glass-sheet'))
   assert.match(favoriteButton, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(favoriteButton, /color:\s*var\(--badge-error-text\)/)
   assert.match(favoriteButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(favoriteButton, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(favoriteButtonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(favoriteButtonHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(favoriteButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(favoriteButtonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.match(favoriteButtonActive, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(favoriteButtonActive, backgroundIncludes('badge-error-bg'))
   assert.match(favoriteButtonActive, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(favoriteButtonActive, /color:\s*var\(--badge-error-text\)/)
   assert.doesNotMatch(favoriteButtonActive, /#fff|#ffffff|rgba\(255,\s*55,\s*95/i)
@@ -198,22 +209,26 @@ test('entities dark list cards reuse shared material tokens', () => {
   const darkListCardHover = cssRule(':global(:root[data-theme="dark"] .entity-list-card:hover)')
   const darkType = cssRule(':global(:root[data-theme="dark"] .entity-list-card__type)')
 
-  assert.match(darkHero, /background:\s*var\(--material-glass-elevated\)/)
+  assert.match(darkHero, backgroundIncludes('material-glass-elevated'))
   assert.match(darkHero, /border-color:\s*var\(--glass-edge-strong\)/)
   assert.doesNotMatch(darkHero, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|linear-gradient/)
 
   assert.match(darkListCard, /border-color:\s*var\(--glass-edge\)/)
-  assert.match(darkListCard, /background:\s*var\(--material-glass-elevated\)/)
+  assert.match(darkListCard, backgroundIncludes('material-glass-elevated'))
   assert.match(darkListCard, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(darkListCard, /rgba\(255,255,255/)
   assert.doesNotMatch(darkListCard, /linear-gradient\(145deg/)
 
   assert.match(darkListCardHover, /border-color:\s*var\(--glass-edge-strong\)/)
-  assert.match(darkListCardHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.match(darkListCardHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(darkListCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(darkListCardHover, /var\(--surface-card-hover\)|var\(--shadow-floating\)/)
 
-  assert.match(darkType, /background:\s*var\(--material-glass-control\)/)
+  assert.match(darkType, backgroundIncludes('material-glass-control'))
   assert.match(darkType, /border-color:\s*var\(--glass-control-border\)/)
   assert.doesNotMatch(darkType, /rgba\(255,255,255/)
+})
+
+test('entities glass backgrounds are layered with specular and noise surfaces', () => {
+  assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })

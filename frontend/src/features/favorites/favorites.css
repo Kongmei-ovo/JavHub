@@ -53,7 +53,10 @@
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -93,7 +96,10 @@
   padding: 0 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
@@ -105,7 +111,10 @@
 
 .collection-form input:focus {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -118,7 +127,10 @@
   padding: 6px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -131,7 +143,10 @@
 }
 
 .btn-mini:hover:not(:disabled) {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -139,7 +154,10 @@
 
 .btn-mini.primary,
 .btn-mini.active {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -170,7 +188,10 @@
   padding: 8px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -204,7 +225,10 @@
 /* Segmented Control - Apple Look */
 .segmented-control {
   display: inline-flex;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   padding: 4px;
   border-radius: 14px;
   box-shadow: var(--glass-control-shadow);
@@ -217,7 +241,10 @@
 
 .segment-item {
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-secondary);
   padding: 8px 20px;
   font-size: var(--type-control);
@@ -232,7 +259,10 @@
 }
 
 .segment-item:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   color: var(--text-primary);
@@ -240,7 +270,10 @@
 }
 
 .segment-item.active {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
   border: 1px solid var(--glass-active-border);
@@ -256,7 +289,10 @@
 }
 
 .segment-item.active .tab-badge {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
 }
 
 .curate-content {
@@ -311,7 +347,10 @@
   padding: 0;
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
 }
@@ -332,7 +371,10 @@
 .favorite-selectable.selected .select-check span,
 .entity-bubble.selected .entity-select-dot {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -370,7 +412,10 @@
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
   box-shadow: var(--glass-control-shadow);
@@ -383,7 +428,10 @@
 }
 
 .entity-bubble:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
@@ -391,7 +439,10 @@
 
 .entity-bubble.selected {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 
@@ -432,7 +483,10 @@
 .entity-fav-btn:hover {
   opacity: 1;
   transform: translateY(-1px) scale(1.05);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--badge-error-border);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -460,7 +514,10 @@
   margin-bottom: 24px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xl);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -482,7 +539,10 @@
 }
 
 .btn-explore {
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
   color: var(--text-primary);
   border: 1px solid var(--glass-active-border);
   padding: 14px 48px;
@@ -502,7 +562,10 @@
 
 /* Skeleton loading */
 .skeleton-card {
-  background: var(--material-glass-sheet);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-sheet);
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
