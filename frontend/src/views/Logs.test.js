@@ -16,6 +16,10 @@ function cssBlock(selector) {
   return blocks.join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  return new RegExp(`background:[\\s\\S]*var\\(${token}\\)`).test(block)
+}
+
 test('logs toolbar uses shared liquid glass controls', () => {
   const input = cssBlock('.toolbar input')
   const inputFocus = cssBlock('.toolbar input:focus')
@@ -26,20 +30,20 @@ test('logs toolbar uses shared liquid glass controls', () => {
   const dangerHover = cssBlock('.toolbar-btn.danger:hover:not(:disabled)')
 
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(input, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(input, '--material-glass-control'))
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(inputFocus, '--glass-active-material'))
   assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.match(button, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(button, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(button, '--material-glass-control'))
   assert.match(button, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(button, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(buttonHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(buttonHover, '--material-glass-control-hover'))
   assert.match(buttonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.match(primary, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(primary, '--glass-active-material'))
   assert.match(primary, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.match(danger, /background:\s*var\(--badge-error-bg\)/)
   assert.match(danger, /border-color:\s*var\(--badge-error-border\)/)
@@ -63,11 +67,11 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   const errorLevel = cssBlock('.level-error')
 
   assert.match(summaryItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(summaryItem, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(summaryItem, '--material-glass-control'))
   assert.match(summaryItem, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(summaryItem, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
 
-  assert.match(container, /background:\s*var\(--material-glass-sheet\)/)
+  assert.ok(backgroundIncludes(container, '--material-glass-sheet'))
   assert.match(container, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(container, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(container, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
@@ -76,13 +80,35 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   assert.match(logItem, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
   assert.match(empty, /background:\s*var\(--material-glass-subtle\)/)
 
-  assert.match(paginationButton, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(paginationButton, '--material-glass-control'))
   assert.match(paginationButton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(paginationButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(paginationHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(paginationHover, '--material-glass-control-hover'))
   assert.match(paginationHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
   assert.match(warningLevel, /color:\s*var\(--badge-warning-text\)/)
   assert.match(errorLevel, /color:\s*var\(--badge-error-text\)/)
   assert.doesNotMatch(`${paginationButton}\n${paginationHover}\n${warningLevel}\n${errorLevel}`, /var\(--surface-control\)|var\(--surface-control-hover\)|#ff9800|#f44336/i)
+})
+
+test('logs glass backgrounds are layered with specular and noise surfaces', () => {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  assert.doesNotMatch(source, singleLayerGlass)
+
+  const layeredBlocks = [
+    cssBlock('.toolbar input'),
+    cssBlock('.toolbar input:focus'),
+    cssBlock('.toolbar-btn'),
+    cssBlock('.toolbar-btn:hover:not(:disabled)'),
+    cssBlock('.toolbar-btn.primary'),
+    cssBlock('.activity-summary-strip > div'),
+    cssBlock('.logs-container'),
+    cssBlock('.pagination button'),
+    cssBlock('.pagination button:hover:not(:disabled)'),
+  ]
+
+  for (const block of layeredBlocks) {
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
+  }
 })

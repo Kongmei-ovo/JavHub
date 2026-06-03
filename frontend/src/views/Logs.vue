@@ -164,7 +164,7 @@ export default {
   padding: 0 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
@@ -175,7 +175,7 @@ export default {
 }
 .toolbar input:focus {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 .toolbar input { flex: 1; min-width: 180px; max-width: 300px; }
@@ -185,7 +185,7 @@ export default {
   padding: 0 18px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -196,13 +196,13 @@ export default {
   transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
 }
 .toolbar-btn:hover:not(:disabled) {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .toolbar-btn.primary {
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
@@ -231,7 +231,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -251,7 +251,7 @@ export default {
 }
 
 .logs-container {
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-surface-shadow);
@@ -282,7 +282,7 @@ export default {
 .pagination button {
   min-height: 44px;
   padding: 0 30px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
@@ -294,7 +294,7 @@ export default {
   transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
 }
 .pagination button:hover:not(:disabled) {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
