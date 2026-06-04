@@ -552,7 +552,10 @@ button.state-item {
   padding: 5px 9px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   cursor: pointer;
@@ -762,7 +765,10 @@ button.state-item {
   padding: 12px;
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-lg);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
@@ -929,7 +935,10 @@ button.state-item {
 }
 
 .action-card span {
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 .compact-row,

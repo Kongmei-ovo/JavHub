@@ -30,7 +30,7 @@ function singleLayerGlassBackgrounds(css) {
   return css
     .split('\n')
     .map((line, index) => ({ line: index + 1, text: line.trim() }))
-    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
 }
 
 test('operations page keeps heavyweight styles in an external scoped stylesheet', () => {
