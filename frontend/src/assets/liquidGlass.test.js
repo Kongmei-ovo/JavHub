@@ -261,10 +261,11 @@ test('image fallback placeholders use theme glass instead of hardcoded SVG data 
   }
 
   const fallbackBlock = cssBlock('.image-fallback')
-  assert.match(fallbackBlock, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(fallbackBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(fallbackBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(fallbackBlock, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(fallbackBlock, /color:\s*var\(--text-muted\)/)
+  assert.doesNotMatch(fallbackBlock, /background:\s*var\(--material-glass-subtle\);/)
   assert.doesNotMatch(fallbackBlock, /#|rgba\(0,\s*0,\s*0|rgba\(255,\s*255,\s*255/)
 })
 

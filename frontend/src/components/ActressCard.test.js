@@ -32,8 +32,9 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   assert.match(focus, /box-shadow:\s*0 0 0 4px rgba\(var\(--accent-rgb\), 0\.14\),\s*var\(--glass-control-shadow\),\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(focus, /var\(--shadow-floating\)/)
 
-  assert.match(media, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(media, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(media, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.doesNotMatch(media, /background:\s*var\(--material-glass-subtle\);/)
   assert.doesNotMatch(media, /rgba\(255,\s*255,\s*255,\s*0\.03\)/)
 })
 

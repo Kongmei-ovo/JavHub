@@ -108,7 +108,10 @@ const handleImgError = (e) => {
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 

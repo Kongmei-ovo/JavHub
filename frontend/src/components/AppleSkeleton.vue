@@ -29,7 +29,10 @@ const styleVars = computed(() => ({ '--skeleton-aspect-ratio': props.aspectRatio
 .apple-skeleton--card {
   border-radius: var(--radius-card);
   overflow: hidden;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

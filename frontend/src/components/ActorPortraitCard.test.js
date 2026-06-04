@@ -68,9 +68,10 @@ test('ActorPortraitCard shell and portrait well use shared Apple glass surfaces'
 
   assert.match(focusRule, /var\(--glass-active-shadow\)/)
 
-  assert.match(mediaRule, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(mediaRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(mediaRule, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(mediaRule, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.doesNotMatch(mediaRule, /background:\s*var\(--material-glass-subtle\);/)
 
   for (const rule of [cardRule, hoverRule, mediaRule]) {
     assert.doesNotMatch(rule, /var\(--surface-card\)|var\(--surface-card-hover\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
