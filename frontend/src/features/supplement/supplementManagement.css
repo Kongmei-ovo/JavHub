@@ -229,7 +229,10 @@ p {
   padding: 5px;
   margin: 4px 0 16px;
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -240,7 +243,10 @@ p {
   min-width: 96px;
   padding: 9px 16px;
   color: var(--text-secondary);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
@@ -250,7 +256,10 @@ p {
 
 .segmented-control button:hover,
 .segmented-control button:focus-visible {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
@@ -260,7 +269,10 @@ p {
 
 .segmented-control button.active {
   color: var(--text-primary);
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--glass-active-material);
   border-color: var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
 }
@@ -643,7 +655,10 @@ p {
 .diagnostics-row-head {
   color: var(--text-primary);
   font-weight: 700;
-  background: var(--glass-active-material);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 

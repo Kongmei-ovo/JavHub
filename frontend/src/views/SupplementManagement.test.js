@@ -109,22 +109,27 @@ test('supplement management uses an actor workspace with segmented panels', () =
 
 test('supplement workspace segmented controls use shared Apple glass materials', () => {
   const segmented = cssBlock(source, '.segmented-control')
-  assert.match(segmented, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(segmented, '--material-glass-control', 'supplement segmented control')
   assert.match(segmented, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(segmented, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(segmented, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
 
   const segmentButton = cssBlock(source, '.segmented-control button')
-  assert.match(segmentButton, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(segmentButton, '--material-glass-subtle', 'supplement segmented button')
   assert.match(segmentButton, /border:\s*1px solid transparent/)
   assert.match(segmentButton, /transition:\s*background var\(--motion-fast\)/)
   assert.doesNotMatch(segmentButton, /background:\s*transparent|border:\s*0|transition:\s*all/)
 
+  const hoverButton = cssBlock(source, '.segmented-control button:hover')
+  assertLayeredBackground(hoverButton, '--material-glass-control-hover', 'supplement segmented hovered button')
+  assert.match(hoverButton, /border-color:\s*var\(--glass-control-border-hover\)/)
+
   const activeButton = cssBlock(source, '.segmented-control button.active')
-  assert.match(activeButton, /background:\s*var\(--glass-active-material\)/)
+  assertLayeredBackground(activeButton, '--glass-active-material', 'supplement segmented active button')
   assert.match(activeButton, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(activeButton, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(activeButton, /inset 0 -2px 0/)
+  assert.doesNotMatch([segmented, segmentButton, hoverButton, activeButton].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|material-glass-subtle|material-glass-control-hover|glass-active-material)\);.*$/gm)
 })
 
 test('supplement management exposes source health and manual correction controls', () => {
@@ -350,8 +355,9 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   }
   assert.doesNotMatch(diagnosticsItemBlocks.join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
-  assert.match(headRow, /background:\s*var\(--glass-active-material\)/)
+  assertLayeredBackground(headRow, '--glass-active-material', 'supplement diagnostics header row')
   assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(headRow, /^.*background:\s*var\(--glass-active-material\);.*$/gm)
   assert.match(dangerButton, /color:\s*var\(--badge-error-text\)/)
   assert.match(dangerButton, /border-color:\s*var\(--badge-error-border\)/)
   assert.doesNotMatch(dangerButton, /#ff6b87|rgba\(255,\s*107,\s*135/i)
