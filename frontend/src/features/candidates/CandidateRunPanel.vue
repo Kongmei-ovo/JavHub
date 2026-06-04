@@ -71,7 +71,7 @@ export default {
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
   padding: 16px;
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -110,7 +110,7 @@ export default {
   padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
 }
 .candidate-run-main {

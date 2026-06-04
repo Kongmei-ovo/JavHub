@@ -481,17 +481,17 @@ export default {
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--glass-edge); flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .back-btn {
-  display: flex; align-items: center; gap: 4px; min-height: 44px; background: var(--material-glass-control);
+  display: flex; align-items: center; gap: 4px; min-height: 44px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border); color: var(--text-secondary); font-size: 13px; cursor: pointer;
   padding: 6px 12px; border-radius: var(--radius-sm); box-shadow: var(--glass-control-shadow); flex-shrink: 0;
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.back-btn:hover { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
+.back-btn:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
 .back-btn:active { transform: translateY(0) scale(0.99); }
 .entity-fav-btn {
-  width: 44px; height: 44px; border-radius: 50%; background: var(--material-glass-control);
+  width: 44px; height: 44px; border-radius: 50%; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border); display: flex; align-items: center; justify-content: center;
   color: var(--text-muted); cursor: pointer; box-shadow: var(--glass-control-shadow);
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
@@ -499,12 +499,12 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.entity-fav-btn:hover { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
-.entity-fav-btn.is-active { color: var(--badge-error-text); border-color: var(--glass-active-border); background: var(--glass-active-material); box-shadow: var(--glass-active-shadow); }
-.entity-fav-btn.is-active:hover { background: var(--glass-active-material); border-color: var(--glass-active-border); color: var(--badge-error-text); box-shadow: var(--glass-active-shadow); }
+.entity-fav-btn:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
+.entity-fav-btn.is-active { color: var(--badge-error-text); border-color: var(--glass-active-border); background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); box-shadow: var(--glass-active-shadow); }
+.entity-fav-btn.is-active:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); color: var(--badge-error-text); box-shadow: var(--glass-active-shadow); }
 .entity-fav-btn:active { transform: translateY(0) scale(0.96); }
 .entity-sub-btn {
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
@@ -522,19 +522,19 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .entity-sub-btn:hover {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .entity-sub-btn.is-active {
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
-.entity-sub-btn.is-active:hover { background: var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
+.entity-sub-btn.is-active:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
 .entity-sub-btn:active { transform: translateY(0) scale(0.99); }
 .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
@@ -546,34 +546,34 @@ export default {
 .sort-pill {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   min-height: var(--filter-control-height); width: 72px;
-  padding: 0 12px; background: var(--material-glass-control); border: 1px solid var(--glass-control-border);
+  padding: 0 12px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius); color: var(--text-secondary); font-size: 13px; font-weight: 500;
   box-shadow: var(--glass-control-shadow);
   cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast); user-select: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.sort-pill:hover { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
+.sort-pill:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
 .sort-pill.active,
-.sort-pill.random.active { background: var(--glass-active-material); border-color: var(--glass-active-border); color: var(--text-primary); box-shadow: var(--glass-active-shadow); }
+.sort-pill.random.active { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); color: var(--text-primary); box-shadow: var(--glass-active-shadow); }
 .sort-pill.active:hover,
-.sort-pill.random.active:hover { background: var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
+.sort-pill.random.active:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
 .sort-pill:active { transform: translateY(0) scale(0.99); }
 .pill-label { line-height: 1; }
 .pill-arrow, .pill-check { opacity: 0.8; flex-shrink: 0; }
 .chronicle-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: var(--filter-control-width); min-height: var(--filter-control-height);
-  padding: 0 12px; background: var(--material-glass-control); border: 1px solid var(--glass-control-border);
+  padding: 0 12px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius); color: var(--text-muted); font-size: 12px; font-weight: 600;
   box-shadow: var(--glass-control-shadow);
   cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast); user-select: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.chronicle-btn:hover { background: var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
-.chronicle-btn.active { background: var(--glass-active-material); border-color: var(--glass-active-border); color: var(--text-primary); box-shadow: var(--glass-active-shadow); }
-.chronicle-btn.active:hover { background: var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
+.chronicle-btn:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); transform: translateY(-1px); }
+.chronicle-btn.active { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); color: var(--text-primary); box-shadow: var(--glass-active-shadow); }
+.chronicle-btn.active:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
 .chronicle-btn:active { transform: translateY(0) scale(0.99); }
 .result-count { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 .version-filter {
@@ -587,7 +587,7 @@ export default {
 .pagination-bar { display: flex; justify-content: center; align-items: center; gap: 8px; padding-block: 12px; }
 .pagination-bar.bottom { border-top: 1px solid var(--glass-edge); }
 .page-btn {
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 12px;
@@ -602,7 +602,7 @@ export default {
 .page-btn:hover:not(:disabled) {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }

@@ -44,7 +44,7 @@ export default {
   aspect-ratio: 16/9;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   cursor: pointer;
   border: 1px solid var(--glass-control-border);
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
@@ -53,7 +53,7 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .gallery-item:hover {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-2px) scale(1.01);
   box-shadow: var(--glass-control-shadow-hover);

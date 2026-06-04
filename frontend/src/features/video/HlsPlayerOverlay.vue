@@ -55,8 +55,8 @@ export default {
 
 <style scoped>
 .vp-overlay {
-  --vp-control-bg: var(--material-glass-control);
-  --vp-control-bg-hover: var(--material-glass-control-hover);
+  --vp-control-bg: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  --vp-control-bg-hover: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   --vp-control-border: var(--glass-control-border);
   --vp-control-border-hover: var(--glass-control-border-hover);
   --vp-control-shadow: var(--glass-control-shadow);
@@ -86,5 +86,5 @@ export default {
 .vp-speed-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .vp-speed-btn { font-size: 13px; padding: 5px 14px; background: var(--vp-control-bg); border: var(--stroke-pro) solid var(--vp-control-border); border-radius: 40px; color: var(--text-secondary); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); cursor: pointer; transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast); }
 .vp-speed-btn:hover { background: var(--vp-control-bg-hover); border-color: var(--vp-control-border-hover); box-shadow: var(--vp-control-shadow-hover); color: var(--text-primary); }
-.vp-speed-btn.active { background: var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); color: var(--text-primary); font-weight: 700; }
+.vp-speed-btn.active { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); color: var(--text-primary); font-weight: 700; }
 </style>

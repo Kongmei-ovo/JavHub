@@ -21,6 +21,17 @@ function cssBlock(content, selector) {
   return match[2]
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
+function assertLayeredBackground(block, token, name) {
+  assert.ok(backgroundIncludes(block, token), `${name} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${name} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
+}
+
 test('supplement management shows and controls actor context when routed from an actor', () => {
   assert.match(source, /v-if="actorContext"/)
   assert.match(source, /class="actor-context-card"/)
@@ -235,13 +246,14 @@ test('supplement actor picker keeps search glass in the lazy child', () => {
   const pickerSearchFocus = cssBlock(actorPicker, '.search-shell:focus-within')
 
   assert.doesNotMatch(actorPicker, /var\(--surface-control\)|var\(--surface-input-focus\)|var\(--active-border\)/)
-  assert.match(pickerSearch, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(pickerSearch, '--material-glass-control', 'actor picker search')
   assert.match(pickerSearch, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(pickerSearch, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(pickerSearch, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(pickerSearchFocus, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(pickerSearchFocus, /background:\s*var\(--glass-active-material\)/)
+  assertLayeredBackground(pickerSearchFocus, '--glass-active-material', 'actor picker focused search')
   assert.match(pickerSearchFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch(actorPicker, /^.*background:\s*var\(--(?:material-glass-control|glass-active-material)\);.*$/gm)
 
   assert.doesNotMatch(source, /\.supplement-hero\s*\{/)
   assert.doesNotMatch(source, /\.actor-filter-bar\s*\{/)

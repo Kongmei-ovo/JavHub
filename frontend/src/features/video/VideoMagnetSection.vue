@@ -48,7 +48,7 @@ export default {
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-control-border);
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
@@ -58,7 +58,7 @@ export default {
 }
 .magnet-item:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -74,7 +74,7 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: var(--compact-toolbar-height);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   padding: 8px 18px;
   border-radius: var(--radius-control);
@@ -89,16 +89,32 @@ export default {
 }
 .btn-copy:hover,
 .btn-download:hover {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .btn-copy:active,
 .btn-download:active { transform: translateY(0) scale(0.98); }
-.btn-download { background: var(--glass-active-material); border-color: var(--glass-active-border); }
-.btn-download:hover { background: var(--glass-active-material); }
-.no-magnets { text-align: center; padding: 28px; color: var(--text-muted); font-size: var(--type-body); border: 1px dashed var(--glass-control-border); border-radius: var(--radius-lg); background: var(--material-glass-control); box-shadow: var(--glass-control-shadow); }
+.btn-download {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--glass-active-border);
+}
+.btn-download:hover {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+}
+.no-magnets {
+  text-align: center;
+  padding: 28px;
+  color: var(--text-muted);
+  font-size: var(--type-body);
+  border: 1px dashed var(--glass-control-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
 .skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }

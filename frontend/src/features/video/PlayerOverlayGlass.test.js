@@ -14,6 +14,17 @@ function cssBlock(source, selector) {
   return match[1]
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
+function customPropertyIncludes(block, property, token) {
+  const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = block.match(new RegExp(`${escaped}:\\s*([^;]+);`))
+  return Boolean(match && match[1].includes(token))
+}
+
 for (const [name, source] of overlaySources) {
   test(`${name} uses shared Apple glass player chrome`, () => {
     const overlayBlock = cssBlock(source, '.vp-overlay')
@@ -26,8 +37,10 @@ for (const [name, source] of overlaySources) {
     const speedHoverBlock = cssBlock(source, '.vp-speed-btn:hover')
     const activeBlock = cssBlock(source, '.vp-speed-btn.active')
 
-    assert.match(overlayBlock, /--vp-control-bg:\s*var\(--material-glass-control\)/)
-    assert.match(overlayBlock, /--vp-control-bg-hover:\s*var\(--material-glass-control-hover\)/)
+    assert.ok(customPropertyIncludes(overlayBlock, '--vp-control-bg', '--material-glass-control'))
+    assert.match(overlayBlock, /--vp-control-bg:[^;]*var\(--surface-specular-edge\)[^;]*var\(--surface-noise\)[^;]*var\(--material-glass-control\)/)
+    assert.ok(customPropertyIncludes(overlayBlock, '--vp-control-bg-hover', '--material-glass-control-hover'))
+    assert.match(overlayBlock, /--vp-control-bg-hover:[^;]*var\(--surface-specular-edge-strong\)[^;]*var\(--surface-noise\)[^;]*var\(--material-glass-control-hover\)/)
     assert.match(overlayBlock, /--vp-control-border:\s*var\(--glass-control-border\)/)
     assert.match(overlayBlock, /--vp-control-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(overlayBlock, /--vp-sheet-bg:\s*var\(--material-glass-sheet\)/)
@@ -36,6 +49,8 @@ for (const [name, source] of overlaySources) {
     assert.match(overlayBlock, /background:\s*var\(--surface-scrim,\s*var\(--scrim\)\)/)
     assert.match(overlayBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
     assert.doesNotMatch(overlayBlock, /rgba\(0,\s*0,\s*0,\s*0\.7\)|blur\(32px\)|saturate\(180%\)/)
+    assert.doesNotMatch(overlayBlock, /--vp-control-bg:\s*var\(--material-glass-control\);/)
+    assert.doesNotMatch(overlayBlock, /--vp-control-bg-hover:\s*var\(--material-glass-control-hover\);/)
     assert.doesNotMatch(source, /--vp-player-bg:\s*#000|#000000/)
 
     for (const block of [closeBlock, infoBlock, speedBlock]) {
@@ -61,8 +76,11 @@ for (const [name, source] of overlaySources) {
     assert.match(titleBlock, /letter-spacing:\s*0/)
     assert.doesNotMatch(titleBlock, /text-transform:\s*uppercase/)
 
-    assert.match(activeBlock, /background:\s*var\(--glass-active-material\)/)
+    assert.ok(backgroundIncludes(activeBlock, '--glass-active-material'))
+    assert.match(activeBlock, /var\(--surface-specular-edge-strong\)/)
+    assert.match(activeBlock, /var\(--surface-noise\)/)
     assert.match(activeBlock, /border-color:\s*var\(--glass-active-border\)/)
     assert.match(activeBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
+    assert.doesNotMatch(source, /^\.vp-speed-btn\.active\s*\{\s*background:\s*var\(--glass-active-material\);/m)
   })
 }
