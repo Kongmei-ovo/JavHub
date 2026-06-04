@@ -279,27 +279,41 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--bg-secondary\)|var\(--white-20\)|rgba\(255,\s*107,\s*135|#ff6b87|var\(--active-border\)/)
   assert.doesNotMatch(jobList, /var\(--surface-control\)|var\(--bg-secondary\)|var\(--white-20\)/)
 
-  assert.match(input, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(input, '--material-glass-control', 'supplement filter input')
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
+  assertLayeredBackground(inputFocus, '--glass-active-material', 'supplement focused filter input')
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch([input, inputFocus].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|glass-active-material)\);.*$/gm)
 
-  for (const block of [movieRow, deepJobRow, jobRow, emptyInner]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+  for (const block of [movieRow, deepJobRow]) {
+    assertLayeredBackground(block, '--material-glass-control', 'supplement workspace row')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
+  assertLayeredBackground(emptyInner, '--material-glass-control', 'supplement inner empty panel')
+  assert.match(emptyInner, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(emptyInner, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(emptyInner, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch([movieRow, deepJobRow, emptyInner].join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
-  for (const block of [workspaceAvatar, deepJobAvatar, jobAvatar]) {
-    assert.match(block, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(jobRow, '--material-glass-control', 'supplement job row')
+  assert.match(jobRow, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(jobRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(jobRow, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(jobList, /^.*background:\s*var\(--material-glass-control\);.*$/gm)
+
+  const avatarBlocks = [workspaceAvatar, deepJobAvatar, jobAvatar]
+  for (const block of avatarBlocks) {
+    assertLayeredBackground(block, '--material-glass-subtle', 'supplement workspace avatar')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
+  assert.doesNotMatch(avatarBlocks.join('\n'), /^.*background:\s*var\(--material-glass-subtle\);.*$/gm)
 
   for (const block of [sourceSpinner, jobSpinner]) {
     assert.match(block, /border:\s*2px solid var\(--glass-control-border\)/)
@@ -317,21 +331,24 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   const dangerButton = cssBlock(source, '.btn.danger')
   const manualAction = cssBlock(source, '.manual-action-item')
 
-  assert.match(header, /background:\s*var\(--material-glass-sheet\)/)
+  assertLayeredBackground(header, '--material-glass-sheet', 'supplement diagnostics header')
   assert.match(header, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
   assert.match(header, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(header, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 
   assert.match(table, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(table, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(table, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(table, '--material-glass-control', 'supplement diagnostics table')
+  assert.doesNotMatch([header, table].join('\n'), /^.*background:\s*var\(--(?:material-glass-sheet|material-glass-control)\);.*$/gm)
 
-  for (const block of [row, identityChip, detailSourceItem, manualAction]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+  const diagnosticsItemBlocks = [row, identityChip, detailSourceItem, manualAction]
+  for (const block of diagnosticsItemBlocks) {
+    assertLayeredBackground(block, '--material-glass-control', 'supplement diagnostics item')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
+  assert.doesNotMatch(diagnosticsItemBlocks.join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
   assert.match(headRow, /background:\s*var\(--glass-active-material\)/)
   assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)

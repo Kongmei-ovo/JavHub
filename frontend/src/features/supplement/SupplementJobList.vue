@@ -115,7 +115,10 @@ export default {
   padding: 13px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -136,7 +139,10 @@ export default {
   height: 42px;
   overflow: hidden;
   color: var(--text-secondary);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
   box-shadow: var(--glass-inner-shadow);
