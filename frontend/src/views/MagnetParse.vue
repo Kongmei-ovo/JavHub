@@ -298,7 +298,7 @@ export default {
 .parse-console {
   width: 100%;
   padding: clamp(18px, 2.5vw, 24px);
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-surface-shadow);
@@ -407,7 +407,7 @@ export default {
   padding: 0;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
@@ -433,16 +433,16 @@ export default {
   padding: 14px 16px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
-.magnet-row:nth-child(even) { background: var(--material-glass-control); }
+.magnet-row:nth-child(even) { background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); }
 .magnet-row:hover {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -523,7 +523,7 @@ export default {
   padding: 18px 20px;
   border: 1px solid var(--badge-warning-border);
   border-radius: var(--radius-card);
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));

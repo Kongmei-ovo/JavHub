@@ -209,9 +209,9 @@ test('active states resolve to refractive glass rather than flat rgba tint', () 
 })
 
 test('segmented controls and settings rows use shared glass materials', () => {
-  assert.match(genres, /\.shuffle-btn\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--glass-active-material\)/)
+  assert.match(genres, /\.shuffle-btn\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 
   assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)

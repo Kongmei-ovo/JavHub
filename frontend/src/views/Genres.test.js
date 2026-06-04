@@ -9,6 +9,10 @@ function cssBlock(selector) {
   return source.match(new RegExp(`${escaped}\\s*\\{[^}]*\\}`))?.[0] || ''
 }
 
+function backgroundIncludes(block, token) {
+  return new RegExp(`background:[\\s\\S]*var\\(${token}\\)`).test(block)
+}
+
 test('genres page only loads data needed for the initial tab', () => {
   assert.match(source, /const initialLoads = \[\]/)
   assert.match(source, /if \(this\.activeTab === 'genre'\) initialLoads\.push\(this\.loadCategories\(\)\)/)
@@ -40,7 +44,7 @@ test('genres tab state is restored from and written to the route query', () => {
 
 test('genres actress cards use shared Apple glass pressable media chrome', () => {
   const card = cssBlock('.actress-card')
-  assert.match(card, /background:\s*var\(--material-glass-subtle\)/)
+  assert.ok(backgroundIncludes(card, '--material-glass-subtle'))
   assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -48,12 +52,12 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   assert.doesNotMatch(card, /background:\s*transparent|border:\s*0|transition:\s*all/)
 
   const hover = cssBlock('.actress-card:hover')
-  assert.match(hover, /background:\s*var\(--material-glass-control-hover\)/)
+  assert.ok(backgroundIncludes(hover, '--material-glass-control-hover'))
   assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
   const avatar = cssBlock('.actress-avatar')
-  assert.match(avatar, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(avatar, '--material-glass-control'))
   assert.match(avatar, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(avatar, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 })
@@ -76,4 +80,29 @@ test('genres loading and actress skeletons use shared Apple glass materials', ()
 
   assert.match(shimmer, /background:\s*linear-gradient\(100deg,\s*transparent 0%,\s*var\(--material-glass-control-hover\) 46%,\s*transparent 72%\)/)
   assert.doesNotMatch(shimmer, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
+})
+
+test('genres glass backgrounds are layered with specular and noise surfaces', () => {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  assert.doesNotMatch(source, singleLayerGlass)
+
+  const layeredBlocks = [
+    cssBlock('.shuffle-btn'),
+    cssBlock('.shuffle-btn:hover:not(:disabled)'),
+    cssBlock('.tab-bar'),
+    cssBlock('.tab-btn:hover'),
+    cssBlock('.tab-btn.active'),
+    cssBlock('.actress-card'),
+    cssBlock('.actress-card:hover'),
+    cssBlock('.actress-avatar'),
+    cssBlock('.tag-cloud'),
+    cssBlock('.bubble'),
+    cssBlock('.bubble:hover'),
+    cssBlock('.bubble.active'),
+  ]
+
+  for (const block of layeredBlocks) {
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
+  }
 })
