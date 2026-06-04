@@ -47,7 +47,10 @@
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
   color: var(--text-secondary);
@@ -184,7 +187,10 @@
 }
 
 .form-slot {
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border-radius: var(--radius-md);
   padding: 24px;
   border: 1px solid var(--glass-control-border);
@@ -356,7 +362,10 @@
   padding: 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 .javinfo-runtime-row {
@@ -478,14 +487,20 @@
   padding: 20px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
 .preference-section {
   padding: 18px;
   border-radius: 22px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
 }
@@ -569,7 +584,10 @@
   padding: 4px 9px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
@@ -649,7 +667,10 @@
   padding: 0 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
@@ -689,7 +710,10 @@
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -729,7 +753,10 @@
   padding: 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 .tuning-copy {
@@ -782,7 +809,10 @@
   padding: 10px;
   border: 1px dashed var(--glass-control-border);
   border-radius: 12px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 .file-input {
@@ -817,7 +847,10 @@
   padding: 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 

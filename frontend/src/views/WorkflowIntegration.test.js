@@ -68,6 +68,10 @@ const videoModal = [
 ].join('\n')
 const actorPortraitCard = readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8')
 const mainCss = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
+
+function layeredBackground(token) {
+  return new RegExp(`background:\\s*var\\(--surface-specular-edge(?:-strong)?\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
+}
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const displayLangSource = readFileSync(new URL('../utils/displayLang.js', import.meta.url), 'utf8')
 const translationProviders = readFileSync(new URL('../utils/translationProviders.js', import.meta.url), 'utf8')
@@ -610,7 +614,7 @@ test('appearance controls keep compact state without discovery material parsing'
   assert.doesNotMatch(config, /class="theme-option"/)
   assert.doesNotMatch(config, /<span class="setting-title">全局主题<\/span>/)
   assert.doesNotMatch(config, /class="preference-section apple-surface"/)
-  assert.match(config, /\.preference-stack\s*\{[\s\S]*background: var\(--material-glass-subtle\)/)
+  assert.match(config, /\.preference-stack\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--glass-control-border\)/)
   assert.doesNotMatch(config, /\.preference-stack\s*\{[\s\S]*background: var\(--bg-secondary\)/)
   assert.doesNotMatch(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--border-light\)/)
@@ -654,7 +658,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.match(genresTabBlock, /var\(--glass-active-shadow\)/)
 
   const segmentedBaseBlock = config.match(/\.segmented-mini button\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(segmentedBaseBlock, /background: var\(--material-glass-subtle\)/)
+  assert.match(segmentedBaseBlock, layeredBackground('material-glass-subtle'))
   assert.match(segmentedBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const segmentedActiveBlock = config.match(/\.segmented-mini button\.active\s*\{[^}]*\}/)?.[0] || ''
@@ -662,7 +666,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.match(segmentedActiveBlock, /var\(--glass-active-shadow\)/)
 
   const settingsTabBaseBlock = config.match(/\.tab-item\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(settingsTabBaseBlock, /background: var\(--material-glass-subtle\)/)
+  assert.match(settingsTabBaseBlock, layeredBackground('material-glass-subtle'))
   assert.match(settingsTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const settingsTabActiveBlock = config.match(/\.tab-item\.active\s*\{[^}]*\}/)?.[0] || ''
