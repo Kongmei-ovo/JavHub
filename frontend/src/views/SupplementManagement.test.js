@@ -386,31 +386,35 @@ test('supplement source diagnostics use shared Apple glass materials', () => {
   assert.match(diagnosticsOverlay, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(diagnosticsOverlay, /z-index:\s*\d+|rgba\(0,\s*0,\s*0/)
 
-  assert.match(input, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(input, '--material-glass-control', 'supplement source filter input')
   assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(input, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(inputFocus, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(inputFocus, /background:\s*var\(--glass-active-material\)/)
+  assertLayeredBackground(inputFocus, '--glass-active-material', 'supplement source focused filter input')
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.doesNotMatch([input, inputFocus].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|glass-active-material)\);.*$/gm)
 
   for (const block of [avatarPanel, smokeSummary, smokeHistory, sourceCard]) {
-    assert.match(block, /background:\s*var\(--material-glass-sheet\)/)
+    assertLayeredBackground(block, '--material-glass-sheet', 'supplement source sheet')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-surface-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   }
+  assert.doesNotMatch([avatarPanel, smokeSummary, smokeHistory, sourceCard].join('\n'), /^.*background:\s*var\(--material-glass-sheet\);.*$/gm)
 
   for (const block of [avatarMetric, smokeRun, smokeCard, budgetMeter]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assertLayeredBackground(block, '--material-glass-control', 'supplement source control')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
+  assert.doesNotMatch([avatarMetric, smokeRun, smokeCard, budgetMeter].join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
-  assert.match(smokeRunHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assertLayeredBackground(smokeRunHover, '--material-glass-control-hover', 'supplement source hovered run')
   assert.match(smokeRunHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(smokeRunHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.doesNotMatch(smokeRunHover, /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
   assert.match(smokeCardFailed, /border-color:\s*var\(--badge-error-border\)/)
 
   for (const block of [miniSpinner, largeSpinner]) {
