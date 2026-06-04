@@ -22,6 +22,17 @@ function cssBlock(content, selector) {
   return cssBlocks(content, selector).join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
+function assertLayeredBackground(block, token, name) {
+  assert.ok(backgroundIncludes(block, token), `${name} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${name} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
+}
+
 test('inventory page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/inventory\/inventory\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 520, 'Inventory.vue should stay below 520 lines')
@@ -49,23 +60,27 @@ test('inventory controls use shared Apple glass materials', () => {
   const dialogHeader = cssBlock(source, '.dialog-header')
   const closeButton = cssBlock(source, '.close-btn')
 
-  for (const block of [searchBox, searchClear, inlineLink, pageButton, jumpInput, jumpButton, jobItem, closeButton]) {
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+  const controlBlocks = [searchBox, searchClear, inlineLink, pageButton, jumpInput, jumpButton, jobItem, closeButton]
+  for (const block of controlBlocks) {
+    assertLayeredBackground(block, '--material-glass-control', 'inventory control')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
   }
+  assert.doesNotMatch(controlBlocks.join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
   assert.match(searchBox, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(searchFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(searchFocus, /background:\s*var\(--material-glass-control-hover\)/)
+  assertLayeredBackground(searchFocus, '--material-glass-control-hover', 'inventory focused search')
   assert.match(searchFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   for (const block of [pageButtonHover, jumpButtonHover]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assertLayeredBackground(block, '--material-glass-control-hover', 'inventory hovered control')
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
+  assert.doesNotMatch([searchFocus, pageButtonHover, jumpButtonHover].join('\n'), /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
 
+  assertLayeredBackground(jobsDialog, '--material-glass-sheet', 'inventory jobs dialog')
   assert.match(jobsDialog, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(jobsDialog, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
   assert.match(jobsDialog, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
@@ -89,22 +104,23 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
   const skeletonCover = cssBlock(source, '.skeleton-cover')
   const skeletonLine = cssBlock(source, '.skeleton-line')
 
-  assert.match(actorCard, /background:\s*var\(--material-glass-control\)/)
+  assertLayeredBackground(actorCard, '--material-glass-control', 'inventory actor card')
   assert.match(actorCard, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(actorCard, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(actorCard, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(actorCardHover, /background:\s*var\(--material-glass-control-hover\)/)
+  assertLayeredBackground(actorCardHover, '--material-glass-control-hover', 'inventory hovered actor card')
   assert.match(actorCardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(actorCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
-  assert.match(actorCover, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(actorCover, '--material-glass-subtle', 'inventory actor cover')
   assert.match(actorCover, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
 
   for (const block of [skeletonCover, skeletonLine]) {
-    assert.match(block, /background:\s*var\(--material-glass-subtle\)/)
+    assertLayeredBackground(block, '--material-glass-subtle', 'inventory skeleton')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.doesNotMatch(block, /var\(--bg-card-hover\)|var\(--surface-card-hover\)|rgba\(255,\s*255,\s*255/)
   }
+  assert.doesNotMatch([actorCard, actorCardHover, actorCover, skeletonCover, skeletonLine].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-subtle)\);.*$/gm)
 
   for (const block of [actorCard, actorCardHover, actorCover]) {
     assert.doesNotMatch(block, /var\(--bg-card\)|var\(--bg-secondary\)|var\(--shadow-card\)/)

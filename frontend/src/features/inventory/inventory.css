@@ -46,7 +46,10 @@
   padding: 5px 10px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--link-text);
   font-size: 13px;
   cursor: pointer;
@@ -60,7 +63,10 @@
 }
 .inline-link:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .snapshot-warn {
@@ -85,7 +91,10 @@
 .search-box {
   display: flex;
   align-items: center;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-control);
   padding: 0 12px;
@@ -98,7 +107,10 @@
 }
 .search-box:focus-within {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-active-shadow);
 }
 .search-icon {
@@ -117,7 +129,10 @@
   color: var(--text-primary);
 }
 .search-clear {
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
   color: var(--text-muted);
@@ -129,7 +144,10 @@
 }
 .search-clear:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -183,7 +201,10 @@
   gap: 16px;
 }
 .actor-card {
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -194,7 +215,10 @@
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .actor-card:hover {
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-4px);
   box-shadow: var(--glass-control-shadow-hover);
@@ -204,7 +228,10 @@
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border-bottom: 1px solid var(--glass-control-border);
 }
 .actor-cover img {
@@ -256,7 +283,10 @@
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 3/4;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   position: relative;
   overflow: hidden;
@@ -271,7 +301,10 @@
 }
 .skeleton-line {
   height: 12px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   border-radius: 6px;
   margin-bottom: 6px;
@@ -295,7 +328,10 @@
   padding: 12px 0 16px;
 }
 .page-btn {
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 5px 10px;
@@ -308,7 +344,10 @@
 .page-btn:hover:not(:disabled) {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .page-btn:disabled {
@@ -333,14 +372,20 @@
   border-radius: var(--radius-sm);
   font-size: 12px;
   text-align: center;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .jump-input:focus {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-active-shadow);
   outline: none;
 }
@@ -349,7 +394,10 @@
   -webkit-appearance: none;
 }
 .jump-btn {
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 4px 10px;
@@ -362,7 +410,10 @@
 .jump-btn:hover {
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
@@ -373,7 +424,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--material-glass-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-control-shadow);
@@ -390,7 +444,11 @@
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .jobs-dialog {
-  background: var(--material-glass-sheet); border: 1px solid var(--glass-edge); border-radius: var(--radius-lg); width: min(600px, calc(100vw - 32px)); max-height: 80vh;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge); border-radius: var(--radius-lg); width: min(600px, calc(100vw - 32px)); max-height: 80vh;
   display: flex; flex-direction: column;
   box-shadow: var(--shadow-sheet), var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
@@ -404,13 +462,20 @@
 .close-btn {
   width: var(--touch-target);
   height: var(--touch-target);
-  background: var(--material-glass-control); border: 1px solid var(--glass-control-border); border-radius: 50%; font-size: 24px; cursor: pointer; color: var(--text-muted);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  border: 1px solid var(--glass-control-border); border-radius: 50%; font-size: 24px; cursor: pointer; color: var(--text-muted);
   box-shadow: var(--glass-control-shadow);
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
 .close-btn:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: rotate(90deg);
