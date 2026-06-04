@@ -226,7 +226,7 @@ onMounted(async () => {
   min-height: 44px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -238,7 +238,7 @@ onMounted(async () => {
 }
 .back-btn:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
@@ -263,7 +263,7 @@ onMounted(async () => {
 .mapping-link {
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--link-text);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -278,7 +278,7 @@ onMounted(async () => {
 }
 .mapping-link:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   text-decoration-color: var(--link-underline-hover);
 }
@@ -290,7 +290,7 @@ onMounted(async () => {
   padding: 4px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -301,7 +301,7 @@ onMounted(async () => {
   padding: 8px 20px;
   border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -313,14 +313,14 @@ onMounted(async () => {
 .tab-btn:hover {
   color: var(--text-primary);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .tab-btn.active {
   color: var(--text-primary);
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
   font-weight: 600;
 }
@@ -339,7 +339,7 @@ onMounted(async () => {
 .video-card {
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -350,7 +350,7 @@ onMounted(async () => {
 .video-card:hover {
   transform: translateY(-2px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .video-cover {
@@ -377,7 +377,7 @@ onMounted(async () => {
   margin-top: 6px;
   border: 1px solid var(--glass-control-border);
   border-radius: 10px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -391,7 +391,7 @@ onMounted(async () => {
 .candidate-btn:hover {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .candidate-link { text-align: center; margin: 20px 0; }

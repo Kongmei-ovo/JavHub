@@ -20,6 +20,11 @@ function cssBlock(content, selector) {
   return cssBlocks(content, selector).join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
 test('inventory actor workspace uses shared Apple glass controls', () => {
   const backButton = cssBlock(source, '.back-btn')
   const mappingBanner = cssBlock(source, '.mapping-banner')
@@ -39,7 +44,9 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
 
   for (const block of [backButton, mappingLink, tabButton, videoCard, candidateButton]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control'))
+    assert.match(block, /var\(--surface-specular-edge\)/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
     assert.doesNotMatch(block, /background:\s*(?:none|transparent)/)
@@ -47,16 +54,22 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   }
 
   assert.match(tabBar, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(tabBar, /background:\s*var\(--material-glass-sheet\)/)
+  assert.ok(backgroundIncludes(tabBar, '--material-glass-sheet'))
+  assert.match(tabBar, /var\(--surface-specular-edge-strong\)/)
+  assert.match(tabBar, /var\(--surface-noise\)/)
   assert.match(tabBar, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 
   for (const block of [tabHover, videoCardHover, candidateButtonHover]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
+    assert.match(block, /var\(--surface-specular-edge-strong\)/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
 
-  assert.match(tabActive, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(tabActive, '--glass-active-material'))
+  assert.match(tabActive, /var\(--surface-specular-edge-strong\)/)
+  assert.match(tabActive, /var\(--surface-noise\)/)
   assert.match(tabActive, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(tabActive, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
@@ -88,5 +101,32 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
     emptyState
   ]) {
     assert.doesNotMatch(block, /#fff|#ffffff|rgba\(255,\s*255,\s*255|rgba\(255,255,255/i)
+  }
+})
+
+test('inventory actor glass backgrounds are layered with specular and noise surfaces', () => {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0])
+
+  assert.deepEqual(offenders, [], 'inventory actor primary glass surfaces should not use single-layer glass backgrounds')
+
+  for (const [selector, token] of [
+    ['.back-btn', '--material-glass-control'],
+    ['.back-btn:hover', '--material-glass-control-hover'],
+    ['.mapping-link', '--material-glass-control'],
+    ['.mapping-link:hover', '--material-glass-control-hover'],
+    ['.tab-bar', '--material-glass-sheet'],
+    ['.tab-btn', '--material-glass-control'],
+    ['.tab-btn:hover', '--material-glass-control-hover'],
+    ['.tab-btn.active', '--glass-active-material'],
+    ['.video-card', '--material-glass-control'],
+    ['.video-card:hover', '--material-glass-control-hover'],
+    ['.candidate-btn', '--material-glass-control'],
+    ['.candidate-btn:hover', '--material-glass-control-hover'],
+  ]) {
+    const block = cssBlock(source, selector)
+    assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
+    assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
+    assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
   }
 })

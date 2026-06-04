@@ -23,7 +23,7 @@
   padding: 16px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--material-glass-elevated);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 .summary-card strong { display: block; font-size: var(--type-workbench-title); color: var(--text-primary); }
@@ -37,7 +37,7 @@
   padding: 12px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -59,13 +59,13 @@
   overflow-x: auto;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
 }
 .tab-btn {
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
   padding: 10px 16px;
   cursor: pointer;
@@ -74,14 +74,14 @@
 }
 .tab-btn:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .tab-btn.active {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
@@ -99,7 +99,7 @@
   gap: 6px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
   padding: 7px 11px;
   cursor: pointer;
@@ -109,14 +109,14 @@
 }
 .filter-chip:hover {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
 .filter-chip.active {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
 }
@@ -129,7 +129,7 @@
   flex: 1;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   padding: 8px 10px;
   box-shadow: var(--glass-control-shadow);
@@ -137,7 +137,7 @@
 }
 .search-input:focus {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.09);
   outline: none;
 }
@@ -149,7 +149,7 @@
   padding: 14px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--material-glass-elevated);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 .actor-side { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
@@ -164,7 +164,7 @@
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-inner-shadow);
 }
 .avatar img,
@@ -212,7 +212,7 @@
   padding: 10px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-elevated);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 .candidate-card.high { border-color: var(--badge-success-border); }
@@ -294,7 +294,7 @@
 .confidence-badge {
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   font-size: 12px;
   padding: 3px 8px;
@@ -330,7 +330,7 @@
   margin-bottom: 8px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-elevated);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
 }
 .mapping-target {
@@ -343,7 +343,7 @@
 .status-pill {
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   padding: 3px 8px;
   color: var(--text-secondary);
   font-size: 12px;
@@ -355,7 +355,7 @@
   margin-left: 6px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   padding: 1px 6px;
   color: var(--text-secondary);
   font-size: 11px;

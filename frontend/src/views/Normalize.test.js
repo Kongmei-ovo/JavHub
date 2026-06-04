@@ -13,6 +13,11 @@ function cssRule(selector) {
   return match[1]
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
 test('normalize page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/normalize\/normalize\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 600, 'Normalize.vue should stay below 600 lines')
@@ -36,7 +41,9 @@ test('normalize actor mapping workbench uses shared Apple glass controls', () =>
     [searchInput, 'search input'],
   ]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use glass border`)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/, `${name} should use glass material`)
+    assert.ok(backgroundIncludes(block, '--material-glass-control'), `${name} should use glass material`)
+    assert.match(block, /var\(--surface-specular-edge\)/, `${name} should include a specular glass edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use glass shadow`)
     assert.doesNotMatch(block, /background:\s*transparent|background:\s*var\(--bg-card\)|border:\s*0|border-bottom:\s*2px solid transparent/)
   }
@@ -46,7 +53,9 @@ test('normalize actor mapping workbench uses shared Apple glass controls', () =>
     [filterChipActive, 'active filter chip'],
   ]) {
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${name} should use active glass border`)
-    assert.match(block, /background:\s*var\(--glass-active-material\)/, `${name} should use active glass material`)
+    assert.ok(backgroundIncludes(block, '--glass-active-material'), `${name} should use active glass material`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should include a stronger active edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
   }
 })
@@ -68,7 +77,9 @@ test('normalize candidate and mapping rows avoid flat translucent cards', () => 
     [mappingRow, 'mapping row'],
   ]) {
     assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use glass edge`)
-    assert.match(block, /background:\s*var\(--material-glass-elevated\)/, `${name} should use elevated material`)
+    assert.ok(backgroundIncludes(block, '--material-glass-elevated'), `${name} should use elevated material`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should include a stronger elevated edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
     assert.match(block, /box-shadow:\s*var\(--glass-surface-shadow\)/, `${name} should use surface shadow`)
     assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|background:\s*var\(--bg-card\)/)
   }
@@ -76,15 +87,49 @@ test('normalize candidate and mapping rows avoid flat translucent cards', () => 
   assert.match(candidateHigh, /border-color:\s*var\(--badge-success-border\)/)
   assert.match(candidateRisky, /border-color:\s*var\(--badge-warning-border\)/)
   assert.match(avatar, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(avatar, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(avatar, '--material-glass-control'))
+  assert.match(avatar, /var\(--surface-specular-edge\)/)
+  assert.match(avatar, /var\(--surface-noise\)/)
   assert.match(avatar, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(statusPill, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(statusPill, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(statusPill, '--material-glass-control'))
   assert.match(reasonPill, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(reasonPill, /background:\s*var\(--material-glass-control\)/)
+  assert.ok(backgroundIncludes(reasonPill, '--material-glass-control'))
   assert.match(reasonPill, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(riskPill, /border:\s*1px solid var\(--badge-warning-border\)/)
   assert.match(riskPill, /background:\s*var\(--badge-warning-bg\)/)
   assert.match(riskPill, /color:\s*var\(--badge-warning-text\)/)
   assert.doesNotMatch(riskPill, /#ffb340|rgba\(255,\s*159,\s*10/)
+})
+
+test('normalize glass backgrounds are layered with specular and noise surfaces', () => {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/gm
+  const offenders = [...externalStyle.matchAll(singleLayerGlass)].map(match => match[0])
+
+  assert.deepEqual(offenders, [], 'normalize primary glass surfaces should not use single-layer glass backgrounds')
+
+  for (const [selector, token] of [
+    ['.summary-card', '--material-glass-elevated'],
+    ['.auto-match-panel', '--material-glass-control'],
+    ['.tab-bar', '--material-glass-control'],
+    ['.tab-btn', '--material-glass-control'],
+    ['.tab-btn:hover', '--material-glass-control-hover'],
+    ['.tab-btn.active', '--glass-active-material'],
+    ['.filter-chip', '--material-glass-control'],
+    ['.filter-chip:hover', '--material-glass-control-hover'],
+    ['.filter-chip.active', '--glass-active-material'],
+    ['.search-input', '--material-glass-control'],
+    ['.search-input:focus', '--material-glass-control-hover'],
+    ['.mapping-card', '--material-glass-elevated'],
+    ['.candidate-card', '--material-glass-elevated'],
+    ['.confidence-badge', '--material-glass-control'],
+    ['.mapping-row', '--material-glass-elevated'],
+    ['.status-pill', '--material-glass-control'],
+    ['.reason-pill', '--material-glass-control'],
+  ]) {
+    const block = cssRule(selector)
+    assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
+    assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
+    assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
+  }
 })

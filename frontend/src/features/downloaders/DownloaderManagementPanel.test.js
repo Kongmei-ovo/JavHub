@@ -25,6 +25,11 @@ function cssBlock(content, selector) {
   return cssBlocks(content, selector).join('\n')
 }
 
+function backgroundIncludes(block, token) {
+  const match = block.match(/background:\s*([^;]+);/)
+  return Boolean(match && match[1].includes(token))
+}
+
 test('downloader panel is isolated behind a component contract', () => {
   assert.match(source, /name:\s*'DownloaderManagementPanel'/)
   assert.match(source, /props:\s*\{[\s\S]*downloaders:/)
@@ -43,38 +48,83 @@ test('downloader panel controls use shared Apple glass materials', () => {
   const downloaderAvatar = cssBlock(source, '.downloader-avatar')
   const downloaderAvatarMuted = cssBlock(source, '.downloader-avatar.muted')
   const switchTrack = cssBlock(source, '.switch-mini span')
+  const switchTrackChecked = cssBlock(source, '.switch-mini input:checked + span')
   const downloaderSheetSection = cssBlock(source, '.downloader-sheet-section')
   const inlineDialogOverlay = cssBlock(source, '.inline-dialog-overlay')
   const inlineDialog = cssBlock(source, '.inline-dialog')
+  const closeButton = cssBlock(source, '.dialog-close-btn')
 
-  for (const block of [toolbar, iconAction, iconActionCompact, downloaderRow, downloaderAvatar, switchTrack, downloaderSheetSection]) {
+  for (const block of [toolbar, iconAction, iconActionCompact, downloaderRow, downloaderAvatar, switchTrack, downloaderSheetSection, closeButton]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.match(block, /background:\s*var\(--material-glass-control\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control'))
+    assert.match(block, /var\(--surface-specular-edge\)/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   }
 
   for (const block of [iconActionHover, downloaderRowHover]) {
-    assert.match(block, /background:\s*var\(--material-glass-control-hover\)/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
+    assert.match(block, /var\(--surface-specular-edge-strong\)/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
 
-  assert.match(downloaderAvatarMuted, /background:\s*var\(--material-glass-subtle\)/)
-  assert.match(iconActionPrimary, /background:\s*var\(--glass-active-material\)/)
+  assert.ok(backgroundIncludes(downloaderAvatarMuted, '--material-glass-subtle'))
+  assert.match(downloaderAvatarMuted, /var\(--surface-specular-edge\)/)
+  assert.match(downloaderAvatarMuted, /var\(--surface-noise\)/)
+  assert.match(switchTrackChecked, /border-color:\s*var\(--badge-success-border\)/)
+  assert.ok(backgroundIncludes(switchTrackChecked, '--badge-success-bg'))
+  assert.match(switchTrackChecked, /var\(--surface-specular-edge-strong\)/)
+  assert.match(switchTrackChecked, /var\(--surface-noise\)/)
+  assert.ok(backgroundIncludes(iconActionPrimary, '--glass-active-material'))
+  assert.match(iconActionPrimary, /var\(--surface-specular-edge-strong\)/)
+  assert.match(iconActionPrimary, /var\(--surface-noise\)/)
   assert.match(iconActionPrimary, /color:\s*var\(--text-primary\)/)
   assert.match(iconActionPrimary, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(iconActionPrimary, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.match(inlineDialogOverlay, /background:\s*var\(--surface-scrim\)/)
   assert.match(inlineDialogOverlay, /z-index:\s*var\(--z-modal\)/)
-  assert.match(inlineDialog, /background:\s*var\(--material-glass-sheet\)/)
+  assert.ok(backgroundIncludes(inlineDialog, '--material-glass-sheet'))
+  assert.match(inlineDialog, /var\(--surface-specular-edge-strong\)/)
+  assert.match(inlineDialog, /var\(--surface-noise\)/)
   assert.match(inlineDialog, /box-shadow:\s*var\(--shadow-sheet\)/)
 
   assert.doesNotMatch(downloaderRow, /var\(--border\)/)
   assert.doesNotMatch(iconActionPrimary, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)|border-color:\s*var\(--accent\)/)
   assert.doesNotMatch(inlineDialogOverlay, /rgba\(0,\s*0,\s*0/)
 
-  for (const block of [toolbar, iconAction, iconActionPrimary, iconActionCompact, downloaderRow, downloaderAvatar, downloaderAvatarMuted, switchTrack, downloaderSheetSection, inlineDialogOverlay, inlineDialog]) {
+  for (const block of [toolbar, iconAction, iconActionPrimary, iconActionCompact, downloaderRow, downloaderAvatar, downloaderAvatarMuted, switchTrack, downloaderSheetSection, inlineDialogOverlay, inlineDialog, closeButton]) {
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--bg-card\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
+  }
+})
+
+test('downloader panel glass backgrounds are layered with specular and noise surfaces', () => {
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0])
+
+  assert.deepEqual(offenders, [], 'downloader panel primary glass surfaces should not use single-layer glass backgrounds')
+
+  for (const [selector, token] of [
+    ['.downloader-toolbar', '--material-glass-control'],
+    ['.icon-action', '--material-glass-control'],
+    ['.icon-action:hover:not(:disabled)', '--material-glass-control-hover'],
+    ['.icon-action.primary', '--glass-active-material'],
+    ['.icon-action.compact', '--material-glass-control'],
+    ['.downloader-row', '--material-glass-control'],
+    ['.downloader-row:hover', '--material-glass-control-hover'],
+    ['.downloader-avatar', '--material-glass-control'],
+    ['.downloader-avatar.muted', '--material-glass-subtle'],
+    ['.switch-mini span', '--material-glass-control'],
+    ['.switch-mini input:checked + span', '--badge-success-bg'],
+    ['.inline-dialog', '--material-glass-sheet'],
+    ['.dialog-close-btn', '--material-glass-control'],
+    ['.downloader-sheet-section', '--material-glass-control'],
+  ]) {
+    const block = cssBlock(source, selector)
+    assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
+    assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
+    assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
   }
 })

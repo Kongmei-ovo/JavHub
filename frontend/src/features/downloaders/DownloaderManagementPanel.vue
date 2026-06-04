@@ -249,7 +249,7 @@ export default {
   gap: 16px;
   padding: 16px 18px;
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -279,7 +279,7 @@ export default {
   height: 44px;
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -294,11 +294,11 @@ export default {
 .icon-action:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .icon-action.primary {
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   border-color: var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
@@ -307,7 +307,7 @@ export default {
   width: 38px;
   height: 38px;
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -332,7 +332,7 @@ export default {
   padding: 14px 16px;
   border: 1px solid var(--glass-control-border);
   border-bottom-color: var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -345,7 +345,7 @@ export default {
 .downloader-row:hover,
 .downloader-row:focus-visible {
   border-color: var(--glass-control-border-hover);
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   outline: none;
 }
@@ -367,7 +367,7 @@ export default {
   flex: 0 0 auto;
   border-radius: 14px;
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 800;
@@ -378,7 +378,7 @@ export default {
 }
 .downloader-avatar.muted {
   color: var(--text-muted);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
 }
 .downloader-copy {
   min-width: 0;
@@ -489,7 +489,7 @@ export default {
   inset: 9px 0;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -508,7 +508,7 @@ export default {
 }
 .switch-mini input:checked + span {
   border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-success-bg);
 }
 .switch-mini input:checked + span::after {
   transform: translateX(20px);
@@ -549,7 +549,7 @@ export default {
   width: min(560px, 100%);
   border: 1px solid var(--glass-control-border);
   border-radius: 20px;
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   box-shadow: var(--shadow-sheet);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
@@ -578,7 +578,7 @@ export default {
   height: 44px;
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
   font-size: 24px;
@@ -605,7 +605,7 @@ export default {
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 18px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
