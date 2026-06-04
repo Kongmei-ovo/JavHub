@@ -78,7 +78,7 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   assert.doesNotMatch(`${summaryItem}\n${container}`, /var\(--surface-card\)|var\(--bg-card\)|var\(--border\)|var\(--shadow-card\)/)
 
   assert.match(logItem, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(empty, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(empty, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
 
   assert.ok(backgroundIncludes(paginationButton, '--material-glass-control'))
   assert.match(paginationButton, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -92,7 +92,7 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
 })
 
 test('logs glass backgrounds are layered with specular and noise surfaces', () => {
-  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
   assert.doesNotMatch(source, singleLayerGlass)
 
   const layeredBlocks = [
@@ -103,6 +103,7 @@ test('logs glass backgrounds are layered with specular and noise surfaces', () =
     cssBlock('.toolbar-btn.primary'),
     cssBlock('.activity-summary-strip > div'),
     cssBlock('.logs-container'),
+    cssBlock('.loading'),
     cssBlock('.pagination button'),
     cssBlock('.pagination button:hover:not(:disabled)'),
   ]

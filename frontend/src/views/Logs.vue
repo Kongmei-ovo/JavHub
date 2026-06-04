@@ -276,7 +276,10 @@ export default {
   color: var(--text-secondary);
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 .pagination { margin-top: 20px; text-align: center; }
 .pagination button {

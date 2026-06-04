@@ -29,7 +29,10 @@
   inset: 0;
   pointer-events: none;
   opacity: 0.42;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   --entities-hero-mask-start: var(--media-edge-mask-strong);
   --entities-hero-mask-end: var(--media-edge-mask-clear);
   mask-image: linear-gradient(90deg, var(--entities-hero-mask-start), var(--entities-hero-mask-end) 72%);
@@ -209,7 +212,10 @@
   height: 30px;
   border: 1px solid var(--glass-control-border);
   border-radius: 50%;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -494,7 +500,10 @@
 
 :global(:root[data-theme="dark"] .entities-hero::before) {
   opacity: 0.22;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 :global(:root[data-theme="dark"] .entity-list-card) {
