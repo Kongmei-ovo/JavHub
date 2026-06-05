@@ -137,7 +137,11 @@
           v-for="actor in actors"
           :key="actor.actress_id"
           class="actor-card"
-          @click="$router.push(`/inventory/actors/${actor.actress_id}`)"
+          role="button"
+          tabindex="0"
+          @click="openActor(actor)"
+          @keydown.enter.prevent="openActor(actor)"
+          @keydown.space.prevent="openActor(actor)"
         >
           <div class="actor-cover">
             <img
@@ -225,12 +229,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
 
+const router = useRouter()
 const showJobs = ref(false)
 
 // 对比概览
@@ -433,6 +439,11 @@ const doJumpPage = () => {
   const p = Math.max(1, Math.min(totalPages.value, jumpPage.value))
   jumpPage.value = null
   goPage(p)
+}
+
+const openActor = (actor) => {
+  if (!actor?.actress_id) return
+  router.push(`/inventory/actors/${actor.actress_id}`)
 }
 
 const handleImgError = (e) => {

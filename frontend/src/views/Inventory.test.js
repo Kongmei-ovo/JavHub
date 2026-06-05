@@ -126,3 +126,37 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
     assert.doesNotMatch(block, /var\(--bg-card\)|var\(--bg-secondary\)|var\(--shadow-card\)/)
   }
 })
+
+test('inventory interactive controls expose Apple glass keyboard focus states', () => {
+  assert.match(vueSource, /class="actor-card"[\s\S]*role="button"/)
+  assert.match(vueSource, /class="actor-card"[\s\S]*tabindex="0"/)
+  assert.match(vueSource, /class="actor-card"[\s\S]*@keydown\.enter\.prevent="openActor\(actor\)"/)
+  assert.match(vueSource, /class="actor-card"[\s\S]*@keydown\.space\.prevent="openActor\(actor\)"/)
+
+  const actorFocus = cssBlock(source, '.actor-card:focus-visible')
+  const pageButtonFocus = cssBlock(source, '.page-btn:focus-visible:not(:disabled)')
+  const jumpButtonFocus = cssBlock(source, '.jump-btn:focus-visible')
+  const searchClearFocus = cssBlock(source, '.search-clear:focus-visible')
+  const inlineLinkFocus = cssBlock(source, '.inline-link:focus-visible')
+  const closeButtonFocus = cssBlock(source, '.close-btn:focus-visible')
+
+  for (const [block, label] of [
+    [actorFocus, 'inventory actor card focus'],
+    [pageButtonFocus, 'inventory page button focus'],
+    [jumpButtonFocus, 'inventory jump button focus'],
+    [searchClearFocus, 'inventory search clear focus'],
+    [inlineLinkFocus, 'inventory inline link focus'],
+    [closeButtonFocus, 'inventory close button focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assertLayeredBackground(block, '--material-glass-control-hover', label)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose a subtle focus ring`)
+  }
+
+  assert.match(actorFocus, /transform:\s*translateY\(-4px\)/)
+  assert.match(pageButtonFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(jumpButtonFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(searchClearFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(closeButtonFocus, /transform:\s*rotate\(90deg\)/)
+})

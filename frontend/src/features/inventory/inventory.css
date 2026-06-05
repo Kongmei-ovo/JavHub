@@ -69,6 +69,15 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.inline-link:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .snapshot-warn {
   background: var(--badge-warning-bg);
   border: 1px solid var(--badge-warning-border);
@@ -152,6 +161,17 @@
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
+.search-clear:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 .filter-controls {
   display: flex;
   align-items: center;
@@ -222,6 +242,16 @@
   border-color: var(--glass-control-border-hover);
   transform: translateY(-4px);
   box-shadow: var(--glass-control-shadow-hover);
+}
+.actor-card:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  transform: translateY(-4px);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .actor-cover {
   position: relative;
@@ -350,6 +380,17 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.page-btn:focus-visible:not(:disabled) {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 .page-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -416,6 +457,17 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.jump-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 
 /* 作业历史 */
 .jobs-list { display: flex; flex-direction: column; gap: 8px; }
@@ -478,6 +530,17 @@
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: rotate(90deg);
+}
+.close-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: rotate(90deg);
 }
 .jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }
