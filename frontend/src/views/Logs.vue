@@ -215,21 +215,21 @@ export default {
   box-shadow: var(--glass-active-shadow);
 }
 .toolbar-btn.danger {
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
   box-shadow: var(--glass-control-shadow);
 }
 .toolbar-btn.danger:hover:not(:disabled) {
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .toolbar-btn.danger:focus-visible:not(:disabled) {
   outline: none;
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--error-rgb), 0.16);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
   transform: translateY(-1px);
 }
 

@@ -45,10 +45,10 @@ test('logs toolbar uses shared liquid glass controls', () => {
   assert.match(buttonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.ok(backgroundIncludes(primary, '--glass-active-material'))
   assert.match(primary, /box-shadow:\s*var\(--glass-active-shadow\)/)
-  assert.match(danger, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(danger, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.match(danger, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(danger, /color:\s*var\(--badge-error-text\)/)
-  assert.match(dangerHover, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(dangerHover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.match(dangerHover, /border-color:\s*var\(--badge-error-border\)/)
 
   for (const block of [input, inputFocus, button, buttonHover, danger, dangerHover]) {
@@ -105,9 +105,10 @@ test('logs buttons mirror hover glass treatment for keyboard focus', () => {
   }
 
   assert.match(dangerFocus, /outline:\s*none/)
-  assert.match(dangerFocus, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(dangerFocus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.match(dangerFocus, /border-color:\s*var\(--badge-error-border\)/)
-  assert.match(dangerFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+  assert.match(dangerFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(dangerFocus, /rgba\(var\(--error-rgb\)/)
   assert.match(dangerFocus, /transform:\s*translateY\(-1px\)/)
 })
 
