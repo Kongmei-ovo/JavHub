@@ -26,6 +26,10 @@ function backgroundIncludes(token) {
   return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
 }
 
+function layeredSemanticBackground(token) {
+  return new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
+}
+
 function assertGlassControl(block, label) {
   assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${label} should use the shared glass border`)
   assert.match(block, backgroundIncludes('material-glass-control'), `${label} should use the shared glass control material`)
@@ -121,9 +125,11 @@ test('home candidate controls use shared Apple glass tokens', () => {
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
   }
 
-  assert.match(tabBadge, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(tabBadge, layeredSemanticBackground('badge-error-bg'))
   assert.match(tabBadge, /color:\s*var\(--badge-error-text\)/)
-  assert.match(tabBadgeSubtle, /background:\s*var\(--badge-success-bg\)/)
+  assert.match(tabBadge, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(tabBadge, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(tabBadgeSubtle, layeredSemanticBackground('badge-success-bg'))
   assert.match(tabBadgeSubtle, /color:\s*var\(--badge-success-text\)/)
 
   for (const block of [
@@ -261,8 +267,10 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   assert.match(magnetInputFocus, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(magnetInputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.match(taskError, /color:\s*var\(--badge-error-text\)/)
-  assert.match(detailError, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(detailError, layeredSemanticBackground('badge-error-bg'))
   assert.match(detailError, /color:\s*var\(--badge-error-text\)/)
+  assert.match(detailError, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(detailError, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(`${taskError}\n${detailError}`, /#ef5350|#EF5350/)
 })
 
