@@ -66,6 +66,8 @@ test('favorites curation chrome uses shared Apple glass materials', () => {
   assert.match(dangerMiniButton, /color:\s*var\(--badge-error-text\)/)
   assert.match(dangerMiniButton, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(dangerMiniButton, backgroundIncludes('badge-error-bg'))
+  assert.match(dangerMiniButton, /var\(--surface-specular-edge\)/)
+  assert.match(dangerMiniButton, /var\(--surface-noise\)/)
   assert.doesNotMatch(dangerMiniButton, /#ff375f/i)
 
   assert.match(segmentedControl, backgroundIncludes('material-glass-control'))
@@ -164,7 +166,10 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
   assert.match(dangerMiniButtonFocus, /outline:\s*none/)
   assert.match(dangerMiniButtonFocus, backgroundIncludes('badge-error-bg'))
   assert.match(dangerMiniButtonFocus, /border-color:\s*var\(--badge-error-border\)/)
-  assert.match(dangerMiniButtonFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+  assert.match(dangerMiniButtonFocus, /var\(--surface-specular-edge-strong\)/)
+  assert.match(dangerMiniButtonFocus, /var\(--surface-noise\)/)
+  assert.match(dangerMiniButtonFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(dangerMiniButtonFocus, /rgba\(var\(--error-rgb\)/)
 
   assert.match(entityBubbleFocus, /outline:\s*none/)
   assert.match(entityBubbleFocus, backgroundIncludes('material-glass-control-hover'))
