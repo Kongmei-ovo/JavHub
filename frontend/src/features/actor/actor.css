@@ -532,22 +532,25 @@
   padding: 3px 10px;
   border-radius: 10px;
   font-weight: 600;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .badge-running {
-  background: var(--badge-pending-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
   border: 1px solid var(--badge-pending-border);
   color: var(--badge-pending-text);
 }
 
 .badge-failed {
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border: 1px solid var(--badge-error-border);
   color: var(--badge-error-text);
 }
 
 .badge-ok {
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   border: 1px solid var(--badge-success-border);
   color: var(--badge-success-text);
 }
@@ -556,10 +559,13 @@
   margin-bottom: 12px;
   padding: 8px 12px;
   border: 1px solid var(--badge-error-border);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-radius: 8px;
   font-size: 13px;
   color: var(--badge-error-text);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .supplement-counters {

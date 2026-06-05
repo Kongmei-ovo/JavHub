@@ -198,7 +198,9 @@ test('translation form and status surfaces use shared glass and badge tokens', (
   }
 
   for (const block of [jobError, failedStatus]) {
-    assert.match(block, /background:\s*var\(--badge-error-bg\)/)
+    assert.ok(backgroundIncludes(block, '--badge-error-bg'))
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /border-color:\s*var\(--badge-error-border\)/)
   }
 

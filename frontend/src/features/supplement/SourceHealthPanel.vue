@@ -653,9 +653,12 @@ export default {
   border: 1px solid var(--badge-info-border);
   border-radius: 999px;
   color: var(--badge-info-text);
-  background: var(--badge-info-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   font-size: 12px;
   font-weight: 700;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   white-space: nowrap;
 }
 

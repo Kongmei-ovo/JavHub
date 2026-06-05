@@ -415,10 +415,13 @@
   padding: 12px 14px;
   border: 1px solid var(--badge-warning-border);
   border-radius: 12px;
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .javinfo-runtime-warning strong {
   color: var(--text-primary);
@@ -847,10 +850,13 @@
   padding: 12px 14px;
   border: 1px solid var(--badge-error-border);
   border-radius: 12px;
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .import-warning strong {
@@ -860,7 +866,7 @@
 
 .import-warning-direct {
   border-color: var(--badge-warning-border);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
 }
 
 .compact-number {

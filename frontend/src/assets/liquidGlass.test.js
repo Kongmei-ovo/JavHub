@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { THEMES } from './themes.js'
 
 const mainCss = readFileSync(new URL('./main.css', import.meta.url), 'utf8')
@@ -69,6 +69,15 @@ function sourceBlock(source, selector) {
 
 function backgroundIncludes(token) {
   return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
+}
+
+function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
+  return readdirSync(dirUrl, { withFileTypes: true }).flatMap((entry) => {
+    const entryUrl = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dirUrl)
+    if (entry.isDirectory()) return productionStyleFiles(entryUrl)
+    if (!/\.(css|vue)$/.test(entry.name)) return []
+    return [entryUrl]
+  })
 }
 
 test('theme materials include refractive liquid glass layers', () => {
@@ -383,6 +392,21 @@ test('global semantic badge utilities use layered liquid glass materials', () =>
     assert.match(block, new RegExp(`color:\\s*var\\(${textToken}\\)`))
     assert.match(block, new RegExp(`border:\\s*1px solid var\\(${borderToken}\\)`))
   }
+})
+
+test('production semantic badge surfaces avoid single-layer fills', () => {
+  const offenders = []
+  const singleLayerBadge = /^\s*background:\s*var\(--badge-(?:success|warning|error|info|pending)-bg\);\s*$/gm
+
+  for (const fileUrl of productionStyleFiles()) {
+    const source = readFileSync(fileUrl, 'utf8')
+    for (const match of source.matchAll(singleLayerBadge)) {
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')}:${line}:${match[0].trim()}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
 })
 
 test('home dashboard metrics use shared liquid glass controls', () => {

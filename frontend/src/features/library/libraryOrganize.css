@@ -510,12 +510,12 @@
 
 .priority-mark.warning {
   border: 1px solid var(--badge-warning-border);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
 }
 
 .priority-mark.danger {
   border: 1px solid var(--badge-error-border);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
 }
 
 .flow-steps button {
@@ -593,14 +593,17 @@
   padding: 12px;
   border: 1px solid var(--badge-warning-border);
   border-radius: var(--radius-md);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--text-primary);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .mini-check-result.exists,
 .check-result.exists {
   border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
 }
 
 .inline-link {

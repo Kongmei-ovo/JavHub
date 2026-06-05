@@ -481,23 +481,26 @@ export default {
   padding: 3px 9px;
   border: 1px solid var(--badge-pending-border);
   border-radius: 999px;
-  background: var(--badge-pending-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
   color: var(--badge-pending-text);
   font-size: 11px;
   font-weight: 700;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   white-space: nowrap;
 }
 .downloader-pill.default,
 .downloader-pill.enabled,
 .downloader-pill.test.ok {
   border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   color: var(--badge-success-text);
 }
 .downloader-pill.test {
   max-width: 88px;
   border-color: var(--badge-error-border);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--badge-error-text);
   overflow: hidden;
   text-overflow: ellipsis;
