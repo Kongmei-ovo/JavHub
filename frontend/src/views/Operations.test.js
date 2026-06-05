@@ -108,6 +108,39 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   }
 })
 
+test('operations keyboard focus mirrors hover glass control treatment', () => {
+  const segmentFocus = lastCssBlock(source, '.operations-segments button:focus-visible')
+  const heroFocus = lastCssBlock(source, '.hero-stat:focus-visible')
+  const actionFocus = cssBlocks(source, '.action-card:focus-visible').join('\n')
+  const queueFocus = cssBlocks(source, '.queue-focus:focus-visible').join('\n')
+  const compactFocus = cssBlocks(source, '.compact-row:focus-visible').join('\n')
+  const stateFocus = cssBlocks(source, '.state-item:is(button):focus-visible').join('\n')
+  const blockHeadFocus = cssBlocks(source, '.block-head button:focus-visible').join('\n')
+  const scopeFocus = cssBlocks(source, '.scope-chip:focus-visible').join('\n')
+
+  for (const [block, label] of [
+    [segmentFocus, 'operations segment focus'],
+    [heroFocus, 'operations hero metric focus'],
+    [actionFocus, 'operations action card focus'],
+    [queueFocus, 'operations queue focus'],
+    [compactFocus, 'operations compact row focus'],
+    [stateFocus, 'operations state item focus'],
+    [blockHeadFocus, 'operations block head focus'],
+    [scopeFocus, 'operations scope chip focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose a subtle focus ring`)
+  }
+
+  for (const block of [heroFocus, actionFocus, queueFocus, compactFocus, stateFocus, scopeFocus]) {
+    assert.match(block, /transform:\s*translateY\(-1px\)/)
+  }
+  assert.match(segmentFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(blockHeadFocus, /color:\s*var\(--text-primary\)/)
+})
+
 test('operations glass backgrounds are layered with specular and noise surfaces', () => {
   assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })
