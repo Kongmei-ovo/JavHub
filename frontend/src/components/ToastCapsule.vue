@@ -51,7 +51,10 @@ defineEmits(['close', 'organize'])
   align-items: center;
   gap: 12px;
   padding: 10px 10px 10px 20px;
-  background: var(--toast-sheet-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--toast-sheet-bg);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--toast-sheet-border);
@@ -79,7 +82,10 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-action {
-  background: var(--toast-action-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--toast-action-bg);
   color: var(--toast-action-text);
   border: 1px solid var(--toast-action-border);
   padding: 6px 14px;
@@ -94,7 +100,10 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-action:hover {
-  background: var(--toast-action-bg-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--toast-action-bg-hover);
   border-color: var(--toast-action-border-hover);
   box-shadow: var(--toast-control-shadow-hover);
   transform: translateY(-1px);
@@ -104,7 +113,10 @@ defineEmits(['close', 'organize'])
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--toast-control-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--toast-control-bg);
   border: 1px solid var(--toast-control-border);
   color: var(--text-muted);
   display: flex;
@@ -118,7 +130,10 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-close:hover {
-  background: var(--toast-control-bg-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--toast-control-bg-hover);
   border-color: var(--toast-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--toast-control-shadow-hover);

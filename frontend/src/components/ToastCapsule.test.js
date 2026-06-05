@@ -11,6 +11,10 @@ function sourceBlock(selector) {
   return match[1]
 }
 
+function assertLayeredToastBackground(block, materialToken) {
+  assert.match(block, new RegExp(`background:\\s*var\\(--surface-specular-edge(?:-strong)?\\),\\s*var\\(--surface-noise\\),\\s*var\\(${materialToken}\\)`))
+}
+
 test('toast capsule uses shared Apple glass sheet and controls', () => {
   const capsuleBlock = sourceBlock('.toast-capsule')
   const actionBlock = sourceBlock('.toast-action')
@@ -24,28 +28,28 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assert.match(source, /--toast-control-bg:\s*var\(--material-glass-control\)/)
   assert.match(source, /--toast-action-bg:\s*var\(--glass-active-material\)/)
 
-  assert.match(capsuleBlock, /background:\s*var\(--toast-sheet-bg\)/)
+  assertLayeredToastBackground(capsuleBlock, '--toast-sheet-bg')
   assert.match(capsuleBlock, /border:\s*1px solid var\(--toast-sheet-border\)/)
   assert.match(capsuleBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
   assert.match(capsuleBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
 
-  assert.match(actionBlock, /background:\s*var\(--toast-action-bg\)/)
+  assertLayeredToastBackground(actionBlock, '--toast-action-bg')
   assert.match(actionBlock, /border:\s*1px solid var\(--toast-action-border\)/)
   assert.match(actionBlock, /box-shadow:\s*var\(--toast-action-shadow\)/)
   assert.match(actionBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(actionBlock, /background:\s*var\(--accent\)|border:\s*none|transition:\s*var\(--transition-pro\)/)
 
-  assert.match(actionHoverBlock, /background:\s*var\(--toast-action-bg-hover\)/)
+  assertLayeredToastBackground(actionHoverBlock, '--toast-action-bg-hover')
   assert.match(actionHoverBlock, /border-color:\s*var\(--toast-action-border-hover\)/)
   assert.match(actionHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
 
-  assert.match(closeBlock, /background:\s*var\(--toast-control-bg\)/)
+  assertLayeredToastBackground(closeBlock, '--toast-control-bg')
   assert.match(closeBlock, /border:\s*1px solid var\(--toast-control-border\)/)
   assert.match(closeBlock, /box-shadow:\s*var\(--toast-control-shadow\)/)
   assert.match(closeBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(closeBlock, /background:\s*var\(--surface-control\)|transition:\s*var\(--transition-pro\)/)
 
-  assert.match(closeHoverBlock, /background:\s*var\(--toast-control-bg-hover\)/)
+  assertLayeredToastBackground(closeHoverBlock, '--toast-control-bg-hover')
   assert.match(closeHoverBlock, /border-color:\s*var\(--toast-control-border-hover\)/)
   assert.match(closeHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
   assert.doesNotMatch(closeHoverBlock, /background:\s*var\(--surface-control-hover\)/)
