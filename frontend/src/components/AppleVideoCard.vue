@@ -186,6 +186,11 @@ function handleKeydown(event) {
   filter: saturate(1.08);
 }
 
+.apple-video-card:focus-visible .apple-video-card__image {
+  transform: scale(1.045);
+  filter: saturate(1.08);
+}
+
 .apple-video-card__image.is-wide {
   object-fit: none;
   object-position: right center;
