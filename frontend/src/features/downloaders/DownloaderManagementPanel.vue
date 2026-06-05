@@ -335,7 +335,22 @@ export default {
   box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .icon-action.danger {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
+}
+.icon-action.danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--badge-error-border);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+.icon-action.danger:focus-visible:not(:disabled) {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: var(--badge-error-border);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
 }
 .icon-action:disabled {
   opacity: 0.38;

@@ -46,6 +46,9 @@ test('downloader panel controls use shared Apple glass materials', () => {
   const iconActionPrimaryFocus = cssBlock(source, '.icon-action.primary:focus-visible')
   const iconActionCompact = cssBlock(source, '.icon-action.compact')
   const iconActionCompactFocus = cssBlock(source, '.icon-action.compact:focus-visible:not(:disabled)')
+  const iconActionDanger = cssBlock(source, '.icon-action.danger')
+  const iconActionDangerHover = cssBlock(source, '.icon-action.danger:hover:not(:disabled)')
+  const iconActionDangerFocus = cssBlock(source, '.icon-action.danger:focus-visible:not(:disabled)')
   const downloaderRow = cssBlock(source, '.downloader-row')
   const downloaderRowHover = cssBlock(source, '.downloader-row:hover')
   const downloaderRowFocus = cssBlock(source, '.downloader-row:focus-visible')
@@ -107,6 +110,20 @@ test('downloader panel controls use shared Apple glass materials', () => {
   assert.match(iconActionPrimaryFocus, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(iconActionPrimaryFocus, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
   assert.match(iconActionPrimaryFocus, /transform:\s*translateY\(-1px\)/)
+  assert.ok(backgroundIncludes(iconActionDanger, '--badge-error-bg'))
+  assert.match(iconActionDanger, /var\(--surface-specular-edge\)/)
+  assert.match(iconActionDanger, /var\(--surface-noise\)/)
+  assert.match(iconActionDanger, /color:\s*var\(--badge-error-text\)/)
+  assert.match(iconActionDanger, /border-color:\s*var\(--badge-error-border\)/)
+  assert.ok(backgroundIncludes(iconActionDangerHover, '--badge-error-bg'))
+  assert.match(iconActionDangerHover, /var\(--surface-specular-edge-strong\)/)
+  assert.match(iconActionDangerHover, /var\(--surface-noise\)/)
+  assert.match(iconActionDangerHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.ok(backgroundIncludes(iconActionDangerFocus, '--badge-error-bg'))
+  assert.match(iconActionDangerFocus, /outline:\s*none/)
+  assert.match(iconActionDangerFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(iconActionDangerFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(iconActionDangerFocus, /rgba\(var\(--accent-rgb\)|rgba\(var\(--error-rgb\)/)
   assert.match(inlineDialogOverlay, /background:\s*var\(--surface-scrim\)/)
   assert.match(inlineDialogOverlay, /z-index:\s*var\(--z-modal\)/)
   assert.ok(backgroundIncludes(inlineDialog, '--material-glass-sheet'))
@@ -135,6 +152,9 @@ test('downloader panel glass backgrounds are layered with specular and noise sur
     ['.icon-action:hover:not(:disabled)', '--material-glass-control-hover'],
     ['.icon-action.primary', '--glass-active-material'],
     ['.icon-action.compact', '--material-glass-control'],
+    ['.icon-action.danger', '--badge-error-bg'],
+    ['.icon-action.danger:hover:not(:disabled)', '--badge-error-bg'],
+    ['.icon-action.danger:focus-visible:not(:disabled)', '--badge-error-bg'],
     ['.downloader-row', '--material-glass-control'],
     ['.downloader-row:hover', '--material-glass-control-hover'],
     ['.downloader-avatar', '--material-glass-control'],
