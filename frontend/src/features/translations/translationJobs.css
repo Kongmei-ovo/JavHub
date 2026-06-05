@@ -337,7 +337,10 @@
   height: 10px;
   overflow: hidden;
   border-radius: var(--radius-control);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -455,7 +458,10 @@
 }
 
 .job-control-card.empty {
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 .job-control-head,
@@ -505,7 +511,10 @@
   gap: 5px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -806,7 +815,10 @@
   padding: 4px 9px;
   border-radius: var(--radius-control);
   border: 1px solid var(--glass-control-border);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -860,7 +872,10 @@
 
 .status-invalid {
   color: var(--text-secondary);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 .panel-footer-actions {
@@ -986,7 +1001,10 @@
   padding: 0 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -1135,7 +1153,10 @@
   color: var(--text-secondary);
   border: 1px dashed var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
