@@ -176,6 +176,7 @@ test('library organize nested controls keep glass treatment across light and dar
   assert.match(autoMatchRule, backgroundIncludes('material-glass-control'))
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-header\)/)
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-status\)/)
+  assert.doesNotMatch(externalStyle, /\.btn\.danger\s*\{/, 'danger buttons should use the global glass button treatment')
 })
 
 test('library organize inventory media placeholders use shared subtle glass material', () => {

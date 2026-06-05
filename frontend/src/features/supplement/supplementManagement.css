@@ -712,11 +712,6 @@ p {
   font-size: 11px;
 }
 
-.btn.danger {
-  color: var(--badge-error-text);
-  border-color: var(--badge-error-border);
-}
-
 .manual-action-list {
   display: grid;
   gap: 8px;

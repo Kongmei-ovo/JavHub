@@ -428,6 +428,34 @@ a:hover {
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.btn.danger {
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  box-shadow: var(--glass-control-shadow);
+}
+.btn.danger:hover {
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+.btn.danger:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow:
+    var(--glass-control-shadow-hover),
+    0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
+}
 .btn-secondary {
   background:
     var(--surface-specular-edge),
@@ -473,8 +501,15 @@ a:hover {
   box-shadow: var(--glass-control-shadow);
   filter: saturate(0.82);
 }
-.btn-icon { padding: 8px; border-radius: 50%; }
-.btn svg { width: 16px; height: 16px; }
+.btn-icon {
+  inline-size: var(--touch-target);
+  block-size: var(--touch-target);
+  min-inline-size: var(--touch-target);
+  padding: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+}
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ===== Glass Controls ===== */
 .glass-select {

@@ -346,7 +346,6 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   const headRow = cssBlock(source, '.diagnostics-row-head')
   const identityChip = cssBlock(source, '.identity-chip')
   const detailSourceItem = cssBlock(source, '.detail-source-item')
-  const dangerButton = cssBlock(source, '.btn.danger')
   const manualAction = cssBlock(source, '.manual-action-item')
 
   assertLayeredBackground(header, '--material-glass-sheet', 'supplement diagnostics header')
@@ -371,9 +370,8 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   assertLayeredBackground(headRow, '--glass-active-material', 'supplement diagnostics header row')
   assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(headRow, /^.*background:\s*var\(--glass-active-material\);.*$/gm)
-  assert.match(dangerButton, /color:\s*var\(--badge-error-text\)/)
-  assert.match(dangerButton, /border-color:\s*var\(--badge-error-border\)/)
-  assert.doesNotMatch(dangerButton, /#ff6b87|rgba\(255,\s*107,\s*135/i)
+  assert.doesNotMatch(externalStyle, /\.btn\.danger\s*\{/, 'danger buttons should use the global glass button treatment')
+  assert.doesNotMatch(externalStyle, /#ff6b87|rgba\(255,\s*107,\s*135/i)
 })
 
 test('supplement source diagnostics use shared Apple glass materials', () => {

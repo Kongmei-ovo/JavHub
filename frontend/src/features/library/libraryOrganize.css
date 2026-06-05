@@ -872,12 +872,6 @@
   overflow-wrap: anywhere;
 }
 
-.btn.danger {
-  border-color: var(--badge-error-border);
-  background: var(--badge-error-bg);
-  color: var(--text-primary);
-}
-
 .job-row {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
