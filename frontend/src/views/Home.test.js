@@ -78,6 +78,8 @@ test('home candidate controls use shared Apple glass tokens', () => {
   const bulkToolbar = cssBlock(source, '.bulk-toolbar')
   const chip = cssBlock(source, '.chip')
   const chipActive = cssBlock(source, '.chip.active')
+  const dangerLink = cssBlock(source, '.link-btn.danger')
+  const dangerLinkHover = cssBlock(source, '.link-btn.danger:hover')
 
   assert.match(downloadTabs, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(downloadTabs, backgroundIncludes('material-glass-sheet'))
@@ -103,6 +105,16 @@ test('home candidate controls use shared Apple glass tokens', () => {
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/)
   }
+
+  assert.match(dangerLink, backgroundIncludes('badge-error-bg'))
+  assert.match(dangerLink, /var\(--surface-specular-edge\)/)
+  assert.match(dangerLink, /var\(--surface-noise\)/)
+  assert.match(dangerLink, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerLink, /color:\s*var\(--badge-error-text\)/)
+  assert.match(dangerLinkHover, backgroundIncludes('badge-error-bg'))
+  assert.match(dangerLinkHover, /var\(--surface-specular-edge-strong\)/)
+  assert.match(dangerLinkHover, /var\(--surface-noise\)/)
+  assert.match(dangerLinkHover, /border-color:\s*var\(--badge-error-border\)/)
 
   for (const block of [candidateSearchFocus]) {
     assert.match(block, backgroundIncludes('material-glass-control-hover'))
@@ -132,6 +144,7 @@ test('home candidate controls mirror hover glass treatment for keyboard focus', 
   const tabFocus = cssBlock(source, '.tab-btn:focus-visible')
   const chipFocus = cssBlock(source, '.chip:focus-visible:not(:disabled)')
   const linkFocus = cssBlock(source, '.link-btn:focus-visible')
+  const dangerLinkFocus = cssBlock(source, '.link-btn.danger:focus-visible')
   const pageFocus = cssBlock(source, '.page-btn:focus-visible:not(:disabled)')
 
   for (const [block, label] of [
@@ -150,6 +163,13 @@ test('home candidate controls mirror hover glass treatment for keyboard focus', 
   assert.match(chipFocus, /color:\s*var\(--text-primary\)/)
   assert.match(pageFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(linkFocus, /text-decoration-color:\s*var\(--link-underline-hover\)/)
+  assert.match(dangerLinkFocus, /outline:\s*none/)
+  assert.match(dangerLinkFocus, backgroundIncludes('badge-error-bg'))
+  assert.match(dangerLinkFocus, /var\(--surface-specular-edge-strong\)/)
+  assert.match(dangerLinkFocus, /var\(--surface-noise\)/)
+  assert.match(dangerLinkFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerLinkFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(dangerLinkFocus, /rgba\(var\(--accent-rgb\)|rgba\(var\(--error-rgb\)/)
 })
 
 test('home dashboard and task surfaces use shared Apple glass materials', () => {

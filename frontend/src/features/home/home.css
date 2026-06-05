@@ -301,9 +301,6 @@
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
-.link-btn.danger {
-  color: var(--badge-error-text);
-}
 .chip {
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
@@ -459,6 +456,33 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   text-decoration-color: var(--link-underline-hover);
+}
+.link-btn.danger {
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  color: var(--badge-error-text);
+}
+.link-btn.danger:hover {
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  box-shadow: var(--glass-control-shadow-hover);
+  text-decoration-color: var(--badge-error-text);
+}
+.link-btn.danger:focus-visible {
+  outline: none;
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
+  text-decoration-color: var(--badge-error-text);
 }
 
 /* ===== Tasks Grid ===== */
