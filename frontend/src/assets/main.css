@@ -509,9 +509,13 @@ a:hover {
 }
 
 .glass-select__button:focus-visible {
-  border-color: var(--accent);
+  border-color: var(--glass-control-border-hover, var(--border-light));
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover, var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08)));
   box-shadow:
-    var(--glass-control-shadow),
+    var(--glass-control-shadow-hover),
     0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
@@ -618,6 +622,16 @@ a:hover {
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-inner-shadow);
+}
+
+.glass-select__option:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.10);
 }
 
 .glass-select__option.is-selected {
