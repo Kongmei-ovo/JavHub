@@ -587,8 +587,8 @@ export default {
   justify-content: center;
   padding: 20px;
   background: var(--surface-scrim);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .inline-dialog {
   width: min(560px, 100%);

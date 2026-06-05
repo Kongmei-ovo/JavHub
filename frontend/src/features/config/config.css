@@ -268,8 +268,8 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-sheet);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border-top: 1px solid var(--glass-edge);
   padding: 20px 0;
   z-index: 100;

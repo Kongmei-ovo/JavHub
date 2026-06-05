@@ -409,6 +409,21 @@ test('production semantic badge surfaces avoid single-layer fills', () => {
   assert.deepEqual(offenders, [])
 })
 
+test('production backdrop blur uses shared glass tokens', () => {
+  const offenders = []
+  const hardcodedBlur = /^\s*(?:-webkit-)?backdrop-filter:\s*blur\((?!var\(|0\))[^)]*\)[^;]*;\s*$/gm
+
+  for (const fileUrl of productionStyleFiles()) {
+    const source = readFileSync(fileUrl, 'utf8')
+    for (const match of source.matchAll(hardcodedBlur)) {
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')}:${line}:${match[0].trim()}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
+})
+
 test('home dashboard metrics use shared liquid glass controls', () => {
   const statCardBlock = sourceBlock(home, '.stat-card')
   const statCardHoverBlock = sourceBlock(home, '.stat-card:hover')

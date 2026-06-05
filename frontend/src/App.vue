@@ -766,8 +766,8 @@ export default {
     display: flex;
     align-items: flex-end;
     background: var(--surface-scrim);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+    -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     padding: 0 12px calc(74px + env(safe-area-inset-bottom, 0px));
   }
   .mobile-more-sheet {

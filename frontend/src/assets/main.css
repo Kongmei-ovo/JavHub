@@ -361,8 +361,8 @@ a:hover {
   font-size: var(--type-micro);
   font-weight: 600;
   letter-spacing: 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: var(--transition-pro);
 }
 .badge-success { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg); color: var(--badge-success-text); border: 1px solid var(--badge-success-border); }
