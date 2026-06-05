@@ -112,6 +112,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 76px;
   padding: 13px 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 16px;

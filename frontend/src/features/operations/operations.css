@@ -369,6 +369,8 @@
   gap: 10px;
   width: 100%;
   min-height: 36px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 54px;
   padding: 8px 10px;
   border: 1px solid var(--operations-soft-line);
   background:

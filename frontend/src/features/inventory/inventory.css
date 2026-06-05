@@ -227,6 +227,8 @@
   gap: 16px;
 }
 .actor-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 238px;
   background:
     var(--surface-specular-edge),
     var(--surface-noise),

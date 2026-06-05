@@ -276,6 +276,8 @@
   position: relative;
   display: grid;
   min-height: 142px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 142px;
   overflow: hidden;
   border: 1px solid var(--glass-edge-strong);
   background:

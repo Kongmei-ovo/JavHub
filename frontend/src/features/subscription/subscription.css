@@ -519,6 +519,8 @@
 
 .work-card-wrap {
   position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 390px;
 }
 
 .sheet-loading {

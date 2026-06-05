@@ -333,6 +333,8 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 74px;
   padding: 13px 14px;
   border-radius: 16px;
   background:
@@ -635,6 +637,8 @@ p {
   display: grid;
   grid-template-columns: 140px 110px minmax(0, 1fr);
   gap: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 52px;
   padding: 10px 12px;
   background:
     var(--surface-specular-edge),
@@ -676,6 +680,8 @@ p {
 
 .identity-chip,
 .detail-source-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 72px;
   padding: 8px 11px;
   border-radius: 12px;
   background:
@@ -715,6 +721,8 @@ p {
   display: grid;
   grid-template-columns: 120px minmax(120px, 1fr) minmax(180px, 2fr);
   gap: 10px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 64px;
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: 12px;

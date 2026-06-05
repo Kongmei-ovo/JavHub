@@ -662,6 +662,8 @@
 
 .result-card-group {
   min-width: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 390px;
 }
 
 .variant-expand-btn {

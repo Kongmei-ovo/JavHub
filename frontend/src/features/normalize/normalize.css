@@ -162,6 +162,8 @@
   display: grid;
   grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
   gap: 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 220px;
   padding: 14px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
@@ -352,6 +354,8 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 74px;
   padding: 10px;
   margin-bottom: 8px;
   border: 1px solid var(--glass-edge);

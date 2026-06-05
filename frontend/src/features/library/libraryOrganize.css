@@ -365,6 +365,8 @@
 .inventory-candidate,
 .missing-video {
   min-width: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 104px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
   background:

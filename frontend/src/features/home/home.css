@@ -559,6 +559,8 @@
 .task-card {
   display: flex;
   flex-direction: column;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 360px;
 }
 
 .task-cover {
@@ -817,6 +819,8 @@
   display: grid;
   grid-template-columns: 14px 1fr;
   gap: 10px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 74px;
 }
 .event-dot {
   width: 10px;
