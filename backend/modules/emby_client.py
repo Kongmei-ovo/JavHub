@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import httpx
 import re
 from typing import Any
@@ -12,13 +13,20 @@ class EmbyClient:
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
         self._client: httpx.AsyncClient | None = None
+        self._client_loop: asyncio.AbstractEventLoop | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
-        if self._client is None:
+        # The cached client is bound to the loop that created it; this singleton
+        # is reused from both the FastAPI request loop and the shared background
+        # job loop, so rebuild whenever the running loop changed (or the client
+        # was closed) to avoid cross-loop hangs / "Event loop is closed".
+        loop = asyncio.get_running_loop()
+        if self._client is None or self._client.is_closed or self._client_loop is not loop:
             self._client = httpx.AsyncClient(
                 headers={"X-Emby-Token": self.api_key},
                 timeout=30,
             )
+            self._client_loop = loop
         return self._client
 
     async def close(self):

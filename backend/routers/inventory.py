@@ -39,6 +39,37 @@ def trigger_job(req: TriggerJobRequest):
     run_inventory_job(job_id)
     return {"job_id": job_id, "status": "pending"}
 
+
+class PipelineRequest(BaseModel):
+    do_collect: bool = True
+    actor_id: Optional[int] = None
+    process: bool = True
+    dry_run: bool = True
+    policy: Optional[str] = None
+
+
+@router.post("/pipeline/run")
+def run_pipeline(req: PipelineRequest):
+    """端到端补全流水线：collect → compare → enrich/download（默认 dry_run 预览）。
+
+    返回的 job_id 是一个 supplement 类型的跟踪作业，可用 GET /jobs/{id} 轮询
+    进度与各阶段汇总结果。
+    """
+    job_id = add_inventory_job("supplement", req.actor_id, None)
+    from scheduler.worker_loop import submit
+    from services.supplement_pipeline import run_supplement_pipeline
+    submit(
+        run_supplement_pipeline(
+            job_id,
+            do_collect=req.do_collect,
+            actor_id=req.actor_id,
+            process=req.process,
+            dry_run=req.dry_run,
+            policy=req.policy,
+        )
+    )
+    return {"job_id": job_id, "status": "pending"}
+
 @router.get("/snapshots/latest")
 def get_latest_snapshot(include_actors: bool = False):
     """获取最新快照信息"""

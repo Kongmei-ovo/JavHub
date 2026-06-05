@@ -211,13 +211,20 @@ class InfoClient:
         self.api_url = api_url.rstrip("/")
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
+        self._client_loop: asyncio.AbstractEventLoop | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
-        if self._client is None:
+        # An httpx.AsyncClient is bound to the event loop that created it. This
+        # singleton is reused from both the FastAPI request loop and the shared
+        # background job loop, so rebuild whenever the running loop changed (or
+        # the cached client was closed) to avoid cross-loop hangs.
+        loop = asyncio.get_running_loop()
+        if self._client is None or self._client.is_closed or self._client_loop is not loop:
             self._client = httpx.AsyncClient(
                 timeout=self.timeout,
                 trust_env=False  # 禁用系统代理，避免代理导致连接问题
             )
+            self._client_loop = loop
         return self._client
 
     async def close(self):

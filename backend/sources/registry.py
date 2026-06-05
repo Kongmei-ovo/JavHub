@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from datetime import datetime, timezone
 from typing import ClassVar
@@ -76,36 +77,48 @@ class SourceRegistry:
             del cls._attempts[: len(cls._attempts) - cls._max_attempts]
 
     @classmethod
+    async def _search_one(cls, name: str, keyword: str) -> list[dict]:
+        """Search a single source, recording the attempt and isolating errors."""
+        source = cls._sources.get(name)
+        if not source:
+            return []
+        started_at = time.monotonic()
+        try:
+            source_results = await source.search(keyword)
+            rows = []
+            for item in source_results:
+                row = dict(item)
+                row.setdefault("source", name)
+                rows.append(row)
+            cls._record_attempt(
+                source=name,
+                keyword=keyword,
+                started_at=started_at,
+                result_count=len(rows),
+                ok=True,
+            )
+            return rows
+        except Exception as exc:
+            cls._record_attempt(
+                source=name,
+                keyword=keyword,
+                started_at=started_at,
+                result_count=0,
+                ok=False,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            return []
+
+    @classmethod
     async def search_all(cls, keyword: str) -> list[MagnetInfo]:
-        """按优先级遍历所有源搜索，返回聚合结果"""
-        results = []
-        for name in cls._priority:
-            source = cls._sources.get(name)
-            if source:
-                started_at = time.monotonic()
-                try:
-                    source_results = await source.search(keyword)
-                    result_count = 0
-                    for item in source_results:
-                        row = dict(item)
-                        row.setdefault("source", name)
-                        results.append(row)
-                        result_count += 1
-                    cls._record_attempt(
-                        source=name,
-                        keyword=keyword,
-                        started_at=started_at,
-                        result_count=result_count,
-                        ok=True,
-                    )
-                except Exception as exc:
-                    cls._record_attempt(
-                        source=name,
-                        keyword=keyword,
-                        started_at=started_at,
-                        result_count=0,
-                        ok=False,
-                        error=f"{type(exc).__name__}: {exc}",
-                    )
-                    continue
+        """并发查询所有源，按优先级顺序聚合结果。"""
+        names = [name for name in cls._priority if cls._sources.get(name)]
+        if not names:
+            return []
+        # All sources are independent network calls; fan them out concurrently
+        # instead of paying the sum of every source's latency in series.
+        batches = await asyncio.gather(*(cls._search_one(name, keyword) for name in names))
+        results: list[dict] = []
+        for rows in batches:
+            results.extend(rows)
         return results

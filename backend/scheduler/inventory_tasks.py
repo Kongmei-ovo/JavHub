@@ -2,7 +2,6 @@
 from __future__ import annotations
 import asyncio
 import logging
-import threading
 from typing import Optional
 from database import (
     add_inventory_job, update_inventory_job, update_inventory_progress, get_inventory_job,
@@ -28,35 +27,31 @@ def is_exempt(content_id: str) -> bool:
 
 
 def run_inventory_job(job_id: int):
-    """在新线程中执行作业，避免阻塞"""
-    thread = threading.Thread(target=_execute_job_sync, args=(job_id,))
-    thread.daemon = True
-    thread.start()
+    """提交作业到共享后台事件循环（非阻塞，立即返回）。"""
+    from scheduler.worker_loop import submit
+    submit(_execute_job(job_id))
 
 
-def _execute_job_sync(job_id: int):
-    """同步执行作业（在线程中）"""
+async def _execute_job(job_id: int):
+    """在共享后台事件循环上执行作业。"""
     job = get_inventory_job(job_id)
     if not job:
         logger.warning("[Inventory] Job %s not found", job_id)
         return
 
     job_type = job["job_type"]
-
-    # 在新事件循环中运行 async 代码
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
         if job_type == "collect":
-            loop.run_until_complete(run_collect_job(job_id))
+            await run_collect_job(job_id)
         elif job_type == "full":
-            loop.run_until_complete(run_compare_job(job_id, job.get("snapshot_key")))
+            await run_compare_job(job_id, job.get("snapshot_key"))
         elif job_type == "actor":
-            loop.run_until_complete(run_actor_compare_job(job_id, job["actor_id"], job.get("snapshot_key")))
+            await run_actor_compare_job(job_id, job["actor_id"], job.get("snapshot_key"))
         else:
             update_inventory_job(job_id, "failed", f"Unknown job type: {job_type}")
-    finally:
-        loop.close()
+    except Exception:
+        logger.exception("[Inventory] Job %s crashed", job_id)
+        update_inventory_job(job_id, "failed", "internal error")
 
 
 def _snapshot_actor_pages(snapshot_key: str, page_size: int = 100):
@@ -195,24 +190,48 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
 
         for actors in _snapshot_actor_pages(snapshot_key):
             actor_total += len(actors)
+
+            # Phase 1 — resolve confirmed mappings (fast local DB lookups).
+            pending: list[tuple[dict, int, str]] = []
             for actor in actors:
                 emby_actor_id = actor["actress_id"]
-                actress_name = actor["actress_name"]
                 mapping = get_confirmed_actor_mapping(emby_actor_id)
                 if not mapping:
                     unmapped += 1
                     update_inventory_actor_stats(emby_actor_id, 0, 0)
                     continue
+                pending.append((
+                    actor,
+                    mapping["javinfo_actress_id"],
+                    mapping.get("javinfo_actress_name") or actor["actress_name"],
+                ))
 
-                javinfo_actress_id = mapping["javinfo_actress_id"]
-                javinfo_actress_name = mapping.get("javinfo_actress_name") or actress_name
-                try:
-                    javinfo_videos = await pipeline.fetch_actress_videos(javinfo_actress_id, page_size=999)
-                except Exception as e:
-                    logger.exception(
+            if not pending:
+                continue
+
+            # Phase 2 — fetch JavInfo filmographies concurrently (bounded), so a
+            # page of mapped actors costs ~max(latency) instead of sum(latency).
+            sem = asyncio.Semaphore(8)
+
+            async def _bounded_fetch(jid: int):
+                async with sem:
+                    return await pipeline.fetch_actress_videos(jid, page_size=999)
+
+            fetched = await asyncio.gather(
+                *(_bounded_fetch(jid) for _, jid, _ in pending),
+                return_exceptions=True,
+            )
+
+            # Phase 3 — reconcile each actor sequentially (ordered DB writes).
+            for (actor, javinfo_actress_id, javinfo_actress_name), javinfo_videos in zip(pending, fetched):
+                emby_actor_id = actor["actress_id"]
+
+                if isinstance(javinfo_videos, Exception):
+                    logger.error(
                         "[Inventory] Fetch failed for mapped actor %s->%s",
                         emby_actor_id,
                         javinfo_actress_id,
+                        exc_info=javinfo_videos,
                     )
                     update_inventory_actor_stats(emby_actor_id, -1, -1)
                     failed += 1

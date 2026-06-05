@@ -1,5 +1,4 @@
 import logging
-import asyncio
 import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -23,15 +22,16 @@ def subscription_check_job():
         return
     add_log("INFO", "开始订阅检查...")
     try:
+        from scheduler.worker_loop import run as run_on_loop
         from services.subscription import check_all_subscriptions
-        new_movies = asyncio.run(check_all_subscriptions())
+        new_movies = run_on_loop(check_all_subscriptions())
         add_log("INFO", f"订阅检查完成，生成/刷新 {len(new_movies)} 个下载候选")
 
         if new_movies:
             # 发送通知
             try:
                 from services.notification import notification_service
-                asyncio.run(notification_service.notify_new_movies(new_movies))
+                run_on_loop(notification_service.notify_new_movies(new_movies))
             except Exception as e:
                 logger.error(f"Notification failed: {e}")
     except Exception as e:
@@ -46,8 +46,9 @@ def candidate_auto_process_job():
     if policy == "manual":
         return
     try:
+        from scheduler.worker_loop import run as run_on_loop
         from services.candidate_processor import run_automatic_candidate_processing
-        result = asyncio.run(run_automatic_candidate_processing())
+        result = run_on_loop(run_automatic_candidate_processing())
         counts = result.get("counts", {}) if isinstance(result, dict) else {}
         add_log("INFO", f"候选自动处理完成: {counts}")
     except Exception as e:

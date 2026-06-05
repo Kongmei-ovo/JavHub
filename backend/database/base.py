@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import re
+import threading
 from contextlib import contextmanager
 from datetime import date, datetime
 from typing import Any, Iterable
 
 import psycopg2
 from psycopg2 import sql
+from psycopg2 import pool as _pg_pool
 from psycopg2.extras import RealDictCursor
 
 from config import config
@@ -88,8 +90,11 @@ class CompatCursor:
 
 
 class CompatConnection:
-    def __init__(self, conn: Any):
+    def __init__(self, conn: Any, pooled: bool = False, pool: Any = None):
         self._conn = conn
+        self._pooled = pooled
+        self._pool = pool
+        self._released = False
 
     def cursor(self, *args: Any, **kwargs: Any) -> CompatCursor:
         return CompatCursor(self._conn.cursor(*args, **kwargs))
@@ -106,7 +111,12 @@ class CompatConnection:
         self._conn.rollback()
 
     def close(self) -> None:
-        self._conn.close()
+        # Idempotent: return pooled connections to the pool instead of closing
+        # the socket; close plain (fallback) connections normally.
+        if self._released:
+            return
+        self._released = True
+        _release_connection(self._conn, self._pooled, self._pool)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._conn, name)
@@ -232,31 +242,127 @@ def ensure_database() -> None:
         conn.close()
 
 
-def get_db_orig():
-    """Return a PostgreSQL connection wrapper for JavHub state."""
+# === Connection pool ===========================================================
+# Every DB call used to open a brand-new psycopg2 connection and tear it down
+# afterwards. Across a compare/process run that is thousands of TCP+auth
+# round-trips that block whatever loop/thread is driving the job. A process-wide
+# ThreadedConnectionPool reuses connections instead. Pooling is best-effort: if
+# the pool can't be built or is momentarily exhausted, we transparently fall
+# back to a direct connection so the app never hard-fails on a pool error.
+
+_pool: _pg_pool.ThreadedConnectionPool | None = None
+_pool_key: tuple | None = None
+_pool_lock = threading.Lock()
+
+
+def _settings_key(settings: dict) -> tuple:
+    return (settings["host"], settings["port"], settings["database"], settings["user"])
+
+
+def _connect_direct() -> Any:
+    """Open a single raw psycopg2 connection (creating the DB on first use)."""
     settings = config.javhub_database
+    kwargs = dict(
+        host=settings["host"],
+        port=settings["port"],
+        dbname=settings["database"],
+        user=settings["user"],
+        password=settings["password"],
+        cursor_factory=RealDictCursor,
+    )
     try:
-        raw = psycopg2.connect(
-            host=settings["host"],
-            port=settings["port"],
-            dbname=settings["database"],
-            user=settings["user"],
-            password=settings["password"],
-            cursor_factory=RealDictCursor,
-        )
+        return psycopg2.connect(**kwargs)
     except psycopg2.OperationalError as exc:
         if f'database "{settings["database"]}" does not exist' not in str(exc):
             raise
         ensure_database()
-        raw = psycopg2.connect(
-            host=settings["host"],
-            port=settings["port"],
-            dbname=settings["database"],
-            user=settings["user"],
-            password=settings["password"],
-            cursor_factory=RealDictCursor,
-        )
-    return CompatConnection(raw)
+        return psycopg2.connect(**kwargs)
+
+
+def _create_pool() -> _pg_pool.ThreadedConnectionPool:
+    settings = config.javhub_database
+    maxconn = int(settings.get("pool_max") or 32)
+    kwargs = dict(
+        host=settings["host"],
+        port=settings["port"],
+        dbname=settings["database"],
+        user=settings["user"],
+        password=settings["password"],
+        cursor_factory=RealDictCursor,
+    )
+    try:
+        return _pg_pool.ThreadedConnectionPool(1, maxconn, **kwargs)
+    except psycopg2.OperationalError as exc:
+        if f'database "{settings["database"]}" does not exist' not in str(exc):
+            raise
+        ensure_database()
+        return _pg_pool.ThreadedConnectionPool(1, maxconn, **kwargs)
+
+
+def _get_pool() -> _pg_pool.ThreadedConnectionPool | None:
+    """Return the pool for the *current* DB settings, rebuilding on change.
+
+    Keying by settings keeps test isolation intact: each test repoints config at
+    a fresh temp database via ``config.reload()``, and a stale pool bound to a
+    previous (possibly dropped) database must not keep serving connections.
+    """
+    global _pool, _pool_key
+    key = _settings_key(config.javhub_database)
+    if _pool is not None and _pool_key == key:
+        return _pool
+    with _pool_lock:
+        if _pool is not None and _pool_key == key:
+            return _pool
+        if _pool is not None:
+            try:
+                _pool.closeall()
+            except Exception:
+                pass
+            _pool = None
+            _pool_key = None
+        try:
+            _pool = _create_pool()
+            _pool_key = key
+        except Exception:
+            _pool = None  # pooling unavailable → direct connections
+            _pool_key = None
+    return _pool
+
+
+def _release_connection(raw: Any, pooled: bool, pool: Any = None) -> None:
+    if pooled and pool is not None:
+        try:
+            if not getattr(raw, "closed", False):
+                # Reset any open/aborted transaction before reuse so the next
+                # borrower never inherits a dirty session.
+                raw.rollback()
+            pool.putconn(raw)
+            return
+        except Exception:
+            try:
+                raw.close()
+            except Exception:
+                pass
+            return
+    try:
+        raw.close()
+    except Exception:
+        pass
+
+
+def get_db_orig():
+    """Return a PostgreSQL connection wrapper for JavHub state.
+
+    Borrows from the shared pool when available; falls back to a fresh direct
+    connection if the pool is unavailable or exhausted.
+    """
+    pool = _get_pool()
+    if pool is not None:
+        try:
+            return CompatConnection(pool.getconn(), pooled=True, pool=pool)
+        except _pg_pool.PoolError:
+            pass  # exhausted/closed → degrade gracefully to a direct connection
+    return CompatConnection(_connect_direct(), pooled=False)
 
 
 @contextmanager
