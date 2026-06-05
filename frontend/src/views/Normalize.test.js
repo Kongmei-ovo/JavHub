@@ -18,6 +18,12 @@ function backgroundIncludes(block, token) {
   return Boolean(match && match[1].includes(token))
 }
 
+function assertLayeredBackground(block, token, name) {
+  assert.ok(backgroundIncludes(block, token), `${name} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${name} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
+}
+
 test('normalize page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/normalize\/normalize\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 600, 'Normalize.vue should stay below 600 lines')
@@ -97,8 +103,10 @@ test('normalize candidate and mapping rows avoid flat translucent cards', () => 
   assert.ok(backgroundIncludes(reasonPill, '--material-glass-control'))
   assert.match(reasonPill, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(riskPill, /border:\s*1px solid var\(--badge-warning-border\)/)
-  assert.match(riskPill, /background:\s*var\(--badge-warning-bg\)/)
+  assertLayeredBackground(riskPill, '--badge-warning-bg', 'normalize risky reason pill')
   assert.match(riskPill, /color:\s*var\(--badge-warning-text\)/)
+  assert.match(riskPill, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(riskPill, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(riskPill, /#ffb340|rgba\(255,\s*159,\s*10/)
 })
 
@@ -157,7 +165,6 @@ test('normalize glass backgrounds are layered with specular and noise surfaces',
   ]) {
     const block = cssRule(selector)
     assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
-    assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
-    assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
+    assertLayeredBackground(block, token, selector)
   }
 })

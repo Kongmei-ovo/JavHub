@@ -333,10 +333,13 @@
 .risk-row span {
   border: 1px solid var(--badge-warning-border);
   border-radius: 999px;
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--badge-warning-text);
   font-size: 11px;
   padding: 2px 7px;
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .candidate-actions {
   display: flex;
