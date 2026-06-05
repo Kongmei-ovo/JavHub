@@ -272,7 +272,7 @@
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border-top: 1px solid var(--glass-edge);
   padding: 20px 0;
-  z-index: 100;
+  z-index: var(--z-nav);
   display: flex;
   justify-content: center;
 }

@@ -424,6 +424,23 @@ test('production backdrop blur uses shared glass tokens', () => {
   assert.deepEqual(offenders, [])
 })
 
+test('production stacking layers use the shared z-index scale', () => {
+  const offenders = []
+  const hardcodedZIndex = /z-index:\s*(-?\d+)\b/g
+
+  for (const fileUrl of productionStyleFiles()) {
+    const source = readFileSync(fileUrl, 'utf8')
+    for (const match of source.matchAll(hardcodedZIndex)) {
+      const value = Number(match[1])
+      if (Math.abs(value) <= 3) continue
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')}:${line}:z-index: ${value}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
+})
+
 test('home dashboard metrics use shared liquid glass controls', () => {
   const statCardBlock = sourceBlock(home, '.stat-card')
   const statCardHoverBlock = sourceBlock(home, '.stat-card:hover')

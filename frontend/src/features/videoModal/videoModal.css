@@ -136,7 +136,7 @@
   font-size: 24px;
   cursor: pointer;
   color: var(--modal-chip-color);
-  z-index: 10;
+  z-index: var(--z-raised);
   box-shadow: var(--modal-chip-shadow);
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

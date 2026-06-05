@@ -310,7 +310,7 @@
 .sheet-top-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 20px 0;
-  position: sticky; top: 0; z-index: 5;
+  position: sticky; top: 0; z-index: var(--z-raised);
   background: var(--subscription-sticky-bg);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
