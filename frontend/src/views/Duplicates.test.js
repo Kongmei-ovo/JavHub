@@ -35,6 +35,7 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
   const duplicateEntry = cssBlock('.duplicate-entry')
   const actionButton = cssBlock('.action-btn')
   const deleteButton = cssBlock('.action-btn.delete')
+  const deleteButtonHover = cssBlock('.action-btn.delete:hover')
   const ignoreButton = cssBlock('.action-btn.ignore')
   const stateBlock = cssBlock('.loading')
   const errorBlock = cssBlock('.error')
@@ -48,8 +49,14 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
   }
 
   assert.match(deleteButton, /border-color:\s*var\(--badge-error-border\)/)
-  assert.match(deleteButton, /background:\s*var\(--badge-error-bg\)/)
+  assert.ok(backgroundIncludes(deleteButton, '--badge-error-bg'))
+  assert.match(deleteButton, /var\(--surface-specular-edge\)/)
+  assert.match(deleteButton, /var\(--surface-noise\)/)
   assert.match(deleteButton, /color:\s*var\(--badge-error-text\)/)
+  assert.ok(backgroundIncludes(deleteButtonHover, '--badge-error-bg'))
+  assert.match(deleteButtonHover, /var\(--surface-specular-edge-strong\)/)
+  assert.match(deleteButtonHover, /var\(--surface-noise\)/)
+  assert.match(deleteButtonHover, /border-color:\s*var\(--badge-error-border\)/)
   assert.doesNotMatch(deleteButton, /#fff|#ffffff|#ff4d4f/i)
 
   assert.match(errorBlock, /color:\s*var\(--badge-error-text\)/)
@@ -71,9 +78,12 @@ test('duplicates keyboard focus mirrors hover glass treatment', () => {
   }
 
   assert.match(deleteFocus, /outline:\s*none/)
-  assert.match(deleteFocus, /background:\s*var\(--badge-error-bg\)/)
+  assert.ok(backgroundIncludes(deleteFocus, '--badge-error-bg'))
+  assert.match(deleteFocus, /var\(--surface-specular-edge-strong\)/)
+  assert.match(deleteFocus, /var\(--surface-noise\)/)
   assert.match(deleteFocus, /border-color:\s*var\(--badge-error-border\)/)
-  assert.match(deleteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+  assert.match(deleteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(deleteFocus, /rgba\(var\(--error-rgb\)/)
 
   assert.ok(backgroundIncludes(entryFocus, '--material-glass-control-hover'))
   assert.match(entryFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
@@ -91,6 +101,9 @@ test('duplicates glass backgrounds are layered with specular and noise surfaces'
     '.duplicate-entry',
     '.action-btn',
     '.action-btn:hover',
+    '.action-btn.delete',
+    '.action-btn.delete:hover',
+    '.action-btn.delete:focus-visible',
     '.action-btn.ignore',
     '.loading',
   ]) {
