@@ -205,6 +205,35 @@ test('translation form and status surfaces use shared glass and badge tokens', (
   assert.doesNotMatch(source, /var\(--surface-control\)|var\(--surface-input-focus\)|#ff6b78|rgba\(255,\s*80,\s*90|rgba\(245,\s*181,\s*80|rgba\(90,\s*200,\s*150/i)
 })
 
+test('translation review reset danger action uses semantic layered glass states', () => {
+  const reviewDanger = cssBlock(source, '.review-actions .danger')
+  const reviewDangerHover = cssBlock(source, '.review-actions .danger:hover')
+  const reviewDangerFocus = cssBlock(source, '.review-actions .danger:focus-visible')
+
+  assert.match(reviewDanger, /border-color:\s*var\(--badge-error-border\)/)
+  assert.ok(backgroundIncludes(reviewDanger, '--badge-error-bg'))
+  assert.match(reviewDanger, /var\(--surface-specular-edge\)/)
+  assert.match(reviewDanger, /var\(--surface-noise\)/)
+  assert.match(reviewDanger, /color:\s*var\(--badge-error-text\)/)
+  assert.match(reviewDanger, /box-shadow:\s*var\(--glass-control-shadow\)/)
+
+  for (const [block, name] of [
+    [reviewDangerHover, 'review danger hover'],
+    [reviewDangerFocus, 'review danger focus'],
+  ]) {
+    assert.match(block, /border-color:\s*var\(--badge-error-border\)/, `${name} should keep semantic error border`)
+    assert.ok(backgroundIncludes(block, '--badge-error-bg'), `${name} should keep semantic error fill`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should strengthen the specular edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should preserve texture noise`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover depth`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
+  }
+
+  assert.match(reviewDangerFocus, /outline:\s*none/)
+  assert.match(reviewDangerFocus, /0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(`${reviewDanger}\n${reviewDangerHover}\n${reviewDangerFocus}`, /#ff6b78|rgba\(255,\s*80,\s*90|rgba\(var\(--error-rgb\)|rgba\(var\(--accent-rgb\)/i)
+})
+
 test('translation long lists skip unnecessary row rendering work', () => {
   assert.match(
     source,

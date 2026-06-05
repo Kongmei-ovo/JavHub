@@ -1127,7 +1127,36 @@
 }
 
 .review-actions .danger {
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
   color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.review-actions .danger:hover {
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.review-actions .danger:focus-visible {
+  outline: none;
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
+  transform: translateY(-1px);
 }
 
 .review-pagination {
