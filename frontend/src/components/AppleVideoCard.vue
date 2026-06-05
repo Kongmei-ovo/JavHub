@@ -268,11 +268,14 @@ function handleKeydown(event) {
   flex-shrink: 0;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--badge-info-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   border: 1px solid var(--badge-info-border);
   color: var(--badge-info-text);
   font-size: 10px;
   font-weight: 600;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .apple-video-card__title {

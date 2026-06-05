@@ -27,6 +27,14 @@ function cssBlock(selector) {
   return blocks.join('\n')
 }
 
+function assertLayeredSemanticBackground(block, token, label) {
+  assert.match(
+    block,
+    new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(${token}\\)`),
+    `${label} should layer semantic fill with shared glass highlights`
+  )
+}
+
 function getSetupBody() {
   const match = source.match(/<script setup>([\s\S]*?)<\/script>/)
   assert.ok(match, 'Should find <script setup> block in AppleVideoCard.vue')
@@ -215,6 +223,17 @@ test('AppleVideoCard variant labels use shared Apple glass material', () => {
   assert.match(variantPill, /color:\s*var\(--text-primary\)/)
   assert.match(variantPill, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(variantPill, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+})
+
+test('AppleVideoCard service badge uses semantic layered glass material', () => {
+  const serviceBadge = cssBlock('.apple-video-card__badge')
+
+  assertLayeredSemanticBackground(serviceBadge, '--badge-info-bg', 'service badge')
+  assert.match(serviceBadge, /border:\s*1px solid var\(--badge-info-border\)/)
+  assert.match(serviceBadge, /color:\s*var\(--badge-info-text\)/)
+  assert.match(serviceBadge, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(serviceBadge, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(serviceBadge, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
 })
 
 test('AppleVideoCard card shell and cover use shared Apple glass materials', () => {
