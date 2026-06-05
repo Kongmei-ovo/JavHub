@@ -150,6 +150,13 @@ function handleKeydown(event) {
   box-shadow: var(--glass-control-shadow-hover);
 }
 
+.apple-video-card:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
 .apple-video-card:active {
   transform: translateY(-1px) scale(0.995);
 }

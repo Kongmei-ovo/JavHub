@@ -220,6 +220,7 @@ test('AppleVideoCard variant labels use shared Apple glass material', () => {
 test('AppleVideoCard card shell and cover use shared Apple glass materials', () => {
   const card = cssBlock('.apple-video-card')
   const cardHover = cssBlock('.apple-video-card:hover')
+  const cardFocus = cssBlock('.apple-video-card:focus-visible')
   const cover = cssBlock('.apple-video-card__cover')
   const fallback = cssBlock('.apple-video-card__fallback')
 
@@ -232,6 +233,10 @@ test('AppleVideoCard card shell and cover use shared Apple glass materials', () 
   assert.match(cardHover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(cardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(cardHover, /var\(--border-light\)|var\(--surface-card-hover\)|var\(--shadow-floating\)|var\(--glass-surface-shadow\)/)
+  assert.match(cardFocus, /outline:\s*none/)
+  assert.match(cardFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(cardFocus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(cardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
 
   for (const [block, label] of [[cover, 'cover'], [fallback, 'fallback']]) {
     assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${label} should use shared control material`)
