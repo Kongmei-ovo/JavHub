@@ -17,6 +17,10 @@ function backgroundIncludes(token) {
   return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
 }
 
+function layeredSemanticBackground(token) {
+  return new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
+}
+
 test('search page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/search\/search\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 800, 'Search.vue should stay below 800 lines')
@@ -133,9 +137,10 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
   }
 
-  assert.match(sortClearButtonHoverBlock, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(sortClearButtonHoverBlock, layeredSemanticBackground('badge-error-bg'))
   assert.match(sortClearButtonHoverBlock, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(sortClearButtonHoverBlock, /color:\s*var\(--badge-error-text\)/)
+  assert.match(sortClearButtonHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(sortClearButtonHoverBlock, /#FF375F|rgba\(255,\s*55,\s*95/i)
   for (const [block, name] of [[filterControlFocusBlock, 'filter control focus'], [sortClearButtonFocusBlock, 'sort clear focus']]) {
     assert.match(block, /outline:\s*none/, `${name} should suppress default outline`)
@@ -169,6 +174,7 @@ test('search inline variant controls use shared glass materials and explicit mot
   const variantButtonActiveBlock = sourceBlock('.variant-expand-btn:active')
   const variantRowBlock = sourceBlock('.variant-inline-item')
   const variantRowHoverBlock = sourceBlock('.variant-inline-item:hover')
+  const variantLabelBlock = sourceBlock('.variant-inline-labels span')
 
   for (const [block, name] of [[variantButtonBlock, 'variant button'], [variantRowBlock, 'variant row']]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
@@ -187,6 +193,11 @@ test('search inline variant controls use shared glass materials and explicit mot
   }
 
   assert.match(variantButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(variantLabelBlock, layeredSemanticBackground('badge-info-bg'))
+  assert.match(variantLabelBlock, /border:\s*1px solid var\(--badge-info-border\)/)
+  assert.match(variantLabelBlock, /color:\s*var\(--badge-info-text\)/)
+  assert.match(variantLabelBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantLabelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(source, /\.variant-expand-btn\s*\{[^}]*transition:\s*var\(--transition-pro\)/)
 })
 

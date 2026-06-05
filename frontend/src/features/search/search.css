@@ -299,9 +299,10 @@
 }
 
 .sort-clear-btn:hover {
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow-hover);
 }
 
 .sort-clear-btn:focus-visible {
@@ -766,11 +767,14 @@
 .variant-inline-labels span {
   padding: 1px 5px;
   border-radius: 999px;
-  background: var(--badge-info-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   border: 1px solid var(--badge-info-border);
   color: var(--badge-info-text);
   font-size: 10px;
   font-weight: 650;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .pagination-bar {
