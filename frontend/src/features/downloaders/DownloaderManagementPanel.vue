@@ -297,11 +297,26 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.icon-action:focus-visible:not(:disabled) {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .icon-action.primary {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   border-color: var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
+}
+.icon-action.primary:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  color: var(--text-primary);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .icon-action.compact {
   width: 38px;
@@ -311,6 +326,13 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+.icon-action.compact:focus-visible:not(:disabled) {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .icon-action.danger {
   color: var(--badge-error-text);
@@ -342,11 +364,16 @@ export default {
 .downloader-row:last-child {
   border-bottom-color: var(--glass-control-border);
 }
-.downloader-row:hover,
-.downloader-row:focus-visible {
+.downloader-row:hover {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+.downloader-row:focus-visible {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
   outline: none;
 }
 .downloader-row.disabled {

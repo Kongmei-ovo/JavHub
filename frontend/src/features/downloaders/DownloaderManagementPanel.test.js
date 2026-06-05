@@ -41,10 +41,14 @@ test('downloader panel controls use shared Apple glass materials', () => {
   const toolbar = cssBlock(source, '.downloader-toolbar')
   const iconAction = cssBlock(source, '.icon-action')
   const iconActionHover = cssBlock(source, '.icon-action:hover:not(:disabled)')
+  const iconActionFocus = cssBlock(source, '.icon-action:focus-visible:not(:disabled)')
   const iconActionPrimary = cssBlock(source, '.icon-action.primary')
+  const iconActionPrimaryFocus = cssBlock(source, '.icon-action.primary:focus-visible')
   const iconActionCompact = cssBlock(source, '.icon-action.compact')
+  const iconActionCompactFocus = cssBlock(source, '.icon-action.compact:focus-visible:not(:disabled)')
   const downloaderRow = cssBlock(source, '.downloader-row')
   const downloaderRowHover = cssBlock(source, '.downloader-row:hover')
+  const downloaderRowFocus = cssBlock(source, '.downloader-row:focus-visible')
   const downloaderAvatar = cssBlock(source, '.downloader-avatar')
   const downloaderAvatarMuted = cssBlock(source, '.downloader-avatar.muted')
   const switchTrack = cssBlock(source, '.switch-mini span')
@@ -71,6 +75,20 @@ test('downloader panel controls use shared Apple glass materials', () => {
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
 
+  for (const [block, name] of [
+    [iconActionFocus, 'icon action focus'],
+    [iconActionCompactFocus, 'compact icon action focus'],
+    [downloaderRowFocus, 'downloader row focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should use strong specular edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should keep the shared noise layer`)
+    assert.match(block, /outline:\s*none/, `${name} should avoid double native focus chrome`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should add a soft focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
+  }
+
   assert.ok(backgroundIncludes(downloaderAvatarMuted, '--material-glass-subtle'))
   assert.match(downloaderAvatarMuted, /var\(--surface-specular-edge\)/)
   assert.match(downloaderAvatarMuted, /var\(--surface-noise\)/)
@@ -84,6 +102,11 @@ test('downloader panel controls use shared Apple glass materials', () => {
   assert.match(iconActionPrimary, /color:\s*var\(--text-primary\)/)
   assert.match(iconActionPrimary, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(iconActionPrimary, /box-shadow:\s*var\(--glass-active-shadow\)/)
+  assert.ok(backgroundIncludes(iconActionPrimaryFocus, '--glass-active-material'))
+  assert.match(iconActionPrimaryFocus, /outline:\s*none/)
+  assert.match(iconActionPrimaryFocus, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(iconActionPrimaryFocus, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(iconActionPrimaryFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(inlineDialogOverlay, /background:\s*var\(--surface-scrim\)/)
   assert.match(inlineDialogOverlay, /z-index:\s*var\(--z-modal\)/)
   assert.ok(backgroundIncludes(inlineDialog, '--material-glass-sheet'))
