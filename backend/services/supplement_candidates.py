@@ -1,6 +1,8 @@
 """Bridge JavInfo supplement-only movies into local download candidates."""
 from __future__ import annotations
 
+import asyncio
+
 from database import (
     add_download_candidate_event,
     candidate_content_id,
@@ -43,6 +45,7 @@ async def generate_download_candidates_from_supplement(
     missing_maker: bool | None = None,
     missing_categories: bool | None = None,
     max_completeness: int | None = None,
+    concurrency: int = 10,
 ) -> dict:
     """Import unmatched supplement movies as download candidates.
 
@@ -93,34 +96,58 @@ async def generate_download_candidates_from_supplement(
         "skipped": 0,
         "skipped_exempt": 0,
         "in_library": 0,
+        "errors": 0,
         "candidate_count": 0,
         "candidates": [],
     }
 
-    async def process_movie(movie: dict) -> None:
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def evaluate_movie(movie: dict) -> dict:
+        """Decide what to do with a movie. Does the slow Emby existence check
+        under a concurrency bound; performs no DB writes and never raises."""
         if movie.get("status") == "manual_ignored" or movie.get("match_status") == "manual_ignored":
-            stats["skipped"] += 1
-            return
+            return {"action": "skipped", "movie": movie}
 
         video = supplement_movie_to_video(movie)
         content_id = candidate_content_id(video)
         code = video_code(video)
         if not content_id or not code:
+            return {"action": "skipped", "movie": movie}
+
+        if is_video_exempt(content_id) or is_video_exempt(code):
+            return {"action": "exempt", "movie": movie}
+
+        async with sem:
+            try:
+                exists = await emby_client.check_exists(code)
+            except Exception as exc:  # one Emby hiccup must not abort the whole batch
+                return {"action": "error", "movie": movie, "error": str(exc)}
+        if exists:
+            return {"action": "in_library", "movie": movie}
+        return {"action": "candidate", "movie": movie, "video": video}
+
+    def apply_decision(decision: dict) -> None:
+        action = decision["action"]
+        movie = decision["movie"]
+        if action == "skipped":
             stats["skipped"] += 1
             return
-
+        # Everything below passed code validation, so it counts as "checked".
         stats["checked"] += 1
-        if is_video_exempt(content_id) or is_video_exempt(code):
+        if action == "exempt":
             stats["skipped"] += 1
             stats["skipped_exempt"] += 1
             return
-
-        if await emby_client.check_exists(code):
+        if action == "error":
+            stats["errors"] += 1
+            return
+        if action == "in_library":
             stats["in_library"] += 1
             return
 
         candidate = upsert_candidate_from_video(
-            video=video,
+            video=decision["video"],
             actress_id=movie.get("local_actress_id") or actress_id,
             actress_name=movie.get("actress_name") or actress_name,
             source="supplement",
@@ -151,11 +178,17 @@ async def generate_download_candidates_from_supplement(
         if not movies:
             break
 
+        batch = []
         for movie in movies:
             if max_source_rows is not None and source_rows_seen >= max_source_rows:
                 break
             source_rows_seen += 1
-            await process_movie(movie)
+            batch.append(movie)
+
+        # Phase 1: existence checks fan out (bounded); Phase 2: DB writes stay ordered.
+        decisions = await asyncio.gather(*(evaluate_movie(movie) for movie in batch))
+        for decision in decisions:
+            apply_decision(decision)
 
         total_pages = result.get("total_pages") if isinstance(result, dict) else None
         if isinstance(total_pages, int):
