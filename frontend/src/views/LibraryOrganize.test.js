@@ -134,6 +134,35 @@ test('library organize workbench cards use liquid glass depth instead of flat wh
   assert.doesNotMatch(focusRule, /border-color:\s*var\(--accent\)/)
 })
 
+test('library organize nested list rows mirror Apple glass hover while child actions are focused', () => {
+  const nestedHoverRule = cssGroupedRule('.mapping-item:hover,')
+  const nestedFocusRule = cssGroupedRule('.mapping-item:focus-within,')
+  const darkNestedHoverRule = cssGroupedRule(':global(:root[data-theme="dark"] .mapping-item:hover),')
+  const darkNestedFocusRule = cssGroupedRule(':global(:root[data-theme="dark"] .mapping-item:focus-within),')
+
+  assert.match(source, /\.mapping-item:hover,\s*\.duplicate-group:hover,\s*\.job-row:hover,\s*\.duplicate-entry:hover,\s*\.check-item:hover,\s*\.inventory-candidate:hover,\s*\.missing-video:hover\s*\{/)
+  assert.match(source, /\.mapping-item:focus-within,\s*\.duplicate-group:focus-within,\s*\.job-row:focus-within,\s*\.duplicate-entry:focus-within,\s*\.check-item:focus-within,\s*\.inventory-candidate:focus-within,\s*\.missing-video:focus-within\s*\{/)
+
+  assert.match(nestedHoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(nestedHoverRule, backgroundIncludes('material-glass-control-hover'))
+  assert.match(nestedHoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(nestedHoverRule, /transform:\s*translateY\(-1px\)/)
+
+  assert.match(nestedFocusRule, /outline:\s*none/)
+  assert.match(nestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(nestedFocusRule, backgroundIncludes('material-glass-control-hover'))
+  assert.match(nestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(nestedFocusRule, /transform:\s*translateY\(-1px\)/)
+
+  assert.match(darkNestedHoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(darkNestedHoverRule, backgroundIncludes('material-glass-control-hover'))
+  assert.match(darkNestedHoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(darkNestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(darkNestedFocusRule, backgroundIncludes('material-glass-control-hover'))
+  assert.match(darkNestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(darkNestedFocusRule, /transform:\s*translateY\(-1px\)/)
+})
+
 test('library organize nested controls keep glass treatment across light and dark themes', () => {
   const detailRule = cssRule('.actor-detail-head')
   const chipRule = cssGroupedRule('.candidate-pills button,')

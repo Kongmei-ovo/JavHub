@@ -433,6 +433,39 @@
   transform: scale(0.992);
 }
 
+.mapping-item:hover,
+.duplicate-group:hover,
+.job-row:hover,
+.duplicate-entry:hover,
+.check-item:hover,
+.inventory-candidate:hover,
+.missing-video:hover {
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.mapping-item:focus-within,
+.duplicate-group:focus-within,
+.job-row:focus-within,
+.duplicate-entry:focus-within,
+.check-item:focus-within,
+.inventory-candidate:focus-within,
+.missing-video:focus-within {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
 .priority-row strong,
 .priority-row small,
 .flow-steps strong,
@@ -916,6 +949,13 @@
 :global(:root[data-theme="dark"] .status-cell:hover),
 :global(:root[data-theme="dark"] .priority-row:hover),
 :global(:root[data-theme="dark"] .flow-steps button:hover),
+:global(:root[data-theme="dark"] .mapping-item:hover),
+:global(:root[data-theme="dark"] .duplicate-group:hover),
+:global(:root[data-theme="dark"] .job-row:hover),
+:global(:root[data-theme="dark"] .duplicate-entry:hover),
+:global(:root[data-theme="dark"] .check-item:hover),
+:global(:root[data-theme="dark"] .inventory-candidate:hover),
+:global(:root[data-theme="dark"] .missing-video:hover),
 :global(:root[data-theme="dark"] .candidate-pills button:hover),
 :global(:root[data-theme="dark"] .chip:hover) {
   border-color: var(--glass-control-border-hover);
@@ -924,6 +964,22 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+:global(:root[data-theme="dark"] .mapping-item:focus-within),
+:global(:root[data-theme="dark"] .duplicate-group:focus-within),
+:global(:root[data-theme="dark"] .job-row:focus-within),
+:global(:root[data-theme="dark"] .duplicate-entry:focus-within),
+:global(:root[data-theme="dark"] .check-item:focus-within),
+:global(:root[data-theme="dark"] .inventory-candidate:focus-within),
+:global(:root[data-theme="dark"] .missing-video:focus-within) {
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
 }
 
 :global(:root[data-theme="dark"] .mini-check-form input:focus),
