@@ -76,6 +76,27 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   assert.match(avatarImageFocus, /transform:\s*translateY\(-2px\)/)
 })
 
+test('genres primary controls mirror hover glass treatment for keyboard focus', () => {
+  const shuffleFocus = cssBlock('.shuffle-btn:focus-visible:not(:disabled)')
+  const tabFocus = cssBlock('.tab-btn:focus-visible')
+  const bubbleFocus = cssBlock('.bubble:focus-visible')
+
+  for (const [block, label] of [
+    [shuffleFocus, 'shuffle button'],
+    [tabFocus, 'tab button'],
+    [bubbleFocus, 'bubble button'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should remove default outline after replacing it`)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${label} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 (?:3|4)px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose an Apple glass focus ring`)
+  }
+
+  assert.match(shuffleFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(tabFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(bubbleFocus, /transform:\s*translateY\(-2px\)/)
+})
+
 test('genres loading and actress skeletons use shared Apple glass materials', () => {
   const spinner = cssBlock('.spinner-large')
   const skeleton = cssBlock('.actress-skeleton-avatar,\n.actress-skeleton-line')
