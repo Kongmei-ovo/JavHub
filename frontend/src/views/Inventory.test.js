@@ -33,6 +33,14 @@ function assertLayeredBackground(block, token, name) {
   assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
 }
 
+function assertSemanticBadgeGlass(block, token, borderToken, textToken, name) {
+  assertLayeredBackground(block, token, name)
+  assert.match(block, new RegExp(`border:\\s*1px solid var\\(${borderToken}\\)`), `${name} should use semantic border`)
+  assert.match(block, new RegExp(`color:\\s*var\\(${textToken}\\)`), `${name} should use semantic text`)
+  assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
+  assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use shared control blur`)
+}
+
 test('inventory page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/inventory\/inventory\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 520, 'Inventory.vue should stay below 520 lines')
@@ -125,6 +133,17 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
   for (const block of [actorCard, actorCardHover, actorCover]) {
     assert.doesNotMatch(block, /var\(--bg-card\)|var\(--bg-secondary\)|var\(--shadow-card\)/)
   }
+})
+
+test('inventory semantic status surfaces use layered badge glass', () => {
+  const snapshotInfo = cssBlock(source, '.snapshot-info')
+  const snapshotWarn = cssBlock(source, '.snapshot-warn')
+  const missingBadge = cssBlock(source, '.missing-badge')
+
+  assertSemanticBadgeGlass(snapshotInfo, '--badge-success-bg', '--badge-success-border', '--badge-success-text', 'inventory snapshot success')
+  assertSemanticBadgeGlass(snapshotWarn, '--badge-warning-bg', '--badge-warning-border', '--badge-warning-text', 'inventory snapshot warning')
+  assertSemanticBadgeGlass(missingBadge, '--badge-error-bg', '--badge-error-border', '--badge-error-text', 'inventory missing count badge')
+  assert.doesNotMatch(`${snapshotInfo}\n${snapshotWarn}\n${missingBadge}`, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
 })
 
 test('inventory interactive controls expose Apple glass keyboard focus states', () => {
