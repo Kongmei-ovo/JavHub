@@ -661,50 +661,50 @@ export default {
 
 .status-succeeded {
   color: var(--badge-success-text);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   border-color: var(--badge-success-border);
 }
 
 .status-running,
 .status-queued {
   color: var(--badge-warning-text);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   border-color: var(--badge-warning-border);
 }
 
 .status-failed {
   color: var(--badge-error-text);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
 }
 
 .status-idle {
   color: var(--badge-pending-text);
-  background: var(--badge-pending-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
   border-color: var(--badge-pending-border);
 }
 
 .health-healthy {
   color: var(--badge-success-text);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   border-color: var(--badge-success-border);
 }
 
 .health-degraded {
   color: var(--badge-warning-text);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   border-color: var(--badge-warning-border);
 }
 
 .health-cooling_down {
   color: var(--badge-error-text);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
 }
 
 .health-paused {
   color: var(--badge-pending-text);
-  background: var(--badge-pending-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
   border-color: var(--badge-pending-border);
 }
 

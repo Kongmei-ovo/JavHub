@@ -442,23 +442,23 @@ test('supplement source status pills use shared semantic badge tokens', () => {
   const paused = cssBlock(sourceHealthPanel, '.health-paused')
 
   assert.match(idle, /color:\s*var\(--badge-pending-text\)/)
-  assert.match(idle, /background:\s*var\(--badge-pending-bg\)/)
+  assertLayeredBackground(idle, '--badge-pending-bg', 'source idle status')
   assert.match(idle, /border-color:\s*var\(--badge-pending-border\)/)
 
   assert.match(healthy, /color:\s*var\(--badge-success-text\)/)
-  assert.match(healthy, /background:\s*var\(--badge-success-bg\)/)
+  assertLayeredBackground(healthy, '--badge-success-bg', 'source healthy status')
   assert.match(healthy, /border-color:\s*var\(--badge-success-border\)/)
 
   assert.match(degraded, /color:\s*var\(--badge-warning-text\)/)
-  assert.match(degraded, /background:\s*var\(--badge-warning-bg\)/)
+  assertLayeredBackground(degraded, '--badge-warning-bg', 'source degraded status')
   assert.match(degraded, /border-color:\s*var\(--badge-warning-border\)/)
 
   assert.match(coolingDown, /color:\s*var\(--badge-error-text\)/)
-  assert.match(coolingDown, /background:\s*var\(--badge-error-bg\)/)
+  assertLayeredBackground(coolingDown, '--badge-error-bg', 'source cooling down status')
   assert.match(coolingDown, /border-color:\s*var\(--badge-error-border\)/)
 
   assert.match(paused, /color:\s*var\(--badge-pending-text\)/)
-  assert.match(paused, /background:\s*var\(--badge-pending-bg\)/)
+  assertLayeredBackground(paused, '--badge-pending-bg', 'source paused status')
   assert.match(paused, /border-color:\s*var\(--badge-pending-border\)/)
 
   for (const block of [idle, healthy, degraded, coolingDown, paused]) {
