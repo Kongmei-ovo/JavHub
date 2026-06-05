@@ -409,20 +409,20 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card__badge--favorite {
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
 }
 
 .actor-portrait-card__badge--subscribed,
 .actor-portrait-card__badge--success {
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   border-color: var(--badge-success-border);
   color: var(--badge-success-text);
 }
 
 .actor-portrait-card__badge--warning {
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   border-color: var(--badge-warning-border);
   color: var(--badge-warning-text);
 }

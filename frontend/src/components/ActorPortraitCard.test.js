@@ -22,6 +22,12 @@ function backgroundIncludes(block, token) {
   return new RegExp(`background:\\s*(?:[^;]*,\\s*)*var\\(${token}\\)(?:\\s*,[^;]*)?;`).test(block)
 }
 
+function assertLayeredSemanticBackground(block, token, label) {
+  assert.ok(backgroundIncludes(block, token), `${label} should keep semantic fill`)
+  assert.match(block, /var\(--surface-specular-edge\)/, `${label} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${label} should include the shared noise layer`)
+}
+
 test('ActorPortraitCard exposes the planned public interface', () => {
   assert.match(source, /defineProps\(/)
   for (const prop of [
@@ -157,13 +163,13 @@ test('ActorPortraitCard supports badges and action label for reused actor flows'
   assert.match(neutralBadgeRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(neutralBadgeRule, /border-color:\s*var\(--glass-control-border\)/)
   assert.match(neutralBadgeRule, /color:\s*var\(--text-secondary\)/)
-  assert.match(favoriteBadgeRule, /background:\s*var\(--badge-error-bg\)/)
+  assertLayeredSemanticBackground(favoriteBadgeRule, '--badge-error-bg', 'favorite badge')
   assert.match(favoriteBadgeRule, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(favoriteBadgeRule, /color:\s*var\(--badge-error-text\)/)
-  assert.match(successBadgeRule, /background:\s*var\(--badge-success-bg\)/)
+  assertLayeredSemanticBackground(successBadgeRule, '--badge-success-bg', 'success badge')
   assert.match(successBadgeRule, /border-color:\s*var\(--badge-success-border\)/)
   assert.match(successBadgeRule, /color:\s*var\(--badge-success-text\)/)
-  assert.match(warningBadgeRule, /background:\s*var\(--badge-warning-bg\)/)
+  assertLayeredSemanticBackground(warningBadgeRule, '--badge-warning-bg', 'warning badge')
   assert.match(warningBadgeRule, /border-color:\s*var\(--badge-warning-border\)/)
   assert.match(warningBadgeRule, /color:\s*var\(--badge-warning-text\)/)
   for (const [rule, name] of [
