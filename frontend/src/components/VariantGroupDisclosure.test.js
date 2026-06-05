@@ -11,6 +11,14 @@ function sourceBlock(selector) {
   return match[1]
 }
 
+function assertLayeredSemanticBackground(block, token, label) {
+  assert.match(
+    block,
+    new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(${token}\\)`),
+    `${label} should layer semantic fill with shared glass highlights`
+  )
+}
+
 test('VariantGroupDisclosure declares the required props and emits', () => {
   assert.match(source, /variantGroupCount/)
   assert.match(source, /variantGroupItems/)
@@ -40,6 +48,7 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
   const toggleActiveBlock = sourceBlock('.variant-group-disclosure__toggle:active')
   const rowBlock = sourceBlock('.variant-group-disclosure__row')
   const rowHoverBlock = sourceBlock('.variant-group-disclosure__row:hover')
+  const labelBlock = sourceBlock('.variant-group-disclosure__labels span')
 
   for (const [block, name] of [[toggleBlock, 'toggle'], [rowBlock, 'row']]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
@@ -58,5 +67,10 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
   }
 
   assert.match(toggleActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assertLayeredSemanticBackground(labelBlock, '--badge-info-bg', 'variant label')
+  assert.match(labelBlock, /border:\s*1px solid var\(--badge-info-border\)/)
+  assert.match(labelBlock, /color:\s*var\(--badge-info-text\)/)
+  assert.match(labelBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(labelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(source, /transition:\s*var\(--transition-pro\)/)
 })
