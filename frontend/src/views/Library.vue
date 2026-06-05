@@ -74,7 +74,7 @@ export default {
   padding: 0 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   font: inherit;
   outline: none;
@@ -85,14 +85,14 @@ export default {
 }
 .check-form input:focus {
   border-color: var(--glass-active-border);
-  background: var(--glass-active-material);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
 .check-form button {
   min-height: 44px;
   min-width: 96px;
   padding: 0 20px;
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
   border-radius: 14px;
@@ -105,7 +105,7 @@ export default {
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), opacity var(--motion-fast);
 }
 .check-form button:hover:not(:disabled) {
-  background: var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
@@ -115,7 +115,7 @@ export default {
   cursor: not-allowed;
 }
 .result {
-  background: var(--material-glass-sheet);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
   padding: 20px;
@@ -126,7 +126,7 @@ export default {
 .exists { color: var(--badge-success-text); }
 .not-exists { color: var(--text-secondary); }
 .item {
-  background: var(--material-glass-control);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   padding: 12px;
   margin-top: 10px;
