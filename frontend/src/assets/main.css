@@ -430,7 +430,14 @@ a:hover {
 }
 .btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow:
+    var(--glass-control-shadow-hover),
+    0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .btn:active { transform: scale(0.985); }
 .btn-icon { padding: 8px; border-radius: 50%; }

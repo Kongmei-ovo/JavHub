@@ -141,12 +141,18 @@ test('theme materials include refractive liquid glass layers', () => {
 
 test('global controls use shared liquid glass material instead of flat tint', () => {
   const buttonBlock = cssBlock('.btn')
+  const buttonFocusBlock = cssBlock('.btn:focus-visible')
   const primaryButtonBlock = cssBlock('.btn-primary')
   const primaryButtonHoverBlock = cssBlock('.btn-primary:hover')
 
   assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
   assert.match(buttonBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(buttonBlock, /letter-spacing:\s*-0\.01em/)
+  assert.match(buttonFocusBlock, /outline:\s*none/)
+  assert.match(buttonFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(buttonFocusBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(buttonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.doesNotMatch(buttonFocusBlock, /box-shadow:\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.16\)/)
   assert.match(primaryButtonBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
   assert.match(primaryButtonBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(primaryButtonBlock, /color:\s*var\(--text-primary\)/)
