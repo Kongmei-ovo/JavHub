@@ -11,6 +11,14 @@ function cssRule(selector) {
   return match[1]
 }
 
+function assertLayeredSemanticBackground(block, token, label) {
+  assert.match(
+    block,
+    new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(${token}\\)`),
+    `${label} should layer semantic fill with shared glass highlights`
+  )
+}
+
 test('ActressCard uses shared Apple glass materials instead of legacy dark fog', () => {
   const card = cssRule('.actress-card')
   const hover = cssRule('.actress-card:hover')
@@ -57,7 +65,7 @@ test('ActressCard badges and meta colors use theme status tokens', () => {
     assert.doesNotMatch(block, /rgba\(0,\s*0,\s*0|rgba\(255,\s*255,\s*255/)
   }
 
-  assert.match(candidateBadge, /background:\s*var\(--badge-warning-bg\)/)
+  assertLayeredSemanticBackground(candidateBadge, '--badge-warning-bg', 'candidate badge')
   assert.match(candidateBadge, /border:\s*1px solid var\(--badge-warning-border\)/)
   assert.match(candidateBadge, /color:\s*var\(--badge-warning-text\)/)
   assert.match(candidateBadge, /box-shadow:\s*var\(--glass-control-shadow\)/)

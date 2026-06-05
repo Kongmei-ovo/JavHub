@@ -55,7 +55,7 @@ const initials = computed(() => {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--badge-error-text);
   border: 1px solid var(--badge-error-border);
   border-radius: 10px;

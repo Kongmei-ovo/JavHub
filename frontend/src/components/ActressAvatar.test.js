@@ -9,7 +9,7 @@ const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'Actre
 test('ActressAvatar uses shared material and badge tokens instead of hardcoded legacy colors', () => {
   assert.match(source, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(source, /color:\s*var\(--text-muted/)
-  assert.match(source, /background:\s*var\(--badge-error-bg/)
+  assert.match(source, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.match(source, /color:\s*var\(--badge-error-text/)
   assert.doesNotMatch(source, /#(?:ddd|999|ff4d4f|fff)\b/i)
 })

@@ -186,7 +186,7 @@ const handleImgError = (e) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   border: 1px solid var(--badge-warning-border);
   color: var(--badge-warning-text);
   font-size: var(--type-caption);
