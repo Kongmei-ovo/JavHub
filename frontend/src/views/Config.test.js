@@ -46,6 +46,46 @@ test('settings secret reveal controls use shared Apple glass button chrome', () 
   assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow\),\s*0 0 0 4px rgba\(var\(--accent-rgb\), 0\.14\)/)
 })
 
+test('settings controls mirror hover glass treatment for keyboard focus', () => {
+  const hoverSelectors = [
+    '.tab-item:hover',
+    '.source-check-item:hover',
+    '.segmented-mini button:hover',
+  ]
+
+  for (const selector of hoverSelectors) {
+    const block = cssBlock(selector)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${selector} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${selector} should use hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should lift lightly`)
+  }
+
+  const focusSelectors = [
+    '.tab-item:focus-visible',
+    '.source-check-item:focus-within',
+    '.segmented-mini button:focus-visible',
+  ]
+
+  for (const selector of focusSelectors) {
+    const block = cssBlock(selector)
+    assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${selector} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should add a soft focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep the hover lift while focused`)
+  }
+
+  for (const selector of ['.tab-item.active:focus-visible', '.segmented-mini button.active:focus-visible']) {
+    const block = cssBlock(selector)
+    assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
+    assert.match(block, backgroundIncludes('glass-active-material'), `${selector} should preserve active glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should keep active border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should combine active depth with focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should stay lifted while focused`)
+  }
+})
+
 test('settings workspace panels use shared Apple glass materials instead of legacy cards', () => {
   const cardContent = cssBlock('.card-content')
   const formSlot = cssBlock('.form-slot')
