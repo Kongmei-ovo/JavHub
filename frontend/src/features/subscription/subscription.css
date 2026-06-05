@@ -147,6 +147,15 @@
   color: var(--text-secondary);
 }
 
+.clear-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.clear-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
 /* ===== Card Grid ===== */
 .card-grid {
   display: grid;
@@ -203,6 +212,13 @@
 }
 
 .pill-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
+.pill-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+.pill-btn:active {
+  transform: translateY(0) scale(0.97);
+}
 
 .pill-btn-primary {
   background: var(--subscription-active-bg); color: var(--text-primary); border-color: var(--glass-active-border);
@@ -315,6 +331,10 @@
 }
 
 .top-action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-primary); }
+.top-action-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
 .top-action-btn:active { transform: scale(0.96); }
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .top-action-btn.danger { color: var(--badge-error-text); border-color: var(--badge-error-border); }
@@ -453,6 +473,13 @@
 }
 
 .toggle-pill:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-secondary); }
+.toggle-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+.toggle-pill:active {
+  transform: translateY(0) scale(0.97);
+}
 
 .toggle-pill.on {
   background: var(--subscription-success-bg);
@@ -502,6 +529,10 @@
 }
 
 .action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
+.action-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
 .action-btn:active { transform: scale(0.98); }
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 

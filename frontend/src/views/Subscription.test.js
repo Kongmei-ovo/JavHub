@@ -72,6 +72,27 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
     assert.match(block, /box-shadow:\s*var\(--subscription-control-shadow-hover\)/, `${selector} should use shared hover shadow`)
   }
 
+  for (const selector of [
+    '.clear-btn:focus-visible',
+    '.pill-btn:focus-visible',
+    '.top-action-btn:focus-visible',
+    '.toggle-pill:focus-visible',
+    '.action-btn:focus-visible',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /outline:\s*none/, `${selector} should avoid native focus outlines over glass`)
+    assert.match(block, /box-shadow:\s*var\(--subscription-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should use a restrained glass focus ring`)
+  }
+
+  for (const selector of [
+    '.clear-btn:active',
+    '.pill-btn:active',
+    '.toggle-pill:active',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/, `${selector} should use compact pressed feedback`)
+  }
+
   assert.match(sheetBlock, /background:\s*var\(--subscription-sheet-bg\)/)
   assert.match(sheetBlock, /border:\s*1px solid var\(--subscription-sheet-border\)/)
   assert.match(sheetBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
