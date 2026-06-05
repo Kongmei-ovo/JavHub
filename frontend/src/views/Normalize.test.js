@@ -102,6 +102,34 @@ test('normalize candidate and mapping rows avoid flat translucent cards', () => 
   assert.doesNotMatch(riskPill, /#ffb340|rgba\(255,\s*159,\s*10/)
 })
 
+test('normalize keyboard focus mirrors Apple glass control depth', () => {
+  const tabFocus = cssRule('.tab-btn:focus-visible')
+  const filterFocus = cssRule('.filter-chip:focus-visible')
+  const candidateFocus = cssRule('.candidate-card:focus-within')
+  const mappingFocus = cssRule('.mapping-row:focus-within')
+
+  for (const [block, name] of [
+    [tabFocus, 'tab focus'],
+    [filterFocus, 'filter chip focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${name} should suppress the default outline`)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use hover glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should use glass shadow plus focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should preserve hover lift`)
+  }
+
+  for (const [block, name] of [
+    [candidateFocus, 'candidate card focus'],
+    [mappingFocus, 'mapping row focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, '--material-glass-elevated'), `${name} should keep elevated glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should lift its edge when focused inside`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/, `${name} should layer surface depth with focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should rise when an inner action is focused`)
+  }
+})
+
 test('normalize glass backgrounds are layered with specular and noise surfaces', () => {
   const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/gm
   const offenders = [...externalStyle.matchAll(singleLayerGlass)].map(match => match[0])
