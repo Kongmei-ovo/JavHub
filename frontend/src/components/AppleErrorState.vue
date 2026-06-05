@@ -71,7 +71,10 @@ button {
   padding: 0 14px;
   border-radius: var(--radius-control);
   border: 1px solid var(--apple-state-action-border);
-  background: var(--apple-state-action-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--apple-state-action-bg);
   color: var(--apple-state-action-text);
   box-shadow: var(--apple-state-action-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -82,7 +85,10 @@ button {
 
 button:hover {
   transform: translateY(-1px);
-  background: var(--apple-state-action-bg-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--apple-state-action-bg-hover);
   border-color: var(--apple-state-action-border-hover);
   box-shadow: var(--apple-state-action-shadow-hover);
 }

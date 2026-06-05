@@ -13,7 +13,7 @@ function sourceBlock(source, selector) {
 }
 
 function assertGlassAction(block, name) {
-  assert.match(block, /background:\s*var\(--apple-state-action-bg\)/, `${name} should use active glass material`)
+  assert.match(block, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--apple-state-action-bg\)/, `${name} should use layered active glass material`)
   assert.match(block, /border:\s*1px solid var\(--apple-state-action-border\)/, `${name} should use active glass border`)
   assert.match(block, /box-shadow:\s*var\(--apple-state-action-shadow\)/, `${name} should use active glass shadow`)
   assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
@@ -22,7 +22,7 @@ function assertGlassAction(block, name) {
 }
 
 function assertGlassActionHover(block, name) {
-  assert.match(block, /background:\s*var\(--apple-state-action-bg-hover\)/, `${name} hover should use shared hover material`)
+  assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--apple-state-action-bg-hover\)/, `${name} hover should use layered shared hover material`)
   assert.match(block, /border-color:\s*var\(--apple-state-action-border-hover\)/, `${name} hover should use shared hover border`)
   assert.match(block, /box-shadow:\s*var\(--apple-state-action-shadow-hover\)/, `${name} hover should use shared hover shadow`)
   assert.doesNotMatch(block, /background:\s*var\(--accent-light\)/, `${name} hover should not use accent-light`)
@@ -44,7 +44,7 @@ test('Apple empty and error states use shared glass actions', () => {
   }
 
   assert.match(emptyRootBlock, /--apple-state-orb-bg:\s*var\(--material-glass-control\)/)
-  assert.match(emptyOrbBlock, /background:\s*var\(--apple-state-orb-bg\)/)
+  assert.match(emptyOrbBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--apple-state-orb-bg\)/)
   assert.match(emptyOrbBlock, /border:\s*1px solid var\(--apple-state-orb-border\)/)
   assert.match(emptyOrbBlock, /box-shadow:\s*var\(--apple-state-orb-shadow\)/)
   assert.doesNotMatch(emptyOrbBlock, /radial-gradient\(circle at 30% 20%|var\(--surface-control\)|var\(--border-light\)/)

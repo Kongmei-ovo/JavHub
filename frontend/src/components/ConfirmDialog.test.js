@@ -29,24 +29,28 @@ test('global confirm dialog uses shared Apple glass sheet and controls', () => {
   assert.match(overlayBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.doesNotMatch(overlayBlock, /rgba\(0,\s*0,\s*0,\s*0\.58\)|saturate\(110%\)/)
 
-  assert.match(dialogBlock, /background:\s*var\(--confirm-sheet-bg\)/)
+  assert.match(dialogBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--confirm-sheet-bg\)/)
   assert.match(dialogBlock, /border:\s*1px solid var\(--confirm-sheet-border\)/)
   assert.match(dialogBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
 
   assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(buttonBlock, /transition:\s*var\(--transition-pro\)/)
 
-  assert.match(primaryBlock, /background:\s*var\(--confirm-primary-bg\)/)
+  assert.match(sourceBlock('.confirm-icon'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-control-bg\)/)
+  assert.match(sourceBlock('.confirm-cancel'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-control-bg\)/)
+  assert.match(sourceBlock('.confirm-cancel:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-control-bg-hover\)/)
+
+  assert.match(primaryBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--confirm-primary-bg\)/)
   assert.match(primaryBlock, /border-color:\s*var\(--confirm-primary-border\)/)
   assert.match(primaryBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(primaryBlock, /background:\s*var\(--accent\)|border-color:\s*transparent/)
 
-  assert.match(dangerPrimaryBlock, /background:\s*var\(--confirm-danger-bg\)/)
+  assert.match(dangerPrimaryBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-danger-bg\)/)
   assert.match(dangerPrimaryBlock, /border-color:\s*var\(--confirm-danger-border\)/)
   assert.match(dangerPrimaryBlock, /color:\s*var\(--confirm-danger-text\)/)
   assert.doesNotMatch(dangerPrimaryBlock, /#ff6b6b|#160b0b/)
 
   assert.match(iconDangerBlock, /color:\s*var\(--confirm-danger-text\)/)
   assert.match(iconDangerBlock, /border-color:\s*var\(--confirm-danger-border\)/)
-  assert.match(iconDangerBlock, /background:\s*var\(--confirm-danger-bg\)/)
+  assert.match(iconDangerBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-danger-bg\)/)
 })

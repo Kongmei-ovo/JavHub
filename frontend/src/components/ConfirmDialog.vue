@@ -75,7 +75,10 @@ const confirm = () => resolveConfirm(true)
   width: min(430px, 100%);
   border: 1px solid var(--confirm-sheet-border);
   border-radius: var(--radius-sheet);
-  background: var(--confirm-sheet-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--confirm-sheet-bg);
   box-shadow: var(--shadow-sheet);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
@@ -99,7 +102,10 @@ const confirm = () => resolveConfirm(true)
   border-radius: 14px;
   border: 1px solid var(--confirm-control-border);
   color: var(--text-secondary);
-  background: var(--confirm-control-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--confirm-control-bg);
   box-shadow: var(--confirm-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -108,7 +114,10 @@ const confirm = () => resolveConfirm(true)
 .confirm-icon.danger {
   color: var(--confirm-danger-text);
   border-color: var(--confirm-danger-border);
-  background: var(--confirm-danger-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--confirm-danger-bg);
 }
 
 .confirm-icon svg {
@@ -158,7 +167,10 @@ const confirm = () => resolveConfirm(true)
 }
 
 .confirm-cancel {
-  background: var(--confirm-control-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--confirm-control-bg);
   color: var(--text-secondary);
   box-shadow: var(--confirm-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -166,7 +178,10 @@ const confirm = () => resolveConfirm(true)
 }
 
 .confirm-cancel:hover {
-  background: var(--confirm-control-bg-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--confirm-control-bg-hover);
   border-color: var(--confirm-control-border-hover);
   color: var(--text-primary);
   box-shadow: var(--confirm-control-shadow-hover);
@@ -174,7 +189,10 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-primary {
   border-color: var(--confirm-primary-border);
-  background: var(--confirm-primary-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--confirm-primary-bg);
   color: var(--confirm-primary-text);
   box-shadow: var(--glass-active-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -182,7 +200,10 @@ const confirm = () => resolveConfirm(true)
 }
 
 .confirm-primary.danger {
-  background: var(--confirm-danger-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--confirm-danger-bg);
   border-color: var(--confirm-danger-border);
   color: var(--confirm-danger-text);
 }

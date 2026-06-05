@@ -41,7 +41,10 @@ defineEmits(['action'])
   height: 56px;
   margin: 0 auto 18px;
   border-radius: 20px;
-  background: var(--apple-state-orb-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--apple-state-orb-bg);
   border: 1px solid var(--apple-state-orb-border);
   box-shadow: var(--apple-state-orb-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -66,7 +69,10 @@ p {
   padding: 0 18px;
   border-radius: var(--radius-control);
   border: 1px solid var(--apple-state-action-border);
-  background: var(--apple-state-action-bg);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--apple-state-action-bg);
   color: var(--apple-state-action-text);
   box-shadow: var(--apple-state-action-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -77,7 +83,10 @@ p {
 
 .empty-action:hover {
   transform: translateY(-1px);
-  background: var(--apple-state-action-bg-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--apple-state-action-bg-hover);
   border-color: var(--apple-state-action-border-hover);
   box-shadow: var(--apple-state-action-shadow-hover);
 }
