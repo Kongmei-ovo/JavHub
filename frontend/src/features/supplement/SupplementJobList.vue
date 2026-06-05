@@ -219,7 +219,7 @@ export default {
   border: 1px solid var(--badge-info-border);
   border-radius: 999px;
   color: var(--badge-info-text);
-  background: var(--badge-info-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -227,20 +227,20 @@ export default {
 
 .status-succeeded {
   color: var(--badge-success-text);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   border-color: var(--badge-success-border);
 }
 
 .status-running,
 .status-queued {
   color: var(--badge-warning-text);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   border-color: var(--badge-warning-border);
 }
 
 .status-failed {
   color: var(--badge-error-text);
-  background: var(--badge-error-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   border-color: var(--badge-error-border);
 }
 

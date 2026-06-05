@@ -174,6 +174,39 @@ test('supplement job list names gfriends avatar sync jobs explicitly', () => {
   assert.match(jobList, /gfriends 头像同步/)
 })
 
+test('supplement job status pills use semantic layered glass tokens', () => {
+  const base = cssBlock(jobList, '.status-pill')
+  const succeeded = cssBlock(jobList, '.status-succeeded')
+  const running = cssBlock(jobList, '.status-running')
+  const queued = cssBlock(jobList, '.status-queued')
+  const failed = cssBlock(jobList, '.status-failed')
+
+  assert.match(base, /color:\s*var\(--badge-info-text\)/)
+  assertLayeredBackground(base, '--badge-info-bg', 'supplement job default status')
+  assert.match(base, /border:\s*1px solid var\(--badge-info-border\)/)
+
+  assert.match(succeeded, /color:\s*var\(--badge-success-text\)/)
+  assertLayeredBackground(succeeded, '--badge-success-bg', 'supplement job succeeded status')
+  assert.match(succeeded, /border-color:\s*var\(--badge-success-border\)/)
+
+  for (const [block, name] of [
+    [running, 'supplement job running status'],
+    [queued, 'supplement job queued status'],
+  ]) {
+    assert.match(block, /color:\s*var\(--badge-warning-text\)/, `${name} should keep warning text`)
+    assertLayeredBackground(block, '--badge-warning-bg', name)
+    assert.match(block, /border-color:\s*var\(--badge-warning-border\)/, `${name} should keep warning border`)
+  }
+
+  assert.match(failed, /color:\s*var\(--badge-error-text\)/)
+  assertLayeredBackground(failed, '--badge-error-bg', 'supplement job failed status')
+  assert.match(failed, /border-color:\s*var\(--badge-error-border\)/)
+
+  for (const block of [base, succeeded, running, queued, failed]) {
+    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|#[0-9a-f]{3,6}/i)
+  }
+})
+
 test('supplement management exposes provider smoke diagnostics', () => {
   assert.match(sourceHealthPanel, /运行诊断/)
   assert.match(source, /runProviderSmoke/)
