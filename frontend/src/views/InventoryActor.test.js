@@ -80,10 +80,10 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   assert.match(tabActive, /box-shadow:\s*var\(--glass-active-shadow\)/)
 
   assert.match(mappingBanner, /border:\s*1px solid var\(--badge-success-border\)/)
-  assert.match(mappingBanner, /background:\s*var\(--badge-success-bg\)/)
+  assertLayeredBackground(mappingBanner, '--badge-success-bg', 'inventory actor mapped banner')
   assert.match(mappingBanner, /color:\s*var\(--badge-success-text\)/)
   assert.match(mappingBannerUnmapped, /border-color:\s*var\(--badge-warning-border\)/)
-  assert.match(mappingBannerUnmapped, /background:\s*var\(--badge-warning-bg\)/)
+  assertLayeredBackground(mappingBannerUnmapped, '--badge-warning-bg', 'inventory actor unmapped banner')
   assert.match(mappingBannerUnmapped, /color:\s*var\(--badge-warning-text\)/)
 
   assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)

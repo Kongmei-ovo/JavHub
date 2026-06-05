@@ -262,13 +262,14 @@ onMounted(async () => {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--badge-success-border);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   color: var(--badge-success-text);
   font-size: 13px;
+  box-shadow: var(--glass-inner-shadow);
 }
 .mapping-banner.unmapped {
   border-color: var(--badge-warning-border);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--badge-warning-text);
 }
 .mapping-link {
