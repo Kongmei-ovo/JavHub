@@ -142,7 +142,15 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
 test('settings page keeps heavyweight styles in an external scoped stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
   assert.ok(externalStyle.length > 20000, 'external settings stylesheet should carry the moved workspace CSS')
-  assert.ok(vueSource.split('\n').length < 1800, 'Config.vue should stay small enough to review and parse quickly')
+  assert.ok(vueSource.split('\n').length < 1300, 'Config.vue should stay small enough to review and parse quickly')
+})
+
+test('settings advanced workspace stays in a lazy child chunk', () => {
+  assert.match(vueSource, /const AdvancedSettingsPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/config\/AdvancedSettingsPanel\.vue'\)\)/)
+  assert.match(vueSource, /<AdvancedSettingsPanel\s+v-else-if="activeGroup === 'advanced'"/)
+  assert.doesNotMatch(vueSource, /JavInfo 数据库导入/)
+  assert.doesNotMatch(vueSource, /<h2>公共智能模型<\/h2>/)
+  assert.doesNotMatch(vueSource, /<h2>网络代理<\/h2>/)
 })
 
 test('settings glass backgrounds are layered with specular and noise surfaces', () => {

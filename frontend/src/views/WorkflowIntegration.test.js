@@ -45,6 +45,7 @@ const actor = [
 const configVue = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const configStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
 const config = [configVue, configStyle].join('\n')
+const advancedSettingsPanel = readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
 const search = [
@@ -56,7 +57,7 @@ const supplement = readFileSync(new URL('./SupplementManagement.vue', import.met
 const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
 const candidateRunPanel = readFileSync(new URL('../features/candidates/CandidateRunPanel.vue', import.meta.url), 'utf8')
-const configFeatureSource = [config, configDefaults].join('\n')
+const configFeatureSource = [config, advancedSettingsPanel, configDefaults].join('\n')
 const supplementFeatureSource = [supplement, supplementActorPicker, supplementSourceHealth].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
@@ -101,6 +102,7 @@ function loadConfigOptions() {
     'api',
     'requestConfirm',
     'displayLang',
+    'defineAsyncComponent',
     'DEFAULT_SEARCH_PREFERENCES',
     'loadSearchPreferences',
     'saveSearchPreferences',
@@ -109,7 +111,7 @@ function loadConfigOptions() {
     'DEFAULT_BUBBLE_CFG',
     'DEFAULT_CONFIG',
     `${script}`
-  )({}, async () => {}, { value: 'ja' }, {}, () => {}, () => {}, {}, {}, {}, {})
+  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {})
 }
 
 test('sidebar displays the package version without a hardcoded release string', () => {
@@ -1054,16 +1056,16 @@ test('settings page blocks saving until remote config has loaded', () => {
   assert.match(configFeatureSource, /actor_mapping/)
   assert.match(configFeatureSource, /auto_match_after_collect/)
   assert.match(configFeatureSource, /ai/)
-  assert.match(config, /<h2>公共智能模型<\/h2>/)
-  assert.match(config, /aiProviderOptions/)
-  assert.match(config, /config\.ai\.provider/)
+  assert.match(advancedSettingsPanel, /<h2>公共智能模型<\/h2>/)
+  assert.match(advancedSettingsPanel, /aiProviderOptions/)
+  assert.match(advancedSettingsPanel, /config\.ai\.provider/)
   assert.match(configFeatureSource, /gemini/)
   assert.match(configFeatureSource, /ollama/)
-  assert.match(config, /currentAiConfig/)
-  assert.match(config, /获取模型列表/)
-  assert.match(config, /loadAiModels/)
-  assert.match(config, /测试模型调用/)
-  assert.match(config, /testAIModel/)
+  assert.match(advancedSettingsPanel, /currentAiConfig/)
+  assert.match(advancedSettingsPanel, /获取模型列表/)
+  assert.match(advancedSettingsPanel, /loadAiModels/)
+  assert.match(advancedSettingsPanel, /测试模型调用/)
+  assert.match(advancedSettingsPanel, /testAIModel/)
   assert.match(apiSource, /listAiModels/)
   assert.match(apiSource, /testAiModel/)
 })
@@ -1081,11 +1083,9 @@ test('settings page keeps downloaders out and gives Telegram its own section', (
 })
 
 test('settings page does not expose startup-only server controls', () => {
-  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
-
-  assert.doesNotMatch(advancedSection, /服务端设置/)
-  assert.doesNotMatch(advancedSection, /前端 Origin/)
-  assert.doesNotMatch(advancedSection, /启用速率限制/)
+  assert.doesNotMatch(advancedSettingsPanel, /服务端设置/)
+  assert.doesNotMatch(advancedSettingsPanel, /前端 Origin/)
+  assert.doesNotMatch(advancedSettingsPanel, /启用速率限制/)
   assert.doesNotMatch(config, /config\.server\.frontend_origin/)
   assert.doesNotMatch(config, /config\.rate_limit/)
   assert.doesNotMatch(configDefaults, /server: \{ frontend_origin/)
@@ -1094,35 +1094,34 @@ test('settings page does not expose startup-only server controls', () => {
 
 test('settings page exposes JavInfo database import workflow', () => {
   const servicesSection = config.slice(config.indexOf("activeGroup === 'services'"), config.indexOf("activeGroup === 'telegram'"))
-  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
 
   assert.match(configFeatureSource, /import_db/)
-  assert.match(advancedSection, /JavInfo 数据库导入/)
-  assert.match(advancedSection, /危险操作：全量替换/)
-  assert.match(advancedSection, /type="file"/)
+  assert.match(advancedSettingsPanel, /JavInfo 数据库导入/)
+  assert.match(advancedSettingsPanel, /危险操作：全量替换/)
+  assert.match(advancedSettingsPanel, /type="file"/)
   assert.doesNotMatch(servicesSection, /JavInfo 数据库导入/)
-  assert.match(config, /preflightJavInfoImport/)
-  assert.match(config, /runJavInfoMigrations/)
-  assert.match(config, /运行 JavInfo 迁移/)
-  assert.match(config, /createJavInfoImportJob/)
-  assert.match(config, /uploadJavInfoImportDump/)
-  assert.match(config, /listJavInfoImportJobs/)
-  assert.match(config, /javinfoImportConfirm/)
-  assert.match(config, /javinfoImportDirectConfirm/)
-  assert.match(config, /javinfoImportCanStart/)
-  assert.match(config, /import-progress/)
-  assert.match(config, /@drop\.prevent="onJavInfoImportFileDrop"/)
-  assert.match(config, /import-log-tail/)
-  assert.match(config, /失败不能自动回滚/)
+  assert.match(advancedSettingsPanel, /preflightJavInfoImport/)
+  assert.match(advancedSettingsPanel, /runJavInfoMigrations/)
+  assert.match(advancedSettingsPanel, /运行 JavInfo 迁移/)
+  assert.match(advancedSettingsPanel, /createJavInfoImportJob/)
+  assert.match(advancedSettingsPanel, /uploadJavInfoImportDump/)
+  assert.match(advancedSettingsPanel, /listJavInfoImportJobs/)
+  assert.match(advancedSettingsPanel, /javinfoImportConfirm/)
+  assert.match(advancedSettingsPanel, /javinfoImportDirectConfirm/)
+  assert.match(advancedSettingsPanel, /javinfoImportCanStart/)
+  assert.match(advancedSettingsPanel, /import-progress/)
+  assert.match(advancedSettingsPanel, /@drop\.prevent="onJavInfoImportFileDrop"/)
+  assert.match(advancedSettingsPanel, /import-log-tail/)
+  assert.match(advancedSettingsPanel, /失败不能自动回滚/)
   assert.match(apiSource, /runJavInfoMigrations\(dryRun = false\)/)
   assert.match(apiSource, /\/v1\/javinfo\/imports\/migrations/)
   assert.match(configDefaults, /maintenance_database: 'postgres'/)
   assert.match(configDefaults, /keep_previous_databases: 1/)
   assert.match(configDefaults, /user: 'javhub'/)
-  assert.doesNotMatch(advancedSection, /并行恢复/)
-  assert.doesNotMatch(advancedSection, /保留旧库/)
-  assert.doesNotMatch(advancedSection, /max_parallel_jobs/)
-  assert.doesNotMatch(advancedSection, /keep_previous_databases/)
+  assert.doesNotMatch(advancedSettingsPanel, /并行恢复/)
+  assert.doesNotMatch(advancedSettingsPanel, /保留旧库/)
+  assert.doesNotMatch(advancedSettingsPanel, /max_parallel_jobs/)
+  assert.doesNotMatch(advancedSettingsPanel, /keep_previous_databases/)
 })
 
 test('settings route query opens JavInfo import workflow in advanced settings', () => {
@@ -1144,25 +1143,23 @@ test('settings route query opens JavInfo import workflow in advanced settings', 
 })
 
 test('JavInfo import preflight is tied to current settings and file', () => {
-  assert.match(config, /javinfoImportPreflightSignature: ''/)
-  assert.match(config, /javinfoImportRequestSignature\(\)[\s\S]*JSON\.stringify\(\{[\s\S]*import_db: this\.config\.javinfo\.import_db[\s\S]*file_size: this\.javinfoImportFile\?\.size \|\| 0[\s\S]*\}\)/)
-  assert.match(config, /javinfoImportPreflightCurrent\(\)[\s\S]*this\.javinfoImportPreflightSignature !== this\.javinfoImportRequestSignature\(\)[\s\S]*return null/)
-  assert.match(config, /&& this\.javinfoImportPreflightCurrent\(\)\?\.ok/)
-  assert.match(config, /const signature = this\.javinfoImportRequestSignature\(\)[\s\S]*this\.javinfoImportPreflightSignature = signature/)
+  assert.match(advancedSettingsPanel, /javinfoImportPreflightSignature: ''/)
+  assert.match(advancedSettingsPanel, /javinfoImportRequestSignature\(\)[\s\S]*JSON\.stringify\(\{[\s\S]*import_db: this\.config\.javinfo\.import_db[\s\S]*file_size: this\.javinfoImportFile\?\.size \|\| 0[\s\S]*\}\)/)
+  assert.match(advancedSettingsPanel, /javinfoImportPreflightCurrent\(\)[\s\S]*this\.javinfoImportPreflightSignature !== this\.javinfoImportRequestSignature\(\)[\s\S]*return null/)
+  assert.match(advancedSettingsPanel, /&& this\.javinfoImportPreflightCurrent\(\)\?\.ok/)
+  assert.match(advancedSettingsPanel, /const signature = this\.javinfoImportRequestSignature\(\)[\s\S]*this\.javinfoImportPreflightSignature = signature/)
 })
 
 test('JavInfo import cancel keeps polling while cancellation is still active', () => {
-  assert.match(config, /const stillActive = this\.isJavInfoImportActive\(resp\.data\)/)
-  assert.match(config, /if \(!stillActive\) \{[\s\S]*this\.stopJavInfoImportPolling\(\)/)
-  assert.match(config, /else \{[\s\S]*this\.startJavInfoImportPolling\(this\.javinfoImportJob\.id\)/)
+  assert.match(advancedSettingsPanel, /const stillActive = this\.isJavInfoImportActive\(resp\.data\)/)
+  assert.match(advancedSettingsPanel, /if \(!stillActive\) \{[\s\S]*this\.stopJavInfoImportPolling\(\)/)
+  assert.match(advancedSettingsPanel, /else \{[\s\S]*this\.startJavInfoImportPolling\(this\.javinfoImportJob\.id\)/)
 })
 
 test('settings page exposes sanitized config export from advanced settings', () => {
-  const advancedSection = config.slice(config.indexOf("activeGroup === 'advanced'"), config.indexOf('<!-- Global Floating Footer for Actions -->'))
-
-  assert.match(advancedSection, /导出用户配置/)
-  assert.match(advancedSection, /exportUserConfig/)
-  assert.match(config, /exportingConfig/)
+  assert.match(advancedSettingsPanel, /导出用户配置/)
+  assert.match(advancedSettingsPanel, /exportUserConfig/)
+  assert.match(advancedSettingsPanel, /exportingConfig/)
   assert.match(apiSource, /exportConfig/)
 })
 
