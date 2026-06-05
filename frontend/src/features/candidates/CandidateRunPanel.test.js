@@ -39,6 +39,26 @@ test('candidate run panel uses shared Apple glass surfaces instead of legacy car
   assert.match(stat, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 })
 
+test('candidate run rows mirror Apple glass hover while actions are focused', () => {
+  const row = cssBlock('.candidate-run-row')
+  const hover = cssBlock('.candidate-run-row:hover')
+  const focusWithin = cssBlock('.candidate-run-row:focus-within')
+
+  assert.match(row, /transition:\s*transform var\(--motion-fast\),\s*background var\(--motion-fast\),\s*border-color var\(--motion-fast\),\s*box-shadow var\(--motion-fast\)/)
+
+  for (const [block, name] of [
+    [hover, 'candidate run row hover'],
+    [focusWithin, 'candidate run row focus-within'],
+  ]) {
+    assertLayeredBackground(block, '--material-glass-control-hover', name)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
+  }
+
+  assert.match(focusWithin, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'focused action row should add a soft accent halo')
+})
+
 test('candidate run panel avoids single-layer primary glass backgrounds', () => {
   const singleLayerGlass = /^.*background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-sheet)\);.*$/gm
   const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0].trim())

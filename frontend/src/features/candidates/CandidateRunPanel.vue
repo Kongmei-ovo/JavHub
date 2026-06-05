@@ -112,6 +112,19 @@ export default {
   border: 1px solid var(--glass-control-border);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.candidate-run-row:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.candidate-run-row:focus-within {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
 }
 .candidate-run-main {
   min-width: 170px;
