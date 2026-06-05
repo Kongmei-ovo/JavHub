@@ -110,6 +110,38 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   }
 })
 
+test('inventory actor controls mirror hover glass treatment for keyboard focus', () => {
+  assert.match(source, /class="video-card"[\s\S]*role="button"/)
+  assert.match(source, /class="video-card"[\s\S]*tabindex="0"/)
+  assert.match(source, /class="video-card"[\s\S]*@keydown\.enter\.prevent="openEmbyItem\(video\)"/)
+  assert.match(source, /class="video-card"[\s\S]*@keydown\.space\.prevent="openEmbyItem\(video\)"/)
+
+  const backFocus = cssBlock(source, '.back-btn:focus-visible')
+  const mappingFocus = cssBlock(source, '.mapping-link:focus-visible')
+  const tabFocus = cssBlock(source, '.tab-btn:focus-visible')
+  const videoFocus = cssBlock(source, '.video-card:focus-visible')
+  const candidateFocus = cssBlock(source, '.candidate-btn:focus-visible')
+
+  for (const [block, label] of [
+    [backFocus, 'inventory actor back focus'],
+    [mappingFocus, 'inventory actor mapping focus'],
+    [tabFocus, 'inventory actor tab focus'],
+    [videoFocus, 'inventory actor video card focus'],
+    [candidateFocus, 'inventory actor candidate focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assertLayeredBackground(block, '--material-glass-control-hover', label)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose a subtle focus ring`)
+  }
+
+  assert.match(backFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(tabFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(videoFocus, /transform:\s*translateY\(-2px\)/)
+  assert.match(candidateFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(mappingFocus, /text-decoration-color:\s*var\(--link-underline-hover\)/)
+})
+
 test('inventory actor glass backgrounds are layered with specular and noise surfaces', () => {
   const offenders = source
     .split('\n')

@@ -51,7 +51,11 @@
             v-for="video in groupVideos"
             :key="video.item_id"
             class="video-card"
+            role="button"
+            tabindex="0"
             @click="openEmbyItem(video)"
+            @keydown.enter.prevent="openEmbyItem(video)"
+            @keydown.space.prevent="openEmbyItem(video)"
           >
             <div class="video-cover">
               <img
@@ -242,6 +246,13 @@ onMounted(async () => {
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
+.back-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 .stats { color: var(--text-secondary); font-size: 14px; }
 .mapping-banner {
   display: inline-flex;
@@ -282,6 +293,13 @@ onMounted(async () => {
   box-shadow: var(--glass-control-shadow-hover);
   text-decoration-color: var(--link-underline-hover);
 }
+.mapping-link:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  text-decoration-color: var(--link-underline-hover);
+}
 
 /* Tab 样式 */
 .tab-bar {
@@ -315,6 +333,14 @@ onMounted(async () => {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.tab-btn:focus-visible {
+  outline: none;
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 .tab-btn.active {
@@ -352,6 +378,13 @@ onMounted(async () => {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+.video-card:focus-visible {
+  outline: none;
+  transform: translateY(-2px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .video-cover {
   aspect-ratio: 3/4;
@@ -396,6 +429,13 @@ onMounted(async () => {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+.candidate-btn:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .candidate-link { text-align: center; margin: 20px 0; }
 
