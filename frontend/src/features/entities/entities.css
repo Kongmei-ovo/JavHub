@@ -428,9 +428,33 @@
 }
 
 .entity-list-card__favorite.active {
-  background: var(--badge-error-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
+}
+
+.entity-list-card__favorite.active:hover {
+  transform: scale(1.06);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.entity-list-card__favorite.active:focus-visible {
+  outline: none;
+  transform: scale(1.06);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
 }
 
 .entity-list-card__favorite svg {
