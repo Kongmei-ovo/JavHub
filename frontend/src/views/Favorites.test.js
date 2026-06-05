@@ -145,6 +145,47 @@ test('favorites entity and empty states avoid legacy flat card styling', () => {
   assert.match(skeletonLine, backgroundIncludes('material-glass-subtle'))
 })
 
+test('favorites keyboard focus mirrors hover glass treatment', () => {
+  const miniButtonFocus = cssBlock('.btn-mini:focus-visible:not(:disabled)')
+  const dangerMiniButtonFocus = cssBlock('.btn-mini.danger:focus-visible:not(:disabled)')
+  const segmentFocus = cssBlock('.segment-item:focus-visible')
+  const entityBubbleFocus = cssBlock('.entity-bubble:focus-visible')
+  const entityFavButtonFocus = cssBlock('.entity-fav-btn:focus-visible')
+  const exploreFocus = cssBlock('.btn-explore:focus-visible')
+
+  for (const block of [miniButtonFocus, segmentFocus]) {
+    assert.match(block, /outline:\s*none/)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'))
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /transform:\s*translateY\(-1px\)/)
+  }
+
+  assert.match(dangerMiniButtonFocus, /outline:\s*none/)
+  assert.match(dangerMiniButtonFocus, backgroundIncludes('badge-error-bg'))
+  assert.match(dangerMiniButtonFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerMiniButtonFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+
+  assert.match(entityBubbleFocus, /outline:\s*none/)
+  assert.match(entityBubbleFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(entityBubbleFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(entityBubbleFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(entityBubbleFocus, /transform:\s*translateY\(-2px\)/)
+
+  assert.match(entityFavButtonFocus, /outline:\s*none/)
+  assert.match(entityFavButtonFocus, /opacity:\s*1/)
+  assert.match(entityFavButtonFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(entityFavButtonFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(entityFavButtonFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+  assert.match(entityFavButtonFocus, /transform:\s*translateY\(-1px\) scale\(1\.05\)/)
+
+  assert.match(exploreFocus, /outline:\s*none/)
+  assert.match(exploreFocus, backgroundIncludes('glass-active-material'))
+  assert.match(exploreFocus, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(exploreFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.14\)/)
+  assert.match(exploreFocus, /transform:\s*translateY\(-2px\)/)
+})
+
 test('favorites glass backgrounds are layered with specular and noise surfaces', () => {
   assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 })
