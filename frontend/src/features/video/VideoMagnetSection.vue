@@ -62,6 +62,12 @@ export default {
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.magnet-item:focus-within {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .magnet-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .magnet-badge { padding: 4px 10px; background: var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid var(--badge-info-border); font-size: var(--type-micro); font-weight: 650; border-radius: var(--radius-sm); }
 .magnet-badge.hd { background: var(--badge-success-bg); color: var(--badge-success-text); border-color: var(--badge-success-border); }
@@ -94,6 +100,13 @@ export default {
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.btn-copy:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .btn-copy:active,
 .btn-download:active { transform: translateY(0) scale(0.98); }
 .btn-download {
@@ -102,6 +115,13 @@ export default {
 }
 .btn-download:hover {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+}
+.btn-download:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.14);
 }
 .no-magnets {
   text-align: center;
@@ -115,7 +135,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); }
+.skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); cursor: default; pointer-events: none; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
