@@ -94,6 +94,29 @@ test('library organize tab controls use shared liquid glass tokens', () => {
   assert.doesNotMatch(tabRule, /background:\s*transparent/)
 })
 
+test('library organize keyboard focus mirrors hover glass control treatment', () => {
+  const statusFocusRule = cssRule('.status-cell:focus-visible')
+  const tabFocusRule = cssRule('.tab-btn:focus-visible')
+  const workflowFocusRule = cssGroupedRule('.priority-row:focus-visible,')
+  const chipFocusRule = cssGroupedRule('.candidate-pills button:focus-visible,')
+
+  for (const [rule, label] of [
+    [statusFocusRule, 'status metric focus'],
+    [tabFocusRule, 'organize tab focus'],
+    [workflowFocusRule, 'workflow action focus'],
+    [chipFocusRule, 'candidate chip focus'],
+  ]) {
+    assert.match(rule, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(rule, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assert.match(rule, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
+    assert.match(rule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should show a subtle Apple-style focus ring`)
+  }
+
+  assert.match(statusFocusRule, /transform:\s*translateY\(-1px\)/)
+  assert.match(tabFocusRule, /color:\s*var\(--text-primary\)/)
+  assert.match(workflowFocusRule, /transform:\s*translateY\(-1px\)/)
+})
+
 test('library organize workbench cards use liquid glass depth instead of flat white cards', () => {
   const panelRule = cssGroupedRule('.workbench-panel,')
   const rowRule = cssGroupedRule('.priority-row,')

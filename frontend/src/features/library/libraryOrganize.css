@@ -139,6 +139,17 @@
   transform: translateY(-1px);
 }
 
+.status-cell:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
 .status-cell:active {
   transform: scale(0.985);
 }
@@ -247,6 +258,17 @@
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.tab-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
 .tab-btn.active {
@@ -391,6 +413,18 @@
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.priority-row:focus-visible,
+.flow-steps button:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 
@@ -726,6 +760,17 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.candidate-pills button:focus-visible,
+.chip:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
 .chip.active {
