@@ -84,6 +84,15 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
 })
 
+test('magnet rows mirror hover glass treatment while child actions are focused', () => {
+  const magnetRowFocus = cssBlock(source, '.magnet-row:focus-within')
+
+  assert.ok(backgroundIncludes(magnetRowFocus, '--material-glass-control-hover'))
+  assert.match(magnetRowFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(magnetRowFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/)
+  assert.match(magnetRowFocus, /transform:\s*translateY\(-1px\)/)
+})
+
 test('magnet parser glass backgrounds are layered with specular and noise surfaces', () => {
   const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|material-glass-subtle)\);$/gm
   assert.doesNotMatch(source, singleLayerGlass)

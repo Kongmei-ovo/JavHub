@@ -452,6 +452,13 @@ export default {
   background: var(--badge-success-bg);
 }
 
+.magnet-row:focus-within {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+  transform: translateY(-1px);
+}
+
 .magnet-index {
   display: inline-flex;
   align-items: center;
