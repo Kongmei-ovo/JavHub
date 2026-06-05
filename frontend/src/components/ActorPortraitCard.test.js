@@ -18,6 +18,10 @@ function exactCssRule(selector) {
   return matches[matches.length - 1][1]
 }
 
+function backgroundIncludes(block, token) {
+  return new RegExp(`background:\\s*(?:[^;]*,\\s*)*var\\(${token}\\)(?:\\s*,[^;]*)?;`).test(block)
+}
+
 test('ActorPortraitCard exposes the planned public interface', () => {
   assert.match(source, /defineProps\(/)
   for (const prop of [
@@ -128,7 +132,9 @@ test('ActorPortraitCard exposes subscribed state accessibly and stylistically', 
   assert.match(source, /'is-subscribed': subscribed/)
   assert.match(source, /props\.subscribeTitle \|\| \(props\.subscribed \? '取消订阅演员' : '订阅演员'\)/)
   assert.match(source, /:disabled="subscribeDisabled"/)
-  assert.match(activeSubscribeRule, /background:\s*var\(--badge-success-bg\)/)
+  assert.ok(backgroundIncludes(activeSubscribeRule, '--badge-success-bg'))
+  assert.match(activeSubscribeRule, /var\(--surface-specular-edge\)/)
+  assert.match(activeSubscribeRule, /var\(--surface-noise\)/)
   assert.match(activeSubscribeRule, /border-color:\s*var\(--badge-success-border\)/)
   assert.match(activeSubscribeRule, /color:\s*var\(--badge-success-text\)/)
   assert.match(activeSubscribeRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -198,9 +204,38 @@ test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for act
   assert.match(favoriteRule, /color:\s*var\(--text-muted\)/)
   assert.match(subscribeRule, /color:\s*var\(--text-muted\)/)
   assert.doesNotMatch(subscribeRule, /color:\s*var\(--accent\)/)
-  assert.match(activeFavoriteRule, /background:\s*var\(--badge-error-bg\)/)
+  assert.ok(backgroundIncludes(activeFavoriteRule, '--badge-error-bg'))
+  assert.match(activeFavoriteRule, /var\(--surface-specular-edge\)/)
+  assert.match(activeFavoriteRule, /var\(--surface-noise\)/)
   assert.match(activeFavoriteRule, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(activeFavoriteRule, /color:\s*var\(--badge-error-text\)/)
   assert.match(activeFavoriteRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(activeFavoriteRule, /#fff|#ffffff|rgba\(255,\s*255,\s*255|rgba\(255,\s*55,\s*95/i)
+})
+
+test('ActorPortraitCard active quick actions preserve semantic layered glass on hover and focus', () => {
+  const activeFavoriteHover = cssRule('.actor-portrait-card.is-favorited .actor-portrait-card__favorite:hover')
+  const activeFavoriteFocus = cssRule('.actor-portrait-card.is-favorited .actor-portrait-card__favorite:focus-visible')
+  const activeSubscribeHover = cssRule('.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:hover')
+  const activeSubscribeFocus = cssRule('.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:focus-visible')
+
+  for (const [block, token, border, name] of [
+    [activeFavoriteHover, '--badge-error-bg', '--badge-error-border', 'favorite hover'],
+    [activeFavoriteFocus, '--badge-error-bg', '--badge-error-border', 'favorite focus'],
+    [activeSubscribeHover, '--badge-success-bg', '--badge-success-border', 'subscribe hover'],
+    [activeSubscribeFocus, '--badge-success-bg', '--badge-success-border', 'subscribe focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, token), `${name} should keep semantic fill`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should strengthen the glass edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should preserve texture`)
+    assert.match(block, new RegExp(`border-color:\\s*var\\(${border}\\)`), `${name} should keep semantic border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should keep hover depth`)
+    assert.match(block, /transform:\s*scale\(1\.07\)/, `${name} should keep tactile lift`)
+  }
+
+  assert.match(activeFavoriteFocus, /outline:\s*none/)
+  assert.match(activeFavoriteFocus, /0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.match(activeSubscribeFocus, /outline:\s*none/)
+  assert.match(activeSubscribeFocus, /0 0 0 3px color-mix\(in srgb,\s*var\(--badge-success-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(`${activeFavoriteFocus}\n${activeSubscribeFocus}`, /rgba\(var\(--accent-rgb\)|rgba\(var\(--error-rgb\)/)
 })

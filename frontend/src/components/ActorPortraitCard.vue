@@ -285,17 +285,69 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card.is-subscribed .actor-portrait-card__subscribe {
-  background: var(--badge-success-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
   border-color: var(--badge-success-border);
   color: var(--badge-success-text);
   box-shadow: var(--glass-control-shadow);
 }
 
 .actor-portrait-card.is-favorited .actor-portrait-card__favorite {
-  background: var(--badge-error-bg);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
   box-shadow: var(--glass-control-shadow);
+}
+
+.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:hover {
+  transform: scale(1.07);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.actor-portrait-card.is-favorited .actor-portrait-card__favorite:hover {
+  transform: scale(1.07);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:focus-visible {
+  outline: none;
+  transform: scale(1.07);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-success-text) 18%, transparent);
+}
+
+.actor-portrait-card.is-favorited .actor-portrait-card__favorite:focus-visible {
+  outline: none;
+  transform: scale(1.07);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
 }
 
 .actor-portrait-card__body {
