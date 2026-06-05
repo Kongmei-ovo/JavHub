@@ -7,6 +7,8 @@
           <img
             :src="avatarUrl"
             :alt="actorName"
+            loading="eager"
+            decoding="async"
             @error="handleAvatarError"
           />
         </div>

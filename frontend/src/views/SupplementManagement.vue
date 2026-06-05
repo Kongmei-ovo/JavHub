@@ -49,6 +49,8 @@
               v-if="actorContextAvatar"
               :src="actorContextAvatar"
               :alt="actorContextName"
+              loading="eager"
+              decoding="async"
               @error="handleWorkspaceAvatarError"
             />
             <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>

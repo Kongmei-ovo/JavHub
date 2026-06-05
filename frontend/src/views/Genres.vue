@@ -108,6 +108,7 @@
               :alt="displayName(actress, 'name_kanji', 'name_romaji') || 'Unknown'"
               @error="handleActressImgError"
               loading="lazy"
+              decoding="async"
             />
           </div>
           <div class="actress-name">{{ displayName(actress, 'name_kanji', 'name_romaji') || 'Unknown' }}</div>

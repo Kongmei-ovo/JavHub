@@ -147,6 +147,8 @@
             <img
               :src="actor.avatar_url || ''"
               :alt="actor.display_name"
+              loading="lazy"
+              decoding="async"
               @error="handleImgError($event)"
             />
             <div v-if="actor.missing_count > 0" class="missing-badge">{{ actor.missing_count }}</div>

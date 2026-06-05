@@ -180,7 +180,7 @@
           </div>
           <div class="missing-grid">
             <article v-for="video in actorMissingVideos" :key="video.content_id" class="missing-video">
-              <img v-if="video.jacket_thumb_url" :src="video.jacket_thumb_url" :alt="video.title || video.content_id" />
+              <img v-if="video.jacket_thumb_url" :src="video.jacket_thumb_url" :alt="video.title || video.content_id" loading="lazy" decoding="async" />
               <div v-else class="poster-fallback">{{ video.content_id }}</div>
               <div>
                 <strong>{{ video.content_id }}</strong>
@@ -269,7 +269,7 @@
         <div v-else class="mapping-list">
           <article v-for="actor in unmappedActors" :key="actor.emby_actor_id" class="mapping-item">
             <div class="actor-avatar small">
-              <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" />
+              <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" loading="lazy" decoding="async" />
               <span v-else>{{ initials(actor.emby_actor_name) }}</span>
             </div>
             <div class="mapping-copy">
@@ -305,7 +305,7 @@
         </div>
         <div v-if="inventoryCandidates.length" class="candidate-grid">
           <article v-for="candidate in inventoryCandidates" :key="candidate.id" class="inventory-candidate">
-            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" />
+            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" loading="lazy" decoding="async" />
             <div v-else class="poster-fallback">{{ candidate.dvd_id || candidate.content_id }}</div>
             <div>
               <strong>{{ candidate.dvd_id || candidate.content_id }}</strong>

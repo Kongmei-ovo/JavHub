@@ -135,7 +135,7 @@
             <div class="sheet-avatar-wrap">
               <div class="sheet-avatar-glow"></div>
               <div class="sheet-avatar">
-                <img v-if="sheetCoverUrl" :src="sheetCoverUrl" :alt="sheetActor.name_kanji" @error="handleSheetAvatarError" />
+                <img v-if="sheetCoverUrl" :src="sheetCoverUrl" :alt="sheetActor.name_kanji" loading="eager" decoding="async" @error="handleSheetAvatarError" />
                 <span v-else class="avatar-fallback">{{ (sheetActor.name_kanji || '?')[0] }}</span>
               </div>
             </div>

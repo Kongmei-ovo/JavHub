@@ -280,7 +280,7 @@
             />
           </label>
           <div class="task-cover">
-            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" />
+            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" loading="lazy" decoding="async" />
             <div v-else class="cover-placeholder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
                 <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>

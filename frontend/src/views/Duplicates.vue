@@ -12,7 +12,7 @@
         class="duplicate-item"
       >
         <div class="item-cover">
-          <img :src="item.jacket_thumb_url || '/placeholder.png'" :alt="item.content_id" />
+          <img :src="item.jacket_thumb_url || '/placeholder.png'" :alt="item.content_id" loading="lazy" decoding="async" />
         </div>
         <div class="item-info">
           <div class="item-code">{{ item.content_id }}</div>

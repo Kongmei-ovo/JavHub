@@ -12,6 +12,7 @@
         :src="coverUrl"
         :alt="displayCode || normalized.title_ja || 'video cover'"
         loading="lazy"
+        decoding="async"
         class="apple-video-card__image"
         @error="onImageError"
         @load="onImageLoad"

@@ -10,6 +10,8 @@
           <img
             :src="coverImageUrl"
             :alt="video.dvd_id || video.content_id"
+            loading="eager"
+            decoding="async"
             @error="handleImgError"
             class="gallery-img"
           />
@@ -158,6 +160,8 @@
                     v-if="actress.image_url"
                     :src="formatAvatarUrl(actress.image_url)"
                     :alt="displayName(actress, 'name_kanji', 'name_romaji')"
+                    loading="lazy"
+                    decoding="async"
                     @error="onAvatarError($event)"
                   />
                   <span v-else class="avatar-placeholder">{{ (displayName(actress, 'name_kanji', 'name_romaji') || '?')[0] }}</span>
@@ -245,6 +249,8 @@
           <img
             :src="formatGalleryUrl(galleryThumbs[currentGalleryIndex])"
             :alt="'剧照 ' + (currentGalleryIndex + 1)"
+            loading="eager"
+            decoding="async"
             class="lightbox-img"
             @error="handleGalleryImgError"
           />

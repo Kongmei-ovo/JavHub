@@ -1,6 +1,6 @@
 <template>
   <div class="actress-avatar" :style="{ width: size + 'px', height: size + 'px' }">
-    <img v-if="avatarUrl && !errored" :src="avatarUrl" :alt="name" @error="errored = true" />
+    <img v-if="avatarUrl && !errored" :src="avatarUrl" :alt="name" loading="lazy" decoding="async" @error="errored = true" />
     <div v-else class="avatar-placeholder">{{ initials }}</div>
     <div v-if="badge !== null && badge !== undefined && badge > 0" class="avatar-badge">{{ badge }}</div>
   </div>

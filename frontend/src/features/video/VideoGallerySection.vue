@@ -9,7 +9,7 @@
         type="button"
         @click="$emit('open', idx)"
       >
-        <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" @error="onGalleryError" />
+        <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" decoding="async" @error="onGalleryError" />
       </button>
     </div>
   </div>

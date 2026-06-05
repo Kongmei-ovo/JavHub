@@ -62,6 +62,8 @@
                 v-if="video.image_tag"
                 :src="embyImageUrl(video.item_id, video.image_tag)"
                 :alt="video.title"
+                loading="lazy"
+                decoding="async"
                 @error="handleVideoCoverError($event, video)"
               />
               <div v-else class="no-cover">无封面</div>

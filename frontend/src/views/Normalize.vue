@@ -89,7 +89,7 @@
         <div v-for="actor in filteredUnmappedActors" :key="actor.emby_actor_id" class="mapping-card">
           <div class="actor-side">
             <div class="avatar emby-avatar">
-              <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" />
+              <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" loading="lazy" decoding="async" />
               <span v-else>{{ initials(actor.emby_actor_name) }}</span>
             </div>
             <div class="actor-copy">
@@ -124,7 +124,7 @@
                 <div class="candidate-compare">
                   <div class="compare-person">
                     <div class="avatar compare-avatar">
-                      <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" />
+                      <img v-if="actor.avatar_url" :src="actor.avatar_url" :alt="actor.emby_actor_name" loading="lazy" decoding="async" />
                       <span v-else>{{ initials(actor.emby_actor_name) }}</span>
                     </div>
                     <div class="side-label">Emby 库</div>
@@ -139,7 +139,7 @@
 
                   <div class="compare-person">
                     <div class="avatar compare-avatar">
-                      <img v-if="candidateAvatar(candidate)" :src="candidateAvatar(candidate)" :alt="candidateName(candidate)" />
+                      <img v-if="candidateAvatar(candidate)" :src="candidateAvatar(candidate)" :alt="candidateName(candidate)" loading="lazy" decoding="async" />
                       <span v-else>{{ initials(candidateName(candidate)) }}</span>
                     </div>
                     <div class="side-label">JavInfo 库</div>
@@ -188,7 +188,7 @@
           <span class="arrow">→</span>
           <div class="mapping-target">
             <div class="avatar table-avatar">
-              <img v-if="candidateAvatar(mapping)" :src="candidateAvatar(mapping)" :alt="mapping.javinfo_actress_name || '已忽略'" />
+              <img v-if="candidateAvatar(mapping)" :src="candidateAvatar(mapping)" :alt="mapping.javinfo_actress_name || '已忽略'" loading="lazy" decoding="async" />
               <span v-else>{{ initials(mapping.javinfo_actress_name || '忽') }}</span>
             </div>
             <div>

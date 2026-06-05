@@ -15,6 +15,7 @@
         :src="displayAvatar"
         :alt="displayNameText"
         loading="lazy"
+        decoding="async"
         @error="handleImageError"
       />
       <div v-else class="actor-portrait-card__fallback">{{ displayInitial }}</div>

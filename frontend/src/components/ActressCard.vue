@@ -15,6 +15,7 @@
         :alt="name"
         @error="handleImgError"
         loading="lazy"
+        decoding="async"
         class="cover-img"
       />
       <div class="cover-fade"></div>
