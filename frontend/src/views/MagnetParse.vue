@@ -366,7 +366,7 @@ export default {
   padding: 14px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -460,7 +460,7 @@ export default {
   height: 30px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
@@ -504,7 +504,7 @@ export default {
   padding: 3px 7px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   color: var(--text-muted);
   font-size: var(--type-micro);
   font-weight: 700;
@@ -553,7 +553,7 @@ export default {
   padding: 10px 12px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-md);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
   color: var(--text-secondary);
   font-size: var(--type-caption);
@@ -575,7 +575,7 @@ export default {
   padding: 44px 20px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-card);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
   color: var(--text-muted);
   font-size: var(--type-body);
