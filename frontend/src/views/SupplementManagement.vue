@@ -146,10 +146,25 @@
         <div v-if="moviesLoading" class="loading-wrap"><div class="spinner-large"></div></div>
         <div v-else class="ios-list">
           <article v-for="movie in supplementMovies" :key="movie.id" class="ios-row movie-row">
+            <img
+              v-if="movieCover(movie)"
+              :src="movieCover(movie)"
+              class="movie-cover"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+              alt=""
+              @error="applyImageFallback($event)"
+            />
+            <div v-else class="movie-cover movie-cover-empty">无封面</div>
             <div class="movie-row-main">
               <strong>{{ movie.dvd_id || movie.canonical_number || '—' }}</strong>
               <span>{{ movie.title || movie.dvd_id || movie.canonical_number || '—' }}</span>
               <small>{{ movie.release_date || '未知日期' }}</small>
+              <div class="movie-meta">
+                <span v-if="movie.runtime_mins">{{ movie.runtime_mins }} 分钟</span>
+                <span v-if="movie.maker_name">{{ movie.maker_name }}</span>
+                <span v-if="movieCategories(movie)" class="movie-meta-cats">{{ movieCategories(movie) }}</span>
+              </div>
             </div>
             <div class="movie-row-actions">
               <span class="status-pill" :class="`match-${movieMatchClass(movie)}`">{{ movieMatchLabel(movie) }}</span>
@@ -938,6 +953,19 @@ export default {
       if (state === 'candidate') return (movie.match_candidate_count ?? 0) > 0 ? `待确认 ${movie.match_candidate_count}` : '待确认'
       if (state === 'ignored') return '已忽略'
       return '仅补全'
+    },
+    movieCover(movie) {
+      return movie?.cover_thumb_url || movie?.cover_url || ''
+    },
+    movieCategories(movie) {
+      const raw = movie?.category_names
+      if (!raw) return ''
+      let list = raw
+      if (typeof raw === 'string') {
+        try { list = JSON.parse(raw) } catch { return raw }
+      }
+      if (!Array.isArray(list)) return String(raw)
+      return list.slice(0, 3).join(' · ')
     },
     fieldLabel(fieldName) {
       const map = {
