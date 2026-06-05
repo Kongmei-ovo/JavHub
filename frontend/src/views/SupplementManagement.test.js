@@ -207,6 +207,70 @@ test('supplement job status pills use semantic layered glass tokens', () => {
   }
 })
 
+test('supplement workspace status badges use semantic layered glass tokens', () => {
+  const defaultStatus = cssBlock(source, '.status-pill')
+  const deepDefaultStatus = cssBlock(source, '.workspace-panel :deep(.status-pill)')
+  const succeeded = cssBlock(source, '.status-succeeded')
+  const matched = cssBlock(source, '.match-matched')
+  const deepSucceeded = cssBlock(source, '.workspace-panel :deep(.status-succeeded)')
+  const running = cssBlock(source, '.status-running')
+  const queued = cssBlock(source, '.status-queued')
+  const candidate = cssBlock(source, '.match-candidate')
+  const deepRunning = cssBlock(source, '.workspace-panel :deep(.status-running)')
+  const deepQueued = cssBlock(source, '.workspace-panel :deep(.status-queued)')
+  const failed = cssBlock(source, '.status-failed')
+  const deepFailed = cssBlock(source, '.workspace-panel :deep(.status-failed)')
+  const supplementOnly = cssBlock(source, '.match-supplement-only')
+  const idle = cssBlock(source, '.status-idle')
+  const ignored = cssBlock(source, '.match-ignored')
+
+  for (const [block, label] of [
+    [defaultStatus, 'workspace default status'],
+    [deepDefaultStatus, 'workspace deep default status'],
+    [supplementOnly, 'workspace supplement-only match'],
+    [idle, 'workspace idle status'],
+  ]) {
+    assertLayeredBackground(block, '--badge-info-bg', label)
+    assert.match(block, /color:\s*var\(--badge-info-text\)/, `${label} should keep info text`)
+    assert.match(block, /border(?:-color)?:\s*(?:1px solid )?var\(--badge-info-border\)/, `${label} should keep info border`)
+  }
+
+  for (const [block, label] of [
+    [succeeded, 'workspace succeeded status'],
+    [matched, 'workspace matched status'],
+    [deepSucceeded, 'workspace deep succeeded status'],
+  ]) {
+    assertLayeredBackground(block, '--badge-success-bg', label)
+    assert.match(block, /color:\s*var\(--badge-success-text\)/, `${label} should keep success text`)
+    assert.match(block, /border-color:\s*var\(--badge-success-border\)/, `${label} should keep success border`)
+  }
+
+  for (const [block, label] of [
+    [running, 'workspace running status'],
+    [queued, 'workspace queued status'],
+    [candidate, 'workspace candidate match'],
+    [deepRunning, 'workspace deep running status'],
+    [deepQueued, 'workspace deep queued status'],
+  ]) {
+    assertLayeredBackground(block, '--badge-warning-bg', label)
+    assert.match(block, /color:\s*var\(--badge-warning-text\)/, `${label} should keep warning text`)
+    assert.match(block, /border-color:\s*var\(--badge-warning-border\)/, `${label} should keep warning border`)
+  }
+
+  for (const [block, label] of [
+    [failed, 'workspace failed status'],
+    [deepFailed, 'workspace deep failed status'],
+  ]) {
+    assertLayeredBackground(block, '--badge-error-bg', label)
+    assert.match(block, /color:\s*var\(--badge-error-text\)/, `${label} should keep error text`)
+    assert.match(block, /border-color:\s*var\(--badge-error-border\)/, `${label} should keep error border`)
+  }
+
+  assertLayeredBackground(ignored, '--badge-pending-bg', 'workspace ignored match')
+  assert.match(ignored, /color:\s*var\(--badge-pending-text\)/)
+  assert.match(ignored, /border-color:\s*var\(--badge-pending-border\)/)
+})
+
 test('supplement management exposes provider smoke diagnostics', () => {
   assert.match(sourceHealthPanel, /运行诊断/)
   assert.match(source, /runProviderSmoke/)
