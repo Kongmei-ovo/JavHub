@@ -126,7 +126,7 @@ export default {
   padding: 3px 9px;
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 .candidate-run-actions {

@@ -312,7 +312,9 @@ test('home dashboard metrics use shared liquid glass controls', () => {
   assert.match(statCardHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(statCardBlock, /blur\(20px\)|var\(--surface-control\)|var\(--bg-card\)|rgba\(255,\s*255,\s*255,\s*0\.05\)/)
 
-  assert.match(statIconBlock, /background:\s*var\(--material-glass-subtle\)/)
+  assert.match(statIconBlock, backgroundIncludes('material-glass-subtle'))
+  assert.match(statIconBlock, /var\(--surface-specular-edge/)
+  assert.match(statIconBlock, /var\(--surface-noise\)/)
   assert.match(statIconBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(statIconBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(statIconBlock, /!important|rgba\(255,\s*255,\s*255/)

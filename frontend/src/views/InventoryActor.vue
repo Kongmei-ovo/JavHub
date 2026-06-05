@@ -354,7 +354,10 @@ onMounted(async () => {
   box-shadow: var(--glass-control-shadow-hover);
 }
 .video-cover {
-  aspect-ratio: 3/4; background: var(--material-glass-subtle); box-shadow: var(--glass-inner-shadow); overflow: hidden;
+  aspect-ratio: 3/4;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
+  overflow: hidden;
 }
 .video-cover img { width: 100%; height: 100%; object-fit: cover; }
 .no-cover {
@@ -401,7 +404,7 @@ onMounted(async () => {
   padding: 40px;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   color: var(--text-secondary);
 }
 

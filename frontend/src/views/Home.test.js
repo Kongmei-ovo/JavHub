@@ -39,11 +39,17 @@ function assertGlassControlHover(block, label) {
   assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${label} should use the shared hover shadow`)
 }
 
+function assertGlassSubtle(block, label) {
+  assert.match(block, backgroundIncludes('material-glass-subtle'), `${label} should use the shared subtle material`)
+  assert.match(block, /var\(--surface-specular-edge/, `${label} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${label} should include the shared noise layer`)
+}
+
 function singleLayerGlassBackgrounds(css) {
   return css
     .split('\n')
     .map((line, index) => ({ line: index + 1, text: line.trim() }))
-    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
+    .filter(({ text }) => /^background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(text))
 }
 
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
@@ -129,6 +135,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   const candidateMetricHover = cssBlock(source, '.candidate-metric:hover')
   const filterBar = cssBlock(source, '.filter-bar')
   const filterBarHover = cssBlock(source, '.filter-bar:hover')
+  const statIcon = cssBlock(source, '.stat-icon')
   const pageButton = cssBlock(source, '.page-btn')
   const pageButtonHover = cssBlock(source, '.page-btn:hover:not(:disabled)')
   const taskCover = cssBlock(source, '.task-cover')
@@ -171,6 +178,10 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
     assertGlassControlHover(block, label)
     assert.doesNotMatch(block, /var\(--surface-control-hover\)|var\(--border-light\)/)
   }
+
+  assertGlassSubtle(statIcon, 'stat icon')
+  assert.match(statIcon, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(statIcon, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
   assert.match(inlineDialog, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(inlineDialog, backgroundIncludes('material-glass-sheet'))

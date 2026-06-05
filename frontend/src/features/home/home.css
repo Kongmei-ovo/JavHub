@@ -69,7 +69,10 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
   color: var(--text-secondary);

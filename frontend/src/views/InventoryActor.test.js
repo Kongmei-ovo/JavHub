@@ -25,6 +25,12 @@ function backgroundIncludes(block, token) {
   return Boolean(match && match[1].includes(token))
 }
 
+function assertLayeredBackground(block, token, name) {
+  assert.ok(backgroundIncludes(block, token), `${name} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${name} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
+}
+
 test('inventory actor workspace uses shared Apple glass controls', () => {
   const backButton = cssBlock(source, '.back-btn')
   const mappingBanner = cssBlock(source, '.mapping-banner')
@@ -81,10 +87,10 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   assert.match(mappingBannerUnmapped, /color:\s*var\(--badge-warning-text\)/)
 
   assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(emptyState, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(emptyState, '--material-glass-subtle', 'inventory actor empty state')
   assert.match(yearTitle, /border-bottom:\s*1px solid var\(--glass-edge\)/)
   assert.doesNotMatch(yearTitle, /var\(--border\)/)
-  assert.match(videoCover, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(videoCover, '--material-glass-subtle', 'inventory actor video cover')
   assert.match(videoCover, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 
   for (const block of [
@@ -105,8 +111,10 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
 })
 
 test('inventory actor glass backgrounds are layered with specular and noise surfaces', () => {
-  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
-  const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0])
+  const offenders = source
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => /(?:^|;\s*)background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|material-glass-subtle|glass-active-material)\);/.test(line))
 
   assert.deepEqual(offenders, [], 'inventory actor primary glass surfaces should not use single-layer glass backgrounds')
 
@@ -121,12 +129,12 @@ test('inventory actor glass backgrounds are layered with specular and noise surf
     ['.tab-btn.active', '--glass-active-material'],
     ['.video-card', '--material-glass-control'],
     ['.video-card:hover', '--material-glass-control-hover'],
+    ['.video-cover', '--material-glass-subtle'],
     ['.candidate-btn', '--material-glass-control'],
     ['.candidate-btn:hover', '--material-glass-control-hover'],
+    ['.loading', '--material-glass-subtle'],
   ]) {
     const block = cssBlock(source, selector)
-    assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
-    assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
-    assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
+    assertLayeredBackground(block, token, selector)
   }
 })

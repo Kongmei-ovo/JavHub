@@ -23,8 +23,10 @@ function backgroundIncludes(block, token) {
 }
 
 function singleLayerGlassBackgrounds(css) {
-  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/gm
-  return [...css.matchAll(singleLayerGlass)].map(match => match[0])
+  return css
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => /^background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-control-hover|material-glass-elevated|material-glass-sheet|glass-active-material)\);$/.test(line))
 }
 
 test('actor page keeps large scoped styles in a feature stylesheet', () => {
@@ -128,7 +130,9 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.doesNotMatch(variantSwitch, /rgba\(255,\s*255,\s*255/)
 
   assert.match(switchButton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(switchButton, /background:\s*var\(--material-glass-subtle\)/)
+  assert.ok(backgroundIncludes(switchButton, '--material-glass-subtle'))
+  assert.match(switchButton, /var\(--surface-specular-edge/)
+  assert.match(switchButton, /var\(--surface-noise\)/)
   assert.ok(backgroundIncludes(switchButtonHover, '--material-glass-control-hover'))
   assert.match(switchButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.ok(backgroundIncludes(switchButtonActive, '--glass-active-material'))
@@ -146,7 +150,9 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.match(yearNav, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(yearNav, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assert.match(yearNavItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(yearNavItem, /background:\s*var\(--material-glass-subtle\)/)
+  assert.ok(backgroundIncludes(yearNavItem, '--material-glass-subtle'))
+  assert.match(yearNavItem, /var\(--surface-specular-edge/)
+  assert.match(yearNavItem, /var\(--surface-noise\)/)
   assert.match(yearNavItem, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(yearNavItem, /transparent/)
   assert.ok(backgroundIncludes(yearNavItemHover, '--material-glass-control-hover'))
@@ -170,7 +176,9 @@ test('actor page loading and year empty states use shared subtle materials', () 
   assert.doesNotMatch(yearHeader, /rgba\(255,\s*255,\s*255/)
 
   assert.match(yearEmpty, /border:\s*1px dashed var\(--glass-control-border\)/)
-  assert.match(yearEmpty, /background:\s*var\(--material-glass-subtle\)/)
+  assert.ok(backgroundIncludes(yearEmpty, '--material-glass-subtle'))
+  assert.match(yearEmpty, /var\(--surface-specular-edge/)
+  assert.match(yearEmpty, /var\(--surface-noise\)/)
   assert.match(yearEmpty, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(yearEmpty, /rgba\(255,\s*255,\s*255/)
 })
@@ -230,13 +238,16 @@ test('actor glass backgrounds are layered with specular and noise surfaces', () 
     '.actor-action-btn',
     '.actor-action-btn:hover',
     '.variant-switch',
+    '.switch-btn',
     '.switch-btn:hover',
     '.switch-btn.active',
     '.variant-badge',
     '.variant-label',
     '.year-nav',
+    '.year-nav-item',
     '.year-nav-item:hover',
     '.year-nav-item.active',
+    '.year-empty',
     '.supplement-card',
   ]) {
     const block = cssBlock(selector)

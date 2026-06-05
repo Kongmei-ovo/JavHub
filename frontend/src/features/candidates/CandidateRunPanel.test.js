@@ -34,13 +34,13 @@ test('candidate run panel uses shared Apple glass surfaces instead of legacy car
   assert.match(row, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
   const stat = cssBlock('.candidate-run-stats span')
-  assert.match(stat, /background:\s*var\(--material-glass-subtle\)/)
+  assertLayeredBackground(stat, '--material-glass-subtle', 'candidate run stat')
   assert.match(stat, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(stat, /box-shadow:\s*var\(--glass-inner-shadow\)/)
 })
 
 test('candidate run panel avoids single-layer primary glass backgrounds', () => {
-  const singleLayerGlass = /^.*background:\s*var\(--(?:material-glass-control|material-glass-sheet)\);.*$/gm
+  const singleLayerGlass = /^.*background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-sheet)\);.*$/gm
   const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0].trim())
 
   assert.deepEqual(offenders, [], 'candidate run primary surfaces should be layered with specular and noise materials')
