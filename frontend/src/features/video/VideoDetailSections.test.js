@@ -25,11 +25,15 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   const titleBlock = gallerySource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = gallerySource.match(/\.gallery-item\s*\{[^}]*\}/)?.[0] || ''
   const hoverBlock = gallerySource.match(/\.gallery-item:hover\s*\{[^}]*\}/)?.[0] || ''
+  const focusBlock = gallerySource.match(/\.gallery-item:focus-visible\s*\{[^}]*\}/)?.[0] || ''
   const imageBlock = gallerySource.match(/\.gallery-item img\s*\{[^}]*\}/)?.[0] || ''
   const imageHoverBlock = gallerySource.match(/\.gallery-item:hover img\s*\{[^}]*\}/)?.[0] || ''
+  const imageFocusBlock = gallerySource.match(/\.gallery-item:focus-visible img\s*\{[^}]*\}/)?.[0] || ''
   const skeletonBlock = gallerySource.match(/\.skeleton\s*\{[^}]*\}/)?.[0] || ''
   const skeletonAfterBlock = gallerySource.match(/\.skeleton::after\s*\{[^}]*\}/)?.[0] || ''
 
+  assert.match(gallerySource, /<button[\s\S]*class="gallery-item"[\s\S]*type="button"[\s\S]*@click="\$emit\('open', idx\)"/)
+  assert.doesNotMatch(gallerySource, /<div v-for="\(\s*thumb,\s*idx\s*\) in thumbs"[\s\S]*class="gallery-item"[\s\S]*@click/)
   assert.match(titleBlock, /color:\s*var\(--modal-text-muted,\s*var\(--text-muted\)\)/)
   assert.match(titleBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(titleBlock, /text-transform:\s*uppercase/)
@@ -43,9 +47,17 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   assert.match(hoverBlock, /var\(--surface-specular-edge-strong\)/)
   assert.match(hoverBlock, /var\(--surface-noise\)/)
   assert.match(hoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.ok(backgroundIncludes(focusBlock, '--material-glass-control-hover'))
+  assert.match(focusBlock, /outline:\s*none/)
+  assert.match(focusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(itemBlock, /appearance:\s*none/)
+  assert.match(itemBlock, /padding:\s*0/)
   assert.match(imageBlock, /transition:\s*transform var\(--motion-standard\),\s*filter var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.match(imageHoverBlock, /transform:\s*scale\(1\.015\)/)
+  assert.match(imageFocusBlock, /transform:\s*scale\(1\.015\)/)
   assert.match(skeletonBlock, /background:\s*var\(--skeleton-base\)/)
+  assert.match(skeletonBlock, /cursor:\s*default/)
+  assert.match(skeletonBlock, /pointer-events:\s*none/)
   assert.match(skeletonAfterBlock, /var\(--skeleton-highlight\)/)
   assert.doesNotMatch(gallerySource, /rgba\(255,\s*255,\s*255,\s*0\.05\)|transition:\s*var\(--transition-pro\)|transition:\s*all\b/)
 })
@@ -90,6 +102,7 @@ test('video detail sections layer glass with specular and noise surfaces', () =>
   for (const [source, selector, token] of [
     [gallerySource, '.gallery-item', '--material-glass-control'],
     [gallerySource, '.gallery-item:hover', '--material-glass-control-hover'],
+    [gallerySource, '.gallery-item:focus-visible', '--material-glass-control-hover'],
     [magnetSource, '.magnet-item', '--material-glass-control'],
     [magnetSource, '.magnet-item:hover', '--material-glass-control-hover'],
     [magnetSource, '.btn-copy,\n.btn-download', '--material-glass-control'],
