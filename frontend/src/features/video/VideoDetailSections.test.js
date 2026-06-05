@@ -21,6 +21,12 @@ function cssBlockWith(source, selector, token) {
   return block
 }
 
+function assertLayeredBackground(block, token, label) {
+  assert.ok(backgroundIncludes(block, token), `${label} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${label} should include a specular edge layer`)
+  assert.match(block, /var\(--surface-noise\)/, `${label} should include the shared noise layer`)
+}
+
 test('video gallery section uses shared liquid glass media surfaces', () => {
   const titleBlock = gallerySource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = gallerySource.match(/\.gallery-item\s*\{[^}]*\}/)?.[0] || ''
@@ -108,6 +114,24 @@ test('video magnet section uses shared glass controls and mobile-safe rows', () 
   assert.match(mediaBlock, /\.magnet-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
   assert.doesNotMatch(magnetSource, /var\(--active-border\)/)
   assert.doesNotMatch(magnetSource, /\.btn-download\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
+})
+
+test('video magnet badges use semantic layered glass tokens', () => {
+  const baseBadge = cssBlocks(magnetSource, '.magnet-badge')[0] || ''
+  const hdBadge = cssBlocks(magnetSource, '.magnet-badge.hd')[0] || ''
+  const subtitleBadge = cssBlocks(magnetSource, '.magnet-badge.sub')[0] || ''
+
+  assertLayeredBackground(baseBadge, '--badge-info-bg', 'video magnet badge')
+  assert.match(baseBadge, /color:\s*var\(--badge-info-text\)/)
+  assert.match(baseBadge, /border:\s*1px solid var\(--badge-info-border\)/)
+
+  assertLayeredBackground(hdBadge, '--badge-success-bg', 'video magnet HD badge')
+  assert.match(hdBadge, /color:\s*var\(--badge-success-text\)/)
+  assert.match(hdBadge, /border-color:\s*var\(--badge-success-border\)/)
+
+  assertLayeredBackground(subtitleBadge, '--badge-warning-bg', 'video magnet subtitle badge')
+  assert.match(subtitleBadge, /color:\s*var\(--badge-warning-text\)/)
+  assert.match(subtitleBadge, /border-color:\s*var\(--badge-warning-border\)/)
 })
 
 test('video detail sections layer glass with specular and noise surfaces', () => {
