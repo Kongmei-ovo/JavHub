@@ -81,6 +81,52 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   assert.match(segmentedHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 })
 
+test('translation controls mirror Apple glass hover treatment for keyboard focus', () => {
+  const segmentedHover = cssBlock(source, '.segmented-control button:hover')
+  const segmentedFocus = cssBlock(source, '.segmented-control button:focus-visible')
+  const segmentedActiveFocus = cssBlock(source, '.segmented-control button.active:focus-visible')
+  const providerEnabled = cssBlock(source, '.provider-row.enabled')
+  const providerFocus = cssBlock(source, '.provider-row:focus-within')
+  const providerEnabledFocus = cssBlock(source, '.provider-row.enabled:focus-within')
+  const historyFocus = cssBlock(source, '.history-row:focus-visible')
+
+  for (const [block, name] of [
+    [segmentedHover, 'segmented hover'],
+    [segmentedFocus, 'segmented focus'],
+    [providerFocus, 'provider focus'],
+    [historyFocus, 'history focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)(?:,\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\))?/, `${name} should use shared hover shadow`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
+  }
+
+  for (const [block, name] of [
+    [segmentedFocus, 'segmented focus'],
+    [providerFocus, 'provider focus'],
+    [historyFocus, 'history focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${name} should avoid double native focus chrome`)
+    assert.match(block, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should include a soft accent focus halo`)
+  }
+
+  for (const [block, name] of [
+    [providerEnabled, 'selected provider'],
+    [segmentedActiveFocus, 'active segment focus'],
+    [providerEnabledFocus, 'selected provider focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, '--glass-active-material'), `${name} should preserve active glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${name} should use active glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
+  }
+
+  assert.match(segmentedActiveFocus, /outline:\s*none/, 'active segment focus should avoid double native focus chrome')
+  assert.match(segmentedActiveFocus, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'active segment focus should include a focus halo')
+  assert.match(providerEnabledFocus, /outline:\s*none/, 'selected provider focus should avoid double native focus chrome')
+  assert.match(providerEnabledFocus, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'selected provider focus should include a focus halo')
+})
+
 test('translation review and source workspaces avoid legacy flat separators', () => {
   const providerList = cssBlock(source, '.provider-list')
   const providerRow = cssBlock(source, '.provider-row')

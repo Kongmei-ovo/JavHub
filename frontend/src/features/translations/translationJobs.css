@@ -95,7 +95,7 @@
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -108,6 +108,19 @@
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.segmented-control button:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
 }
 
 .segmented-control button.active {
@@ -118,6 +131,18 @@
     var(--glass-active-material);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
+}
+
+.segmented-control button.active:focus-visible {
+  outline: none;
+  border-color: var(--glass-active-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
 }
 
 .workspace-panel {
@@ -642,6 +667,17 @@
   transform: translateY(-1px);
 }
 
+.history-row:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
 .history-row div {
   display: grid;
   gap: 4px;
@@ -790,6 +826,37 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.provider-row.enabled {
+  border-color: var(--glass-active-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.provider-row:focus-within {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+
+.provider-row.enabled:focus-within {
+  outline: none;
+  border-color: var(--glass-active-border);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 
