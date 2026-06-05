@@ -459,6 +459,18 @@ a:hover {
     0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .btn:active { transform: scale(0.985); }
+.btn:disabled,
+.btn.btn-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  filter: saturate(0.82);
+}
 .btn-icon { padding: 8px; border-radius: 50%; }
 .btn svg { width: 16px; height: 16px; }
 
