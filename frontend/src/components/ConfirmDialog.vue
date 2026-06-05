@@ -166,6 +166,15 @@ const confirm = () => resolveConfirm(true)
   transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
 }
 
+.confirm-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--confirm-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.confirm-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .confirm-cancel {
   background:
     var(--surface-specular-edge),

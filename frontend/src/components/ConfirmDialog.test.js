@@ -15,6 +15,8 @@ test('global confirm dialog uses shared Apple glass sheet and controls', () => {
   const overlayBlock = sourceBlock('.confirm-overlay')
   const dialogBlock = sourceBlock('.confirm-dialog')
   const buttonBlock = sourceBlock('.confirm-btn')
+  const buttonFocusBlock = sourceBlock('.confirm-btn:focus-visible')
+  const buttonActiveBlock = sourceBlock('.confirm-btn:active')
   const primaryBlock = sourceBlock('.confirm-primary')
   const dangerPrimaryBlock = sourceBlock('.confirm-primary.danger')
   const iconDangerBlock = sourceBlock('.confirm-icon.danger')
@@ -35,6 +37,9 @@ test('global confirm dialog uses shared Apple glass sheet and controls', () => {
 
   assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(buttonBlock, /transition:\s*var\(--transition-pro\)/)
+  assert.match(buttonFocusBlock, /outline:\s*none/)
+  assert.match(buttonFocusBlock, /box-shadow:\s*var\(--confirm-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(buttonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
   assert.match(sourceBlock('.confirm-icon'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-control-bg\)/)
   assert.match(sourceBlock('.confirm-cancel'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--confirm-control-bg\)/)
