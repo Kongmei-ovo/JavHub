@@ -53,6 +53,13 @@ function cssBlock(selector) {
   return match[1]
 }
 
+function cssRuleBlock(source, selector) {
+  const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`)
+  const match = source.match(pattern)
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 function sourceBlock(source, selector) {
   const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\n\\}`)
   const match = source.match(pattern)
@@ -359,6 +366,22 @@ test('page status colors use semantic badge tokens instead of hardcoded hues', (
     ['Subscription', subscription],
   ]) {
     assert.doesNotMatch(source, bannedStatusPaint, `${name} should use badge semantic status tokens`)
+  }
+})
+
+test('global semantic badge utilities use layered liquid glass materials', () => {
+  for (const [selector, token, textToken, borderToken] of [
+    ['.badge-success', '--badge-success-bg', '--badge-success-text', '--badge-success-border'],
+    ['.badge-warning', '--badge-warning-bg', '--badge-warning-text', '--badge-warning-border'],
+    ['.badge-error', '--badge-error-bg', '--badge-error-text', '--badge-error-border'],
+    ['.badge-info', '--badge-info-bg', '--badge-info-text', '--badge-info-border'],
+    ['.badge-pending', '--badge-pending-bg', '--badge-pending-text', '--badge-pending-border'],
+  ]) {
+    const block = cssRuleBlock(mainCss, selector)
+
+    assert.match(block, new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(${token}\\)`))
+    assert.match(block, new RegExp(`color:\\s*var\\(${textToken}\\)`))
+    assert.match(block, new RegExp(`border:\\s*1px solid var\\(${borderToken}\\)`))
   }
 })
 
