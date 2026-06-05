@@ -133,6 +133,44 @@ test('discovery detail toolbar actions use shared glass controls without legacy 
   assert.doesNotMatch(source, /#FF375F|#ff375f|rgba\(255,\s*55,\s*95/i)
 })
 
+test('discovery detail keyboard focus mirrors hover glass treatment', () => {
+  const focusSelectors = [
+    '.back-btn:focus-visible',
+    '.entity-fav-btn:focus-visible',
+    '.entity-sub-btn:focus-visible',
+    '.sort-pill:focus-visible',
+    '.chronicle-btn:focus-visible',
+    '.page-btn:focus-visible:not(:disabled)',
+  ]
+
+  for (const selector of focusSelectors) {
+    const block = cssBlock(selector)
+    assertLayeredBackground(block, '--material-glass-control-hover', selector)
+    assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use shared hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should add a soft accent focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep the hover lift while focused`)
+  }
+
+  const activeFocusSelectors = [
+    '.entity-fav-btn.is-active:focus-visible',
+    '.entity-sub-btn.is-active:focus-visible',
+    '.sort-pill.active:focus-visible',
+    '.chronicle-btn.active:focus-visible',
+  ]
+
+  for (const selector of activeFocusSelectors) {
+    const block = cssBlock(selector)
+    assertLayeredBackground(block, '--glass-active-material', selector)
+    assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
+    assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should preserve active glass border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should combine active depth with focus halo`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep active controls lifted while focused`)
+  }
+
+  assert.match(cssBlock('.entity-fav-btn.is-active:focus-visible'), /color:\s*var\(--badge-error-text\)/, 'favorite focus should preserve semantic favorite color')
+})
+
 test('discovery detail glass controls use layered backgrounds across base hover and active states', () => {
   const singleLayerGlass = /^.*background:\s*var\(--(?:material-glass-control|material-glass-control-hover|glass-active-material)\);.*$/gm
   const offenders = [...source.matchAll(singleLayerGlass)].map(match => match[0].trim())

@@ -608,6 +608,37 @@ export default {
 }
 .page-btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.back-btn:focus-visible,
+.entity-fav-btn:focus-visible,
+.entity-sub-btn:focus-visible,
+.sort-pill:focus-visible,
+.chronicle-btn:focus-visible,
+.page-btn:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+.entity-fav-btn.is-active:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--badge-error-text);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
+.entity-sub-btn.is-active:focus-visible,
+.sort-pill.active:focus-visible,
+.chronicle-btn.active:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
 .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding-block: 20px; }
 .year-section { margin-bottom: 8px; }
