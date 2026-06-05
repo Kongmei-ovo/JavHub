@@ -337,8 +337,21 @@
 }
 .top-action-btn:active { transform: scale(0.96); }
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.top-action-btn.danger { color: var(--badge-error-text); border-color: var(--badge-error-border); }
-.top-action-btn.danger:hover { background: var(--badge-error-bg); }
+.top-action-btn.danger {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
+}
+.top-action-btn.danger:hover {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+}
+.top-action-btn.danger:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
+}
 .top-action-btn.primary {
   background: var(--subscription-active-bg);
   color: var(--text-primary);

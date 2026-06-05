@@ -149,6 +149,7 @@ test('subscription danger actions use semantic error tokens', () => {
   const sheetOverlayBlock = cssBlock('.sheet-overlay')
   const dangerButton = cssBlock('.top-action-btn.danger')
   const dangerHover = cssBlock('.top-action-btn.danger:hover')
+  const dangerFocus = cssBlock('.top-action-btn.danger:focus-visible')
 
   for (const block of [pageBlock, sheetOverlayBlock]) {
     assert.match(block, /--subscription-danger-bg:\s*var\(--badge-error-bg\)/)
@@ -158,8 +159,15 @@ test('subscription danger actions use semantic error tokens', () => {
 
   assert.match(dangerButton, /color:\s*var\(--badge-error-text\)/)
   assert.match(dangerButton, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerButton, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.doesNotMatch(dangerButton, /#ff375f/i)
-  assert.match(dangerHover, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(dangerHover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
+  assert.match(dangerHover, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerFocus, /outline:\s*none/)
+  assert.match(dangerFocus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
+  assert.match(dangerFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerFocus, /box-shadow:\s*var\(--subscription-control-shadow-hover\),\s*0 0 0 4px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(dangerFocus, /rgba\(var\(--error-rgb\)|rgba\(var\(--accent-rgb\)/)
 })
 
 test('subscription loading spinners use shared glass border tokens', () => {
