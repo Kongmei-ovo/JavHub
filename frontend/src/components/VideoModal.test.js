@@ -122,10 +122,15 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   assert.match(source, /--modal-action-secondary-bg:\s*var\(--material-glass-control\)/)
   assert.match(actionBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(actionBlock, /box-shadow:\s*var\(--modal-action-shadow\)/)
-  assert.match(primaryBlock, /background:\s*var\(--modal-action-primary-bg\)/)
+  assert.match(actionBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-action-secondary-bg\)/)
+  assert.match(primaryBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--modal-action-primary-bg\)/)
   assert.match(primaryBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(favoriteActiveBlock, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(secondaryBlock, /background:\s*var\(--modal-action-secondary-bg\)/)
+  assert.match(favoriteActiveBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--modal-action-primary-bg\)/)
+  assert.match(secondaryBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-action-secondary-bg\)/)
+  assert.match(sourceBlock(source, '.preview-btn:hover,\n.stream-btn:hover:not(:disabled),\n.favorite-btn:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-action-secondary-bg-hover\)/)
+  assert.match(sourceBlock(source, '.preview-btn:hover,\n.stream-btn:hover:not(:disabled)'), /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--modal-action-primary-bg\)/)
+  assert.match(sourceBlock(source, '.stream-download-btn:hover:not(:disabled)'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-action-secondary-bg-hover\)/)
   assert.doesNotMatch(source, /var\(--active-border\)/)
   assert.doesNotMatch(source, /\.preview-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
   assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
@@ -152,7 +157,7 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
   assert.match(source, /--modal-chip-shadow:\s*var\(--glass-control-shadow\)/)
 
   for (const block of [closeBlock, avatarBlock, placeholderBlock, tagBlock, lightboxCloseBlock, lightboxNavBlock]) {
-    assert.match(block, /background:\s*var\(--modal-chip-bg\)/)
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg\)/)
     assert.match(block, /border(?:|:\s*var\(--stroke-pro\) solid|:\s*1px solid)\s*[^;]*var\(--modal-chip-border\)/)
     assert.match(block, /box-shadow:\s*var\(--modal-chip-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -160,10 +165,14 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
   }
 
   for (const block of [avatarHoverBlock, tagHoverBlock]) {
-    assert.match(block, /background:\s*var\(--modal-chip-bg-hover\)/)
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg-hover\)/)
     assert.match(block, /border-color:\s*var\(--modal-chip-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--modal-chip-shadow-hover\)/)
   }
+
+  assert.match(sourceBlock(source, '.modal-close:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg-hover\)/)
+  assert.match(sourceBlock(source, '.lightbox-close:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg-hover\)/)
+  assert.match(sourceBlock(source, '.lightbox-prev:hover, .lightbox-next:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg-hover\)/)
 })
 
 test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => {
@@ -185,7 +194,7 @@ test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => 
   assert.match(imageBlock, /border:\s*1px solid var\(--modal-lightbox-border\)/)
   assert.doesNotMatch(imageBlock, /0 20px 80px rgba\(0,\s*0,\s*0,\s*0\.8\)/)
 
-  assert.match(counterBlock, /background:\s*var\(--modal-chip-bg\)/)
+  assert.match(counterBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg\)/)
   assert.match(counterBlock, /border:\s*1px solid var\(--modal-chip-border\)/)
   assert.match(counterBlock, /box-shadow:\s*var\(--modal-chip-shadow\)/)
   assert.match(counterBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
