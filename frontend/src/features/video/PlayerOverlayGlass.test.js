@@ -30,11 +30,15 @@ for (const [name, source] of overlaySources) {
     const overlayBlock = cssBlock(source, '.vp-overlay')
     const closeBlock = cssBlock(source, '.vp-close')
     const closeHoverBlock = cssBlock(source, '.vp-close:hover')
+    const closeFocusBlock = cssBlock(source, '.vp-close:focus-visible')
+    const closeActiveBlock = cssBlock(source, '.vp-close:active')
     const playerBlock = cssBlock(source, '.vp-player-wrap')
     const infoBlock = cssBlock(source, '.vp-info')
     const titleBlock = cssBlock(source, '.vp-title')
     const speedBlock = cssBlock(source, '.vp-speed-btn')
     const speedHoverBlock = cssBlock(source, '.vp-speed-btn:hover')
+    const speedFocusBlock = cssBlock(source, '.vp-speed-btn:focus-visible')
+    const speedActiveBlock = cssBlock(source, '.vp-speed-btn:active')
     const activeBlock = cssBlock(source, '.vp-speed-btn.active')
 
     assert.ok(customPropertyIncludes(overlayBlock, '--vp-control-bg', '--material-glass-control'))
@@ -66,6 +70,14 @@ for (const [name, source] of overlaySources) {
       assert.match(block, /border-color:\s*var\(--vp-control-border-hover\)/)
       assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\)/)
     }
+
+    for (const block of [closeFocusBlock, speedFocusBlock]) {
+      assert.match(block, /outline:\s*none/)
+      assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    }
+
+    assert.match(closeActiveBlock, /transform:\s*rotate\(90deg\)\s*scale\(0\.96\)/)
+    assert.match(speedActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
     assert.match(playerBlock, /background:\s*var\(--vp-player-bg\)/)
     assert.match(playerBlock, /border:\s*var\(--stroke-pro\) solid var\(--vp-sheet-border\)/)

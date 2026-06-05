@@ -89,14 +89,69 @@ export default {
   animation: fadeIn 0.4s var(--ease-pro);
 }
 .vp-container { position: relative; width: 90vw; max-width: 1080px; display: flex; flex-direction: column; gap: 18px; }
-.vp-close { position: absolute; top: -58px; right: 0; background: var(--vp-control-bg); border: var(--stroke-pro) solid var(--vp-control-border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); cursor: pointer; transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast); }
-.vp-close:hover { background: var(--vp-control-bg-hover); border-color: var(--vp-control-border-hover); box-shadow: var(--vp-control-shadow-hover); color: var(--text-primary); transform: rotate(90deg); }
+.vp-close {
+  position: absolute;
+  top: -58px;
+  right: 0;
+  background: var(--vp-control-bg);
+  border: var(--stroke-pro) solid var(--vp-control-border);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  box-shadow: var(--vp-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  cursor: pointer;
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
+}
+.vp-close:hover {
+  background: var(--vp-control-bg-hover);
+  border-color: var(--vp-control-border-hover);
+  box-shadow: var(--vp-control-shadow-hover);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+.vp-close:focus-visible {
+  outline: none;
+  box-shadow: var(--vp-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+.vp-close:active {
+  transform: rotate(90deg) scale(0.96);
+}
 .vp-player-wrap { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sheet); background: var(--vp-player-bg); border: var(--stroke-pro) solid var(--vp-sheet-border); }
 .vp-video { display: block; width: 100%; border-radius: 20px; background: var(--vp-player-bg); }
 .vp-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--vp-control-bg); border: 1px solid var(--vp-control-border); border-radius: var(--radius-lg); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .vp-title { min-width: 0; font-size: 14px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vp-speed-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.vp-speed-btn { font-size: 13px; padding: 5px 14px; background: var(--vp-control-bg); border: var(--stroke-pro) solid var(--vp-control-border); border-radius: 40px; color: var(--text-secondary); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); cursor: pointer; transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast); }
-.vp-speed-btn:hover { background: var(--vp-control-bg-hover); border-color: var(--vp-control-border-hover); box-shadow: var(--vp-control-shadow-hover); color: var(--text-primary); }
+.vp-speed-btn {
+  font-size: 13px;
+  padding: 5px 14px;
+  background: var(--vp-control-bg);
+  border: var(--stroke-pro) solid var(--vp-control-border);
+  border-radius: 40px;
+  color: var(--text-secondary);
+  box-shadow: var(--vp-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  cursor: pointer;
+  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
+}
+.vp-speed-btn:hover {
+  background: var(--vp-control-bg-hover);
+  border-color: var(--vp-control-border-hover);
+  box-shadow: var(--vp-control-shadow-hover);
+  color: var(--text-primary);
+}
+.vp-speed-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--vp-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+.vp-speed-btn:active {
+  transform: translateY(0) scale(0.97);
+}
 .vp-speed-btn.active { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); color: var(--text-primary); font-weight: 700; }
 </style>
