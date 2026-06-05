@@ -203,6 +203,45 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   assert.doesNotMatch(source, /:global\(:root\[data-theme="dark"\] \.search-box\)[\s\S]*linear-gradient\(145deg, rgba\(255,255,255,0\.155\)/)
 })
 
+test('entities keyboard focus mirrors hover glass control treatment', () => {
+  const tabFocus = cssRule('.entity-tab:focus-visible')
+  const searchClearFocus = cssRule('.search-box button:focus-visible')
+  const listCardFocus = cssRule('.entity-list-card:focus-within')
+  const openFocus = cssRule('.entity-list-card__open:focus-visible')
+  const favoriteFocus = cssRule('.entity-list-card__favorite:focus-visible')
+  const darkListCardFocus = cssRule(':global(:root[data-theme="dark"] .entity-list-card:focus-within)')
+
+  assert.match(tabFocus, /outline:\s*none/)
+  assert.match(tabFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(tabFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(tabFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(tabFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+
+  assert.match(searchClearFocus, /outline:\s*none/)
+  assert.match(searchClearFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(searchClearFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(searchClearFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(searchClearFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+
+  assert.match(listCardFocus, /transform:\s*translateY\(-3px\)/)
+  assert.match(listCardFocus, backgroundIncludes('material-glass-elevated'))
+  assert.match(listCardFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(listCardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
+
+  assert.match(openFocus, /outline:\s*none/)
+  assert.match(openFocus, /box-shadow:\s*inset 0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.14\)/)
+
+  assert.match(favoriteFocus, /outline:\s*none/)
+  assert.match(favoriteFocus, /transform:\s*scale\(1\.06\)/)
+  assert.match(favoriteFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(favoriteFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(favoriteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+
+  assert.match(darkListCardFocus, /border-color:\s*var\(--glass-edge-strong\)/)
+  assert.match(darkListCardFocus, backgroundIncludes('material-glass-control-hover'))
+  assert.match(darkListCardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
+})
+
 test('entities dark list cards reuse shared material tokens', () => {
   const darkHero = cssRule(':global(:root[data-theme="dark"] .entities-hero)')
   const darkListCard = cssRule(':global(:root[data-theme="dark"] .entity-list-card)')

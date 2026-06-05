@@ -122,6 +122,17 @@
   box-shadow: var(--glass-control-shadow-hover);
 }
 
+.entity-tab:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
 .entity-tab.active {
   border-color: var(--glass-active-border);
   background:
@@ -234,6 +245,17 @@
   color: var(--text-primary);
 }
 
+.search-box button:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  color: var(--text-primary);
+}
+
 .entity-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
@@ -267,6 +289,16 @@
 }
 
 .entity-list-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-elevated);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
+}
+
+.entity-list-card:focus-within {
   transform: translateY(-3px);
   border-color: var(--glass-control-border-hover);
   background:
@@ -382,6 +414,17 @@
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.entity-list-card__favorite:focus-visible {
+  outline: none;
+  transform: scale(1.06);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 
 .entity-list-card__favorite.active {
@@ -516,6 +559,15 @@
 }
 
 :global(:root[data-theme="dark"] .entity-list-card:hover) {
+  border-color: var(--glass-edge-strong);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow);
+}
+
+:global(:root[data-theme="dark"] .entity-list-card:focus-within) {
   border-color: var(--glass-edge-strong);
   background:
     var(--surface-specular-edge-strong),
