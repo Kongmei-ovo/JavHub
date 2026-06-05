@@ -607,13 +607,17 @@ a:hover {
   letter-spacing: 0;
   text-align: left;
   cursor: pointer;
-  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .glass-select__option:hover,
 .glass-select__option.is-active {
-  background: var(--surface-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
+  box-shadow: var(--glass-inner-shadow);
 }
 
 .glass-select__option.is-selected {

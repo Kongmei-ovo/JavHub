@@ -538,7 +538,16 @@ export default {
   transition: var(--transition);
   flex-shrink: 0;
 }
-.collapse-btn:hover { color: var(--text-primary); background: var(--surface-control-hover); }
+.collapse-btn:hover {
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
 .collapse-btn:focus-visible { outline: 3px solid rgba(var(--accent-rgb), 0.18); outline-offset: 2px; }
 
 .sidebar-nav {
@@ -587,7 +596,10 @@ export default {
   position: relative;
 }
 .nav-item:hover {
-  background: var(--surface-control-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -621,9 +633,15 @@ export default {
 
 .nav-badge {
   margin-left: auto;
-  background: var(--surface-control-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
   color: var(--text-primary);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
