@@ -92,9 +92,11 @@ const handleImgError = (e) => {
 }
 
 .actress-card:focus-visible {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow:
-    0 0 0 4px rgba(var(--accent-rgb), 0.14),
-    var(--glass-control-shadow),
+    var(--glass-control-shadow-hover),
+    0 0 0 4px rgba(var(--accent-rgb), 0.12),
     var(--glass-inner-shadow);
 }
 
@@ -124,6 +126,10 @@ const handleImgError = (e) => {
 }
 
 .actress-card:hover .cover-img {
+  transform: scale(1.06);
+}
+
+.actress-card:focus-visible .cover-img {
   transform: scale(1.06);
 }
 

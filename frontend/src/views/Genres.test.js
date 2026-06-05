@@ -56,10 +56,24 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
+  const focus = cssBlock('.actress-card:focus-visible')
+  assert.ok(backgroundIncludes(focus, '--material-glass-control-hover'))
+  assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+
   const avatar = cssBlock('.actress-avatar')
   assert.ok(backgroundIncludes(avatar, '--material-glass-control'))
   assert.match(avatar, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(avatar, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+
+  const avatarFocus = cssBlock('.actress-card:focus-visible .actress-avatar')
+  assert.match(avatarFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(avatarFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  const avatarImage = cssBlock('.actress-avatar img')
+  const avatarImageFocus = cssBlock('.actress-card:focus-visible .actress-avatar img')
+  assert.match(avatarImage, /transition:\s*transform var\(--motion-emphasized\)/)
+  assert.match(avatarImageFocus, /transform:\s*translateY\(-2px\)/)
 })
 
 test('genres loading and actress skeletons use shared Apple glass materials', () => {

@@ -599,7 +599,9 @@ export default {
 }
 .actress-card:focus-visible {
   outline: none;
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.13);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 .actress-card:active { transform: translateY(-1px) scale(0.985); }
 .actress-avatar {
@@ -614,8 +616,10 @@ export default {
   flex-shrink: 0;
 }
 .actress-card:hover .actress-avatar { border-color: var(--glass-control-border-hover); box-shadow: var(--glass-control-shadow-hover); }
-.actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform 0.3s ease; }
+.actress-card:focus-visible .actress-avatar { border-color: var(--glass-control-border-hover); box-shadow: var(--glass-control-shadow-hover); }
+.actress-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: transform var(--motion-emphasized); }
 .actress-card:hover .actress-avatar img { transform: translateY(-2px); }
+.actress-card:focus-visible .actress-avatar img { transform: translateY(-2px); }
 .actress-name { font-size: var(--type-caption); font-weight: 600; color: var(--text-primary); text-align: center; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .actress-skeleton-card {
   display: grid;

@@ -15,6 +15,7 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   const card = cssRule('.actress-card')
   const hover = cssRule('.actress-card:hover')
   const focus = cssRule('.actress-card:focus-visible')
+  const imageFocus = cssRule('.actress-card:focus-visible .cover-img')
   const media = cssRule('.card-cover')
 
   assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
@@ -29,8 +30,11 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(hover, /var\(--surface-card-hover\)|var\(--shadow-floating\)|rgba\(0,\s*0,\s*0,\s*0\.4\)/)
 
-  assert.match(focus, /box-shadow:\s*0 0 0 4px rgba\(var\(--accent-rgb\), 0\.14\),\s*var\(--glass-control-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(focus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\),\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(focus, /var\(--shadow-floating\)/)
+  assert.match(imageFocus, /transform:\s*scale\(1\.06\)/)
 
   assert.match(media, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(media, /box-shadow:\s*var\(--glass-inner-shadow\)/)
