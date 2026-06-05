@@ -56,6 +56,31 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
   assert.doesNotMatch(errorBlock, /#ff4d4f/i)
 })
 
+test('duplicates keyboard focus mirrors hover glass treatment', () => {
+  const rescanFocus = cssBlock('.rescan-btn:focus-visible')
+  const actionFocus = cssBlock('.action-btn:focus-visible')
+  const deleteFocus = cssBlock('.action-btn.delete:focus-visible')
+  const entryFocus = cssBlock('.duplicate-entry:focus-within')
+
+  for (const block of [rescanFocus, actionFocus]) {
+    assert.match(block, /outline:\s*none/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /transform:\s*translateY\(-1px\)/)
+  }
+
+  assert.match(deleteFocus, /outline:\s*none/)
+  assert.match(deleteFocus, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(deleteFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(deleteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+
+  assert.ok(backgroundIncludes(entryFocus, '--material-glass-control-hover'))
+  assert.match(entryFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(entryFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/)
+  assert.match(entryFocus, /transform:\s*translateY\(-1px\)/)
+})
+
 test('duplicates glass backgrounds are layered with specular and noise surfaces', () => {
   assert.deepEqual(singleLayerGlassBackgrounds(source), [])
 

@@ -165,6 +165,16 @@ onMounted(fetchDuplicates)
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.rescan-btn:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .duplicate-item {
   display: flex;
   gap: 16px;
@@ -235,6 +245,16 @@ onMounted(fetchDuplicates)
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.duplicate-entry:focus-within {
+  transform: translateY(-1px);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.1);
 }
 .duplicate-entry-main {
   min-width: 0;
@@ -276,10 +296,27 @@ onMounted(fetchDuplicates)
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.action-btn:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .action-btn.delete {
   background: var(--badge-error-bg);
   border-color: var(--badge-error-border);
   color: var(--badge-error-text);
+}
+.action-btn.delete:focus-visible {
+  outline: none;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--error-rgb), 0.16);
+  transform: translateY(-1px);
 }
 .action-btn.ignore {
   background:
