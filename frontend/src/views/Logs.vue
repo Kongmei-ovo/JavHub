@@ -201,6 +201,13 @@ export default {
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
+.toolbar-btn:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  transform: translateY(-1px);
+}
 .toolbar-btn.primary {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
@@ -217,6 +224,13 @@ export default {
   background: var(--badge-error-bg);
   border-color: var(--badge-error-border);
   box-shadow: var(--glass-control-shadow-hover);
+}
+.toolbar-btn.danger:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--error-rgb), 0.16);
+  transform: translateY(-1px);
 }
 
 .activity-summary-strip {
@@ -300,6 +314,13 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.pagination button:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 .pagination button:disabled {

@@ -91,6 +91,26 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   assert.doesNotMatch(`${paginationButton}\n${paginationHover}\n${warningLevel}\n${errorLevel}`, /var\(--surface-control\)|var\(--surface-control-hover\)|#ff9800|#f44336/i)
 })
 
+test('logs buttons mirror hover glass treatment for keyboard focus', () => {
+  const toolbarFocus = cssBlock('.toolbar-btn:focus-visible:not(:disabled)')
+  const dangerFocus = cssBlock('.toolbar-btn.danger:focus-visible:not(:disabled)')
+  const paginationFocus = cssBlock('.pagination button:focus-visible:not(:disabled)')
+
+  for (const block of [toolbarFocus, paginationFocus]) {
+    assert.match(block, /outline:\s*none/)
+    assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /transform:\s*translateY\(-1px\)/)
+  }
+
+  assert.match(dangerFocus, /outline:\s*none/)
+  assert.match(dangerFocus, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(dangerFocus, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(dangerFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--error-rgb\),\s*0\.16\)/)
+  assert.match(dangerFocus, /transform:\s*translateY\(-1px\)/)
+})
+
 test('logs glass backgrounds are layered with specular and noise surfaces', () => {
   const singleLayerGlass = /^background:\s*var\(--(?:material-glass-subtle|material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
   assert.doesNotMatch(source, singleLayerGlass)
