@@ -109,6 +109,15 @@ defineEmits(['close', 'organize'])
   transform: translateY(-1px);
 }
 
+.toast-action:focus-visible {
+  outline: none;
+  box-shadow: var(--toast-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.toast-action:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .toast-close {
   width: 28px;
   height: 28px;
@@ -138,6 +147,15 @@ defineEmits(['close', 'organize'])
   color: var(--text-primary);
   box-shadow: var(--toast-control-shadow-hover);
   transform: translateY(-1px);
+}
+
+.toast-close:focus-visible {
+  outline: none;
+  box-shadow: var(--toast-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.toast-close:active {
+  transform: translateY(0) scale(0.94);
 }
 
 /* Animations */

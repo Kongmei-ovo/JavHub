@@ -19,8 +19,12 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   const capsuleBlock = sourceBlock('.toast-capsule')
   const actionBlock = sourceBlock('.toast-action')
   const actionHoverBlock = sourceBlock('.toast-action:hover')
+  const actionFocusBlock = sourceBlock('.toast-action:focus-visible')
+  const actionActiveBlock = sourceBlock('.toast-action:active')
   const closeBlock = sourceBlock('.toast-close')
   const closeHoverBlock = sourceBlock('.toast-close:hover')
+  const closeFocusBlock = sourceBlock('.toast-close:focus-visible')
+  const closeActiveBlock = sourceBlock('.toast-close:active')
   const enterBlock = sourceBlock('.toast-slide-enter-active')
   const leaveBlock = sourceBlock('.toast-slide-leave-active')
 
@@ -42,6 +46,9 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assertLayeredToastBackground(actionHoverBlock, '--toast-action-bg-hover')
   assert.match(actionHoverBlock, /border-color:\s*var\(--toast-action-border-hover\)/)
   assert.match(actionHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
+  assert.match(actionFocusBlock, /outline:\s*none/)
+  assert.match(actionFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(actionActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
   assertLayeredToastBackground(closeBlock, '--toast-control-bg')
   assert.match(closeBlock, /border:\s*1px solid var\(--toast-control-border\)/)
@@ -53,6 +60,9 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assert.match(closeHoverBlock, /border-color:\s*var\(--toast-control-border-hover\)/)
   assert.match(closeHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
   assert.doesNotMatch(closeHoverBlock, /background:\s*var\(--surface-control-hover\)/)
+  assert.match(closeFocusBlock, /outline:\s*none/)
+  assert.match(closeFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(closeActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.94\)/)
 
   for (const block of [enterBlock, leaveBlock]) {
     assert.doesNotMatch(block, /transition:\s*all\b|var\(--transition-pro\)/)
