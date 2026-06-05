@@ -552,6 +552,17 @@ export default {
   box-shadow: var(--glass-control-shadow-hover);
 }
 
+.provider-smoke-run:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
 .provider-smoke-run span,
 .provider-smoke-run small {
   color: var(--text-muted);
