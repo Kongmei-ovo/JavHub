@@ -281,7 +281,10 @@
 
 .tab-badge {
   font-size: var(--type-badge);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   padding: 1px 6px;
   border-radius: 8px;
@@ -455,7 +458,10 @@
 .entity-type-tag {
   font-size: var(--type-badge);
   color: var(--text-muted);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   padding: 2px 6px;
   border-radius: 4px;
@@ -577,7 +583,10 @@
 .skeleton-cover {
   width: 100%;
   aspect-ratio: 3/4;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -591,7 +600,10 @@
 .skeleton-line {
   height: 12px;
   border-radius: 4px;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
