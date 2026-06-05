@@ -414,7 +414,7 @@ export default {
   box-shadow: var(--chrome-floating-shadow);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease, min-width 0.3s ease, background 0.3s ease;
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
   z-index: var(--z-nav);
   flex-shrink: 0;
   overflow: hidden;

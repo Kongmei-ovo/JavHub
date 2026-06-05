@@ -57,7 +57,7 @@
               </div>
               <p>剩余 {{ formatNumber(coverageTitle.untranslated || 0) }} 条标题需要翻译</p>
               <div class="overview-track" aria-label="标题翻译覆盖率">
-                <div :style="{ width: `${percentValue(coverageTitle)}%` }"></div>
+                <div :style="{ transform: `scaleX(${percentValue(coverageTitle) / 100})` }"></div>
               </div>
             </div>
           </template>
@@ -78,7 +78,7 @@
                 <span>{{ overviewLoading ? '加载中' : (overviewNeedsRefresh ? '等待刷新' : `${formatNumber(row.translated)} / ${formatNumber(row.total)}`) }}</span>
               </div>
               <div class="overview-track compact" :class="{ 'skeleton-track': overviewLoading || overviewNeedsRefresh }" :aria-label="`${row.label}覆盖率`">
-                <div :style="{ width: (overviewLoading || overviewNeedsRefresh) ? '52%' : `${row.percent}%` }"></div>
+                <div :style="{ transform: `scaleX(${(overviewLoading || overviewNeedsRefresh) ? 0.52 : row.percent / 100})` }"></div>
               </div>
               <span class="coverage-percent">{{ (overviewLoading || overviewNeedsRefresh) ? '...' : `${row.percent}%` }}</span>
             </div>
@@ -118,7 +118,7 @@
               <strong>{{ jobProgressValue(jobControlJob) }}%</strong>
             </div>
             <div class="overview-track" aria-label="当前作业进度">
-              <div :style="{ width: `${jobProgressValue(jobControlJob)}%` }"></div>
+              <div :style="{ transform: `scaleX(${jobProgressValue(jobControlJob) / 100})` }"></div>
             </div>
           </div>
 

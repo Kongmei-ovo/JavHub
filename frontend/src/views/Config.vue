@@ -763,7 +763,7 @@
                       <strong>{{ javinfoImportProgress }}%</strong>
                     </div>
                     <div class="progress-bar">
-                      <div class="progress-bar-fill" :style="{ width: `${javinfoImportProgress}%` }"></div>
+                      <div class="progress-bar-fill" :style="{ transform: `scaleX(${javinfoImportProgress / 100})` }"></div>
                     </div>
                     <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
                     <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>

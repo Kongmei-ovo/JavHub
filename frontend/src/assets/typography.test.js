@@ -44,6 +44,35 @@ test('Production UI styles avoid transition-all repaint traps', () => {
   }
 })
 
+test('Production UI styles avoid layout-property transitions', () => {
+  const layoutTransition = /^\s*transition:\s*[^;]*\b(?:width|height|top|right|bottom|left|min-width|max-width|min-height|max-height)\b[^;]*;/gm
+  const offenders = []
+
+  for (const [name, source] of productionStyleSources()) {
+    for (const match of source.matchAll(layoutTransition)) {
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${name}:${line}:${match[0].trim()}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
+})
+
+test('Production progress meters avoid inline width bindings', () => {
+  const inlineWidthBinding = /:style="\{\s*width:\s*[^"]+\}"/g
+  const offenders = []
+
+  for (const [name, source] of productionStyleSources()) {
+    for (const match of source.matchAll(inlineWidthBinding)) {
+      if (!/%|percent/i.test(match[0])) continue
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${name}:${line}:${match[0]}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
+})
+
 test('Apple-style microcopy avoids forced uppercase labels', () => {
   for (const [name, source] of productionStyleSources()) {
     assert.doesNotMatch(

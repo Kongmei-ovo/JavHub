@@ -613,7 +613,7 @@
 }
 .progress-overlay .progress-bar { height: 3px; }
 .progress-overlay .progress-bar-fill { animation: progress-pulse 1.5s ease-in-out infinite; }
-.progress-bar-fill-demo { width: 60%; }
+.progress-bar-fill-demo { transform: scaleX(0.6); }
 .empty-state-hint {
   margin-top: 6px;
   font-size: 13px;

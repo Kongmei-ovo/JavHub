@@ -368,6 +368,7 @@
 }
 
 .overview-track div {
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background:
@@ -375,7 +376,10 @@
     var(--surface-noise),
     var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
-  transition: width 0.28s ease;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s ease;
+  will-change: transform;
 }
 
 .metadata-overview {
