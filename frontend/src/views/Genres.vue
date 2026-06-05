@@ -545,7 +545,7 @@ export default {
 }
 .tab-btn {
   padding: 7px 20px;
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   color: var(--text-secondary);
   font-size: var(--type-body);
@@ -628,7 +628,7 @@ export default {
 .actress-skeleton-line {
   position: relative;
   overflow: hidden;
-  background: var(--material-glass-subtle);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

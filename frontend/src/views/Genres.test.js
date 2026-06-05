@@ -72,7 +72,9 @@ test('genres loading and actress skeletons use shared Apple glass materials', ()
   assert.match(spinner, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(spinner, /var\(--border-light\)|var\(--accent\)/)
 
-  assert.match(skeleton, /background:\s*var\(--material-glass-subtle\)/)
+  assert.ok(backgroundIncludes(skeleton, '--material-glass-subtle'))
+  assert.match(skeleton, /var\(--surface-specular-edge/)
+  assert.match(skeleton, /var\(--surface-noise\)/)
   assert.match(skeleton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(skeleton, /box-shadow:\s*var\(--glass-inner-shadow\)/)
   assert.match(skeleton, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -83,18 +85,20 @@ test('genres loading and actress skeletons use shared Apple glass materials', ()
 })
 
 test('genres glass backgrounds are layered with specular and noise surfaces', () => {
-  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/gm
+  const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|material-glass-subtle|glass-active-material)\);$/gm
   assert.doesNotMatch(source, singleLayerGlass)
 
   const layeredBlocks = [
     cssBlock('.shuffle-btn'),
     cssBlock('.shuffle-btn:hover:not(:disabled)'),
     cssBlock('.tab-bar'),
+    cssBlock('.tab-btn'),
     cssBlock('.tab-btn:hover'),
     cssBlock('.tab-btn.active'),
     cssBlock('.actress-card'),
     cssBlock('.actress-card:hover'),
     cssBlock('.actress-avatar'),
+    cssBlock('.actress-skeleton-avatar,\n.actress-skeleton-line'),
     cssBlock('.tag-cloud'),
     cssBlock('.bubble'),
     cssBlock('.bubble:hover'),

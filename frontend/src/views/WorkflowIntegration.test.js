@@ -650,7 +650,7 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.doesNotMatch(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid transparent !important/)
 
   const genresTabBaseBlock = genres.match(/\.tab-btn\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(genresTabBaseBlock, /background: var\(--material-glass-subtle\)/)
+  assert.match(genresTabBaseBlock, layeredBackground('material-glass-subtle'))
   assert.match(genresTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
 
   const genresTabBlock = genres.match(/\.tab-btn\.active\s*\{[^}]*\}/)?.[0] || ''
