@@ -304,6 +304,17 @@
   color: var(--badge-error-text);
 }
 
+.sort-clear-btn:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -396,6 +407,19 @@
   color: var(--text-primary);
   transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.sort-pill:focus-visible,
+.filter-item:focus-visible,
+.applied-chip:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 
 .applied-chip span {
@@ -596,6 +620,19 @@
 
 .btn-apply:active {
   transform: translateY(0) scale(0.99);
+}
+
+.capsule-search-btn:focus-visible,
+.btn-clear:focus-visible,
+.btn-apply:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 
 /* 极速响应动效 */
@@ -852,6 +889,17 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
+}
+.page-btn:focus-visible:not(:disabled),
+.jump-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
 }
 .jump-btn:active { transform: translateY(0) scale(0.99); }
 

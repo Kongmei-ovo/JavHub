@@ -62,8 +62,10 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   const sortPillActiveBlock = sourceBlock('.sort-pill.active')
   const sortPillActiveHoverBlock = sourceBlock('.sort-pill.active:hover')
   const randomPillActiveBlock = sourceBlock('.sort-pill.random.active')
+  const filterControlFocusBlock = sourceBlock('.sort-pill:focus-visible,\n.filter-item:focus-visible,\n.applied-chip:focus-visible')
   const sortClearButtonBlock = sourceBlock('.sort-clear-btn')
   const sortClearButtonHoverBlock = sourceBlock('.sort-clear-btn:hover')
+  const sortClearButtonFocusBlock = sourceBlock('.sort-clear-btn:focus-visible')
   const filterItemBlock = sourceBlock('.filter-item')
   const filterItemHoverBlock = sourceBlock('.filter-item:hover')
   const filterItemActiveBlock = sourceBlock('.filter-item.toggle.active')
@@ -135,6 +137,12 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   assert.match(sortClearButtonHoverBlock, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(sortClearButtonHoverBlock, /color:\s*var\(--badge-error-text\)/)
   assert.doesNotMatch(sortClearButtonHoverBlock, /#FF375F|rgba\(255,\s*55,\s*95/i)
+  for (const [block, name] of [[filterControlFocusBlock, 'filter control focus'], [sortClearButtonFocusBlock, 'sort clear focus']]) {
+    assert.match(block, /outline:\s*none/, `${name} should suppress default outline`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover glass`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should use a quiet system focus ring`)
+  }
 
   for (const [block, name] of [
     [sortPillActiveBlock, 'sort pill active'],
@@ -186,6 +194,7 @@ test('search pagination controls use shared glass materials and explicit motion'
   const pageButtonBlock = sourceBlock('.page-btn')
   const pageButtonHoverBlock = sourceBlock('.page-btn:hover:not(:disabled)')
   const pageButtonActiveBlock = sourceBlock('.page-btn:active:not(:disabled)')
+  const paginationFocusBlock = sourceBlock('.page-btn:focus-visible:not(:disabled),\n.jump-btn:focus-visible')
   const jumpInputBlock = sourceBlock('.jump-input')
   const jumpInputFocusBlock = sourceBlock('.jump-input:focus')
   const jumpButtonBlock = sourceBlock('.jump-btn')
@@ -210,6 +219,10 @@ test('search pagination controls use shared glass materials and explicit motion'
 
   assert.match(pageButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(jumpButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(paginationFocusBlock, /outline:\s*none/)
+  assert.match(paginationFocusBlock, backgroundIncludes('material-glass-control-hover'))
+  assert.match(paginationFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(paginationFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
 
   assert.match(jumpInputBlock, backgroundIncludes('material-glass-control'))
   assert.match(jumpInputBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -230,6 +243,7 @@ test('search primary action buttons use active glass instead of solid accent fil
   const applyButtonBlock = sourceBlock('.btn-apply')
   const applyButtonHoverBlock = sourceBlock('.btn-apply:hover')
   const applyButtonActiveBlock = sourceBlock('.btn-apply:active')
+  const primaryButtonFocusBlock = sourceBlock('.capsule-search-btn:focus-visible,\n.btn-clear:focus-visible,\n.btn-apply:focus-visible')
 
   for (const [block, name] of [[capsuleButtonBlock, 'capsule search button'], [applyButtonBlock, 'apply button']]) {
     assert.match(block, backgroundIncludes('glass-active-material'), `${name} should use active glass material`)
@@ -260,6 +274,10 @@ test('search primary action buttons use active glass instead of solid accent fil
   assert.match(capsuleButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.96\)/)
   assert.match(clearButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(applyButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(primaryButtonFocusBlock, /outline:\s*none/)
+  assert.match(primaryButtonFocusBlock, backgroundIncludes('material-glass-control-hover'))
+  assert.match(primaryButtonFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(primaryButtonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
 })
 
 test('search loading spinner uses theme glass colors instead of white accent paint', () => {
