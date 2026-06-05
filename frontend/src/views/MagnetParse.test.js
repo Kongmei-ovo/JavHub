@@ -29,6 +29,12 @@ function assertLayeredSubtle(block) {
   assert.match(block, /var\(--surface-noise\)/)
 }
 
+function assertLayeredBackground(block, token, label) {
+  assert.ok(backgroundIncludes(block, token), `${label} should include ${token}`)
+  assert.match(block, /var\(--surface-specular-edge/, `${label} should include specular edge`)
+  assert.match(block, /var\(--surface-noise\)/, `${label} should include surface noise`)
+}
+
 test('magnet parser workspace uses shared Apple glass surfaces', () => {
   const parseConsole = cssBlock(source, '.parse-console')
   const summaryItem = cssBlock(source, '.summary-item')
@@ -91,6 +97,34 @@ test('magnet rows mirror hover glass treatment while child actions are focused',
   assert.match(magnetRowFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(magnetRowFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/)
   assert.match(magnetRowFocus, /transform:\s*translateY\(-1px\)/)
+})
+
+test('magnet parser semantic status surfaces use layered glass badge materials', () => {
+  const summarySuccess = cssBlock(source, '.summary-item.success')
+  const summaryWarning = cssBlock(source, '.summary-item.warning')
+  const summaryDanger = cssBlock(source, '.summary-item.danger')
+  const statusSuccess = cssBlock(source, '.status-pill.success')
+  const statusDanger = cssBlock(source, '.status-pill.danger')
+  const rowAdded = cssBlock(source, '.magnet-row.added')
+
+  assertLayeredBackground(summarySuccess, '--badge-success-bg', 'summary success')
+  assert.match(summarySuccess, /border-color:\s*var\(--badge-success-border\)/)
+
+  assertLayeredBackground(summaryWarning, '--badge-warning-bg', 'summary warning')
+  assert.match(summaryWarning, /border-color:\s*var\(--badge-warning-border\)/)
+
+  assertLayeredBackground(summaryDanger, '--badge-error-bg', 'summary danger')
+  assert.match(summaryDanger, /border-color:\s*var\(--badge-error-border\)/)
+
+  assertLayeredBackground(statusSuccess, '--badge-success-bg', 'status success')
+  assert.match(statusSuccess, /color:\s*var\(--badge-success-text\)/)
+  assert.match(statusSuccess, /border-color:\s*var\(--badge-success-border\)/)
+
+  assertLayeredBackground(statusDanger, '--badge-error-bg', 'status danger')
+  assert.match(statusDanger, /color:\s*var\(--badge-error-text\)/)
+  assert.match(statusDanger, /border-color:\s*var\(--badge-error-border\)/)
+
+  assertLayeredBackground(rowAdded, '--badge-success-bg', 'added magnet row')
 })
 
 test('magnet parser glass backgrounds are layered with specular and noise surfaces', () => {

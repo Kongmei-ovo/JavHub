@@ -385,9 +385,9 @@ export default {
   font-weight: 600;
 }
 
-.summary-item.success { background: var(--badge-success-bg); border-color: var(--badge-success-border); }
-.summary-item.warning { background: var(--badge-warning-bg); border-color: var(--badge-warning-border); }
-.summary-item.danger { background: var(--badge-error-bg); border-color: var(--badge-error-border); }
+.summary-item.success { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg); border-color: var(--badge-success-border); }
+.summary-item.warning { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg); border-color: var(--badge-warning-border); }
+.summary-item.danger { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg); border-color: var(--badge-error-border); }
 
 .parse-actions {
   display: flex;
@@ -449,7 +449,8 @@ export default {
 }
 
 .magnet-row.added {
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
+  border-color: var(--badge-success-border);
 }
 
 .magnet-row:focus-within {
@@ -517,8 +518,8 @@ export default {
   font-weight: 700;
 }
 
-.status-pill.success { color: var(--badge-success-text); border-color: var(--badge-success-border); background: var(--badge-success-bg); }
-.status-pill.danger { color: var(--badge-error-text); border-color: var(--badge-error-border); background: var(--badge-error-bg); }
+.status-pill.success { color: var(--badge-success-text); border-color: var(--badge-success-border); background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg); }
+.status-pill.danger { color: var(--badge-error-text); border-color: var(--badge-error-border); background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg); }
 
 .magnet-right {
   display: flex;
