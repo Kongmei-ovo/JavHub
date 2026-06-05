@@ -29,7 +29,10 @@
   inset: 0;
   pointer-events: none;
   opacity: 0.42;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   --organize-header-mask-start: var(--media-edge-mask-strong);
   --organize-header-mask-end: var(--media-edge-mask-clear);
   mask-image: linear-gradient(90deg, var(--organize-header-mask-start), var(--organize-header-mask-end) 74%);
@@ -561,7 +564,10 @@
   overflow: hidden;
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-sm);
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -647,7 +653,10 @@
   border: 1px solid var(--glass-control-border);
   border-radius: var(--radius-xs);
   object-fit: cover;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   box-shadow: var(--glass-inner-shadow);
 }
 
@@ -815,7 +824,10 @@
 
 :global(:root[data-theme="dark"] .organize-header::before) {
   opacity: 0.22;
-  background: var(--material-glass-subtle);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
 }
 
 :global(:root[data-theme="dark"] .organize-status),
