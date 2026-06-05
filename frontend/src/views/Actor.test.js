@@ -189,7 +189,11 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   const actionButton = cssBlock('.actor-action-btn')
   const actionButtonHover = cssBlock('.actor-action-btn:hover')
   const actionButtonActive = cssBlock('.actor-action-btn.active')
+  const actionButtonActiveHover = cssBlock('.actor-action-btn.active:hover')
+  const actionButtonActiveFocus = cssBlock('.actor-action-btn.active:focus-visible')
   const subscribeButtonActive = cssBlock('.actor-action-btn--subscribe.active')
+  const subscribeButtonActiveHover = cssBlock('.actor-action-btn--subscribe.active:hover')
+  const subscribeButtonActiveFocus = cssBlock('.actor-action-btn--subscribe.active:focus-visible')
   const metaFavorite = cssBlock('.meta-item--favorite')
   const metaSubscribed = cssBlock('.meta-item--subscribed')
   const sectionHeader = cssBlock('.section-header')
@@ -217,13 +221,34 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   assert.match(actionButtonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.doesNotMatch(actionButtonHover, /var\(--surface-card-hover\)|var\(--glass-edge-strong\)/)
 
-  assert.match(actionButtonActive, /background:\s*var\(--badge-error-bg\)/)
+  assert.ok(backgroundIncludes(actionButtonActive, '--badge-error-bg'))
+  assert.match(actionButtonActive, /var\(--surface-specular-edge\)/)
+  assert.match(actionButtonActive, /var\(--surface-noise\)/)
   assert.match(actionButtonActive, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(actionButtonActive, /color:\s*var\(--badge-error-text\)/)
-  assert.match(subscribeButtonActive, /background:\s*var\(--badge-success-bg\)/)
+  assert.ok(backgroundIncludes(subscribeButtonActive, '--badge-success-bg'))
+  assert.match(subscribeButtonActive, /var\(--surface-specular-edge\)/)
+  assert.match(subscribeButtonActive, /var\(--surface-noise\)/)
   assert.match(subscribeButtonActive, /border-color:\s*var\(--badge-success-border\)/)
   assert.match(subscribeButtonActive, /color:\s*var\(--badge-success-text\)/)
-  assert.doesNotMatch(`${actionButtonActive}\n${subscribeButtonActive}`, /#ff375f|#34c759|rgba\(255,\s*55,\s*95|rgba\(52,\s*199,\s*89/i)
+  for (const [block, token, border, name] of [
+    [actionButtonActiveHover, '--badge-error-bg', '--badge-error-border', 'favorite active hover'],
+    [actionButtonActiveFocus, '--badge-error-bg', '--badge-error-border', 'favorite active focus'],
+    [subscribeButtonActiveHover, '--badge-success-bg', '--badge-success-border', 'subscribe active hover'],
+    [subscribeButtonActiveFocus, '--badge-success-bg', '--badge-success-border', 'subscribe active focus'],
+  ]) {
+    assert.ok(backgroundIncludes(block, token), `${name} should keep semantic fill`)
+    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should strengthen the glass edge`)
+    assert.match(block, /var\(--surface-noise\)/, `${name} should preserve texture`)
+    assert.match(block, new RegExp(`border-color:\\s*var\\(${border}\\)`), `${name} should keep semantic border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should keep hover depth`)
+    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should keep the hero action lift`)
+  }
+  assert.match(actionButtonActiveFocus, /outline:\s*none/)
+  assert.match(actionButtonActiveFocus, /0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
+  assert.match(subscribeButtonActiveFocus, /outline:\s*none/)
+  assert.match(subscribeButtonActiveFocus, /0 0 0 3px color-mix\(in srgb,\s*var\(--badge-success-text\) 18%,\s*transparent\)/)
+  assert.doesNotMatch(`${actionButtonActive}\n${subscribeButtonActive}\n${actionButtonActiveFocus}\n${subscribeButtonActiveFocus}`, /#ff375f|#34c759|rgba\(255,\s*55,\s*95|rgba\(52,\s*199,\s*89|rgba\(var\(--accent-rgb\)|rgba\(var\(--error-rgb\)/i)
 
   assert.match(sectionHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
 })
@@ -237,6 +262,8 @@ test('actor glass backgrounds are layered with specular and noise surfaces', () 
     '.meta-item--favorite',
     '.actor-action-btn',
     '.actor-action-btn:hover',
+    '.actor-action-btn.active',
+    '.actor-action-btn.active:hover',
     '.variant-switch',
     '.switch-btn',
     '.switch-btn:hover',
