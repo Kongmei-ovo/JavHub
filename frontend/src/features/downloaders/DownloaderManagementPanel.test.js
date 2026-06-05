@@ -88,7 +88,7 @@ test('downloader panel controls use shared Apple glass materials', () => {
     assert.match(block, /var\(--surface-noise\)/, `${name} should keep the shared noise layer`)
     assert.match(block, /outline:\s*none/, `${name} should avoid double native focus chrome`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should add a soft focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${name} should add a soft focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
   }
 
@@ -108,7 +108,7 @@ test('downloader panel controls use shared Apple glass materials', () => {
   assert.ok(backgroundIncludes(iconActionPrimaryFocus, '--glass-active-material'))
   assert.match(iconActionPrimaryFocus, /outline:\s*none/)
   assert.match(iconActionPrimaryFocus, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(iconActionPrimaryFocus, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(iconActionPrimaryFocus, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/)
   assert.match(iconActionPrimaryFocus, /transform:\s*translateY\(-1px\)/)
   assert.ok(backgroundIncludes(iconActionDanger, '--badge-error-bg'))
   assert.match(iconActionDanger, /var\(--surface-specular-edge\)/)

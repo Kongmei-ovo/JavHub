@@ -73,6 +73,22 @@ test('Production progress meters avoid inline width bindings', () => {
   assert.deepEqual(offenders, [])
 })
 
+test('Production focus halos use shared focus ring tokens', () => {
+  const rawAccentFocusRing = /(?:outline:\s*3px solid\s+rgba\(var\(--accent-rgb\),\s*0\.\d+\)|(?:inset\s+)?0 0 0 [34]px rgba\(var\(--accent-rgb\),\s*0\.\d+\))/g
+  const offenders = []
+
+  for (const [name, source] of productionStyleSources()) {
+    for (const match of source.matchAll(rawAccentFocusRing)) {
+      const line = source.slice(0, match.index).split('\n').length
+      const lineText = source.split('\n')[line - 1] || ''
+      if (/--focus-(?:ring|outline)/.test(lineText)) continue
+      offenders.push(`${name}:${line}:${match[0]}`)
+    }
+  }
+
+  assert.deepEqual(offenders, [])
+})
+
 test('Apple-style microcopy avoids forced uppercase labels', () => {
   for (const [name, source] of productionStyleSources()) {
     assert.doesNotMatch(

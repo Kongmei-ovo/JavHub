@@ -98,13 +98,13 @@ test('ActorPortraitCard mirrors glass hover motion for keyboard focus and action
 
   assert.match(focusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(focusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
   assert.match(imageFocusRule, /transform:\s*scale\(1\.045\)/)
 
   assert.match(actionFocusRule, /outline:\s*none/)
   assert.match(actionFocusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(actionFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(actionFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.16\)/)
+  assert.match(actionFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-strong\)/)
   assert.match(actionActiveRule, /transform:\s*scale\(0\.96\)/)
 })
 

@@ -96,7 +96,7 @@ const handleImgError = (e) => {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow:
     var(--glass-control-shadow-hover),
-    0 0 0 4px rgba(var(--accent-rgb), 0.12),
+    var(--focus-ring-wide),
     var(--glass-inner-shadow);
 }
 

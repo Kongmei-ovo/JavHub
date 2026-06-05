@@ -56,7 +56,7 @@ test('candidate run rows mirror Apple glass hover while actions are focused', ()
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
   }
 
-  assert.match(focusWithin, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'focused action row should add a soft accent halo')
+  assert.match(focusWithin, /var\(--focus-ring\)/, 'focused action row should add a soft accent halo')
 })
 
 test('candidate run panel avoids single-layer primary glass backgrounds', () => {

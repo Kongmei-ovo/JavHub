@@ -95,7 +95,7 @@ test('magnet rows mirror hover glass treatment while child actions are focused',
 
   assert.ok(backgroundIncludes(magnetRowFocus, '--material-glass-control-hover'))
   assert.match(magnetRowFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(magnetRowFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/)
+  assert.match(magnetRowFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(magnetRowFocus, /transform:\s*translateY\(-1px\)/)
 })
 

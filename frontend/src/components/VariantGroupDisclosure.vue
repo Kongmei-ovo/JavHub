@@ -100,7 +100,7 @@ function variantKey(variant) {
 .variant-group-disclosure__toggle:focus-visible,
 .variant-group-disclosure__row:focus-visible {
   outline: none;
-  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.14);
+  box-shadow: var(--glass-control-shadow), var(--focus-ring-wide-strong);
 }
 
 .variant-group-disclosure__list {

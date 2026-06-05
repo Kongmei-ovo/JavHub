@@ -160,7 +160,7 @@
     var(--surface-noise),
     var(--modal-chip-bg-hover);
   border-color: var(--modal-chip-border-hover);
-  box-shadow: var(--modal-chip-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--modal-chip-shadow-hover), var(--focus-ring-wide);
 }
 
 .modal-close:active {
@@ -251,7 +251,7 @@
     var(--surface-noise),
     var(--modal-action-secondary-bg-hover);
   border-color: var(--modal-action-border-hover);
-  box-shadow: var(--modal-action-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--modal-action-shadow-hover), var(--focus-ring-wide);
 }
 
 .preview-btn:active,
@@ -428,7 +428,7 @@
     var(--surface-noise),
     var(--modal-chip-bg-hover);
   border-color: var(--modal-chip-border-hover);
-  box-shadow: var(--modal-chip-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--modal-chip-shadow-hover), var(--focus-ring-wide);
 }
 .lightbox-close:active {
   transform: scale(0.96);
@@ -472,7 +472,7 @@
     var(--surface-noise),
     var(--modal-chip-bg-hover);
   border-color: var(--modal-chip-border-hover);
-  box-shadow: var(--modal-chip-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--modal-chip-shadow-hover), var(--focus-ring-wide);
 }
 .lightbox-prev:active:not(:disabled), .lightbox-next:active:not(:disabled) {
   transform: translateY(-50%) scale(0.97);
@@ -540,7 +540,7 @@
     var(--surface-noise),
     var(--modal-action-secondary-bg-hover);
   border-color: var(--modal-action-border-hover);
-  box-shadow: var(--modal-action-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--modal-action-shadow-hover), var(--focus-ring-wide);
 }
 .stream-download-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);

@@ -24,6 +24,12 @@ const SHARED_TOKENS = {
   '--motion-standard': '280ms var(--ease-pro)',
   '--motion-emphasized': '460ms var(--ease-pro)',
   '--motion-reveal': '420ms var(--ease-pro)',
+  '--focus-ring': '0 0 0 3px rgba(var(--accent-rgb), 0.12)',
+  '--focus-ring-strong': '0 0 0 3px rgba(var(--accent-rgb), 0.14)',
+  '--focus-ring-wide': '0 0 0 4px rgba(var(--accent-rgb), 0.12)',
+  '--focus-ring-wide-strong': '0 0 0 4px rgba(var(--accent-rgb), 0.14)',
+  '--focus-ring-inset': 'inset 0 0 0 4px rgba(var(--accent-rgb), 0.14)',
+  '--focus-outline': '3px solid rgba(var(--accent-rgb), 0.18)',
 
   '--font-body': SYSTEM_FONT,
   '--font-display': SYSTEM_DISPLAY_FONT,

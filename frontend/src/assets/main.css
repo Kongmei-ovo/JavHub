@@ -80,6 +80,12 @@
   --motion-standard: 280ms var(--ease-pro);
   --motion-emphasized: 460ms var(--ease-pro);
   --motion-reveal: 420ms var(--ease-pro);
+  --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  --focus-ring-strong: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+  --focus-ring-wide: 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  --focus-ring-wide-strong: 0 0 0 4px rgba(var(--accent-rgb), 0.14);
+  --focus-ring-inset: inset 0 0 0 4px rgba(var(--accent-rgb), 0.14);
+  --focus-outline: 3px solid rgba(var(--accent-rgb), 0.18);
   
   /* Typo - Retouch */
   --ls-pro: 0;
@@ -484,7 +490,7 @@ a:hover {
     var(--material-glass-control-hover);
   box-shadow:
     var(--glass-control-shadow-hover),
-    0 0 0 3px rgba(var(--accent-rgb), 0.12);
+    var(--focus-ring);
 }
 .btn:active { transform: scale(0.985); }
 .btn:disabled,
@@ -605,7 +611,7 @@ a:hover {
     var(--material-glass-control-hover, var(--glass-control-bg-hover, rgba(255, 255, 255, 0.08)));
   box-shadow:
     var(--glass-control-shadow-hover),
-    0 0 0 3px rgba(var(--accent-rgb), 0.12);
+    var(--focus-ring);
 }
 
 .glass-select__button:active {
@@ -720,7 +726,7 @@ a:hover {
     var(--surface-noise),
     var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.10);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 
 .glass-select__option.is-selected {
@@ -959,7 +965,7 @@ a:hover {
     var(--surface-noise),
     var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
+  box-shadow: var(--glass-control-shadow), var(--focus-ring-wide) !important;
 }
 
 .input {
@@ -1131,7 +1137,7 @@ a:hover {
     var(--surface-noise),
     var(--surface-input-focus) !important;
   border-color: var(--accent) !important;
-  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
+  box-shadow: var(--glass-control-shadow), var(--focus-ring-wide) !important;
 }
 
 /* 3. 按钮：更加果断和纯粹 */

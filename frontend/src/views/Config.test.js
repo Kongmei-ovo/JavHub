@@ -43,7 +43,7 @@ test('settings secret reveal controls use shared Apple glass button chrome', () 
 
   const focus = cssBlock('.input-eye-btn:focus-visible')
   assert.match(focus, /outline:\s*none/)
-  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow\),\s*0 0 0 4px rgba\(var\(--accent-rgb\), 0\.14\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow\),\s*var\(--focus-ring-wide-strong\)/)
 })
 
 test('settings controls mirror hover glass treatment for keyboard focus', () => {
@@ -72,7 +72,7 @@ test('settings controls mirror hover glass treatment for keyboard focus', () => 
     assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
     assert.match(block, backgroundIncludes('material-glass-control-hover'), `${selector} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should add a soft focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${selector} should add a soft focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep the hover lift while focused`)
   }
 
@@ -81,7 +81,7 @@ test('settings controls mirror hover glass treatment for keyboard focus', () => 
     assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
     assert.match(block, backgroundIncludes('glass-active-material'), `${selector} should preserve active glass material`)
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should keep active border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should combine active depth with focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/, `${selector} should combine active depth with focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should stay lifted while focused`)
   }
 })

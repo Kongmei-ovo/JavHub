@@ -92,7 +92,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -104,7 +104,7 @@
     var(--surface-noise),
     var(--glass-active-material);
   border-color: var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -368,7 +368,7 @@
 }
 .input-eye-btn:focus-visible {
   outline: none;
-  box-shadow: var(--glass-control-shadow), 0 0 0 4px rgba(var(--accent-rgb), 0.14);
+  box-shadow: var(--glass-control-shadow), var(--focus-ring-wide-strong);
 }
 
 .form-group.checkbox {
@@ -506,7 +506,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .source-check-item input {
@@ -747,7 +747,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -759,7 +759,7 @@
     var(--surface-noise),
     var(--glass-active-material);
   border-color: var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 

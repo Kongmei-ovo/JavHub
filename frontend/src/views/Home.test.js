@@ -162,7 +162,7 @@ test('home candidate controls mirror hover glass treatment for keyboard focus', 
     assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
     assert.match(block, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose a subtle focus ring`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should expose a subtle focus ring`)
   }
 
   assert.match(tabFocus, /color:\s*var\(--text-primary\)/)

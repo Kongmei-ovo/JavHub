@@ -152,7 +152,7 @@
 
 .clear-btn:focus-visible {
   outline: none;
-  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--subscription-control-shadow-hover), var(--focus-ring-wide);
 }
 
 .clear-btn:active {
@@ -217,7 +217,7 @@
 .pill-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
 .pill-btn:focus-visible {
   outline: none;
-  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--subscription-control-shadow-hover), var(--focus-ring-wide);
 }
 .pill-btn:active {
   transform: translateY(0) scale(0.97);
@@ -336,7 +336,7 @@
 .top-action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-primary); }
 .top-action-btn:focus-visible {
   outline: none;
-  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--subscription-control-shadow-hover), var(--focus-ring-wide);
 }
 .top-action-btn:active { transform: scale(0.96); }
 .top-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -491,7 +491,7 @@
 .toggle-pill:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); color: var(--text-secondary); }
 .toggle-pill:focus-visible {
   outline: none;
-  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--subscription-control-shadow-hover), var(--focus-ring-wide);
 }
 .toggle-pill:active {
   transform: translateY(0) scale(0.97);
@@ -547,7 +547,7 @@
 .action-btn:hover { background: var(--subscription-control-bg-hover); border-color: var(--subscription-control-border-hover); box-shadow: var(--subscription-control-shadow-hover); }
 .action-btn:focus-visible {
   outline: none;
-  box-shadow: var(--subscription-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--subscription-control-shadow-hover), var(--focus-ring-wide);
 }
 .action-btn:active { transform: scale(0.98); }
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }

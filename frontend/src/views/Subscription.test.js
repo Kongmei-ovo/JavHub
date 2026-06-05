@@ -85,7 +85,7 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
   ]) {
     const block = cssBlock(selector)
     assert.match(block, /outline:\s*none/, `${selector} should avoid native focus outlines over glass`)
-    assert.match(block, /box-shadow:\s*var\(--subscription-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should use a restrained glass focus ring`)
+    assert.match(block, /box-shadow:\s*var\(--subscription-control-shadow-hover\),\s*var\(--focus-ring-wide\)/, `${selector} should use a restrained glass focus ring`)
   }
 
   for (const selector of [

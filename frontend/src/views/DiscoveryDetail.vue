@@ -618,7 +618,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .entity-fav-btn.is-active:focus-visible {
@@ -626,7 +626,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--badge-error-text);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 .entity-sub-btn.is-active:focus-visible,
@@ -636,7 +636,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
   color: var(--text-primary);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }

@@ -123,7 +123,7 @@ test('normalize keyboard focus mirrors Apple glass control depth', () => {
     assert.match(block, /outline:\s*none/, `${name} should suppress the default outline`)
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use hover glass border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should use glass shadow plus focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${name} should use glass shadow plus focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should preserve hover lift`)
   }
 
@@ -133,7 +133,7 @@ test('normalize keyboard focus mirrors Apple glass control depth', () => {
   ]) {
     assert.ok(backgroundIncludes(block, '--material-glass-elevated'), `${name} should keep elevated glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should lift its edge when focused inside`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/, `${name} should layer surface depth with focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\),\s*var\(--focus-ring\)/, `${name} should layer surface depth with focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should rise when an inner action is focused`)
   }
 })

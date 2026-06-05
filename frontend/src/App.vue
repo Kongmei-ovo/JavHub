@@ -548,7 +548,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.collapse-btn:focus-visible { outline: 3px solid rgba(var(--accent-rgb), 0.18); outline-offset: 2px; }
+.collapse-btn:focus-visible { outline: var(--focus-outline); outline-offset: 2px; }
 
 .sidebar-nav {
   position: relative;
@@ -627,7 +627,7 @@ export default {
 }
 .nav-item.active svg { filter: none; }
 .nav-item:focus-visible {
-  outline: 3px solid rgba(var(--accent-rgb), 0.18);
+  outline: var(--focus-outline);
   outline-offset: 2px;
 }
 

@@ -105,7 +105,7 @@ export default {
 }
 .vp-close:focus-visible {
   outline: none;
-  box-shadow: var(--vp-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--vp-control-shadow-hover), var(--focus-ring-wide);
 }
 .vp-close:active {
   transform: rotate(90deg) scale(0.96);
@@ -136,7 +136,7 @@ export default {
 }
 .vp-speed-btn:focus-visible {
   outline: none;
-  box-shadow: var(--vp-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--vp-control-shadow-hover), var(--focus-ring-wide);
 }
 .vp-speed-btn:active {
   transform: translateY(0) scale(0.97);

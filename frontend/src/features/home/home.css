@@ -224,7 +224,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .tab-btn.active {
   color: var(--text-primary);
@@ -337,7 +337,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .chip.active {
   color: var(--text-primary);
@@ -457,7 +457,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   text-decoration-color: var(--link-underline-hover);
 }
 .link-btn.danger {
@@ -541,7 +541,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 

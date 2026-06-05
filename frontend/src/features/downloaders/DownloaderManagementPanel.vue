@@ -302,7 +302,7 @@ export default {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .icon-action.primary {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
@@ -316,7 +316,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   color: var(--text-primary);
   border-color: var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
 }
 .icon-action.compact {
   width: 38px;
@@ -332,7 +332,7 @@ export default {
   transform: translateY(-1px);
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .icon-action.danger {
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
@@ -387,7 +387,7 @@ export default {
 .downloader-row:focus-visible {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
   outline: none;
 }

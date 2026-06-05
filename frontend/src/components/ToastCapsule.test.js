@@ -47,7 +47,7 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assert.match(actionHoverBlock, /border-color:\s*var\(--toast-action-border-hover\)/)
   assert.match(actionHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
   assert.match(actionFocusBlock, /outline:\s*none/)
-  assert.match(actionFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(actionFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
   assert.match(actionActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
   assertLayeredToastBackground(closeBlock, '--toast-control-bg')
@@ -61,7 +61,7 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assert.match(closeHoverBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\)/)
   assert.doesNotMatch(closeHoverBlock, /background:\s*var\(--surface-control-hover\)/)
   assert.match(closeFocusBlock, /outline:\s*none/)
-  assert.match(closeFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(closeFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
   assert.match(closeActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.94\)/)
 
   for (const block of [enterBlock, leaveBlock]) {

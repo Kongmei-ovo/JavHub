@@ -560,7 +560,7 @@ export default {
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 
 .provider-smoke-run span,

@@ -73,7 +73,7 @@ test('duplicates keyboard focus mirrors hover glass treatment', () => {
     assert.match(block, /outline:\s*none/)
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
     assert.match(block, /transform:\s*translateY\(-1px\)/)
   }
 
@@ -87,7 +87,7 @@ test('duplicates keyboard focus mirrors hover glass treatment', () => {
 
   assert.ok(backgroundIncludes(entryFocus, '--material-glass-control-hover'))
   assert.match(entryFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(entryFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.1\)/)
+  assert.match(entryFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(entryFocus, /transform:\s*translateY\(-1px\)/)
 })
 

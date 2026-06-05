@@ -417,7 +417,7 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   assert.match(jobRowHover, /transform:\s*translateY\(-1px\)/)
   assertLayeredBackground(jobRowFocusWithin, '--material-glass-control-hover', 'supplement focused job row')
   assert.match(jobRowFocusWithin, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(jobRowFocusWithin, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(jobRowFocusWithin, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(jobRowFocusWithin, /transform:\s*translateY\(-1px\)/)
   assert.doesNotMatch([jobRowHover, jobRowFocusWithin].join('\n'), /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
 

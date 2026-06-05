@@ -59,7 +59,7 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   const focus = cssBlock('.actress-card:focus-visible')
   assert.ok(backgroundIncludes(focus, '--material-glass-control-hover'))
   assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 
   const avatar = cssBlock('.actress-avatar')
   assert.ok(backgroundIncludes(avatar, '--material-glass-control'))
@@ -89,7 +89,7 @@ test('genres primary controls mirror hover glass treatment for keyboard focus', 
     assert.match(block, /outline:\s*none/, `${label} should remove default outline after replacing it`)
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${label} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 (?:3|4)px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose an Apple glass focus ring`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring(?:-wide)?\)/, `${label} should expose an Apple glass focus ring`)
   }
 
   assert.match(shuffleFocus, /color:\s*var\(--text-primary\)/)

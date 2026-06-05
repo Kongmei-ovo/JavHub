@@ -146,7 +146,7 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     assert.match(block, /outline:\s*none/, `${name} should suppress default outline`)
     assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover glass`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should use a quiet system focus ring`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/, `${name} should use a quiet system focus ring`)
   }
 
   for (const [block, name] of [
@@ -233,7 +233,7 @@ test('search pagination controls use shared glass materials and explicit motion'
   assert.match(paginationFocusBlock, /outline:\s*none/)
   assert.match(paginationFocusBlock, backgroundIncludes('material-glass-control-hover'))
   assert.match(paginationFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(paginationFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(paginationFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 
   assert.match(jumpInputBlock, backgroundIncludes('material-glass-control'))
   assert.match(jumpInputBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -288,7 +288,7 @@ test('search primary action buttons use active glass instead of solid accent fil
   assert.match(primaryButtonFocusBlock, /outline:\s*none/)
   assert.match(primaryButtonFocusBlock, backgroundIncludes('material-glass-control-hover'))
   assert.match(primaryButtonFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(primaryButtonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(primaryButtonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 })
 
 test('search loading spinner uses theme glass colors instead of white accent paint', () => {

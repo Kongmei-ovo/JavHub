@@ -148,7 +148,7 @@ test('discovery detail keyboard focus mirrors hover glass treatment', () => {
     assertLayeredBackground(block, '--material-glass-control-hover', selector)
     assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${selector} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should add a soft accent focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${selector} should add a soft accent focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep the hover lift while focused`)
   }
 
@@ -164,7 +164,7 @@ test('discovery detail keyboard focus mirrors hover glass treatment', () => {
     assertLayeredBackground(block, '--glass-active-material', selector)
     assert.match(block, /outline:\s*none/, `${selector} should avoid double native focus chrome`)
     assert.match(block, /border-color:\s*var\(--glass-active-border\)/, `${selector} should preserve active glass border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${selector} should combine active depth with focus halo`)
+    assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/, `${selector} should combine active depth with focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${selector} should keep active controls lifted while focused`)
   }
 

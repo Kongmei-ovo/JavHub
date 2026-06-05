@@ -111,7 +111,7 @@ defineEmits(['close', 'organize'])
 
 .toast-action:focus-visible {
   outline: none;
-  box-shadow: var(--toast-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--toast-control-shadow-hover), var(--focus-ring-wide);
 }
 
 .toast-action:active {
@@ -151,7 +151,7 @@ defineEmits(['close', 'organize'])
 
 .toast-close:focus-visible {
   outline: none;
-  box-shadow: var(--toast-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--toast-control-shadow-hover), var(--focus-ring-wide);
 }
 
 .toast-close:active {

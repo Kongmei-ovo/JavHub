@@ -79,7 +79,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .snapshot-warn {
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
@@ -175,7 +175,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .filter-controls {
@@ -257,7 +257,7 @@
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-4px);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .actor-cover {
   position: relative;
@@ -397,7 +397,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .page-btn:disabled {
@@ -474,7 +474,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -549,7 +549,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: rotate(90deg);
 }
 .jobs-dialog .jobs-list { max-height: 60vh; overflow-y: auto; padding: 12px 20px; }

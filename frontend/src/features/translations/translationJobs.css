@@ -113,7 +113,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -135,7 +135,7 @@
     var(--surface-noise),
     var(--glass-active-material);
   color: var(--text-primary);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -675,7 +675,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -846,7 +846,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -857,7 +857,7 @@
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--glass-active-material);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 

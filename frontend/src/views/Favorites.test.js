@@ -163,7 +163,7 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
     assert.match(block, /outline:\s*none/)
     assert.match(block, backgroundIncludes('material-glass-control-hover'))
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
     assert.match(block, /transform:\s*translateY\(-1px\)/)
   }
 
@@ -178,7 +178,7 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
   assert.match(entityBubbleFocus, /outline:\s*none/)
   assert.match(entityBubbleFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(entityBubbleFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(entityBubbleFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(entityBubbleFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(entityBubbleFocus, /transform:\s*translateY\(-2px\)/)
 
   assert.match(entityFavButtonFocus, /outline:\s*none/)
@@ -194,7 +194,7 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
   assert.match(exploreFocus, /outline:\s*none/)
   assert.match(exploreFocus, backgroundIncludes('glass-active-material'))
   assert.match(exploreFocus, /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(exploreFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.14\)/)
+  assert.match(exploreFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-strong\)/)
   assert.match(exploreFocus, /transform:\s*translateY\(-2px\)/)
 })
 

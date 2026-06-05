@@ -100,7 +100,7 @@ test('logs buttons mirror hover glass treatment for keyboard focus', () => {
     assert.match(block, /outline:\s*none/)
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
     assert.match(block, /transform:\s*translateY\(-1px\)/)
   }
 

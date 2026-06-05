@@ -73,7 +73,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-2px) scale(1.01);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .gallery-item:active { transform: translateY(0) scale(0.99); }
 .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--motion-standard), filter var(--motion-standard), opacity var(--motion-fast); }

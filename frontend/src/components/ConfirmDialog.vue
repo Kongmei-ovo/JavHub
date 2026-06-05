@@ -168,7 +168,7 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-btn:focus-visible {
   outline: none;
-  box-shadow: var(--confirm-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--confirm-control-shadow-hover), var(--focus-ring-wide);
 }
 
 .confirm-btn:active {

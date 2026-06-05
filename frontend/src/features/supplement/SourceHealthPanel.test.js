@@ -81,7 +81,7 @@ test('source health diagnostics use shared Apple glass materials', () => {
   assertLayeredBackground(smokeRunFocus, '--material-glass-control-hover', 'source health focused run')
   assert.match(smokeRunFocus, /outline:\s*none/)
   assert.match(smokeRunFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(smokeRunFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(smokeRunFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(smokeRunFocus, /transform:\s*translateY\(-1px\)/)
   assert.doesNotMatch(smokeRunFocus, /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
   assert.match(smokeCardFailed, /border-color:\s*var\(--badge-error-border\)/)

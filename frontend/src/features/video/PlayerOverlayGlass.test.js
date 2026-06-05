@@ -73,7 +73,7 @@ for (const [name, source] of overlaySources) {
 
     for (const block of [closeFocusBlock, speedFocusBlock]) {
       assert.match(block, /outline:\s*none/)
-      assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+      assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
     }
 
     assert.match(closeActiveBlock, /transform:\s*rotate\(90deg\)\s*scale\(0\.96\)/)

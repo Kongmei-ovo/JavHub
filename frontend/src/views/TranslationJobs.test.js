@@ -98,7 +98,7 @@ test('translation controls mirror Apple glass hover treatment for keyboard focus
   ]) {
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)(?:,\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\))?/, `${name} should use shared hover shadow`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)(?:,\s*var\(--focus-ring\))?/, `${name} should use shared hover shadow`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
   }
 
@@ -108,7 +108,7 @@ test('translation controls mirror Apple glass hover treatment for keyboard focus
     [historyFocus, 'history focus'],
   ]) {
     assert.match(block, /outline:\s*none/, `${name} should avoid double native focus chrome`)
-    assert.match(block, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${name} should include a soft accent focus halo`)
+    assert.match(block, /var\(--focus-ring\)/, `${name} should include a soft accent focus halo`)
   }
 
   for (const [block, name] of [
@@ -122,9 +122,9 @@ test('translation controls mirror Apple glass hover treatment for keyboard focus
   }
 
   assert.match(segmentedActiveFocus, /outline:\s*none/, 'active segment focus should avoid double native focus chrome')
-  assert.match(segmentedActiveFocus, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'active segment focus should include a focus halo')
+  assert.match(segmentedActiveFocus, /var\(--focus-ring\)/, 'active segment focus should include a focus halo')
   assert.match(providerEnabledFocus, /outline:\s*none/, 'selected provider focus should avoid double native focus chrome')
-  assert.match(providerEnabledFocus, /0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, 'selected provider focus should include a focus halo')
+  assert.match(providerEnabledFocus, /var\(--focus-ring\)/, 'selected provider focus should include a focus halo')
 })
 
 test('translation review and source workspaces avoid legacy flat separators', () => {

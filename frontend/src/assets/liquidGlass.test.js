@@ -97,6 +97,12 @@ test('theme materials include refractive liquid glass layers', () => {
     '--glass-blur-surface',
     '--glass-saturate-control',
     '--app-backdrop-texture',
+    '--focus-ring',
+    '--focus-ring-strong',
+    '--focus-ring-wide',
+    '--focus-ring-wide-strong',
+    '--focus-ring-inset',
+    '--focus-outline',
     '--content-material',
     '--content-material-border',
     '--chrome-floating-shadow',
@@ -177,7 +183,7 @@ test('global controls use shared liquid glass material instead of flat tint', ()
   assert.match(buttonFocusBlock, /outline:\s*none/)
   assert.match(buttonFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(buttonFocusBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(buttonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(buttonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.doesNotMatch(buttonFocusBlock, /box-shadow:\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.16\)/)
   assert.match(buttonDisabledBlock, /cursor:\s*not-allowed/)
   assert.match(buttonDisabledBlock, /opacity:\s*0\.48/)
@@ -238,13 +244,13 @@ test('global controls use shared liquid glass material instead of flat tint', ()
   assert.match(cssBlock('.glass-select__button'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control, var\(--glass-control-bg/)
   assert.match(cssBlock('.glass-select__button:focus-visible'), /border-color:\s*var\(--glass-control-border-hover/)
   assert.match(cssBlock('.glass-select__button:focus-visible'), /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover/)
-  assert.match(cssBlock('.glass-select__button:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(cssBlock('.glass-select__button:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.doesNotMatch(cssBlock('.glass-select__button:focus-visible'), /border-color:\s*var\(--accent\)/)
   assert.match(cssBlock('.glass-select__menu'), /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
   assert.match(cssBlock('.glass-select__option:hover,\n.glass-select__option.is-active'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(cssBlock('.glass-select__option:focus-visible'), /outline:\s*none/)
   assert.match(cssBlock('.glass-select__option:focus-visible'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(cssBlock('.glass-select__option:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.10\)/)
+  assert.match(cssBlock('.glass-select__option:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(cssBlock('.el-input__wrapper, .input'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--surface-input\)\s*!important/)
   assert.match(cssBlock('.el-input__wrapper:hover, .input:hover'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--surface-control-hover\)\s*!important/)
   assert.match(cssBlock('.el-input__wrapper.is-focus, .input:focus'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--surface-input-focus\)\s*!important/)

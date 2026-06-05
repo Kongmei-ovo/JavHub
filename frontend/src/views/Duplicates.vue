@@ -173,7 +173,7 @@ onMounted(fetchDuplicates)
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .duplicate-item {
   display: flex;
@@ -254,7 +254,7 @@ onMounted(fetchDuplicates)
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .duplicate-entry-main {
   min-width: 0;
@@ -304,7 +304,7 @@ onMounted(fetchDuplicates)
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .action-btn.delete {
   background:

@@ -66,7 +66,7 @@ export default {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   transform: translateY(-1px);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .magnet-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .magnet-badge { padding: 4px 10px; background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid var(--badge-info-border); font-size: var(--type-micro); font-weight: 650; border-radius: var(--radius-sm); }
@@ -105,7 +105,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   transform: translateY(-1px);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .btn-copy:active,
 .btn-download:active { transform: translateY(0) scale(0.98); }
@@ -121,7 +121,7 @@ export default {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--glass-active-border);
   transform: translateY(-1px);
-  box-shadow: var(--glass-active-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring-strong);
 }
 .no-magnets {
   text-align: center;

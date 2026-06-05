@@ -171,7 +171,7 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   assert.match(searchBox, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(searchFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(searchFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(searchFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.09\)/)
+  assert.match(searchFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 
   assert.match(searchClear, backgroundIncludes('material-glass-subtle'))
   assert.match(searchClear, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -223,13 +223,13 @@ test('entities keyboard focus mirrors hover glass control treatment', () => {
   assert.match(tabFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(tabFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(tabFocus, /color:\s*var\(--text-primary\)/)
-  assert.match(tabFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(tabFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
 
   assert.match(searchClearFocus, /outline:\s*none/)
   assert.match(searchClearFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(searchClearFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(searchClearFocus, /color:\s*var\(--text-primary\)/)
-  assert.match(searchClearFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(searchClearFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
 
   assert.match(listCardFocus, /transform:\s*translateY\(-3px\)/)
   assert.match(listCardFocus, backgroundIncludes('material-glass-elevated'))
@@ -237,13 +237,13 @@ test('entities keyboard focus mirrors hover glass control treatment', () => {
   assert.match(listCardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
 
   assert.match(openFocus, /outline:\s*none/)
-  assert.match(openFocus, /box-shadow:\s*inset 0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.14\)/)
+  assert.match(openFocus, /box-shadow:\s*var\(--focus-ring-inset\)/)
 
   assert.match(favoriteFocus, /outline:\s*none/)
   assert.match(favoriteFocus, /transform:\s*scale\(1\.06\)/)
   assert.match(favoriteFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(favoriteFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(favoriteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(favoriteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(favoriteActiveFocus, /outline:\s*none/)
   assert.match(favoriteActiveFocus, /transform:\s*scale\(1\.06\)/)
   assert.match(favoriteActiveFocus, backgroundIncludes('badge-error-bg'))

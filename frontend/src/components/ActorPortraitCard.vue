@@ -176,7 +176,7 @@ function emitSubscribe() {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow:
     var(--glass-control-shadow-hover),
-    0 0 0 4px rgba(var(--accent-rgb), 0.12),
+    var(--focus-ring-wide),
     var(--glass-active-shadow);
 }
 
@@ -271,7 +271,7 @@ function emitSubscribe() {
   border-color: var(--glass-control-border-hover);
   box-shadow:
     var(--glass-control-shadow-hover),
-    0 0 0 3px rgba(var(--accent-rgb), 0.16);
+    var(--focus-ring-strong);
 }
 
 .actor-portrait-card__favorite:active,

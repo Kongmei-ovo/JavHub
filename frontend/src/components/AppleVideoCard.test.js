@@ -256,7 +256,7 @@ test('AppleVideoCard card shell and cover use shared Apple glass materials', () 
   assert.match(cardFocus, /outline:\s*none/)
   assert.match(cardFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(cardFocus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(cardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(cardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
   assert.match(imageFocus, /transform:\s*scale\(1\.045\)/)
   assert.match(imageFocus, /filter:\s*saturate\(1\.08\)/)
 

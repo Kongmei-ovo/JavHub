@@ -109,7 +109,7 @@ test('library organize keyboard focus mirrors hover glass control treatment', ()
     assert.match(rule, /outline:\s*none/, `${label} should replace the default outline`)
     assert.match(rule, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
     assert.match(rule, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
-    assert.match(rule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should show a subtle Apple-style focus ring`)
+    assert.match(rule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should show a subtle Apple-style focus ring`)
   }
 
   assert.match(statusFocusRule, /transform:\s*translateY\(-1px\)/)
@@ -151,7 +151,7 @@ test('library organize nested list rows mirror Apple glass hover while child act
   assert.match(nestedFocusRule, /outline:\s*none/)
   assert.match(nestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(nestedFocusRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(nestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(nestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(nestedFocusRule, /transform:\s*translateY\(-1px\)/)
 
   assert.match(darkNestedHoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
@@ -159,7 +159,7 @@ test('library organize nested list rows mirror Apple glass hover while child act
   assert.match(darkNestedHoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   assert.match(darkNestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(darkNestedFocusRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(darkNestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(darkNestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(darkNestedFocusRule, /transform:\s*translateY\(-1px\)/)
 })
 
@@ -224,7 +224,7 @@ test('library organize dark theme overlays defer to shared material tokens', () 
   assert.doesNotMatch(hoverRule, /linear-gradient\(145deg/)
 
   assert.match(focusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.10\)/)
+  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
   assert.doesNotMatch(focusRule, /rgba\(255,255,255/)
 })
 

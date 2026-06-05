@@ -90,7 +90,7 @@
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .panel { min-height: 240px; }
@@ -133,7 +133,7 @@
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
   transform: translateY(-1px);
 }
 .filter-chip span {
@@ -154,7 +154,7 @@
 .search-input:focus {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 4px rgba(var(--accent-rgb), 0.09);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide);
   outline: none;
 }
 .actor-list { display: flex; flex-direction: column; gap: 12px; }
@@ -237,7 +237,7 @@
 .candidate-card:focus-within {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 .candidate-compare {
@@ -363,7 +363,7 @@
 .mapping-row:focus-within {
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), var(--focus-ring);
   transform: translateY(-1px);
 }
 .mapping-target {
