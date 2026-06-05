@@ -734,18 +734,6 @@ export default {
   text-align: center;
 }
 
-.btn-xs {
-  min-height: 28px;
-  padding: 5px 9px;
-  font-size: 11px;
-}
-
-.btn-sm {
-  min-height: 36px;
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
 @media (max-width: 860px) {
   .panel-header {
     align-items: flex-start;

@@ -501,6 +501,20 @@ a:hover {
   box-shadow: var(--glass-control-shadow);
   filter: saturate(0.82);
 }
+.btn-sm {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: var(--type-caption);
+  line-height: 1;
+  letter-spacing: 0;
+}
+.btn-xs {
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: var(--type-micro);
+  line-height: 1;
+  letter-spacing: 0;
+}
 .btn-icon {
   inline-size: var(--touch-target);
   block-size: var(--touch-target);

@@ -527,12 +527,6 @@
   font-weight: 700;
 }
 
-.btn-sm {
-  min-height: 36px;
-  padding: 7px 14px;
-  font-size: var(--type-caption);
-}
-
 :global(:root[data-theme="dark"] .entities-hero) {
   border-color: var(--glass-edge-strong);
   background:

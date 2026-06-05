@@ -244,12 +244,6 @@ export default {
   border-color: var(--badge-error-border);
 }
 
-.btn-sm {
-  min-height: 36px;
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
 @media (max-width: 860px) {
   .ios-row,
   .job-actions {

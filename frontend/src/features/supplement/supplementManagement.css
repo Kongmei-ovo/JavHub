@@ -706,12 +706,6 @@ p {
   margin-bottom: 12px;
 }
 
-.btn-xs {
-  min-height: 28px;
-  padding: 5px 9px;
-  font-size: 11px;
-}
-
 .manual-action-list {
   display: grid;
   gap: 8px;
