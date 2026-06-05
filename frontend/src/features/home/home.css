@@ -216,6 +216,16 @@
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
 }
+.tab-btn:focus-visible {
+  outline: none;
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
 .tab-btn.active {
   color: var(--text-primary);
   border-color: var(--glass-active-border);
@@ -318,6 +328,16 @@
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-1px);
+}
+.chip:focus-visible:not(:disabled) {
+  outline: none;
+  color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
 }
 .chip.active {
   color: var(--text-primary);
@@ -430,6 +450,16 @@
   box-shadow: var(--glass-control-shadow-hover);
   text-decoration-color: var(--link-underline-hover);
 }
+.link-btn:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+  text-decoration-color: var(--link-underline-hover);
+}
 
 /* ===== Tasks Grid ===== */
 .tasks-grid {
@@ -475,6 +505,16 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+.page-btn:focus-visible:not(:disabled) {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 

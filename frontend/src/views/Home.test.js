@@ -128,6 +128,30 @@ test('home candidate controls use shared Apple glass tokens', () => {
   }
 })
 
+test('home candidate controls mirror hover glass treatment for keyboard focus', () => {
+  const tabFocus = cssBlock(source, '.tab-btn:focus-visible')
+  const chipFocus = cssBlock(source, '.chip:focus-visible:not(:disabled)')
+  const linkFocus = cssBlock(source, '.link-btn:focus-visible')
+  const pageFocus = cssBlock(source, '.page-btn:focus-visible:not(:disabled)')
+
+  for (const [block, label] of [
+    [tabFocus, 'download tab focus'],
+    [chipFocus, 'candidate chip focus'],
+    [linkFocus, 'candidate link focus'],
+    [pageFocus, 'candidate pagination focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.12\)/, `${label} should expose a subtle focus ring`)
+  }
+
+  assert.match(tabFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(chipFocus, /color:\s*var\(--text-primary\)/)
+  assert.match(pageFocus, /transform:\s*translateY\(-1px\)/)
+  assert.match(linkFocus, /text-decoration-color:\s*var\(--link-underline-hover\)/)
+})
+
 test('home dashboard and task surfaces use shared Apple glass materials', () => {
   const statCard = cssBlock(source, '.stat-card')
   const statCardHover = cssBlock(source, '.stat-card:hover')
