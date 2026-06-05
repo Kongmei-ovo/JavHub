@@ -172,8 +172,11 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card:focus-visible {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow:
-    0 0 0 4px rgba(var(--accent-rgb), 0.14),
+    var(--glass-control-shadow-hover),
+    0 0 0 4px rgba(var(--accent-rgb), 0.12),
     var(--glass-active-shadow);
 }
 
@@ -208,6 +211,10 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card:hover .actor-portrait-card__media img {
+  transform: scale(1.045);
+}
+
+.actor-portrait-card:focus-visible .actor-portrait-card__media img {
   transform: scale(1.045);
 }
 
@@ -255,6 +262,21 @@ function emitSubscribe() {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
+}
+
+.actor-portrait-card__favorite:focus-visible,
+.actor-portrait-card__subscribe:focus-visible {
+  outline: none;
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow:
+    var(--glass-control-shadow-hover),
+    0 0 0 3px rgba(var(--accent-rgb), 0.16);
+}
+
+.actor-portrait-card__favorite:active,
+.actor-portrait-card__subscribe:active {
+  transform: scale(0.96);
 }
 
 .actor-portrait-card__subscribe:disabled {

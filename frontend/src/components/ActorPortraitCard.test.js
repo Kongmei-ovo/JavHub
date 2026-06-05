@@ -80,6 +80,24 @@ test('ActorPortraitCard shell and portrait well use shared Apple glass surfaces'
   assert.doesNotMatch(source, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*var\(--surface-card\)/)
 })
 
+test('ActorPortraitCard mirrors glass hover motion for keyboard focus and action buttons', () => {
+  const focusRule = cssRule('.actor-portrait-card:focus-visible')
+  const imageFocusRule = cssRule('.actor-portrait-card:focus-visible .actor-portrait-card__media img')
+  const actionFocusRule = cssRule('.actor-portrait-card__favorite:focus-visible,\n.actor-portrait-card__subscribe:focus-visible')
+  const actionActiveRule = cssRule('.actor-portrait-card__favorite:active,\n.actor-portrait-card__subscribe:active')
+
+  assert.match(focusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(focusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 4px rgba\(var\(--accent-rgb\),\s*0\.12\)/)
+  assert.match(imageFocusRule, /transform:\s*scale\(1\.045\)/)
+
+  assert.match(actionFocusRule, /outline:\s*none/)
+  assert.match(actionFocusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(actionFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(actionFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px rgba\(var\(--accent-rgb\),\s*0\.16\)/)
+  assert.match(actionActiveRule, /transform:\s*scale\(0\.96\)/)
+})
+
 test('ActorPortraitCard emits open and favorite actions separately', () => {
   assert.match(source, /defineEmits\(\['open', 'favorite', 'subscribe'\]\)/)
   assert.match(source, /emit\('open'/)
