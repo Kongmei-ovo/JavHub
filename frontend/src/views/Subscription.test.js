@@ -13,6 +13,10 @@ function cssBlock(selector) {
   return match[1]
 }
 
+function layeredSemanticBackground(token) {
+  return new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
+}
+
 test('subscription page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/subscription\/subscription\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 600, 'Subscription.vue should stay below 600 lines')
@@ -129,8 +133,10 @@ test('subscription badges and discovery clear control use semantic glass tokens'
   const clearButtonHover = cssBlock('.clear-btn:hover')
 
   assert.match(badge, /border:\s*1px solid var\(--badge-error-border\)/)
-  assert.match(badge, /background:\s*var\(--badge-error-bg\)/)
+  assert.match(badge, layeredSemanticBackground('badge-error-bg'))
   assert.match(badge, /color:\s*var\(--badge-error-text\)/)
+  assert.match(badge, /box-shadow:\s*var\(--subscription-control-shadow\)/)
+  assert.match(badge, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.doesNotMatch(badge, /#fff|#ffffff|#ff375f/i)
 
   assert.match(clearButton, /border:\s*1px solid var\(--subscription-control-border\)/)
