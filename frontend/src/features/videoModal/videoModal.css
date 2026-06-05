@@ -253,7 +253,7 @@
 .favorite-btn:active svg { transform: scale(0.8); }
 .modal-title-block { border-bottom: 1px solid var(--modal-divider); padding-bottom: 16px; }
 .modal-title { font-size: var(--type-panel-title); color: var(--modal-text-primary); font-weight: 600; line-height: 1.6; letter-spacing: 0; text-shadow: var(--modal-text-shadow-soft); }
-.modal-meta { background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: 1px solid var(--modal-panel-border); }
+.modal-meta { background: var(--surface-specular-edge), var(--surface-noise), var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; position: relative; border: 1px solid var(--modal-panel-border); }
 .modal-meta::before { content: ''; position: absolute; left: 50%; top: 24px; bottom: 24px; width: 1px; background: var(--modal-divider-subtle); transform: translateX(-50%); }
 .meta-row { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--modal-divider-subtle); }
 .meta-row:last-child { border-bottom: none; }
@@ -351,7 +351,7 @@
 }
 .tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }
 .meta-provider { font-size: 12px; color: var(--modal-text-faint); margin-left: 4px; }
-.summary-text { font-size: 15px; line-height: 1.8; color: var(--modal-text-body); background: var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
+.summary-text { font-size: 15px; line-height: 1.8; color: var(--modal-text-body); background: var(--surface-specular-edge), var(--surface-noise), var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
 .summary-text--empty { color: var(--modal-text-empty); font-style: italic; }
 .skeleton { background: var(--modal-skeleton-bg); position: relative; overflow: hidden; border-radius: 8px; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--modal-skeleton-shine), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }

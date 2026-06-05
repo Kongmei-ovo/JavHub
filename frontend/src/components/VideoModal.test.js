@@ -227,6 +227,7 @@ test('modal detail typography and dividers use modal semantic text tokens', () =
   const modalCode = sourceBlock(source, '.modal-code')
   const titleBlock = sourceBlock(source, '.modal-title-block')
   const title = sourceBlock(source, '.modal-title')
+  const modalMeta = sourceBlock(source, '.modal-meta')
   const metaDivider = sourceBlock(source, '.modal-meta::before')
   const metaRow = sourceBlock(source, '.meta-row')
   const metaValue = sourceBlock(source, '.meta-value')
@@ -251,6 +252,8 @@ test('modal detail typography and dividers use modal semantic text tokens', () =
 
   assert.match(modalCodeBlock, /border-bottom:\s*1px solid var\(--modal-divider-strong\)/)
   assert.match(titleBlock, /border-bottom:\s*1px solid var\(--modal-divider\)/)
+  assert.match(modalMeta, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-panel-bg\)/)
+  assert.match(modalMeta, /border:\s*1px solid var\(--modal-panel-border\)/)
   assert.match(metaDivider, /background:\s*var\(--modal-divider-subtle\)/)
   assert.match(metaRow, /border-bottom:\s*1px solid var\(--modal-divider-subtle\)/)
 
@@ -264,6 +267,8 @@ test('modal detail typography and dividers use modal semantic text tokens', () =
   assert.match(actressName, /color:\s*var\(--modal-text-secondary\)/)
   assert.match(metaProvider, /color:\s*var\(--modal-text-faint\)/)
   assert.match(summary, /color:\s*var\(--modal-text-body\)/)
+  assert.match(summary, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-panel-bg\)/)
+  assert.match(summary, /border:\s*1px solid var\(--modal-panel-border\)/)
   assert.match(metaValueEmpty, /color:\s*var\(--modal-text-empty\)/)
   assert.match(summaryEmpty, /color:\s*var\(--modal-text-empty\)/)
   assert.match(clickable, /text-decoration-color:\s*var\(--modal-link-underline\)/)
