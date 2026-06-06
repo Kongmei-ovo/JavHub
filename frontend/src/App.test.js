@@ -388,3 +388,10 @@ test('app shell transitions stay on composited visual properties', () => {
   assert.match(exactSourceBlock('.collapse-btn'), /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(exactSourceBlock('.collapse-btn'), /transition:\s*var\(--transition\)/)
 })
+
+test('app shell lets the CSS build emit compatible backdrop filters', () => {
+  const appStyle = source.slice(source.indexOf('<style scoped>'), source.indexOf('</style>'))
+
+  assert.match(appStyle, /backdrop-filter:\s*blur\(var\(--glass-blur-/)
+  assert.doesNotMatch(appStyle, /-webkit-backdrop-filter:/)
+})

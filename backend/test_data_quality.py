@@ -102,6 +102,29 @@ class DataQualityOverviewTest(TempPostgresMixin, unittest.TestCase):
         self.assertEqual(link_issue["count"], 5)
         self.assertEqual(link_issue["severity"], "high")
         self.assertEqual(link_issue["action"]["route"], "/downloads?tab=candidates&status=candidate&needs_magnet=1")
+        self.assertEqual(link_issue["repair_progress"], {
+            "state": "blocked",
+            "queued": 5,
+            "ready": 0,
+            "label": "候选修复 5 待补磁力 · 0 可批准",
+            "action": {
+                "label": "批量补当前磁力",
+                "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1",
+            },
+            "provider_label": "来源 inventory 4 · supplement 1",
+            "provider_actions": [
+                {
+                    "provider": "inventory",
+                    "label": "查看 inventory 待补磁力",
+                    "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1&source=inventory",
+                },
+                {
+                    "provider": "supplement",
+                    "label": "查看 supplement 待补磁力",
+                    "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1&source=supplement",
+                },
+            ],
+        })
         self.assertLessEqual(len(result["issues"]), 20)
 
     def test_low_quality_cover_issue_exposes_repair_progress_when_supplied(self):

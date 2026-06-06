@@ -135,9 +135,34 @@
             <p>{{ diagnosticsMovieSubtitle || '字段来源、匹配候选和人工校正记录已在弹窗中展开。' }}</p>
           </div>
         </div>
-        <div v-else class="empty-panel inner">
-          <h3>从作品字段打开诊断</h3>
-          <p>在作品字段列表中点击“诊断”，可查看该影片的字段来源、源身份、详情来源和匹配候选。</p>
+        <div v-else class="diagnostics-launchpad">
+          <div class="diagnostics-launchpad-grid" aria-label="来源诊断待办概览">
+            <button
+              v-for="row in diagnosticsLaunchpadRows"
+              :key="row.key"
+              type="button"
+              class="diagnostics-launchpad-card"
+              @click="setWorkspaceSegment(row.target)"
+            >
+              <strong>{{ row.value }}</strong>
+              <span>{{ row.label }}</span>
+              <small>{{ row.hint }}</small>
+            </button>
+          </div>
+          <div class="diagnostics-focus-movie">
+            <div>
+              <span class="status-pill">诊断入口</span>
+              <h3>{{ diagnosticsFocusMovie?.dvd_id || diagnosticsFocusMovie?.canonical_number || '等待影片数据' }}</h3>
+              <p>{{ diagnosticsFocusMovie?.title || '先在作品字段列表中载入补全影片，再打开字段来源和候选诊断。' }}</p>
+            </div>
+            <div class="diagnostics-focus-badges">
+              <span v-for="badge in diagnosticsFocusMovieBadges" :key="badge">{{ badge }}</span>
+            </div>
+            <div class="diagnostics-focus-actions">
+              <button class="btn btn-primary btn-sm" type="button" :disabled="!diagnosticsFocusMovie" @click="openDiagnosticsFocusMovie">打开首个待诊断影片</button>
+              <button class="btn btn-ghost btn-sm" type="button" @click="setWorkspaceSegment('movies')">回到作品字段</button>
+            </div>
+          </div>
         </div>
       </section>
       <SourceHealthPanel v-if="activeWorkspaceSegment === 'sourceHealth'" v-model:provider-smoke-form="providerSmokeForm" v-model:provider-smoke-report="providerSmokeReport" :provider-source-options="providerSourceOptions" :provider-smoke-loading="providerSmokeLoading" :provider-smoke-runs="providerSmokeRuns" :source-health-loading="sourceHealthLoading" :source-health-rows="sourceHealthRows" :source-action-loading="sourceActionLoading" :gfriends-avatar-job="gfriendsAvatarJob" :gfriends-avatar-syncing="gfriendsAvatarSyncing" :format-action-time="formatActionTime" :smoke-run-label="smokeRunLabel" :source-health-label="sourceHealthLabel" :source-budget-label="sourceBudgetLabel" :source-health-detail="sourceHealthDetail" @refresh-health="loadSourceHealth" @run-smoke="runProviderSmoke" @sync-gfriends-avatars="syncGfriendsAvatars" @view-avatar-jobs="viewGfriendsAvatarJobs" @load-smoke-runs="loadProviderSmokeRuns" @pause-source="pauseSource" @resume-source="resumeSource" />
@@ -426,6 +451,48 @@ export default {
       const movie = this.sourceDiagnostics?.movie
       return movie?.title || movie?.matched_content_id || ''
     },
+    diagnosticsLaunchpadRows() {
+      return [
+        {
+          key: 'candidate',
+          target: 'movies',
+          value: this.workspacePendingCandidateCount,
+          label: '待确认候选',
+          hint: '先确认高风险匹配',
+        },
+        {
+          key: 'fields',
+          target: 'movies',
+          value: this.workspaceMovieFieldGapCount,
+          label: '字段缺口',
+          hint: '定位缺封面、时长、系列和分类',
+        },
+        {
+          key: 'details',
+          target: 'movies',
+          value: this.workspaceDetailTargetCount,
+          label: '可补详情',
+          hint: '可继续抓取详情来源',
+        },
+      ]
+    },
+    diagnosticsFocusMovie() {
+      return this.supplementMovies.find(movie => this.movieMatchClass(movie) === 'candidate')
+        || this.supplementMovies.find(movie => this.movieFieldChips(movie).some(chip => !chip.value))
+        || this.supplementMovies[0]
+        || null
+    },
+    diagnosticsFocusMovieBadges() {
+      const movie = this.diagnosticsFocusMovie
+      if (!movie) return ['暂无影片']
+      const badges = []
+      if (this.movieMatchClass(movie) === 'candidate') badges.push('候选待确认')
+      const missing = this.movieFieldChips(movie).filter(chip => !chip.value)
+      if (missing.length) badges.push(`${missing.length} 个字段缺口`)
+      if (movie.source_movie_id) badges.push('可追溯来源')
+      if (!badges.length) badges.push('字段已齐')
+      return badges
+    },
     sourceHealthRows() {
       const budgets = new Map((this.sourceBudgets || []).map(item => [item.source, item]))
       return (this.sourceHealth || []).map(source => ({
@@ -545,6 +612,7 @@ export default {
     async loadWorkspaceSegment(segment, options = {}) {
       if (segment === 'jobs') await this.loadJobs(options)
       if (segment === 'movies') await this.loadMovies(options)
+      if (segment === 'diagnostics') await this.loadMovies({ silent: true, ...options })
       if (segment === 'sourceHealth') await this.loadSourceHealth(options)
     },
     async applyRouteState({ force = false } = {}) {
@@ -1077,6 +1145,10 @@ export default {
       if (action.target === 'diagnostics') {
         await this.setWorkspaceSegment('diagnostics')
       }
+    },
+    async openDiagnosticsFocusMovie() {
+      if (!this.diagnosticsFocusMovie) return
+      await this.openMovieSources(this.diagnosticsFocusMovie)
     },
     formatActionTime(value) {
       if (!value) return ''

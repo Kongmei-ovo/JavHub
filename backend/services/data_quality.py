@@ -327,6 +327,8 @@ def _dead_link_issue() -> dict[str, Any] | None:
 
 def _missing_download_link_issue() -> dict[str, Any] | None:
     samples: list[dict[str, Any]] = []
+    source_counts: list[dict[str, Any]] = []
+    ready_count = 0
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -342,13 +344,31 @@ def _missing_download_link_issue() -> dict[str, Any] | None:
         rows = [dict(row) for row in cursor.fetchall()]
         cursor.execute(
             """
-            SELECT COUNT(*) AS cnt
+            SELECT
+                COUNT(*) AS cnt,
+                SUM(CASE
+                    WHEN status = 'candidate' AND COALESCE(magnet, '') <> '' THEN 1
+                    ELSE 0
+                END) AS ready
+            FROM download_candidates
+            WHERE status = 'candidate'
+            """
+        )
+        summary = cursor.fetchone()
+        ready_count = int(summary["ready"] or 0)
+        cursor.execute(
+            """
+            SELECT COALESCE(source, 'manual') AS source, COUNT(*) AS cnt
             FROM download_candidates
             WHERE status = 'candidate'
               AND COALESCE(magnet, '') = ''
+            GROUP BY COALESCE(source, 'manual')
+            ORDER BY cnt DESC, source
+            LIMIT 6
             """
         )
-        count = int(cursor.fetchone()["cnt"] or 0)
+        source_counts = [dict(row) for row in cursor.fetchall()]
+        count = int(summary["cnt"] or 0) - ready_count
     if count <= 0:
         return None
     for row in rows:
@@ -361,7 +381,7 @@ def _missing_download_link_issue() -> dict[str, Any] | None:
             "actress_name": row.get("actress_name") or "",
             "missing_fields": ["magnet"],
         })
-    return _issue(
+    issue = _issue(
         issue_type="missing_download_link",
         title="缺失下载链接",
         summary=f"{count} 个下载候选缺少 magnet，无法批准或下发下载任务。",
@@ -370,6 +390,42 @@ def _missing_download_link_issue() -> dict[str, Any] | None:
         samples=samples,
         action={"label": "打开待补磁力候选", "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1"},
     )
+    issue["repair_progress"] = _download_link_repair_progress(count, ready_count, source_counts)
+    return issue
+
+
+def _download_link_repair_progress(count: int, ready_count: int, source_counts: list[dict[str, Any]]) -> dict[str, Any]:
+    progress: dict[str, Any] = {
+        "state": "blocked" if count > 0 else "ready",
+        "queued": count,
+        "ready": ready_count,
+        "label": f"候选修复 {count} 待补磁力 · {ready_count} 可批准",
+        "action": {
+            "label": "批量补当前磁力",
+            "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1",
+        },
+    }
+    providers = [
+        {"provider": str(row.get("source") or "manual"), "count": _safe_int(row.get("cnt"))}
+        for row in source_counts
+        if _safe_int(row.get("cnt")) > 0
+    ]
+    if providers:
+        visible = providers[:4]
+        parts = [f"{item['provider']} {item['count']}" for item in visible]
+        folded = len(providers) - len(visible)
+        if folded > 0:
+            parts.append(f"另 {folded} 来源")
+        progress["provider_label"] = "来源 " + " · ".join(parts)
+        progress["provider_actions"] = [
+            {
+                "provider": item["provider"],
+                "label": f"查看 {item['provider']} 待补磁力",
+                "route": f"/downloads?tab=candidates&status=candidate&needs_magnet=1&source={item['provider']}",
+            }
+            for item in visible
+        ]
+    return progress
 
 
 def _inconsistent_metadata_issue() -> dict[str, Any] | None:

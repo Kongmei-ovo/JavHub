@@ -514,8 +514,19 @@
                     <span class="setting-title">保存自动化配置</span>
                     <span class="setting-note">只提交当前自动化相关配置。</span>
                   </div>
-                  <div class="settings-control">
-                    <button class="btn btn-primary" type="button" @click="save" :disabled="saving || !canSaveConfig">保存自动化配置</button>
+                  <div class="settings-control settings-control--wide inventory-cron-save-row" :aria-busy="inventoryCronSaveBusy" aria-live="polite">
+                    <div class="inventory-cron-actions">
+                      <button
+                        class="btn btn-primary"
+                        type="button"
+                        @click="saveInventoryCron"
+                        :disabled="inventoryCronSaving || !canSaveConfig"
+                        :aria-describedby="'inventory-cron-save-status'"
+                      >
+                        {{ inventoryCronSaving ? '保存中...' : '保存自动化配置' }}
+                      </button>
+                    </div>
+                    <span id="inventory-cron-save-status" class="inventory-cron-status" role="status">{{ inventoryCronSaveStatus }}</span>
                   </div>
                 </div>
               </div>
@@ -802,7 +813,9 @@ export default {
       },
       saving: false,
       testingTelegram: false,
+      inventoryCronSaving: false,
       inventoryCron: '',
+      inventoryCronSaveMsg: '',
       telegramTestMsg: '',
       showBotToken: false,
       showEmbyKey: false,
@@ -924,6 +937,21 @@ export default {
         return '填写 Bot Token 后可发送测试信息。'
       }
       return '可发送一次测试信息。'
+    },
+    inventoryCronSaveBusy() {
+      return this.inventoryCronSaving
+    },
+    inventoryCronSaveStatus() {
+      if (this.inventoryCronSaving) {
+        return '正在保存库存对比 Cron 表达式。'
+      }
+      if (this.inventoryCronSaveMsg) {
+        return this.inventoryCronSaveMsg
+      }
+      if (!this.canSaveConfig) {
+        return '配置未加载成功，自动化保存已暂停。'
+      }
+      return '只保存库存对比定时任务。'
     },
     configStatusSourceLabel() {
       return this.configMeta.config_path ? `路径 ${this.configMeta.config_path}` : ''
@@ -1100,15 +1128,22 @@ export default {
     },
     async saveInventoryCron() {
       if (!this.canSaveConfig) {
+        this.inventoryCronSaveMsg = '配置未加载成功，已阻止保存'
         this.$message.error('配置未加载成功，已阻止保存')
         return
       }
+      this.inventoryCronSaving = true
+      this.inventoryCronSaveMsg = ''
       try {
         await api.updateConfig({ inventory_cron: this.inventoryCron })
+        this.inventoryCronSaveMsg = '保存成功'
         this.$message.success('库存对比定时任务配置已保存')
       } catch (e) {
         console.error('Failed to save inventory cron:', e)
+        this.inventoryCronSaveMsg = '保存失败'
         this.$message.error('保存失败')
+      } finally {
+        this.inventoryCronSaving = false
       }
     },
     toggleAutomationSource(source) {

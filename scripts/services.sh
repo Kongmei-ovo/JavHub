@@ -327,6 +327,11 @@ restart_and_check_label() {
       print_service_log_paths "${name}"
       return 1
     fi
+    if [[ "${label}" == "${BACKEND_LABEL}" ]] && ! check_label_restart_stability "${label}"; then
+      echo "${name} ${url}: unstable after restart"
+      print_service_log_paths "${name}"
+      return 1
+    fi
     return 0
   fi
 
@@ -395,6 +400,29 @@ port_for_label() {
 launchd_pid_for_label() {
   local label="$1"
   launchctl print "gui/${UID_VALUE}/${label}" 2>/dev/null | awk '/pid =/ { print $3; exit }'
+}
+
+launchd_state_for_label() {
+  local label="$1"
+  launchctl print "gui/${UID_VALUE}/${label}" 2>/dev/null | awk -F'= ' '/state =/ { print $2; exit }'
+}
+
+label_launchd_is_running() {
+  local label="$1"
+  [[ "$(launchd_state_for_label "${label}")" == "running" ]]
+}
+
+print_launchd_not_running() {
+  local name="$1"
+  local label="$2"
+  local state
+
+  state="$(launchd_state_for_label "${label}")"
+  if [[ -n "${state}" ]]; then
+    echo "${name} launchd: not running (state = ${state})"
+  else
+    echo "${name} launchd: not running (state unavailable)"
+  fi
 }
 
 listener_pids_for_port() {
@@ -477,6 +505,25 @@ listener_pids_owned_by_launchd_pid() {
   done
 
   [[ "${found}" == "1" ]]
+}
+
+label_port_has_owned_listener() {
+  local label="$1"
+  local port launchd_pid listener_pids
+
+  port="$(port_for_label "${label}")"
+  launchd_pid="$(launchd_pid_for_label "${label}")"
+  listener_pids="$(listener_pids_for_port "${port}")"
+
+  if [[ -z "${listener_pids}" || -z "${launchd_pid}" ]]; then
+    return 1
+  fi
+
+  case ",${listener_pids}," in
+    *",${launchd_pid},"*) return 0 ;;
+  esac
+
+  listener_pids_owned_by_launchd_pid "${listener_pids}" "${launchd_pid}"
 }
 
 pid_command() {
@@ -644,6 +691,38 @@ print_port_diagnostics() {
   print_port_diagnostic "javinfo" "${JAVINFO_LABEL}" "8080" || failed=1
   print_port_diagnostic "backend" "${BACKEND_LABEL}" "18090" || failed=1
   print_port_diagnostic "frontend" "${FRONTEND_LABEL}" "5174" || failed=1
+
+  return "${failed}"
+}
+
+check_label_restart_stability() {
+  local label="$1"
+  local name port url delay
+  local failed=0
+
+  name="$(service_name_for_label "${label}")"
+  port="$(port_for_label "${label}")"
+  url="$(health_url_for_label "${label}")"
+  delay="${JAVHUB_RESTART_STABILITY_DELAY:-1}"
+
+  if [[ "${delay}" != "0" ]]; then
+    sleep "${delay}"
+  fi
+
+  if ! label_launchd_is_running "${label}"; then
+    print_launchd_not_running "${name}" "${label}"
+    failed=1
+  fi
+
+  if ! label_port_has_owned_listener "${label}"; then
+    print_port_diagnostic "${name}" "${label}" "${port}" || true
+    failed=1
+  fi
+
+  if ! label_http_is_healthy "${label}"; then
+    echo "${name} ${url}: failed during stability check"
+    failed=1
+  fi
 
   return "${failed}"
 }

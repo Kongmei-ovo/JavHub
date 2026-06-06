@@ -1689,7 +1689,9 @@ def test_services_restart_backend_reclaims_project_owned_stale_listener(tmp_path
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
     kill_log = tmp_path / "kill.log"
+    backend_started = tmp_path / "backend-started"
     javinfo_dir = tmp_path / "JavInfoApi"
     javinfo_dir.mkdir()
     home_dir = tmp_path / "home"
@@ -1699,9 +1701,20 @@ def test_services_restart_backend_reclaims_project_owned_stale_listener(tmp_path
         bin_dir / "launchctl",
         "#!/bin/sh\n"
         "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *kickstart*javhub.backend*) touch \"$BACKEND_STARTED\" ;;\n"
+        "esac\n"
         "if [ \"$1\" = \"print\" ]; then\n"
         "  case \"$2\" in\n"
-        "    *javhub.backend*) echo 'state = spawn scheduled'; exit 0 ;;\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 123'\n"
+        "      else\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
         "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
         "  esac\n"
         "fi\n"
@@ -1715,6 +1728,8 @@ def test_services_restart_backend_reclaims_project_owned_stale_listener(tmp_path
         "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
         "    if [ ! -f \"$KILL_LOG\" ]; then\n"
         "      echo 'Python  321 test 15u IPv4 0xabc      0t0  TCP *:18090 (LISTEN)'\n"
+        "    elif [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "      echo 'Python  123 test 15u IPv4 0xabc      0t0  TCP *:18090 (LISTEN)'\n"
         "    fi\n"
         "    exit 0\n"
         "    ;;\n"
@@ -1740,6 +1755,16 @@ def test_services_restart_backend_reclaims_project_owned_stale_listener(tmp_path
         "echo \"$@\" >> \"$KILL_LOG\"\n"
         "exit 0\n",
     )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:18090/health/readiness*) echo '{\"status\":\"ok\",\"database\":{\"connectable\":true,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'; exit 0 ;;\n"
+        "  *127.0.0.1:18090/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+    )
 
     result = subprocess.run(
         ["bash", "scripts/services.sh", "restart", "backend"],
@@ -1747,7 +1772,10 @@ def test_services_restart_backend_reclaims_project_owned_stale_listener(tmp_path
         env={
             "HOME": str(home_dir),
             "JAVINFO_DIR": str(javinfo_dir),
+            "BACKEND_STARTED": str(backend_started),
+            "CURL_LOG": str(curl_log),
             "KILL_LOG": str(kill_log),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
             "LAUNCHCTL_LOG": str(launchctl_log),
             "JAVHUB_KILL_BIN": str(bin_dir / "fake-kill"),
             "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
@@ -1886,6 +1914,93 @@ def test_services_restart_backend_reports_readiness_failure_with_log_paths(tmp_p
     assert "backend http://127.0.0.1:18090/health: ok after restart" in result.stdout
     assert "backend readiness: degraded" in result.stdout
     assert "database: failed (localhost:5432/javhub) connection refused" in result.stdout
+    assert f"backend stdout: {stdout_log}" in result.stdout
+    assert f"backend stderr: {stderr_log}" in result.stdout
+
+
+def test_services_restart_backend_reports_unstable_service_after_readiness_success(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
+    backend_crashed = tmp_path / "backend-crashed"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  case \"$2\" in\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_CRASHED\" ]; then\n"
+        "        echo 'state = spawn scheduled'\n"
+        "        exit 0\n"
+        "      fi\n"
+        "      echo 'state = running'\n"
+        "      echo 'pid = 123'\n"
+        "      exit 0\n"
+        "      ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ ! -f \"$BACKEND_CRASHED\" ]; then\n"
+        "      echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:18090/health/readiness*)\n"
+        "    touch \"$BACKEND_CRASHED\"\n"
+        "    echo '{\"status\":\"ok\",\"database\":{\"connectable\":true,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *127.0.0.1:18090/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+    )
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "restart", "backend"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "BACKEND_CRASHED": str(backend_crashed),
+            "CURL_LOG": str(curl_log),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    stdout_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.log"
+    stderr_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.err.log"
+    assert result.returncode == 1
+    assert "backend http://127.0.0.1:18090/health: unstable after restart" in result.stdout
+    assert "backend launchd: not running (state = spawn scheduled)" in result.stdout
+    assert "backend port 18090: no listener" in result.stdout
     assert f"backend stdout: {stdout_log}" in result.stdout
     assert f"backend stderr: {stderr_log}" in result.stdout
 

@@ -486,13 +486,6 @@
     width: 100%;
     justify-self: stretch;
   }
-  .telegram-test-row {
-    grid-template-columns: 1fr;
-  }
-  .telegram-test-actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
   .card-content,
   .form-slot {
     padding: 20px;
@@ -650,6 +643,43 @@
 }
 .telegram-test-row[aria-busy="true"] {
   cursor: progress;
+}
+.inventory-cron-save-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 12px;
+}
+.inventory-cron-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.inventory-cron-status {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.inventory-cron-save-row[aria-busy="true"] {
+  cursor: progress;
+}
+@media (max-width: 768px) {
+  .telegram-test-row {
+    grid-template-columns: 1fr;
+  }
+  .telegram-test-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .inventory-cron-save-row {
+    grid-template-columns: 1fr;
+  }
+  .inventory-cron-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 .notification-grid {
   display: grid;

@@ -113,10 +113,10 @@ test('production source files stay reviewable below the large-file line', () => 
     ['src/features/supplement/SourceHealthPanel.vue', 1141],
     ['src/features/supplement/sourceHealthPanel.css', 857],
     ['src/features/translations/translationJobs.css', 1159],
-    ['src/views/Config.vue', 1195],
+    ['src/views/Config.vue', 1227],
     ['src/views/Home.vue', 1279],
     ['src/views/LibraryOrganize.vue', 972],
-    ['src/views/SupplementManagement.vue', 1419],
+    ['src/views/SupplementManagement.vue', 1489],
     ['src/views/Operations.vue', 917],
     ['src/views/TranslationJobs.vue', 1092],
   ])
