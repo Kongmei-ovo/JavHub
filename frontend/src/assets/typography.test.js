@@ -98,3 +98,25 @@ test('Apple-style microcopy avoids forced uppercase labels', () => {
     )
   }
 })
+
+test('Production UI styles ratchet raw font sizes toward shared type tokens', () => {
+  const rawFontSize = /font-size:\s*\d+(?:\.\d+)?px\b/g
+  const offenders = []
+  const tokenSources = new Set(['src/assets/main.css'])
+  const existingRawFontSizeCount = 475
+
+  for (const [name, source] of productionStyleSources()) {
+    if (tokenSources.has(name)) continue
+
+    for (const match of source.matchAll(rawFontSize)) {
+      const line = source.slice(0, match.index).split('\n').length
+      offenders.push(`${name}:${line}:${match[0]}`)
+    }
+  }
+
+  assert.equal(
+    offenders.length,
+    existingRawFontSizeCount,
+    `raw font-size px declarations changed; migrate to --type-* tokens instead:\n${offenders.join('\n')}`
+  )
+})

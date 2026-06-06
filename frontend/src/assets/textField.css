@@ -1,0 +1,119 @@
+.apple-text-field {
+  --apple-text-field-bg: var(--material-glass-control);
+  --apple-text-field-bg-hover: var(--material-glass-control-hover);
+  --apple-text-field-bg-focus: var(--glass-active-material);
+  --apple-text-field-border: var(--glass-control-border);
+  --apple-text-field-border-hover: var(--glass-control-border-hover);
+  --apple-text-field-gap: var(--space-2, 8px);
+  --apple-text-field-motion: var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--apple-text-field-gap);
+  width: 100%;
+  height: var(--space-10, 44px);
+  min-width: 0;
+  padding: 0 var(--space-4, 16px);
+  border: 1px solid var(--apple-text-field-border);
+  border-radius: 999px;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--apple-text-field-bg);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--apple-text-field-motion), background var(--apple-text-field-motion), border-color var(--apple-text-field-motion), box-shadow var(--apple-text-field-motion);
+}
+
+.apple-text-field:hover {
+  border-color: var(--apple-text-field-border-hover);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--apple-text-field-bg-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.apple-text-field:focus-within {
+  transform: scale(1.005);
+  border-color: var(--apple-text-field-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--apple-text-field-bg-focus);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+}
+
+.apple-text-field--compact {
+  height: var(--space-7, 32px);
+  padding: 0 var(--space-2, 8px);
+}
+
+.apple-text-field--search {
+  --apple-text-field-bg: var(--surface-input);
+  --apple-text-field-bg-hover: var(--surface-control-hover);
+  --apple-text-field-bg-focus: var(--surface-input-focus);
+}
+
+.apple-text-field__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.15em;
+  color: var(--text-muted);
+  font-size: var(--type-callout, 14px);
+  line-height: 1;
+}
+
+.apple-text-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-callout, 14px);
+  line-height: 1.2;
+}
+
+.apple-text-field__input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.apple-text-field__clear {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--space-6, 24px);
+  height: var(--space-6, 24px);
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  color: var(--text-muted);
+  box-shadow: var(--glass-control-shadow);
+  cursor: pointer;
+  font-size: var(--type-caption-1, 12px);
+  line-height: 1;
+  transition: transform var(--apple-text-field-motion), background var(--apple-text-field-motion), border-color var(--apple-text-field-motion), box-shadow var(--apple-text-field-motion), color var(--motion-fast, 140ms ease);
+}
+
+.apple-text-field__clear:hover {
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.apple-text-field__clear:focus-visible {
+  outline: none;
+  border-color: var(--glass-control-border-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+}
+
+.apple-text-field__clear:active {
+  transform: scale(0.94);
+}
+
+.apple-text-field--compact .apple-text-field__clear {
+  width: var(--space-5, 20px);
+  height: var(--space-5, 20px);
+}

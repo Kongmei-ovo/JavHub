@@ -1,0 +1,166 @@
+.apple-switch,
+.apple-checkbox,
+:root {
+  --b2-local-track-bg: var(--accent-bg);
+  --b2-local-track-bg-on: var(--accent);
+  --b2-local-track-border: var(--glass-control-border);
+  --b2-local-track-border-on: var(--glass-active-border);
+  --b2-local-track-shadow: var(--glass-inner-shadow);
+  --b2-local-track-shadow-on: var(--glass-active-shadow);
+  --b2-local-thumb-bg: var(--bg-primary);
+  --b2-local-thumb-shadow: var(--glass-control-shadow);
+  --b2-local-thumb-shadow-active: var(--glass-inner-shadow);
+  --b2-local-glyph-stroke: var(--bg-primary);
+}
+
+.apple-switch,
+.apple-checkbox {
+  --apple-form-motion-spring: var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1));
+  --apple-form-hit-target: var(--space-10, 44px);
+  --apple-switch-hit-padding-block: calc((var(--apple-form-hit-target) - 18px) / 2);
+  --apple-switch-hit-padding-inline: calc((var(--apple-form-hit-target) - 30px) / 2);
+  --apple-checkbox-hit-padding: calc((var(--apple-form-hit-target) - 18px) / 2);
+  --apple-form-track-shadow: var(--b2-local-track-shadow);
+  --apple-form-track-shadow-on: var(--b2-local-track-shadow-on);
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--type-callout, 14px);
+  line-height: var(--space-4, 16px);
+  cursor: pointer;
+}
+
+.apple-switch:disabled,
+.apple-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.apple-switch {
+  min-width: var(--apple-form-hit-target);
+  min-height: var(--apple-form-hit-target);
+  padding: var(--apple-switch-hit-padding-block) var(--apple-switch-hit-padding-inline);
+  border-radius: 999px;
+}
+
+.apple-switch__track {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--b2-local-track-bg);
+  border: 1px solid var(--b2-local-track-border);
+  box-shadow: var(--apple-form-track-shadow);
+  transition: background var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
+}
+
+.apple-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background:
+    var(--surface-specular-edge),
+    var(--b2-local-thumb-bg);
+  box-shadow: var(--b2-local-thumb-shadow);
+  transform: translateX(0);
+  transition: transform var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
+}
+
+.apple-switch--on .apple-switch__track {
+  background: var(--b2-local-track-bg-on);
+  border-color: var(--b2-local-track-border-on);
+  box-shadow: var(--apple-form-track-shadow-on);
+}
+
+.apple-switch--on .apple-switch__thumb {
+  transform: translateX(12px);
+}
+
+.apple-switch:focus-visible {
+  outline: none;
+}
+
+.apple-switch:focus-visible .apple-switch__track {
+  box-shadow: var(--apple-form-track-shadow-on), var(--focus-ring);
+}
+
+.apple-switch:active:not(:disabled) .apple-switch__thumb {
+  box-shadow: var(--b2-local-thumb-shadow-active);
+}
+
+.apple-checkbox {
+  min-width: var(--apple-form-hit-target);
+  min-height: var(--apple-form-hit-target);
+  padding: var(--apple-checkbox-hit-padding);
+  border-radius: 13px;
+}
+
+.apple-checkbox__box {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--b2-local-track-bg);
+  border: 1px solid var(--b2-local-track-border);
+  box-shadow: var(--apple-form-track-shadow);
+  transition: background var(--apple-form-motion-spring), border-color var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
+}
+
+.apple-checkbox--checked .apple-checkbox__box,
+.apple-checkbox--indeterminate .apple-checkbox__box {
+  background: var(--b2-local-track-bg-on);
+  border-color: var(--b2-local-track-border-on);
+  box-shadow: var(--apple-form-track-shadow-on);
+}
+
+.apple-checkbox__glyph {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--b2-local-glyph-stroke);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.apple-checkbox__mark {
+  stroke-dasharray: 18;
+  stroke-dashoffset: 18;
+  transition: stroke-dashoffset var(--apple-form-motion-spring);
+}
+
+.apple-checkbox--checked .apple-checkbox__mark {
+  stroke-dashoffset: 0;
+}
+
+.apple-checkbox__mixed-line {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  transition: stroke-dashoffset var(--apple-form-motion-spring);
+}
+
+.apple-checkbox--indeterminate .apple-checkbox__mixed-line {
+  stroke-dashoffset: 0;
+}
+
+.apple-checkbox:focus-visible {
+  outline: none;
+}
+
+.apple-checkbox:focus-visible .apple-checkbox__box {
+  box-shadow: var(--apple-form-track-shadow-on), var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-switch,
+  .apple-checkbox {
+    --apple-form-motion-spring: 1ms linear;
+  }
+}

@@ -2,6 +2,9 @@
 :root {
   /* Motion Physics - Apple Style */
   --ease-pro: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring-snappy: cubic-bezier(0.5, 1.7, 0.6, 1);
+  --ease-spring-overshoot: cubic-bezier(0.2, 1.8, 0.4, 1);
   --transition-pro: transform var(--motion-standard), opacity var(--motion-fast);
   
   /* Materials */
@@ -45,6 +48,10 @@
   --glass-blur-sheet: 28px;
   --glass-saturate-control: 170%;
   --glass-saturate-surface: 165%;
+  --material-L1-vibrancy: saturate(1.18) contrast(1.02); --material-L1-blur: blur(40px);
+  --material-L2-vibrancy: saturate(1.14); --material-L2-blur: blur(34px);
+  --material-L3-vibrancy: saturate(1.10); --material-L3-blur: blur(28px);
+  --material-L4-vibrancy: saturate(1.06); --material-L4-blur: blur(20px);
   
   /* Precision Lines */
   --stroke-pro: 1.5px;
@@ -85,6 +92,8 @@
   --motion-standard: 260ms var(--ease-pro);
   --motion-emphasized: 420ms var(--ease-pro);
   --motion-reveal: 380ms var(--ease-pro);
+  --motion-spring: 280ms var(--ease-spring-soft);
+  --motion-spring-emphasized: 420ms var(--ease-spring-snappy);
   --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   --focus-ring-strong: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
   --focus-ring-wide: 0 0 0 4px rgba(var(--accent-rgb), 0.12);
@@ -125,24 +134,19 @@
   --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', monospace;
-  --type-display: 50px;
-  --type-display-mobile: 32px;
-  --type-page-title: 28px;
-  --type-page-title-mobile: 26px;
-  --type-workbench-title: 24px;
-  --type-entity-title: 28px;
-  --type-section-title: 20px;
-  --type-panel-title: 18px;
-  --type-card-title: 15px;
-  --type-body: 14px;
-  --type-control: 13px;
-  --type-caption: 12px;
-  --type-micro: 11px;
+  --type-display-1: 34px; --type-display-1-weight: 700; --type-display-1-tracking: -0.4px;
+  --type-display-2: 28px; --type-display-2-weight: 700; --type-display-2-tracking: -0.3px;
+  --type-title-1: 22px; --type-title-1-weight: 700; --type-title-1-tracking: -0.2px;
+  --type-title-2: 18px; --type-title-2-weight: 650; --type-title-2-tracking: 0px;
+  --type-body: 15px; --type-body-weight: 450; --type-body-tracking: 0px;
+  --type-callout: 14px; --type-callout-weight: 500; --type-callout-tracking: 0px;
+  --type-caption-1: 12px; --type-caption-1-weight: 500; --type-caption-1-tracking: 0.1px;
+  --type-caption-2: 11px; --type-caption-2-weight: 600; --type-caption-2-tracking: 0.2px;
+  --type-display: 50px; --type-display-mobile: 32px; --type-page-title: 28px; --type-page-title-mobile: 26px;
+  --type-workbench-title: 24px; --type-entity-title: 28px; --type-section-title: 20px;
+  --type-panel-title: var(--type-title-1); --type-card-title: var(--type-title-2); --type-control: var(--type-callout); --type-caption: var(--type-caption-1); --type-micro: var(--type-caption-2);
   --type-badge: 10px;
-  --page-title-size: 40px;
-  --page-title-size-mobile: var(--type-display-mobile);
-  --page-title-line: 1.12;
-  --page-title-weight: 650;
+  --page-title-size: 40px; --page-title-size-mobile: var(--type-display-mobile); --page-title-line: 1.12; --page-title-weight: 650;
 
   /* 层级 */
   --z-base: 0;
@@ -198,6 +202,11 @@
   --video-card-radius-mobile: var(--radius-card);
   --video-card-body-padding-mobile: 14px 15px 16px;
   --compact-toolbar-height: 32px;
+  /* 间距阶梯 */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
+  --space-9: 36px; --space-10: 44px; --space-11: 56px; --space-12: 72px;
+  --space-card-inner: var(--space-4); --space-card-gap: var(--space-5); --space-section: var(--space-8); --space-hero: var(--space-12);
   /* 过渡 */
   --transition: transform var(--motion-standard), opacity var(--motion-fast);
   /* 通用白色叠加层 */
@@ -338,6 +347,10 @@ a:hover {
 .text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-muted); }
 .text-accent { color: var(--text-primary); }
+.material-L1 { backdrop-filter: var(--material-L1-blur) var(--material-L1-vibrancy); -webkit-backdrop-filter: var(--material-L1-blur) var(--material-L1-vibrancy); }
+.material-L2 { backdrop-filter: var(--material-L2-blur) var(--material-L2-vibrancy); -webkit-backdrop-filter: var(--material-L2-blur) var(--material-L2-vibrancy); }
+.material-L3 { backdrop-filter: var(--material-L3-blur) var(--material-L3-vibrancy); -webkit-backdrop-filter: var(--material-L3-blur) var(--material-L3-vibrancy); }
+.material-L4 { backdrop-filter: var(--material-L4-blur) var(--material-L4-vibrancy); -webkit-backdrop-filter: var(--material-L4-blur) var(--material-L4-vibrancy); }
 
 /* ===== Page Layout Rails ===== */
 .page-shell {
@@ -1011,6 +1024,13 @@ a:hover {
   .edit-mode .settings-card:nth-child(even) {
     animation-duration: var(--motion-standard);
     animation-direction: reverse;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-spring: 1ms var(--ease-spring-soft);
+    --motion-spring-emphasized: 1ms var(--ease-spring-snappy);
   }
 }
 

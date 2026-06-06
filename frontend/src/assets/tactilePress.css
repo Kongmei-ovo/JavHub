@@ -1,0 +1,42 @@
+:root {
+  --b5-tactile-shadow-light: var(--glass-control-shadow);
+  --b5-tactile-shadow-medium: var(--glass-inner-shadow);
+  --b5-tactile-shadow-strong: var(--glass-inner-shadow);
+}
+
+.tactile-press {
+  display: contents;
+}
+
+.tactile-press[data-disabled="true"] {
+  pointer-events: none;
+}
+
+[data-press-intensity="light"][data-press="true"] {
+  --tactile-press-scale: 0.992;
+  --tactile-press-shadow: var(--b5-tactile-shadow-light, var(--glass-control-shadow));
+}
+
+[data-press-intensity="medium"][data-press="true"] {
+  --tactile-press-scale: 0.985;
+  --tactile-press-shadow: var(--b5-tactile-shadow-medium, var(--glass-inner-shadow));
+}
+
+[data-press-intensity="strong"][data-press="true"] {
+  --tactile-press-scale: 0.972;
+  --tactile-press-shadow: var(--b5-tactile-shadow-strong, var(--glass-inner-shadow));
+}
+
+[data-press="true"][data-press-intensity]:not([data-press-disabled]) {
+  transform: translateY(0.5px) scale(var(--tactile-press-scale, 0.985));
+  box-shadow: var(--tactile-press-shadow, var(--b5-tactile-shadow-medium, var(--glass-inner-shadow)));
+  filter: brightness(0.985);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), box-shadow var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), filter var(--motion-fast, 140ms ease);
+  will-change: transform, box-shadow, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-press="true"][data-press-intensity]:not([data-press-disabled]) {
+    transition: none;
+  }
+}
