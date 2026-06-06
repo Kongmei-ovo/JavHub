@@ -325,15 +325,21 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   content-visibility: auto;
-  contain-intrinsic-size: 1px 390px;
+  contain-intrinsic-size: 1px 450px;
+}
+
+.movie-card-wrap > .apple-video-card {
+  flex: 0 0 auto;
+  width: 100%;
 }
 
 .variant-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: flex-start;
   margin-top: 8px;
   padding: 2px 8px;
   background:
