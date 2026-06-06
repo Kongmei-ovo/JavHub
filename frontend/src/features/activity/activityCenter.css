@@ -221,11 +221,13 @@
 
 .activity-job-progressbar span {
   display: block;
+  width: 100%;
   height: 100%;
-  min-width: 4px;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--text-primary), color-mix(in srgb, var(--text-primary) 54%, var(--bg-primary)));
-  transition: width var(--motion-standard);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--motion-standard);
 }
 
 .activity-job-meta {
@@ -249,13 +251,13 @@
 .activity-status.status-running,
 .activity-status.status-queued {
   border-color: var(--badge-warning-border);
-  background: var(--badge-warning-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--badge-warning-text);
 }
 
 .activity-status.status-completed {
   border-color: var(--badge-success-border);
-  background: var(--badge-success-bg);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
   color: var(--badge-success-text);
 }
 

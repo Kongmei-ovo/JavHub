@@ -168,7 +168,7 @@ export default {
     return {
       activeTab: ['candidates', 'downloaders'].includes(q.tab) ? q.tab : 'tasks',
       tasks: [], candidates: [], stats: { pending: 0, downloading: 0, completed: 0, failed: 0 }, statsLoaded: false, filterStatus: null, timer: null, retryingTasks: {},
-      candidateStats: candidateStats(), candidatePage: Number(q.page || 1) || 1, candidatePageSize: 50, candidateTotal: 0, candidateTotalPages: 1, selectingCandidates: false, selectedCandidateIds: [], bulkCandidateLoading: false, candidateBatchProcessing: '', candidateRuns: [], candidateRunsLoading: false, candidateMutations: {},
+      candidateStats: candidateStats(), candidatePage: Number(this.$route.query.page || 1) || 1, candidatePageSize: 50, candidateTotal: 0, candidateTotalPages: 1, selectingCandidates: false, selectedCandidateIds: [], bulkCandidateLoading: false, candidateBatchProcessing: '', candidateRuns: [], candidateRunsLoading: false, candidateMutations: {},
       candidateFilter: { status: q.status || 'candidate', source: q.source || '', actress_id: q.actress_id || '', q: q.q || '', needs_magnet: q.needs_magnet === '1' ? true : (q.needs_magnet === '0' ? false : null), missing_cover: this.$route.query.missing_cover === '1', latest_event_action: q.latest_event_action || '' },
       magnetEditor: { open: false, candidate: null, value: '' }, candidateDetail: { open: false, loading: false, data: null },
       downloaders: { default_id: '', clients: [], types: [] }, downloaderTypes: createDefaultDownloaderTypes(), savingDownloaders: false, testingDownloaderId: '', downloaderTestMessages: {}, downloaderEditor: { open: false, mode: 'new', originalId: '', draft: null, previousType: '' }, downloaderIdSeed: 1,
@@ -316,7 +316,29 @@ export default {
     candidateFilterPayload(overrides = {}) { return cleanObject({ status: this.candidateFilter.status || 'candidate', source: this.candidateFilter.source || undefined, actress_id: this.candidateFilter.actress_id ? Number(this.candidateFilter.actress_id) : undefined, q: this.candidateFilter.q || undefined, needs_magnet: this.candidateFilter.needs_magnet, missing_cover: this.candidateFilter.missing_cover || undefined, latest_event_action: this.candidateFilter.latest_event_action || undefined, limit: this.candidates.length || 50, ...overrides }) },
     async enrichCandidateMagnet(candidate) { if (this.isCandidateMutating(candidate.id)) return; this.setCandidateMutation(candidate.id, 'enrich'); try { const action = (await api.enrichDownloadCandidateMagnet(candidate.id)).data?.action; if (action === 'magnet_enriched') this.$message?.success?.('已补充 magnet'); else if (action === 'magnet_not_found') this.$message?.warning?.('未找到可用 magnet'); else if (action === 'already_has_magnet') this.$message?.info?.('候选已有 magnet'); await this.loadCandidates() } catch (e) { console.error('Enrich candidate magnet failed:', e) } finally { this.clearCandidateMutation(candidate.id) } },
     async processCandidate(candidate) { if (this.isCandidateMutating(candidate.id)) return; if (!await requestConfirm({ title: '按策略处理候选', message: `确认按当前策略处理 ${candidate.dvd_id || candidate.content_id}？`, details: '可能会补充磁力并下发到下载源；不满足策略时会保持候选状态。', confirmText: '处理' })) return; this.setCandidateMutation(candidate.id, 'process'); try { const action = (await api.processDownloadCandidate(candidate.id, { enrich: true })).data?.action; if (action === 'sent') this.$message?.success?.('候选已下发下载'); else if (action === 'manual_required') this.$message?.info?.('当前为人工批准策略'); else if (action?.startsWith('skipped')) this.$message?.info?.('候选未满足策略条件'); else if (action?.startsWith('failed')) this.$message?.error?.('候选处理失败'); await this.loadCandidates(); await this.loadTasks() } catch (e) { console.error('Process candidate failed:', e) } finally { this.clearCandidateMutation(candidate.id) } },
-    async enrichVisibleCandidateMagnets() { if (this.candidateBatchProcessing) return; const targets = this.candidates.filter(candidate => (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet); if (!targets.length) return this.$message?.info?.('当前列表没有待补磁力的候选'); if (!await requestConfirm({ title: '批量补充磁力', message: `确认为当前列表中的 ${targets.length} 个下载候选查找并写入磁力？当前筛选总量 ${this.candidateTotal} 个。`, details: '会逐个访问候选的磁力来源，并把找到的磁力保存到候选记录。', confirmText: '开始补磁力' })) return; this.candidateBatchProcessing = 'enrich'; try { let enriched = 0; for (const candidate of targets) if ((await api.enrichDownloadCandidateMagnet(candidate.id)).data?.action === 'magnet_enriched') enriched += 1; this.$message?.success?.(`已检查 ${targets.length} 个，补磁力 ${enriched} 个`); await this.loadCandidates() } catch (e) { console.error('Batch enrich candidates failed:', e) } finally { this.candidateBatchProcessing = '' } },
+    async enrichVisibleCandidateMagnets() {
+      if (this.candidateBatchProcessing) return
+      const targets = this.candidates.filter(candidate => (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet)
+      if (!targets.length) return this.$message?.info?.('当前列表没有待补磁力的候选')
+      const confirmed = await requestConfirm({
+        title: '批量补充磁力',
+        message: `确认为当前列表中的 ${targets.length} 个下载候选查找并写入磁力？当前筛选总量 ${this.candidateTotal} 个。`,
+        details: '会逐个访问候选的磁力来源，并把找到的磁力保存到候选记录。',
+        confirmText: '开始补磁力',
+      })
+      if (!confirmed) return
+      this.candidateBatchProcessing = 'enrich'
+      try {
+        let enriched = 0
+        for (const candidate of targets) if ((await api.enrichDownloadCandidateMagnet(candidate.id)).data?.action === 'magnet_enriched') enriched += 1
+        this.$message?.success?.(`已检查 ${targets.length} 个，补磁力 ${enriched} 个`)
+        await this.loadCandidates()
+      } catch (e) {
+        console.error('Batch enrich candidates failed:', e)
+      } finally {
+        this.candidateBatchProcessing = ''
+      }
+    },
     async processVisibleCandidates() { if (this.candidateBatchProcessing) return; this.candidateBatchProcessing = 'dry-run'; let preview; try { preview = (await api.processDownloadCandidates(this.candidateFilterPayload({ enrich: true, dry_run: true }))).data || {} } catch (e) { console.error('Preview candidate processing failed:', e); this.candidateBatchProcessing = ''; return } if (!await requestConfirm({ title: '按策略处理候选', message: this.processPreviewMessage(preview), details: this.processPreviewDetails(preview.counts || {}, preview.limits || {}), confirmText: '处理' })) return; this.candidateBatchProcessing = 'process'; try { const resp = await api.processDownloadCandidates(this.candidateFilterPayload({ enrich: true })), counts = resp.data?.counts || {}, skipped = (counts.manual_required || 0) + (counts.skipped_source || 0) + (counts.skipped_missing_magnet || 0) + (counts.skipped_status || 0); this.$message?.success?.(`处理 ${resp.data?.total || 0} 个：下发 ${counts.sent || 0}，跳过 ${skipped}`); await this.loadCandidates(); await this.loadCandidateRuns(); await this.loadTasks() } catch (e) { console.error('Batch process candidates failed:', e) } finally { this.candidateBatchProcessing = '' } },
     processPreviewMessage(preview = {}) { const counts = preview.counts || {}; return `预演 ${preview.total || 0} 个：可直接下发 ${counts.would_send || 0}，需补磁力 ${counts.would_enrich_magnet || 0}，受上限跳过 ${counts.would_skip_limit || 0}。` },
     processPreviewDetails(counts = {}, limits = {}) { const skipped = Object.entries(counts).filter(([action]) => action.startsWith('skipped') || action === 'manual_required').reduce((sum, [, value]) => sum + Number(value || 0), 0), remaining = limits.remaining === null || limits.remaining === undefined ? '不限' : limits.remaining; return `策略跳过 ${skipped}。单次上限 ${limits.per_run || '不限'}，24 小时上限 ${limits.per_24h || '不限'}，当前剩余额度 ${remaining}。` },

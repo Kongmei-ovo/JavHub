@@ -27,6 +27,9 @@ const downloadCandidatePanel = readFileSync(new URL('../features/candidates/Down
 const home = [
   homeVue,
   downloadCandidatePanel,
+  readFileSync(new URL('../features/home/CandidateOverview.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/home/DownloadStatsBar.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/home/TaskList.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
 ].join('\n')
@@ -68,7 +71,14 @@ const search = [
   readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
 ].join('\n')
 const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
-const supplement = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
+const supplement = [
+  readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/JobsTab.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/MoviesTab.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/SourcesHealthTab.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/RepairLaneTab.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/useSupplementApi.js', import.meta.url), 'utf8'),
+].join('\n')
 const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
 const supplementMoviesPanel = readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8')
@@ -360,11 +370,11 @@ test('subscription page defers actor metadata loading until a subscription is op
 })
 
 test('subscription page uses list-level candidate counts instead of loading full new movie payloads', () => {
-  const totalNewMoviesBlock = subscription.match(/const totalNewMovies = computed\(\(\) => \{[\s\S]*?\n\}\)/)?.[0] || ''
-  const loadSubsBlock = subscription.match(/async function loadSubs\(\) \{[\s\S]*?\n\}/)?.[0] || ''
-
-  assert.match(totalNewMoviesBlock, /subs\.value\.reduce/)
+  // Tolerate either a block-form computed(() => { ... }) or a single-expression
+  // computed(() => subs.value.reduce(...)).
+  assert.match(subscription, /const totalNewMovies = computed\([\s\S]{0,400}?subs\.value\.reduce/)
   assert.match(subscription, /sub\.candidate_count/)
+  const loadSubsBlock = subscription.match(/async function loadSubs\(\)[\s\S]*?\n\}/)?.[0] || ''
   assert.doesNotMatch(loadSubsBlock, /loadNewMovieBadges|api\.getNewMovies/)
   assert.doesNotMatch(subscription, /api\.getNewMovies\(|function loadNewMovieBadges|newMovieMap/)
 })
@@ -1301,7 +1311,10 @@ test('global dropdowns use the unified glass select control', () => {
   assert.match(inventory, /v-model="pageSize"[\s\S]*@change="onPageSizeChange"/)
   assert.match(supplementFeatureSource, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
   assert.match(supplement, /value: false, label: '未匹配'/)
-  assert.match(supplement, /providerSourceOptions\(\)/)
+  // After the SupplementManagement split this lives in useSupplementApi as a
+  // computed; accept either the legacy `providerSourceOptions()` call form or
+  // the composable export form.
+  assert.match(supplement, /providerSourceOptions/)
   assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)
   assert.match(search, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
   assert.match(discoveryDetail, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)

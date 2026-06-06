@@ -42,7 +42,7 @@
               aria-valuemax="100"
               :aria-label="`${job.label || job.kind || '作业'}进度`"
             >
-              <span :style="{ width: `${job.progress}%` }"></span>
+              <span :style="{ transform: `scaleX(${Math.max(0, Math.min(100, job.progress || 0)) / 100})` }"></span>
             </div>
             <div class="activity-job-meta">
               <span class="activity-status" :class="`status-${job.status || 'unknown'}`">{{ statusLabel(job.status) }}</span>
