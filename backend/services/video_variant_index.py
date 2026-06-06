@@ -181,7 +181,7 @@ def start_variant_index_job() -> dict[str, Any]:
 def run_variant_index_job(job_id: int, *, limit: int | None = None) -> dict[str, Any]:
     update_variant_group_job(job_id, status="running", processed=0, total=0)
     try:
-        rows = list(scan_derived_video_rows(limit=limit))
+        rows = list(scan_derived_video_rows() if limit is None else scan_derived_video_rows(limit=limit))
         rows = hydrate_rows_with_actresses(rows)
         update_variant_group_job(job_id, total=len(rows), processed=len(rows))
         groups = build_variant_index_groups(rows)

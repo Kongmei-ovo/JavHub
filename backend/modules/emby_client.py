@@ -94,7 +94,7 @@ class EmbyClient:
         except Exception:
             return []
 
-    async def get_items_with_people(self, limit: int = 9999, start: int = 0) -> dict:
+    async def get_items_with_people(self, limit: int = 500, start: int = 0) -> dict:
         """分页获取影片（含People演员信息），返回 {items, totalCount}"""
         try:
             result = await self._get(
@@ -169,22 +169,33 @@ class EmbyClient:
 
     async def get_all_actresses(self) -> list[dict]:
         """获取所有演员及其在Emby的影片数"""
-        items = await self.get_items(limit=9999)
         actors_map: dict[int, dict] = {}
-        for item in items:
-            people = item.get("People", [])
-            for person in people:
-                if person.get("Type") != "Actor":
-                    continue
-                actress_id = int(person.get("Id"))
-                name = person.get("Name", "Unknown")
-                if actress_id not in actors_map:
-                    actors_map[actress_id] = {
-                        "actress_id": actress_id,
-                        "actress_name": name,
-                        "video_count": 0,
-                    }
-                actors_map[actress_id]["video_count"] += 1
+        page_size = 500
+        start = 0
+
+        while True:
+            result = await self.get_items_with_people(limit=page_size, start=start)
+            items = result.get("items", [])
+            if not items:
+                break
+            for item in items:
+                people = item.get("People", [])
+                for person in people:
+                    if person.get("Type") != "Actor":
+                        continue
+                    actress_id = int(person.get("Id"))
+                    name = person.get("Name", "Unknown")
+                    if actress_id not in actors_map:
+                        actors_map[actress_id] = {
+                            "actress_id": actress_id,
+                            "actress_name": name,
+                            "video_count": 0,
+                        }
+                    actors_map[actress_id]["video_count"] += 1
+            start += len(items)
+            total = result.get("totalCount", 0)
+            if start >= total:
+                break
         return list(actors_map.values())
 
     async def get_actress_videos(self, actress_id: int) -> list[dict]:

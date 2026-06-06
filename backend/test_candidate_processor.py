@@ -62,7 +62,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         )
 
         with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=7)):
-            with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 7, "status": "downloading"}]):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 7, "status": "downloading"}):
                 result = await process_candidate(candidate["id"], policy="rules")
 
         self.assertEqual(result["action"], "sent")
@@ -90,7 +90,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         with patch("services.candidate_processor.find_best_magnet", new=AsyncMock(return_value=magnet)):
             with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=9)):
-                with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 9, "status": "downloading"}]):
+                with patch("services.candidate_processor.get_download_task", return_value={"id": 9, "status": "downloading"}):
                     result = await process_candidate(candidate["id"], policy="auto")
 
         updated = get_download_candidate(candidate["id"])
@@ -138,7 +138,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         with patch("services.candidate_processor.find_best_magnet", new=AsyncMock(return_value=source_result)):
             with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=9)) as create:
-                with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 9, "status": "downloading"}]):
+                with patch("services.candidate_processor.get_download_task", return_value={"id": 9, "status": "downloading"}):
                     result = await process_candidate(candidate["id"], policy="auto")
 
         updated = get_download_candidate(candidate["id"])
@@ -177,7 +177,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         )
 
         with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=12)):
-            with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 12, "status": "failed", "error_msg": "OpenList API 调用失败"}]):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 12, "status": "failed", "error_msg": "OpenList API 调用失败"}):
                 result = await process_candidate(candidate["id"], policy="rules")
 
         self.assertEqual(result["action"], "failed_downloader")
@@ -251,7 +251,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         )
 
         with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=15)):
-            with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 15, "status": "downloading"}]):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 15, "status": "downloading"}):
                 result = await process_candidates(
                     filters={"status": "candidate", "source": "subscription"},
                     policy="rules",
@@ -295,7 +295,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         with patch("config.Config.automation_max_auto_downloads_per_run", new_callable=PropertyMock, return_value=1):
             with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=31)) as create:
-                with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 31, "status": "downloading"}]):
+                with patch("services.candidate_processor.get_download_task", return_value={"id": 31, "status": "downloading"}):
                     result = await process_candidates(
                         filters={"status": "candidate", "source": "subscription"},
                         policy="rules",
@@ -338,7 +338,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         )
 
         with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=21)):
-            with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 21, "status": "failed", "error_msg": "OpenList failed"}]):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 21, "status": "failed", "error_msg": "OpenList failed"}):
                 failed = await process_candidates(
                     filters={"status": "candidate", "source": "subscription"},
                     policy="rules",
@@ -348,7 +348,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         self.assertEqual(get_download_candidate(candidate["id"])["status"], "failed")
 
         with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=22)):
-            with patch("services.candidate_processor.get_download_tasks", return_value=[{"id": 22, "status": "downloading"}]):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 22, "status": "downloading"}):
                 retried = await retry_failed_candidates_from_run(failed["run_id"], operator="manual")
 
         runs = list_candidate_process_runs()

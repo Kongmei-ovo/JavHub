@@ -155,6 +155,24 @@ class VideoVariantIndexServiceTest(TempPostgresMixin, unittest.TestCase):
         self.assertEqual(result["status"], "completed")
         purge.assert_called_once_with()
 
+    def test_run_variant_index_job_scans_all_rows_by_default(self):
+        from database.video_variant_index import add_variant_group_job
+        from services.video_variant_index import run_variant_index_job
+
+        rows = [
+            {"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "Title", "service_code": "mono", "release_date": "2023-02-21", "runtime_mins": 170},
+            {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital", "release_date": "2023-02-17", "runtime_mins": 171},
+        ]
+        job_id = add_variant_group_job()
+
+        with patch("services.video_variant_index.scan_derived_video_rows", return_value=rows) as scan, \
+             patch("services.video_variant_index.hydrate_rows_with_actresses", side_effect=lambda value: value), \
+             patch("services.cache.purge_response_cache", return_value=7):
+            result = run_variant_index_job(job_id)
+
+        self.assertEqual(result["status"], "completed")
+        scan.assert_called_once_with()
+
 
 if __name__ == "__main__":
     unittest.main()

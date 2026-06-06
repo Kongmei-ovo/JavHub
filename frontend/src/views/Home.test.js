@@ -1,10 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
+const candidatePanelUrl = new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url)
+const candidatePanelSource = existsSync(candidatePanelUrl) ? readFileSync(candidatePanelUrl, 'utf8') : ''
 const externalStyle = readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8')
-const source = `${vueSource}\n${externalStyle}`
+const candidateStyleUrl = new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url)
+const candidateStyle = existsSync(candidateStyleUrl) ? readFileSync(candidateStyleUrl, 'utf8') : ''
+const source = `${vueSource}\n${candidatePanelSource}\n${externalStyle}\n${candidateStyle}`
 
 function cssBlocks(content, selector) {
   const searchable = content.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -59,15 +63,27 @@ function singleLayerGlassBackgrounds(css) {
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
   assert.match(source, /import \{ defineAsyncComponent \} from 'vue'/)
   assert.match(source, /const DownloaderManagementPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/downloaders\/DownloaderManagementPanel\.vue'\)\)/)
-  assert.match(source, /components:\s*\{ CandidateRunPanel, DownloaderManagementPanel \}/)
+  assert.match(source, /components:\s*\{ DownloadCandidatePanel, DownloaderManagementPanel \}/)
   assert.match(source, /<DownloaderManagementPanel[\s\S]*v-else-if="activeTab === 'downloaders'"/)
   assert.doesNotMatch(source, /<div\s+v-else-if="activeTab === 'downloaders'"\s+class="downloaders-panel apple-reveal"/)
 })
 
-test('home page keeps heavyweight styles in an external scoped stylesheet', () => {
+test('home lazy-loads download candidate workspace outside the base downloads chunk', () => {
+  assert.match(vueSource, /const DownloadCandidatePanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/candidates\/DownloadCandidatePanel\.vue'\)\)/)
+  assert.match(vueSource, /<DownloadCandidatePanel\s+v-else-if="activeTab === 'candidates'"/)
+  assert.doesNotMatch(vueSource, /搜索番号、标题、演员/)
+  assert.doesNotMatch(vueSource, /JavInfo 数据库导入/)
+  assert.match(candidatePanelSource, /搜索番号、标题、演员/)
+  assert.match(candidatePanelSource, /<CandidateRunPanel/)
+  assert.match(candidatePanelSource, /<style scoped src="\.\/downloadCandidatePanel\.css"><\/style>/)
+  assert.ok(candidateStyle.length > 10000, 'candidate lazy chunk should carry its own workspace CSS')
+})
+
+test('home page keeps heavyweight styles in external scoped stylesheets', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/home\/home\.css"><\/style>/)
-  assert.ok(externalStyle.length > 20000, 'external home stylesheet should carry the moved workspace CSS')
-  assert.ok(vueSource.split('\n').length < 1500, 'Home.vue should stay small enough to review and parse quickly')
+  assert.ok(externalStyle.length > 8000, 'external home stylesheet should carry the base workspace CSS')
+  assert.ok(candidateStyle.length > 10000, 'candidate workspace stylesheet should travel with the lazy chunk')
+  assert.ok(vueSource.split('\n').length < 1300, 'Home.vue should stay small enough to review and parse quickly')
 })
 
 test('home candidate controls use shared Apple glass tokens', () => {

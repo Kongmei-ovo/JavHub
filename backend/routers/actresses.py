@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from fastapi.params import Query as QueryParam
 from typing import Any
+import math
 from modules.info_client import get_info_client
 from services import cache
 from services.video_variants import enrich_video_variants
@@ -13,6 +14,7 @@ _LIST_CACHE_NAMESPACE = "actresses"
 _LIST_CACHE_TTL = 120
 _VIDEOS_CACHE_NAMESPACE = "actress_videos"
 _VIDEOS_CACHE_TTL = 600
+_GROUPED_VIDEOS_CACHE_NAMESPACE = "actress_videos_grouped_collection"
 
 
 class BatchActressVideosRequest(BaseModel):
@@ -140,6 +142,39 @@ async def get_actress_videos(
     async def produce():
         client = get_info_client()
         cache_bypass = cache.should_bypass_response_cache(_cache_control)
+        if _variant_mode == "grouped":
+            result = await _get_grouped_actress_videos_collection(
+                client,
+                actress_id=actress_id,
+                include_supplement=_inc,
+                service_code=_svc,
+                year=_yr,
+                sort_by=_srt,
+                include_total=_include_total,
+                include_variant_explanations=_include_variant_explanations,
+                cache_bypass=cache_bypass,
+            )
+            total_count = len(result.get("data") or [])
+            start = (page - 1) * page_size
+            page_items = list(result.get("data") or [])[start:start + page_size]
+            if _variant_scope == "indexed" and page_items:
+                indexed_items = apply_indexed_variant_groups(
+                    page_items,
+                    include_explanations=_include_variant_explanations,
+                )
+                page_items = _prefer_larger_variant_groups(page_items, indexed_items)
+            response = dict(result)
+            response.update(
+                {
+                    "data": page_items,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_count": total_count,
+                    "total_pages": _total_pages(total_count, page_size),
+                }
+            )
+            return response
+
         if cache_bypass:
             result = await client.get_actress_videos(
                 actress_id, page=page, page_size=page_size,
@@ -166,11 +201,6 @@ async def get_actress_videos(
                 variant_mode=_variant_mode,
                 include_explanations=_include_variant_explanations,
             )
-            if _variant_mode == "grouped" and _variant_scope == "indexed":
-                result["data"] = apply_indexed_variant_groups(
-                    result["data"],
-                    include_explanations=_include_variant_explanations,
-                )
         return result
 
     return await cache.get_or_set_response(
@@ -180,6 +210,83 @@ async def get_actress_videos(
         ttl=_VIDEOS_CACHE_TTL,
         bypass=cache.should_bypass_response_cache(_cache_control),
     )
+
+
+async def _get_grouped_actress_videos_collection(
+    client: Any,
+    *,
+    actress_id: int,
+    include_supplement: str | None,
+    service_code: str | None,
+    year: int | None,
+    sort_by: str | None,
+    include_total: bool | None,
+    include_variant_explanations: bool,
+    cache_bypass: bool,
+) -> dict[str, Any]:
+    cache_params = {
+        "actress_id": actress_id,
+        "include_supplement": include_supplement,
+        "service_code": service_code,
+        "year": year,
+        "sort_by": sort_by,
+        "include_total": include_total,
+        "include_variant_explanations": include_variant_explanations,
+    }
+
+    async def produce() -> dict[str, Any]:
+        result = await client.get_all_actress_videos(
+            actress_id,
+            include_supplement=include_supplement,
+            service_code=service_code,
+            year=year,
+            sort_by=sort_by,
+            include_total=include_total,
+            cache_bypass=cache_bypass,
+        )
+        items = result.get("data", []) if isinstance(result, dict) else []
+        if isinstance(items, list) and items:
+            translated = await _apply_translation_to_videos(items, allow_network=False)
+            result = dict(result)
+            result["data"] = enrich_video_variants(
+                translated,
+                variant_mode="grouped",
+                include_explanations=include_variant_explanations,
+            )
+        elif isinstance(result, dict):
+            result = dict(result)
+            result["data"] = []
+        else:
+            result = {"data": []}
+        return result
+
+    return await cache.get_or_set_response(
+        _GROUPED_VIDEOS_CACHE_NAMESPACE,
+        cache_params,
+        produce,
+        ttl=_VIDEOS_CACHE_TTL,
+        bypass=cache_bypass,
+    )
+
+
+def _total_pages(total_count: int, page_size: int) -> int:
+    if total_count <= 0:
+        return 0
+    return int(math.ceil(total_count / max(1, page_size)))
+
+
+def _prefer_larger_variant_groups(
+    local_items: list[dict[str, Any]],
+    indexed_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if len(local_items) != len(indexed_items):
+        return indexed_items
+    result: list[dict[str, Any]] = []
+    for local_item, indexed_item in zip(local_items, indexed_items):
+        local_count = int(local_item.get("variant_group_count") or 1)
+        indexed_count = int(indexed_item.get("variant_group_count") or 1)
+        result.append(indexed_item if indexed_count > local_count else local_item)
+    return result
 
 
 @router.post("/batch_videos")

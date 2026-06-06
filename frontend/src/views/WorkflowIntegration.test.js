@@ -22,9 +22,13 @@ const libraryOrganize = [
   libraryOrganizeVue,
   readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
 ].join('\n')
+const homeVue = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
+const downloadCandidatePanel = readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8')
 const home = [
-  readFileSync(new URL('./Home.vue', import.meta.url), 'utf8'),
+  homeVue,
+  downloadCandidatePanel,
   readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const operations = [
   readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
@@ -43,9 +47,12 @@ const actor = [
   readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8'),
 ].join('\n')
 const configVue = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
-const configStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
-const config = [configVue, configStyle].join('\n')
 const advancedSettingsPanel = readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8')
+const configStyles = [
+  readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
+].join('\n')
+const config = [configVue, advancedSettingsPanel, configStyles].join('\n')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
 const search = [
@@ -56,9 +63,17 @@ const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.met
 const supplement = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
 const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
+const supplementMoviesPanel = readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8')
+const supplementDiagnosticsDialog = readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8')
 const candidateRunPanel = readFileSync(new URL('../features/candidates/CandidateRunPanel.vue', import.meta.url), 'utf8')
-const configFeatureSource = [config, advancedSettingsPanel, configDefaults].join('\n')
-const supplementFeatureSource = [supplement, supplementActorPicker, supplementSourceHealth].join('\n')
+const configFeatureSource = [config, configDefaults].join('\n')
+const supplementFeatureSource = [
+  supplement,
+  supplementActorPicker,
+  supplementSourceHealth,
+  supplementMoviesPanel,
+  supplementDiagnosticsDialog,
+].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
 const duplicates = readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8')
@@ -83,7 +98,12 @@ const viteConfig = readFileSync(new URL('../../vite.config.js', import.meta.url)
 const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
 const translationJobs = [
   readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/TranslationSourcesPanel.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/TranslationReviewPanel.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationPanelControls.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationSourcesPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationReviewPanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const dockerCompose = readFileSync(new URL('../../../docker-compose.yml', import.meta.url), 'utf8')
 const dockerBuildWorkflow = readFileSync(new URL('../../../.github/workflows/docker-build.yml', import.meta.url), 'utf8')
@@ -1215,7 +1235,7 @@ test('global dropdowns use the unified glass select control', () => {
   assert.match(inventory, /import GlassSelect/)
   assert.match(inventory, /v-model="sortBy"[\s\S]*@change="doSearch"/)
   assert.match(inventory, /v-model="pageSize"[\s\S]*@change="onPageSizeChange"/)
-  assert.match(supplement, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
+  assert.match(supplementFeatureSource, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
   assert.match(supplement, /value: false, label: '未匹配'/)
   assert.match(supplement, /providerSourceOptions\(\)/)
   assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)

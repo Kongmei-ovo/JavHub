@@ -93,15 +93,32 @@ class WatchlistPipeline:
             self.emby_client = get_emby_client()
         return self.emby_client
 
-    async def fetch_actress_videos(self, actress_id: int, page_size: int = 999) -> list[dict]:
+    async def fetch_actress_videos(self, actress_id: int, page_size: int = 100) -> list[dict]:
         info = await self._info()
-        result = await info.get_actress_videos(
-            actress_id,
-            page=1,
-            page_size=page_size,
-            include_supplement="1",
-        )
-        return result.get("data", []) if isinstance(result, dict) else []
+        safe_page_size = max(1, min(int(page_size or 100), 100))
+        page = 1
+        videos: list[dict] = []
+
+        while True:
+            result = await info.get_actress_videos(
+                actress_id,
+                page=page,
+                page_size=safe_page_size,
+                include_supplement="1",
+            )
+            rows = result.get("data", []) if isinstance(result, dict) else result
+            rows = rows if isinstance(rows, list) else []
+            videos.extend(rows)
+
+            total_pages = result.get("total_pages") if isinstance(result, dict) else None
+            if isinstance(total_pages, int):
+                if page >= total_pages:
+                    break
+            elif len(rows) < safe_page_size:
+                break
+            page += 1
+
+        return videos
 
     async def generate_candidates_for_actress(
         self,
@@ -110,7 +127,7 @@ class WatchlistPipeline:
         trigger_source: str = "subscription",
         reason: str = "",
         emby_snapshot: list[dict] | None = None,
-        page_size: int = 999,
+        page_size: int = 100,
     ) -> dict:
         """Fetch complete filmography and upsert candidates for missing movies."""
         stats = PipelineStats()

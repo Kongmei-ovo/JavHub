@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 
 class SupplementConfigTest(unittest.TestCase):
@@ -319,6 +319,48 @@ class InfoClientSupplementProxyTest(unittest.IsolatedAsyncioTestCase):
                 "year": 2026,
                 "sort_by": "release_date:desc",
             },
+        )
+
+    async def test_get_all_actress_videos_uses_bounded_page_size_for_fallback(self):
+        client = InfoClient()
+
+        with patch.object(client, "_get_all_pages", new_callable=AsyncMock) as get_all_pages:
+            get_all_pages.side_effect = [
+                [],
+                [{"content_id": "mrec00002"}],
+            ]
+
+            result = await client.get_all_actress_videos(
+                1020504,
+                include_supplement="1",
+                service_code="digital",
+                include_total=False,
+                cache_bypass=True,
+            )
+
+        self.assertEqual(result["data"][0]["content_id"], "mrec00002")
+        get_all_pages.assert_has_awaits(
+            [
+                call(
+                    "/api/v1/actresses/1020504/videos",
+                    page_size=100,
+                    cache_bypass=True,
+                    params={
+                        "include_total": False,
+                        "include_supplement": "1",
+                        "service_code": "digital",
+                    },
+                ),
+                call(
+                    "/api/v1/actresses/1020504/videos",
+                    page_size=100,
+                    cache_bypass=True,
+                    params={
+                        "include_total": False,
+                        "service_code": "digital",
+                    },
+                ),
+            ]
         )
 
 

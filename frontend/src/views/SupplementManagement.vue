@@ -108,84 +108,30 @@
         >{{ segment.label }}</button>
       </nav>
 
-      <section v-if="activeWorkspaceSegment === 'movies'" class="workspace-panel apple-surface">
-        <div class="panel-header">
-          <div>
-            <h2>作品字段</h2>
-          </div>
-          <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="batchEnrichMovies">
-            {{ batchEnriching ? '批量排队中...' : '批量补详情' }}
-          </button>
-          <button class="btn btn-ghost btn-sm" type="button" :disabled="candidateImporting" @click="createDownloadCandidates">
-            {{ candidateImporting ? '生成中...' : '生成下载候选' }}
-          </button>
-        </div>
-        <div class="filter-bar">
-          <GlassSelect
-            v-model="movieFilters.matched"
-            :options="matchFilterOptions"
-            size="compact"
-            aria-label="影片匹配状态"
-            @change="applyMovieFilters"
-          />
-          <GlassSelect
-            v-model="movieFilters.quality"
-            :options="qualityFilterOptions"
-            size="compact"
-            aria-label="影片质量筛选"
-            @change="applyMovieFilters"
-          />
-          <input
-            v-model="movieFilters.q"
-            placeholder="搜索番号/标题"
-            class="filter-input"
-            @keyup.enter="applyMovieFilters"
-          />
-          <button class="btn btn-ghost btn-sm" type="button" @click="applyMovieFilters">筛选</button>
-        </div>
-        <div v-if="moviesLoading" class="loading-wrap"><div class="spinner-large"></div></div>
-        <div v-else class="ios-list">
-          <article v-for="movie in supplementMovies" :key="movie.id" class="ios-row movie-row">
-            <img
-              v-if="movieCover(movie)"
-              :src="movieCover(movie)"
-              class="movie-cover"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-              alt=""
-              @error="applyImageFallback($event)"
-            />
-            <div v-else class="movie-cover movie-cover-empty">无封面</div>
-            <div class="movie-row-main">
-              <strong>{{ movie.dvd_id || movie.canonical_number || '—' }}</strong>
-              <span>{{ movie.title || movie.dvd_id || movie.canonical_number || '—' }}</span>
-              <small>{{ movie.release_date || '未知日期' }}</small>
-              <div class="movie-meta">
-                <span v-if="movie.runtime_mins">{{ movie.runtime_mins }} 分钟</span>
-                <span v-if="movie.maker_name">{{ movie.maker_name }}</span>
-                <span v-if="movieCategories(movie)" class="movie-meta-cats">{{ movieCategories(movie) }}</span>
-              </div>
-            </div>
-            <div class="movie-row-actions">
-              <span class="status-pill" :class="`match-${movieMatchClass(movie)}`">{{ movieMatchLabel(movie) }}</span>
-              <button
-                v-if="movie.source_movie_id"
-                class="btn btn-primary btn-sm"
-                type="button"
-                :disabled="enrichingMovies[movie.id]"
-                @click="enrichMovie(movie)"
-              >{{ enrichingMovies[movie.id] ? '排队中...' : '补详情' }}</button>
-              <button class="btn btn-ghost btn-sm" type="button" @click="openMovieSources(movie)">诊断</button>
-            </div>
-          </article>
-          <div v-if="!supplementMovies.length" class="empty-inline">暂无补全影片</div>
-        </div>
-        <div v-if="moviesTotalPages > 1" class="pagination">
-          <button class="btn btn-ghost btn-sm" :disabled="moviePage <= 1" @click="moviePage--; loadMovies()">上一页</button>
-          <span>{{ moviePage }} / {{ moviesTotalPages }}</span>
-          <button class="btn btn-ghost btn-sm" :disabled="moviePage >= moviesTotalPages" @click="moviePage++; loadMovies()">下一页</button>
-        </div>
-      </section>
+      <SupplementMoviesPanel
+        v-if="activeWorkspaceSegment === 'movies'"
+        :movie-filters="movieFilters"
+        :match-filter-options="matchFilterOptions"
+        :quality-filter-options="qualityFilterOptions"
+        :movies-loading="moviesLoading"
+        :supplement-movies="supplementMovies"
+        :movies-total-pages="moviesTotalPages"
+        :movie-page="moviePage"
+        :batch-enriching="batchEnriching"
+        :candidate-importing="candidateImporting"
+        :enriching-movies="enrichingMovies"
+        :apply-image-fallback="applyImageFallback"
+        :movie-cover="movieCover"
+        :movie-categories="movieCategories"
+        :movie-match-class="movieMatchClass"
+        :movie-match-label="movieMatchLabel"
+        @apply-filters="applyMovieFilters"
+        @batch-enrich="batchEnrichMovies"
+        @create-candidates="createDownloadCandidates"
+        @enrich="enrichMovie"
+        @open-sources="openMovieSources"
+        @go-page="goMoviePage"
+      />
 
       <section v-if="activeWorkspaceSegment === 'jobs'" class="workspace-panel apple-surface">
         <div class="panel-header">
@@ -319,101 +265,23 @@
       </div>
     </section>
 
-    <div v-if="sourceDiagnosticsOpen" class="diagnostics-overlay" @click.self="closeMovieSources">
-      <div class="diagnostics-panel apple-surface">
-        <div class="diagnostics-header">
-          <div>
-            <h2>{{ diagnosticsMovieTitle }}</h2>
-            <p>{{ diagnosticsMovieSubtitle }}</p>
-          </div>
-          <button class="btn btn-ghost btn-sm" type="button" @click="closeMovieSources">关闭</button>
-        </div>
-        <div v-if="sourceDiagnosticsLoading" class="loading-wrap"><div class="spinner-large"></div></div>
-        <div v-else-if="sourceDiagnostics" class="diagnostics-body">
-          <section class="diagnostics-section">
-            <h3>选中字段</h3>
-            <div v-if="sourceDiagnostics.chosen_fields?.length" class="diagnostics-table">
-              <div class="diagnostics-row diagnostics-row-head">
-                <span>字段</span>
-                <span>来源</span>
-                <span>值</span>
-              </div>
-              <div v-for="field in sourceDiagnostics.chosen_fields" :key="`chosen-${field.field_name}`" class="diagnostics-row">
-                <span>{{ fieldLabel(field.field_name) }}</span>
-                <span>{{ field.source }}</span>
-                <span class="diagnostics-value">{{ fieldValuePreview(field.field_value) }}</span>
-              </div>
-            </div>
-            <div v-else class="empty-inline">暂无字段来源</div>
-          </section>
-          <section class="diagnostics-section">
-            <h3>源身份</h3>
-            <div v-if="sourceDiagnostics.identities?.length" class="identity-list">
-              <a
-                v-for="identity in sourceDiagnostics.identities"
-                :key="`${identity.source}-${identity.source_movie_id}`"
-                :href="identity.source_url || '#'"
-                class="identity-chip"
-                target="_blank"
-              >{{ identity.source }}: {{ identity.source_movie_id }}</a>
-            </div>
-            <div v-else class="empty-inline">暂无源身份</div>
-          </section>
-          <section class="diagnostics-section">
-            <h3>详情来源</h3>
-            <div v-if="sourceDiagnostics.details?.length" class="detail-source-list">
-              <div v-for="detail in sourceDiagnostics.details" :key="`${detail.source}-${detail.source_movie_id}`" class="detail-source-item">
-                <strong>{{ detail.source }} · {{ detail.source_movie_id }}</strong>
-                <span>{{ [detail.runtime_mins && `${detail.runtime_mins} 分钟`, detail.maker_name, detail.label_name, detail.genres?.slice(0, 4).join(' / ')].filter(Boolean).join(' · ') }}</span>
-              </div>
-            </div>
-            <div v-else class="empty-inline">暂无详情来源</div>
-          </section>
-          <section class="diagnostics-section">
-            <h3>匹配候选</h3>
-            <div class="manual-match-bar">
-              <input
-                v-model="manualContentId"
-                placeholder="输入内容编号人工确认"
-                class="filter-input"
-                @keyup.enter="manualMatchMovie()"
-              />
-              <button class="btn btn-primary btn-sm" type="button" :disabled="manualActionLoading || !manualContentId.trim()" @click="manualMatchMovie()">确认匹配</button>
-              <button class="btn btn-ghost btn-sm" type="button" :disabled="manualActionLoading" @click="manualUnmatchMovie">解除匹配</button>
-              <button class="btn btn-ghost btn-sm danger" type="button" :disabled="manualActionLoading" @click="manualIgnoreMovie">忽略</button>
-            </div>
-            <div v-if="sourceDiagnostics.match_candidates?.length" class="diagnostics-table">
-              <div class="diagnostics-row diagnostics-row-head diagnostics-row-candidates">
-                <span>内容编号</span>
-                <span>分数</span>
-                <span>状态</span>
-                <span>操作</span>
-              </div>
-              <div v-for="candidate in sourceDiagnostics.match_candidates" :key="candidate.candidate_content_id" class="diagnostics-row diagnostics-row-candidates">
-                <span>{{ candidate.candidate_content_id }}</span>
-                <span>{{ candidate.score }}</span>
-                <span>{{ candidate.status }}</span>
-                <span>
-                  <button class="btn btn-ghost btn-xs" type="button" :disabled="manualActionLoading" @click="manualMatchMovie(candidate.candidate_content_id)">确认</button>
-                </span>
-              </div>
-            </div>
-            <div v-else class="empty-inline">暂无匹配候选</div>
-          </section>
-          <section class="diagnostics-section">
-            <h3>人工校正记录</h3>
-            <div v-if="sourceDiagnostics.manual_actions?.length" class="manual-action-list">
-              <div v-for="action in sourceDiagnostics.manual_actions" :key="`${action.action}-${action.created_at}`" class="manual-action-item">
-                <strong>{{ manualActionLabel(action.action) }}</strong>
-                <span>{{ action.content_id || action.previous_content_id || '无内容编号' }}</span>
-                <small>{{ action.reason || '未填写原因' }} · {{ formatActionTime(action.created_at) }}</small>
-              </div>
-            </div>
-            <div v-else class="empty-inline">暂无人工校正记录</div>
-          </section>
-        </div>
-      </div>
-    </div>
+    <SupplementSourceDiagnosticsDialog
+      v-if="sourceDiagnosticsOpen"
+      v-model:manual-content-id="manualContentId"
+      :source-diagnostics-loading="sourceDiagnosticsLoading"
+      :source-diagnostics="sourceDiagnostics"
+      :diagnostics-movie-title="diagnosticsMovieTitle"
+      :diagnostics-movie-subtitle="diagnosticsMovieSubtitle"
+      :manual-action-loading="manualActionLoading"
+      :field-label="fieldLabel"
+      :field-value-preview="fieldValuePreview"
+      :manual-action-label="manualActionLabel"
+      :format-action-time="formatActionTime"
+      @close="closeMovieSources"
+      @match="manualMatchMovie"
+      @unmatch="manualUnmatchMovie"
+      @ignore="manualIgnoreMovie"
+    />
   </div>
 </template>
 
@@ -430,10 +298,19 @@ import GlassSelect from '../components/GlassSelect.vue'
 const ActorPickerView = defineAsyncComponent(() => import('../features/supplement/ActorPickerView.vue'))
 const JobList = defineAsyncComponent(() => import('../features/supplement/SupplementJobList.vue'))
 const SourceHealthPanel = defineAsyncComponent(() => import('../features/supplement/SourceHealthPanel.vue'))
+const SupplementMoviesPanel = defineAsyncComponent(() => import('../features/supplement/SupplementMoviesPanel.vue'))
+const SupplementSourceDiagnosticsDialog = defineAsyncComponent(() => import('../features/supplement/SupplementSourceDiagnosticsDialog.vue'))
 
 export default {
   name: 'SupplementManagement',
-  components: { ActorPickerView, JobList, SourceHealthPanel, GlassSelect },
+  components: {
+    ActorPickerView,
+    JobList,
+    SourceHealthPanel,
+    SupplementMoviesPanel,
+    SupplementSourceDiagnosticsDialog,
+    GlassSelect,
+  },
   data() {
     return {
       stats: null,
@@ -1329,6 +1206,10 @@ export default {
     },
     async applyMovieFilters() {
       this.moviePage = 1
+      await this.loadMovies()
+    },
+    async goMoviePage(page) {
+      this.moviePage = page
       await this.loadMovies()
     },
     buildMovieFilterParams(baseParams = {}) {

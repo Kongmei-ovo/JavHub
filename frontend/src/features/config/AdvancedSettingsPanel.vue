@@ -626,3 +626,5 @@ export default {
   },
 }
 </script>
+
+<style scoped src="./advancedSettingsPanel.css"></style>

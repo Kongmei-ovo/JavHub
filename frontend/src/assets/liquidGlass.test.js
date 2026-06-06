@@ -12,7 +12,9 @@ const search = [
 const genres = readFileSync(new URL('../views/Genres.vue', import.meta.url), 'utf8')
 const config = [
   readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const videoModal = [
   readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8'),
@@ -25,7 +27,11 @@ const actor = [
 ].join('\n')
 const supplementManagement = [
   readFileSync(new URL('../views/SupplementManagement.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
 ].join('\n')
 const inventoryActor = readFileSync(new URL('../views/InventoryActor.vue', import.meta.url), 'utf8')
 const subscription = [
@@ -35,11 +41,18 @@ const subscription = [
 const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
 const home = [
   readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const translationJobs = [
   readFileSync(new URL('../views/TranslationJobs.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/TranslationSourcesPanel.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/TranslationReviewPanel.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationPanelControls.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationSourcesPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/translations/translationReviewPanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const libraryOrganize = [
   readFileSync(new URL('../views/LibraryOrganize.vue', import.meta.url), 'utf8'),
@@ -320,7 +333,8 @@ test('native form controls use active glass accents instead of raw theme accent 
   assert.match(config, /\.source-check-item input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
   assert.match(config, /\.threshold-slider\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
   assert.match(home, /\.candidate-select input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
-  assert.match(translationJobs, /\.check-row input,\s*[\s\S]*?\.provider-row input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(translationJobs, /\.check-row input,\s*[\s\S]*?\.mini-toggle input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  assert.match(translationJobs, /\.provider-row input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
 })
 
 test('video modal sheet uses a translucent material without backdrop-filter differences', () => {

@@ -4,10 +4,14 @@ import { readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8')
 const externalStyle = readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8')
-const source = `${vueSource}\n${externalStyle}`
 const actorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
 const jobList = readFileSync(new URL('../features/supplement/SupplementJobList.vue', import.meta.url), 'utf8')
 const sourceHealthPanel = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
+const moviesPanel = readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8')
+const diagnosticsDialog = readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8')
+const moviesStyle = readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8')
+const diagnosticsStyle = readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}\n${moviesPanel}\n${moviesStyle}\n${diagnosticsDialog}\n${diagnosticsStyle}`
 const supplementFeatureSource = [source, actorPicker, jobList, sourceHealthPanel].join('\n')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
@@ -43,7 +47,9 @@ test('supplement management shows and controls actor context when routed from an
 
 test('supplement management keeps heavyweight styles in an external scoped stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/supplement\/supplementManagement\.css"><\/style>/)
-  assert.ok(externalStyle.length > 15000, 'external supplement stylesheet should carry the moved workspace CSS')
+  assert.match(moviesPanel, /<style scoped src="\.\/supplementMoviesPanel\.css"><\/style>/)
+  assert.match(diagnosticsDialog, /<style scoped src="\.\/supplementSourceDiagnosticsDialog\.css"><\/style>/)
+  assert.ok(`${externalStyle}\n${moviesStyle}\n${diagnosticsStyle}`.length > 15000, 'external supplement stylesheets should carry the moved workspace CSS')
   assert.ok(vueSource.split('\n').length < 1500, 'SupplementManagement.vue should stay small enough to review and parse quickly')
 })
 
@@ -91,6 +97,8 @@ test('supplement management uses an actor workspace with segmented panels', () =
   assert.match(source, /class="actor-workspace-hero apple-surface"/)
   assert.match(source, /workspaceSegments/)
   assert.match(source, /activeWorkspaceSegment/)
+  assert.match(source, /const SupplementMoviesPanel = defineAsyncComponent/)
+  assert.match(source, /const SupplementSourceDiagnosticsDialog = defineAsyncComponent/)
   assert.match(source, /作品字段/)
   assert.match(source, /任务队列/)
   assert.match(source, /来源诊断/)
@@ -208,25 +216,21 @@ test('supplement job status pills use semantic layered glass tokens', () => {
 })
 
 test('supplement workspace status badges use semantic layered glass tokens', () => {
-  const defaultStatus = cssBlock(source, '.status-pill')
-  const deepDefaultStatus = cssBlock(source, '.workspace-panel :deep(.status-pill)')
-  const succeeded = cssBlock(source, '.status-succeeded')
-  const matched = cssBlock(source, '.match-matched')
-  const deepSucceeded = cssBlock(source, '.workspace-panel :deep(.status-succeeded)')
-  const running = cssBlock(source, '.status-running')
-  const queued = cssBlock(source, '.status-queued')
-  const candidate = cssBlock(source, '.match-candidate')
-  const deepRunning = cssBlock(source, '.workspace-panel :deep(.status-running)')
-  const deepQueued = cssBlock(source, '.workspace-panel :deep(.status-queued)')
-  const failed = cssBlock(source, '.status-failed')
-  const deepFailed = cssBlock(source, '.workspace-panel :deep(.status-failed)')
-  const supplementOnly = cssBlock(source, '.match-supplement-only')
-  const idle = cssBlock(source, '.status-idle')
-  const ignored = cssBlock(source, '.match-ignored')
+  const defaultStatus = cssBlock(externalStyle, '.status-pill')
+  const succeeded = cssBlock(externalStyle, '.status-succeeded')
+  const running = cssBlock(externalStyle, '.status-running')
+  const queued = cssBlock(externalStyle, '.status-queued')
+  const failed = cssBlock(externalStyle, '.status-failed')
+  const idle = cssBlock(externalStyle, '.status-idle')
+  const movieDefault = cssBlock(moviesStyle, '.status-pill')
+  const matched = cssBlock(moviesStyle, '.match-matched')
+  const candidate = cssBlock(moviesStyle, '.match-candidate')
+  const supplementOnly = cssBlock(moviesStyle, '.match-supplement-only')
+  const ignored = cssBlock(moviesStyle, '.match-ignored')
 
   for (const [block, label] of [
     [defaultStatus, 'workspace default status'],
-    [deepDefaultStatus, 'workspace deep default status'],
+    [movieDefault, 'workspace movie default status'],
     [supplementOnly, 'workspace supplement-only match'],
     [idle, 'workspace idle status'],
   ]) {
@@ -238,7 +242,6 @@ test('supplement workspace status badges use semantic layered glass tokens', () 
   for (const [block, label] of [
     [succeeded, 'workspace succeeded status'],
     [matched, 'workspace matched status'],
-    [deepSucceeded, 'workspace deep succeeded status'],
   ]) {
     assertLayeredBackground(block, '--badge-success-bg', label)
     assert.match(block, /color:\s*var\(--badge-success-text\)/, `${label} should keep success text`)
@@ -249,22 +252,15 @@ test('supplement workspace status badges use semantic layered glass tokens', () 
     [running, 'workspace running status'],
     [queued, 'workspace queued status'],
     [candidate, 'workspace candidate match'],
-    [deepRunning, 'workspace deep running status'],
-    [deepQueued, 'workspace deep queued status'],
   ]) {
     assertLayeredBackground(block, '--badge-warning-bg', label)
     assert.match(block, /color:\s*var\(--badge-warning-text\)/, `${label} should keep warning text`)
     assert.match(block, /border-color:\s*var\(--badge-warning-border\)/, `${label} should keep warning border`)
   }
 
-  for (const [block, label] of [
-    [failed, 'workspace failed status'],
-    [deepFailed, 'workspace deep failed status'],
-  ]) {
-    assertLayeredBackground(block, '--badge-error-bg', label)
-    assert.match(block, /color:\s*var\(--badge-error-text\)/, `${label} should keep error text`)
-    assert.match(block, /border-color:\s*var\(--badge-error-border\)/, `${label} should keep error border`)
-  }
+  assertLayeredBackground(failed, '--badge-error-bg', 'workspace failed status')
+  assert.match(failed, /color:\s*var\(--badge-error-text\)/)
+  assert.match(failed, /border-color:\s*var\(--badge-error-border\)/)
 
   assertLayeredBackground(ignored, '--badge-pending-bg', 'workspace ignored match')
   assert.match(ignored, /color:\s*var\(--badge-pending-text\)/)
@@ -307,8 +303,9 @@ test('supplement management applies routed movie search and resets filtered page
   assert.match(source, /const q = typeof this\.\$route\.query\.q === 'string'/)
   assert.match(source, /this\.movieFilters\.q = q/)
   assert.match(source, /this\.moviePage = 1/)
-  assert.match(source, /@change="applyMovieFilters"/)
-  assert.match(source, /@keyup\.enter="applyMovieFilters"/)
+  assert.match(source, /@apply-filters="applyMovieFilters"/)
+  assert.match(moviesPanel, /@change="\$emit\('apply-filters'\)"/)
+  assert.match(moviesPanel, /@keyup\.enter="\$emit\('apply-filters'\)"/)
   assert.match(source, /async applyMovieFilters\(\)[\s\S]*this\.moviePage = 1[\s\S]*await this\.loadMovies\(\)/)
   assert.match(source, /@change="applyJobFilters"/)
   assert.match(source, /async applyJobFilters\(\)[\s\S]*this\.jobPage = 1[\s\S]*await this\.loadJobs\(\)/)
@@ -366,18 +363,16 @@ test('supplement actor picker keeps search glass in the lazy child', () => {
 })
 
 test('supplement workspace rows and filters use shared Apple glass controls', () => {
-  const input = cssBlock(source, '.filter-input')
-  const inputFocus = cssBlock(source, '.filter-input:focus')
-  const movieRow = cssBlock(source, '.ios-row')
-  const deepJobRow = cssBlock(source, '.workspace-panel :deep(.ios-row)')
+  const input = cssBlock(moviesStyle, '.filter-input')
+  const inputFocus = cssBlock(moviesStyle, '.filter-input:focus')
+  const movieRow = cssBlock(moviesStyle, '.ios-row')
   const jobRow = cssBlock(jobList, '.ios-row')
   const jobRowHover = cssBlock(jobList, '.ios-row:hover')
   const jobRowFocusWithin = cssBlock(jobList, '.ios-row:focus-within')
-  const workspaceAvatar = cssBlock(source, '.workspace-avatar')
-  const deepJobAvatar = cssBlock(source, '.workspace-panel :deep(.job-avatar)')
+  const workspaceAvatar = cssBlock(externalStyle, '.workspace-avatar')
   const jobAvatar = cssBlock(jobList, '.job-avatar')
-  const emptyInner = cssBlock(source, '.empty-panel.inner')
-  const sourceSpinner = cssBlock(source, '.spinner-large')
+  const emptyInner = cssBlock(externalStyle, '.empty-panel.inner')
+  const movieSpinner = cssBlock(moviesStyle, '.spinner-large')
   const jobSpinner = cssBlock(jobList, '.spinner-large')
 
   assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--bg-secondary\)|var\(--white-20\)|rgba\(255,\s*107,\s*135|#ff6b87|var\(--active-border\)/)
@@ -392,7 +387,7 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   assert.match(inputFocus, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch([input, inputFocus].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|glass-active-material)\);.*$/gm)
 
-  for (const block of [movieRow, deepJobRow]) {
+  for (const block of [movieRow, jobRow]) {
     assertLayeredBackground(block, '--material-glass-control', 'supplement workspace row')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -402,7 +397,7 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   assert.match(emptyInner, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(emptyInner, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(emptyInner, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.doesNotMatch([movieRow, deepJobRow, emptyInner].join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
+  assert.doesNotMatch([movieRow, jobRow, emptyInner].join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
 
   assertLayeredBackground(jobRow, '--material-glass-control', 'supplement job row')
   assert.match(jobRow, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -421,7 +416,7 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   assert.match(jobRowFocusWithin, /transform:\s*translateY\(-1px\)/)
   assert.doesNotMatch([jobRowHover, jobRowFocusWithin].join('\n'), /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
 
-  const avatarBlocks = [workspaceAvatar, deepJobAvatar, jobAvatar]
+  const avatarBlocks = [workspaceAvatar, jobAvatar]
   for (const block of avatarBlocks) {
     assertLayeredBackground(block, '--material-glass-subtle', 'supplement workspace avatar')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -430,7 +425,7 @@ test('supplement workspace rows and filters use shared Apple glass controls', ()
   }
   assert.doesNotMatch(avatarBlocks.join('\n'), /^.*background:\s*var\(--material-glass-subtle\);.*$/gm)
 
-  for (const block of [sourceSpinner, jobSpinner]) {
+  for (const block of [movieSpinner, jobSpinner]) {
     assert.match(block, /border:\s*2px solid var\(--glass-control-border\)/)
     assert.match(block, /border-top-color:\s*var\(--badge-info-text\)/)
   }
@@ -467,12 +462,12 @@ test('supplement diagnostics modal avoids legacy flat surfaces', () => {
   assertLayeredBackground(headRow, '--glass-active-material', 'supplement diagnostics header row')
   assert.match(headRow, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(headRow, /^.*background:\s*var\(--glass-active-material\);.*$/gm)
-  assert.doesNotMatch(externalStyle, /\.btn\.danger\s*\{/, 'danger buttons should use the global glass button treatment')
-  assert.doesNotMatch(externalStyle, /#ff6b87|rgba\(255,\s*107,\s*135/i)
+  assert.doesNotMatch(diagnosticsStyle, /\.btn\.danger\s*\{/, 'danger buttons should use the global glass button treatment')
+  assert.doesNotMatch(diagnosticsStyle, /#ff6b87|rgba\(255,\s*107,\s*135/i)
 })
 
 test('supplement source diagnostics use shared Apple glass materials', () => {
-  const diagnosticsOverlay = cssBlock(source, '.diagnostics-overlay')
+  const diagnosticsOverlay = cssBlock(diagnosticsStyle, '.diagnostics-overlay')
   const input = cssBlock(sourceHealthPanel, '.filter-input')
   const inputFocus = cssBlock(sourceHealthPanel, '.filter-input:focus')
   const avatarPanel = cssBlock(sourceHealthPanel, '.avatar-sync-panel')

@@ -41,6 +41,7 @@ from database.translation import (
 )
 from database.download import (
     create_download_task,
+    get_download_task,
     get_download_tasks,
     update_task_status,
     delete_download_task,
@@ -228,6 +229,7 @@ __all__ = [
     "list_translation_jobs",
     "_get_raw",
     "create_download_task",
+    "get_download_task",
     "get_download_tasks",
     "update_task_status",
     "delete_download_task",

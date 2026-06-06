@@ -215,7 +215,7 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
 
             async def _bounded_fetch(jid: int):
                 async with sem:
-                    return await pipeline.fetch_actress_videos(jid, page_size=999)
+                    return await pipeline.fetch_actress_videos(jid)
 
             fetched = await asyncio.gather(
                 *(_bounded_fetch(jid) for _, jid, _ in pending),
@@ -350,7 +350,7 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
         javinfo_actress_name = mapping.get("javinfo_actress_name") or ""
 
         # 查 JavInfo
-        javinfo_videos = await pipeline.fetch_actress_videos(javinfo_actress_id, page_size=999)
+        javinfo_videos = await pipeline.fetch_actress_videos(javinfo_actress_id)
 
         # 查 Emby 快照
         snapshot_videos = get_snapshot_videos(snapshot_key, actress_id)

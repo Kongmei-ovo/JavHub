@@ -684,6 +684,24 @@ class WatchlistPipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
         self.assertEqual(result["candidates"][0]["dvd_id"], "SIVR-438")
         info_client.get_actress_videos.assert_awaited_once()
         self.assertEqual(info_client.get_actress_videos.await_args.kwargs["include_supplement"], "1")
+        self.assertLessEqual(info_client.get_actress_videos.await_args.kwargs["page_size"], 100)
+
+    async def test_fetch_actress_videos_pages_through_javinfo_results(self):
+        from services.watchlist_pipeline import WatchlistPipeline
+
+        info_client = AsyncMock()
+        info_client.get_actress_videos.side_effect = [
+            {"data": [{"content_id": "one"}], "total_pages": 2},
+            {"data": [{"content_id": "two"}], "total_pages": 2},
+        ]
+
+        pipeline = WatchlistPipeline(info_client=info_client)
+        videos = await pipeline.fetch_actress_videos(1, page_size=999)
+
+        self.assertEqual([video["content_id"] for video in videos], ["one", "two"])
+        self.assertEqual(info_client.get_actress_videos.await_count, 2)
+        info_client.get_actress_videos.assert_any_await(1, page=1, page_size=100, include_supplement="1")
+        info_client.get_actress_videos.assert_any_await(1, page=2, page_size=100, include_supplement="1")
 
     async def test_subscription_pipeline_uses_lightweight_candidate_key_lookup(self):
         from services import watchlist_pipeline

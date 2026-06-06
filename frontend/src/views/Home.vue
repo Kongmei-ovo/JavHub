@@ -203,161 +203,54 @@
       </div>
     </div>
 
-    <div v-else-if="activeTab === 'candidates'" class="candidate-panel">
-      <div class="candidate-toolbar">
-        <input
-          v-model="candidateFilter.q"
-          class="candidate-search-input"
-          placeholder="搜索番号、标题、演员"
-        @keyup.enter="submitCandidateSearch"
-      />
-        <button class="chip" type="button" @click="submitCandidateSearch">搜索</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' }" @click="setCandidateStatus('candidate')">待确认</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="setNeedsMagnet(true)">待补磁力</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="setNeedsMagnet(false)">可批准</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'sent' }" @click="setCandidateStatus('sent')">已下发</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'failed' }" @click="setCandidateStatus('failed')">失败</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.status === 'rejected' }" @click="setCandidateStatus('rejected')">已拒绝</button>
-        <button class="chip" type="button" :class="{ active: !candidateFilter.status }" @click="setCandidateStatus('')">全部</button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'subscription' }" @click="setCandidateSource('subscription')">
-          订阅 {{ candidateStats.by_source?.subscription || 0 }}
-        </button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'inventory' }" @click="setCandidateSource('inventory')">
-          库存 {{ candidateStats.by_source?.inventory || 0 }}
-        </button>
-        <button class="chip" type="button" :class="{ active: candidateFilter.source === 'supplement' }" @click="setCandidateSource('supplement')">
-          补全 {{ candidateStats.by_source?.supplement || 0 }}
-        </button>
-        <button class="chip" type="button" :class="{ active: !candidateFilter.source }" @click="setCandidateSource('')">全部来源</button>
-        <button class="chip" type="button" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
-          {{ selectingCandidates ? '退出选择' : '选择' }}
-        </button>
-        <button class="chip action-chip" type="button" :disabled="candidateBatchProcessing" @click="enrichVisibleCandidateMagnets">
-          {{ candidateBatchProcessing === 'enrich' ? '补磁力中...' : '补当前磁力' }}
-        </button>
-        <button class="chip action-chip primary" type="button" :disabled="candidateBatchProcessing" @click="processVisibleCandidates">
-          {{ candidateBatchProcessing === 'dry-run' ? '预演中...' : (candidateBatchProcessing === 'process' ? '处理中...' : '按策略处理当前') }}
-        </button>
-      </div>
-
-      <div v-if="selectingCandidates" class="bulk-toolbar">
-        <span>已选 {{ selectedCandidateIds.length }} 个</span>
-        <button class="btn btn-ghost" type="button" @click="selectAllVisibleCandidates">选择当前页</button>
-        <button class="btn btn-ghost" type="button" @click="clearCandidateSelection">清空</button>
-        <button class="btn btn-ghost" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="bulkRejectCandidates">批量拒绝</button>
-        <button class="btn btn-primary" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="bulkRestoreCandidates">批量恢复</button>
-      </div>
-
-      <CandidateRunPanel
-        :runs="candidateRuns"
-        :loading="candidateRunsLoading"
-        :processing="candidateBatchProcessing"
-        @refresh="loadCandidateRuns"
-        @apply="applyCandidateRunFilters"
-        @apply-failed="applyCandidateRunFilters($event, { status: 'failed' })"
-        @retry-failed="retryFailedCandidateRun"
-      />
-
-      <div v-if="candidateTotalPages > 1" class="candidate-pagination">
-        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(1)">«</button>
-        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(candidatePage - 1)">‹</button>
-        <span class="page-indicator">{{ candidatePage }} / {{ candidateTotalPages }} · {{ candidateTotal }} 个候选</span>
-        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidatePage + 1)">›</button>
-        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidateTotalPages)">»</button>
-      </div>
-
-      <div v-if="filteredCandidates.length > 0" class="tasks-grid">
-        <div
-          v-for="candidate in filteredCandidates"
-          :key="candidate.id"
-          class="task-card av-card candidate-card"
-        >
-          <label v-if="selectingCandidates" class="candidate-select" @click.stop>
-            <input
-              type="checkbox"
-              :checked="selectedCandidateIds.includes(candidate.id)"
-              @change="toggleCandidateSelected(candidate.id)"
-            />
-          </label>
-          <div class="task-cover">
-            <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" loading="lazy" decoding="async" />
-            <div v-else class="cover-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                <line x1="7" y1="2" x2="7" y2="22"/>
-                <line x1="17" y1="2" x2="17" y2="22"/>
-              </svg>
-            </div>
-            <div class="cover-overlay">
-              <span class="cover-code">{{ candidate.dvd_id || candidate.content_id }}</span>
-            </div>
-          </div>
-
-          <div class="task-info">
-            <h3 class="task-title" :title="candidate.title">{{ candidate.title || candidate.content_id }}</h3>
-            <div class="task-meta">
-              <span :class="['badge', candidateBadge(candidate.status)]">{{ candidateStatusLabel(candidate.status) }}</span>
-              <span class="task-time">{{ candidateSourceLabel(candidate.source) }}</span>
-            </div>
-            <div class="candidate-subtitle">{{ candidate.actress_name || '未知演员' }} · {{ candidate.release_date || '日期未知' }}</div>
-            <div class="candidate-magnet" :class="{ empty: !candidate.magnet }">
-              {{ candidate.magnet ? '已有 magnet' : '待补磁力' }}
-            </div>
-            <div v-if="candidate.reason" class="candidate-reason" :title="candidate.reason">
-              {{ candidate.reason }}
-            </div>
-            <div v-if="candidate.download_task_id" class="candidate-task-link">
-              已关联任务 #{{ candidate.download_task_id }}
-              <span v-if="candidate.download_task?.status">· {{ statusLabel(candidate.download_task.status) }}</span>
-              <span v-if="candidate.download_task?.downloader_name">· {{ candidate.download_task.downloader_name }}</span>
-            </div>
-            <div v-if="candidate.error_msg" class="task-error" :title="candidate.error_msg">
-              {{ candidate.error_msg }}
-            </div>
-            <div v-if="candidate.events?.length" class="candidate-event">
-              最近动作 {{ candidate.events[0].action }}
-            </div>
-            <div class="candidate-context-actions">
-              <button class="link-btn" type="button" @click="openCandidateDetail(candidate)">详情</button>
-              <button v-if="candidate.actress_id" class="link-btn" type="button" @click="goCandidateActor(candidate)">演员</button>
-              <button v-if="candidate.source === 'supplement' && candidate.actress_id" class="link-btn" type="button" @click="goCandidateSupplement(candidate)">补全</button>
-            </div>
-          </div>
-
-          <div class="task-actions">
-            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="editCandidateMagnet(candidate)">填磁力</button>
-            <button v-if="(candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="enrichCandidateMagnet(candidate)">
-              {{ candidateMutations[candidate.id] === 'enrich' ? '查找中...' : '补磁力' }}
-            </button>
-            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="approveCandidate(candidate)">
-              {{ candidateMutations[candidate.id] === 'approve' ? '处理中...' : (candidate.status === 'failed' ? '重试' : '批准') }}
-            </button>
-            <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="processCandidate(candidate)">
-              {{ candidateMutations[candidate.id] === 'process' ? '处理中...' : '策略处理' }}
-            </button>
-            <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="rejectCandidate(candidate)">拒绝</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        <p>暂无下载候选</p>
-        <p class="text-secondary empty-state-hint">订阅检查和库存对比会把缺失影片写到这里</p>
-      </div>
-
-      <div v-if="candidateTotalPages > 1" class="candidate-pagination bottom">
-        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(1)">«</button>
-        <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="goCandidatePage(candidatePage - 1)">‹</button>
-        <span class="page-indicator">{{ candidatePage }} / {{ candidateTotalPages }}</span>
-        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidatePage + 1)">›</button>
-        <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="goCandidatePage(candidateTotalPages)">»</button>
-      </div>
-    </div>
+    <DownloadCandidatePanel
+      v-else-if="activeTab === 'candidates'"
+      :candidate-filter="candidateFilter"
+      :candidate-stats="candidateStats"
+      :selecting-candidates="selectingCandidates"
+      :selected-candidate-ids="selectedCandidateIds"
+      :candidate-batch-processing="candidateBatchProcessing"
+      :bulk-candidate-loading="bulkCandidateLoading"
+      :candidate-runs="candidateRuns"
+      :candidate-runs-loading="candidateRunsLoading"
+      :candidate-total-pages="candidateTotalPages"
+      :candidate-page="candidatePage"
+      :candidate-total="candidateTotal"
+      :filtered-candidates="filteredCandidates"
+      :candidate-mutations="candidateMutations"
+      :magnet-editor="magnetEditor"
+      :candidate-detail="candidateDetail"
+      @update-candidate-search="updateCandidateSearch"
+      @search="submitCandidateSearch"
+      @set-status="setCandidateStatus"
+      @set-needs-magnet="setNeedsMagnet"
+      @set-source="setCandidateSource"
+      @toggle-selection="toggleCandidateSelection"
+      @enrich-visible="enrichVisibleCandidateMagnets"
+      @process-visible="processVisibleCandidates"
+      @select-all-visible="selectAllVisibleCandidates"
+      @clear-selection="clearCandidateSelection"
+      @bulk-reject="bulkRejectCandidates"
+      @bulk-restore="bulkRestoreCandidates"
+      @refresh-runs="loadCandidateRuns"
+      @apply-run="applyCandidateRunFilters"
+      @apply-run-failed="applyCandidateRunFilters($event, { status: 'failed' })"
+      @retry-failed-run="retryFailedCandidateRun"
+      @go-page="goCandidatePage"
+      @toggle-selected="toggleCandidateSelected"
+      @open-detail="openCandidateDetail"
+      @go-actor="goCandidateActor"
+      @go-supplement="goCandidateSupplement"
+      @edit-magnet="editCandidateMagnet"
+      @enrich-magnet="enrichCandidateMagnet"
+      @approve="approveCandidate"
+      @process="processCandidate"
+      @reject="rejectCandidate"
+      @close-magnet-editor="closeMagnetEditor"
+      @update-magnet-editor-value="updateMagnetEditorValue"
+      @submit-magnet-editor="submitMagnetEditor"
+      @close-detail="closeCandidateDetail"
+    />
 
     <DownloaderManagementPanel
       v-else-if="activeTab === 'downloaders'"
@@ -408,69 +301,6 @@
       </div>
     </div>
 
-    <div v-if="magnetEditor.open" class="inline-dialog-overlay" @click.self="closeMagnetEditor">
-      <div class="inline-dialog">
-        <div class="inline-dialog-header">
-          <div>
-            <h2>填磁力</h2>
-            <p>{{ magnetEditor.candidate?.dvd_id || magnetEditor.candidate?.content_id || '下载候选' }}</p>
-          </div>
-          <button class="dialog-close-btn" type="button" @click="closeMagnetEditor">×</button>
-        </div>
-        <textarea
-          v-model="magnetEditor.value"
-          class="magnet-editor-input"
-          placeholder="magnet:?xt=urn:btih:..."
-          @keyup.meta.enter="submitMagnetEditor"
-          @keyup.ctrl.enter="submitMagnetEditor"
-        ></textarea>
-        <div class="inline-dialog-actions">
-          <button class="btn btn-ghost" type="button" @click="closeMagnetEditor">取消</button>
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="!magnetEditor.value.trim() || isCandidateMutating(magnetEditor.candidate?.id)"
-            @click="submitMagnetEditor"
-          >
-            {{ isCandidateMutating(magnetEditor.candidate?.id) ? '保存中...' : '保存磁力' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="candidateDetail.open" class="inline-dialog-overlay" @click.self="closeCandidateDetail">
-      <div class="inline-dialog candidate-detail-dialog">
-        <div class="inline-dialog-header">
-          <div>
-            <h2>{{ candidateDetail.data?.dvd_id || candidateDetail.data?.content_id || '候选详情' }}</h2>
-            <p>{{ candidateDetail.data?.title || candidateDetail.data?.actress_name || '' }}</p>
-          </div>
-          <button class="dialog-close-btn" type="button" @click="closeCandidateDetail">×</button>
-        </div>
-        <div v-if="candidateDetail.loading" class="candidate-detail-loading">加载中...</div>
-        <template v-else-if="candidateDetail.data">
-          <div class="candidate-detail-grid">
-            <div><span>状态</span><strong>{{ candidateStatusLabel(candidateDetail.data.status) }}</strong></div>
-            <div><span>来源</span><strong>{{ candidateSourceLabel(candidateDetail.data.source) }}</strong></div>
-            <div><span>磁力</span><strong>{{ candidateDetail.data.magnet ? '已有' : '待补' }}</strong></div>
-            <div><span>下载任务</span><strong>{{ candidateDetail.data.download_task_id || '未下发' }}</strong></div>
-          </div>
-          <div v-if="candidateDetail.data.error_msg" class="candidate-detail-error">{{ candidateDetail.data.error_msg }}</div>
-          <div v-if="candidateDetail.data.magnet" class="candidate-detail-magnet">{{ candidateDetail.data.magnet }}</div>
-          <div class="event-timeline">
-            <div v-for="event in candidateDetail.data.events || []" :key="event.id" class="event-row">
-              <span class="event-dot"></span>
-              <div>
-                <strong>{{ eventActionLabel(event.action) }}</strong>
-                <p>{{ event.detail || '无详情' }}</p>
-                <small>{{ event.operator || 'system' }} · {{ formatTime(event.created_at) }}</small>
-              </div>
-            </div>
-            <small v-if="!(candidateDetail.data.events || []).length">暂无事件记录</small>
-          </div>
-        </template>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -478,13 +308,13 @@
 import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
-import CandidateRunPanel from '../features/candidates/CandidateRunPanel.vue'
 
+const DownloadCandidatePanel = defineAsyncComponent(() => import('../features/candidates/DownloadCandidatePanel.vue'))
 const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
 
 export default {
   name: 'Home',
-  components: { CandidateRunPanel, DownloaderManagementPanel },
+  components: { DownloadCandidatePanel, DownloaderManagementPanel },
   data() {
     return {
       activeTab: ['candidates', 'downloaders'].includes(this.$route.query.tab) ? this.$route.query.tab : 'tasks',
@@ -733,6 +563,9 @@ export default {
     },
     clearTaskStatus() {
       this.pushDownloadRoute({ tab: 'tasks' })
+    },
+    updateCandidateSearch(value) {
+      this.candidateFilter = { ...this.candidateFilter, q: value }
     },
     submitCandidateSearch() {
       this.pushDownloadRoute(this.candidateRouteQuery({ q: this.candidateFilter.q, page: 1 }))
@@ -1085,6 +918,9 @@ export default {
     closeMagnetEditor() {
       if (this.magnetEditor.candidate && this.isCandidateMutating(this.magnetEditor.candidate.id)) return
       this.magnetEditor = { open: false, candidate: null, value: '' }
+    },
+    updateMagnetEditorValue(value) {
+      this.magnetEditor = { ...this.magnetEditor, value }
     },
     async submitMagnetEditor() {
       const candidate = this.magnetEditor.candidate

@@ -3,13 +3,20 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./TranslationJobs.vue', import.meta.url), 'utf8')
+const sourcesPanel = readFileSync(new URL('../features/translations/TranslationSourcesPanel.vue', import.meta.url), 'utf8')
+const reviewPanel = readFileSync(new URL('../features/translations/TranslationReviewPanel.vue', import.meta.url), 'utf8')
 let externalStyle = ''
 try {
-  externalStyle = readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8')
+  externalStyle = [
+    readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/translations/translationPanelControls.css', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/translations/translationSourcesPanel.css', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/translations/translationReviewPanel.css', import.meta.url), 'utf8'),
+  ].join('\n')
 } catch {
   externalStyle = ''
 }
-const source = `${vueSource}\n${externalStyle}`
+const source = `${vueSource}\n${sourcesPanel}\n${reviewPanel}\n${externalStyle}`
 
 function cssBlocks(content, selector) {
   const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -275,6 +282,12 @@ test('translation glass backgrounds are layered with specular and noise surfaces
 
 test('translation page keeps heavyweight styles in an external scoped stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/translations\/translationJobs\.css"><\/style>/)
+  assert.match(vueSource, /const TranslationSourcesPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/translations\/TranslationSourcesPanel\.vue'\)\)/)
+  assert.match(vueSource, /const TranslationReviewPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/translations\/TranslationReviewPanel\.vue'\)\)/)
+  assert.match(sourcesPanel, /<style scoped src="\.\/translationPanelControls\.css"><\/style>/)
+  assert.match(sourcesPanel, /<style scoped src="\.\/translationSourcesPanel\.css"><\/style>/)
+  assert.match(reviewPanel, /<style scoped src="\.\/translationPanelControls\.css"><\/style>/)
+  assert.match(reviewPanel, /<style scoped src="\.\/translationReviewPanel\.css"><\/style>/)
   assert.ok(externalStyle.length > 20000, 'external translation stylesheet should carry the moved workspace CSS')
-  assert.ok(vueSource.split('\n').length < 1500, 'TranslationJobs.vue should stay small enough to review and parse quickly')
+  assert.ok(vueSource.split('\n').length < 1100, 'TranslationJobs.vue should stay small enough to review and parse quickly')
 })

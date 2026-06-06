@@ -1,10 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
-const externalStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
-const source = `${vueSource}\n${externalStyle}`
+const advancedPanelSource = readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8')
+const baseStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
+const advancedStyleUrl = new URL('../features/config/advancedSettingsPanel.css', import.meta.url)
+const advancedStyle = existsSync(advancedStyleUrl) ? readFileSync(advancedStyleUrl, 'utf8') : ''
+const externalStyle = `${baseStyle}\n${advancedStyle}`
+const source = `${vueSource}\n${advancedPanelSource}\n${externalStyle}`
 
 function cssBlock(selector) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -139,9 +143,10 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
   assert.doesNotMatch(previewBubble, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
 })
 
-test('settings page keeps heavyweight styles in an external scoped stylesheet', () => {
+test('settings page keeps heavyweight styles in external scoped stylesheets', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
-  assert.ok(externalStyle.length > 20000, 'external settings stylesheet should carry the moved workspace CSS')
+  assert.ok(baseStyle.length > 16000, 'settings shell stylesheet should carry shared workspace CSS')
+  assert.ok(advancedStyle.length > 5000, 'advanced lazy chunk should carry its own workspace CSS')
   assert.ok(vueSource.split('\n').length < 1300, 'Config.vue should stay small enough to review and parse quickly')
 })
 
@@ -151,6 +156,14 @@ test('settings advanced workspace stays in a lazy child chunk', () => {
   assert.doesNotMatch(vueSource, /JavInfo 数据库导入/)
   assert.doesNotMatch(vueSource, /<h2>公共智能模型<\/h2>/)
   assert.doesNotMatch(vueSource, /<h2>网络代理<\/h2>/)
+})
+
+test('settings advanced lazy chunk owns its scoped stylesheet boundary', () => {
+  assert.match(advancedPanelSource, /<style scoped src="\.\/advancedSettingsPanel\.css"><\/style>/)
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
+  assert.match(advancedStyle, /\.javinfo-import-panel\s*\{/)
+  assert.match(advancedStyle, /\.card-content\s*\{/)
+  assert.doesNotMatch(baseStyle, /\.javinfo-import-panel\s*\{|\.import-log-tail\s*\{|\.ai-provider-control\s*\{/)
 })
 
 test('settings glass backgrounds are layered with specular and noise surfaces', () => {

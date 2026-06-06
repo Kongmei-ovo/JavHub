@@ -14,7 +14,7 @@ from database import (
     count_auto_sent_candidates_since,
     get_candidate_process_run,
     get_download_candidate,
-    get_download_tasks,
+    get_download_task,
     is_video_exempt,
     list_download_candidates,
     set_download_candidate_status,
@@ -355,7 +355,7 @@ async def process_candidate(
         add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(exc), operator)
         return _response("failed_downloader", failed, policy=chosen_policy, error=str(exc), **metadata)
 
-    task = next((row for row in get_download_tasks(limit=500) if row.get("id") == task_id), None)
+    task = get_download_task(task_id)
     if task and task.get("status") == "failed":
         error_msg = task.get("error_msg") or "下载任务创建失败"
         failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)

@@ -225,248 +225,53 @@
       <div v-if="jobMessage" class="message-line" :class="jobMessageType">{{ jobMessage }}</div>
     </section>
 
-    <section v-else-if="activeSegment === 'sources'" class="workspace-panel apple-surface">
-      <div class="panel-header">
-        <div>
-          <h2>翻译源</h2>
-        </div>
-        <div class="panel-actions">
-          <label class="mini-toggle">
-            <input v-model="translationConfig.enabled" type="checkbox" />
-            <span>启用翻译</span>
-          </label>
-          <button class="btn btn-primary btn-sm" type="button" :disabled="savingConfig" @click="saveTranslationConfig">
-            {{ savingConfig ? '保存中...' : '保存翻译源' }}
-          </button>
-        </div>
-      </div>
+    <TranslationSourcesPanel
+      v-else-if="activeSegment === 'sources'"
+      :translation-config="translationConfig"
+      :saving-config="savingConfig"
+      :selected-provider="selectedProvider"
+      :ai-provider-status-label="providerStatusLabel('ai')"
+      @save="saveTranslationConfig"
+    />
 
-      <div class="source-layout">
-        <section class="source-section">
-          <div class="source-section-head">
-            <div>
-              <strong>低成本批量源</strong>
-              <span>用于标题、演员、题材、系列和厂商名。</span>
-            </div>
-          </div>
-          <div class="form-grid">
-            <label class="field">
-              <span>目标语言</span>
-              <input v-model="translationConfig.target_language" class="input" placeholder="zh-CN" />
-            </label>
-            <label class="field">
-              <span>实时模式</span>
-              <input v-model="translationConfig.realtime_mode" class="input" disabled />
-            </label>
-            <label class="field">
-              <span>批量并发</span>
-              <input v-model.number="translationConfig.batch_concurrency" class="input" type="number" min="1" max="64" />
-            </label>
-            <label class="field">
-              <span>单批行数</span>
-              <input v-model.number="translationConfig.batch_size" class="input" type="number" min="1" max="200" />
-            </label>
-            <label class="field">
-              <span>单批字符</span>
-              <input v-model.number="translationConfig.batch_char_limit" class="input" type="number" min="500" max="24000" />
-            </label>
-            <label class="field">
-              <span>源页大小</span>
-              <input v-model.number="translationConfig.source_page_size" class="input" type="number" min="20" max="1000" />
-            </label>
-            <label class="field">
-              <span>扫描页组</span>
-              <input v-model.number="translationConfig.scan_pages_per_batch" class="input" type="number" min="1" max="64" />
-            </label>
-          </div>
-          <div class="source-settings">
-            <label class="check-row boxed">
-              <input v-model="translationConfig.google_free.enabled" type="checkbox" />
-              <span>Google 免费接口</span>
-            </label>
-            <input v-model="translationConfig.google_free.base_url" class="input" placeholder="https://translate.googleapis.com/translate_a/single" />
-            <div class="form-grid">
-              <label class="check-row boxed">
-                <input v-model="translationConfig.baidu.enabled" type="checkbox" />
-                <span>启用百度翻译</span>
-              </label>
-              <input v-model.number="translationConfig.baidu.timeout" class="input" type="number" min="1" placeholder="超时（秒）" />
-              <input v-model.number="translationConfig.baidu.qps" class="input" type="number" min="0" step="0.5" placeholder="每秒请求数" />
-            </div>
-            <input v-model="translationConfig.baidu.app_id" class="input" placeholder="百度翻译 APP ID" autocomplete="off" />
-            <input v-model="translationConfig.baidu.secret" class="input" :type="showBaiduSecret ? 'text' : 'password'" placeholder="百度翻译 Secret，空白保存不覆盖现有密钥" autocomplete="off" />
-            <input v-model="translationConfig.baidu.endpoint" class="input" placeholder="https://fanyi-api.baidu.com/api/trans/vip/translate" />
-            <div class="form-grid">
-              <label class="check-row boxed">
-                <input v-model="translationConfig.deepl.enabled" type="checkbox" />
-                <span>启用 DeepL</span>
-              </label>
-              <label class="check-row boxed">
-                <input v-model="translationConfig.deepl.free_api" type="checkbox" />
-                <span>免费接口</span>
-              </label>
-            </div>
-            <input v-model="translationConfig.deepl.api_key" class="input" :type="showDeeplKey ? 'text' : 'password'" placeholder="DeepL 密钥，可选" autocomplete="off" />
-            <div class="form-grid">
-              <label class="check-row boxed">
-                <input v-model="translationConfig.microsoft.enabled" type="checkbox" />
-                <span>启用 Microsoft</span>
-              </label>
-              <input v-model="translationConfig.microsoft.region" class="input" placeholder="Azure 区域，例如 eastasia" />
-            </div>
-            <input v-model="translationConfig.microsoft.api_key" class="input" :type="showMicrosoftKey ? 'text' : 'password'" placeholder="Microsoft 密钥，可选" autocomplete="off" />
-          </div>
-          <div class="key-actions left">
-            <button class="btn btn-ghost btn-sm" type="button" @click="showBaiduSecret = !showBaiduSecret">{{ showBaiduSecret ? '隐藏百度 Secret' : '显示百度 Secret' }}</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="showDeeplKey = !showDeeplKey">{{ showDeeplKey ? '隐藏 DeepL 密钥' : '显示 DeepL 密钥' }}</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="showMicrosoftKey = !showMicrosoftKey">{{ showMicrosoftKey ? '隐藏 Microsoft 密钥' : '显示 Microsoft 密钥' }}</button>
-          </div>
-        </section>
-
-        <section class="source-section">
-          <div class="source-section-head">
-            <div>
-              <strong>实时兜底</strong>
-              <span>公共智能翻译参数在设置页维护，这里只用于状态检测和手动测试。</span>
-            </div>
-            <span class="provider-status">{{ providerStatusLabel('ai') }}</span>
-          </div>
-          <div class="source-settings">
-            <textarea v-model="translationTestText" class="input test-textarea" rows="3" placeholder="输入一小段文本测试实时翻译"></textarea>
-            <div class="key-actions left">
-              <button class="btn btn-primary btn-sm" type="button" :disabled="testingTranslation || !translationTestText.trim()" @click="testTranslation">
-                {{ testingTranslation ? '测试中...' : '测试实时翻译' }}
-              </button>
-            </div>
-            <div v-if="translationTestMsg" class="message-line" :class="translationTestType">{{ translationTestMsg }}</div>
-          </div>
-        </section>
-      </div>
-    </section>
-
-    <section v-else-if="activeSegment === 'review'" class="workspace-panel apple-surface">
-      <div class="panel-header">
-        <div>
-          <h2>校对台</h2>
-        </div>
-        <div class="panel-actions">
-          <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewLoading" @click="loadTranslationItems(reviewPage)">
-            {{ reviewLoading ? '加载中...' : '刷新条目' }}
-          </button>
-          <button class="btn btn-primary btn-sm" type="button" :disabled="retryingItems" @click="retryReviewItems">
-            {{ retryingItems ? '提交中...' : '重试当前筛选' }}
-          </button>
-        </div>
-      </div>
-
-      <div class="review-toolbar">
-        <label class="field">
-          <span>类型</span>
-          <GlassSelect
-            v-model="reviewType"
-            :options="translationTypeOptions"
-            aria-label="校对类型"
-            @change="loadTranslationItems(1)"
-          />
-        </label>
-        <label class="field">
-          <span>状态</span>
-          <GlassSelect
-            v-model="reviewStatus"
-            :options="reviewStatusOptions"
-            aria-label="校对状态"
-            @change="loadTranslationItems(1)"
-          />
-        </label>
-        <label class="field search-field">
-          <span>检索</span>
-          <input
-            v-model="reviewQuery"
-            class="input"
-            placeholder="演员名、日文、中文、番号或标题"
-            @keyup.enter="loadTranslationItems(1)"
-          />
-        </label>
-        <button class="btn btn-ghost review-search-btn" type="button" @click="loadTranslationItems(1)">搜索</button>
-      </div>
-
-      <div class="review-stats">
-        <div><strong>{{ reviewTotal }}</strong><span>索引条目</span></div>
-        <div><strong>{{ reviewStatsByStatus.untranslated || 0 }}</strong><span>未翻译</span></div>
-        <div><strong>{{ reviewStatsByStatus.failed || 0 }}</strong><span>失败</span></div>
-        <div><strong>{{ reviewUnreviewed }}</strong><span>待校对</span></div>
-      </div>
-
-      <div v-if="reviewMessage" class="message-line" :class="reviewMessageType">{{ reviewMessage }}</div>
-
-      <div class="review-table">
-        <div class="review-head">
-          <span>原文</span>
-          <span>当前译文</span>
-          <span>状态</span>
-          <span>来源</span>
-          <span>操作</span>
-        </div>
-        <div v-if="reviewLoading && !reviewItems.length" class="empty-panel compact">加载中...</div>
-        <div v-else-if="!reviewItems.length" class="empty-panel compact">暂无工作台条目</div>
-        <div
-          v-for="item in reviewItems"
-          :key="`${item.item_type}:${item.item_id}`"
-          v-memo="[item.item_type, item.item_id, item.edit_text, item.status, item.provider, item.updated_at, item.last_error]"
-          class="review-row"
-        >
-          <div class="review-source">
-            <strong>{{ item.source_text || '—' }}</strong>
-            <small>{{ translationTypeLabels[item.item_type] || item.item_type }} · {{ item.item_id }}</small>
-          </div>
-          <textarea v-model="item.edit_text" class="input review-edit" rows="2"></textarea>
-          <span class="status-pill" :class="workbenchStatusClass(item.status)">{{ workbenchStatusLabel(item.status) }}</span>
-          <div class="review-meta">
-            <span>{{ providerLabel(item.provider) || '本地' }}</span>
-            <small>{{ formatTime(item.updated_at) }}</small>
-            <small v-if="item.last_error" class="error-text">{{ item.last_error }}</small>
-          </div>
-          <div class="review-actions">
-            <button class="btn btn-primary btn-sm" type="button" @click="saveReviewItem(item)">保存</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="markReviewItem(item)">标记已校对</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="showItemHistory(item)">历史</button>
-            <button class="btn btn-ghost btn-sm danger" type="button" @click="resetReviewItem(item)">重置</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="review-pagination">
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage <= 1" @click="loadTranslationItems(reviewPage - 1)">上一页</button>
-        <span>共 {{ reviewTotalCount }} 条 · 第 {{ reviewPage }} / {{ reviewTotalPages }} 页</span>
-        <label class="page-size-field">
-          <span>每页</span>
-          <GlassSelect
-            v-model="reviewPageSize"
-            :options="reviewPageSizeOptions"
-            size="compact"
-            aria-label="校对台每页条数"
-            @change="loadTranslationItems(1)"
-          />
-        </label>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewPage >= reviewTotalPages" @click="loadTranslationItems(reviewPage + 1)">下一页</button>
-      </div>
-
-      <aside v-if="reviewHistoryItem" class="review-history-panel">
-        <div class="recent-head">
-          <strong>{{ reviewHistoryItem.source_text }} 的修改历史</strong>
-          <button class="btn btn-ghost btn-sm" type="button" @click="reviewHistoryItem = null">关闭</button>
-        </div>
-        <div v-if="reviewHistoryLoading" class="empty-panel compact">加载中...</div>
-        <div v-else-if="!reviewHistory.length" class="empty-panel compact">暂无修改历史</div>
-        <div v-for="history in reviewHistory" :key="history.id" class="history-row review-history-row">
-          <div>
-            <strong>{{ history.action }}</strong>
-            <span>{{ history.old_text || '空' }} -> {{ history.new_text || '空' }}</span>
-          </div>
-          <button class="btn btn-ghost btn-sm" type="button" @click="restoreHistoryItem(history)">恢复</button>
-        </div>
-      </aside>
-    </section>
+    <TranslationReviewPanel
+      v-else-if="activeSegment === 'review'"
+      :review-type="reviewType"
+      :review-status="reviewStatus"
+      :review-status-options="reviewStatusOptions"
+      :review-query="reviewQuery"
+      :review-page="reviewPage"
+      :review-page-size="reviewPageSize"
+      :review-page-size-options="reviewPageSizeOptions"
+      :review-total="reviewTotal"
+      :review-total-count="reviewTotalCount"
+      :review-total-pages="reviewTotalPages"
+      :review-unreviewed="reviewUnreviewed"
+      :review-stats-by-status="reviewStatsByStatus"
+      :review-items="reviewItems"
+      :review-loading="reviewLoading"
+      :retrying-items="retryingItems"
+      :review-message="reviewMessage"
+      :review-message-type="reviewMessageType"
+      :review-history-item="reviewHistoryItem"
+      :review-history="reviewHistory"
+      :review-history-loading="reviewHistoryLoading"
+      :translation-type-labels="translationTypeLabels"
+      :translation-type-options="translationTypeOptions"
+      @load-items="loadTranslationItems"
+      @retry-items="retryReviewItems"
+      @save-item="saveReviewItem"
+      @mark-item="markReviewItem"
+      @show-history="showItemHistory"
+      @reset-item="resetReviewItem"
+      @close-history="reviewHistoryItem = null"
+      @restore-history="restoreHistoryItem"
+      @update-review-type="reviewType = $event"
+      @update-review-status="reviewStatus = $event"
+      @update-review-query="reviewQuery = $event"
+      @update-review-page-size="reviewPageSize = $event"
+      @update-item-edit-text="updateReviewItemEditText"
+    />
 
     <section v-else-if="activeSegment === 'mappings'" class="workspace-panel apple-surface">
       <div class="panel-header">
@@ -539,6 +344,7 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
@@ -561,9 +367,10 @@ import {
   jobTypeLabel,
   percentValue,
   statusLabel,
-  workbenchStatusClass,
-  workbenchStatusLabel,
 } from '../utils/translationJobPresentation.js'
+
+const TranslationSourcesPanel = defineAsyncComponent(() => import('../features/translations/TranslationSourcesPanel.vue'))
+const TranslationReviewPanel = defineAsyncComponent(() => import('../features/translations/TranslationReviewPanel.vue'))
 
 const BASE_BATCH_ORDER = ['cache', 'mapping']
 const TRANSLATION_STATS_CACHE_KEY = 'javhub_translation_stats_cache'
@@ -598,7 +405,7 @@ function cloneTranslationConfig() {
 
 export default {
   name: 'TranslationJobs',
-  components: { GlassSelect },
+  components: { GlassSelect, TranslationSourcesPanel, TranslationReviewPanel },
   data() {
     return {
       activeSegment: 'overview',
@@ -616,7 +423,6 @@ export default {
       savingConfig: false,
       startingJob: false,
       pausingJob: false,
-      testingTranslation: false,
       stats: {},
       jobs: [],
       currentJob: null,
@@ -651,17 +457,11 @@ export default {
       reviewHistoryItem: null,
       reviewHistory: [],
       reviewHistoryLoading: false,
-      translationTestText: 'これは翻訳テストです。',
-      translationTestMsg: '',
-      translationTestType: 'info',
       mappingMessage: '',
       mappingMessageType: 'info',
       jobMessage: '',
       jobMessageType: 'info',
       selectedProvider: 'google_free',
-      showBaiduSecret: false,
-      showDeeplKey: false,
-      showMicrosoftKey: false,
       providerOptions: PROVIDER_KEYS.map(key => ({ key, ...PROVIDER_META[key] })),
       jobForm: {
         job_type: 'library_titles',
@@ -1032,23 +832,6 @@ export default {
       this.selectedJob = job
       this.activeSegment = 'history'
     },
-    async testTranslation() {
-      this.testingTranslation = true
-      this.translationTestMsg = ''
-      this.translationTestType = 'info'
-      try {
-        const resp = await api.testTranslation(this.translationTestText.trim(), this.selectedProvider)
-        const translated = resp.data?.translated_text || ''
-        this.translationTestMsg = translated ? `译文：${translated}` : '测试完成，但没有返回译文'
-        this.translationTestType = translated ? 'success' : 'error'
-      } catch (error) {
-        console.error('Failed to test translation:', error)
-        this.translationTestMsg = error.response?.data?.detail || '实时翻译测试失败，请检查兜底配置'
-        this.translationTestType = 'error'
-      } finally {
-        this.testingTranslation = false
-      }
-    },
     async exportTranslation() {
       this.mappingMessage = ''
       try {
@@ -1125,6 +908,9 @@ export default {
       } finally {
         this.reviewLoading = false
       }
+    },
+    updateReviewItemEditText({ item, value }) {
+      if (item) item.edit_text = value
     },
     async saveReviewItem(item) {
       try {
@@ -1272,8 +1058,6 @@ export default {
     coveragePercent,
     formatNumber,
     jobTypeLabel,
-    workbenchStatusLabel,
-    workbenchStatusClass,
     statusLabel,
     jobStatusClass,
     durationText,

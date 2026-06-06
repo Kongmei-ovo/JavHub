@@ -253,16 +253,23 @@ class InfoClient:
             return data.get("data", [])
         return data if isinstance(data, list) else []
 
-    async def _get_all_pages(self, path: str, page_size: int = 100, cache_bypass: bool = False) -> list[dict]:
+    async def _get_all_pages(
+        self,
+        path: str,
+        page_size: int = 100,
+        cache_bypass: bool = False,
+        params: dict[str, Any] | None = None,
+    ) -> list[dict]:
         """获取所有分页数据，自动翻页合并。"""
 
         async def fetch_page(page: int) -> tuple[list[dict], int]:
-            params = {"page": page, "page_size": page_size}
+            request_params = dict(params or {})
+            request_params.update({"page": page, "page_size": page_size})
             if cache_bypass:
-                params["cache"] = "0"
+                request_params["cache"] = "0"
             client = await self._get_client()
             try:
-                response = await client.get(f"{self.api_url}{path}", params=params)
+                response = await client.get(f"{self.api_url}{path}", params=request_params)
             except httpx.RequestError as exc:
                 raise _map_request_error(path, exc) from exc
             data = _decode_javinfo_json(path, response)
@@ -643,6 +650,42 @@ class InfoClient:
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         return result
+
+    async def get_all_actress_videos(
+        self,
+        actress_id: int,
+        include_supplement: str | None = None,
+        service_code: str | None = None,
+        year: int | None = None,
+        sort_by: str | None = None,
+        include_total: bool | None = True,
+        cache_bypass: bool = False,
+    ) -> dict[str, Any]:
+        """获取演员完整作品列表，用于 JavHub 本地先分组再分页。"""
+        params: dict[str, Any] = {}
+        if include_total is not None:
+            params["include_total"] = include_total
+        if include_supplement:
+            params["include_supplement"] = include_supplement
+        if service_code:
+            params["service_code"] = service_code
+        if year:
+            params["year"] = year
+        if sort_by:
+            params["sort_by"] = sort_by
+
+        path = f"/api/v1/actresses/{actress_id}/videos"
+        items = await self._get_all_pages(path, page_size=100, cache_bypass=cache_bypass, params=params)
+        if include_supplement and not items:
+            fallback_params = dict(params)
+            fallback_params.pop("include_supplement", None)
+            items = await self._get_all_pages(path, page_size=100, cache_bypass=cache_bypass, params=fallback_params)
+        transformed = [_transform_video_item(item) for item in items]
+        return {
+            "data": transformed,
+            "total_count": len(transformed),
+            "total_pages": 1 if transformed else 0,
+        }
 
     # === 枚举数据 ===
 

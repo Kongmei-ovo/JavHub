@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from config import config
-from database import create_download_task, update_task_status, get_download_tasks, add_log
+from database import create_download_task, update_task_status, get_download_task, get_download_tasks, add_log
 from services.downloaders import create_downloader_client, get_downloader_config, match_remote_task
 from services.notification import notification_service
 
@@ -58,10 +58,9 @@ class DownloaderService:
         return get_download_tasks()
 
     async def poll_task_status(self, task_id: int) -> dict:
-        from database import get_download_tasks, update_task_status
+        from database import get_download_task, update_task_status
 
-        db_tasks = get_download_tasks(limit=500)
-        db_task = next((t for t in db_tasks if t['id'] == task_id), None)
+        db_task = get_download_task(task_id)
         if not db_task:
             return {"task_id": task_id, "status": "unknown"}
 

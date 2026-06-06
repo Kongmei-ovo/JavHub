@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import re
 from collections import defaultdict
-from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -246,16 +245,52 @@ def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         groups[str(item.get("canonical_code") or item.get("display_code") or "")].append(item)
 
     for group_items in groups.values():
-        if len(group_items) == 1 or not _safe_group(group_items):
-            result.extend((_input_index(item), item) for item in group_items)
-            continue
-        ordered = sorted(group_items, key=_sort_key)
-        primary = copy.deepcopy(ordered[0])
-        visible_items = [_strip_internal_fields(copy.deepcopy(item)) for item in ordered]
-        primary["variant_group_count"] = len(visible_items)
-        primary["variant_group_items"] = visible_items
-        result.append((min(_input_index(item) for item in group_items), primary))
+        for cluster in _cluster_same_movie_variants(group_items):
+            if len(cluster) == 1:
+                result.append((_input_index(cluster[0]), cluster[0]))
+                continue
+            ordered = sorted(cluster, key=_sort_key)
+            primary = copy.deepcopy(ordered[0])
+            visible_items = [_strip_internal_fields(copy.deepcopy(item)) for item in ordered]
+            primary["variant_group_count"] = len(visible_items)
+            primary["variant_group_items"] = visible_items
+            result.append((min(_input_index(item) for item in cluster), primary))
     return [_strip_internal_fields(item) for _, item in sorted(result, key=lambda entry: entry[0])]
+
+
+def _cluster_same_movie_variants(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    if len(items) <= 1:
+        return [items]
+
+    parents = list(range(len(items)))
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    for left in range(len(items)):
+        for right in range(left + 1, len(items)):
+            if _same_movie(items[left], items[right]):
+                union(left, right)
+
+    clusters_by_root: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for index, item in enumerate(items):
+        clusters_by_root[find(index)].append(item)
+    return sorted(clusters_by_root.values(), key=lambda cluster: min(_input_index(item) for item in cluster))
+
+
+def _same_movie(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    if str(left.get("canonical_code") or "") != str(right.get("canonical_code") or ""):
+        return False
+    return _safe_group([left, right])
 
 
 def _safe_group(items: list[dict[str, Any]]) -> bool:
@@ -265,14 +300,9 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
         titles_match = True
     else:
         base = max(non_empty_titles, key=len)
-        titles_match = all(_title_similarity(base, title) >= 0.56 for title in non_empty_titles)
+        threshold = 0.9 if any(_needs_stronger_title_evidence(item) for item in items) else 0.56
+        titles_match = all(_title_similarity(base, title) >= threshold for title in non_empty_titles)
     if not titles_match:
-        return False
-
-    dates = [_parse_release_date(item.get("release_date")) for item in items]
-    dates = [value for value in dates if value]
-    date_tolerance_days = 180 if any(_has_label(item, "rental") for item in items) else 45
-    if len(dates) >= 2 and (max(dates) - min(dates)).days > date_tolerance_days:
         return False
 
     runtimes = [_runtime_minutes(item.get("runtime_mins")) for item in items]
@@ -282,17 +312,6 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
         if max(runtimes) - min(runtimes) > tolerance:
             return False
 
-    actor_sets = [_actor_keys(item) for item in items]
-    actor_sets = [actors for actors in actor_sets if actors]
-    if len(actor_sets) >= 2:
-        base = max(actor_sets, key=len)
-        for actors in actor_sets:
-            overlap = len(base & actors)
-            if overlap / max(1, min(len(base), len(actors))) < 0.8:
-                return False
-            if overlap / max(1, len(base | actors)) < 0.6:
-                return False
-
     return True
 
 
@@ -301,10 +320,16 @@ def _is_groupable(analysis: dict[str, Any]) -> bool:
     digits = str(analysis.get("digits") or "")
     if not analysis.get("canonical_code") or not prefix or not digits:
         return False
-    numeric = int(digits) if digits.isdigit() else 0
-    if prefix in LOW_NUMBER_COLLISION_PREFIXES or numeric < 100:
-        return False
     return True
+
+
+def _needs_stronger_title_evidence(item: dict[str, Any]) -> bool:
+    raw_code = str(item.get("display_code") or item.get("dvd_id") or item.get("content_id") or "")
+    analysis = _analyze_code(raw_code, allow_title_tk=False)
+    prefix = str(analysis.get("prefix") or "")
+    digits = str(analysis.get("digits") or "")
+    numeric = int(digits) if digits.isdigit() else 0
+    return bool(prefix in LOW_NUMBER_COLLISION_PREFIXES or (digits and numeric < 100))
 
 
 def _variant_sort_rank(row: dict[str, Any], labels: list[dict[str, Any]]) -> int:
@@ -321,11 +346,6 @@ def _variant_sort_rank(row: dict[str, Any], labels: list[dict[str, Any]]) -> int
     if "fanza_bonus" in keys or "bonus" in keys:
         return 40
     return 50
-
-
-def _has_label(item: dict[str, Any], key: str) -> bool:
-    labels = item.get("variant_labels")
-    return isinstance(labels, list) and any(label.get("key") == key for label in labels if isinstance(label, dict))
 
 
 def _sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
@@ -395,59 +415,9 @@ def _title_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
 
-def _parse_release_date(value: Any) -> date | None:
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        return datetime.strptime(text[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return None
-
-
 def _runtime_minutes(value: Any) -> int | None:
     try:
         minutes = int(float(str(value).strip()))
     except (TypeError, ValueError):
         return None
     return minutes if minutes > 0 else None
-
-
-def _actor_keys(item: dict[str, Any]) -> set[str]:
-    keys: set[str] = set()
-
-    def add(value: Any) -> None:
-        text = re.sub(r"\W+", "", str(value or "").lower())
-        if text:
-            keys.add(text)
-
-    for field in ("actresses", "actors"):
-        values = item.get(field)
-        if not isinstance(values, list):
-            continue
-        for value in values:
-            if isinstance(value, dict):
-                actor_id = value.get("id") or value.get("actress_id")
-                if actor_id:
-                    keys.add(f"id:{actor_id}")
-                    continue
-                for name_field in ("name_kanji", "name_romaji", "name_ja", "name_en", "name"):
-                    if value.get(name_field):
-                        add(value[name_field])
-                        break
-            else:
-                add(value)
-
-    for field in ("actress_name", "actress_names", "actor_name", "actor_names"):
-        value = item.get(field)
-        if isinstance(value, list):
-            for entry in value:
-                add(entry)
-        else:
-            add(value)
-
-    return keys

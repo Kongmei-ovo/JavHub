@@ -46,6 +46,14 @@ def get_download_tasks(limit: int = 100) -> list:
         return [dict(row) for row in rows]
 
 
+def get_download_task(task_id: int) -> Optional[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM download_tasks WHERE id = ?", (task_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
 def update_task_status(task_id: int, status: str, error_msg: Optional[str] = None, remote_task_id: Optional[str] = None):
     with get_db() as conn:
         cursor = conn.cursor()

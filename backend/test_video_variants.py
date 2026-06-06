@@ -90,7 +90,7 @@ class VideoVariantAnalysisTest(unittest.TestCase):
 
         self.assertEqual([row["display_code"] for row in grouped], ["ZZZZ-150", "MIAA-784"])
 
-    def test_grouping_requires_near_release_runtime_and_actors_when_present(self):
+    def test_grouping_allows_far_release_dates_but_still_requires_runtime_and_actors_when_present(self):
         baseline = item(
             content_id="miaa00784",
             dvd_id="MIAA-784",
@@ -127,11 +127,36 @@ class VideoVariantAnalysisTest(unittest.TestCase):
             variant_mode="grouped",
         )
 
-        self.assertEqual(len(far_date), 2)
+        self.assertEqual(len(far_date), 1)
+        self.assertEqual(far_date[0]["variant_group_count"], 2)
         self.assertEqual(len(far_runtime), 2)
-        self.assertEqual(len(different_actor), 2)
+        self.assertEqual(len(different_actor), 1)
 
-    def test_short_reused_codes_are_not_grouped_by_padding(self):
+    def test_short_reused_codes_are_grouped_when_title_and_runtime_match(self):
+        rows = [
+            item(
+                content_id="sbb055",
+                dvd_id="SBB-055",
+                title_ja="Low Number Same Movie",
+                release_date="2010-01-01",
+                runtime_mins=83,
+            ),
+            item(
+                content_id="sbb00055",
+                dvd_id="SBB-00055",
+                title_ja="Low Number Same Movie",
+                release_date="2019-01-01",
+                runtime_mins=83,
+            ),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "SBB-55")
+        self.assertEqual(grouped[0]["variant_group_count"], 2)
+
+    def test_short_reused_codes_are_not_grouped_when_title_differs(self):
         rows = [
             item(content_id="jkd001", dvd_id="JKD-001", title_ja="Title A", release_date="2010-01-01"),
             item(content_id="jkd01", dvd_id="JKD-01", title_ja="Completely Different Title", release_date="2020-01-01"),
@@ -147,6 +172,34 @@ class VideoVariantAnalysisTest(unittest.TestCase):
 
         self.assertEqual(len(grouped), len(rows))
         self.assertTrue(all(row["variant_group_count"] == 1 for row in grouped))
+
+    def test_rd_family_cross_year_variants_are_grouped_by_title_and_runtime(self):
+        rows = [
+            item(content_id="rd153dod", dvd_id="RD-153DOD", title_ja="RD Family Title", service_code="mono", release_date="2019-06-21", runtime_mins=83),
+            item(content_id="rd000153", dvd_id="RD-000153", title_ja="RD Family Title", service_code="mono", release_date="2008-01-25", runtime_mins=83),
+            item(content_id="rd153", dvd_id="RD-153", title_ja="RD Family Title", service_code="digital", release_date="2008-01-12", runtime_mins=82),
+            item(content_id="rd153rental", dvd_id="RD153", title_ja="RD Family Title", service_code="rental", release_date="2006-12-22", runtime_mins=83),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "RD-153")
+        self.assertEqual(grouped[0]["variant_group_count"], 4)
+
+    def test_grouping_clusters_within_bucket_so_one_outlier_does_not_block_the_rest(self):
+        rows = [
+            item(content_id="rd00153", dvd_id="RD-153", title_ja="Shared Movie Title", release_date="2008-01-12", runtime_mins=82),
+            item(content_id="rd000153", dvd_id="RD-000153", title_ja="Shared Movie Title", release_date="2008-01-25", runtime_mins=83),
+            item(content_id="rd153dod", dvd_id="RD-153DOD", title_ja="Shared Movie Title", release_date="2019-06-21", runtime_mins=83),
+            item(content_id="rd153other", dvd_id="RD153", title_ja="Completely Different Movie", release_date="2019-06-21", runtime_mins=83),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+        grouped_counts = sorted(row["variant_group_count"] for row in grouped)
+        self.assertEqual(grouped_counts, [1, 3])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,254 @@
+.diagnostics-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 56px 24px;
+  background: var(--surface-scrim);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  overflow: auto;
+}
+
+.diagnostics-panel {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  border-radius: var(--radius-sheet);
+}
+
+.diagnostics-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-sheet);
+  border-bottom: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
+
+.diagnostics-header h2,
+.diagnostics-header p {
+  margin: 0;
+}
+
+.diagnostics-header h2 {
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.diagnostics-header p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.diagnostics-body {
+  display: grid;
+  gap: 18px;
+  padding: 18px 22px 24px;
+}
+
+.diagnostics-section h3 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.diagnostics-table {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.diagnostics-row {
+  display: grid;
+  grid-template-columns: 140px 110px minmax(0, 1fr);
+  gap: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 52px;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  font-size: 12px;
+}
+
+.diagnostics-row-candidates {
+  grid-template-columns: minmax(120px, 1fr) 80px 110px 90px;
+}
+
+.diagnostics-row-head {
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
+  font-weight: 700;
+}
+
+.diagnostics-value {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.identity-list,
+.detail-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.identity-chip,
+.detail-source-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 72px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  font-size: 12px;
+}
+
+.detail-source-item {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-source-item strong {
+  color: var(--text-primary);
+}
+
+.manual-match-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.filter-input {
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  outline: none;
+  font-size: 13px;
+  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+}
+
+.filter-input:focus {
+  border-color: var(--glass-active-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--glass-active-material);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.manual-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-action-item {
+  display: grid;
+  grid-template-columns: 120px minmax(120px, 1fr) minmax(180px, 2fr);
+  gap: 10px;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 64px;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.manual-action-item strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.manual-action-item span,
+.manual-action-item small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.empty-inline {
+  padding: 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+}
+
+.spinner-large {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--glass-control-border);
+  border-top-color: var(--badge-info-text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 860px) {
+  .diagnostics-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .manual-match-bar,
+  .diagnostics-row-candidates,
+  .manual-action-item {
+    grid-template-columns: 1fr;
+  }
+}
