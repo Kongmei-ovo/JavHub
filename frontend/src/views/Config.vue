@@ -212,11 +212,19 @@
                     <span class="setting-title">发送测试信息</span>
                     <span class="setting-note">验证 Bot Token 和允许用户是否能收到通知。</span>
                   </div>
-                  <div class="settings-control settings-control--wide telegram-test-row">
-                    <button class="btn btn-secondary" type="button" @click="testTelegram" :disabled="testingTelegram || !canSaveConfig || !config.telegram.bot_token">
-                      {{ testingTelegram ? '发送中...' : '发送测试信息' }}
-                    </button>
-                    <span v-if="telegramTestMsg" class="telegram-test-msg">{{ telegramTestMsg }}</span>
+                  <div class="settings-control settings-control--wide telegram-test-row" :aria-busy="telegramTestBusy" aria-live="polite">
+                    <div class="telegram-test-actions">
+                      <button
+                        class="btn btn-secondary"
+                        type="button"
+                        @click="testTelegram"
+                        :disabled="testingTelegram || !canSaveConfig || !config.telegram.bot_token"
+                        :aria-describedby="'telegram-test-status'"
+                      >
+                        {{ testingTelegram ? '发送中...' : '发送测试信息' }}
+                      </button>
+                    </div>
+                    <span id="telegram-test-status" class="telegram-test-status" role="status">{{ telegramTestStatus }}</span>
                   </div>
                 </div>
               </div>
@@ -898,6 +906,24 @@ export default {
         return '正在写入后端配置，并同步本地外观偏好。'
       }
       return '保存会更新当前配置文件，同时保留本页的外观与检索偏好。'
+    },
+    telegramTestBusy() {
+      return this.testingTelegram
+    },
+    telegramTestStatus() {
+      if (this.testingTelegram) {
+        return '正在发送 Telegram 测试信息。'
+      }
+      if (this.telegramTestMsg) {
+        return this.telegramTestMsg
+      }
+      if (!this.canSaveConfig) {
+        return '配置未加载成功，测试已暂停。'
+      }
+      if (!this.config.telegram.bot_token) {
+        return '填写 Bot Token 后可发送测试信息。'
+      }
+      return '可发送一次测试信息。'
     },
     configStatusSourceLabel() {
       return this.configMeta.config_path ? `路径 ${this.configMeta.config_path}` : ''
