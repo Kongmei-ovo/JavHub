@@ -14,6 +14,11 @@ BONUS_EVIDENCE_RE = re.compile(
 FC2_RE = re.compile(r"(?i)\bFC2(?:[-_\s]*PPV)?[-_\s]*([0-9]{3,})\b")
 FC2_NORMALIZED_RE = re.compile(r"^FC2(?:PPV)?([0-9]+)$", re.IGNORECASE)
 CODE_RE = re.compile(r"^([A-Z]+)([0-9]+)([A-Z]*)$")
+# DMM "domestic" content_ids prefix the real code with a maker-bucket marker like
+# `h_706naac00047b` (== NAAC-047B) or `h_1240sw00789` (== SW-789). Strip the
+# prefix BEFORE the standard code analyzer so the canonical code matches the
+# unprefixed FANZA/r18 form and variant grouping works across origins.
+DOMESTIC_BUCKET_RE = re.compile(r"^H[0-9]{2,5}([A-Z][A-Z0-9]*[0-9][A-Z0-9]*)$")
 ON_DEMAND_SUFFIXES = ("RDOD", "BOD", "DOD")
 BONUS_SUFFIXES = ("BTK", "TK", "EC", "DL")
 LOW_NUMBER_COLLISION_PREFIXES = {
@@ -186,6 +191,12 @@ def _analyze_code(raw: Any, *, allow_title_tk: bool) -> dict[str, Any]:
         return _analysis(original, "FC2PPV" + digits, "FC2-PPV-" + digits, "FC2PPV", digits, tuple(markers))
 
     working = normalized
+    if match := DOMESTIC_BUCKET_RE.match(working):
+        # h_706naac00047b → NAAC00047B (canonicalises to NAAC-47B, matches the
+        # FANZA/r18 dvd_id NAAC-047B). The bucket digits are routing metadata,
+        # not part of the code; we discard them deliberately.
+        markers.append("h_bucket_prefix")
+        working = match.group(1)
     if allow_title_tk and working.startswith("TK") and _looks_like_wrapped_tk(working):
         markers.append("tk_prefix")
         working = working[2:]
@@ -237,12 +248,37 @@ def _looks_like_wrapped_tk(normalized: str) -> bool:
 
 def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    result: list[tuple[int, dict[str, Any]]] = []
+    ungroupable: list[dict[str, Any]] = []
     for item in items:
         if not item.get("_variant_groupable"):
-            result.append((_input_index(item), item))
+            ungroupable.append(item)
             continue
         groups[str(item.get("canonical_code") or item.get("display_code") or "")].append(item)
+
+    # Salvage pass: items whose code couldn't be canonicalised (e.g. an upstream
+    # mis-parse stored the DMM digital padded-id as `3-5` for jums00154) often
+    # still share a clean title + runtime with a sibling that DID canonicalise.
+    # Attach those orphans to the matching canon-code group so variant merging
+    # surfaces them as one movie instead of an orphan card with a garbled code.
+    orphans = ungroupable
+    ungroupable = []
+    for orphan in orphans:
+        target = _find_title_runtime_match(orphan, groups)
+        if target is not None:
+            # `_cluster_same_movie_variants` requires canonical_code equality —
+            # adopt the target group's code on the orphan so clustering treats
+            # it as a variant. Display-facing fields (display_code, dvd_id) are
+            # left untouched so the user still sees the original garbled label
+            # in the variant breakdown.
+            anchor = target[0]
+            orphan["canonical_code"] = anchor.get("canonical_code")
+            target.append(orphan)
+        else:
+            ungroupable.append(orphan)
+
+    result: list[tuple[int, dict[str, Any]]] = [
+        (_input_index(item), item) for item in ungroupable
+    ]
 
     for group_items in groups.values():
         for cluster in _cluster_same_movie_variants(group_items):
@@ -256,6 +292,69 @@ def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             primary["variant_group_items"] = visible_items
             result.append((min(_input_index(item) for item in cluster), primary))
     return [_strip_internal_fields(item) for _, item in sorted(result, key=lambda entry: entry[0])]
+
+
+def _find_title_runtime_match(
+    orphan: dict[str, Any],
+    groups: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]] | None:
+    """Return the canon-code group whose title + runtime match `orphan`, else None.
+
+    Strict equality on a non-trivial title-key is the safety belt — short or empty
+    titles are rejected outright to prevent accidental merges of unrelated movies
+    with similar fragments. Runtime, when present on both sides, must agree within
+    the same 5% tolerance the standard cluster check uses.
+    """
+    title_key = str(orphan.get("_variant_title_key") or "")
+    if len(title_key) < 10:
+        return None
+    orphan_runtime = _runtime_minutes(orphan.get("runtime_mins"))
+    best: list[dict[str, Any]] | None = None
+    for group in groups.values():
+        if not group:
+            continue
+        matched = [
+            item for item in group if str(item.get("_variant_title_key") or "") == title_key
+        ]
+        if not matched:
+            continue
+        if orphan_runtime:
+            ok = True
+            for item in matched:
+                item_runtime = _runtime_minutes(item.get("runtime_mins"))
+                if not item_runtime:
+                    continue
+                tolerance = max(3, round(max(orphan_runtime, item_runtime) * 0.05))
+                if abs(orphan_runtime - item_runtime) > tolerance:
+                    ok = False
+                    break
+            if not ok:
+                continue
+        # Prefer the group whose canonical_code looks well-formed (letters+digits)
+        # — that's the "real" code the orphan should hang off of.
+        if best is None:
+            best = group
+            continue
+        if _group_code_confidence(group) > _group_code_confidence(best):
+            best = group
+    return best
+
+
+def _group_code_confidence(group: list[dict[str, Any]]) -> int:
+    """Higher score = code looks more like a real product number (letters+digits)."""
+    if not group:
+        return 0
+    sample = group[0]
+    canon = str(sample.get("canonical_code") or "")
+    if not canon:
+        return 0
+    has_letters = any(ch.isalpha() for ch in canon)
+    has_digits = any(ch.isdigit() for ch in canon)
+    if has_letters and has_digits:
+        return 2
+    if has_letters or has_digits:
+        return 1
+    return 0
 
 
 def _cluster_same_movie_variants(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:

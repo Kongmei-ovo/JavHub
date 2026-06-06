@@ -201,6 +201,74 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         grouped_counts = sorted(row["variant_group_count"] for row in grouped)
         self.assertEqual(grouped_counts, [1, 3])
 
+    def test_garbled_code_orphan_merges_into_canonical_group_by_title_and_runtime(self):
+        # JUMS-154 family — the digital padded id (jums00154) had its dvd_id mis-extracted
+        # upstream as "3-5" (probably from the title "35人..." / "460分"). Without a
+        # title+runtime salvage pass, it stays an orphan card on the actress page.
+        title = "35人の人妻が過去最大級にイキ狂う 膣奥にぶっ刺さるデカチン大絶頂SEX 460分"
+        rows = [
+            item(content_id="jums154", dvd_id="JUMS-154", title_ja=title, service_code="mono", runtime_mins=460),
+            item(content_id="supp547", dvd_id="JUMS-154", title_ja=title, service_code="supplement", runtime_mins=None),
+            item(content_id="jums00154", dvd_id="3-5", title_ja=title, service_code="digital", runtime_mins=468),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1, "orphan with garbled dvd_id should fold into the canon group")
+        self.assertEqual(grouped[0]["canonical_code"], "JUMS-154")
+        self.assertEqual(grouped[0]["variant_group_count"], 3)
+        codes = sorted(it.get("dvd_id") or it.get("content_id") for it in grouped[0]["variant_group_items"])
+        self.assertIn("3-5", codes)
+
+    def test_garbled_code_orphan_with_mismatched_runtime_is_not_merged(self):
+        # Same title, but the orphan's runtime is way off (108 vs 460) → keep separate.
+        title = "35人の人妻が過去最大級にイキ狂う 膣奥にぶっ刺さるデカチン大絶頂SEX 460分"
+        rows = [
+            item(content_id="jums154", dvd_id="JUMS-154", title_ja=title, service_code="mono", runtime_mins=460),
+            item(content_id="trailer1", dvd_id="3-5", title_ja=title, service_code="digital", runtime_mins=108),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_garbled_code_orphan_with_short_title_is_not_merged(self):
+        # Too-short title can collide across unrelated content — fallback merge must refuse.
+        rows = [
+            item(content_id="abc123", dvd_id="ABC-123", title_ja="短い", service_code="mono", runtime_mins=120),
+            item(content_id="xyz", dvd_id="3-5", title_ja="短い", service_code="digital", runtime_mins=120),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_dmm_domestic_h_bucket_prefix_is_stripped_for_grouping(self):
+        # h_706naac00047b is DMM's "domestic" content id for what FANZA/r18 lists as NAAC-047B.
+        # The leading h_<digits> is a maker-bucket marker, not part of the code itself.
+        rows = [
+            item(
+                content_id="naac047b",
+                dvd_id="NAAC-047B",
+                title_ja="NAAC-047B Title",
+                service_code="mono",
+                runtime_mins=120,
+            ),
+            item(
+                content_id="h_706naac00047b",
+                dvd_id="h_706naac00047b",
+                title_ja="NAAC-047B Title",
+                service_code="digital",
+                runtime_mins=120,
+            ),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "NAAC-47B")
+        self.assertEqual(grouped[0]["variant_group_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

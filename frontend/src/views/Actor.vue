@@ -158,7 +158,7 @@
         <div v-if="group.movies.length > 0" class="movies-grid">
           <div
             v-for="movie in group.movies"
-            :key="movie.code || movie.id"
+            :key="movieKey(movie)"
             class="movie-card-wrap"
           >
             <MovieCard
