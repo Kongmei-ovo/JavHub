@@ -205,6 +205,21 @@ export default {
     return api.get('/inventory/jobs')
   },
 
+  getJobs(params = {}) {
+    return api.get('/v1/jobs', { params })
+  },
+
+  streamJobs(params = {}) {
+    const search = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        search.set(key, String(value))
+      }
+    }
+    const query = search.toString()
+    return new EventSource(`/api/v1/jobs/stream${query ? `?${query}` : ''}`)
+  },
+
   listInventoryMissing(params = {}) {
     return api.get('/inventory/missing', { params })
   },

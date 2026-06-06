@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from database.base import get_db
 
@@ -23,6 +24,69 @@ _DOWNLOAD_CANDIDATE_ORDER_TERMS = """
 """
 _DOWNLOAD_CANDIDATE_ORDER_BY = f"ORDER BY {_DOWNLOAD_CANDIDATE_ORDER_TERMS}"
 _SUMMARY_KEYS = ("total", "candidate", "approved", "rejected", "sent", "failed", "needs_magnet", "ready")
+_MAGNET_SCORE_SCHEMA_KEYS: set[tuple[str | None, str | None, str | None]] = set()
+
+
+def _ensure_magnet_score_column(cursor) -> None:
+    schema_key = (
+        os.getenv("JAVHUB_DB_HOST"),
+        os.getenv("JAVHUB_DB_PORT"),
+        os.getenv("JAVHUB_DB_NAME"),
+    )
+    if schema_key in _MAGNET_SCORE_SCHEMA_KEYS:
+        return
+    cursor.execute("ALTER TABLE download_candidates ADD COLUMN IF NOT EXISTS magnet_score JSONB NULL")
+    cursor.execute("ALTER TABLE download_candidates ADD COLUMN IF NOT EXISTS magnet_alternatives JSONB DEFAULT '[]'::jsonb")
+    cursor.execute("ALTER TABLE download_candidates ADD COLUMN IF NOT EXISTS inventory_provenance JSONB NULL")
+    cursor.execute("UPDATE download_candidates SET magnet_alternatives = '[]'::jsonb WHERE magnet_alternatives IS NULL")
+    _MAGNET_SCORE_SCHEMA_KEYS.add(schema_key)
+
+
+def _encode_json(value: Any) -> str | None:
+    if value is None:
+        return None
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _decode_json(value: Any) -> Any:
+    if value is None or isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return None
+
+
+def _candidate_row(row) -> dict:
+    data = dict(row)
+    data["magnet_score"] = _decode_json(data.get("magnet_score"))
+    data["inventory_provenance"] = _decode_json(data.get("inventory_provenance"))
+    alternatives = _decode_json(data.get("magnet_alternatives"))
+    data["magnet_alternatives"] = alternatives if isinstance(alternatives, list) else []
+    return data
+
+
+def _normalize_magnet_alternatives(alternatives: list[dict] | None) -> list[dict]:
+    normalized = []
+    seen = set()
+    for item in alternatives or []:
+        if not isinstance(item, dict):
+            continue
+        magnet = str(item.get("magnet") or item.get("torrent_url") or item.get("download_url") or "").strip()
+        if not magnet or magnet in seen:
+            continue
+        seen.add(magnet)
+        source = str(item.get("source") or item.get("magnet_source") or "").strip()
+        title = str(item.get("title") or "").strip()
+        normalized.append(
+            {
+                "magnet": magnet,
+                "source": source or None,
+                "title": title,
+                "score": item.get("score"),
+            }
+        )
+    return normalized
 
 
 def _bump_download_candidate_generation() -> None:
@@ -62,6 +126,7 @@ def upsert_download_candidate(
     status: str = "candidate",
     magnet: str | None = None,
     magnet_source: str | None = None,
+    inventory_provenance: dict | None = None,
     return_insert_status: bool = False,
 ) -> dict:
     """Insert or refresh a candidate, preserving manual decisions."""
@@ -72,14 +137,15 @@ def upsert_download_candidate(
         raise ValueError("content_id is required")
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         cursor.execute(
             '''
             INSERT INTO download_candidates (
                 content_id, dvd_id, title, actress_id, actress_name, jacket_thumb_url,
-                release_date, source, reason, status, magnet, magnet_source,
+                release_date, source, reason, status, magnet, magnet_source, inventory_provenance,
                 created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(content_id, source) DO NOTHING
             RETURNING id
             ''',
@@ -96,6 +162,7 @@ def upsert_download_candidate(
                 status,
                 magnet,
                 magnet_source,
+                _encode_json(inventory_provenance),
             ),
         )
         inserted = cursor.fetchone()
@@ -118,6 +185,7 @@ def upsert_download_candidate(
                     END,
                     magnet = COALESCE(magnet, ?),
                     magnet_source = COALESCE(magnet_source, ?),
+                    inventory_provenance = COALESCE(?::jsonb, inventory_provenance),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE content_id = ? AND source = ?
                 ''',
@@ -132,6 +200,7 @@ def upsert_download_candidate(
                     status,
                     magnet,
                     magnet_source,
+                    _encode_json(inventory_provenance),
                     content_id,
                     source,
                 ),
@@ -140,7 +209,7 @@ def upsert_download_candidate(
             "SELECT * FROM download_candidates WHERE content_id = ? AND source = ?",
             (content_id, source),
         )
-        row = dict(cursor.fetchone())
+        row = _candidate_row(cursor.fetchone())
         _bump_download_candidate_generation()
         if return_insert_status:
             row["was_inserted"] = was_inserted
@@ -153,6 +222,7 @@ def upsert_candidate_from_video(
     actress_name: str | None,
     source: str,
     reason: str,
+    provenance: dict | None = None,
     return_insert_status: bool = False,
 ) -> dict:
     content_id = candidate_content_id(video)
@@ -167,6 +237,7 @@ def upsert_candidate_from_video(
         release_date=video.get("release_date"),
         source=source,
         reason=reason,
+        inventory_provenance=provenance,
         return_insert_status=return_insert_status,
     )
 
@@ -266,6 +337,7 @@ def list_download_candidates(
 ) -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         where_clause, params = _candidate_filter_clause(
             status=status,
             actress_id=actress_id,
@@ -284,7 +356,7 @@ def list_download_candidates(
             ''',
             params + [limit, offset],
         )
-        rows = [dict(row) for row in cursor.fetchall()]
+        rows = [_candidate_row(row) for row in cursor.fetchall()]
     return _enrich_candidate_rows(rows)
 
 
@@ -344,6 +416,7 @@ def list_download_candidates_page(
     )
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         cursor.execute(
             f'''
             SELECT c.*, COUNT(*) OVER() AS __filtered_total
@@ -354,7 +427,7 @@ def list_download_candidates_page(
             ''',
             params + [limit, offset],
         )
-        result_rows = [dict(row) for row in cursor.fetchall()]
+        result_rows = [_candidate_row(row) for row in cursor.fetchall()]
         total = int(result_rows[0].pop("__filtered_total", 0) or 0) if result_rows else 0
         for row in result_rows[1:]:
             row.pop("__filtered_total", None)
@@ -416,6 +489,7 @@ def list_download_candidates_by_actress_ids(
     placeholders = ",".join("?" for _ in ids)
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         cursor.execute(
             f'''
             SELECT *
@@ -436,7 +510,7 @@ def list_download_candidates_by_actress_ids(
         )
         grouped: dict[int, list[dict]] = {}
         for row in cursor.fetchall():
-            data = dict(row)
+            data = _candidate_row(row)
             data.pop("__rn", None)
             grouped.setdefault(int(data["actress_id"]), []).append(data)
         return grouped
@@ -699,9 +773,10 @@ def _download_candidate_latest_event_counts_with_cursor(
 def get_download_candidate(candidate_id: int) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
         row = cursor.fetchone()
-        rows = [dict(row)] if row else []
+        rows = [_candidate_row(row)] if row else []
     enriched = _enrich_candidate_rows(rows)
     if not enriched:
         return None
@@ -713,22 +788,121 @@ def update_download_candidate_magnet(
     candidate_id: int,
     magnet: str,
     magnet_source: str = "manual",
+    score: dict | None = None,
+    alternatives: list[dict] | None = None,
 ) -> Optional[dict]:
+    normalized_alternatives = _normalize_magnet_alternatives(alternatives) if alternatives is not None else None
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
+        set_terms = [
+            "magnet = ?",
+            "magnet_source = ?",
+            "magnet_score = ?::jsonb",
+            "error_msg = NULL",
+            "updated_at = CURRENT_TIMESTAMP",
+        ]
+        params: list[Any] = [magnet, magnet_source, _encode_json(score)]
+        if normalized_alternatives is not None:
+            set_terms.append("magnet_alternatives = ?::jsonb")
+            params.append(_encode_json(normalized_alternatives))
+        params.append(candidate_id)
         cursor.execute(
-            '''
+            f'''
             UPDATE download_candidates
-            SET magnet = ?, magnet_source = ?, error_msg = NULL, updated_at = CURRENT_TIMESTAMP
+            SET {", ".join(set_terms)}
             WHERE id = ?
             ''',
-            (magnet, magnet_source, candidate_id),
+            params,
         )
         cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
         row = cursor.fetchone()
         if row:
             _bump_download_candidate_generation()
-            return dict(row)
+            return _candidate_row(row)
+        return None
+
+
+def update_download_candidate_magnet_alternatives(
+    candidate_id: int,
+    alternatives: list[dict] | None,
+) -> Optional[dict]:
+    normalized = _normalize_magnet_alternatives(alternatives)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
+        cursor.execute(
+            '''
+            UPDATE download_candidates
+            SET magnet_alternatives = ?::jsonb,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''',
+            (_encode_json(normalized), candidate_id),
+        )
+        cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
+        row = cursor.fetchone()
+        if row:
+            _bump_download_candidate_generation()
+            return _candidate_row(row)
+        return None
+
+
+def promote_download_candidate_magnet_alternative(candidate_id: int, alt_index: int) -> Optional[dict]:
+    if int(alt_index) < 0:
+        raise ValueError("alt_index is out of range")
+    with get_db() as conn:
+        cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
+        cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        candidate = _candidate_row(row)
+        alternatives = _normalize_magnet_alternatives(candidate.get("magnet_alternatives"))
+        if int(alt_index) >= len(alternatives):
+            raise ValueError("alt_index is out of range")
+        selected = alternatives[int(alt_index)]
+        selected_magnet = selected["magnet"]
+        current_magnet = str(candidate.get("magnet") or "").strip()
+        promoted = [selected]
+        for idx, item in enumerate(alternatives):
+            if idx == int(alt_index) or item["magnet"] == selected_magnet:
+                continue
+            promoted.append(item)
+        if current_magnet and current_magnet != selected_magnet and all(item["magnet"] != current_magnet for item in promoted):
+            promoted.append(
+                {
+                    "magnet": current_magnet,
+                    "source": candidate.get("magnet_source"),
+                    "title": candidate.get("title") or "",
+                    "score": None,
+                }
+            )
+        cursor.execute(
+            '''
+            UPDATE download_candidates
+            SET magnet = ?,
+                magnet_source = ?,
+                magnet_alternatives = ?::jsonb,
+                status = 'candidate',
+                download_task_id = NULL,
+                error_msg = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''',
+            (
+                selected_magnet,
+                selected.get("source") or candidate.get("magnet_source") or "alternative",
+                _encode_json(promoted),
+                candidate_id,
+            ),
+        )
+        cursor.execute("SELECT * FROM download_candidates WHERE id = ?", (candidate_id,))
+        updated = cursor.fetchone()
+        if updated:
+            _bump_download_candidate_generation()
+            return _candidate_row(updated)
         return None
 
 
@@ -742,6 +916,7 @@ def set_download_candidate_status(
         raise ValueError(f"invalid download candidate status: {status}")
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
         cursor.execute(
             '''
             UPDATE download_candidates
@@ -757,7 +932,7 @@ def set_download_candidate_status(
         row = cursor.fetchone()
         if row:
             _bump_download_candidate_generation()
-            return dict(row)
+            return _candidate_row(row)
         return None
 
 

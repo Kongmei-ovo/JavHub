@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from database import init_db
 from config import config as _cfg
 from middlewares.performance import RequestTimingMiddleware
+from middlewares.trace import TraceIdMiddleware
 
 # 配置日志
 logging.basicConfig(
@@ -31,6 +32,9 @@ from routers.health import router as health_router
 from routers.translation import router as translation_router
 from routers.proxy import router as proxy_router
 from routers.inventory import router as inventory_router
+from routers.inventory_actors import router as inventory_actors_router
+from routers.inventory_jobs import router as inventory_jobs_router
+from routers.inventory_mapping import router as inventory_mapping_router
 from routers.favorites import router as favorites_router
 from routers.stream import router as stream_router
 from routers.supplement import router as supplement_router
@@ -42,6 +46,9 @@ from routers.operations import router as operations_router
 from routers.data_quality import router as data_quality_router
 from routers.javinfo_imports import router as javinfo_imports_router
 from routers.video_variant_index import router as video_variant_index_router
+from routers.source_health import router as source_health_router
+from routers.jobs import router as jobs_router
+from routers.scheduler import router as scheduler_router
 
 app = FastAPI(title="AV Downloader API")
 
@@ -99,6 +106,7 @@ app.add_middleware(
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(RequestTimingMiddleware, slow_request_ms=500)
+app.add_middleware(TraceIdMiddleware)
 
 # 速率限制中间件
 if _cfg.rate_limit_enabled:
@@ -142,6 +150,9 @@ app.include_router(health_router)
 app.include_router(translation_router)
 app.include_router(proxy_router)
 app.include_router(inventory_router)
+app.include_router(inventory_jobs_router)
+app.include_router(inventory_actors_router)
+app.include_router(inventory_mapping_router)
 app.include_router(favorites_router)
 app.include_router(stream_router)
 app.include_router(supplement_router)
@@ -153,6 +164,9 @@ app.include_router(operations_router)
 app.include_router(data_quality_router)
 app.include_router(javinfo_imports_router)
 app.include_router(video_variant_index_router)
+app.include_router(source_health_router)
+app.include_router(jobs_router)
+app.include_router(scheduler_router)
 
 
 @app.on_event("startup")

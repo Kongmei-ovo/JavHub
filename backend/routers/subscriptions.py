@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
-from typing import Any
+from pydantic import BaseModel, model_validator
+from typing import Any, Literal
 from database import (
     add_subscription,
     delete_subscription,
@@ -16,9 +16,24 @@ from services.cache import should_bypass_response_cache
 router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
 
 class CreateSubscriptionRequest(BaseModel):
-    actress_id: int
-    actress_name: str
+    actress_id: int | None = None
+    actress_name: str | None = None
+    scope: Literal["actress", "maker", "series", "label"] = "actress"
+    target_id: int | None = None
+    target_label: str | None = None
     auto_download: bool = False
+
+    @model_validator(mode="after")
+    def validate_target(self):
+        if self.scope == "actress":
+            if self.actress_id is None and self.target_id is None:
+                raise ValueError("actress subscription requires actress_id")
+            if not (self.actress_name or self.target_label):
+                raise ValueError("actress subscription requires actress_name")
+            return self
+        if self.target_id is None or not self.target_label:
+            raise ValueError(f"{self.scope} subscription requires target_id and target_label")
+        return self
 
 @router.get("")
 async def list_subscriptions(cache_control: str | None = Query(None, alias="cache")) -> dict[str, Any]:
@@ -62,6 +77,9 @@ async def create_subscription(req: CreateSubscriptionRequest) -> dict[str, Any]:
         actress_id=req.actress_id,
         actress_name=req.actress_name,
         auto_download=req.auto_download,
+        scope=req.scope,
+        target_id=req.target_id,
+        target_label=req.target_label,
     )
     return {"id": sub_id, "status": "ok"}
 
@@ -179,6 +197,7 @@ def _new_movies_payload(limit_per_actress: int = 20) -> dict[str, Any]:
 class UpdateSubscriptionRequest(BaseModel):
     enabled: bool | None = None
     auto_download: bool | None = None
+    cadence_minutes: int | None = None
 
 @router.delete("/{subscription_id}")
 async def remove_subscription(subscription_id: int) -> dict[str, Any]:
@@ -194,6 +213,8 @@ async def update_subscription_endpoint(subscription_id: int, req: UpdateSubscrip
         kwargs["enabled"] = req.enabled
     if req.auto_download is not None:
         kwargs["auto_download"] = req.auto_download
+    if req.cadence_minutes is not None:
+        kwargs["cadence_minutes"] = req.cadence_minutes
     update_subscription(subscription_id, **kwargs)
     return {"status": "ok"}
 

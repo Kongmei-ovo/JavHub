@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import httpx
 import re
+import time
 from typing import Any
 from difflib import SequenceMatcher
 
@@ -9,11 +10,14 @@ from difflib import SequenceMatcher
 class EmbyClient:
     """Emby API 客户端"""
 
+    _EXISTS_CACHE_TTL_SECONDS = 30.0
+
     def __init__(self, api_url: str, api_key: str):
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
         self._client: httpx.AsyncClient | None = None
         self._client_loop: asyncio.AbstractEventLoop | None = None
+        self._exists_cache: dict[str, tuple[float, dict | None]] = {}
 
     async def _get_client(self) -> httpx.AsyncClient:
         # The cached client is bound to the loop that created it; this singleton
@@ -42,8 +46,36 @@ class EmbyClient:
 
     # === 库检测 ===
 
-    async def check_exists(self, content_id: str) -> bool:
-        """检查影片是否在库中（使用 Emby 查询接口，替代遍历全量数据）"""
+    def _normalize_content_id(self, content_id: str) -> str:
+        return (content_id or "").strip().upper()
+
+    def _item_matches_content_id(self, item: dict, code_upper: str) -> bool:
+        name = item.get("Name", "") or item.get("FileName", "")
+        name_upper = name.upper()
+        # 精确匹配：content_id 作为独立词组出现（前后是分隔符或边界）
+        # 匹配: ABC-123, ABC-123-c, ABC-123.hack 等
+        # 不匹配: XABC-123, ABC-123-456, ABC-1234
+        return bool(re.search(
+            r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?:-(?=[A-Za-z])[A-Za-z]*)?(?=\s|[().,!]|$)',
+            name_upper
+        ))
+
+    def clear_exists_cache(self):
+        self._exists_cache.clear()
+
+    async def lookup(self, content_id: str) -> dict | None:
+        """查找影片是否在 Emby 库中，并返回首个匹配 item 的来源信息。"""
+        code_upper = self._normalize_content_id(content_id)
+        if not code_upper:
+            return None
+
+        now = time.monotonic()
+        cached = self._exists_cache.get(code_upper)
+        if cached is not None:
+            cached_at, cached_result = cached
+            if now - cached_at < self._EXISTS_CACHE_TTL_SECONDS:
+                return cached_result
+
         try:
             result = await self._get(
                 "/Items",
@@ -51,23 +83,29 @@ class EmbyClient:
                     "limit": 10,
                     "includeItemTypes": "Movie",
                     "recursive": "true",
-                    "searchTerm": content_id,
+                    "searchTerm": code_upper,
                 }
             )
             items = result.get("Items", result.get("items", []))
-            code_upper = content_id.upper()
             for item in items:
-                name = item.get("Name", "") or item.get("FileName", "")
-                name_upper = name.upper()
-                # 精确匹配：content_id 作为独立词组出现（前后是分隔符或边界）
-                # 匹配: ABC-123, ABC-123-c, ABC-123.hack 等
-                # 不匹配: XABC-123, ABC-123-456, ABC-1234
-                if re.search(
-                    r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?:-(?=[A-Za-z])[A-Za-z]*)?(?=\s|[().,!]|$)',
-                    name_upper
-                ):
-                    return True
-            return False
+                if self._item_matches_content_id(item, code_upper):
+                    match = {
+                        "exists": True,
+                        "emby_item_id": item.get("Id"),
+                        "name": item.get("Name") or item.get("FileName"),
+                    }
+                    self._exists_cache[code_upper] = (now, match)
+                    return match
+            self._exists_cache[code_upper] = (now, None)
+            return None
+        except Exception:
+            self._exists_cache[code_upper] = (now, None)
+            return None
+
+    async def check_exists(self, content_id: str) -> bool:
+        """检查影片是否在库中（使用 Emby 查询接口，替代遍历全量数据）"""
+        try:
+            return await self.lookup(content_id) is not None
         except Exception:
             return False
 
@@ -94,18 +132,26 @@ class EmbyClient:
         except Exception:
             return []
 
-    async def get_items_with_people(self, limit: int = 500, start: int = 0) -> dict:
+    async def get_items_with_people(
+        self,
+        limit: int = 500,
+        start: int = 0,
+        min_date_last_saved: str | None = None,
+    ) -> dict:
         """分页获取影片（含People演员信息），返回 {items, totalCount}"""
         try:
+            params = {
+                "limit": limit,
+                "startIndex": start,
+                "includeItemTypes": "Movie",
+                "recursive": "true",
+                "fields": "People,PremiereDate,ProductionYear",
+            }
+            if min_date_last_saved:
+                params["MinDateLastSaved"] = min_date_last_saved
             result = await self._get(
                 "/Items",
-                params={
-                    "limit": limit,
-                    "startIndex": start,
-                    "includeItemTypes": "Movie",
-                    "recursive": "true",
-                    "fields": "People,PremiereDate,ProductionYear",
-                }
+                params=params,
             )
             # Emby returns "Items" (capitalized), normalize to lowercase
             if isinstance(result, dict):
@@ -121,13 +167,24 @@ class EmbyClient:
         """采集所有影片及其演员信息，返回 (actors_map, total_items)
         actors_map: {actress_id: {actress_id, actress_name, video_count, items: [], image_tag}}
         """
+        return await self._collect_movies_with_actors()
+
+    async def collect_incremental_movies_with_actors(self, since_iso: str) -> tuple[list[dict], int]:
+        """采集指定时间后保存过的影片及其演员信息。"""
+        return await self._collect_movies_with_actors(min_date_last_saved=since_iso)
+
+    async def _collect_movies_with_actors(self, min_date_last_saved: str | None = None) -> tuple[list[dict], int]:
         all_actors: dict[int, dict] = {}
         total = 0
         page_size = 500
         start = 0
 
         while True:
-            result = await self.get_items_with_people(limit=page_size, start=start)
+            result = await self.get_items_with_people(
+                limit=page_size,
+                start=start,
+                min_date_last_saved=min_date_last_saved,
+            )
             items = result.get("items", [])
             total_count = result.get("totalCount", 0)
             if total == 0:

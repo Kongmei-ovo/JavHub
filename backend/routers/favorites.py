@@ -4,6 +4,7 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import favorite
 from modules.info_client import get_info_client
+from routers._query import qv
 from services import cache as response_cache
 from services.cache import should_bypass_response_cache
 from services.video_variant_index import apply_indexed_variant_groups
@@ -34,12 +35,6 @@ class CollectionRequest(BaseModel):
     description: Optional[str] = None
 
 
-def _query_default(value, fallback=None):
-    if hasattr(value, "default"):
-        return fallback if value.default is None else value.default
-    return value
-
-
 @router.get("")
 async def get_favorites(
     entity_type: Optional[str] = Query(None),
@@ -47,9 +42,9 @@ async def get_favorites(
     cache_control: Optional[str] = Query(None, alias="cache"),
 ):
     """获取收藏列表；默认只返回全局状态需要的轻量索引。"""
-    entity_type_value = _query_default(entity_type)
-    include_metadata_value = bool(_query_default(include_metadata, False))
-    cache_control_value = _query_default(cache_control)
+    entity_type_value = qv(entity_type)
+    include_metadata_value = bool(qv(include_metadata))
+    cache_control_value = qv(cache_control)
     bypass_cache = should_bypass_response_cache(cache_control_value)
     cache_params = {
         "generation": await response_cache.get_data_generation_async("favorites"),
@@ -94,9 +89,9 @@ async def get_favorite_videos_page(
     cache_control: Optional[str] = Query(None, alias="cache"),
 ):
     """分页获取 video 收藏详情，避免收藏页一次 fanout 所有 JavInfo 请求。"""
-    limit_value = max(1, min(int(_query_default(limit, 48) or 48), 200))
-    offset_value = max(0, int(_query_default(offset, 0) or 0))
-    cache_control_value = _query_default(cache_control)
+    limit_value = max(1, min(int(qv(limit) or 48), 200))
+    offset_value = max(0, int(qv(offset) or 0))
+    cache_control_value = qv(cache_control)
     cache_params = {
         "generation": await response_cache.get_data_generation_async("favorites"),
         "limit": limit_value,

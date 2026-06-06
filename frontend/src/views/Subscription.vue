@@ -46,31 +46,17 @@
 
       <div v-else-if="subs.length > 0" class="card-grid" :class="{ 'is-subscription-editing': subscriptionEditMode }">
         <div v-for="sub in subs" :key="sub.id" class="subscription-selectable" :class="{ 'is-selected': isSubscriptionSelected(sub) }">
-          <ActorPortraitCard
-            :actor="subActor(sub)"
-            :name="subDisplayName(sub)"
-            :subtitle="subOriginalName(sub)"
-            :meta="subCardMeta(sub)"
-            :avatar-url="subCoverUrl(sub)"
-            :badges="subCardBadges(sub)"
-            density="standard"
-            @open="handleSubscriptionCardOpen(sub)"
-          />
+          <ActorPortraitCard :actor="subActor(sub)" :name="subDisplayName(sub)" :subtitle="subOriginalName(sub)" :meta="subCardMeta(sub)" :avatar-url="subCoverUrl(sub)" :badges="subCardBadges(sub)" density="standard" @open="handleSubscriptionCardOpen(sub)" />
+          <button v-if="!subscriptionEditMode && sinceLastKnown(sub)" class="subscription-since-chip" type="button" aria-label="查看自上次以来新增" @click.stop="openSinceLastSheet(sub)">
+            <template v-if="sinceLastCount(sub)">新增 {{ sinceLastCount(sub) }}</template><template v-else>无新增</template><span v-if="formatSinceLastElapsed(sub.last_run_at)"> · {{ formatSinceLastElapsed(sub.last_run_at) }}</span>
+          </button>
           <button v-if="subscriptionEditMode" class="subscription-select-button" type="button" :aria-label="isSubscriptionSelected(sub) ? '取消选择订阅' : '选择订阅'" @click.stop="toggleSubscriptionSelection(sub)">
             <span></span>
           </button>
         </div>
       </div>
 
-      <AppleEmptyState
-        v-else
-        class="empty-state"
-        title="还没有订阅任何演员"
-        description="订阅后可以定期检查新作品，并把缺失影片写入下载候选。"
-        next-step="先搜索演员添加订阅；添加后可以立即检查，或到下载候选处理待补磁力。"
-        action-label="添加演员" secondary-action-label="浏览演员目录"
-        @action="openDiscover" @secondary-action="router.push('/entities?tab=actresses')"
-      >
+      <AppleEmptyState v-else class="empty-state" title="还没有订阅任何演员" description="订阅后可以定期检查新作品，并把缺失影片写入下载候选。" next-step="先搜索演员添加订阅；添加后可以立即检查，或到下载候选处理待补磁力。" action-label="添加演员" secondary-action-label="浏览演员目录" @action="openDiscover" @secondary-action="router.push('/entities?tab=actresses')">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         </template>
@@ -107,29 +93,10 @@
               <AppleSkeleton v-if="searching" class="card-grid" variant="gallery" :items="8" label="演员搜索中" />
 
               <div v-else-if="searchResults.length > 0" class="card-grid">
-                <ActorPortraitCard
-                  v-for="actor in searchResults"
-                  :key="actor.id"
-                  :actor="actor"
-                  :name="actorCardName(actor)"
-                  :subtitle="actorCardSubtitle(actor)"
-                  :meta="actorCardMeta(actor)"
-                  :avatar-url="avatarSrc(actor)"
-                  :badges="actorSearchBadges(actor)"
-                  density="standard"
-                  @open="openActorSheet(actor)"
-                />
+                <ActorPortraitCard v-for="actor in searchResults" :key="actor.id" :actor="actor" :name="actorCardName(actor)" :subtitle="actorCardSubtitle(actor)" :meta="actorCardMeta(actor)" :avatar-url="avatarSrc(actor)" :badges="actorSearchBadges(actor)" density="standard" @open="openActorSheet(actor)" />
               </div>
 
-              <AppleEmptyState
-                v-else-if="searched && searchResults.length === 0"
-                class="empty-state compact"
-                title="未找到相关演员"
-                description="当前关键词没有匹配到可订阅的演员。"
-                next-step="换一个日文名、罗马音或更短关键词再试。"
-                action-label="重新搜索" secondary-action-label="清空关键词" density="compact"
-                @action="doSearch" @secondary-action="clearSearch"
-              >
+              <AppleEmptyState v-else-if="searched && searchResults.length === 0" class="empty-state compact" title="未找到相关演员" description="当前关键词没有匹配到可订阅的演员。" next-step="换一个日文名、罗马音或更短关键词再试。" action-label="重新搜索" secondary-action-label="清空关键词" density="compact" @action="doSearch" @secondary-action="clearSearch">
                 <template #icon>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
                 </template>
@@ -201,28 +168,18 @@
                 全部作品
               </button>
             </div>
+            <div v-if="sheetSub" class="cadence-control">
+              <span class="sheet-stat-line">每 {{ cadenceHours(sheetSub.cadence_minutes) }} 小时检查</span>
+              <div class="cadence-options" aria-label="检查间隔">
+                <button v-for="option in cadenceOptions" :key="option.minutes" class="cadence-option" :class="{ 'is-active': Number(sheetSub.cadence_minutes || 1440) === option.minutes }" type="button" @click="updateCadence(sheetSub, option.minutes)">{{ option.label }}</button>
+              </div>
+            </div>
 
             <div v-if="sheetMovies.length > 0" class="sheet-works">
               <div class="works-grid">
                 <div v-for="movie in sheetMovies" :key="movie.content_id || movie.dvd_id" class="work-card-wrap">
-                  <MovieCard
-                    v-bind="movieCardVariantProps(movie)"
-                    :coverUrl="movieCoverUrl(movie)"
-                    :title="movie.title_en || movie.title_ja || ''"
-                    :serviceCode="movie.service_code || ''"
-                    :releaseDate="movie.release_date || ''"
-                    :runtimeMins="movie.runtime_mins || ''"
-                    :sampleUrl="movie.sample_url || ''"
-                    @click="openVideoModal(movie)"
-                  />
-                  <VariantGroupDisclosure
-                    :variantGroupCount="Number(movie.variant_group_count || 0)"
-                    :variantGroupItems="visibleVariantItems(movie)"
-                    :expanded="isVariantGroupExpanded(movie)"
-                    :itemKey="variantGroupKey(movie)"
-                    @toggle="toggleVariantGroup"
-                    @openVariant="openVideoModal"
-                  />
+                  <MovieCard v-bind="movieCardVariantProps(movie)" :coverUrl="movieCoverUrl(movie)" :title="movie.title_en || movie.title_ja || ''" :serviceCode="movie.service_code || ''" :releaseDate="movie.release_date || ''" :runtimeMins="movie.runtime_mins || ''" :sampleUrl="movie.sample_url || ''" @click="openVideoModal(movie)" />
+                  <VariantGroupDisclosure :variantGroupCount="Number(movie.variant_group_count || 0)" :variantGroupItems="visibleVariantItems(movie)" :expanded="isVariantGroupExpanded(movie)" :itemKey="variantGroupKey(movie)" @toggle="toggleVariantGroup" @openVariant="openVideoModal" />
                 </div>
               </div>
             </div>
@@ -233,6 +190,24 @@
                 {{ subscribing ? '订阅中...' : '订阅' }}
               </button>
               <button v-else class="action-btn" disabled>已订阅</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <teleport to="body">
+      <transition name="sheet">
+        <div v-if="sinceLastSheetSub" class="sheet-overlay" @click.self="closeSinceLastSheet">
+          <div class="sheet since-last-sheet" @click.stop>
+            <div class="sheet-top-bar"><div class="sheet-top-actions"><button class="top-action-btn" type="button" @click="closeSinceLastSheet">关闭</button></div></div>
+            <div class="since-last-head"><span class="discover-kicker">自上次以来新增</span><h2>{{ subDisplayName(sinceLastSheetSub) }}</h2><p>{{ sinceLastSummary(sinceLastSheetSub) }}</p></div>
+            <div class="since-last-list">
+              <div v-for="movie in sinceLastSheetMovies" :key="sinceLastMovieKey(movie)" class="since-last-item">
+                <strong class="since-last-title">{{ sinceLastMovieTitle(movie) }}</strong>
+                <span class="since-last-meta">{{ sinceLastMovieCode(movie) }}<template v-if="movie.release_date"> · {{ movie.release_date }}</template></span>
+              </div>
+              <div v-if="sinceLastSheetMovies.length === 0" class="since-last-item"><strong class="since-last-title">无新增</strong><span class="since-last-meta">最近一次检查没有发现新作品</span></div>
             </div>
           </div>
         </div>
@@ -280,26 +255,17 @@ const subscribing = ref(false)
 const expandedVariantGroups = ref({})
 const actressMetaMap = ref({})
 const lastCheckReport = ref(null)
+const sinceLastSheetSub = ref(null)
+const cadenceOptions = [{ label: '每 6 小时', minutes: 360 }, { label: '每 12 小时', minutes: 720 }, { label: '每 24 小时', minutes: 1440 }, { label: '每 72 小时', minutes: 4320 }]
 
-const totalNewMovies = computed(() => {
-  return subs.value.reduce((sum, sub) => sum + Number(sub.candidate_count || 0), 0)
-})
-
-const totalNeedsMagnet = computed(() => subs.value.reduce(
-  (sum, sub) => sum + Number(sub.needs_magnet_count || 0),
-  0,
-))
+const totalNewMovies = computed(() => subs.value.reduce((sum, sub) => sum + Number(sub.candidate_count || 0), 0))
+const totalNeedsMagnet = computed(() => subs.value.reduce((sum, sub) => sum + Number(sub.needs_magnet_count || 0), 0))
 const selectedSubscriptionCount = computed(() => selectedSubscriptionIds.value.size)
 const allSubscriptionsSelected = computed(() => subs.value.length > 0 && subs.value.every(sub => selectedSubscriptionIds.value.has(subscriptionKey(sub))))
 const recentSubscriptions = computed(() => subs.value.slice(0, 6))
-const sheetCoverUrl = computed(() => {
-  if (!sheetActor.value) return ''
-  return actressImgUrl(sheetActor.value.image_url) || ''
-})
-const sheetTranslatedName = computed(() => {
-  if (!sheetActor.value) return ''
-  return displayName(sheetActor.value, 'name_kanji', 'name_romaji') || ''
-})
+const sheetCoverUrl = computed(() => sheetActor.value ? actressImgUrl(sheetActor.value.image_url) || '' : '')
+const sheetTranslatedName = computed(() => sheetActor.value ? displayName(sheetActor.value, 'name_kanji', 'name_romaji') || '' : '')
+const sinceLastSheetMovies = computed(() => sinceLastMovies(sinceLastSheetSub.value))
 
 function avatarSrc(actor) { return actressImgUrl(actor.image_url) || '' }
 function subCoverUrl(sub) { const m = actressMetaMap.value[sub.actress_id]; return m?.image_url ? actressImgUrl(m.image_url) : '' }
@@ -308,18 +274,8 @@ function isSubscribed(actressId) { return subs.value.some(s => s.actress_id === 
 function actorCardName(actor) { return actorName(actor, '未知') }
 function actorCardSubtitle(actor) { return actorOriginalName(actor) }
 function actorCardMeta(actor) { return actor?.movie_count != null ? `${Number(actor.movie_count).toLocaleString()} 部作品` : '' }
-function actorSearchBadges(actor) {
-  return isSubscribed(actor.id) ? [{ label: '已订阅', tone: 'subscribed' }] : []
-}
-function subActor(sub) {
-  const meta = actressMetaMap.value[sub.actress_id] || {}
-  return {
-    id: sub.actress_id,
-    actress_id: sub.actress_id,
-    name: sub.actress_name,
-    ...meta,
-  }
-}
+function actorSearchBadges(actor) { return isSubscribed(actor.id) ? [{ label: '已订阅', tone: 'subscribed' }] : [] }
+function subActor(sub) { return { id: sub.actress_id, actress_id: sub.actress_id, name: sub.actress_name, ...(actressMetaMap.value[sub.actress_id] || {}) } }
 function subDisplayName(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
   if (meta) { const n = displayName(meta, 'name_kanji', 'name_romaji'); if (n) return n }
@@ -329,11 +285,28 @@ function subOriginalName(sub) {
   const meta = actressMetaMap.value[sub.actress_id]
   return meta?.name_kanji || sub.actress_name || ''
 }
-function newMovieCount(actressId) {
-  const sub = subs.value.find(item => String(item.actress_id) === String(actressId))
-  return Number(sub?.candidate_count || 0)
-}
+function newMovieCount(actressId) { return Number(subs.value.find(item => String(item.actress_id) === String(actressId))?.candidate_count || 0) }
 function movieCoverUrl(movie) { return movie.jacket_thumb_url || movie.jacket_full_url || movie.cover_url || '' }
+function sinceLastMovies(sub) { return (Array.isArray(sub?.new_since_last) ? sub.new_since_last : []).map(item => typeof item === 'string' ? { code: item, title: item } : item).filter(Boolean) }
+function sinceLastKnown(sub) { return Array.isArray(sub?.new_since_last) }
+function sinceLastCount(sub) { return sinceLastMovies(sub).length }
+function sinceLastMovieCode(movie) { return movie.dvd_id || movie.code || movie.content_id || movie.service_code || '未编号' }
+function sinceLastMovieTitle(movie) { return movie.title_en || movie.title_ja || movie.title || sinceLastMovieCode(movie) }
+function sinceLastMovieKey(movie) { return movie.candidate_id || movie.content_id || movie.dvd_id || movie.code || movie.title || JSON.stringify(movie) }
+function sinceLastSummary(sub) { const count = sinceLastCount(sub); const elapsed = formatSinceLastElapsed(sub?.last_run_at); return count ? `新增 ${count}${elapsed ? ` · ${elapsed}` : ''}` : '无新增' }
+function formatSinceLastElapsed(value) {
+  if (!value) return ''
+  const diff = Math.max(0, Date.now() - new Date(value).getTime())
+  if (!Number.isFinite(diff)) return ''
+  if (diff < 60_000) return '刚刚'
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours} 小时前`
+  return `${Math.floor(hours / 24)} 天前`
+}
+function cadenceHours(minutes) { return Math.max(1, Math.round(Number(minutes || 1440) / 60)) }
+function cadenceLabel(minutes) { return `每 ${cadenceHours(minutes)} 小时检查` }
 function subCardMeta(sub) {
   const count = subMeta(sub)?.movie_count
   const parts = []
@@ -350,37 +323,19 @@ function subCardBadges(sub) {
 }
 function subscriptionKey(sub) { return String(sub?.id || '') }
 function isSubscriptionSelected(sub) { return selectedSubscriptionIds.value.has(subscriptionKey(sub)) }
-function toggleSubscriptionSelection(sub) {
-  const key = subscriptionKey(sub)
-  if (!key) return
-  const next = new Set(selectedSubscriptionIds.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  selectedSubscriptionIds.value = next
-}
+function toggleSubscriptionSelection(sub) { const key = subscriptionKey(sub); if (!key) return; const next = new Set(selectedSubscriptionIds.value); if (next.has(key)) next.delete(key); else next.add(key); selectedSubscriptionIds.value = next }
 function selectAllSubscriptions() { selectedSubscriptionIds.value = new Set(subs.value.map(subscriptionKey).filter(Boolean)) }
 function clearSubscriptionSelection() { selectedSubscriptionIds.value = new Set() }
 function toggleSubscriptionEditMode() {
   subscriptionEditMode.value = !subscriptionEditMode.value
   if (!subscriptionEditMode.value) clearSubscriptionSelection()
 }
-function handleSubscriptionCardOpen(sub) {
-  if (subscriptionEditMode.value) { toggleSubscriptionSelection(sub); return }
-  openSubSheet(sub)
-}
+function handleSubscriptionCardOpen(sub) { if (subscriptionEditMode.value) { toggleSubscriptionSelection(sub); return } openSubSheet(sub) }
+function openSinceLastSheet(sub) { sinceLastSheetSub.value = sub }
+function closeSinceLastSheet() { sinceLastSheetSub.value = null }
 function subscriptionSheetActor(sub, meta = null) {
-  const actorMeta = meta || {}
-  return {
-    id: sub.actress_id,
-    actress_id: sub.actress_id,
-    name_kanji: actorMeta.name_kanji || sub.actress_name || '',
-    image_url: actorMeta.image_url || '',
-    movie_count: actorMeta.movie_count,
-    name_romaji: actorMeta.name_romaji || '',
-    name_kana: actorMeta.name_kana || '',
-    name_kanji_translated: actorMeta.name_kanji_translated || '',
-    name_romaji_translated: actorMeta.name_romaji_translated || '',
-  }
+  const m = meta || {}
+  return { id: sub.actress_id, actress_id: sub.actress_id, name_kanji: m.name_kanji || sub.actress_name || '', image_url: m.image_url || '', movie_count: m.movie_count, name_romaji: m.name_romaji || '', name_kana: m.name_kana || '', name_kanji_translated: m.name_kanji_translated || '', name_romaji_translated: m.name_romaji_translated || '' }
 }
 
 function shuffleArray(arr) {
@@ -389,13 +344,8 @@ function shuffleArray(arr) {
   return a
 }
 
-function openDiscover() {
-  discoverOpen.value = true
-}
-function closeDiscover() {
-  discoverOpen.value = false
-  clearSearch()
-}
+function openDiscover() { discoverOpen.value = true }
+function closeDiscover() { discoverOpen.value = false; clearSearch() }
 async function doSearch() {
   const q = searchKeyword.value.trim(); if (!q) return
   searching.value = true; searched.value = true; searchResults.value = []
@@ -464,13 +414,7 @@ function toggleVariantGroup(key) {
     [key]: !expandedVariantGroups.value[key],
   }
 }
-async function syncSubscriptionState() {
-  try {
-    await subscriptionState.refresh()
-  } catch (e) {
-    console.error('Sync subscription state failed:', e)
-  }
-}
+async function syncSubscriptionState() { try { await subscriptionState.refresh() } catch (e) { console.error('Sync subscription state failed:', e) } }
 async function subscribeFromSheet() {
   if (!sheetActor.value) return
   const a = sheetActor.value; const name = a.name_kanji || a.name_romaji || ''
@@ -482,9 +426,29 @@ async function loadSubs() {
   loading.value = true
   try {
     const r = await api.getSubscriptions()
-    subs.value = r.data?.data || r.data || []
+    subs.value = mergeSinceLastReport(r.data?.data || r.data || [])
   }
   catch (e) { console.error(e) } finally { loading.value = false }
+}
+
+function mergeSinceLastReport(items) {
+  const report = lastCheckReport.value
+  const results = Array.isArray(report?.results) ? report.results : []
+  if (!results.length) return items
+  const resultBySub = new Map(results.map(item => [String(item.subscription_id), item]))
+  const moviesBySub = new Map()
+  for (const movie of (Array.isArray(report?.movies) ? report.movies : [])) {
+    const key = String(movie.subscription_id || '')
+    if (!key) continue
+    moviesBySub.set(key, [...(moviesBySub.get(key) || []), movie])
+  }
+  return items.map(sub => {
+    const result = resultBySub.get(String(sub.id))
+    if (!result) return sub
+    const moviesByCode = new Map((moviesBySub.get(String(sub.id)) || []).map(movie => [sinceLastMovieCode(movie), movie]))
+    const newSinceLast = (Array.isArray(result.new_since_last) ? result.new_since_last : []).map(code => moviesByCode.get(String(code)) || { code: String(code), title: String(code) })
+    return { ...sub, new_since_last: newSinceLast }
+  })
 }
 
 async function loadSubscriptionActorMeta(sub) {
@@ -529,7 +493,7 @@ async function checkNow(sub) {
   checkingId.value = sub.id
   try {
     const r = await api.checkSubscription(sub.id)
-    lastCheckReport.value = r.data
+    lastCheckReport.value = { results: [{ subscription_id: sub.id, ...(r.data || {}) }], movies: (r.data?.new_movies || []).map(movie => ({ ...movie, subscription_id: sub.id })) }
     const created = r.data.created || 0
     const existing = r.data.existing || 0
     const inLibrary = r.data.in_library || 0
@@ -548,6 +512,15 @@ async function toggleEnabled(sub) {
 async function toggleAutoDownload(sub) {
   try { await api.updateSubscription(sub.id, { auto_download: !sub.auto_download }); sub.auto_download = !sub.auto_download }
   catch (e) { ElMessage.error('操作失败') }
+}
+
+async function updateCadence(sub, minutes) {
+  try {
+    await api.updateSubscription(sub.id, { cadence_minutes: minutes })
+    subs.value = subs.value.map(item => item.id === sub.id ? { ...item, cadence_minutes: minutes } : item)
+    if (sheetSub.value?.id === sub.id) sheetSub.value = { ...sheetSub.value, cadence_minutes: minutes }
+    ElMessage.success(`已改为${cadenceLabel(minutes)}`)
+  } catch (e) { ElMessage.error('更新检查间隔失败') }
 }
 
 async function updateSelectedSubscriptions(patch, label) {
@@ -596,3 +569,19 @@ onMounted(loadSubs)
 </script>
 
 <style scoped src="../features/subscription/subscription.css"></style>
+<style scoped>
+.subscription-since-chip { position: absolute; top: 10px; right: 10px; z-index: var(--z-raised); display: inline-flex; align-items: center; min-height: 30px; max-width: calc(100% - 20px); padding: 0 10px; border: 1px solid var(--glass-active-border); border-radius: 999px; background: var(--subscription-active-bg); color: var(--text-primary); box-shadow: var(--glass-active-shadow), var(--glass-inner-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); font-size: var(--type-caption); font-weight: 700; cursor: pointer; }
+.since-last-sheet { max-width: 620px; }
+.since-last-head { padding: 20px 24px 12px; }
+.since-last-head h2 { margin: 0; color: var(--text-primary); font-size: var(--type-section-title); }
+.since-last-head p { margin: 8px 0 0; color: var(--text-secondary); font-size: var(--type-control); }
+.since-last-list { display: grid; gap: 10px; padding: 0 20px 28px; }
+.since-last-item { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-md); background: var(--subscription-control-bg); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); }
+.since-last-title { color: var(--text-primary); font-weight: 650; }
+.since-last-meta { color: var(--text-muted); font-size: var(--type-caption); }
+.cadence-control { display: grid; justify-items: center; gap: 8px; padding: 0 20px 20px; }
+.cadence-control .sheet-stat-line { padding: 0; }
+.cadence-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cadence-option { min-height: 32px; padding: 0 12px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-control); background: var(--subscription-control-bg); color: var(--text-secondary); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); font-size: var(--type-caption); font-weight: 650; cursor: pointer; }
+.cadence-option.is-active { background: var(--subscription-active-bg); border-color: var(--glass-active-border); color: var(--text-primary); }
+</style>

@@ -32,6 +32,11 @@ const home = [
 ].join('\n')
 const operations = [
   readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/SchedulerCard.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/DataQualityCard.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/CandidateAutoCard.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/SnapshotCard.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/MappingCard.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8'),
 ].join('\n')
 const favorites = [
@@ -930,7 +935,7 @@ test('operations overview splits daily work, system status, and diagnostics into
 })
 
 test('operations overview surfaces initialization health and setup entry points', () => {
-  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"[\s\S]*初始化与健康检查/)
+  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"[\s\S]*<SchedulerCard/)
   assert.match(operations, /初始化与健康检查/)
   assert.match(operations, /api\.readiness\(\)/)
   assert.match(operations, /healthStatusLabel/)
@@ -947,10 +952,10 @@ test('operations overview surfaces initialization health and setup entry points'
   assert.match(operations, /最近源检索/)
   assert.match(operations, /scheduler/)
   assert.match(operations, /goJavInfoImport/)
-  assert.match(operations, /this\.\$router\.push\('\/settings'\)/)
-  assert.match(operations, /this\.\$router\.push\('\/logs'\)/)
+  assert.match(operations, /\$router\.push\('\/settings'\)/)
+  assert.match(operations, /\$router\.push\('\/logs'\)/)
   assert.match(operations, /query: \{ tab: 'javinfo-import' \}/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"[\s\S]*缓存诊断/)
+  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"[\s\S]*<SnapshotCard/)
   assert.match(operations, /缓存诊断/)
   assert.match(operations, /响应命中率/)
   assert.match(operations, /热门响应命名空间/)

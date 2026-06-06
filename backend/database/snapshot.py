@@ -20,9 +20,45 @@ def clear_snapshot(snapshot_key: str):
         cursor.execute("DELETE FROM emby_snapshots WHERE snapshot_key = ?", (snapshot_key,))
         cursor.execute("DELETE FROM emby_actors WHERE snapshot_key = ?", (snapshot_key,))
 
+def clone_snapshot(src_key: str) -> str:
+    new_key = create_snapshot_key()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO emby_snapshots
+                (snapshot_key, actress_id, actress_name, emby_item_id, title, filename, collected_at)
+            SELECT ?, actress_id, actress_name, emby_item_id, title, filename, CURRENT_TIMESTAMP
+            FROM emby_snapshots
+            WHERE snapshot_key = ?
+            ''',
+            (new_key, src_key),
+        )
+        cursor.execute(
+            '''
+            UPDATE emby_actors
+            SET snapshot_key = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE snapshot_key = ?
+            ''',
+            (new_key, src_key),
+        )
+    return new_key
+
 def save_emvy_snapshot(snapshot_key: str, actress_id: int, actress_name: str, emby_item_id: str, title: str, filename: str):
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO emby_snapshots (snapshot_key, actress_id, actress_name, emby_item_id, title, filename, collected_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (snapshot_key, actress_id, actress_name, emby_item_id, title, filename))
+
+def upsert_emvy_snapshot(snapshot_key: str, actress_id: int, actress_name: str, emby_item_id: str, title: str, filename: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM emby_snapshots WHERE snapshot_key = ? AND emby_item_id = ?",
+            (snapshot_key, emby_item_id),
+        )
         cursor.execute('''
             INSERT INTO emby_snapshots (snapshot_key, actress_id, actress_name, emby_item_id, title, filename, collected_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -49,6 +85,20 @@ def get_latest_snapshot_key() -> Optional[str]:
         cursor.execute("SELECT snapshot_key FROM emby_actors ORDER BY updated_at DESC LIMIT 1")
         row = cursor.fetchone()
         return row["snapshot_key"] if row else None
+
+def get_snapshot_created_at(snapshot_key: str) -> Optional[str]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT COALESCE(MAX(collected_at), CURRENT_TIMESTAMP) AS created_at
+            FROM emby_snapshots
+            WHERE snapshot_key = ?
+            ''',
+            (snapshot_key,),
+        )
+        row = cursor.fetchone()
+        return row["created_at"] if row and row["created_at"] else None
 
 def get_snapshot_actors(snapshot_key: str, search: str = None, sort_by: str = None, sort_order: str = "asc",
                           page: int = 1, page_size: int = 50) -> dict:
@@ -110,6 +160,28 @@ def get_snapshot_videos(snapshot_key: str, actress_id: int) -> list:
         cursor.execute(
             "SELECT * FROM emby_snapshots WHERE snapshot_key = ? AND actress_id = ? ORDER BY title",
             (snapshot_key, actress_id)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+def iter_snapshot_videos_by_actor(snapshot_key: str, actor_id: int | None = None, limit: int = 200) -> list:
+    safe_limit = max(1, min(int(limit or 200), 1000))
+    with get_db() as conn:
+        cursor = conn.cursor()
+        where_clause = "snapshot_key = ?"
+        params: list = [snapshot_key]
+        if actor_id is not None:
+            where_clause += " AND actress_id = ?"
+            params.append(int(actor_id))
+        cursor.execute(
+            f"""
+            SELECT *
+            FROM emby_snapshots
+            WHERE {where_clause}
+            ORDER BY title, emby_item_id
+            LIMIT ?
+            """,
+            params + [safe_limit],
         )
         rows = cursor.fetchall()
         return [dict(row) for row in rows]

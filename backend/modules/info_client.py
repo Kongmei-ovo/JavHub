@@ -507,6 +507,30 @@ class InfoClient:
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         return result
 
+    async def get_maker_videos(
+        self,
+        maker_id: int,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> dict[str, Any]:
+        return await self.search_videos(maker_id=maker_id, page=page, page_size=page_size)
+
+    async def get_series_videos(
+        self,
+        series_id: int,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> dict[str, Any]:
+        return await self.search_videos(series_id=series_id, page=page, page_size=page_size)
+
+    async def get_label_videos(
+        self,
+        label_id: int,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> dict[str, Any]:
+        return await self.search_videos(label_id=label_id, page=page, page_size=page_size)
+
     async def get_video(
         self,
         content_id: str,

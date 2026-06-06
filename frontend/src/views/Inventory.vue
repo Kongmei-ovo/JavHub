@@ -3,7 +3,7 @@
     <div class="page-header">
       <h1>库存对比</h1>
       <div class="header-actions">
-        <div v-if="running || collecting" class="progress-ring-container">
+        <div v-if="progressVisible || running || collecting" class="progress-ring-container">
           <svg class="progress-ring" width="40" height="40">
             <circle
               class="progress-ring-bg"
@@ -35,7 +35,6 @@
       </div>
     </div>
 
-    <!-- 快照信息 -->
     <div v-if="snapshotKey" class="snapshot-info">
       当前快照：{{ snapshotKey }} · {{ total }} 位演员
       <span v-if="mappingSummary.total">
@@ -51,7 +50,6 @@
       尚未采集 Emby 数据，请先点击「采集Emby数据」
     </div>
 
-    <!-- 搜索过滤栏 -->
     <div class="filter-bar">
       <div class="search-box">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -69,34 +67,19 @@
       <div class="filter-controls">
         <div class="sort-control">
           <label>排序：</label>
-          <GlassSelect
-            v-model="sortBy"
-            :options="sortOptions"
-            size="regular"
-            aria-label="库存演员排序"
-            @change="doSearch"
-          />
+          <GlassSelect v-model="sortBy" :options="sortOptions" size="regular" aria-label="库存演员排序" @change="doSearch" />
         </div>
         <div class="page-size-control">
           <label>每页：</label>
-          <GlassSelect
-            v-model="pageSize"
-            :options="pageSizeOptions"
-            size="regular"
-            placement="right"
-            aria-label="库存每页数量"
-            @change="onPageSizeChange"
-          />
+          <GlassSelect v-model="pageSize" :options="pageSizeOptions" size="regular" placement="right" aria-label="库存每页数量" @change="onPageSizeChange" />
         </div>
       </div>
     </div>
 
-    <!-- 结果信息 -->
     <div v-if="!loadingActors && actors.length > 0" class="result-bar">
       <span class="result-count">共 {{ total }} 位演员</span>
     </div>
 
-    <!-- 顶部分页 -->
     <div v-if="!loadingActors && totalPages > 1" class="pagination-bar pagination-bar-top">
       <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
@@ -104,19 +87,11 @@
       <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
       <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
-        <input
-          v-model.number="jumpPage"
-          class="jump-input"
-          type="number"
-          min="1"
-          :max="totalPages"
-          @keyup.enter="doJumpPage"
-        />
+        <input v-model.number="jumpPage" class="jump-input" type="number" min="1" :max="totalPages" @keyup.enter="doJumpPage" />
         <button type="button" class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
-    <!-- 对比概览 -->
     <div class="tab-content">
       <AppleSkeleton v-if="loadingActors" class="actors-grid loading" variant="gallery" :items="12" columns="repeat(auto-fill, minmax(140px, 1fr))" label="库存演员加载中" />
 
@@ -182,7 +157,6 @@
       />
     </div>
 
-    <!-- 底部分页 -->
     <div v-if="!loadingActors && totalPages > 1" class="pagination-bar pagination-bar-bottom">
       <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(1)">«</button>
       <button type="button" class="page-btn" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
@@ -190,19 +164,11 @@
       <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">›</button>
       <button type="button" class="page-btn" :disabled="page >= totalPages" @click="goPage(totalPages)">»</button>
       <div class="jump-wrap">
-        <input
-          v-model.number="jumpPage"
-          class="jump-input"
-          type="number"
-          min="1"
-          :max="totalPages"
-          @keyup.enter="doJumpPage"
-        />
+        <input v-model.number="jumpPage" class="jump-input" type="number" min="1" :max="totalPages" @keyup.enter="doJumpPage" />
         <button type="button" class="jump-btn" @click="doJumpPage">跳转</button>
       </div>
     </div>
 
-    <!-- 作业历史弹窗 -->
     <div v-if="showJobs" class="dialog-overlay" @click.self="showJobs = false">
       <div class="dialog jobs-dialog">
         <div class="dialog-header">
@@ -262,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from '../utils/message.js'
@@ -282,6 +248,7 @@ const loadingActors = ref(false)
 const errorActors = ref('')
 const running = ref(false)
 const collecting = ref(false)
+const progressVisible = ref(false)
 const snapshotKey = ref('')
 const currentProgress = ref(0)
 const mappingSummary = ref({})
@@ -296,51 +263,37 @@ const pageSize = ref(48)
 const total = ref(0)
 const totalPages = ref(1)
 const jumpPage = ref(null)
-let searchTimer = null
+let searchTimer = null, jobStream = null, jobStreamRetryTimer = null, jobStreamRetryAttempt = 0
+
+const INVENTORY_JOB_STREAM_URL = '/api/v1/jobs/stream?kind=inventory'
+const JOB_STREAM_RETRY_DELAYS = [1000, 3000, 9000]
 
 const sortOptions = [
-  { value: 'actress_name', label: '名称 A→Z' },
-  { value: 'actress_name_desc', label: '名称 Z→A' },
-  { value: 'total_videos', label: '影片数 多→少' },
-  { value: 'total_videos_asc', label: '影片数 少→多' },
-  { value: 'missing_count', label: '缺失 多→少' },
-  { value: 'missing_count_asc', label: '缺失 少→多' },
-]
-
+  ['actress_name', '名称 A→Z'],
+  ['actress_name_desc', '名称 Z→A'],
+  ['total_videos', '影片数 多→少'],
+  ['total_videos_asc', '影片数 少→多'],
+  ['missing_count', '缺失 多→少'],
+  ['missing_count_asc', '缺失 少→多'],
+].map(([value, label]) => ({ value, label }))
+const sortParams = {
+  actress_name: ['actress_name', 'asc'],
+  actress_name_desc: ['actress_name', 'desc'],
+  total_videos: ['total_videos', 'desc'],
+  total_videos_asc: ['total_videos', 'asc'],
+  missing_count: ['missing_count', 'desc'],
+  missing_count_asc: ['missing_count', 'asc'],
+}
 const pageSizeOptions = [24, 48, 72, 100].map(size => ({ value: size, label: String(size) }))
 
 const fetchActors = async () => {
   loadingActors.value = true
   errorActors.value = ''
   try {
-    const params = {
-      page: page.value,
-      page_size: pageSize.value
-    }
-    if (searchKeyword.value) {
-      params.search = searchKeyword.value
-    }
-    // 解析排序参数
-    if (sortBy.value === 'actress_name_desc') {
-      params.sort_by = 'actress_name'
-      params.sort_order = 'desc'
-    } else if (sortBy.value === 'actress_name') {
-      params.sort_by = 'actress_name'
-      params.sort_order = 'asc'
-    } else if (sortBy.value === 'total_videos') {
-      params.sort_by = 'total_videos'
-      params.sort_order = 'desc'
-    } else if (sortBy.value === 'total_videos_asc') {
-      params.sort_by = 'total_videos'
-      params.sort_order = 'asc'
-    } else if (sortBy.value === 'missing_count') {
-      params.sort_by = 'missing_count'
-      params.sort_order = 'desc'
-    } else if (sortBy.value === 'missing_count_asc') {
-      params.sort_by = 'missing_count'
-      params.sort_order = 'asc'
-    }
-
+    const params = { page: page.value, page_size: pageSize.value }
+    if (searchKeyword.value) params.search = searchKeyword.value
+    const [sort_by, sort_order] = sortParams[sortBy.value] || sortParams.actress_name
+    Object.assign(params, { sort_by, sort_order })
     const res = await axios.get('/api/inventory/actors', { params })
     actors.value = res.data.data || []
     total.value = res.data.total || 0
@@ -385,12 +338,14 @@ const triggerCollect = async () => {
   })
   if (!confirmed) return
   collecting.value = true
+  progressVisible.value = true
+  currentProgress.value = 0
   try {
     await axios.post('/api/inventory/jobs/trigger', { job_type: 'collect' })
-    pollJobStatus('collect')
   } catch (e) {
     ElMessage.error('触发失败: ' + e.message)
     collecting.value = false
+    progressVisible.value = false
   }
 }
 
@@ -407,37 +362,72 @@ const triggerFullJob = async () => {
   })
   if (!confirmed) return
   running.value = true
+  progressVisible.value = true
+  currentProgress.value = 0
   try {
     await axios.post('/api/inventory/jobs/trigger', { job_type: 'full', snapshot_key: snapshotKey.value })
-    pollJobStatus('full')
   } catch (e) {
     errorActors.value = '触发失败: ' + e.message
     running.value = false
+    progressVisible.value = false
   }
 }
 
-const pollJobStatus = async (type) => {
-  setTimeout(async () => {
-    try {
-      const res = await axios.get('/api/inventory/jobs')
-      const jobs = res.data.data || []
-      const latest = jobs[0]
-      if (latest && latest.status === 'running') {
-        currentProgress.value = latest.progress || 0
-        await pollJobStatus(type)
-      } else {
-        running.value = false
-        collecting.value = false
-        currentProgress.value = latest && latest.status === 'completed' ? 100 : 0
-        await fetchActors()
-        await fetchSnapshotInfo()
-      }
-    } catch {
-      running.value = false
-      collecting.value = false
-      currentProgress.value = 0
-    }
-  }, 1500)
+const normalizedJobProgress = (job) => Math.max(0, Math.min(100, Number(job?.progress || 0)))
+
+const refreshAfterJobUpdate = () => {
+  fetchActors()
+  fetchSnapshotInfo()
+  if (showJobs.value) fetchJobs()
+}
+
+const handleInventoryJobEvent = (event) => {
+  let job = null
+  try { job = JSON.parse(event.data) } catch { return }
+  if (job?.kind && job.kind !== 'inventory') return
+  const status = job?.status === 'completed' ? 'succeeded' : job?.status
+  if (status === 'queued' || status === 'running') {
+    progressVisible.value = true
+    currentProgress.value = normalizedJobProgress(job)
+    if (!collecting.value) running.value = true
+    return
+  }
+  if (!['succeeded', 'failed', 'canceled'].includes(status)) return
+  const succeeded = status === 'succeeded'
+  currentProgress.value = succeeded ? 100 : 0
+  progressVisible.value = succeeded
+  running.value = false
+  collecting.value = false
+  refreshAfterJobUpdate()
+}
+
+const scheduleJobStreamReconnect = () => {
+  if (jobStreamRetryTimer) return
+  const delay = JOB_STREAM_RETRY_DELAYS[Math.min(jobStreamRetryAttempt, JOB_STREAM_RETRY_DELAYS.length - 1)]
+  jobStreamRetryAttempt += 1
+  jobStreamRetryTimer = setTimeout(() => {
+    jobStreamRetryTimer = null
+    openJobStream()
+  }, delay)
+}
+
+const openJobStream = () => {
+  if (typeof EventSource === 'undefined' || jobStream) return
+  jobStream = new EventSource(INVENTORY_JOB_STREAM_URL)
+  jobStream.addEventListener('open', () => { jobStreamRetryAttempt = 0 })
+  jobStream.addEventListener('message', handleInventoryJobEvent)
+  jobStream.addEventListener('error', () => {
+    jobStream?.close()
+    jobStream = null
+    scheduleJobStreamReconnect()
+  })
+}
+
+const closeJobStream = () => {
+  if (jobStreamRetryTimer) clearTimeout(jobStreamRetryTimer)
+  jobStreamRetryTimer = null
+  jobStream?.close()
+  jobStream = null
 }
 
 const onSearchInput = () => {
@@ -487,7 +477,8 @@ const handleImgError = (e) => {
   e.target.style.display = 'none'
 }
 
-onMounted(() => { fetchActors(); fetchSnapshotInfo() })
+onMounted(() => { fetchActors(); fetchSnapshotInfo(); openJobStream() })
+onBeforeUnmount(closeJobStream)
 
 // 作业历史
 const jobs = ref([])

@@ -11,6 +11,7 @@ async def get_logs(
     limit: int = Query(100, ge=1, le=500),
     level: str | None = None,
     q: str | None = None,
+    trace_id: str | None = None,
     offset: int = Query(0, ge=0),
     cache_control: str | None = Query(None, alias="cache"),
 ):
@@ -28,16 +29,23 @@ async def get_logs(
         "q": q,
         "offset": offset,
     }
+    if trace_id:
+        cache_params["trace_id"] = trace_id
 
     async def produce():
-        rows, total = await asyncio.to_thread(
-            log_database.list_logs,
-            limit=limit,
-            level=normalized_level,
-            q=q,
-            offset=offset,
-        )
-        return {"data": rows, "total": total, "limit": limit, "offset": offset}
+        kwargs = {
+            "limit": limit,
+            "level": normalized_level,
+            "q": q,
+            "offset": offset,
+        }
+        if trace_id:
+            kwargs["trace_id"] = trace_id
+        rows, total = await asyncio.to_thread(log_database.list_logs, **kwargs)
+        result = {"data": rows, "total": total, "limit": limit, "offset": offset}
+        if trace_id:
+            result["trace_id"] = trace_id
+        return result
 
     return await response_cache.get_or_set_response(
         "logs",

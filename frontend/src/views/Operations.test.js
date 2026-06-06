@@ -1,10 +1,29 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8')
 const externalStyle = readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8')
 const source = `${vueSource}\n${externalStyle}`
+const operationsCardPaths = [
+  '../features/operations/SchedulerCard.vue',
+  '../features/operations/DataQualityCard.vue',
+  '../features/operations/CandidateAutoCard.vue',
+  '../features/operations/SnapshotCard.vue',
+  '../features/operations/MappingCard.vue',
+]
+
+function readFeatureSource(path) {
+  const url = new URL(path, import.meta.url)
+  return existsSync(url) ? readFileSync(url, 'utf8') : ''
+}
+
+const operationsCardSources = operationsCardPaths.map(path => ({
+  path,
+  source: readFeatureSource(path),
+}))
+const operationsCardsSource = operationsCardSources.map(({ source }) => source).join('\n')
+const operationsFeatureSource = `${vueSource}\n${operationsCardsSource}`
 
 function cssBlocks(content, selector) {
   const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -37,6 +56,50 @@ test('operations page keeps heavyweight styles in an external scoped stylesheet'
   assert.match(vueSource, /<style scoped src="\.\.\/features\/operations\/operations\.css"><\/style>/)
   assert.ok(externalStyle.length > 18000, 'external operations stylesheet should carry the moved workspace CSS')
   assert.ok(vueSource.split('\n').length < 900, 'Operations.vue should stay small enough to review and parse quickly')
+})
+
+test('operations page is split into self-loading feature cards', () => {
+  for (const { path, source: cardSource } of operationsCardSources) {
+    assert.ok(cardSource, `${path} should exist`)
+    assert.match(cardSource, /import api from ['"]\.\.\/\.\.\/api['"]/, `${path} should fetch its own data`)
+    assert.match(cardSource, /mounted\(\)\s*\{[\s\S]*this\.load/, `${path} should load on mount`)
+    assert.match(cardSource, /<style scoped src="\.\/operations\.css"><\/style>/, `${path} should reuse operations styles`)
+  }
+
+  for (const component of ['SchedulerCard', 'DataQualityCard', 'CandidateAutoCard', 'SnapshotCard', 'MappingCard']) {
+    assert.match(vueSource, new RegExp(`import ${component} from ['"]\\.\\.\\/features\\/operations\\/${component}\\.vue['"]`))
+    assert.match(vueSource, new RegExp(`<${component}\\b`))
+  }
+
+  assert.ok(vueSource.split('\n').length < 350, 'Operations.vue should only own page layout after card extraction')
+  assert.doesNotMatch(vueSource, /api\.(getOperationsOverview|getCacheStats|readiness|runCandidateProcessingNow|purgeCache|refreshMissingCache|startVideoVariantIndexJob)/)
+  assert.doesNotMatch(vueSource, /requestConfirm/)
+})
+
+test('operations cards use focused APIs so one failed overview does not blank every card', () => {
+  const sourcesByName = Object.fromEntries(
+    operationsCardSources.map(({ path, source: cardSource }) => [
+      path.match(/([^/]+)\.vue$/)?.[1] || path,
+      cardSource,
+    ])
+  )
+
+  assert.doesNotMatch(sourcesByName.SchedulerCard, /getOperationsOverview/)
+  assert.match(sourcesByName.SchedulerCard, /api\.readiness\(\)/)
+  assert.match(sourcesByName.SchedulerCard, /api\.getCacheStats\(\)/)
+
+  assert.doesNotMatch(sourcesByName.CandidateAutoCard, /getOperationsOverview/)
+  assert.match(sourcesByName.CandidateAutoCard, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)
+  assert.match(sourcesByName.CandidateAutoCard, /api\.listDownloadCandidateRuns\(5\)/)
+
+  assert.doesNotMatch(sourcesByName.SnapshotCard, /getOperationsOverview/)
+  assert.match(sourcesByName.SnapshotCard, /api\.getInventorySnapshotLatest\(\)/)
+  assert.match(sourcesByName.SnapshotCard, /api\.getMissingActresses\(\)/)
+  assert.match(sourcesByName.SnapshotCard, /api\.listInventoryJobs\(\)/)
+  assert.match(sourcesByName.SnapshotCard, /api\.getVideoVariantIndexStats\(\)/)
+
+  assert.doesNotMatch(sourcesByName.MappingCard, /getOperationsOverview/)
+  assert.match(sourcesByName.MappingCard, /api\.getActorMappingSummary\(\)/)
 })
 
 test('operations workbench controls use shared Apple glass tokens', () => {
@@ -267,37 +330,37 @@ test('operations compact diagnostic rows reserve a second-line metadata track', 
   const qualityProgressAction = cssBlocks(source, '.quality-progress-action').join('\n')
   const qualityIssueRow = cssBlocks(source, '.quality-issue-row').join('\n')
 
-  assert.match(vueSource, /class="quality-progress-meta"/)
-  assert.match(vueSource, /issue\?\.priority_reason/)
-  assert.match(vueSource, /issueRepairMetaItems\(issue\)/)
-  assert.match(vueSource, /class="quality-progress-separator"/)
-  assert.match(vueSource, /class="quality-progress-separator"[^>]*>\s*·\s*<\/span>/)
-  assert.match(vueSource, /<small>\s*\{\{\s*issue\.summary\s*\}\}\s*<\/small>/)
-  assert.match(vueSource, /issueRepairMetaItems\(issue\)/)
-  assert.match(vueSource, /class="quality-progress"/)
-  assert.match(vueSource, /class="quality-progress-actions"/)
-  assert.match(vueSource, /class="compact-row quality-issue-row"/)
-  assert.match(vueSource, /issue\?\.action/)
-  assert.match(vueSource, /issueRepairActions\(issue\)/)
-  assert.match(vueSource, /seen\.has\(key\)/)
-  assert.match(vueSource, /seen\.add\(key\)/)
-  assert.match(vueSource, /openDataQualityRepairAction\(action, \$event\)/)
-  assert.doesNotMatch(vueSource, /role="button" tabindex="0" @click="openDataQualityIssueFromRow/)
-  assert.match(vueSource, /issueRepairReasonActions\(issue\)/)
-  assert.match(vueSource, /issueRepairEventLabel\(issue\)/)
-  assert.match(vueSource, /issueRepairEventActions\(issue\)/)
-  assert.match(vueSource, /issueRepairLocalLabel\(issue\)/)
-  assert.match(vueSource, /issueRepairLocalSourceLabel\(issue\)/)
-  assert.match(vueSource, /issueRepairLocalActions\(issue\)/)
-  assert.match(vueSource, /@click\.stop="openDataQualityRepairAction\(action, \$event\)"/)
-  assert.doesNotMatch(vueSource, /openDataQualityRepairAction\(issue\.repair_progress\.action, \$event\)/)
-  assert.doesNotMatch(vueSource, /openDataQualityRepairAction\(issue\.repair_progress\.reason_action, \$event\)/)
-  assert.match(vueSource, /repair_progress\?\.event_label/)
-  assert.match(vueSource, /repair_progress\?\.event_actions/)
-  assert.match(vueSource, /repair_progress\?\.reason_actions/)
-  assert.match(vueSource, /repair_progress\?\.local_label/)
-  assert.match(vueSource, /repair_progress\?\.local_source_label/)
-  assert.match(vueSource, /repair_progress\?\.local_actions/)
+  assert.match(operationsFeatureSource, /class="quality-progress-meta"/)
+  assert.match(operationsFeatureSource, /issue\?\.priority_reason/)
+  assert.match(operationsFeatureSource, /issueRepairMetaItems\(issue\)/)
+  assert.match(operationsFeatureSource, /class="quality-progress-separator"/)
+  assert.match(operationsFeatureSource, /class="quality-progress-separator"[^>]*>\s*·\s*<\/span>/)
+  assert.match(operationsFeatureSource, /<small>\s*\{\{\s*issue\.summary\s*\}\}\s*<\/small>/)
+  assert.match(operationsFeatureSource, /issueRepairMetaItems\(issue\)/)
+  assert.match(operationsFeatureSource, /class="quality-progress"/)
+  assert.match(operationsFeatureSource, /class="quality-progress-actions"/)
+  assert.match(operationsFeatureSource, /class="compact-row quality-issue-row"/)
+  assert.match(operationsFeatureSource, /issue\?\.action/)
+  assert.match(operationsFeatureSource, /issueRepairActions\(issue\)/)
+  assert.match(operationsFeatureSource, /seen\.has\(key\)/)
+  assert.match(operationsFeatureSource, /seen\.add\(key\)/)
+  assert.match(operationsFeatureSource, /openDataQualityRepairAction\(action, \$event\)/)
+  assert.doesNotMatch(operationsFeatureSource, /role="button" tabindex="0" @click="openDataQualityIssueFromRow/)
+  assert.match(operationsFeatureSource, /issueRepairReasonActions\(issue\)/)
+  assert.match(operationsFeatureSource, /issueRepairEventLabel\(issue\)/)
+  assert.match(operationsFeatureSource, /issueRepairEventActions\(issue\)/)
+  assert.match(operationsFeatureSource, /issueRepairLocalLabel\(issue\)/)
+  assert.match(operationsFeatureSource, /issueRepairLocalSourceLabel\(issue\)/)
+  assert.match(operationsFeatureSource, /issueRepairLocalActions\(issue\)/)
+  assert.match(operationsFeatureSource, /@click\.stop="openDataQualityRepairAction\(action, \$event\)"/)
+  assert.doesNotMatch(operationsFeatureSource, /openDataQualityRepairAction\(issue\.repair_progress\.action, \$event\)/)
+  assert.doesNotMatch(operationsFeatureSource, /openDataQualityRepairAction\(issue\.repair_progress\.reason_action, \$event\)/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.event_label/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.event_actions/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.reason_actions/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.local_label/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.local_source_label/)
+  assert.match(operationsFeatureSource, /repair_progress\?\.local_actions/)
   assert.match(compactRowWithMeta, /align-content:\s*center/)
   assert.match(compactRowWithMeta, /gap:\s*2px 8px/)
   assert.match(compactRowWithMeta, /min-height:\s*44px/)
@@ -324,17 +387,18 @@ test('operations compact diagnostic rows reserve a second-line metadata track', 
   assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.quality-progress\s*\{[\s\S]*grid-column:\s*1 \/ -1/)
 })
 
-test('operations top-level loading error and empty states use console state shells', () => {
+test('operations layout leaves loading error and empty states to self-loading cards', () => {
   const shell = cssBlocks(source, '.console-state-shell').join('\n')
   const ledger = cssBlocks(source, '.state-ledger').join('\n')
   const ledgerSpan = cssBlocks(source, '.state-ledger span').join('\n')
   const consoleState = cssBlocks(source, '.console-state').join('\n')
 
-  assert.match(vueSource, /class="console-state-shell operations-state-shell"/)
-  assert.match(vueSource, /class="state-ledger"/)
-  assert.match(vueSource, /<AppleSkeleton[\s\S]*class="loading-panel console-state"[\s\S]*label="运营总览加载中"/)
-  assert.match(vueSource, /<AppleErrorState[\s\S]*class="empty-panel console-state"[\s\S]*source-label="Operations API"[\s\S]*details="overview · cache · health"/)
-  assert.match(vueSource, /<AppleEmptyState[\s\S]*class="empty-panel console-state"[\s\S]*density="compact"/)
+  assert.doesNotMatch(vueSource, /class="console-state-shell operations-state-shell"/)
+  assert.doesNotMatch(vueSource, /AppleSkeleton/)
+  assert.doesNotMatch(vueSource, /AppleErrorState/)
+  assert.doesNotMatch(vueSource, /AppleEmptyState/)
+  assert.match(operationsFeatureSource, /加载失败/)
+  assert.match(operationsFeatureSource, /暂不可用/)
 
   assert.match(shell, /display:\s*grid/)
   assert.match(shell, /gap:\s*6px/)

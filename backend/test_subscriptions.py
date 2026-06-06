@@ -7,6 +7,23 @@ from test_support.postgres import TempPostgresMixin
 
 
 class SubscriptionDatabaseTest(TempPostgresMixin, unittest.TestCase):
+    def test_new_subscription_exposes_cadence_and_diff_tracking_defaults(self):
+        from database import add_subscription, get_subscriptions, update_subscription
+
+        sub_id = add_subscription(101, "Tracked")
+
+        row = get_subscriptions()[0]
+        self.assertEqual(row["id"], sub_id)
+        self.assertEqual(row["cadence_minutes"], 1440)
+        self.assertIsNone(row["cooldown_until"])
+        self.assertEqual(row["last_seen_codes"], [])
+        self.assertIsNone(row["last_run_at"])
+
+        update_subscription(sub_id, cadence_minutes=90)
+
+        updated = get_subscriptions()[0]
+        self.assertEqual(updated["cadence_minutes"], 90)
+
     def test_cleanup_removes_disabled_subscription_rows(self):
         from database import add_subscription, cleanup_legacy_subscriptions, get_subscriptions, update_subscription
 
@@ -58,7 +75,22 @@ class SubscriptionServiceTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result["new_movies"][0]["actress_name"], "Actor")
         self.assertEqual(result["new_movies"][0]["subscription_id"], 9)
-        update_last_check.assert_called_once_with(9, "SIVR-438")
+        update_last_check.assert_called_once()
+        self.assertEqual(update_last_check.call_args.args[:2], (9, "SIVR-438"))
+
+
+class SubscriptionRouterTest(unittest.IsolatedAsyncioTestCase):
+    async def test_update_subscription_accepts_cadence_minutes(self):
+        from routers.subscriptions import UpdateSubscriptionRequest, update_subscription_endpoint
+
+        with patch("database.update_subscription") as update_subscription:
+            result = await update_subscription_endpoint(
+                5,
+                UpdateSubscriptionRequest(cadence_minutes=120),
+            )
+
+        self.assertEqual(result, {"status": "ok"})
+        update_subscription.assert_called_once_with(5, cadence_minutes=120)
 
 
 if __name__ == "__main__":

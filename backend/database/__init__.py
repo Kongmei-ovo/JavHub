@@ -174,6 +174,15 @@ from database.video_variant_index import (
     list_variant_group_jobs,
     variant_group_stats,
 )
+from database.job import (
+    create_job,
+    update_job,
+    update_job_progress,
+    get_job,
+    list_jobs,
+    cancel_job,
+    get_current_job_id,
+)
 
 __all__ = [
     "get_db_orig",
@@ -194,6 +203,13 @@ __all__ = [
     "get_variant_group_job",
     "list_variant_group_jobs",
     "variant_group_stats",
+    "create_job",
+    "update_job",
+    "update_job_progress",
+    "get_job",
+    "list_jobs",
+    "cancel_job",
+    "get_current_job_id",
     "count_download_candidates",
     "get_translation",
     "get_translations_bulk",

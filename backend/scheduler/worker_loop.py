@@ -21,6 +21,9 @@ import threading
 from concurrent.futures import Future
 from typing import Any, Coroutine
 
+from database.job import create_job, set_current_job_id, update_job
+from middlewares.trace import new_trace_id, set_trace_id, trace_id_var
+
 _loop: asyncio.AbstractEventLoop | None = None
 _lock = threading.Lock()
 
@@ -44,7 +47,37 @@ def get_loop() -> asyncio.AbstractEventLoop:
         return loop
 
 
-def submit(coro: Coroutine[Any, Any, Any]) -> Future:
+async def _runner(
+    coro: Coroutine[Any, Any, Any],
+    trace_id: str | None,
+    job_id: int | None = None,
+) -> Any:
+    token = set_trace_id(trace_id or new_trace_id())
+    job_token = set_current_job_id(job_id)
+    try:
+        if job_id is not None:
+            update_job(job_id, status="running")
+        result = await coro
+        if job_id is not None:
+            update_job(job_id, status="completed", progress=100, result={"value": result})
+        return result
+    except Exception as exc:
+        if job_id is not None:
+            update_job(job_id, status="failed", error_msg=str(exc))
+        raise
+    finally:
+        job_token.var.reset(job_token)
+        trace_id_var.reset(token)
+
+
+def submit(
+    coro: Coroutine[Any, Any, Any],
+    trace_id: str | None = None,
+    *,
+    kind: str | None = None,
+    label: str | None = None,
+    parent_id: int | None = None,
+) -> Future:
     """Schedule ``coro`` on the shared loop; return a concurrent Future.
 
     Non-blocking: use this for fire-and-forget background jobs. The returned
@@ -54,7 +87,16 @@ def submit(coro: Coroutine[Any, Any, Any]) -> Future:
     loop = get_loop()
     if _running_on_loop(loop):
         raise RuntimeError("worker_loop.submit() must not be called from the loop thread")
-    return asyncio.run_coroutine_threadsafe(coro, loop)
+    inherited_trace_id = trace_id or trace_id_var.get()
+    job_id = None
+    if kind:
+        job_id = create_job(
+            kind,
+            label=label,
+            trace_id=inherited_trace_id,
+            parent_id=parent_id,
+        )
+    return asyncio.run_coroutine_threadsafe(_runner(coro, inherited_trace_id, job_id), loop)
 
 
 def run(coro: Coroutine[Any, Any, Any]) -> Any:

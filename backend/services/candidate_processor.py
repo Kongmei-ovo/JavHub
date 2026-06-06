@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from database import (
     set_download_candidate_status,
     update_download_candidate_magnet,
 )
+from database.download_candidate import promote_download_candidate_magnet_alternative
 from services.downloader import downloader_service
 from sources import register_all_sources
 from sources.registry import SourceRegistry
@@ -156,7 +158,7 @@ def _size_to_mb(value: str | None) -> float:
     return number
 
 
-def _magnet_score(item: dict) -> tuple:
+def _magnet_score(item: dict) -> dict:
     title = str(item.get("title") or "").lower()
     quality = str(item.get("quality") or "").lower()
     resolution = str(item.get("resolution") or "").lower()
@@ -170,7 +172,16 @@ def _magnet_score(item: dict) -> tuple:
     elif "720" in resolution or "720" in title:
         res_score = 2
     size_score = _size_to_mb(item.get("size"))
-    return (1 if subtitle else 0, 1 if hd else 0, res_score, size_score)
+    subtitle_score = 1 if subtitle else 0
+    hd_score = 1 if hd else 0
+    total = subtitle_score * 1000 + hd_score * 100 + res_score * 10 + math.log2(1 + size_score)
+    return {
+        "subtitle": subtitle_score,
+        "hd": hd_score,
+        "resolution": res_score,
+        "size_mb": size_score,
+        "total": total,
+    }
 
 
 def _download_uri(item: dict) -> str:
@@ -179,6 +190,61 @@ def _download_uri(item: dict) -> str:
         if value:
             return value
     return ""
+
+
+def _magnet_alternatives_from_score(score_payload: dict | None) -> list[dict]:
+    if not isinstance(score_payload, dict):
+        return []
+    explicit = score_payload.get("alternatives")
+    if isinstance(explicit, list):
+        return _sanitize_magnet_alternatives(explicit)
+    alternatives = []
+    for scored in score_payload.get("candidates") or []:
+        if not isinstance(scored, dict):
+            continue
+        item = scored.get("item") if isinstance(scored.get("item"), dict) else scored
+        if not isinstance(item, dict):
+            continue
+        alternatives.append(
+            {
+                "magnet": _download_uri(item),
+                "source": item.get("source") or item.get("name"),
+                "title": item.get("title"),
+                "score": scored.get("score"),
+            }
+        )
+    return _sanitize_magnet_alternatives(alternatives)
+
+
+def _sanitize_magnet_alternatives(items: list[dict]) -> list[dict]:
+    alternatives = []
+    seen = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        magnet = _download_uri(item)
+        if not magnet or magnet in seen:
+            continue
+        seen.add(magnet)
+        alternatives.append(
+            {
+                "magnet": magnet,
+                "source": item.get("source") or item.get("name"),
+                "title": item.get("title") or "",
+                "score": item.get("score"),
+            }
+        )
+    return alternatives[:5]
+
+
+async def _send_candidate_to_downloader(candidate: dict, download_uri: str) -> tuple[int, dict | None]:
+    task_id = await downloader_service.create_download_task(
+        code=candidate.get("content_id") or candidate.get("dvd_id") or "",
+        title=candidate.get("title") or candidate.get("content_id") or "",
+        magnet=download_uri,
+        path="",
+    )
+    return task_id, get_download_task(task_id)
 
 
 def classify_candidate_error(message: Any = None, status: int | str | None = None) -> dict:
@@ -249,15 +315,38 @@ async def find_best_magnet(candidate: dict) -> dict | None:
         if value and value not in keywords:
             keywords.append(value)
 
-    best: dict | None = None
+    scored: list[dict] = []
     for keyword in keywords:
         results = await SourceRegistry.search_all(keyword)
         for item in results:
             if not _download_uri(item):
                 continue
-            if best is None or _magnet_score(item) > _magnet_score(best):
-                best = dict(item)
-    return best
+            scored.append({"item": dict(item), "score": _magnet_score(item)})
+    if not scored:
+        return None
+
+    scored.sort(key=lambda result: result["score"]["total"], reverse=True)
+    candidates = scored[:5]
+    best = dict(candidates[0]["item"])
+    best["reason_breakdown"] = candidates[0]["score"]
+    alternatives = [
+        {
+            "magnet": _download_uri(result["item"]),
+            "source": result["item"].get("source") or result["item"].get("name"),
+            "title": result["item"].get("title") or "",
+            "score": result["score"],
+        }
+        for result in candidates
+    ]
+    return {"best": best, "candidates": candidates, "alternatives": _sanitize_magnet_alternatives(alternatives)}
+
+
+def _coerce_magnet_result(result: dict | None) -> tuple[dict | None, dict | None]:
+    if not result:
+        return None, None
+    if isinstance(result.get("best"), dict):
+        return dict(result["best"]), result
+    return dict(result), None
 
 
 async def enrich_candidate_magnet(candidate_id: int, operator: str = "manual") -> dict:
@@ -268,23 +357,27 @@ async def enrich_candidate_magnet(candidate_id: int, operator: str = "manual") -
         add_download_candidate_event(candidate_id, "magnet_enrich_skipped", "candidate already has magnet", operator)
         return _response("already_has_magnet", candidate)
 
-    best = await find_best_magnet(candidate)
+    score = await find_best_magnet(candidate)
+    best, score_payload = _coerce_magnet_result(score)
     if not best:
         add_download_candidate_event(candidate_id, "magnet_enrich_failed", "no magnet found", operator)
         return _response("magnet_not_found", candidate)
 
+    source = str(best.get("source") or best.get("name") or "sources")
     updated = update_download_candidate_magnet(
         candidate_id,
         _download_uri(best),
-        str(best.get("source") or best.get("name") or "sources"),
+        source,
+        score=score_payload,
+        alternatives=_magnet_alternatives_from_score(score_payload),
     )
     add_download_candidate_event(
         candidate_id,
         "magnet_enriched",
-        str(best.get("title") or best.get("size") or "sources"),
+        json.dumps({"source": source, "score": score_payload}, ensure_ascii=False),
         operator,
     )
-    return _response("magnet_enriched", updated, magnet=best)
+    return _response("magnet_enriched", updated, magnet=best, score=score_payload)
 
 
 async def process_candidate(
@@ -343,23 +436,73 @@ async def process_candidate(
         return _response("skipped_limit", candidate, policy=chosen_policy)
 
     try:
-        task_id = await downloader_service.create_download_task(
-            code=candidate.get("content_id") or candidate.get("dvd_id") or "",
-            title=candidate.get("title") or candidate.get("content_id") or "",
-            magnet=download_uri,
-            path="",
-        )
+        task_id, task = await _send_candidate_to_downloader(candidate, download_uri)
     except Exception as exc:
         failed = set_download_candidate_status(candidate_id, "failed", error_msg=str(exc))
         metadata = classify_candidate_error(exc)
         add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(exc), operator)
         return _response("failed_downloader", failed, policy=chosen_policy, error=str(exc), **metadata)
 
-    task = get_download_task(task_id)
     if task and task.get("status") == "failed":
         error_msg = task.get("error_msg") or "下载任务创建失败"
-        failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)
         error_status = task.get("status_code") or task.get("http_status")
+        alternatives = candidate.get("magnet_alternatives") or []
+        fallback_index = next(
+            (
+                idx
+                for idx, alternative in enumerate(alternatives)
+                if str((alternative or {}).get("magnet") or "").strip()
+                and str((alternative or {}).get("magnet") or "").strip() != download_uri
+            ),
+            None,
+        )
+        if fallback_index is not None:
+            fallback_candidate = promote_download_candidate_magnet_alternative(candidate_id, fallback_index)
+            fallback_uri = _download_uri(fallback_candidate or {})
+            if fallback_candidate and fallback_uri:
+                add_download_candidate_event(
+                    candidate_id,
+                    "magnet_fallback",
+                    json.dumps(
+                        {
+                            "from": download_uri,
+                            "to": fallback_uri,
+                            "failed_download_task_id": task_id,
+                            "error": error_msg,
+                        },
+                        ensure_ascii=False,
+                    ),
+                    operator,
+                )
+                try:
+                    retry_task_id, retry_task = await _send_candidate_to_downloader(fallback_candidate, fallback_uri)
+                except Exception as exc:
+                    failed = set_download_candidate_status(candidate_id, "failed", error_msg=str(exc))
+                    metadata = classify_candidate_error(exc)
+                    add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(exc), operator)
+                    return _response(
+                        "failed_downloader",
+                        failed,
+                        policy=chosen_policy,
+                        error=str(exc),
+                        fallback_attempted=True,
+                        **metadata,
+                    )
+                if not retry_task or retry_task.get("status") != "failed":
+                    updated = set_download_candidate_status(candidate_id, "sent", download_task_id=retry_task_id)
+                    event = "auto_approved" if operator == "system" or chosen_policy in {"rules", "auto"} else "approved"
+                    add_download_candidate_event(candidate_id, event, f"download_task_id={retry_task_id}", operator)
+                    return _response(
+                        "sent",
+                        updated,
+                        policy=chosen_policy,
+                        download_task_id=retry_task_id,
+                        fallback_attempted=True,
+                    )
+                error_msg = retry_task.get("error_msg") or "下载任务创建失败"
+                error_status = retry_task.get("status_code") or retry_task.get("http_status")
+                task_id = retry_task_id
+        failed = set_download_candidate_status(candidate_id, "failed", error_msg=error_msg)
         metadata = classify_candidate_error(error_msg, error_status)
         add_download_candidate_event(candidate_id, "process_failed", _failure_event_detail(error_msg, error_status), operator)
         return _response(

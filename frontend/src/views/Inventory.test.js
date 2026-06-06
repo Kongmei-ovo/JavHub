@@ -1,10 +1,155 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { Window } from 'happy-dom'
+import { compileScript, compileTemplate, parse, rewriteDefault } from '@vue/compiler-sfc'
+import { installAxiosAdapter } from '../testSupport/axiosAdapter.js'
 
 const vueSource = readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8')
 const externalStyle = readFileSync(new URL('../features/inventory/inventory.css', import.meta.url), 'utf8')
 const source = `${vueSource}\n${externalStyle}`
+const baseVueUrl = await import.meta.resolve('vue')
+const axiosUrl = await import.meta.resolve('axios')
+
+class MockEventSource {
+  static instances = []
+
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCalled = false
+    MockEventSource.instances.push(this)
+  }
+
+  addEventListener(type, listener) {
+    const listeners = this.listeners.get(type) || []
+    listeners.push(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  removeEventListener(type, listener) {
+    const listeners = this.listeners.get(type) || []
+    this.listeners.set(type, listeners.filter(item => item !== listener))
+  }
+
+  emit(type, event) {
+    if (type === 'message' && typeof this.onmessage === 'function') this.onmessage(event)
+    if (type === 'error' && typeof this.onerror === 'function') this.onerror(event)
+    for (const listener of this.listeners.get(type) || []) listener(event)
+  }
+
+  pushJob(job) {
+    this.emit('message', { data: JSON.stringify(job) })
+  }
+
+  close() {
+    this.closeCalled = true
+  }
+}
+
+function installDom(t) {
+  const window = new Window({ url: 'http://localhost:5174/inventory' })
+  const originals = {
+    CustomEvent: globalThis.CustomEvent,
+    document: globalThis.document,
+    Element: globalThis.Element,
+    Event: globalThis.Event,
+    EventSource: globalThis.EventSource,
+    HTMLElement: globalThis.HTMLElement,
+    Node: globalThis.Node,
+    SVGElement: globalThis.SVGElement,
+    window: globalThis.window,
+  }
+
+  globalThis.window = window
+  globalThis.document = window.document
+  globalThis.CustomEvent = window.CustomEvent
+  globalThis.Element = window.Element
+  globalThis.Event = window.Event
+  globalThis.EventSource = MockEventSource
+  window.EventSource = MockEventSource
+  globalThis.HTMLElement = window.HTMLElement
+  globalThis.Node = window.Node
+  globalThis.SVGElement = window.SVGElement
+  MockEventSource.instances = []
+
+  t.after(() => {
+    Object.assign(globalThis, originals)
+    window.close()
+  })
+
+  return window
+}
+
+async function waitFor(condition, label, { timeout = 1500, nextTick = async () => {} } = {}) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    if (condition()) return
+  }
+  assert.fail(label)
+}
+
+async function importInventoryComponent(vueUrl) {
+  const filename = new URL('./Inventory.vue', import.meta.url)
+  const { descriptor } = parse(vueSource, { filename: filename.pathname })
+  const id = createHash('sha1').update(filename.href).digest('hex').slice(0, 8)
+  const script = compileScript(descriptor, { id })
+  const template = compileTemplate({
+    id,
+    filename: filename.pathname,
+    source: descriptor.template.content,
+    compilerOptions: { bindingMetadata: script.bindings },
+  })
+  const scriptCode = rewriteDefault(script.content, 'script')
+    .replace(/from 'vue'/g, `from '${vueUrl}'`)
+    .replace(/import \{ useRouter \} from 'vue-router'\n/, 'const useRouter = () => ({ push() {} })\n')
+    .replace(/import axios from 'axios'/, `import axios from '${axiosUrl}'`)
+    .replace(/import \{ ElMessage \} from '\.\.\/utils\/message\.js'\n/, 'const ElMessage = { error() {}, warning() {}, success() {} }\n')
+    .replace(/import api from '\.\.\/api'\n/, 'const api = { getActorMappingSummary: async () => ({ data: {} }), getDownloadCandidateSummary: async () => ({ data: {} }) }\n')
+    .replace(/import \{ requestConfirm \} from '\.\.\/utils\/confirmDialog'\n/, 'const requestConfirm = async () => true\n')
+    .replace(/import GlassSelect from '\.\.\/components\/GlassSelect\.vue'\n/, 'const GlassSelect = { props: ["modelValue", "options"], template: "<select></select>" }\n')
+    .replace(/import AppleSkeleton from '\.\.\/components\/AppleSkeleton\.vue'\n/, 'const AppleSkeleton = { template: "<div></div>" }\n')
+    .replace(/import AppleEmptyState from '\.\.\/components\/AppleEmptyState\.vue'\n/, 'const AppleEmptyState = { emits: ["action", "secondary-action"], template: "<button @click=\\"$emit(\\\'action\\\')\\">empty</button>" }\n')
+    .replace(/import AppleErrorState from '\.\.\/components\/AppleErrorState\.vue'\n/, 'const AppleErrorState = { emits: ["retry", "secondary-action"], template: "<button @click=\\"$emit(\\\'retry\\\')\\">error</button>" }\n')
+  const code = [
+    scriptCode,
+    template.code.replace(/from "vue"/g, `from '${vueUrl}'`),
+    'script.render = render',
+    'export default script',
+  ].join('\n')
+  return (await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)).default
+}
+
+async function mountInventory(t) {
+  installDom(t)
+  const vueUrl = `${baseVueUrl}?inventory-${Date.now()}-${Math.random()}`
+  const { createApp, nextTick } = await import(vueUrl)
+  installAxiosAdapter(t, async (config) => {
+    if (config.url === '/api/inventory/actors') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [], total: 0, total_pages: 1 } }
+    }
+    if (config.url === '/api/inventory/snapshots/latest') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { snapshot_key: 'snap-1' } }
+    }
+    if (config.url === '/api/inventory/jobs/trigger') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { job_id: 7 } }
+    }
+    if (config.url === '/api/inventory/jobs') {
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+    }
+    return { config, status: 200, statusText: 'OK', headers: {}, data: {} }
+  })
+  const Inventory = await importInventoryComponent(vueUrl)
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  const app = createApp(Inventory)
+  app.mount(host)
+  t.after(() => app.unmount())
+  return { app, host, nextTick }
+}
 
 function cssBlocks(content, selector) {
   const contentWithoutComments = content.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -45,6 +190,31 @@ test('inventory page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/inventory\/inventory\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 520, 'Inventory.vue should stay below 520 lines')
   assert.ok(externalStyle.split('\n').length > 450, 'external stylesheet should contain the moved inventory styles')
+})
+
+test('inventory listens to inventory SSE jobs and renders progress updates', async (t) => {
+  const { nextTick } = await mountInventory(t)
+  await waitFor(() => MockEventSource.instances.length === 1, 'Inventory should open one inventory EventSource', { nextTick })
+
+  const stream = MockEventSource.instances[0]
+  assert.equal(stream.url, '/api/v1/jobs/stream?kind=inventory')
+
+  stream.pushJob({ id: 101, kind: 'inventory', label: 'collect inventory', status: 'running', progress: 42 })
+  await waitFor(() => document.body.textContent.includes('42%'), 'Inventory should render running job progress', { nextTick })
+
+  stream.pushJob({ id: 101, kind: 'inventory', label: 'collect inventory', status: 'completed', progress: 100 })
+  await waitFor(() => document.body.textContent.includes('100%'), 'Inventory should render completed job progress', { nextTick })
+})
+
+test('inventory reconnects the SSE job stream after a disconnect', async (t) => {
+  const { nextTick } = await mountInventory(t)
+  await waitFor(() => MockEventSource.instances.length === 1, 'Inventory should open an inventory EventSource', { nextTick })
+
+  MockEventSource.instances[0].emit('error', new Event('error'))
+  assert.equal(MockEventSource.instances[0].closeCalled, true)
+
+  await waitFor(() => MockEventSource.instances.length === 2, 'Inventory should reconnect after the 1s backoff', { timeout: 1300, nextTick })
+  assert.equal(MockEventSource.instances[1].url, '/api/v1/jobs/stream?kind=inventory')
 })
 
 test('inventory controls use shared Apple glass materials', () => {

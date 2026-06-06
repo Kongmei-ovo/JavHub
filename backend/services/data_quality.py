@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from config import config
 from database import get_db, get_latest_snapshot_key, get_snapshot_duplicate_candidates
+from database.data_quality_history import upsert_today_snapshot
 
 
 _CONTENT_ID_RE = re.compile(r"([A-Z0-9_]{2,18}-?\d{1,6}[A-Z]*)", re.IGNORECASE)
@@ -49,12 +50,14 @@ def build_data_quality_overview(
 
     issues.sort(key=lambda item: (-int(item["score"]), item["type"], item["id"]))
     visible_issues = issues[:bounded_limit]
-    return {
+    overview = {
         "status": "ok",
         "snapshot_key": snapshot_key,
         "summary": _summary(visible_issues),
         "issues": visible_issues,
     }
+    upsert_today_snapshot(overview["summary"], _issues_by_type(visible_issues))
+    return overview
 
 
 def _duplicate_issue(snapshot_key: str | None) -> dict[str, Any] | None:
@@ -763,6 +766,18 @@ def _summary(issues: list[dict[str, Any]]) -> dict[str, Any]:
         "medium": int(severities.get("medium", 0)),
         "low": int(severities.get("low", 0)),
         "by_type": by_type,
+    }
+
+
+def _issues_by_type(issues: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        str(issue["type"]): {
+            "count": int(issue.get("count") or 0),
+            "severity": str(issue.get("severity") or "low"),
+            "score": int(issue.get("score") or 0),
+            "title": str(issue.get("title") or ""),
+        }
+        for issue in issues
     }
 
 

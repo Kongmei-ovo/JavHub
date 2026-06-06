@@ -62,11 +62,12 @@ class SourceRegistry:
         ok: bool,
         error: str = "",
     ) -> None:
+        duration_ms = round((time.monotonic() - started_at) * 1000, 3)
         cls._attempts.append(
             {
                 "source": source,
                 "keyword": keyword,
-                "duration_ms": round((time.monotonic() - started_at) * 1000, 3),
+                "duration_ms": duration_ms,
                 "result_count": result_count,
                 "error": error,
                 "ok": ok,
@@ -75,6 +76,19 @@ class SourceRegistry:
         )
         if len(cls._attempts) > cls._max_attempts:
             del cls._attempts[: len(cls._attempts) - cls._max_attempts]
+        try:
+            from database.source_attempt import record_source_attempt
+
+            record_source_attempt(
+                source=source,
+                keyword=keyword,
+                ok=ok,
+                duration_ms=duration_ms,
+                result_count=result_count,
+                error=error,
+            )
+        except Exception:
+            pass
 
     @classmethod
     async def _search_one(cls, name: str, keyword: str) -> list[dict]:

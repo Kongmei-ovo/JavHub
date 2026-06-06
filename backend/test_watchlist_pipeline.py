@@ -658,6 +658,19 @@ class ActorMappingCandidateTest(TempPostgresMixin, unittest.IsolatedAsyncioTestC
 
 
 class WatchlistPipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_video_in_snapshot_match_returns_matching_snapshot_row(self):
+        from services.watchlist_pipeline import video_in_snapshot, video_in_snapshot_match
+
+        snapshot_items = [
+            {"emby_item_id": "emby-noise", "filename": "/media/ABC-1234.mp4", "title": "Wrong"},
+            {"emby_item_id": "emby-hit", "filename": "/media/SIVR-438.mp4", "title": "Owned"},
+        ]
+
+        match = video_in_snapshot_match({"dvd_id": "SIVR-438"}, snapshot_items)
+
+        self.assertEqual(match, snapshot_items[1])
+        self.assertTrue(video_in_snapshot({"dvd_id": "SIVR-438"}, snapshot_items))
+
     async def test_subscription_pipeline_creates_candidate_for_missing_movie(self):
         from services.watchlist_pipeline import WatchlistPipeline
 

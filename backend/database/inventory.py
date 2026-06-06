@@ -1,8 +1,38 @@
 """库存对比数据库层"""
 import json
+import os
 import time
 from typing import Optional
 from database.base import get_db
+
+
+_MISSING_VIDEO_SCHEMA_KEYS: set[tuple[str | None, str | None, str | None]] = set()
+_INVENTORY_VIDEO_SCHEMA_KEYS: set[tuple[str | None, str | None, str | None]] = set()
+
+
+def _schema_key() -> tuple[str | None, str | None, str | None]:
+    return (
+        os.getenv("JAVHUB_DB_HOST"),
+        os.getenv("JAVHUB_DB_PORT"),
+        os.getenv("JAVHUB_DB_NAME"),
+    )
+
+
+def _ensure_missing_video_provenance_columns(cursor) -> None:
+    schema_key = _schema_key()
+    if schema_key in _MISSING_VIDEO_SCHEMA_KEYS:
+        return
+    cursor.execute("ALTER TABLE missing_videos ADD COLUMN IF NOT EXISTS matched_emby_item_id TEXT NULL")
+    cursor.execute("ALTER TABLE missing_videos ADD COLUMN IF NOT EXISTS matched_filename TEXT NULL")
+    _MISSING_VIDEO_SCHEMA_KEYS.add(schema_key)
+
+
+def _ensure_inventory_video_provenance_columns(cursor) -> None:
+    schema_key = _schema_key()
+    if schema_key in _INVENTORY_VIDEO_SCHEMA_KEYS:
+        return
+    cursor.execute("ALTER TABLE inventory_videos ADD COLUMN IF NOT EXISTS matched_filename TEXT NULL")
+    _INVENTORY_VIDEO_SCHEMA_KEYS.add(schema_key)
 
 
 def _bump_missing_summary_generation() -> None:
@@ -238,44 +268,79 @@ def update_inventory_actor_stats(actress_id: int, total_videos: int, missing_cou
 
 # === Inventory Videos ===
 
-def upsert_inventory_video(content_id: str, emby_item_id: str, actress_id: int, title: str, release_date: Optional[str], jacket_thumb_url: Optional[str]) -> int:
+def upsert_inventory_video(
+    content_id: str,
+    emby_item_id: str,
+    actress_id: int,
+    title: str,
+    release_date: Optional[str],
+    jacket_thumb_url: Optional[str],
+    matched_filename: Optional[str] = None,
+) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_inventory_video_provenance_columns(cursor)
         cursor.execute('''
-            INSERT INTO inventory_videos (content_id, emby_item_id, actress_id, title, release_date, jacket_thumb_url, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO inventory_videos (
+                content_id, emby_item_id, actress_id, title, release_date, jacket_thumb_url,
+                matched_filename, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(content_id) DO UPDATE SET
                 emby_item_id = excluded.emby_item_id,
                 actress_id = excluded.actress_id,
                 title = excluded.title,
                 release_date = excluded.release_date,
                 jacket_thumb_url = excluded.jacket_thumb_url,
+                matched_filename = COALESCE(excluded.matched_filename, inventory_videos.matched_filename),
                 updated_at = CURRENT_TIMESTAMP
-        ''', (content_id, emby_item_id, actress_id, title, release_date, jacket_thumb_url))
+        ''', (content_id, emby_item_id, actress_id, title, release_date, jacket_thumb_url, matched_filename))
         return actress_id
 
 def get_inventory_videos(actress_id: int) -> list:
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM inventory_videos WHERE actress_id = ? ORDER BY release_date DESC", (actress_id,))
+        _ensure_inventory_video_provenance_columns(cursor)
+        cursor.execute(
+            """
+            SELECT inventory_videos.*, emby_item_id AS matched_emby_item_id
+            FROM inventory_videos
+            WHERE actress_id = ?
+            ORDER BY release_date DESC
+            """,
+            (actress_id,),
+        )
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
 # === Missing Videos ===
 
-def add_missing_video(content_id: str, actress_id: int, title: str, release_date: Optional[str], jacket_thumb_url: Optional[str]) -> int:
+def add_missing_video(
+    content_id: str,
+    actress_id: int,
+    title: str,
+    release_date: Optional[str],
+    jacket_thumb_url: Optional[str],
+    matched_emby_item_id: Optional[str] = None,
+    matched_filename: Optional[str] = None,
+) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_missing_video_provenance_columns(cursor)
         cursor.execute('''
-            INSERT INTO missing_videos (content_id, actress_id, title, release_date, jacket_thumb_url, created_at)
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO missing_videos (
+                content_id, actress_id, title, release_date, jacket_thumb_url,
+                matched_emby_item_id, matched_filename, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(content_id) DO NOTHING
-        ''', (content_id, actress_id, title, release_date, jacket_thumb_url))
+        ''', (content_id, actress_id, title, release_date, jacket_thumb_url, matched_emby_item_id, matched_filename))
         return cursor.lastrowid or 0
 
 def get_missing_videos(actress_id: int) -> list:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_missing_video_provenance_columns(cursor)
         cursor.execute("SELECT * FROM missing_videos WHERE actress_id = ? ORDER BY release_date DESC", (actress_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -283,6 +348,7 @@ def get_missing_videos(actress_id: int) -> list:
 def get_all_missing_videos() -> list:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_missing_video_provenance_columns(cursor)
         cursor.execute("SELECT * FROM missing_videos ORDER BY release_date DESC")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -290,6 +356,7 @@ def get_all_missing_videos() -> list:
 def get_missing_video(content_id: str) -> Optional[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_missing_video_provenance_columns(cursor)
         cursor.execute("SELECT * FROM missing_videos WHERE content_id = ?", (content_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -299,6 +366,7 @@ def list_missing_videos_page(limit: int = 80, offset: int = 0) -> dict:
     start = max(0, int(offset or 0))
     with get_db() as conn:
         cursor = conn.cursor()
+        _ensure_missing_video_provenance_columns(cursor)
         cursor.execute("SELECT COUNT(*) FROM missing_videos")
         total = int(cursor.fetchone()[0] or 0)
         cursor.execute(

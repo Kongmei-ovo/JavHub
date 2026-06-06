@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import unittest
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -98,6 +99,212 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         self.assertEqual(updated["status"], "sent")
         self.assertEqual(updated["magnet"], magnet["magnet"])
 
+    async def test_magnet_score_returns_named_breakdown(self):
+        from services.candidate_processor import _magnet_score
+
+        score = _magnet_score(
+            {
+                "title": "SIVR-438 字幕 1080p",
+                "size": "4.2GB",
+                "hd": True,
+                "subtitle": True,
+                "resolution": "1080p",
+                "quality": "HD",
+            }
+        )
+
+        self.assertEqual(score["subtitle"], 1)
+        self.assertEqual(score["hd"], 1)
+        self.assertEqual(score["resolution"], 3)
+        self.assertEqual(score["size_mb"], 4.2 * 1024)
+        self.assertAlmostEqual(score["total"], 1000 + 100 + 30 + math.log2(1 + 4.2 * 1024))
+
+    async def test_find_best_magnet_returns_ranked_score_breakdown(self):
+        from services.candidate_processor import find_best_magnet
+
+        subtitle_result = {
+            "magnet": "magnet:?xt=urn:btih:sub",
+            "title": "SIVR-438 字幕 720p",
+            "size": "1.0GB",
+            "source": "javdb",
+            "subtitle": True,
+            "resolution": "720p",
+        }
+        large_result = {
+            "magnet": "magnet:?xt=urn:btih:large",
+            "title": "SIVR-438 2160p",
+            "size": "10.0GB",
+            "source": "javbus",
+            "resolution": "2160p",
+            "hd": True,
+        }
+
+        with patch("services.candidate_processor.register_all_sources"):
+            with patch(
+                "services.candidate_processor.SourceRegistry.search_all",
+                new=AsyncMock(return_value=[large_result, subtitle_result]),
+            ):
+                result = await find_best_magnet({"content_id": "SIVR-438"})
+
+        self.assertEqual(result["best"]["magnet"], "magnet:?xt=urn:btih:sub")
+        self.assertEqual(result["best"]["reason_breakdown"]["subtitle"], 1)
+        self.assertEqual(len(result["candidates"]), 2)
+        self.assertEqual(result["candidates"][0]["item"]["magnet"], "magnet:?xt=urn:btih:sub")
+        self.assertGreater(result["candidates"][0]["score"]["total"], result["candidates"][1]["score"]["total"])
+
+    async def test_find_best_magnet_returns_sanitized_top_five_alternatives(self):
+        from services.candidate_processor import find_best_magnet
+
+        source_results = [
+            {
+                "magnet": f"magnet:?xt=urn:btih:{idx}",
+                "title": f"SIVR-438 {idx} 1080p",
+                "source": "javdb",
+                "size": f"{idx + 1}.0GB",
+                "binary": b"torrent bytes",
+            }
+            for idx in range(6)
+        ]
+
+        with patch("services.candidate_processor.register_all_sources"):
+            with patch(
+                "services.candidate_processor.SourceRegistry.search_all",
+                new=AsyncMock(return_value=source_results),
+            ):
+                result = await find_best_magnet({"content_id": "SIVR-438"})
+
+        self.assertEqual(len(result["alternatives"]), 5)
+        self.assertEqual(
+            list(result["alternatives"][0].keys()),
+            ["magnet", "source", "title", "score"],
+        )
+        self.assertNotIn("binary", result["alternatives"][0])
+        self.assertEqual(result["best"]["magnet"], result["alternatives"][0]["magnet"])
+
+    async def test_enrich_candidate_magnet_persists_score_and_records_json_detail(self):
+        from database import get_download_candidate, list_download_candidate_events, upsert_download_candidate
+        from services.candidate_processor import enrich_candidate_magnet
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            dvd_id="SIVR-438",
+            title="Title",
+            source="inventory",
+        )
+        item = {
+            "magnet": "magnet:?xt=urn:btih:456",
+            "title": "SIVR-438 字幕 1080p",
+            "size": "4.2GB",
+            "source": "javdb",
+            "subtitle": True,
+            "hd": True,
+            "resolution": "1080p",
+        }
+        score = {
+            "best": {
+                **item,
+                "reason_breakdown": {
+                    "subtitle": 1,
+                    "hd": 1,
+                    "resolution": 3,
+                    "size_mb": 4300.8,
+                    "total": 1142.071,
+                },
+            },
+            "candidates": [
+                {
+                    "item": item,
+                    "score": {
+                        "subtitle": 1,
+                        "hd": 1,
+                        "resolution": 3,
+                        "size_mb": 4300.8,
+                        "total": 1142.071,
+                    },
+                }
+            ],
+        }
+
+        with patch("services.candidate_processor.find_best_magnet", new=AsyncMock(return_value=score)):
+            result = await enrich_candidate_magnet(candidate["id"], operator="manual")
+
+        updated = get_download_candidate(candidate["id"])
+        self.assertEqual(result["action"], "magnet_enriched")
+        self.assertEqual(updated["magnet"], "magnet:?xt=urn:btih:456")
+        self.assertEqual(updated["magnet_score"], score)
+        self.assertEqual(updated["magnet_alternatives"][0]["magnet"], "magnet:?xt=urn:btih:456")
+        detail = json.loads(list_download_candidate_events(candidate["id"])[0]["detail"])
+        self.assertEqual(detail["source"], "javdb")
+        self.assertEqual(detail["score"], score)
+
+    async def test_process_candidate_retries_once_with_next_alternative_after_downloader_failure(self):
+        from database import get_download_candidate, list_download_candidate_events, upsert_download_candidate
+        from database.download_candidate import update_download_candidate_magnet_alternatives
+        from services.candidate_processor import process_candidate
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Title",
+            source="subscription",
+            magnet="magnet:?xt=urn:btih:first",
+            magnet_source="javdb",
+        )
+        update_download_candidate_magnet_alternatives(
+            candidate["id"],
+            [
+                {"magnet": "magnet:?xt=urn:btih:first", "source": "javdb", "title": "First", "score": {"total": 20}},
+                {"magnet": "magnet:?xt=urn:btih:second", "source": "javbus", "title": "Second", "score": {"total": 19}},
+            ],
+        )
+
+        create = AsyncMock(side_effect=[11, 12])
+
+        def task_for(task_id):
+            if task_id == 11:
+                return {"id": 11, "status": "failed", "error_msg": "remote rejected first magnet"}
+            return {"id": 12, "status": "downloading"}
+
+        with patch("services.candidate_processor.downloader_service.create_download_task", new=create):
+            with patch("services.candidate_processor.get_download_task", side_effect=task_for):
+                result = await process_candidate(candidate["id"], policy="rules")
+
+        updated = get_download_candidate(candidate["id"])
+        self.assertEqual(result["action"], "sent")
+        self.assertEqual(result["download_task_id"], 12)
+        self.assertEqual(updated["status"], "sent")
+        self.assertEqual(updated["magnet"], "magnet:?xt=urn:btih:second")
+        self.assertEqual(create.await_args_list[0].kwargs["magnet"], "magnet:?xt=urn:btih:first")
+        self.assertEqual(create.await_args_list[1].kwargs["magnet"], "magnet:?xt=urn:btih:second")
+        fallback_events = [event for event in list_download_candidate_events(candidate["id"]) if event["action"] == "magnet_fallback"]
+        self.assertEqual(len(fallback_events), 1)
+        detail = json.loads(fallback_events[0]["detail"])
+        self.assertEqual(detail["from"], "magnet:?xt=urn:btih:first")
+        self.assertEqual(detail["to"], "magnet:?xt=urn:btih:second")
+
+    async def test_list_candidates_endpoint_exposes_magnet_score(self):
+        from database import update_download_candidate_magnet, upsert_download_candidate
+        from routers import downloads
+
+        candidate = upsert_download_candidate(
+            content_id="SIVR-438",
+            title="Title",
+            source="inventory",
+        )
+        score = {
+            "best": {"magnet": "magnet:?xt=urn:btih:456", "reason_breakdown": {"total": 1142.071}},
+            "candidates": [{"item": {"magnet": "magnet:?xt=urn:btih:456"}, "score": {"total": 1142.071}}],
+        }
+        update_download_candidate_magnet(
+            candidate["id"],
+            "magnet:?xt=urn:btih:456",
+            "javdb",
+            score=score,
+        )
+
+        result = await downloads.list_candidates(source="inventory", limit=1, cache_control="no-cache")
+
+        self.assertEqual(result["data"][0]["magnet_score"], score)
+
     async def test_find_best_magnet_accepts_http_torrent_result(self):
         from services.candidate_processor import find_best_magnet
 
@@ -115,8 +322,9 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
             with patch("services.candidate_processor.SourceRegistry.search_all", new=AsyncMock(return_value=[http_result])):
                 result = await find_best_magnet({"content_id": "SIVR-438"})
 
-        self.assertEqual(result["download_url"], "https://indexer.test/download/SIVR-438.torrent")
-        self.assertEqual(result["torrent_url"], "https://indexer.test/download/SIVR-438.torrent")
+        self.assertEqual(result["best"]["download_url"], "https://indexer.test/download/SIVR-438.torrent")
+        self.assertEqual(result["best"]["torrent_url"], "https://indexer.test/download/SIVR-438.torrent")
+        self.assertEqual(result["candidates"][0]["score"]["resolution"], 3)
 
     async def test_auto_policy_enriches_http_torrent_url_before_send(self):
         from database import get_download_candidate, upsert_download_candidate

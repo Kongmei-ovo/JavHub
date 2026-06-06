@@ -1,5 +1,10 @@
 import logging
 import threading
+import time
+from collections.abc import Callable
+from datetime import datetime, timezone
+from functools import wraps
+from typing import Any
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from config import config
@@ -13,6 +18,87 @@ scheduler = BackgroundScheduler()
 
 # 防重入标志
 _subscription_check_lock = threading.Lock()
+_scheduler_job_results: dict[str, dict[str, Any]] = {}
+_scheduler_job_results_lock = threading.Lock()
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _isoformat(value: Any) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def record_scheduler_job_result(
+    job_id: str,
+    *,
+    status: str,
+    run_at: datetime,
+    duration_ms: int,
+    error: str | None,
+) -> dict[str, Any]:
+    result = {
+        "last_run_at": _isoformat(run_at),
+        "last_duration_ms": max(0, int(duration_ms)),
+        "last_status": status,
+        "last_error": error,
+    }
+    with _scheduler_job_results_lock:
+        _scheduler_job_results[job_id] = result
+    return result
+
+
+def get_scheduler_job_result(job_id: str) -> dict[str, Any]:
+    with _scheduler_job_results_lock:
+        result = _scheduler_job_results.get(job_id)
+        if result is None:
+            return {
+                "last_run_at": None,
+                "last_duration_ms": None,
+                "last_status": None,
+                "last_error": None,
+            }
+        return dict(result)
+
+
+def clear_scheduler_job_results() -> None:
+    with _scheduler_job_results_lock:
+        _scheduler_job_results.clear()
+
+
+def scheduler_job_wrapper(job_id: str, func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        started_at = _utc_now()
+        monotonic_started = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+        except Exception as exc:
+            duration_ms = int((time.perf_counter() - monotonic_started) * 1000)
+            record_scheduler_job_result(
+                job_id,
+                status="failed",
+                run_at=started_at,
+                duration_ms=duration_ms,
+                error=str(exc) or exc.__class__.__name__,
+            )
+            raise
+        duration_ms = int((time.perf_counter() - monotonic_started) * 1000)
+        record_scheduler_job_result(
+            job_id,
+            status="success",
+            run_at=started_at,
+            duration_ms=duration_ms,
+            error=None,
+        )
+        return result
+
+    return wrapped
 
 
 def subscription_check_job():
@@ -36,6 +122,7 @@ def subscription_check_job():
                 logger.error(f"Notification failed: {e}")
     except Exception as e:
         add_log("ERROR", f"订阅检查失败: {e}")
+        raise
     finally:
         _subscription_check_lock.release()
 
@@ -53,6 +140,14 @@ def candidate_auto_process_job():
         add_log("INFO", f"候选自动处理完成: {counts}")
     except Exception as e:
         add_log("ERROR", f"候选自动处理失败: {e}")
+        raise
+
+
+def inventory_comparison_job(job_type: str = "full"):
+    """Run the async inventory comparison job on the shared scheduler loop."""
+    from scheduler.worker_loop import run as run_on_loop
+
+    return run_on_loop(run_inventory_comparison(job_type=job_type))
 
 
 def candidate_auto_process_schedule_state() -> dict:
@@ -77,7 +172,7 @@ def configure_candidate_auto_process_job():
     if interval_minutes <= 0:
         return
     scheduler.add_job(
-        candidate_auto_process_job,
+        scheduler_job_wrapper('candidate_auto_process', candidate_auto_process_job),
         'interval',
         minutes=interval_minutes,
         id='candidate_auto_process',
@@ -96,7 +191,7 @@ def start_scheduler():
 
     # 每天定时检查
     scheduler.add_job(
-        subscription_check_job,
+        scheduler_job_wrapper('subscription_check', subscription_check_job),
         CronTrigger(hour=check_hour, minute=0),
         id='subscription_check',
         name='订阅检查',
@@ -105,12 +200,12 @@ def start_scheduler():
 
     # 库存对比任务
     scheduler.add_job(
-        run_inventory_comparison,
+        scheduler_job_wrapper('inventory_comparison', inventory_comparison_job),
         CronTrigger(hour=3, minute=0),
         id='inventory_comparison',
         name='库存对比',
         replace_existing=True,
-        kwargs={"job_type": "full"}
+        kwargs={"job_type": "full"},
     )
 
     configure_candidate_auto_process_job()

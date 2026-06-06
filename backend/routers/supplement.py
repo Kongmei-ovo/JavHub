@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, Query
 from modules.info_client import get_info_client
+from routers._query import qv
 from services.supplement_candidates import generate_download_candidates_from_supplement
 from translations import get_translator_service
 
@@ -20,7 +21,7 @@ async def supplement_actress_status(
     source: str = Query("avbase"),
 ) -> dict[str, Any]:
     client = get_info_client()
-    src = source.default if hasattr(source, "default") else source
+    src = qv(source)
     return await client.proxy_get(
         f"/api/v1/supplement/actresses/{actress_id}/status",
         params={"source": src},
@@ -33,7 +34,7 @@ async def create_filmography_job(
     source: str = Query("avbase"),
 ) -> dict[str, Any]:
     client = get_info_client()
-    src = source.default if hasattr(source, "default") else source
+    src = qv(source)
     return await client.proxy_post(
         f"/api/v1/supplement/actresses/{actress_id}/filmography/jobs",
         params={"source": src},
@@ -66,13 +67,13 @@ async def list_jobs(
     error_reason: str | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
-    p = page.default if hasattr(page, "default") else page
-    ps = page_size.default if hasattr(page_size, "default") else page_size
-    src = source.default if hasattr(source, "default") else source
-    st = status.default if hasattr(status, "default") else status
-    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
-    ep = error_provider.default if hasattr(error_provider, "default") else error_provider
-    er = error_reason.default if hasattr(error_reason, "default") else error_reason
+    p = qv(page)
+    ps = qv(page_size)
+    src = qv(source)
+    st = qv(status)
+    aid = qv(actress_id)
+    ep = qv(error_provider)
+    er = qv(error_reason)
     params: dict[str, Any] = {"page": p, "page_size": ps}
     if src:
         params["source"] = src
@@ -110,7 +111,7 @@ async def recover_stale(
     older_than_minutes: int = Query(30, ge=1, le=1440),
 ) -> dict[str, Any]:
     client = get_info_client()
-    otm = older_than_minutes.default if hasattr(older_than_minutes, "default") else older_than_minutes
+    otm = qv(older_than_minutes)
     return await client.proxy_post(
         "/api/v1/supplement/jobs/recover_stale",
         params={"older_than_minutes": otm},
@@ -132,17 +133,17 @@ async def list_supplement_movies(
     max_completeness: int | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
-    p = page.default if hasattr(page, "default") else page
-    ps = page_size.default if hasattr(page_size, "default") else page_size
-    m = matched.default if hasattr(matched, "default") else matched
-    src = source.default if hasattr(source, "default") else source
-    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
-    qv = q.default if hasattr(q, "default") else q
-    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
-    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
-    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
-    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
-    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
+    p = qv(page)
+    ps = qv(page_size)
+    m = qv(matched)
+    src = qv(source)
+    aid = qv(actress_id)
+    query_value = qv(q)
+    mc = qv(missing_cover)
+    mr = qv(missing_runtime)
+    mm = qv(missing_maker)
+    mcat = qv(missing_categories)
+    maxc = qv(max_completeness)
     params: dict[str, Any] = {"page": p, "page_size": ps}
     if m is not None:
         params["matched"] = "true" if m else "false"
@@ -150,8 +151,8 @@ async def list_supplement_movies(
         params["source"] = src
     if aid is not None:
         params["actress_id"] = aid
-    if qv:
-        params["q"] = qv
+    if query_value:
+        params["q"] = query_value
     if mc is not None:
         params["missing_cover"] = "true" if mc else "false"
     if mr is not None:
@@ -186,22 +187,22 @@ async def create_download_candidates_from_supplement(
     missing_categories: bool | None = Query(None),
     max_completeness: int | None = Query(None),
 ) -> dict[str, Any]:
-    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
-    name = actress_name.default if hasattr(actress_name, "default") else actress_name
-    src = source.default if hasattr(source, "default") else source
-    qv = q.default if hasattr(q, "default") else q
-    lim = limit.default if hasattr(limit, "default") else limit
-    m = matched.default if hasattr(matched, "default") else matched
-    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
-    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
-    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
-    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
-    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
+    aid = qv(actress_id)
+    name = qv(actress_name)
+    src = qv(source)
+    query_value = qv(q)
+    lim = qv(limit)
+    m = qv(matched)
+    mc = qv(missing_cover)
+    mr = qv(missing_runtime)
+    mm = qv(missing_maker)
+    mcat = qv(missing_categories)
+    maxc = qv(max_completeness)
     result = await generate_download_candidates_from_supplement(
         actress_id=aid,
         actress_name=name,
         supplement_source=src,
-        q=qv,
+        q=query_value,
         limit=lim,
         matched=m,
         missing_cover=mc,
@@ -261,8 +262,8 @@ async def list_provider_smoke_runs(
     source: str | None = Query(None),
 ) -> list[dict[str, Any]]:
     client = get_info_client()
-    lim = limit.default if hasattr(limit, "default") else limit
-    src = source.default if hasattr(source, "default") else source
+    lim = qv(limit)
+    src = qv(source)
     params: dict[str, Any] = {"limit": lim}
     if src:
         params["source"] = src
@@ -288,9 +289,9 @@ async def enrich_movie_detail(
     sync: bool = Query(False),
 ) -> dict[str, Any]:
     client = get_info_client()
-    smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
-    src = source.default if hasattr(source, "default") else source
-    sync_value = sync.default if hasattr(sync, "default") else sync
+    smid = qv(source_movie_id)
+    src = qv(source)
+    sync_value = qv(sync)
     if not sync_value:
         return await client.proxy_post(
             "/api/v1/supplement/movies/detail/jobs",
@@ -309,9 +310,9 @@ async def create_movie_detail_job(
     actress_id: int | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
-    smid = source_movie_id.default if hasattr(source_movie_id, "default") else source_movie_id
-    src = source.default if hasattr(source, "default") else source
-    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
+    smid = qv(source_movie_id)
+    src = qv(source)
+    aid = qv(actress_id)
     params: dict[str, Any] = {"source": src, "source_movie_id": smid}
     if aid is not None:
         params["actress_id"] = aid
@@ -335,23 +336,23 @@ async def create_movie_detail_batch_jobs(
     max_completeness: int | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
-    src = source.default if hasattr(source, "default") else source
-    lim = limit.default if hasattr(limit, "default") else limit
-    m = matched.default if hasattr(matched, "default") else matched
-    aid = actress_id.default if hasattr(actress_id, "default") else actress_id
-    qv = q.default if hasattr(q, "default") else q
-    mc = missing_cover.default if hasattr(missing_cover, "default") else missing_cover
-    mr = missing_runtime.default if hasattr(missing_runtime, "default") else missing_runtime
-    mm = missing_maker.default if hasattr(missing_maker, "default") else missing_maker
-    mcat = missing_categories.default if hasattr(missing_categories, "default") else missing_categories
-    maxc = max_completeness.default if hasattr(max_completeness, "default") else max_completeness
+    src = qv(source)
+    lim = qv(limit)
+    m = qv(matched)
+    aid = qv(actress_id)
+    query_value = qv(q)
+    mc = qv(missing_cover)
+    mr = qv(missing_runtime)
+    mm = qv(missing_maker)
+    mcat = qv(missing_categories)
+    maxc = qv(max_completeness)
     params: dict[str, Any] = {"source": src, "limit": lim}
     if m is not None:
         params["matched"] = "true" if m else "false"
     if aid is not None:
         params["actress_id"] = aid
-    if qv:
-        params["q"] = qv
+    if query_value:
+        params["q"] = query_value
     if mc is not None:
         params["missing_cover"] = "true" if mc else "false"
     if mr is not None:

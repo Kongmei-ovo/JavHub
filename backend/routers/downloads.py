@@ -19,6 +19,7 @@ from database import (
     update_download_candidate_magnet,
     upsert_download_candidate,
 )
+from database.download_candidate import promote_download_candidate_magnet_alternative
 from services.downloader import downloader_service
 from services.downloaders import (
     get_downloaders_config,
@@ -82,6 +83,10 @@ class CreateCandidateRequest(BaseModel):
 class UpdateCandidateMagnetRequest(BaseModel):
     magnet: str
     magnet_source: str = "manual"
+
+
+class SwapCandidateMagnetRequest(BaseModel):
+    alt_index: int
 
 
 class BulkCandidateRequest(BaseModel):
@@ -217,8 +222,11 @@ async def list_candidates(
         )
         total = int(page_result["total"] or 0)
         total_pages = max(1, (total + size - 1) // size)
+        rows = page_result["data"]
+        for row in rows:
+            row.setdefault("magnet_score", None)
         result = {
-            "data": page_result["data"],
+            "data": rows,
             "total": total,
             "page": current_page,
             "page_size": size,
@@ -343,6 +351,18 @@ async def update_candidate_magnet(candidate_id: int, req: UpdateCandidateMagnetR
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     add_download_candidate_event(candidate_id, "magnet_updated", req.magnet_source, "manual")
+    return {"status": "ok", "candidate": candidate}
+
+
+@router.post("/candidates/{candidate_id}/swap-magnet")
+async def swap_candidate_magnet(candidate_id: int, req: SwapCandidateMagnetRequest) -> Dict[str, Any]:
+    try:
+        candidate = promote_download_candidate_magnet_alternative(candidate_id, req.alt_index)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    add_download_candidate_event(candidate_id, "magnet_swapped", f"alt_index={req.alt_index}", "manual")
     return {"status": "ok", "candidate": candidate}
 
 

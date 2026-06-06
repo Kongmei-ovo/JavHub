@@ -63,31 +63,41 @@ function singleLayerGlassBackgrounds(css) {
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
   assert.match(source, /import \{ defineAsyncComponent \} from 'vue'/)
   assert.match(source, /const DownloaderManagementPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/downloaders\/DownloaderManagementPanel\.vue'\)\)/)
-  assert.match(source, /components:\s*\{[^}]*AppleEmptyState[^}]*DownloadCandidatePanel[^}]*DownloaderManagementPanel[^}]*\}/)
+  assert.match(source, /components:\s*\{[^}]*DownloadStatsBar[^}]*TaskList[^}]*DownloadCandidatePanel[^}]*DownloaderManagementPanel[^}]*\}/)
   assert.match(source, /<DownloaderManagementPanel[\s\S]*v-else-if="activeTab === 'downloaders'"/)
   assert.doesNotMatch(source, /<div\s+v-else-if="activeTab === 'downloaders'"\s+class="downloaders-panel apple-reveal"/)
 })
 
-test('home task empty state uses the shared state component with explicit next actions', () => {
-  assert.match(vueSource, /import AppleEmptyState from '\.\.\/components\/AppleEmptyState\.vue'/)
-  assert.match(vueSource, /<AppleEmptyState[\s\S]*v-else-if="activeTab === 'tasks'"/)
-  assert.match(vueSource, /:action-label="taskEmptyPrimaryLabel"/)
-  assert.match(vueSource, /secondary-action-label="磁链解析"/)
-  assert.match(vueSource, /@action="handleTaskEmptyAction"/)
-  assert.match(vueSource, /@secondary-action="\$router\.push\('\/parse'\)"/)
+test('home delegates task empty state actions through the task list component', () => {
+  assert.match(vueSource, /import TaskList from '\.\.\/features\/home\/TaskList\.vue'/)
+  assert.match(vueSource, /<TaskList[\s\S]*v-else-if="activeTab === 'tasks'"/)
+  assert.match(vueSource, /:task-empty-primary-label="taskEmptyPrimaryLabel"/)
+  assert.match(vueSource, /@empty-action="handleTaskEmptyAction"/)
+  assert.match(vueSource, /@parse="\$router\.push\('\/parse'\)"/)
   assert.match(vueSource, /taskEmptyPrimaryLabel\(\)/)
   assert.match(vueSource, /handleTaskEmptyAction\(\)[\s\S]*this\.clearTaskStatus\(\)[\s\S]*this\.openCandidatePreset\(\{ status: 'candidate', source: '' \}\)[\s\S]*this\.\$router\.push\('\/search'\)/)
 })
 
 test('home lazy-loads download candidate workspace outside the base downloads chunk', () => {
   assert.match(vueSource, /const DownloadCandidatePanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/candidates\/DownloadCandidatePanel\.vue'\)\)/)
-  assert.match(vueSource, /<DownloadCandidatePanel\s+v-else-if="activeTab === 'candidates'"/)
+  assert.match(vueSource, /<DownloadCandidatePanel\s+v-if="activeTab === 'candidates'"/)
   assert.doesNotMatch(vueSource, /搜索番号、标题、演员/)
   assert.doesNotMatch(vueSource, /JavInfo 数据库导入/)
   assert.match(candidatePanelSource, /搜索番号、标题、演员/)
   assert.match(candidatePanelSource, /<CandidateRunPanel/)
   assert.match(candidatePanelSource, /<style scoped src="\.\/downloadCandidatePanel\.css"><\/style>/)
   assert.ok(candidateStyle.length > 10000, 'candidate lazy chunk should carry its own workspace CSS')
+})
+
+test('home composes the download dashboard from focused home feature components', () => {
+  assert.match(vueSource, /import DownloadStatsBar from '\.\.\/features\/home\/DownloadStatsBar\.vue'/)
+  assert.match(vueSource, /import TaskList from '\.\.\/features\/home\/TaskList\.vue'/)
+  assert.match(vueSource, /components:\s*\{[^}]*DownloadStatsBar[^}]*TaskList[^}]*DownloadCandidatePanel[^}]*DownloaderManagementPanel[^}]*\}/)
+  assert.match(vueSource, /<DownloadStatsBar[\s\S]*:stats="stats"[\s\S]*:candidate-stats="candidateStats"[\s\S]*@select-status="setTaskStatus"[\s\S]*@open-preset="openCandidatePreset"/)
+  assert.match(vueSource, /<TaskList[\s\S]*v-else-if="activeTab === 'tasks'"[\s\S]*:tasks="filteredTasks"[\s\S]*@retry="retry"[\s\S]*@remove="remove"/)
+  assert.doesNotMatch(vueSource, /class="stats-bar"/)
+  assert.doesNotMatch(vueSource, /class="candidate-overview"/)
+  assert.doesNotMatch(vueSource, /v-for="task in filteredTasks"/)
 })
 
 test('download candidate panel exposes latest event filters from summary counts', () => {
@@ -129,7 +139,7 @@ test('home page keeps heavyweight styles in external scoped stylesheets', () => 
   assert.match(vueSource, /<style scoped src="\.\.\/features\/home\/home\.css"><\/style>/)
   assert.ok(externalStyle.length > 8000, 'external home stylesheet should carry the base workspace CSS')
   assert.ok(candidateStyle.length > 10000, 'candidate workspace stylesheet should travel with the lazy chunk')
-  assert.ok(vueSource.split('\n').length < 1300, 'Home.vue should stay small enough to review and parse quickly')
+  assert.ok(vueSource.split('\n').length < 350, 'Home.vue should stay small enough to review and parse quickly')
 })
 
 test('home candidate controls use shared Apple glass tokens', () => {
