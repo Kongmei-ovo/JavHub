@@ -66,14 +66,14 @@ function bumpCounts(counts = {}, values = []) {
   }
   return Object.fromEntries(
     Object.entries(next)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
       .slice(0, HISTORY_LIMIT),
   )
 }
 
 function topValues(counts = {}) {
   return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .slice(0, PREFERENCE_PARAM_LIMIT)
     .map(([key]) => key)
 }
@@ -83,7 +83,7 @@ function normalizeCounts(counts = {}) {
     Object.entries(counts || {})
       .map(([key, value]) => [compactText(key), Math.max(1, Math.min(Number(value) || 1, 999))])
       .filter(([key]) => Boolean(key))
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
       .slice(0, HISTORY_LIMIT),
   )
 }

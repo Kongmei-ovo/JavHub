@@ -144,7 +144,10 @@ test('actor page uses backend variant groups and can expand all versions', () =>
 
 test('actor variant count hint expands only the current movie group inline', () => {
   assert.match(vueSource, /import \{ variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
-  assert.match(vueSource, /:coverAspectRatio="'16 \/ 9'"/)
+  // Actor cards keep MovieCard's default portrait aspect (3 / 4) so JAV
+  // covers render at their natural proportions; the older 16 / 9 override
+  // was a visual regression flagged in the field.
+  assert.doesNotMatch(vueSource, /coverAspectRatio/)
   assert.match(vueSource, /<button\s+v-if="movie\.variant_group_count > 1 && !showVariants"\s+class="variant-expand-btn"[\s\S]*@click\.stop="toggleVariantGroup\(movie\)"/)
   assert.match(vueSource, /<span v-if="isVariantGroupExpanded\(movie\)">收起版本<\/span>/)
   assert.match(vueSource, /<div v-if="isVariantGroupExpanded\(movie\)" class="variant-inline-list">/)

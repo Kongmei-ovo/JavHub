@@ -175,7 +175,6 @@
               :variantLabels="movie.variant_labels || []"
               :variantExplanations="movie.variant_explanations || []"
               :coverUrl="cardImageUrl(movie)"
-              :coverAspectRatio="'16 / 9'"
               :title="movie.title || ''"
               :serviceCode="displayServiceCode(movie)"
               :releaseDate="movie.date || ''"
