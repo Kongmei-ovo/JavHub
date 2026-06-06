@@ -14,7 +14,9 @@ const config = [
   readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/configAppearance.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/advancedSettingsPanelResponsive.css', import.meta.url), 'utf8'),
 ].join('\n')
 const videoModal = [
   readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8'),
@@ -31,7 +33,9 @@ const supplementManagement = [
   readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/supplementMovieRepair.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8'),
 ].join('\n')
 const inventoryActor = readFileSync(new URL('../views/InventoryActor.vue', import.meta.url), 'utf8')
 const subscription = [

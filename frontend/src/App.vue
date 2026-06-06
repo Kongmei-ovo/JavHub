@@ -1,7 +1,7 @@
 <template>
-  <div class="app-layout" :class="{ 'mobile-more-active': mobileMoreOpen }">
-    <a class="skip-link" href="#main-content" @click.prevent="focusMainContent">跳到主要内容</a>
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }" :inert="mobileMoreOpen ? '' : undefined">
+  <div class="app-layout" :class="{ 'mobile-more-active': mobileMoreActive }">
+    <a class="skip-link" href="#main-content" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined" @click.prevent="focusMainContent">跳到主要内容</a>
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <div class="sidebar-header">
         <div class="logo">
           <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
@@ -10,13 +10,7 @@
           <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
         </div>
         <div class="sidebar-header-actions">
-          <button
-            class="theme-toggle"
-            type="button"
-            :aria-label="isDarkMode ? '开灯' : '关灯'"
-            :title="isDarkMode ? '开灯' : '关灯'"
-            @click="toggleAppTheme"
-          >
+          <button class="theme-toggle" type="button" :aria-label="isDarkMode ? '开灯' : '关灯'" :aria-pressed="isDarkMode" :title="isDarkMode ? '开灯' : '关灯'" @click="toggleAppTheme">
             <span class="theme-toggle__orb" :class="{ dark: isDarkMode }">
               <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15">
                 <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
@@ -31,6 +25,7 @@
             class="collapse-btn"
             type="button"
             aria-controls="primary-navigation"
+            aria-keyshortcuts="Meta+B Control+B"
             :aria-expanded="!sidebarCollapsed"
             :aria-label="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
             :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
@@ -55,7 +50,7 @@
             :aria-current="isNavItemActive(item.path) ? 'page' : undefined"
             :aria-label="sidebarCollapsed ? item.label : undefined"
             :title="sidebarCollapsed ? item.label : undefined"
-            @click="focusMainContent"
+            @click="focusMainContentFromNavigation"
           >
             <component :is="item.icon" />
             <span v-if="!sidebarCollapsed" class="nav-text">{{ item.label }}</span>
@@ -67,7 +62,7 @@
         <div v-if="!sidebarCollapsed" class="version">v{{ appVersion }}</div>
       </div>
     </aside>
-    <nav class="bottom-nav" aria-label="移动端主导航" :inert="mobileMoreOpen ? '' : undefined">
+    <nav class="bottom-nav" aria-label="移动端主导航" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <router-link
         v-for="item in bottomNavItems"
         :key="item.path"
@@ -75,7 +70,7 @@
         class="bottom-nav-item"
         :class="{ active: isNavItemActive(item.path) }"
         :aria-current="isNavItemActive(item.path) ? 'page' : undefined"
-        @click="focusMainContent"
+        @click="focusMainContentFromNavigation"
       >
         <component :is="item.icon" />
         <span>{{ item.label }}</span>
@@ -84,11 +79,12 @@
         ref="mobileMoreButtonRef"
         class="bottom-nav-item bottom-nav-more"
         type="button"
-        :class="{ active: isMoreRoute, open: mobileMoreOpen }"
+        :class="{ active: isMoreRoute, open: mobileMoreActive }"
         aria-haspopup="dialog"
         aria-controls="mobile-more-dialog"
-        :aria-expanded="mobileMoreOpen"
-        :aria-label="mobileMoreOpen ? '关闭更多功能' : '打开更多功能'"
+        aria-keyshortcuts="Escape"
+        :aria-expanded="mobileMoreActive"
+        :aria-label="mobileMoreActive ? '关闭更多功能' : '打开更多功能'"
         :aria-current="isMoreRoute ? 'page' : undefined"
         @click="toggleMobileMore"
       >
@@ -96,7 +92,7 @@
         <span>更多</span>
       </button>
     </nav>
-    <transition name="mobile-more">
+    <transition name="mobile-more" @after-leave="finishMobileMoreClose">
       <div v-if="mobileMoreOpen" class="mobile-more-overlay" @click.self="closeMobileMore({ restoreFocus: true })">
         <div
           ref="mobileMoreSheetRef"
@@ -112,9 +108,9 @@
           <div class="mobile-more-grabber"></div>
           <div class="mobile-more-head">
             <h2 id="mobile-more-title">更多功能</h2>
-            <button class="mobile-more-close" type="button" aria-label="关闭更多面板" @click="closeMobileMore({ restoreFocus: true })">×</button>
+            <button class="mobile-more-close" type="button" aria-keyshortcuts="Escape" aria-label="关闭更多面板" @click="closeMobileMore({ restoreFocus: true })"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
           </div>
-          <button class="mobile-theme-toggle" type="button" @click="toggleAppTheme">
+          <button class="mobile-theme-toggle" type="button" :aria-pressed="isDarkMode" @click="toggleAppTheme">
             <span>{{ isDarkMode ? '开灯' : '关灯' }}</span>
             <span>{{ isDarkMode ? 'Light' : 'Dark' }}</span>
           </button>
@@ -135,7 +131,7 @@
         </div>
       </div>
     </transition>
-    <main id="main-content" class="main-content" tabindex="-1" aria-label="应用内容" :inert="mobileMoreOpen ? '' : undefined">
+    <main id="main-content" class="main-content" tabindex="-1" aria-label="应用内容" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscription', 'DiscoveryDetail', 'Actor', 'InventoryActor', 'SupplementManagement']">
@@ -163,7 +159,7 @@
   </div>
 </template>
 <script>
-import { h, ref, nextTick, defineComponent, defineAsyncComponent, watch, onMounted, onUnmounted, computed, reactive } from 'vue'
+import { ref, nextTick, defineAsyncComponent, watch, onMounted, onUnmounted, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ToastCapsule from './components/ToastCapsule.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -172,21 +168,8 @@ import { favoriteState } from './utils/favoriteState'
 import api from './api'
 import { ElMessage, MESSAGE_EVENT } from './utils/message.js'
 import { isDarkTheme, restoreTheme, toggleTheme } from './assets/themes.js'
+import { IconList, bottomNavItems, mobileMoreItems, navActivePaths, navGroups } from './appNavigation.js'
 const VideoModal = defineAsyncComponent(() => import('./components/VideoModal.vue'))
-const IconHome = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' }), h('polyline', { points: '9 22 9 12 15 12 15 22' })]) })
-const IconSearch = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('circle', { cx: '11', cy: '11', r: '8' }), h('path', { d: 'm21 21-4.35-4.35' })]) })
-const IconGenres = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M4 19.5A2.5 2.5 0 016.5 17H20' }), h('path', { d: 'M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z' })]) })
-const IconDownload = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' }), h('polyline', { points: '7 10 12 15 17 10' }), h('line', { x1: '12', y1: '15', x2: '12', y2: '3' })]) })
-const IconList = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('line', { x1: '8', y1: '6', x2: '21', y2: '6' }), h('line', { x1: '8', y1: '12', x2: '21', y2: '12' }), h('line', { x1: '8', y1: '18', x2: '21', y2: '18' }), h('line', { x1: '3', y1: '6', x2: '3.01', y2: '6' }), h('line', { x1: '3', y1: '12', x2: '3.01', y2: '12' }), h('line', { x1: '3', y1: '18', x2: '3.01', y2: '18' })]) })
-const IconParse = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' }), h('polyline', { points: '14 2 14 8 20 8' }), h('line', { x1: '16', y1: '13', x2: '8', y2: '13' }), h('line', { x1: '16', y1: '17', x2: '8', y2: '17' }), h('polyline', { points: '10 9 9 9 8 9' })]) })
-const IconStar = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' }), h('circle', { cx: '9', cy: '7', r: '4' }), h('path', { d: 'M23 21v-2a4 4 0 00-3-3.87' }), h('path', { d: 'M16 3.13a4 4 0 010 7.75' })]) })
-const IconHeart = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z' })]) })
-const IconSettings = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('circle', { cx: '12', cy: '12', r: '3' }), h('path', { d: 'M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z' })]) })
-const IconInventory = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5' })]) })
-const IconNormalize = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' })]) })
-const IconTranslate = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M5 8l6 6' }), h('path', { d: 'M4 14l6-6 2-2' }), h('path', { d: 'M2 5h12' }), h('path', { d: 'M7 2v3' }), h('path', { d: 'M22 22l-5-10-5 10' }), h('path', { d: 'M14 18h6' })]) })
-const IconSupplement = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' }), h('circle', { cx: '12', cy: '12', r: '3' })]) })
-const IconOperations = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M3 3v18h18' }), h('path', { d: 'M7 15l3-3 3 2 5-7' }), h('path', { d: 'M18 7h-4' }), h('path', { d: 'M18 7v4' })]) })
 const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
 const mobileMoreFocusableSelector = [
   'a[href]',
@@ -198,8 +181,11 @@ export default {
   setup() {
     const sidebarCollapsed = ref(false)
     const mobileMoreOpen = ref(false)
+    const mobileMoreClosing = ref(false)
+    const mobileMoreActive = computed(() => mobileMoreOpen.value || mobileMoreClosing.value)
     const mobileMoreButtonRef = ref(null)
     const mobileMoreSheetRef = ref(null)
+    let mobileMoreAfterCloseFocus = null
     const mobileShellBreakpoint = typeof window === 'undefined' ? null : window.matchMedia?.('(max-width: 768px)')
     const currentTheme = ref(restoreTheme())
     const route = useRoute()
@@ -233,105 +219,67 @@ export default {
       const detail = event?.detail || {}
       showToast(detail.message || '', false)
     }
+    const toggleSidebarFromKeyboard = (event) => { if (mobileMoreActive.value || event.repeat || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'b' || !(event.metaKey || event.ctrlKey) || event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return; event.preventDefault(); sidebarCollapsed.value = !sidebarCollapsed.value }
     onMounted(() => {
       favoriteState.init()
-      window.addEventListener(MESSAGE_EVENT, handleAppMessage)
+      syncActiveNavigationIntoView()
+      window.addEventListener(MESSAGE_EVENT, handleAppMessage); window.addEventListener('keydown', toggleSidebarFromKeyboard)
       mobileShellBreakpoint?.addEventListener?.('change', closeMobileMoreOutsideMobile)
     })
     onUnmounted(() => {
       unsubscribeFavoriteState()
       window.removeEventListener(MESSAGE_EVENT, handleAppMessage)
+      window.removeEventListener('keydown', toggleSidebarFromKeyboard)
       mobileShellBreakpoint?.removeEventListener?.('change', closeMobileMoreOutsideMobile)
     })
     watch(() => route.fullPath, (newPath) => {
-      closeMobileMore({ focusMain: true })
+      syncActiveNavigationIntoView()
+      if (mobileMoreOpen.value) closeMobileMore({ focusMain: true })
       if (newPath === modalState.openedOnRoute && modalState.interrupted) {
         resumeModal()
       }
     })
-    const navGroups = computed(() => [
-      {
-        label: '日常使用',
-        items: [
-          { path: '/search', label: '影片检索', icon: IconSearch },
-          { path: '/genres', label: '随机探索', icon: IconGenres },
-          { path: '/favorites', label: '我的收藏', icon: IconHeart },
-          { path: '/downloads', label: '下载任务', icon: IconHome },
-          { path: '/parse', label: '磁链解析', icon: IconParse },
-          { path: '/entities', label: '实体目录', icon: IconList },
-        ],
-      },
-      {
-        label: '自动化维护',
-        items: [
-          { path: '/subscription', label: '演员订阅', icon: IconStar },
-          { path: '/library-organize', label: '片库整理', icon: IconInventory },
-          { path: '/supplement', label: '补全管理', icon: IconSupplement },
-          { path: '/translations', label: '翻译作业', icon: IconTranslate },
-          { path: '/operations', label: '运营总览', icon: IconOperations },
-        ],
-      },
-      {
-        label: '系统管理',
-        items: [
-          { path: '/settings', label: '配置中心', icon: IconSettings },
-          { path: '/logs', label: '运行日志', icon: IconList },
-        ],
-      },
-    ])
-    const bottomNavItems = computed(() => [
-      { path: '/operations', label: '总览', icon: IconOperations },
-      { path: '/genres', label: '探索', icon: IconGenres },
-      { path: '/search', label: '检索', icon: IconSearch },
-      { path: '/downloads', label: '下载', icon: IconHome },
-    ])
-    const mobileMoreItems = computed(() => [
-      { path: '/favorites', label: '我的收藏', icon: IconHeart },
-      { path: '/parse', label: '磁链解析', icon: IconParse },
-      { path: '/entities', label: '实体目录', icon: IconList },
-      { path: '/subscription', label: '订阅演员', icon: IconStar },
-      { path: '/library-organize', label: '片库整理', icon: IconInventory },
-      { path: '/translations', label: '翻译作业', icon: IconTranslate },
-      { path: '/supplement', label: '补全管理', icon: IconSupplement },
-      { path: '/settings', label: '配置中心', icon: IconSettings },
-      { path: '/logs', label: '运行日志', icon: IconList },
-    ])
-    const navActivePaths = {
-      '/search': ['/search', '/actor'],
-      '/genres': ['/genres', '/discovery'],
-      '/downloads': ['/downloads', '/tasks'],
-      '/entities': ['/entities', '/entity'],
-      '/subscription': ['/subscription', '/subscriptions'],
-      '/library-organize': ['/library-organize', '/inventory', '/library', '/duplicates', '/normalize'],
-      '/supplement': ['/supplement', '/supplement/actor'],
-      '/settings': ['/settings', '/config'],
-      '/logs': ['/logs', '/log'],
-    }
     const isNavItemActive = (path) => {
       const currentPath = normalizedRoutePath.value
       const activePaths = navActivePaths[path] || [path]
       return activePaths.some(activePath => currentPath === activePath || currentPath.startsWith(`${activePath}/`))
     }
-    const isMoreRoute = computed(() => mobileMoreItems.value.some(item => isNavItemActive(item.path)))
-    const toggleMobileMore = () => { mobileMoreOpen.value = !mobileMoreOpen.value }
-    const focusMainContent = () => nextTick(() => requestAnimationFrame(() => document.getElementById('main-content')?.focus({ preventScroll: true })))
+    const isMoreRoute = computed(() => mobileMoreItems.some(item => isNavItemActive(item.path)))
+    const toggleMobileMore = () => {
+      if (mobileMoreOpen.value) {
+        closeMobileMore({ restoreFocus: true })
+        return
+      }
+      mobileMoreClosing.value = false
+      mobileMoreOpen.value = true
+    }
+    const focusMainContent = ({ resetScroll = false } = {}) => nextTick(() => requestAnimationFrame(() => { const main = document.getElementById('main-content'); if (resetScroll) main?.scrollTo?.({ top: 0, left: 0 }); main?.focus({ preventScroll: true }) }))
+    const focusMainContentFromNavigation = (event) => { if (event.detail !== 0) return; focusMainContent({ resetScroll: true }) }
     const closeMobileMore = ({ restoreFocus = false, focusMain = false } = {}) => {
       if (!mobileMoreOpen.value) return
+      mobileMoreAfterCloseFocus = restoreFocus ? 'trigger' : focusMain ? 'main' : null
+      mobileMoreClosing.value = true
       mobileMoreOpen.value = false
-      if (restoreFocus) nextTick(() => mobileMoreButtonRef.value?.focus())
-      if (focusMain) focusMainContent()
+    }
+    const finishMobileMoreClose = () => {
+      mobileMoreClosing.value = false
+      if (mobileMoreAfterCloseFocus === 'trigger') nextTick(() => mobileMoreButtonRef.value?.focus({ preventScroll: true }))
+      if (mobileMoreAfterCloseFocus === 'main') focusMainContent()
+      mobileMoreAfterCloseFocus = null
     }
     const closeMobileMoreOutsideMobile = ({ matches }) => { if (!matches) closeMobileMore({ focusMain: true }) }
     const mobileMoreFocusableElements = () => {
       return Array.from(mobileMoreSheetRef.value?.querySelectorAll(mobileMoreFocusableSelector) || [])
         .filter(element => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true')
     }
+    const syncActiveNavigationIntoView = () => nextTick(() => requestAnimationFrame(() => document.querySelectorAll('.sidebar-nav .nav-item.active, .mobile-more-grid .mobile-more-item.active').forEach(element => element.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }))))
+    const focusMobileMoreControl = (element) => { element?.focus?.({ preventScroll: true }); element?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }) }
     const trapMobileMoreFocus = (event) => {
       if (!mobileMoreOpen.value) return
       const focusable = mobileMoreFocusableElements()
       if (!focusable.length) {
         event.preventDefault()
-        mobileMoreSheetRef.value?.focus()
+        mobileMoreSheetRef.value?.focus({ preventScroll: true })
         return
       }
       const first = focusable[0]
@@ -339,21 +287,22 @@ export default {
       const activeIndex = focusable.indexOf(document.activeElement)
       if (activeIndex === -1) {
         event.preventDefault()
-        ;(event.shiftKey ? last : first).focus()
+        focusMobileMoreControl(event.shiftKey ? last : first)
         return
       }
       if (event.shiftKey && activeIndex === 0) {
         event.preventDefault()
-        last.focus()
+        focusMobileMoreControl(last)
       } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
         event.preventDefault()
-        first.focus()
+        focusMobileMoreControl(first)
       }
     }
     watch(mobileMoreOpen, async (isOpen) => {
       if (!isOpen) return
       await nextTick()
-      mobileMoreSheetRef.value?.focus()
+      mobileMoreSheetRef.value?.focus({ preventScroll: true })
+      syncActiveNavigationIntoView()
     })
     const handleDownload = async (magnet) => {
       try {
@@ -415,6 +364,8 @@ export default {
     return {
       sidebarCollapsed,
       mobileMoreOpen,
+      mobileMoreClosing,
+      mobileMoreActive,
       mobileMoreButtonRef,
       mobileMoreSheetRef,
       IconList,
@@ -424,8 +375,10 @@ export default {
       isMoreRoute,
       isNavItemActive,
       focusMainContent,
+      focusMainContentFromNavigation,
       toggleMobileMore,
       closeMobileMore,
+      finishMobileMoreClose,
       trapMobileMoreFocus,
       appVersion,
       currentTheme,
@@ -528,9 +481,7 @@ export default {
 .sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
 .sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) { justify-content: center; }
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
-.sidebar.collapsed .sidebar-nav {
-  padding: 12px 8px;
-}
+.sidebar.collapsed .sidebar-nav { padding: 12px 8px; mask-image: linear-gradient(to bottom, transparent, currentColor 10px, currentColor calc(100% - 14px), transparent); }
 .sidebar.collapsed .nav-group { gap: 6px; }
 .sidebar.collapsed .nav-item {
   justify-content: center;
@@ -539,6 +490,7 @@ export default {
 .sidebar.collapsed .nav-item.active::after {
   content: "";
   position: absolute;
+  left: auto;
   right: 5px;
   width: 3px;
   height: 18px;
@@ -547,36 +499,20 @@ export default {
   opacity: 0.74;
   box-shadow: var(--glass-inner-shadow);
 }
+.sidebar.collapsed .nav-item.active:focus-visible { box-shadow: var(--glass-active-shadow), var(--focus-ring); }
+.sidebar.collapsed .nav-item.active:focus-visible::after { opacity: 0.34; transform: scaleY(0.74); }
 .sidebar-header {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
+  display: flex; align-items: center;
   justify-content: space-between;
   padding: 20px 16px;
   border-bottom: 1px solid var(--surface-nav-border);
   min-height: 72px;
 }
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  overflow: hidden;
-  color: var(--text-primary);
-}
-.logo-text {
-  font-size: 17px;
-  font-weight: 650;
-  color: var(--text-primary);
-  white-space: nowrap;
-  letter-spacing: 0;
-}
-.sidebar-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
+.logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); }
+.logo-text { font-size: 17px; font-weight: 650; color: var(--text-primary); white-space: nowrap; letter-spacing: 0; }
+.sidebar-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -633,9 +569,7 @@ export default {
   transform: translateX(-4px);
   transition: transform var(--motion-standard);
 }
-.theme-toggle__orb.dark {
-  transform: translateX(4px);
-}
+.theme-toggle__orb.dark { transform: translateX(4px); }
 .collapse-btn {
   background: transparent;
   border: none;
@@ -672,8 +606,7 @@ export default {
 .sidebar-nav {
   position: relative;
   z-index: 1;
-  flex: 1;
-  padding: 12px 8px;
+  flex: 1; padding: 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -682,19 +615,10 @@ export default {
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
   scroll-padding-block: 12px 16px;
+  mask-image: linear-gradient(to bottom, transparent, currentColor 12px, currentColor calc(100% - 16px), transparent);
 }
-.nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.nav-group-label {
-  padding: 8px 14px 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
+.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.nav-group-label { padding: 8px 14px 4px; color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: 0; }
 .nav-item {
   display: flex;
   align-items: center;
@@ -710,6 +634,7 @@ export default {
   overflow: hidden;
   position: relative;
   border: 1px solid transparent;
+  scroll-margin-block: 12px 16px;
 }
 .nav-item:hover {
   background:
@@ -732,6 +657,7 @@ export default {
   border: 1px solid var(--active-border);
   box-shadow: var(--glass-active-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  padding-left: 22px;
 }
 .nav-item.active:active {
   box-shadow: var(--glass-active-shadow);
@@ -739,12 +665,8 @@ export default {
 .nav-item.active::before {
   display: none;
 }
-.nav-item svg {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  transition: transform var(--motion-standard);
-}
+.nav-item.active::after { content: ""; position: absolute; left: 7px; width: 3px; height: 18px; border-radius: 999px; background: var(--active-indicator); opacity: 0.52; box-shadow: var(--glass-inner-shadow); pointer-events: none; transition: opacity var(--motion-fast), transform var(--motion-standard); }
+.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--motion-standard); }
 .nav-item.active svg { filter: none; }
 .nav-item:focus-visible {
   outline: none;
@@ -764,6 +686,7 @@ export default {
   border-color: var(--active-border);
   box-shadow: var(--glass-active-shadow), var(--focus-ring);
 }
+.nav-item.active:focus-visible::after { opacity: 0.28; transform: scaleY(0.74); }
 .nav-badge {
   margin-left: auto;
   background:
@@ -781,12 +704,7 @@ export default {
   min-width: 18px;
   text-align: center;
 }
-.sidebar-footer {
-  position: relative;
-  z-index: 1;
-  padding: 16px;
-  border-top: 1px solid var(--surface-nav-border);
-}
+.sidebar-footer { position: relative; z-index: 1; padding: 16px; border-top: 1px solid var(--surface-nav-border); }
 .version { font-size: 11px; color: var(--text-muted); text-align: center; }
 /* ===== Main Content ===== */
 .main-content {
@@ -821,14 +739,25 @@ export default {
   pointer-events: none;
   z-index: 2;
 }
-.main-content:focus {
-  outline: none;
+.main-content::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 26px;
+  margin-top: -26px;
+  background: linear-gradient(to top, var(--bg-primary), transparent);
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 2;
 }
+.main-content:focus { outline: none; }
 .main-content:focus-visible {
   outline: none;
+  border-color: var(--glass-active-border);
   box-shadow: var(--glass-surface-shadow), var(--focus-ring);
 }
-.app-layout.mobile-more-active .main-content { overflow: hidden; }
+.app-layout.mobile-more-active { overscroll-behavior: none; } .app-layout.mobile-more-active .main-content { overflow: hidden; }
 /* ===== Bottom Nav (Mobile) ===== */
 .bottom-nav {
   display: none;
@@ -892,10 +821,7 @@ export default {
 .bottom-nav-item:focus-visible {
   outline: none;
   color: var(--text-primary);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .bottom-nav-item.active {
@@ -907,14 +833,50 @@ export default {
     var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
 }
+.bottom-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--active-indicator);
+  box-shadow: var(--glass-inner-shadow);
+  opacity: 0.58;
+  transform: translateX(-50%) scaleX(1);
+  pointer-events: none;
+  transition: opacity var(--motion-fast), transform var(--motion-standard);
+}
+.bottom-nav-more::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: calc(50% - 17px);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--glass-active-border);
+  box-shadow: var(--glass-inner-shadow);
+  opacity: 0;
+  transform: scale(0.78);
+  transition: transform var(--motion-standard);
+}
+.bottom-nav-more.open::after { background: var(--glass-active-border); opacity: 0.92; transform: scale(1); }
+.bottom-nav-more.active::after { opacity: 0; }
 .bottom-nav-more.open:not(.active) {
   color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
+.bottom-nav-more.open:not(.active):focus-visible { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); box-shadow: var(--glass-control-shadow-hover), var(--focus-ring); }
 .bottom-nav-item.active:focus-visible {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--active-border);
   box-shadow: var(--glass-active-shadow), var(--focus-ring);
 }
+.bottom-nav-item.active:focus-visible::before { opacity: 0.34; transform: translateX(-50%) scaleX(0.72); }
 .bottom-nav-item.active:active { box-shadow: var(--glass-active-shadow); }
 .bottom-nav-item.active svg { filter: none; }
 .mobile-more-overlay {
@@ -945,6 +907,7 @@ export default {
     align-items: flex-end;
     background: var(--surface-scrim);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+    overscroll-behavior: contain;
     padding: 0 12px var(--mobile-bottom-nav-reserve);
   }
   .mobile-more-sheet {
@@ -963,11 +926,10 @@ export default {
     box-shadow: var(--shadow-sheet);
     backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   }
-  .mobile-more-sheet:focus {
-    outline: none;
-  }
+  .mobile-more-sheet:focus { outline: none; }
   .mobile-more-sheet:focus-visible {
     outline: none;
+    border-color: var(--glass-active-border);
     box-shadow: var(--shadow-sheet), var(--focus-ring);
   }
   .mobile-more-sheet::before {
@@ -1028,11 +990,10 @@ export default {
       var(--surface-noise),
       var(--material-glass-control);
     color: var(--text-primary);
-    font-size: 22px;
-    line-height: 1;
     box-shadow: var(--glass-control-shadow);
     transition: transform var(--motion-standard);
   }
+  .mobile-more-close svg { width: 17px; height: 17px; }
   .mobile-more-close:hover,
   .mobile-more-close:focus-visible {
     outline: none;
@@ -1044,9 +1005,7 @@ export default {
     box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
     transform: translateY(-1px);
   }
-  .mobile-more-close:active {
-    transform: translateY(0) scale(0.96);
-  }
+  .mobile-more-close:active { transform: translateY(0) scale(0.96); }
   .mobile-theme-toggle {
     width: 100%;
     min-height: 44px;
@@ -1080,9 +1039,7 @@ export default {
     box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
     transform: translateY(-1px);
   }
-  .mobile-theme-toggle:active {
-    transform: translateY(0) scale(0.985);
-  }
+  .mobile-theme-toggle:active { transform: translateY(0) scale(0.985); }
   .mobile-theme-toggle span:last-child {
     color: var(--text-muted);
     font-size: 11px;
@@ -1099,12 +1056,12 @@ export default {
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
     scroll-padding-block: 1px 10px;
+    mask-image: linear-gradient(to bottom, transparent, currentColor 12px, currentColor calc(100% - 14px), transparent);
     padding: 1px;
   }
   .mobile-more-item {
     display: flex;
-    min-width: 0;
-    min-height: 66px;
+    min-width: 0; min-height: 66px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1122,11 +1079,9 @@ export default {
     font-size: 12px;
     font-weight: 600;
     transition: transform var(--motion-standard);
+    scroll-margin-block: 12px;
   }
-  .mobile-more-item svg {
-    width: 22px;
-    height: 22px;
-  }
+  .mobile-more-item svg { width: 22px; height: 22px; }
   .mobile-more-item.active {
     color: var(--text-primary);
     border-color: var(--glass-active-border);
@@ -1193,6 +1148,9 @@ export default {
   .nav-item svg,
   .bottom-nav-item,
   .bottom-nav-item svg,
+  .bottom-nav-more::after,
+  .bottom-nav-item.active::before,
+  .nav-item.active::after,
   .mobile-more-overlay,
   .mobile-more-sheet,
   .mobile-more-close,
@@ -1206,7 +1164,9 @@ export default {
   }
   .theme-toggle:hover,
   .nav-item:focus-visible,
+  .nav-item.active:focus-visible::after,
   .bottom-nav-item:hover svg,
+  .bottom-nav-item.active::before,
   .mobile-more-close:hover,
   .mobile-theme-toggle:hover,
   .mobile-more-item:hover,

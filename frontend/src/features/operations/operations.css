@@ -409,6 +409,12 @@
   align-content: center; gap: 2px 8px; min-height: 44px;
 }
 
+.quality-issue-row {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+  cursor: default;
+}
+
 .static-row {
   cursor: default;
 }

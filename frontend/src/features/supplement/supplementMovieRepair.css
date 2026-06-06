@@ -1,0 +1,802 @@
+.movie-field-ledger {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.ledger-summary {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid var(--badge-warning-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.ledger-summary strong {
+  color: var(--badge-warning-text);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-summary span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ledger-chips {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(72px, 1fr));
+  gap: 6px;
+}
+
+.ledger-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px 9px;
+  border: 1px solid var(--badge-warning-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.ledger-chip.clear {
+  border-color: var(--badge-success-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+}
+
+.ledger-chip b,
+.ledger-chip em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-chip b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.ledger-chip em {
+  color: var(--badge-warning-text);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ledger-chip.clear em {
+  color: var(--badge-success-text);
+}
+
+.movie-field-priority-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field-priority-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px 9px;
+  border: 1px solid var(--badge-pending-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-pending-bg);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.field-priority-chip.ready {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.field-priority-chip.clear {
+  border-color: var(--badge-success-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+}
+
+.field-priority-chip b,
+.field-priority-chip em,
+.field-priority-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-priority-chip b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.field-priority-chip em {
+  color: var(--badge-pending-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.field-priority-chip small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.field-priority-chip.ready em {
+  color: var(--badge-warning-text);
+}
+
+.field-priority-chip.clear em {
+  color: var(--badge-success-text);
+}
+
+.movie-field-triage-board {
+  display: grid;
+  grid-template-columns: minmax(128px, 0.24fr) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-sheet);
+  box-shadow: var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
+
+.field-triage-summary,
+.field-triage-card {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 9px 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.field-triage-summary {
+  align-content: center;
+  min-height: 68px;
+}
+
+.field-triage-summary strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-triage-summary span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.field-triage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.field-triage-card {
+  min-height: 68px;
+  overflow-wrap: anywhere;
+}
+
+.field-triage-card.ready {
+  border-color: var(--badge-info-border);
+}
+
+.field-triage-card.diagnose {
+  border-color: var(--badge-warning-border);
+}
+
+.field-triage-card.waiting {
+  border-color: var(--badge-pending-border);
+}
+
+.field-triage-card.complete {
+  border-color: var(--badge-success-border);
+}
+
+.field-triage-card.empty {
+  opacity: 0.74;
+}
+
+.field-triage-card b,
+.field-triage-card em,
+.field-triage-card small,
+.field-triage-card i {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-triage-card b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.field-triage-card em {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+}
+
+.field-triage-card small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.field-triage-card i {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.movie-repair-queue {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.repair-queue-summary {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid var(--badge-info-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-info-bg);
+}
+
+.repair-queue-summary strong {
+  color: var(--badge-info-text);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.repair-queue-summary span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.repair-queue-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.repair-queue-card {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 9px;
+  border: 1px solid var(--badge-warning-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.repair-queue-card.ready {
+  border-color: var(--badge-success-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+}
+
+.repair-queue-card.empty {
+  border-color: var(--glass-control-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+}
+
+.repair-queue-card b,
+.repair-queue-card em,
+.repair-queue-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-queue-card b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.repair-queue-card em {
+  color: var(--badge-warning-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.repair-queue-card small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.repair-queue-card.ready em {
+  color: var(--badge-success-text);
+}
+
+.movie-repair-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.repair-flow-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.repair-flow-step.ready {
+  border-color: var(--badge-info-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-info-bg);
+}
+
+.repair-flow-step.empty {
+  opacity: 0.72;
+}
+
+.repair-flow-step b,
+.repair-flow-step em,
+.repair-flow-step small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-flow-step b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.repair-flow-step em {
+  justify-self: end;
+  color: var(--badge-info-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.repair-flow-step small {
+  grid-column: 1 / -1;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.repair-flow-step.empty em,
+.repair-flow-step.empty small {
+  color: var(--text-muted);
+}
+
+.movie-field-repair-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 5px;
+  padding: 6px 8px;
+  border: 1px solid var(--badge-pending-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-pending-bg);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.movie-field-repair-summary.ready {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.movie-field-repair-summary.complete {
+  border-color: var(--badge-success-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+}
+
+.field-repair-priority,
+.field-repair-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-repair-status {
+  justify-content: flex-end;
+}
+
+.field-repair-priority b,
+.field-repair-priority em,
+.field-repair-status b,
+.field-repair-status em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-repair-priority b,
+.field-repair-status b {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.field-repair-priority em,
+.field-repair-status em {
+  color: var(--badge-pending-text);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.movie-field-repair-summary.ready .field-repair-priority em,
+.movie-field-repair-summary.ready .field-repair-status em {
+  color: var(--badge-warning-text);
+}
+
+.movie-field-repair-summary.complete .field-repair-priority em,
+.movie-field-repair-summary.complete .field-repair-status em {
+  color: var(--badge-success-text);
+}
+
+.movie-field-work-orders {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(86px, 1fr));
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.field-work-order-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid var(--badge-pending-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-pending-bg);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.field-work-order-chip.ready {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.field-work-order-chip.missing {
+  border-color: var(--badge-pending-border);
+}
+
+.field-work-order-chip b,
+.field-work-order-chip em,
+.field-work-order-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-work-order-chip b {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.field-work-order-chip em {
+  color: var(--badge-pending-text);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.field-work-order-chip small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.field-work-order-chip.ready em {
+  color: var(--badge-warning-text);
+}
+
+.movie-field-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(70px, 1fr));
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.field-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.field-chip b {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.field-chip em {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-chip.missing {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.field-chip.missing em {
+  color: var(--badge-warning-text);
+}
+
+.movie-repair-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(82px, 1fr));
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.repair-stage-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  min-width: 0;
+  min-height: 30px;
+  align-items: center;
+  padding: 5px 7px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.repair-stage-chip.current {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.repair-stage-chip.ready {
+  border-color: var(--badge-success-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+}
+
+.repair-stage-chip.missing {
+  border-color: var(--badge-pending-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-pending-bg);
+}
+
+.repair-stage-chip b,
+.repair-stage-chip em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-stage-chip b {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.repair-stage-chip em {
+  color: var(--text-primary);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.repair-stage-chip.current em {
+  color: var(--badge-warning-text);
+}
+
+.repair-stage-chip.ready em {
+  color: var(--badge-success-text);
+}
+
+.repair-stage-chip.missing em {
+  color: var(--badge-pending-text);
+}
+
+.movie-repair-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.movie-repair-flags span {
+  min-height: 20px;
+  padding: 3px 7px;
+  border: 1px solid var(--badge-pending-border);
+  border-radius: 999px;
+  color: var(--badge-pending-text);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-pending-bg);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .movie-field-ledger,
+  .movie-field-triage-board,
+  .movie-repair-queue {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-triage-grid,
+  .repair-queue-cards,
+  .movie-repair-flow,
+  .movie-repair-stage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .movie-field-grid,
+  .movie-field-work-orders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .movie-field-repair-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .field-repair-status {
+    justify-content: flex-start;
+  }
+}

@@ -259,6 +259,8 @@ def list_download_candidates(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
     limit: int = 200,
     offset: int = 0,
 ) -> list[dict]:
@@ -270,6 +272,8 @@ def list_download_candidates(
             source=source,
             q=q,
             needs_magnet=needs_magnet,
+            missing_cover=missing_cover,
+            latest_event_action=latest_event_action,
         )
         cursor.execute(
             f'''
@@ -320,6 +324,8 @@ def list_download_candidates_page(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
     limit: int = 200,
     offset: int = 0,
     include_stats: bool = False,
@@ -332,6 +338,9 @@ def list_download_candidates_page(
         source=source,
         q=q,
         needs_magnet=needs_magnet,
+        missing_cover=missing_cover,
+        latest_event_action=latest_event_action,
+        table_ref="c",
     )
     with get_db() as conn:
         cursor = conn.cursor()
@@ -353,7 +362,7 @@ def list_download_candidates_page(
             cursor.execute(
                 f'''
                 SELECT COUNT(*) AS total
-                FROM download_candidates
+                FROM download_candidates c
                 {where_clause}
                 ''',
                 params,
@@ -439,6 +448,8 @@ def count_download_candidates(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
 ) -> int:
     where_clause, params = _candidate_filter_clause(
         status=status,
@@ -446,6 +457,8 @@ def count_download_candidates(
         source=source,
         q=q,
         needs_magnet=needs_magnet,
+        missing_cover=missing_cover,
+        latest_event_action=latest_event_action,
     )
     with get_db() as conn:
         cursor = conn.cursor()
@@ -467,7 +480,11 @@ def _candidate_filter_clause(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
+    table_ref: str = "download_candidates",
 ) -> tuple[str, list]:
+    table_ref = "c" if table_ref == "c" else "download_candidates"
     where = []
     params: list = []
     if status:
@@ -486,6 +503,59 @@ def _candidate_filter_clause(
         where.append("(magnet IS NULL OR magnet = '')")
     elif needs_magnet is False:
         where.append("(magnet IS NOT NULL AND magnet != '')")
+    if missing_cover is True:
+        where.append(
+            """
+            (
+                jacket_thumb_url IS NULL
+                OR jacket_thumb_url = ''
+                OR jacket_thumb_url LIKE '%%noimage%%'
+                OR jacket_thumb_url LIKE '%%placeholder%%'
+                OR jacket_thumb_url LIKE '%%default%%'
+                OR jacket_thumb_url LIKE '%%blank%%'
+            )
+            """
+        )
+    elif missing_cover is False:
+        where.append(
+            """
+            (
+                jacket_thumb_url IS NOT NULL
+                AND jacket_thumb_url != ''
+                AND jacket_thumb_url NOT LIKE '%%noimage%%'
+                AND jacket_thumb_url NOT LIKE '%%placeholder%%'
+                AND jacket_thumb_url NOT LIKE '%%default%%'
+                AND jacket_thumb_url NOT LIKE '%%blank%%'
+            )
+            """
+        )
+    if latest_event_action == "without_event":
+        where.append(
+            f"""
+            NOT EXISTS (
+                SELECT 1
+                FROM download_candidate_events latest_event
+                WHERE latest_event.candidate_id = {table_ref}.id
+            )
+            """
+        )
+    elif latest_event_action:
+        where.append(
+            f"""
+            EXISTS (
+                SELECT 1
+                FROM download_candidate_events latest_event
+                WHERE latest_event.candidate_id = {table_ref}.id
+                  AND latest_event.action = ?
+                  AND latest_event.id = (
+                      SELECT MAX(e.id)
+                      FROM download_candidate_events e
+                      WHERE e.candidate_id = {table_ref}.id
+                  )
+            )
+            """
+        )
+        params.append(latest_event_action)
     return (f"WHERE {' AND '.join(where)}" if where else ""), params
 
 
@@ -495,6 +565,8 @@ def download_candidate_summary(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
 ) -> dict:
     where_clause, params = _candidate_filter_clause(
         status=status,
@@ -502,6 +574,8 @@ def download_candidate_summary(
         source=source,
         q=q,
         needs_magnet=needs_magnet,
+        missing_cover=missing_cover,
+        latest_event_action=latest_event_action,
     )
     with get_db() as conn:
         cursor = conn.cursor()
@@ -514,6 +588,8 @@ def download_candidate_summary_with_sources(
     source: str | None = None,
     q: str | None = None,
     needs_magnet: bool | None = None,
+    missing_cover: bool | None = None,
+    latest_event_action: str | None = None,
 ) -> dict:
     where_clause, params = _candidate_filter_clause(
         status=status,
@@ -521,6 +597,8 @@ def download_candidate_summary_with_sources(
         source=source,
         q=q,
         needs_magnet=needs_magnet,
+        missing_cover=missing_cover,
+        latest_event_action=latest_event_action,
     )
     with get_db() as conn:
         cursor = conn.cursor()
@@ -547,10 +625,16 @@ def download_candidate_summary_with_sources(
                 by_source[source_key] = count
             if candidate_count:
                 candidate_by_source[source_key] = candidate_count
+        latest_event_by_action = _download_candidate_latest_event_counts_with_cursor(
+            cursor,
+            where_clause,
+            params,
+        )
         return {
             **summary,
             "by_source": by_source,
             "candidate_by_source": candidate_by_source,
+            "latest_event_by_action": latest_event_by_action,
         }
 
 
@@ -579,6 +663,37 @@ def _download_candidate_summary_with_cursor(cursor, where_clause: str = "", para
     )
     row = cursor.fetchone()
     return {key: int(row[key] or 0) for key in _SUMMARY_KEYS}
+
+
+def _download_candidate_latest_event_counts_with_cursor(
+    cursor,
+    where_clause: str = "",
+    params: list | None = None,
+) -> dict[str, int]:
+    cursor.execute(
+        f'''
+        SELECT COALESCE(latest.action, 'without_event') AS action, COUNT(*) AS count
+        FROM download_candidates
+        LEFT JOIN (
+            SELECT event.candidate_id, event.action
+            FROM download_candidate_events event
+            JOIN (
+                SELECT candidate_id, MAX(id) AS max_id
+                FROM download_candidate_events
+                GROUP BY candidate_id
+            ) latest_ids ON latest_ids.max_id = event.id
+        ) latest ON latest.candidate_id = download_candidates.id
+        {where_clause}
+        GROUP BY COALESCE(latest.action, 'without_event')
+        ORDER BY count DESC, action
+        ''',
+        params or [],
+    )
+    return {
+        str(row["action"] or "without_event"): int(row["count"] or 0)
+        for row in cursor.fetchall()
+        if int(row["count"] or 0) > 0
+    }
 
 
 def get_download_candidate(candidate_id: int) -> Optional[dict]:

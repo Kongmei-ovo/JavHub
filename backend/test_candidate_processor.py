@@ -326,6 +326,58 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         self.assertEqual(get_download_candidate(first["id"])["status"], "candidate")
         self.assertEqual(get_download_candidate(second["id"])["status"], "candidate")
 
+    async def test_preview_candidates_respects_latest_event_action_filter(self):
+        from database import add_download_candidate_event, upsert_download_candidate
+        from services.candidate_processor import preview_candidates
+
+        failed = upsert_download_candidate(content_id="SIVR-438", source="subscription")
+        stale = upsert_download_candidate(content_id="ABP-588", source="subscription")
+        add_download_candidate_event(failed["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "policy_skipped", "manual policy", "manual")
+
+        result = await preview_candidates(
+            filters={
+                "status": "candidate",
+                "needs_magnet": True,
+                "latest_event_action": "magnet_enrich_failed",
+            },
+            policy="rules",
+        )
+
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["results"][0]["candidate"]["id"], failed["id"])
+        self.assertEqual(result["counts"]["would_enrich_magnet"], 1)
+
+    async def test_process_candidates_respects_missing_cover_filter(self):
+        from database import get_download_candidate, upsert_download_candidate
+        from services.candidate_processor import process_candidates
+
+        missing = upsert_download_candidate(
+            content_id="SIVR-438",
+            source="supplement",
+            jacket_thumb_url="",
+            magnet="magnet:a",
+        )
+        upsert_download_candidate(
+            content_id="ABP-588",
+            source="supplement",
+            jacket_thumb_url="https://example.com/cover.jpg",
+            magnet="magnet:b",
+        )
+
+        with patch("services.candidate_processor.downloader_service.create_download_task", new=AsyncMock(return_value=31)):
+            with patch("services.candidate_processor.get_download_task", return_value={"id": 31, "status": "downloading"}):
+                result = await process_candidates(
+                    filters={"status": "candidate", "source": "supplement", "missing_cover": True},
+                    policy="rules",
+                    operator="manual",
+                )
+
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["counts"]["sent"], 1)
+        self.assertEqual(get_download_candidate(missing["id"])["status"], "sent")
+
     async def test_retry_failed_candidates_from_run_reprocesses_failed_ids(self):
         from database import get_download_candidate, list_candidate_process_runs, upsert_download_candidate
         from services.candidate_processor import process_candidates, retry_failed_candidates_from_run
@@ -394,6 +446,111 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         self.assertEqual(rows[0]["latest_event"]["action"], "policy_skipped")
         self.assertEqual(rows[0]["events"][0]["detail"], "manual policy")
+
+    async def test_list_candidates_filters_by_latest_event_action(self):
+        from database import add_download_candidate_event, list_download_candidates, upsert_download_candidate
+
+        failed = upsert_download_candidate(content_id="SIVR-438", source="inventory")
+        stale = upsert_download_candidate(content_id="ABP-588", source="inventory")
+        add_download_candidate_event(failed["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "policy_skipped", "manual policy", "manual")
+
+        rows = list_download_candidates(
+            status="candidate",
+            source="inventory",
+            needs_magnet=True,
+            latest_event_action="magnet_enrich_failed",
+        )
+
+        self.assertEqual([row["content_id"] for row in rows], ["SIVR-438"])
+        self.assertEqual(rows[0]["latest_event"]["action"], "magnet_enrich_failed")
+
+    async def test_list_candidates_page_filters_by_latest_event_action(self):
+        from database import add_download_candidate_event, list_download_candidates_page, upsert_download_candidate
+
+        failed = upsert_download_candidate(content_id="SIVR-438", source="inventory")
+        stale = upsert_download_candidate(content_id="ABP-588", source="inventory")
+        add_download_candidate_event(failed["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "magnet_enrich_failed", "no magnet found", "manual")
+        add_download_candidate_event(stale["id"], "policy_skipped", "manual policy", "manual")
+
+        page = list_download_candidates_page(
+            status="candidate",
+            source="inventory",
+            needs_magnet=True,
+            latest_event_action="magnet_enrich_failed",
+            limit=10,
+            offset=0,
+        )
+
+        self.assertEqual(page["total"], 1)
+        self.assertEqual([row["content_id"] for row in page["data"]], ["SIVR-438"])
+
+    async def test_list_candidates_page_latest_event_action_handles_empty_page(self):
+        from database import list_download_candidates_page, upsert_download_candidate
+
+        upsert_download_candidate(content_id="SIVR-438", source="inventory")
+
+        page = list_download_candidates_page(
+            status="candidate",
+            source="inventory",
+            needs_magnet=True,
+            latest_event_action="magnet_enrich_failed",
+            limit=10,
+            offset=0,
+        )
+
+        self.assertEqual(page, {"data": [], "total": 0})
+
+    async def test_list_candidates_page_filters_without_latest_event(self):
+        from database import add_download_candidate_event, list_download_candidates_page, upsert_download_candidate
+
+        without_event = upsert_download_candidate(content_id="SIVR-438", source="inventory")
+        with_event = upsert_download_candidate(content_id="ABP-588", source="inventory")
+        add_download_candidate_event(with_event["id"], "policy_skipped", "manual policy", "manual")
+
+        page = list_download_candidates_page(
+            status="candidate",
+            source="inventory",
+            needs_magnet=True,
+            latest_event_action="without_event",
+            limit=10,
+            offset=0,
+        )
+
+        self.assertEqual(page["total"], 1)
+        self.assertEqual([row["id"] for row in page["data"]], [without_event["id"]])
+
+    async def test_list_candidates_page_filters_missing_cover(self):
+        from database import list_download_candidates_page, upsert_download_candidate
+
+        missing = upsert_download_candidate(
+            content_id="SIVR-438",
+            source="supplement",
+            jacket_thumb_url="",
+        )
+        placeholder = upsert_download_candidate(
+            content_id="ABP-588",
+            source="supplement",
+            jacket_thumb_url="https://example.com/noimage.jpg",
+        )
+        upsert_download_candidate(
+            content_id="MIAA-999",
+            source="supplement",
+            jacket_thumb_url="https://example.com/cover.jpg",
+        )
+
+        page = list_download_candidates_page(
+            status="candidate",
+            source="supplement",
+            missing_cover=True,
+            limit=10,
+            offset=0,
+        )
+
+        self.assertEqual(page["total"], 2)
+        self.assertEqual([row["id"] for row in page["data"]], [missing["id"], placeholder["id"]])
 
 
 class InventoryFillBehaviorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):

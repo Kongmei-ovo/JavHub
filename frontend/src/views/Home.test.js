@@ -90,6 +90,41 @@ test('home lazy-loads download candidate workspace outside the base downloads ch
   assert.ok(candidateStyle.length > 10000, 'candidate lazy chunk should carry its own workspace CSS')
 })
 
+test('download candidate panel exposes latest event filters from summary counts', () => {
+  assert.match(candidatePanelSource, /candidate-event-toolbar/)
+  assert.match(candidatePanelSource, /v-for="filter in candidateLatestEventFilters"/)
+  assert.match(candidatePanelSource, /candidateStats\.latest_event_by_action/)
+  assert.match(candidatePanelSource, /candidateFilter\.latest_event_action === filter\.action/)
+  assert.match(candidatePanelSource, /\$emit\('set-latest-event', filter\.action\)/)
+  assert.match(vueSource, /@set-latest-event="setCandidateLatestEvent"/)
+  assert.match(vueSource, /setCandidateLatestEvent\(action\)/)
+  assert.match(vueSource, /latest_event_action: action/)
+  assert.match(vueSource, /without_event:\s*'未处理'/)
+  assert.match(vueSource, /missing_cover: this\.\$route\.query\.missing_cover === '1'/)
+  assert.match(vueSource, /params\.missing_cover = this\.candidateFilter\.missing_cover/)
+  assert.match(vueSource, /if \(filter\.missing_cover\) query\.missing_cover = '1'/)
+  assert.match(vueSource, /缺封面/)
+})
+
+test('download candidate panel exposes repair scope for data quality routes', () => {
+  assert.match(vueSource, /:candidate-repair-scope="candidateRepairScope"/)
+  assert.match(vueSource, /candidateRepairScope\(\)/)
+  assert.match(vueSource, /const visibleMagnetTargets = this\.visibleMagnetTargetCount/)
+  assert.match(vueSource, /visibleMagnetTargetCount\(\)/)
+  assert.match(vueSource, /this\.filteredCandidates\.filter\(candidate =>/)
+  assert.match(vueSource, /total:\s*this\.candidateTotal/)
+  assert.match(vueSource, /scopeLabel:\s*this\.candidateRepairScopeLabel/)
+  assert.match(vueSource, /candidateRepairScopeLabel\(\)/)
+  assert.match(candidatePanelSource, /candidateRepairScope/)
+  assert.match(candidatePanelSource, /class="candidate-repair-scope"/)
+  assert.match(candidatePanelSource, /candidateRepairScope\.total/)
+  assert.match(candidatePanelSource, /candidateRepairScope\.visibleMagnetTargets/)
+  assert.match(candidatePanelSource, /当前页可补磁力/)
+  assert.match(candidatePanelSource, /筛选总量/)
+  assert.match(candidateStyle, /\.candidate-repair-scope/)
+  assert.match(candidateStyle, /\.candidate-repair-scope-grid/)
+})
+
 test('home page keeps heavyweight styles in external scoped stylesheets', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/home\/home\.css"><\/style>/)
   assert.ok(externalStyle.length > 8000, 'external home stylesheet should carry the base workspace CSS')
@@ -210,6 +245,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   const statCardHover = cssBlock(source, '.stat-card:hover')
   const candidateMetric = cssBlock(source, '.candidate-metric')
   const candidateMetricHover = cssBlock(source, '.candidate-metric:hover')
+  const candidateFilterLedger = cssBlock(source, '.candidate-filter-ledger')
   const filterBar = cssBlock(source, '.filter-bar')
   const filterBarHover = cssBlock(source, '.filter-bar:hover')
   const statIcon = cssBlock(source, '.stat-icon')
@@ -234,6 +270,7 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   for (const [block, label] of [
     [statCard, 'stat cards'],
     [candidateMetric, 'candidate metrics'],
+    [candidateFilterLedger, 'candidate filter ledger'],
     [filterBar, 'filter bar'],
     [pageButton, 'pagination buttons'],
     [taskCover, 'task covers'],

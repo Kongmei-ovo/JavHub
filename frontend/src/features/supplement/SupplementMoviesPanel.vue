@@ -53,6 +53,37 @@
         </span>
       </div>
     </div>
+    <div v-if="!moviesLoading && supplementMovies.length" class="movie-field-priority-strip" aria-label="字段优先级">
+      <span
+        v-for="row in movieFieldPriorityRows"
+        :key="row.key"
+        class="field-priority-chip"
+        :class="fieldPriorityClass(row)"
+      >
+        <b>{{ row.label }}</b>
+        <em>{{ row.missing ? `${row.missing} 个缺口` : '已齐' }}</em>
+        <small>{{ row.action }}</small>
+      </span>
+    </div>
+    <div v-if="!moviesLoading && supplementMovies.length" class="movie-field-triage-board" aria-label="字段分拣台">
+      <div class="field-triage-summary">
+        <strong>{{ movieFieldTriageTotal }}</strong>
+        <span>字段分拣</span>
+      </div>
+      <div class="field-triage-grid">
+        <span
+          v-for="lane in movieFieldTriageLanes"
+          :key="lane.key"
+          class="field-triage-card"
+          :class="fieldTriageLaneClass(lane)"
+        >
+          <b>{{ lane.label }}</b>
+          <em>{{ lane.count }} 项</em>
+          <small>{{ lane.action }}</small>
+          <i>{{ lane.samples.length ? lane.samples.join(' · ') : lane.empty }}</i>
+        </span>
+      </div>
+    </div>
     <div v-if="!moviesLoading && supplementMovies.length" class="movie-repair-queue" aria-label="当前页修复队列">
       <div class="repair-queue-summary">
         <strong>{{ movieRepairQueueTotal }}</strong>
@@ -70,6 +101,18 @@
           <small>{{ row.hint }}</small>
         </span>
       </div>
+    </div>
+    <div v-if="!moviesLoading && supplementMovies.length" class="movie-repair-flow" aria-label="当前页处理线">
+      <span
+        v-for="step in movieRepairFlowSteps"
+        :key="step.key"
+        class="repair-flow-step"
+        :class="flowStepClass(step)"
+      >
+        <b>{{ step.label }}</b>
+        <em>{{ step.count }} 项</em>
+        <small>{{ step.action }}</small>
+      </span>
     </div>
     <AppleSkeleton
       v-if="moviesLoading"
@@ -99,6 +142,30 @@
             <span v-if="movie.runtime_mins">{{ movie.runtime_mins }} 分钟</span>
             <span v-if="movie.maker_name">{{ movie.maker_name }}</span>
             <span v-if="movieCategories(movie)" class="movie-meta-cats">{{ movieCategories(movie) }}</span>
+          </div>
+          <template v-for="summary in [movieFieldRepairSummary(movie)]" :key="`${movie.id}-field-repair-summary`">
+            <div class="movie-field-repair-summary" :class="fieldRepairSummaryClass(summary)" aria-label="影片字段修复摘要">
+              <span class="field-repair-priority">
+                <b>{{ summary.label }}</b>
+                <em>{{ summary.primary }}</em>
+              </span>
+              <span class="field-repair-status">
+                <b>{{ summary.countLabel }}</b>
+                <em>{{ summary.sourceLabel }}</em>
+              </span>
+            </div>
+          </template>
+          <div v-if="movieFieldWorkOrders(movie).length" class="movie-field-work-orders" aria-label="字段修复工单">
+            <span
+              v-for="order in movieFieldWorkOrders(movie)"
+              :key="order.key"
+              class="field-work-order-chip"
+              :class="fieldWorkOrderClass(order)"
+            >
+              <b>{{ order.label }}</b>
+              <em>{{ order.status }}</em>
+              <small>{{ order.action }}</small>
+            </span>
           </div>
           <div class="movie-field-grid" aria-label="影片字段完整度">
             <span
@@ -230,6 +297,54 @@ export default {
     movieFieldSummaryTotalMissing() {
       return this.movieFieldSummaryRows.reduce((total, row) => total + row.missing, 0)
     },
+    movieFieldPriorityRows() {
+      return [...this.movieFieldSummaryRows]
+        .sort((a, b) => b.missing - a.missing)
+        .slice(0, 3)
+        .map(row => ({
+          ...row,
+          action: row.missing ? (['cover', 'runtime', 'maker'].includes(row.key) ? '优先补详情' : '打开诊断确认来源') : '字段已齐',
+        }))
+    },
+    movieFieldTriageLanes() {
+      const lanes = [
+        {
+          key: 'ready',
+          label: '可补详情',
+          count: this.supplementMovies.filter(movie => this.movieNeedsDetail(movie)).length,
+          action: '打开详情补抓',
+          empty: '暂无可补字段',
+        },
+        {
+          key: 'diagnose',
+          label: '需诊断',
+          count: this.supplementMovies.filter(movie => this.movieMissingFieldChips(movie).length && !movie.source_movie_id && this.movieMatchClass(movie) === 'candidate').length,
+          action: '先确认来源',
+          empty: '暂无诊断项',
+        },
+        {
+          key: 'waiting',
+          label: '等待来源',
+          count: this.supplementMovies.filter(movie => this.movieMissingFieldChips(movie).length && !movie.source_movie_id && this.movieMatchClass(movie) !== 'candidate').length,
+          action: '等待匹配',
+          empty: '暂无等待项',
+        },
+        {
+          key: 'complete',
+          label: '字段已齐',
+          count: this.supplementMovies.filter(movie => this.movieIsFieldComplete(movie)).length,
+          action: '可生成候选',
+          empty: '暂无完整项',
+        },
+      ]
+      return lanes.map(lane => ({
+        ...lane,
+        samples: this.movieFieldTriageSamples(lane.key),
+      }))
+    },
+    movieFieldTriageTotal() {
+      return this.movieFieldTriageLanes.reduce((total, lane) => total + lane.count, 0)
+    },
     movieRepairQueueRows() {
       const pendingMatches = this.supplementMovies.filter(movie => this.movieMatchClass(movie) === 'candidate')
       const detailTargets = this.supplementMovies.filter(movie => this.movieNeedsDetail(movie))
@@ -242,6 +357,14 @@ export default {
     },
     movieRepairQueueTotal() {
       return this.movieRepairQueueRows.reduce((total, row) => total + row.count, 0)
+    },
+    movieRepairFlowSteps() {
+      const rows = new Map(this.movieRepairQueueRows.map(row => [row.key, row]))
+      return [
+        { key: 'confirm', label: '确认匹配', count: rows.get('pending-match')?.count || 0, action: '先确认候选' },
+        { key: 'detail', label: '补字段', count: rows.get('needs-detail')?.count || 0, action: '批量补字段' },
+        { key: 'candidate', label: '生成候选', count: rows.get('field-complete')?.count || 0, action: '生成候选包' },
+      ]
     },
   },
   methods: {
@@ -259,6 +382,78 @@ export default {
       return {
         missing: !chip.value,
         important: chip.important,
+      }
+    },
+    movieMissingFieldChips(movie) {
+      return this.movieFieldChips(movie).filter(chip => !chip.value)
+    },
+    movieFieldWorkOrders(movie) {
+      return this.movieMissingFieldChips(movie).map(chip => ({
+        key: chip.key,
+        label: chip.label,
+        status: chip.missingLabel,
+        action: this.fieldWorkOrderAction(chip, movie),
+        sourceReady: Boolean(movie.source_movie_id),
+      }))
+    },
+    fieldWorkOrderAction(chip, movie) {
+      if (movie.source_movie_id) return '补详情可修'
+      if (this.movieMatchClass(movie) === 'candidate') return '打开诊断'
+      return '等待来源'
+    },
+    fieldWorkOrderClass(order) {
+      return {
+        ready: order.sourceReady,
+        missing: !order.sourceReady,
+      }
+    },
+    movieFieldTriageSamples(laneKey) {
+      return this.supplementMovies
+        .filter(movie => {
+          const missing = this.movieMissingFieldChips(movie).length
+          if (laneKey === 'ready') return this.movieNeedsDetail(movie)
+          if (laneKey === 'diagnose') return missing && !movie.source_movie_id && this.movieMatchClass(movie) === 'candidate'
+          if (laneKey === 'waiting') return missing && !movie.source_movie_id && this.movieMatchClass(movie) !== 'candidate'
+          return this.movieIsFieldComplete(movie)
+        })
+        .map(movie => movie.dvd_id || movie.canonical_number || '未命名')
+        .slice(0, 2)
+    },
+    fieldTriageLaneClass(lane) {
+      return {
+        ready: lane.key === 'ready' && lane.count > 0,
+        diagnose: lane.key === 'diagnose' && lane.count > 0,
+        waiting: lane.key === 'waiting' && lane.count > 0,
+        complete: lane.key === 'complete' && lane.count > 0,
+        empty: lane.count === 0,
+      }
+    },
+    movieFieldRepairSummary(movie) {
+      const missing = this.movieMissingFieldChips(movie)
+      const sourceReady = Boolean(movie.source_movie_id)
+      if (!missing.length) {
+        return {
+          label: '字段齐全',
+          primary: '可进入候选生成',
+          countLabel: '0 个缺口',
+          sourceLabel: sourceReady ? '详情源可用' : '等待详情源',
+          complete: true,
+          sourceReady: Boolean(movie.source_movie_id),
+        }
+      }
+      return {
+        label: '优先修复',
+        primary: missing.slice(0, 3).map(chip => chip.missingLabel).join(' · '),
+        countLabel: `${missing.length} 个缺口`,
+        sourceLabel: sourceReady ? '详情源可用' : '等待详情源',
+        complete: false,
+        sourceReady: Boolean(movie.source_movie_id),
+      }
+    },
+    fieldRepairSummaryClass(summary) {
+      return {
+        ready: summary.sourceReady && !summary.complete,
+        complete: summary.complete,
       }
     },
     movieNeedsDetail(movie) {
@@ -288,6 +483,18 @@ export default {
         empty: row.count === 0,
       }
     },
+    fieldPriorityClass(row) {
+      return {
+        ready: row.missing > 0,
+        clear: row.missing === 0,
+      }
+    },
+    flowStepClass(step) {
+      return {
+        ready: step.count > 0,
+        empty: step.count === 0,
+      }
+    },
     movieRepairFlags(movie) {
       const flags = this.movieFieldChips(movie).filter(chip => !chip.value).map(chip => chip.missingLabel)
       if (!flags.length) flags.push('字段完整')
@@ -298,3 +505,4 @@ export default {
 </script>
 
 <style scoped src="./supplementMoviesPanel.css"></style>
+<style scoped src="./supplementMovieRepair.css"></style>

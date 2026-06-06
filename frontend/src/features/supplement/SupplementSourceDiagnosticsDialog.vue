@@ -21,10 +21,59 @@
             v-for="action in diagnosticsActionQueue"
             :key="action.label"
             class="diagnostics-action-item"
-            :class="{ ready: action.ready }"
+            :class="diagnosticsActionItemClass(action)"
           >
-            <strong>{{ action.label }}</strong>
+            <div class="diagnostics-action-head">
+              <strong>{{ action.label }}</strong>
+              <em class="diagnostics-action-priority">{{ action.priority }}</em>
+            </div>
+            <b>{{ action.status }}</b>
             <span>{{ action.detail }}</span>
+          </div>
+        </div>
+        <div class="diagnostics-command-console" aria-label="诊断操作控制台">
+          <div class="diagnostics-command-summary">
+            <strong>操作控制台</strong>
+            <span>{{ diagnosticsCommandTotal ? `${diagnosticsCommandTotal} 项待处理` : diagnosticsCommandPrimary }}</span>
+          </div>
+          <div class="diagnostics-command-lanes">
+            <article
+              v-for="lane in diagnosticsCommandLanes"
+              :key="lane.key"
+              class="diagnostics-command-lane"
+              :class="diagnosticsCommandLaneClass(lane)"
+            >
+              <b>{{ lane.label }}</b>
+              <em>{{ lane.status }}</em>
+              <small>{{ lane.action }}</small>
+            </article>
+          </div>
+        </div>
+        <div class="diagnostics-field-command-strip" aria-label="字段指挥台">
+          <div class="field-command-summary">
+            <strong>字段指挥台</strong>
+            <span>{{ missingFieldCount ? `${missingFieldCount} 个优先字段` : '字段已齐' }}</span>
+          </div>
+          <div class="field-command-grid">
+            <article
+              v-for="command in diagnosticsFieldCommands"
+              :key="command.key"
+              class="diagnostics-field-command"
+              :class="fieldCommandClass(command)"
+            >
+              <div>
+                <b>{{ command.label }}</b>
+                <em>{{ command.priority }}</em>
+              </div>
+              <span class="field-command-source">
+                <small>来源信号</small>
+                <strong>{{ command.sourceSignal }}</strong>
+              </span>
+              <span class="field-command-next">
+                <small>下一步</small>
+                <strong>{{ command.action }}</strong>
+              </span>
+            </article>
           </div>
         </div>
         <div class="diagnostics-layout">
@@ -40,6 +89,33 @@
                   <b>{{ field.label }}</b>
                   <em>{{ field.ready ? '已取' : '缺失' }}</em>
                 </span>
+              </div>
+              <div class="diagnostics-field-work-orders" aria-label="字段修复工单">
+                <article
+                  v-for="order in fieldRepairWorkOrders"
+                  :key="order.key"
+                  class="field-work-order"
+                  :class="fieldWorkOrderClass(order)"
+                >
+                  <div class="field-work-order-head">
+                    <strong>{{ order.label }}</strong>
+                    <span class="field-work-order-status">{{ order.ready ? '可入库' : '待修复' }}</span>
+                  </div>
+                  <div class="field-work-order-lane">
+                    <span>
+                      <b>当前来源</b>
+                      <em>{{ order.currentSource }}</em>
+                    </span>
+                    <span>
+                      <b>可补渠道</b>
+                      <em>{{ order.availableSources }}</em>
+                    </span>
+                    <span>
+                      <b>修复动作</b>
+                      <em>{{ order.action }}</em>
+                    </span>
+                  </div>
+                </article>
               </div>
               <div class="diagnostics-field-source-matrix" aria-label="字段来源矩阵">
                 <div class="field-source-row field-source-head">
@@ -238,6 +314,71 @@ export default {
         }
       })
     },
+    fieldRepairWorkOrders() {
+      return this.diagnosticsFieldChecklist.map(field => {
+        const coverage = this.fieldSourceCoverage(field)
+        const readySources = coverage.filter(source => source.ready)
+        return {
+          key: field.key,
+          label: field.label,
+          ready: readySources.length > 0,
+          currentSource: this.fieldCurrentSourceLabel(field),
+          availableSources: readySources.length ? readySources.map(source => source.label).join(' · ') : '暂无可用',
+          action: this.fieldRepairActionLabel(field),
+        }
+      })
+    },
+    diagnosticsFieldCommands() {
+      return [...this.fieldRepairWorkOrders]
+        .sort((a, b) => Number(a.ready) - Number(b.ready))
+        .slice(0, 4)
+        .map(order => ({
+          ...order,
+          priority: this.fieldCommandPriority(order),
+          sourceSignal: this.fieldCommandSourceSignal(order),
+        }))
+    },
+    diagnosticsCommandLanes() {
+      const unresolvedFields = this.fieldRepairWorkOrders.filter(order => !order.ready).length
+      const candidateConfirmationRisk = this.candidateConfirmationRisk
+      const missingFieldCount = this.missingFieldCount
+      const identityCount = this.identityCount
+      const reviewNeeded = candidateConfirmationRisk === '需人工复核'
+      const intakeReady = missingFieldCount === 0 && identityCount > 0
+      return [
+        {
+          key: 'fields',
+          label: '待修字段',
+          count: unresolvedFields,
+          status: unresolvedFields ? `${unresolvedFields} 项` : '字段已齐',
+          action: unresolvedFields ? '先补字段' : '保留字段',
+          tone: unresolvedFields ? 'danger' : 'ready',
+        },
+        {
+          key: 'match',
+          label: '匹配复核',
+          count: reviewNeeded ? 1 : 0,
+          status: candidateConfirmationRisk,
+          action: reviewNeeded ? '复核候选' : '确认候选',
+          tone: reviewNeeded ? 'warning' : (this.candidateCount ? 'ready' : 'warning'),
+        },
+        {
+          key: 'intake',
+          label: '入库门槛',
+          count: intakeReady ? 0 : 1,
+          status: intakeReady ? '可入库' : '待检查',
+          action: intakeReady ? '进入入库' : '检查身份',
+          tone: intakeReady ? 'ready' : 'warning',
+        },
+      ]
+    },
+    diagnosticsCommandTotal() {
+      return this.diagnosticsCommandLanes.reduce((total, lane) => total + lane.count, 0)
+    },
+    diagnosticsCommandPrimary() {
+      const active = this.diagnosticsCommandLanes.find(lane => lane.tone !== 'ready')
+      return active ? `${active.label} · ${active.action}` : '可入库'
+    },
     candidateCount() {
       return this.sourceDiagnostics?.match_candidates?.length || 0
     },
@@ -295,21 +436,33 @@ export default {
         {
           label: '补字段',
           detail: this.missingFieldCount ? `${this.missingFieldCount} 个字段待补` : '字段已齐',
+          status: this.missingFieldCount ? '待处理' : '已就绪',
+          priority: this.missingFieldCount ? '高优先级' : '已就绪',
+          tone: this.missingFieldCount ? 'danger' : 'ready',
           ready: this.missingFieldCount === 0,
         },
         {
           label: '确认匹配',
           detail: this.candidateCount ? `${this.candidateCount} 个候选待确认` : '暂无候选',
+          status: this.sourceDiagnostics?.movie?.matched_content_id ? '已就绪' : (this.candidateCount ? '待处理' : '待来源'),
+          priority: this.sourceDiagnostics?.movie?.matched_content_id ? '已就绪' : (this.candidateCount ? '高优先级' : '待处理'),
+          tone: this.sourceDiagnostics?.movie?.matched_content_id ? 'ready' : (this.candidateCount ? 'danger' : 'warning'),
           ready: Boolean(this.sourceDiagnostics?.movie?.matched_content_id),
         },
         {
           label: '补源身份',
           detail: this.identityCount ? `${this.identityCount} 个身份可追溯` : '缺少源身份',
+          status: this.identityCount ? '已就绪' : '待处理',
+          priority: this.identityCount ? '已就绪' : '待处理',
+          tone: this.identityCount ? 'ready' : 'warning',
           ready: this.identityCount > 0,
         },
         {
           label: '可入库',
           detail: this.missingFieldCount === 0 && this.identityCount > 0 ? '可进入版本匹配' : '仍需修复',
+          status: this.missingFieldCount === 0 && this.identityCount > 0 ? '已就绪' : '待处理',
+          priority: this.missingFieldCount === 0 && this.identityCount > 0 ? '已就绪' : '待处理',
+          tone: this.missingFieldCount === 0 && this.identityCount > 0 ? 'ready' : 'warning',
           ready: this.missingFieldCount === 0 && this.identityCount > 0,
         },
       ]
@@ -335,6 +488,47 @@ export default {
       return {
         missing: !row.ready,
       }
+    },
+    fieldWorkOrderClass(order) {
+      return {
+        ready: order.ready,
+        missing: !order.ready,
+      }
+    },
+    fieldCommandClass(command) {
+      return {
+        ready: command.ready,
+        missing: !command.ready,
+      }
+    },
+    fieldCommandPriority(order) {
+      return order.ready ? '可入库' : '优先字段'
+    },
+    fieldCommandSourceSignal(order) {
+      if (order.ready) return order.availableSources
+      return order.availableSources === '暂无可用' ? '等待来源采样' : order.availableSources
+    },
+    diagnosticsActionItemClass(action) {
+      return {
+        danger: action.tone === 'danger',
+        warning: action.tone === 'warning',
+        ready: action.tone === 'ready',
+      }
+    },
+    diagnosticsCommandLaneClass(lane) {
+      return lane.tone || 'warning'
+    },
+    fieldCurrentSourceLabel(field) {
+      const coverage = this.fieldSourceCoverage(field)
+      const current = coverage.find(source => source.ready)
+      return current?.label || '未采用'
+    },
+    fieldRepairActionLabel(field) {
+      const coverage = this.fieldSourceCoverage(field)
+      if (coverage.some(source => source.key === 'chosen' && source.ready)) return '保留已选字段'
+      if (coverage.some(source => source.key === 'detail' && source.ready)) return '从详情来源补入'
+      if (coverage.some(source => source.key === 'movie' && source.ready)) return '沿用影片本体'
+      return '补抓详情来源'
     },
     fieldSourceCoverage(field) {
       return [
@@ -379,3 +573,4 @@ export default {
 </script>
 
 <style scoped src="./supplementSourceDiagnosticsDialog.css"></style>
+<style scoped src="./supplementDiagnosticsFields.css"></style>

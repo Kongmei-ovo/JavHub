@@ -54,6 +54,19 @@
 
 .bulk-toolbar .btn { font-size: 12px; padding: 5px 10px; }
 
+.candidate-event-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -6px 0 16px;
+}
+
+.candidate-event-toolbar-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .chip {
   border: 1px solid var(--glass-control-border);
   border-radius: 999px;
@@ -105,6 +118,86 @@
 .chip:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.candidate-repair-scope {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.45fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  margin: -6px 0 16px;
+  padding: 10px;
+  border: 1px solid var(--badge-warning-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.candidate-repair-scope > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.candidate-repair-scope span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.candidate-repair-scope strong {
+  min-width: 0;
+  color: var(--badge-warning-text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-repair-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.candidate-repair-scope-grid span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 8px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 10px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-inner-shadow);
+}
+
+.candidate-repair-scope-grid b,
+.candidate-repair-scope-grid small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-repair-scope-grid b {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-repair-scope-grid small {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 .action-chip {
@@ -624,6 +717,9 @@
 
 @media (max-width: 768px) {
   .tasks-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .candidate-repair-scope {
+    grid-template-columns: 1fr;
+  }
   .chip,
   .task-actions .btn,
   .candidate-search-input,

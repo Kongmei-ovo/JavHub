@@ -396,6 +396,8 @@ async def process_candidates(
         source=filters.get("source"),
         q=filters.get("q"),
         needs_magnet=filters.get("needs_magnet"),
+        missing_cover=filters.get("missing_cover"),
+        latest_event_action=filters.get("latest_event_action"),
         limit=limit,
     )
     results = []
@@ -449,6 +451,8 @@ async def preview_candidates(
         source=filters.get("source"),
         q=filters.get("q"),
         needs_magnet=filters.get("needs_magnet"),
+        missing_cover=filters.get("missing_cover"),
+        latest_event_action=filters.get("latest_event_action"),
         limit=limit,
     )
     results = []

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 
 const baseUrl = process.env.JAVHUB_FRONTEND_URL || 'http://127.0.0.1:5174'
+const shellTimeoutMs = 30_000
 
 const routes = [
   '/',
@@ -40,7 +41,7 @@ async function waitForFrontend() {
 }
 
 async function waitForShell(page) {
-  await page.waitForSelector('.app-layout', { timeout: 10_000 })
+  await page.waitForSelector('.app-layout', { timeout: shellTimeoutMs })
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
 }
 

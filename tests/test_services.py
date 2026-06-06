@@ -119,7 +119,32 @@ def test_services_restart_frontend_builds_before_kickstart(tmp_path):
         bin_dir / "launchctl",
         "#!/bin/sh\n"
         "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  echo 'state = running'\n"
+        "  echo 'pid = 200'\n"
+        "  exit 0\n"
+        "fi\n"
         "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:5174*) echo '<html></html>'; exit 0 ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "npm",
@@ -149,6 +174,97 @@ def test_services_restart_frontend_builds_before_kickstart(tmp_path):
     assert "bootout gui/" in launchctl_calls
     assert "bootstrap gui/" in launchctl_calls
     assert "kickstart -k gui/" in launchctl_calls
+
+
+def test_services_restart_frontend_reports_unstable_service_after_health_success(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
+    frontend_crashed = tmp_path / "frontend-crashed"
+    npm_log = tmp_path / "npm.log"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  case \"$2\" in\n"
+        "    *javhub.frontend*)\n"
+        "      if [ -f \"$FRONTEND_CRASHED\" ]; then\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      else\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 200'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ ! -f \"$FRONTEND_CRASHED\" ]; then\n"
+        "      echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:5174*) touch \"$FRONTEND_CRASHED\"; echo '<html></html>'; exit 0 ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "npm",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$NPM_LOG\"\n"
+        "exit 0\n",
+    )
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "restart", "frontend"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "CURL_LOG": str(curl_log),
+            "FRONTEND_CRASHED": str(frontend_crashed),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "NPM_LOG": str(npm_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    stdout_log = Path(__file__).resolve().parents[1] / "javhub-frontend.launchd.log"
+    stderr_log = Path(__file__).resolve().parents[1] / "javhub-frontend.launchd.err.log"
+    assert result.returncode == 1
+    assert "frontend http://127.0.0.1:5174: ok after restart" in result.stdout
+    assert "frontend http://127.0.0.1:5174: unstable after restart" in result.stdout
+    assert "frontend launchd: not running (state = spawn scheduled)" in result.stdout
+    assert "frontend port 5174: no listener" in result.stdout
+    assert f"frontend stdout: {stdout_log}" in result.stdout
+    assert f"frontend stderr: {stderr_log}" in result.stdout
 
 
 def test_services_doctor_reports_ready_dependencies(tmp_path):
@@ -490,6 +606,7 @@ def test_services_ensure_builds_missing_frontend_preview_output(tmp_path):
         "if [ \"$1\" = \"print\" ]; then\n"
         "  case \"$2\" in\n"
         "    *javhub.frontend*) echo 'state = spawn scheduled'; exit 0 ;;\n"
+        "    *javhub.backend*) echo 'state = running'; echo 'pid = 123'; exit 0 ;;\n"
         "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
         "  esac\n"
         "fi\n"
@@ -498,7 +615,14 @@ def test_services_ensure_builds_missing_frontend_preview_output(tmp_path):
     write_executable(
         bin_dir / "lsof",
         "#!/bin/sh\n"
-        "echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n",
+        "case \"$*\" in\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",
@@ -1014,10 +1138,36 @@ def test_services_ensure_prints_health_without_restarting_running_services(tmp_p
         "#!/bin/sh\n"
         "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
         "if [ \"$1\" = \"print\" ]; then\n"
-        "  echo 'state = running'\n"
+        "  case \"$2\" in\n"
+        "    *javhub.backend*) echo 'state = running'; echo 'pid = 123'; exit 0 ;;\n"
+        "    *javhub.frontend*) echo 'state = running'; echo 'pid = 200'; exit 0 ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
         "  exit 0\n"
         "fi\n"
         "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 100 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",
@@ -1055,6 +1205,119 @@ def test_services_ensure_prints_health_without_restarting_running_services(tmp_p
     launchctl_calls = launchctl_log.read_text()
     assert "kickstart" not in launchctl_calls
     assert "bootout" not in launchctl_calls
+
+
+def test_services_ensure_reports_unstable_running_backend_after_readiness_ok(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
+    backend_crashed = tmp_path / "backend-crashed"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    write_executable(javinfo_dir / "JavInfoApi", "#!/bin/sh\nexit 0\n")
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  case \"$2\" in\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_CRASHED\" ]; then\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      else\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 123'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
+        "    *javhub.frontend*) echo 'state = running'; echo 'pid = 200'; exit 0 ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 100 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ ! -f \"$BACKEND_CRASHED\" ]; then\n"
+        "      echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "ps",
+        "#!/bin/sh\n"
+        "if [ \"$*\" = '-o ppid= -p 200' ]; then\n"
+        "  echo ' 200'\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 1\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:18090/health/readiness*)\n"
+        "    touch \"$BACKEND_CRASHED\"\n"
+        "    echo '{\"status\":\"ok\",\"database\":{\"connectable\":true,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *127.0.0.1:8080/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *127.0.0.1:18090/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *127.0.0.1:5174*) echo '<html></html>'; exit 0 ;;\n"
+        "esac\n"
+        "exit 22\n",
+    )
+    write_executable(bin_dir / "npm", "#!/bin/sh\nexit 0\n")
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "ensure"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "BACKEND_CRASHED": str(backend_crashed),
+            "CURL_LOG": str(curl_log),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    stdout_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.log"
+    stderr_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.err.log"
+    assert result.returncode == 1
+    assert "backend readiness: ok" in result.stdout
+    assert "backend http://127.0.0.1:18090/health: unstable" in result.stdout
+    assert "backend launchd: not running (state = spawn scheduled)" in result.stdout
+    assert "backend port 18090: no listener" in result.stdout
+    assert f"backend stdout: {stdout_log}" in result.stdout
+    assert f"backend stderr: {stderr_log}" in result.stdout
+    assert "kickstart" not in launchctl_log.read_text()
 
 
 def test_services_ensure_reloads_loaded_frontend_when_plist_changes(tmp_path):
@@ -1348,6 +1611,128 @@ def test_services_ensure_restarts_backend_when_readiness_degrades(tmp_path):
     assert "com.kongmei.javhub.backend" in launchctl_calls
 
 
+def test_services_ensure_reports_unstable_backend_after_readiness_recovery(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
+    backend_restarted = tmp_path / "backend-restarted"
+    backend_crashed = tmp_path / "backend-crashed"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    write_executable(javinfo_dir / "JavInfoApi", "#!/bin/sh\nexit 0\n")
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *kickstart*javhub.backend*) touch \"$BACKEND_RESTARTED\" ;;\n"
+        "esac\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  case \"$2\" in\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_CRASHED\" ]; then\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      else\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 123'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
+        "    *javhub.frontend*) echo 'state = running'; echo 'pid = 200'; exit 0 ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 100 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ ! -f \"$BACKEND_CRASHED\" ]; then\n"
+        "      echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "ps",
+        "#!/bin/sh\n"
+        "if [ \"$*\" = '-o ppid= -p 200' ]; then\n"
+        "  echo ' 200'\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 1\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:18090/health/readiness*)\n"
+        "    if [ ! -f \"$BACKEND_RESTARTED\" ]; then\n"
+        "      echo '{\"status\":\"degraded\",\"database\":{\"connectable\":false,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"connection refused\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'\n"
+        "      exit 0\n"
+        "    fi\n"
+        "    touch \"$BACKEND_CRASHED\"\n"
+        "    echo '{\"status\":\"ok\",\"database\":{\"connectable\":true,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *127.0.0.1:8080/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *127.0.0.1:18090/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *127.0.0.1:5174*) echo '<html></html>'; exit 0 ;;\n"
+        "esac\n"
+        "exit 22\n",
+    )
+    write_executable(bin_dir / "npm", "#!/bin/sh\nexit 0\n")
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "ensure"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "BACKEND_CRASHED": str(backend_crashed),
+            "BACKEND_RESTARTED": str(backend_restarted),
+            "CURL_LOG": str(curl_log),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    stdout_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.log"
+    stderr_log = Path(__file__).resolve().parents[1] / "backend" / "javhub-backend.launchd.err.log"
+    assert result.returncode == 1
+    assert "backend readiness: degraded; restarting backend" in result.stdout
+    assert "backend readiness: ok" in result.stdout
+    assert "backend http://127.0.0.1:18090/health: unstable after restart" in result.stdout
+    assert "backend launchd: not running (state = spawn scheduled)" in result.stdout
+    assert "backend port 18090: no listener" in result.stdout
+    assert f"backend stdout: {stdout_log}" in result.stdout
+    assert f"backend stderr: {stderr_log}" in result.stdout
+
+
 def test_services_ensure_reports_log_paths_when_readiness_stays_degraded(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -1523,6 +1908,7 @@ def test_services_ensure_waits_for_newly_started_backend_before_recovery(tmp_pat
     launchctl_log = tmp_path / "launchctl.log"
     curl_log = tmp_path / "curl.log"
     backend_health_count = tmp_path / "backend-health-count"
+    backend_started = tmp_path / "backend-started"
     javinfo_dir = tmp_path / "JavInfoApi"
     javinfo_dir.mkdir()
     home_dir = tmp_path / "home"
@@ -1533,9 +1919,20 @@ def test_services_ensure_waits_for_newly_started_backend_before_recovery(tmp_pat
         bin_dir / "launchctl",
         "#!/bin/sh\n"
         "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *kickstart*javhub.backend*) touch \"$BACKEND_STARTED\" ;;\n"
+        "esac\n"
         "if [ \"$1\" = \"print\" ]; then\n"
         "  case \"$2\" in\n"
-        "    *javhub.backend*) echo 'state = spawn scheduled'; exit 0 ;;\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 123'\n"
+        "      else\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
         "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
         "  esac\n"
         "fi\n"
@@ -1544,7 +1941,16 @@ def test_services_ensure_waits_for_newly_started_backend_before_recovery(tmp_pat
     write_executable(
         bin_dir / "lsof",
         "#!/bin/sh\n"
-        "echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n",
+        "case \"$*\" in\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "      echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",
@@ -1574,6 +1980,7 @@ def test_services_ensure_waits_for_newly_started_backend_before_recovery(tmp_pat
             "HOME": str(home_dir),
             "JAVINFO_DIR": str(javinfo_dir),
             "BACKEND_HEALTH_COUNT": str(backend_health_count),
+            "BACKEND_STARTED": str(backend_started),
             "CURL_LOG": str(curl_log),
             "LAUNCHCTL_LOG": str(launchctl_log),
             "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
@@ -1591,12 +1998,13 @@ def test_services_ensure_waits_for_newly_started_backend_before_recovery(tmp_pat
     assert "kickstart -k gui/" not in launchctl_calls
 
 
-def test_services_ensure_reclaims_project_owned_stale_backend_listener(tmp_path):
+def test_services_ensure_reports_unstable_frontend_after_http_recovery(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     launchctl_log = tmp_path / "launchctl.log"
     curl_log = tmp_path / "curl.log"
-    kill_log = tmp_path / "kill.log"
+    frontend_restarted = tmp_path / "frontend-restarted"
+    frontend_crashed = tmp_path / "frontend-crashed"
     javinfo_dir = tmp_path / "JavInfoApi"
     javinfo_dir.mkdir()
     home_dir = tmp_path / "home"
@@ -1607,9 +2015,139 @@ def test_services_ensure_reclaims_project_owned_stale_backend_listener(tmp_path)
         bin_dir / "launchctl",
         "#!/bin/sh\n"
         "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *kickstart*javhub.frontend*) touch \"$FRONTEND_RESTARTED\" ;;\n"
+        "esac\n"
         "if [ \"$1\" = \"print\" ]; then\n"
         "  case \"$2\" in\n"
-        "    *javhub.backend*) echo 'state = spawn scheduled'; exit 0 ;;\n"
+        "    *javhub.backend*) echo 'state = running'; echo 'pid = 123'; exit 0 ;;\n"
+        "    *javhub.frontend*)\n"
+        "      if [ -f \"$FRONTEND_CRASHED\" ]; then\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      else\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 200'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
+        "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
+        "  esac\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "lsof",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 100 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:18090*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'Python 123 test 15u IPv4 0xabc 0t0 TCP *:18090 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *-iTCP:5174*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    if [ ! -f \"$FRONTEND_CRASHED\" ]; then\n"
+        "      echo 'node 200 test 15u IPv4 0xabc 0t0 TCP *:5174 (LISTEN)'\n"
+        "    fi\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
+    )
+    write_executable(
+        bin_dir / "ps",
+        "#!/bin/sh\n"
+        "if [ \"$*\" = '-o ppid= -p 200' ]; then\n"
+        "  echo ' 200'\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 1\n",
+    )
+    write_executable(
+        bin_dir / "curl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$CURL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *127.0.0.1:5174*)\n"
+        "    if [ ! -f \"$FRONTEND_RESTARTED\" ]; then exit 22; fi\n"
+        "    touch \"$FRONTEND_CRASHED\"\n"
+        "    echo '<html></html>'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *127.0.0.1:8080/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "  *127.0.0.1:18090/health/readiness*) echo '{\"status\":\"ok\",\"database\":{\"connectable\":true,\"host\":\"localhost\",\"port\":5432,\"database\":\"javhub\",\"error\":\"\"},\"javinfo\":{\"reachable\":true,\"api_url\":\"http://127.0.0.1:8080\",\"error\":\"\"},\"cache\":{\"backend\":\"redis\",\"error\":\"\"}}'; exit 0 ;;\n"
+        "  *127.0.0.1:18090/health*) echo '{\"status\":\"ok\"}'; exit 0 ;;\n"
+        "esac\n"
+        "exit 22\n",
+    )
+    write_executable(bin_dir / "npm", "#!/bin/sh\nexit 0\n")
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "ensure"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "CURL_LOG": str(curl_log),
+            "FRONTEND_CRASHED": str(frontend_crashed),
+            "FRONTEND_RESTARTED": str(frontend_restarted),
+            "JAVHUB_RESTART_STABILITY_DELAY": "0",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    stdout_log = Path(__file__).resolve().parents[1] / "javhub-frontend.launchd.log"
+    stderr_log = Path(__file__).resolve().parents[1] / "javhub-frontend.launchd.err.log"
+    assert result.returncode == 1
+    assert "frontend http://127.0.0.1:5174: failed; restarting frontend" in result.stdout
+    assert "frontend http://127.0.0.1:5174: recovered" in result.stdout
+    assert "frontend http://127.0.0.1:5174: unstable after restart" in result.stdout
+    assert "frontend launchd: not running (state = spawn scheduled)" in result.stdout
+    assert "frontend port 5174: no listener" in result.stdout
+    assert f"frontend stdout: {stdout_log}" in result.stdout
+    assert f"frontend stderr: {stderr_log}" in result.stdout
+
+
+def test_services_ensure_reclaims_project_owned_stale_backend_listener(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    curl_log = tmp_path / "curl.log"
+    kill_log = tmp_path / "kill.log"
+    backend_started = tmp_path / "backend-started"
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    write_executable(javinfo_dir / "JavInfoApi", "#!/bin/sh\nexit 0\n")
+
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        "echo \"$@\" >> \"$LAUNCHCTL_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *kickstart*javhub.backend*) touch \"$BACKEND_STARTED\" ;;\n"
+        "esac\n"
+        "if [ \"$1\" = \"print\" ]; then\n"
+        "  case \"$2\" in\n"
+        "    *javhub.backend*)\n"
+        "      if [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "        echo 'state = running'\n"
+        "        echo 'pid = 123'\n"
+        "      else\n"
+        "        echo 'state = spawn scheduled'\n"
+        "      fi\n"
+        "      exit 0\n"
+        "      ;;\n"
         "    *javhub.frontend*) echo 'state = running'; echo 'pid = 200'; exit 0 ;;\n"
         "    *) echo 'state = running'; echo 'pid = 100'; exit 0 ;;\n"
         "  esac\n"
@@ -1624,6 +2162,8 @@ def test_services_ensure_reclaims_project_owned_stale_backend_listener(tmp_path)
         "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
         "    if [ ! -f \"$KILL_LOG\" ]; then\n"
         "      echo 'Python  321 test 15u IPv4 0xabc      0t0  TCP *:18090 (LISTEN)'\n"
+        "    elif [ -f \"$BACKEND_STARTED\" ]; then\n"
+        "      echo 'Python  123 test 15u IPv4 0xabc      0t0  TCP *:18090 (LISTEN)'\n"
         "    fi\n"
         "    exit 0\n"
         "    ;;\n"
@@ -1666,6 +2206,7 @@ def test_services_ensure_reclaims_project_owned_stale_backend_listener(tmp_path)
         env={
             "HOME": str(home_dir),
             "JAVINFO_DIR": str(javinfo_dir),
+            "BACKEND_STARTED": str(backend_started),
             "CURL_LOG": str(curl_log),
             "KILL_LOG": str(kill_log),
             "LAUNCHCTL_LOG": str(launchctl_log),
@@ -1818,7 +2359,14 @@ def test_services_restart_backend_reports_health_failure_with_log_paths(tmp_path
     write_executable(
         bin_dir / "lsof",
         "#!/bin/sh\n"
-        "echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n",
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 123 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",
@@ -1877,7 +2425,14 @@ def test_services_restart_backend_reports_readiness_failure_with_log_paths(tmp_p
     write_executable(
         bin_dir / "lsof",
         "#!/bin/sh\n"
-        "echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n",
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 123 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",
@@ -2105,7 +2660,14 @@ def test_services_rebuild_javinfo_reports_healthy_restart(tmp_path):
     write_executable(
         bin_dir / "lsof",
         "#!/bin/sh\n"
-        "echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n",
+        "case \"$*\" in\n"
+        "  *-iTCP:8080*)\n"
+        "    echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'\n"
+        "    echo 'JavInfoApi 123 test 15u IPv4 0xabc 0t0 TCP *:8080 (LISTEN)'\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) echo 'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME'; exit 0 ;;\n"
+        "esac\n",
     )
     write_executable(
         bin_dir / "curl",

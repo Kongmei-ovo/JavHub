@@ -41,16 +41,36 @@
         <div>
           <strong>{{ action.label }}</strong>
           <em v-if="action.primary">当前模式</em>
+          <em class="source-next-action-status" :class="sourceNextActionStatusClass(action)">{{ action.status }}</em>
         </div>
         <span class="source-next-action-value">{{ action.count }}</span>
         <small>{{ action.detail }}</small>
         <button
-          :class="['btn', action.tone, 'btn-xs']"
+          :class="['btn', action.buttonTone, 'btn-xs']"
           type="button"
           :disabled="action.loading"
           @click="action.event ? $emit(action.event) : sourceHealthMode = action.mode"
         >{{ action.cta }}</button>
       </article>
+    </div>
+    <div class="source-triage-strip" aria-label="来源处置短名单">
+      <div class="source-triage-summary">
+        <strong>来源处置</strong>
+        <span>{{ sourceTriagePriorityCount ? `${sourceTriagePriorityCount} 个优先处理` : '来源稳定' }}</span>
+      </div>
+      <div class="source-triage-grid">
+        <article
+          v-for="item in sourceTriageShortlist"
+          :key="item.source"
+          class="source-triage-card"
+          :class="sourceTriageCardClass(item)"
+        >
+          <strong>{{ item.display_name || item.source }}</strong>
+          <span>连续失败 {{ item.failures }}</span>
+          <span>最近错误 {{ item.error }}</span>
+          <small>下一步 {{ item.nextStep }}</small>
+        </article>
+      </div>
     </div>
     <div class="source-runbook">
       <strong>{{ activeRunbook.title }}</strong>
@@ -224,6 +244,18 @@
             <em>{{ item.label }}</em>
           </span>
         </div>
+        <div class="source-repair-lane">
+          <span
+            v-for="item in sourceRepairLaneItems(source)"
+            :key="item.label"
+            class="source-repair-lane-item"
+            :class="sourceRepairLaneItemClass(item)"
+          >
+            <em>{{ item.label }}</em>
+            <b>{{ item.value }}</b>
+            <small>{{ item.detail }}</small>
+          </span>
+        </div>
         <div class="source-budget-meter">
           <div>
             <strong>{{ source.budget?.local_active ?? 0 }} / {{ source.budget?.local_limit ?? '—' }}</strong>
@@ -328,9 +360,11 @@ export default {
           label: '运行诊断',
           count: this.diagnoseQueueRows.length,
           detail: '样本字段分与最近错误',
+          status: this.providerSmokeLoading ? '执行中' : '可执行',
           cta: this.providerSmokeLoading ? '诊断中...' : '运行诊断',
           event: 'run-smoke',
-          tone: 'btn-primary',
+          tone: 'ready',
+          buttonTone: 'btn-primary',
           loading: this.providerSmokeLoading,
           primary: this.sourceHealthMode === 'diagnose',
         },
@@ -339,8 +373,10 @@ export default {
           label: '恢复来源',
           count: this.recoverQueueRows.length,
           detail: '冷却与人工暂停入口',
+          status: this.recoverQueueRows.length ? '待处理' : '可执行',
           cta: '查看恢复',
-          tone: 'btn-ghost',
+          tone: this.recoverQueueRows.length ? 'warning' : 'ready',
+          buttonTone: 'btn-ghost',
           primary: this.sourceHealthMode === 'recover',
         },
         {
@@ -348,11 +384,29 @@ export default {
           label: '隔离风险',
           count: this.isolateQueueRows.length,
           detail: '连续失败与异常来源',
+          status: this.isolateQueueRows.length ? '高风险' : '可执行',
           cta: '查看隔离',
-          tone: 'btn-ghost',
+          tone: this.isolateQueueRows.length ? 'danger' : 'ready',
+          buttonTone: 'btn-ghost',
           primary: this.sourceHealthMode === 'isolate',
         },
       ]
+    },
+    sourceTriageShortlist() {
+      return this.sourceHealthRows
+        .map(source => ({
+          ...source,
+          failures: source.consecutive_failures || 0,
+          error: source.last_error_type || '无',
+          nextStep: this.sourceTriageNextStep(source),
+          priority: this.sourceTriagePriority(source),
+          status: this.sourceTriageStatus(source),
+        }))
+        .sort((a, b) => b.priority - a.priority)
+        .slice(0, 4)
+    },
+    sourceTriagePriorityCount() {
+      return this.sourceTriageShortlist.filter(item => item.status !== 'ready').length
     },
     activeRunbook() {
       if (this.sourceHealthMode === 'recover') {
@@ -435,7 +489,36 @@ export default {
       return this.sourceHealthRows.length
     },
     sourceNextActionCardClass(action) {
-      return { active: action.primary }
+      return {
+        active: action.primary,
+        danger: action.tone === 'danger',
+        warning: action.tone === 'warning',
+        ready: action.tone === 'ready',
+      }
+    },
+    sourceNextActionStatusClass(action) {
+      return action.tone || 'warning'
+    },
+    sourceTriagePriority(source) {
+      const failures = source.consecutive_failures || 0
+      if (source.runtime_status === 'paused') return 70 + failures
+      if (source.runtime_status === 'cooling_down') return 80 + failures
+      if (source.runtime_status === 'degraded') return 90 + failures
+      return failures
+    },
+    sourceTriageNextStep(source) {
+      if (source.runtime_status === 'paused') return '恢复后复采'
+      if (source.runtime_status === 'cooling_down') return '解除冷却'
+      if (source.runtime_status === 'degraded' || (source.consecutive_failures || 0) >= 2) return '隔离风险'
+      return '运行诊断'
+    },
+    sourceTriageStatus(source) {
+      if (source.runtime_status === 'degraded' || (source.consecutive_failures || 0) >= 2) return 'danger'
+      if (['cooling_down', 'paused', 'unknown'].includes(source.runtime_status)) return 'warning'
+      return 'ready'
+    },
+    sourceTriageCardClass(item) {
+      return item.status || 'ready'
     },
     sourceHealthRiskItems(source) {
       const budget = source.budget || {}
@@ -444,6 +527,74 @@ export default {
         { label: '预算占用', value: budget.local_active ?? 0 },
         { label: '最近错误', value: source.last_error_type || '无' },
       ]
+    },
+    sourceSmokeReportFor(source) {
+      const reports = this.providerSmokeReport?.reports || []
+      return reports.find(report => report.source === source.source) || null
+    },
+    sourceRepairLaneItems(source) {
+      const report = this.sourceSmokeReportFor(source)
+      const budget = source.budget || {}
+      const failures = source.consecutive_failures || 0
+      const primaryAction = this.sourceHealthPrimaryAction(source)
+      const budgetActive = budget.local_active ?? 0
+      const budgetLimit = budget.local_limit ?? '—'
+      const budgetLimited = Number.isFinite(Number(budget.local_limit)) && budgetActive >= Number(budget.local_limit)
+      const smokeMissing = report?.quality?.missing || []
+      const smokeWarnings = report?.quality?.warnings || []
+      const smokeValue = report
+        ? `${report.quality?.score ?? 0}/${report.quality?.max_score ?? 0}`
+        : '未采样'
+      const statusDetailMap = {
+        cooling_down: '解除冷却后复采',
+        paused: '恢复来源后复采',
+        degraded: source.last_error_type || '异常来源',
+        healthy: '可参与字段补全',
+        unknown: '运行诊断采样',
+      }
+      const actionDetail = source.runtime_status === 'cooling_down'
+        ? '解除冷却后复采'
+        : primaryAction.event === 'resume-source'
+          ? '恢复后回看字段分'
+          : failures >= 2
+            ? '暂停 24h 后隔离'
+            : '运行诊断采样'
+
+      return [
+        {
+          label: '状态',
+          value: this.sourceHealthLabel(source.runtime_status),
+          detail: statusDetailMap[source.runtime_status] || '运行诊断采样',
+          tone: ['cooling_down', 'paused'].includes(source.runtime_status) ? 'danger' : source.runtime_status === 'degraded' ? 'warning' : 'ready',
+        },
+        {
+          label: '字段分',
+          value: smokeValue,
+          detail: report
+            ? smokeMissing.length
+              ? `缺 ${smokeMissing.join(' · ')}`
+              : smokeWarnings.length
+                ? `警告 ${smokeWarnings.join(' · ')}`
+                : '样本通过'
+            : '运行诊断采样',
+          tone: report ? (!report.ok ? 'danger' : smokeMissing.length || smokeWarnings.length ? 'warning' : 'ready') : 'warning',
+        },
+        {
+          label: '预算',
+          value: `${budgetActive}/${budgetLimit}`,
+          detail: budget.global_lock_enabled ? '全局锁启用' : budget ? '本进程限流' : '预算状态未加载',
+          tone: budgetLimited ? 'warning' : budget ? 'ready' : 'warning',
+        },
+        {
+          label: '动作',
+          value: this.sourceActionLoading === source.source ? '执行中' : primaryAction.label,
+          detail: actionDetail,
+          tone: primaryAction.event === 'resume-source' ? 'ready' : failures >= 2 ? 'danger' : 'warning',
+        },
+      ]
+    },
+    sourceRepairLaneItemClass(item) {
+      return item.tone || 'warning'
     },
     avatarJobStatusLabel(status) {
       const map = { queued: '排队中', running: '同步中', succeeded: '已完成', failed: '失败', idle: '待开始' }
@@ -461,3 +612,4 @@ export default {
 </script>
 
 <style scoped src="./sourceHealthPanel.css"></style>
+<style scoped src="./sourceRepairLane.css"></style>

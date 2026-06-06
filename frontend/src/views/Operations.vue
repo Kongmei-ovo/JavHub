@@ -124,17 +124,15 @@
                 <span>{{ dataQualitySummary }}</span>
               </div>
               <div class="compact-list">
-                <div v-for="issue in topDataQualityIssues" :key="issue.id" class="compact-row" role="button" tabindex="0" @click="openDataQualityIssue(issue)" @keydown.enter.prevent="openDataQualityIssue(issue)" @keydown.space.prevent="openDataQualityIssue(issue)">
+                <div v-for="issue in topDataQualityIssues" :key="issue.id" class="compact-row quality-issue-row">
                   <span>{{ issue.title }}</span>
                   <strong>{{ issue.score }}</strong>
                   <small>{{ issue.summary }}</small>
                   <div v-if="issueRepairMetaItems(issue).length" class="quality-progress-meta">
                     <template v-for="(item, index) in issueRepairMetaItems(issue)" :key="item"><span v-if="index > 0" class="quality-progress-separator" aria-hidden="true"> · </span><span class="quality-progress">{{ item }}</span></template>
                   </div>
-                  <div v-if="issue.repair_progress?.action?.route || issue.repair_progress?.reason_action?.route || issueRepairProviderActions(issue).length" class="quality-progress-actions">
-                    <button v-if="issue.repair_progress?.action?.route" class="quality-progress-action" type="button" @click="openDataQualityProgress(issue, $event)">{{ issue.repair_progress.action.label }}</button>
-                    <button v-if="issue.repair_progress?.reason_action?.route" class="quality-progress-action" type="button" @click="openDataQualityReason(issue, $event)">{{ issue.repair_progress.reason_action.label }}</button>
-                    <button v-for="action in issueRepairProviderActions(issue)" :key="action.route || action.provider" class="quality-progress-action" type="button" @click="openDataQualityProvider(action, $event)">{{ action.label }}</button>
+                  <div v-if="issueRepairActions(issue).length" class="quality-progress-actions">
+                    <button v-for="action in issueRepairActions(issue)" :key="action.route || action.label" class="quality-progress-action" type="button" @click.stop="openDataQualityRepairAction(action, $event)">{{ action.label }}</button>
                   </div>
                 </div>
                 <small v-if="!topDataQualityIssues.length" class="empty-line">暂无高优先级问题</small>
@@ -409,6 +407,7 @@ import { requestConfirm } from '../utils/confirmDialog'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleErrorState from '../components/AppleErrorState.vue'
+import { CACHE_PURGE_SCOPES } from '../features/operations/operationsOptions'
 
 export default {
   name: 'Operations',
@@ -427,12 +426,7 @@ export default {
       rebuildingVariantIndex: false,
       selectedCachePurgeScope: 'video',
       activeSegment: 'workbench',
-      cachePurgeScopes: [
-        { value: 'video', label: '影片/搜索' },
-        { value: 'response', label: '响应缓存' },
-        { value: 'enum', label: '枚举目录' },
-        { value: 'all', label: '全部' },
-      ],
+      cachePurgeScopes: CACHE_PURGE_SCOPES,
       error: '',
     }
   },
@@ -848,15 +842,7 @@ export default {
       }
       this.$router.push({ path, query })
     },
-    openDataQualityProgress(issue, event) {
-      event?.stopPropagation?.()
-      this.openDataQualityRoute(issue?.repair_progress?.action?.route)
-    },
-    openDataQualityReason(issue, event) {
-      event?.stopPropagation?.()
-      this.openDataQualityRoute(issue?.repair_progress?.reason_action?.route)
-    },
-    openDataQualityProvider(action, event) {
+    openDataQualityRepairAction(action, event) {
       event?.stopPropagation?.()
       this.openDataQualityRoute(action?.route)
     },
@@ -866,23 +852,36 @@ export default {
       const query = Object.fromEntries(new URLSearchParams(queryString))
       this.$router.push({ path, query })
     },
-    issueRepairProgressLabel(issue) {
-      return issue?.repair_progress?.label || ''
+    issueRepairProgressLabel(issue) { return issue?.repair_progress?.label || '' },
+    issueRepairEventLabel(issue) { return issue?.repair_progress?.event_label || '' },
+    issueRepairReasonLabel(issue) { return issue?.repair_progress?.reason_label || '' },
+    issueRepairProviderLabel(issue) { return issue?.repair_progress?.provider_label || '' },
+    issueRepairLocalLabel(issue) { return issue?.repair_progress?.local_label || '' },
+    issueRepairLocalSourceLabel(issue) { return issue?.repair_progress?.local_source_label || '' },
+    issueRepairMetaItems(issue) { return [issue?.priority_reason, this.issueRepairProgressLabel(issue), this.issueRepairEventLabel(issue), this.issueRepairReasonLabel(issue), this.issueRepairProviderLabel(issue), this.issueRepairLocalLabel(issue), this.issueRepairLocalSourceLabel(issue)].filter(Boolean) },
+    issueRepairActions(issue) {
+      const primaryRepairAction = issue?.repair_progress?.action?.route ? issue.repair_progress.action : null
+      const actions = [
+        issue?.action,
+        primaryRepairAction,
+        issue?.repair_progress?.reason_action,
+        ...this.issueRepairEventActions(issue),
+        ...this.issueRepairReasonActions(issue),
+        ...this.issueRepairProviderActions(issue),
+        ...this.issueRepairLocalActions(issue),
+      ].filter(action => action?.route)
+      const seen = new Set()
+      return actions.filter((action) => {
+        const key = action.route || action.label
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
     },
-    issueRepairReasonLabel(issue) {
-      return issue?.repair_progress?.reason_label || ''
-    },
-    issueRepairProviderLabel(issue) {
-      return issue?.repair_progress?.provider_label || ''
-    },
-    issueRepairMetaItems(issue) {
-      return [issue?.priority_reason, this.issueRepairProgressLabel(issue), this.issueRepairReasonLabel(issue), this.issueRepairProviderLabel(issue)].filter(Boolean)
-    },
-    issueRepairProviderActions(issue) {
-      return Array.isArray(issue?.repair_progress?.provider_actions)
-        ? issue.repair_progress.provider_actions.filter(action => action?.route)
-        : []
-    },
+    issueRepairEventActions(issue) { return Array.isArray(issue?.repair_progress?.event_actions) ? issue.repair_progress.event_actions.filter(action => action?.route) : [] },
+    issueRepairReasonActions(issue) { return Array.isArray(issue?.repair_progress?.reason_actions) ? issue.repair_progress.reason_actions.filter(action => action?.route) : [] },
+    issueRepairProviderActions(issue) { return Array.isArray(issue?.repair_progress?.provider_actions) ? issue.repair_progress.provider_actions.filter(action => action?.route) : [] },
+    issueRepairLocalActions(issue) { return Array.isArray(issue?.repair_progress?.local_actions) ? issue.repair_progress.local_actions.filter(action => action?.route) : [] },
     formatTime(value) {
       if (!value) return ''
       const date = new Date(value)

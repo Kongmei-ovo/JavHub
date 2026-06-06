@@ -48,11 +48,14 @@ const actor = [
 ].join('\n')
 const configVue = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const advancedSettingsPanel = readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8')
+const configOptions = readFileSync(new URL('../features/config/configOptions.js', import.meta.url), 'utf8')
 const configStyles = [
   readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/configAppearance.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/config/advancedSettingsPanelResponsive.css', import.meta.url), 'utf8'),
 ].join('\n')
-const config = [configVue, advancedSettingsPanel, configStyles].join('\n')
+const config = [configVue, advancedSettingsPanel, configOptions, configStyles].join('\n')
 const configDefaults = readFileSync(new URL('../features/config/configDefaults.js', import.meta.url), 'utf8')
 const genres = readFileSync(new URL('./Genres.vue', import.meta.url), 'utf8')
 const search = [
@@ -94,6 +97,8 @@ const translationProviders = readFileSync(new URL('../utils/translationProviders
 const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
+const appNavigation = readFileSync(new URL('../appNavigation.js', import.meta.url), 'utf8')
+const appChrome = [app, appNavigation].join('\n')
 const viteConfig = readFileSync(new URL('../../vite.config.js', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
 const translationJobs = [
@@ -129,10 +134,11 @@ function loadConfigOptions() {
     'AppleErrorState',
     'AppleSkeleton',
     'GlassSelect',
+    'AdvancedSettingsPanel',
     'DEFAULT_BUBBLE_CFG',
     'DEFAULT_CONFIG',
     `${script}`
-  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {}, {})
+  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {}, {}, {})
 }
 
 test('sidebar displays the package version without a hardcoded release string', () => {
@@ -187,7 +193,7 @@ test('navigation and actor page use actor mapping language', () => {
   assert.match(app, /import\.meta\.env\.VITE_APP_VERSION/)
   assert.doesNotMatch(app, /v1\.2\.0-beta\.\d+/)
   assert.match(packageJson.version, /^\d+\.\d+\.\d+-beta\.\d+$/)
-  assert.match(app, /片库整理/)
+  assert.match(appChrome, /片库整理/)
   assert.match(libraryOrganize, /演员映射/)
   assert.doesNotMatch(app, /演员合并/)
   assert.match(normalize, /演员映射/)
@@ -490,20 +496,20 @@ test('default theme controls avoid white-on-white primary buttons', () => {
 })
 
 test('mobile navigation and settings tabs stay compact', () => {
-  const bottomNavStart = app.indexOf('const bottomNavItems')
-  const bottomNavEnd = app.indexOf('])', bottomNavStart)
-  const bottomNavBlock = app.slice(bottomNavStart, bottomNavEnd)
+  const bottomNavStart = appNavigation.indexOf('export const bottomNavItems')
+  const bottomNavEnd = appNavigation.indexOf(']', bottomNavStart)
+  const bottomNavBlock = appNavigation.slice(bottomNavStart, bottomNavEnd)
   assert.equal((bottomNavBlock.match(/\{ path:/g) || []).length, 4)
   assert.doesNotMatch(bottomNavBlock, /label: '订阅'/)
   assert.doesNotMatch(bottomNavBlock, /label: '库存'/)
-  assert.match(app, /const mobileMoreItems/)
-  assert.match(app, /label: '磁链解析'/)
-  assert.match(app, /label: '实体目录'/)
-  assert.match(app, /label: '补全管理'/)
-  assert.match(app, /label: '片库整理'/)
-  assert.doesNotMatch(app, /label: '库检测'/)
-  assert.doesNotMatch(app, /label: '去重管理'/)
-  assert.match(app, /label: '运行日志'/)
+  assert.match(appNavigation, /export const mobileMoreItems/)
+  assert.match(appNavigation, /label: '磁链解析'/)
+  assert.match(appNavigation, /label: '实体目录'/)
+  assert.match(appNavigation, /label: '补全管理'/)
+  assert.match(appNavigation, /label: '片库整理'/)
+  assert.doesNotMatch(appNavigation, /label: '库检测'/)
+  assert.doesNotMatch(appNavigation, /label: '去重管理'/)
+  assert.match(appNavigation, /label: '运行日志'/)
   assert.match(app, /bottom-nav-more/)
   assert.match(config, /scroll-snap-type: x proximity/)
   assert.match(config, /settings-footer[\s\S]*left: var\(--sidebar-width\)/)
@@ -621,7 +627,7 @@ test('external data failures render page-level retry states', () => {
   assert.match(search, /searchError/)
   assert.match(search, /formatApiError/)
   assert.match(apiSource, /silentError: true/)
-  assert.match(app, /label: '配置中心'/)
+  assert.match(appNavigation, /label: '配置中心'/)
 })
 
 test('inline style cleanup keeps only dynamic previews in settings and genres', () => {
@@ -771,6 +777,11 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /candidateSourceLabel/)
   assert.match(home, /补全/)
   assert.match(home, /candidate-overview/)
+  assert.match(home, /candidateFilterLedger/)
+  assert.match(home, /candidate-filter-ledger/)
+  assert.match(home, /v-for="filter in candidateFilterLedger"/)
+  assert.match(home, /latest_event_action/)
+  assert.match(home, /candidateEventActionLabel/)
   assert.match(home, /待确认候选/)
   assert.match(home, /订阅发现/)
   assert.match(home, /库存发现/)
@@ -784,8 +795,10 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /if \(filter\.page && Number\(filter\.page\) > 1\) query\.page = String\(Number\(filter\.page\)\)/)
   assert.match(home, /params\.page = this\.candidatePage/)
   assert.match(home, /params\.page_size = this\.candidatePageSize/)
+  assert.match(home, /params\.latest_event_action = this\.candidateFilter\.latest_event_action/)
   assert.match(home, /this\.candidateTotalPages = Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
   assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ status, needs_magnet: null, page: 1 \}\)\)/)
+  assert.match(home, /candidateFilter\.needs_magnet === true/)
   assert.match(home, /goCandidatePage\(page\)/)
   assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ page: nextPage \}\)\)/)
   assert.match(home, /candidateTotalPages > 1/)
@@ -812,8 +825,8 @@ test('download page exposes candidate approval workflow', () => {
 test('entity catalog unifies entity directories behind a route and nav entry', () => {
   assert.match(router, /path: '\/entities'/)
   assert.match(router, /Entities/)
-  assert.match(app, /path: '\/entities'/)
-  assert.match(app, /label: '实体目录'/)
+  assert.match(appNavigation, /path: '\/entities'/)
+  assert.match(appNavigation, /label: '实体目录'/)
   assert.match(entities, /name: 'Entities'/)
   for (const label of ['资料库演员', 'Emby演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
     assert.match(entities, new RegExp(label))
@@ -856,17 +869,36 @@ test('operations overview surfaces prioritized data quality issues', () => {
   assert.match(operations, /quality:\s*'missing_cover'/)
   assert.match(operations, /issueRepairProgressLabel\(issue\)/)
   assert.match(operations, /repair_progress\?\.label/)
-  assert.match(operations, /openDataQualityProgress\(issue, \$event\)/)
-  assert.match(operations, /repair_progress\?\.action\?\.route/)
+  assert.match(operations, /issueRepairActions\(issue\)/)
+  assert.match(operations, /seen\.has\(key\)/)
+  assert.match(operations, /seen\.add\(key\)/)
+  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
   assert.match(operations, /issueRepairReasonLabel\(issue\)/)
   assert.match(operations, /repair_progress\?\.reason_label/)
-  assert.match(operations, /openDataQualityReason\(issue, \$event\)/)
-  assert.match(operations, /repair_progress\?\.reason_action\?\.route/)
+  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
+  assert.match(operations, /issueRepairReasonActions\(issue\)/)
+  assert.match(operations, /issueRepairEventLabel\(issue\)/)
+  assert.match(operations, /issueRepairEventActions\(issue\)/)
+  assert.match(operations, /issueRepairLocalLabel\(issue\)/)
+  assert.match(operations, /issueRepairLocalSourceLabel\(issue\)/)
+  assert.match(operations, /issueRepairLocalActions\(issue\)/)
+  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
+  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
+  assert.match(operations, /repair_progress\?\.event_label/)
+  assert.match(operations, /repair_progress\?\.event_actions/)
+  assert.match(operations, /repair_progress\?\.reason_actions/)
+  assert.match(config, /navGroups[\s\S]*id:\s*'automation'/)
+  assert.match(config, /routeGroupMap[\s\S]*const group = routeGroupMap\[tab\] \|\| tab/)
   assert.match(operations, /issueRepairProviderLabel\(issue\)/)
-  assert.match(operations, /repair_progress\?\.provider_label/)
   assert.match(operations, /issueRepairProviderActions\(issue\)/)
+  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
+  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
+  assert.match(operations, /:key="action\.route \|\| action\.label"/)
+  assert.match(operations, /repair_progress\?\.provider_label/)
   assert.match(operations, /repair_progress\?\.provider_actions/)
-  assert.match(operations, /openDataQualityProvider\(action, \$event\)/)
+  assert.match(operations, /repair_progress\?\.local_label/)
+  assert.match(operations, /repair_progress\?\.local_source_label/)
+  assert.match(operations, /repair_progress\?\.local_actions/)
 })
 
 test('operations overview uses a restrained Apple operations layout', () => {
@@ -938,7 +970,7 @@ test('operations exposes cache cleanup UI backed by purge API', () => {
 })
 
 test('run logs page exposes search pagination and level summary', () => {
-  assert.match(app, /label: '运行日志'/)
+  assert.match(appNavigation, /label: '运行日志'/)
   assert.match(logs, /运行日志/)
   assert.match(logs, /logSummary/)
   assert.match(logs, /可按等级和关键词筛选/)
@@ -986,8 +1018,8 @@ test('docker smoke and backup restore docs cover deploy validation', () => {
 })
 
 test('translation jobs has a standalone navigation page and settings no longer owns translation UI', () => {
-  assert.match(app, /label: '翻译作业'/)
-  assert.match(app, /path: '\/translations'/)
+  assert.match(appNavigation, /label: '翻译作业'/)
+  assert.match(appNavigation, /path: '\/translations'/)
   assert.match(router, /path: '\/translations'/)
   assert.match(router, /TranslationJobs/)
   assert.doesNotMatch(config, /<h2>翻译映射<\/h2>/)
@@ -1237,7 +1269,7 @@ test('appearance settings are grouped by scope and persist discovery preferences
   assert.match(configDefaults, /actressPageSize: 36/)
   assert.match(configDefaults, /seriesPageSize: 24/)
   assert.doesNotMatch(configDefaults, /colorMode|palette|customGradients|rarityThresholds|rarityColors/)
-  assert.match(config, /seriesPageSizeOptions: \[12, 24, 36, 48\]/)
+  assert.match(config, /seriesPageSizeOptions\s*=\s*\[12, 24, 36, 48\]/)
   assert.match(config, /localStorage\.setItem\('genres_bubble_cfg', JSON\.stringify\(this\.bubbleCfg\)\)/)
 })
 
@@ -1440,6 +1472,6 @@ test('download mutations are guarded by in-flight state', () => {
   )
   assert.match(enrichVisibleBlock, /const confirmed = await requestConfirm\(/)
   assert.match(enrichVisibleBlock, /title: '批量补充磁力'/)
-  assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？`/)
+  assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？当前筛选总量 \$\{this\.candidateTotal\} 个。`/)
   assert.match(enrichVisibleBlock, /if \(!confirmed\) return[\s\S]*this\.candidateBatchProcessing = 'enrich'/)
 })

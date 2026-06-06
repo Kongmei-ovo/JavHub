@@ -366,12 +366,14 @@ p {
 
 .workspace-command-strip {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(320px, 1.4fr) auto;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(220px, 1fr) minmax(0, 1fr);
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  min-width: 0;
   margin-bottom: 14px;
   padding: 13px 16px;
+  overflow: hidden;
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
@@ -422,9 +424,10 @@ p {
 
 .workspace-repair-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  grid-template-columns: repeat(4, minmax(66px, 1fr));
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -433,6 +436,7 @@ p {
   align-content: center;
   gap: 2px;
   min-width: 0;
+  max-width: 100%;
   min-height: 66px;
   padding: 8px 9px;
   color: var(--text-secondary);
@@ -504,8 +508,7 @@ p {
 }
 
 .repair-action-value,
-.repair-action-label,
-.repair-action-hint {
+.repair-action-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -525,8 +528,15 @@ p {
 }
 
 .repair-action-hint {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 10px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .task-state-detail-grid {
@@ -633,11 +643,12 @@ p {
   grid-template-columns: minmax(70px, 1fr) auto;
   grid-template-areas:
     "label count"
-    "status status";
+    "status status"
+    "next next";
   align-items: center;
   gap: 2px 8px;
   min-width: 126px;
-  min-height: 52px;
+  min-height: 66px;
   padding: 8px 12px;
   color: var(--text-secondary);
   background:
@@ -674,6 +685,26 @@ p {
   box-shadow: var(--glass-active-shadow);
 }
 
+.segmented-control button.segment-failed {
+  border-color: var(--badge-error-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-error-bg);
+}
+
+.segmented-control button.segment-warning {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.segmented-control button.segment-ready {
+  border-color: var(--badge-success-border);
+}
+
 .segmented-control button:active {
   transform: translateY(0) scale(0.98);
 }
@@ -699,12 +730,26 @@ p {
 
 .segment-status {
   grid-area: status;
+}
+
+.segment-next-step {
+  grid-area: next;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.segment-status,
+.segment-next-step {
   overflow: hidden;
-  color: var(--text-muted);
-  font-size: 11px;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.segment-status {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .workspace-panel {
@@ -819,42 +864,34 @@ p {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .task-state-track {
     grid-template-columns: auto auto;
     white-space: normal;
   }
-
   .diagnostics-launchpad-grid,
   .diagnostics-focus-movie {
     grid-template-columns: 1fr;
   }
-
   .diagnostics-focus-badges,
   .diagnostics-focus-actions {
     justify-content: flex-start;
     max-width: none;
   }
-
   .workspace-metrics {
     grid-template-columns: repeat(2, 1fr);
   }
-
   .segmented-control {
     display: grid;
     width: 100%;
     grid-template-columns: repeat(2, 1fr);
   }
-
   .segmented-control button {
     min-width: 0;
     padding: 9px 8px;
   }
-
   .workspace-repair-action {
     min-height: 62px;
   }
-
   .filter-bar,
   .filter-bar .glass-select {
     width: 100%;

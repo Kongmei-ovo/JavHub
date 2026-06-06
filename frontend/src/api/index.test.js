@@ -848,7 +848,7 @@ test('download candidate APIs send expected requests', async (t) => {
   })
 
   const { default: api } = await import(`./index.js?download-candidates-${Date.now()}`)
-  await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true })
+  await api.listDownloadCandidates({ status: 'candidate', source: 'subscription', needs_magnet: true, latest_event_action: 'magnet_enrich_failed' })
   await api.getDownloadCandidateSummary({ status: 'candidate', actress_id: 101 })
   await api.getDownloadCandidate(7)
   await api.listDownloadCandidateRuns(10)
@@ -865,7 +865,7 @@ test('download candidate APIs send expected requests', async (t) => {
   await api.bulkRestoreDownloadCandidates([9])
 
   assert.equal(calls[0].url, '/v1/downloads/candidates')
-  assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true })
+  assert.deepEqual(calls[0].params, { status: 'candidate', source: 'subscription', needs_magnet: true, latest_event_action: 'magnet_enrich_failed' })
   assert.equal(calls[1].url, '/v1/downloads/candidates/summary')
   assert.deepEqual(calls[1].params, { status: 'candidate', actress_id: 101 })
   assert.equal(calls[2].url, '/v1/downloads/candidates/7')

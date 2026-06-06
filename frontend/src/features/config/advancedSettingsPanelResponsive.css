@@ -1,0 +1,65 @@
+@media (max-width: 768px) {
+  .advanced-settings-group .settings-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .advanced-settings-group .settings-control {
+    width: 100%;
+    justify-self: stretch;
+  }
+  .advanced-number-control {
+    grid-template-columns: minmax(68px, 1fr) auto;
+  }
+  .advanced-number-range {
+    display: none;
+  }
+  .input-eye-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .export-action-control {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .export-action-buttons .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .import-actions--preflight,
+  .import-actions--danger,
+  .ai-test-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .import-preflight-action-buttons,
+  .import-danger-action-buttons,
+  .ai-test-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .import-job-state {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+  .import-job-retry {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+@media (max-width: 640px) {
+  .segmented-mini,
+  .segmented-mini.wide {
+    width: 100%;
+    flex-basis: auto;
+    min-width: 0;
+  }
+  .segmented-mini {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
+  .segmented-mini button {
+    min-width: 0;
+    padding: 0 8px;
+  }
+}

@@ -1,0 +1,16 @@
+.ai-provider-control {
+  width: min(100%, 420px);
+  margin-bottom: 8px;
+}
+.ai-provider-control button {
+  flex: 1;
+  min-width: 88px;
+}
+.ai-test-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.ai-test-row[aria-busy="true"] { cursor: progress; }
+.ai-connection-status.error { color: var(--badge-error-text); }

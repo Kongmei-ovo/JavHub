@@ -16,14 +16,7 @@
         <div class="actor-context-card">
           <div class="workspace-identity">
             <div class="workspace-avatar">
-              <img
-                v-if="actorContextAvatar"
-                :src="actorContextAvatar"
-                :alt="actorContextName"
-                loading="eager"
-                decoding="async"
-                @error="handleWorkspaceAvatarError"
-              />
+                <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
               <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
             </div>
             <div class="workspace-title">
@@ -94,12 +87,13 @@
           v-for="segment in workspaceSegments"
           :key="segment.key"
           type="button"
-          :class="{ active: activeWorkspaceSegment === segment.key }"
+          :class="[workspaceSegmentClass(segment.key), { active: activeWorkspaceSegment === segment.key }]"
           @click="setWorkspaceSegment(segment.key)"
         >
           <span class="segment-label">{{ segment.label }}</span>
           <span class="segment-count">{{ workspaceSegmentMeta(segment.key).count }}</span>
           <span class="segment-status">{{ workspaceSegmentMeta(segment.key).status }}</span>
+          <span class="segment-next-step">{{ workspaceSegmentMeta(segment.key).nextStep }}</span>
         </button>
       </nav>
       <SupplementMoviesPanel v-if="activeWorkspaceSegment === 'movies'" :movie-filters="movieFilters" :match-filter-options="matchFilterOptions" :quality-filter-options="qualityFilterOptions" :movies-loading="moviesLoading" :supplement-movies="supplementMovies" :movies-total-pages="moviesTotalPages" :movie-page="moviePage" :batch-enriching="batchEnriching" :candidate-importing="candidateImporting" :enriching-movies="enrichingMovies" :apply-image-fallback="applyImageFallback" :movie-cover="movieCover" :movie-categories="movieCategories" :movie-match-class="movieMatchClass" :movie-match-label="movieMatchLabel" @apply-filters="applyMovieFilters" @batch-enrich="batchEnrichMovies" @create-candidates="createDownloadCandidates" @enrich="enrichMovie" @open-sources="openMovieSources" @go-page="goMoviePage" @refresh="loadMovies" @clear-filters="clearMovieFilters" />
@@ -113,7 +107,7 @@
             <button class="btn btn-ghost btn-sm" type="button" @click="applyJobFilters">刷新</button>
           </div>
         </div>
-        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="actorContext" :job-label="jobActorLabel" :status-label="statusLabel" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="startSupplement" />
+        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="actorContext" :job-label="jobActorLabel" :status-label="statusLabel" :total-count="jobsTotalCount" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="startSupplement" />
         <div v-if="jobsTotalPages > 1" class="pagination">
           <button class="btn btn-ghost btn-sm" :disabled="jobPage <= 1" @click="jobPage--; loadJobs()">上一页</button>
           <span>{{ jobPage }} / {{ jobsTotalPages }}</span>
@@ -193,7 +187,7 @@
             <em>{{ item.value }}</em>
           </span>
         </div>
-        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="null" :job-label="jobActorLabel" :status-label="statusLabel" :context-label="globalQueueContextLabel" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="clearActorContext" />
+        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="null" :job-label="jobActorLabel" :status-label="statusLabel" :context-label="globalQueueContextLabel" :total-count="jobsTotalCount" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="clearActorContext" />
       </div>
     </section>
     <SupplementSourceDiagnosticsDialog v-if="sourceDiagnosticsOpen" v-model:manual-content-id="manualContentId" :source-diagnostics-loading="sourceDiagnosticsLoading" :source-diagnostics="sourceDiagnostics" :diagnostics-movie-title="diagnosticsMovieTitle" :diagnostics-movie-subtitle="diagnosticsMovieSubtitle" :manual-action-loading="manualActionLoading" :field-label="fieldLabel" :field-value-preview="fieldValuePreview" :manual-action-label="manualActionLabel" :format-action-time="formatActionTime" @close="closeMovieSources" @match="manualMatchMovie" @unmatch="manualUnmatchMovie" @ignore="manualIgnoreMovie" />
@@ -236,7 +230,7 @@ export default {
       jobPage: 1,
       jobsTotalCount: 0,
       jobsTotalPages: 1,
-      jobFilters: { status: '', actress_id: '', source: '', error_provider: '' },
+      jobFilters: { status: '', actress_id: '', source: '', error_provider: '', error_reason: '' },
       actorContext: null,
       actorContextLoading: false,
       actorSearchKeyword: '',
@@ -247,32 +241,10 @@ export default {
       showSourceHealthGlobal: false,
       showGlobalMovieRepair: false,
       activeWorkspaceSegment: 'movies',
-      workspaceSegments: [
-        { key: 'movies', label: '作品字段' },
-        { key: 'jobs', label: '任务队列' },
-        { key: 'diagnostics', label: '来源诊断' },
-        { key: 'sourceHealth', label: '来源状态' },
-      ],
-      matchFilterOptions: [
-        { value: null, label: '全部' },
-        { value: false, label: '未匹配' },
-        { value: true, label: '已匹配' },
-      ],
-      qualityFilterOptions: [
-        { value: '', label: '全部质量' },
-        { value: 'missing_cover', label: '缺封面' },
-        { value: 'missing_runtime', label: '缺时长' },
-        { value: 'missing_maker', label: '缺厂商' },
-        { value: 'missing_categories', label: '缺分类' },
-        { value: 'low_completeness', label: '低完整度' },
-      ],
-      jobStatusOptions: [
-        { value: '', label: '全部状态' },
-        { value: 'queued', label: '排队中' },
-        { value: 'running', label: '运行中' },
-        { value: 'succeeded', label: '已完成' },
-        { value: 'failed', label: '失败' },
-      ],
+      workspaceSegments: [{ key: 'movies', label: '作品字段' }, { key: 'jobs', label: '任务队列' }, { key: 'diagnostics', label: '来源诊断' }, { key: 'sourceHealth', label: '来源状态' }],
+      matchFilterOptions: [{ value: null, label: '全部' }, { value: false, label: '未匹配' }, { value: true, label: '已匹配' }],
+      qualityFilterOptions: [{ value: '', label: '全部质量' }, { value: 'missing_cover', label: '缺封面' }, { value: 'missing_runtime', label: '缺时长' }, { value: 'missing_maker', label: '缺厂商' }, { value: 'missing_categories', label: '缺分类' }, { value: 'low_completeness', label: '低完整度' }],
+      jobStatusOptions: [{ value: '', label: '全部状态' }, { value: 'queued', label: '排队中' }, { value: 'running', label: '运行中' }, { value: 'succeeded', label: '已完成' }, { value: 'failed', label: '失败' }],
       supplementStatus: null,
       supplementPolling: null,
       recovering: false,
@@ -338,6 +310,13 @@ export default {
       return status === 'running' || status === 'queued'
     },
     isSupplementFailed() { return this.supplementStatus?.last_job?.status === 'failed' },
+    workspaceJobStatusCounts() {
+      return this.jobs.reduce((counts, job) => {
+        const status = job?.status || 'unknown'
+        counts[status] = (counts[status] || 0) + 1
+        return counts
+      }, { failed: 0, queued: 0, running: 0, succeeded: 0 })
+    },
     workspaceRepairTone() {
       if (this.isSupplementFailed) return 'failed'
       if (this.isSupplementRunning) return 'running'
@@ -530,6 +509,9 @@ export default {
         ...(this.jobFilters.error_provider
           ? [{ label: '定位', value: this.jobFilters.error_provider, provider: this.jobFilters.error_provider }]
           : []),
+        ...(this.jobFilters.error_reason
+          ? [{ label: '原因', value: this.jobFilters.error_reason, reason: this.jobFilters.error_reason }]
+          : []),
         { label: '结果', value: this.jobsLoading ? '读取中' : `${this.jobsTotalCount || 0} 个任务` },
       ]
     },
@@ -541,7 +523,7 @@ export default {
   watch: {
     '$route.fullPath': {
       handler() {
-        if (this.$route.path !== '/supplement') return
+        if (!this.isSupplementRoute()) return
         this.applyRouteState()
       },
     },
@@ -555,7 +537,7 @@ export default {
     }
   },
   activated() {
-    if (!this.hasInitialized || !this.wasDeactivated || this.$route.path !== '/supplement') return
+    if (!this.hasInitialized || !this.wasDeactivated || !this.isSupplementRoute()) return
     this.wasDeactivated = false
     this.applyRouteState()
     const now = Date.now()
@@ -590,6 +572,7 @@ export default {
         source: field('source'),
         status: field('status'),
         error_provider: field('error_provider'),
+        error_reason: field('error_reason'),
         q: field('q'),
         quality: field('quality'),
       })
@@ -600,6 +583,16 @@ export default {
         result[key] = String(value)
         return result
       }, {})
+    },
+    isSupplementRoute() {
+      return this.$route.path === '/supplement' || this.$route.path.startsWith('/supplement/')
+    },
+    supplementRouteTab() {
+      if (this.$route.path === '/supplement/movies') return 'movies'
+      if (this.$route.path === '/supplement/jobs') return 'jobs'
+      if (this.$route.path === '/supplement/sources') return 'sources'
+      if (this.$route.path === '/supplement/stats') return 'stats'
+      return this.$route.query.tab
     },
     async replaceSupplementRoute(query = {}) {
       const nextQuery = this.buildSupplementQuery(query)
@@ -616,20 +609,22 @@ export default {
       if (segment === 'sourceHealth') await this.loadSourceHealth(options)
     },
     async applyRouteState({ force = false } = {}) {
-      if (this.$route.path !== '/supplement') return
+      if (!this.isSupplementRoute()) return
       const routeKey = this.supplementQueryKey()
       if (!force && routeKey === this.lastAppliedRouteKey) return
       this.lastAppliedRouteKey = routeKey
-      const tab = this.$route.query.tab
+      const tab = this.supplementRouteTab()
       const actressId = this.$route.query.actress_id
       const source = typeof this.$route.query.source === 'string' ? this.$route.query.source.trim() : ''
       const status = typeof this.$route.query.status === 'string' ? this.$route.query.status.trim() : ''
       const errorProvider = typeof this.$route.query.error_provider === 'string' ? this.$route.query.error_provider.trim() : ''
+      const errorReason = typeof this.$route.query.error_reason === 'string' ? this.$route.query.error_reason.trim() : ''
       const q = typeof this.$route.query.q === 'string' ? this.$route.query.q.trim() : ''
       const quality = typeof this.$route.query.quality === 'string' ? this.$route.query.quality.trim() : ''
       this.jobFilters.source = source
       this.jobFilters.status = status
       this.jobFilters.error_provider = errorProvider
+      this.jobFilters.error_reason = errorReason
       if (this.movieFilters.q !== q) {
         this.movieFilters.q = q
         this.moviePage = 1
@@ -694,27 +689,32 @@ export default {
     },
     workspaceSegmentMeta(key) {
       if (key === 'movies') {
-        return { count: this.moviesTotalCount || this.supplementStatus?.supplement_movies || 0, status: this.movieFilters.quality || this.movieFilters.q ? '已筛选' : '字段池' }
+        return { count: this.moviesTotalCount || this.supplementStatus?.supplement_movies || 0, status: this.movieFilters.quality || this.movieFilters.q ? '已筛选' : '字段池', nextStep: '先补字段', tone: this.workspaceMovieFieldGapCount ? 'warning' : 'ready' }
       }
       if (key === 'jobs') {
-        const runningJobs = this.jobs.filter(job => ['queued', 'running'].includes(job.status))
         const lastJobStatus = this.supplementStatus?.last_job?.status
         const lastJobCount = this.supplementStatus?.last_job?.id ? 1 : 0
-        if (lastJobStatus === 'failed') {
-          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务失败' }
+        const failedJobs = this.workspaceJobStatusCounts.failed
+        const runningJobs = this.workspaceJobStatusCounts.running + this.workspaceJobStatusCounts.queued
+        if (failedJobs > 0 || lastJobStatus === 'failed') {
+          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务失败', nextStep: '处理失败任务', tone: 'failed' }
         }
-        if (['queued', 'running'].includes(lastJobStatus) || runningJobs.length) {
-          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务进行中' }
+        if (['queued', 'running'].includes(lastJobStatus) || runningJobs) {
+          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务进行中', nextStep: '观察队列', tone: 'warning' }
         }
-        return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '可调度' }
+        return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '可调度', nextStep: '查看任务', tone: 'ready' }
       }
       if (key === 'diagnostics') {
-        return { count: this.sourceDiagnostics?.chosen_fields?.length || 0, status: this.sourceDiagnosticsOpen ? '检查中' : '待选择' }
+        return { count: this.sourceDiagnostics?.chosen_fields?.length || this.workspacePendingCandidateCount || 0, status: this.sourceDiagnosticsOpen ? '检查中' : '待选择', nextStep: '打开诊断', tone: this.sourceDiagnosticsOpen || this.workspacePendingCandidateCount ? 'warning' : 'ready' }
       }
       if (key === 'sourceHealth') {
-        return { count: this.sourceHealthRows.length, status: this.sourceHealthLoading ? '刷新中' : '来源池' }
+        const degraded = this.sourceHealthRows.some(source => ['degraded', 'cooling_down', 'paused'].includes(source.runtime_status))
+        return { count: this.sourceHealthRows.length, status: this.sourceHealthLoading ? '刷新中' : '来源池', nextStep: '查看降级来源', tone: degraded || this.sourceHealthLoading ? 'warning' : 'ready' }
       }
-      return { count: 0, status: '' }
+      return { count: 0, status: '', nextStep: '', tone: 'ready' }
+    },
+    workspaceSegmentClass(key) {
+      return `segment-${this.workspaceSegmentMeta(key).tone || 'ready'}`
     },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
@@ -841,6 +841,7 @@ export default {
       this.jobFilters.actress_id = ''
       this.jobFilters.source = ''
       this.jobFilters.error_provider = ''
+      this.jobFilters.error_reason = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       this.actorSearchKeyword = ''
@@ -861,6 +862,7 @@ export default {
       this.jobFilters.source = ''
       this.jobFilters.status = ''
       this.jobFilters.error_provider = ''
+      this.jobFilters.error_reason = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs' })
@@ -874,6 +876,7 @@ export default {
       this.jobFilters.actress_id = ''
       this.jobFilters.source = ''
       this.jobFilters.error_provider = ''
+      this.jobFilters.error_reason = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'sources' })
@@ -888,6 +891,7 @@ export default {
       this.jobFilters.status = ''
       this.jobFilters.source = 'gfriends'
       this.jobFilters.error_provider = ''
+      this.jobFilters.error_reason = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs', source: 'gfriends' })
@@ -1130,21 +1134,10 @@ export default {
     },
     async runWorkspaceRepairAction(action) {
       if (!action) return
-      if (action.target === 'sourceHealth') {
-        await this.setWorkspaceSegment('sourceHealth')
-        return
-      }
-      if (action.target === 'jobs') {
-        await this.setWorkspaceSegment('jobs')
-        return
-      }
-      if (action.target === 'movies') {
-        await this.setWorkspaceSegment('movies')
-        return
-      }
-      if (action.target === 'diagnostics') {
-        await this.setWorkspaceSegment('diagnostics')
-      }
+      if (action.target === 'sourceHealth') return this.setWorkspaceSegment('sourceHealth')
+      if (action.target === 'jobs') return this.setWorkspaceSegment('jobs')
+      if (action.target === 'movies') return this.setWorkspaceSegment('movies')
+      if (action.target === 'diagnostics') return this.setWorkspaceSegment('diagnostics')
     },
     async openDiagnosticsFocusMovie() {
       if (!this.diagnosticsFocusMovie) return
@@ -1326,6 +1319,7 @@ export default {
         if (this.jobFilters.actress_id) params.actress_id = this.jobFilters.actress_id
         if (this.jobFilters.source) params.source = this.jobFilters.source
         if (this.jobFilters.error_provider) params.error_provider = this.jobFilters.error_provider
+        if (this.jobFilters.error_reason) params.error_reason = this.jobFilters.error_reason
         const resp = await api.listSupplementJobs(params)
         const data = resp.data || resp
         this.jobs = data.data || []
@@ -1344,6 +1338,7 @@ export default {
         status: this.jobFilters.status,
         source: this.jobFilters.source,
         error_provider: this.jobFilters.error_provider,
+        error_reason: this.jobFilters.error_reason,
         actress_id: this.jobFilters.actress_id,
       })
       if (!routeChanged) await this.loadJobs()

@@ -1111,6 +1111,8 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
             source=None,
             q=None,
             needs_magnet=None,
+            missing_cover=None,
+            latest_event_action=None,
             limit=10,
             offset=10,
             include_stats=False,
@@ -1135,11 +1137,102 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
             source=None,
             q=None,
             needs_magnet=None,
+            missing_cover=None,
+            latest_event_action=None,
             limit=10,
             offset=0,
             include_stats=True,
         )
         self.assertEqual(result["stats"], {"candidate": 1})
+
+    async def test_list_candidates_forwards_latest_event_action_filter(self):
+        from routers import downloads
+
+        with patch.object(downloads, "list_download_candidates_page", return_value={
+            "data": [{"id": 1, "content_id": "SIVR-438"}],
+            "total": 1,
+        }) as page_helper:
+            result = await downloads.list_candidates(
+                status="candidate",
+                needs_magnet=True,
+                latest_event_action="magnet_enrich_failed",
+                page=1,
+                page_size=10,
+            )
+
+        page_helper.assert_called_once_with(
+            status="candidate",
+            actress_id=None,
+            source=None,
+            q=None,
+            needs_magnet=True,
+            missing_cover=None,
+            latest_event_action="magnet_enrich_failed",
+            limit=10,
+            offset=0,
+            include_stats=False,
+        )
+        self.assertEqual(result["total"], 1)
+
+    async def test_list_candidates_forwards_missing_cover_filter(self):
+        from routers import downloads
+
+        with patch.object(downloads, "list_download_candidates_page", return_value={
+            "data": [{"id": 1, "content_id": "SIVR-438"}],
+            "total": 1,
+        }) as page_helper:
+            result = await downloads.list_candidates(
+                status="candidate",
+                source="supplement",
+                missing_cover=True,
+                page=1,
+                page_size=10,
+            )
+
+        page_helper.assert_called_once_with(
+            status="candidate",
+            actress_id=None,
+            source="supplement",
+            q=None,
+            needs_magnet=None,
+            missing_cover=True,
+            latest_event_action=None,
+            limit=10,
+            offset=0,
+            include_stats=False,
+        )
+        self.assertEqual(result["total"], 1)
+
+    async def test_process_candidates_forwards_quality_drilldown_filters(self):
+        from routers import downloads
+
+        with patch.object(downloads, "preview_candidates", new=AsyncMock(return_value={"status": "ok"})) as preview:
+            result = await downloads.process_candidates_endpoint(downloads.ProcessCandidatesRequest(
+                dry_run=True,
+                status="candidate",
+                source="supplement",
+                needs_magnet=True,
+                missing_cover=True,
+                latest_event_action="magnet_enrich_failed",
+                limit=20,
+            ))
+
+        preview.assert_awaited_once_with(
+            filters={
+                "status": "candidate",
+                "actress_id": None,
+                "source": "supplement",
+                "q": None,
+                "needs_magnet": True,
+                "missing_cover": True,
+                "latest_event_action": "magnet_enrich_failed",
+            },
+            policy=None,
+            enrich=True,
+            limit=20,
+            force=False,
+        )
+        self.assertEqual(result["status"], "ok")
 
     async def test_list_candidates_uses_short_response_cache_with_bypass(self):
         from routers import downloads
@@ -1251,6 +1344,28 @@ class DownloadCandidateRouterTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
             "supplement": 1,
         })
         self.assertEqual(result["candidate_by_source"], result["by_source"])
+
+    async def test_candidate_summary_can_include_latest_event_action_counts(self):
+        from database import add_download_candidate_event, upsert_download_candidate
+        from routers import downloads
+
+        failed = upsert_download_candidate(content_id="FAIL-001", source="subscription", status="candidate")
+        stale = upsert_download_candidate(content_id="STALE-001", source="subscription", status="candidate")
+        skipped = upsert_download_candidate(content_id="SKIP-001", source="supplement", status="candidate")
+        upsert_download_candidate(content_id="NONE-001", source="supplement", status="candidate")
+        add_download_candidate_event(failed["id"], "magnet_enrich_failed", "no magnet", "manual")
+        add_download_candidate_event(stale["id"], "magnet_enrich_failed", "no magnet", "manual")
+        add_download_candidate_event(stale["id"], "magnet_enriched", "magnet:?x", "manual")
+        add_download_candidate_event(skipped["id"], "policy_skipped", "manual policy", "manual")
+
+        result = await downloads.candidate_summary(status="candidate", include_sources=True, cache_control="0")
+
+        self.assertEqual(result["latest_event_by_action"], {
+            "magnet_enrich_failed": 1,
+            "magnet_enriched": 1,
+            "policy_skipped": 1,
+            "without_event": 1,
+        })
 
     def test_list_download_candidates_page_skips_stats_by_default(self):
         from database import download_candidate

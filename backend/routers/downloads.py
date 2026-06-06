@@ -104,6 +104,8 @@ class ProcessCandidatesRequest(BaseModel):
     source: Optional[str] = None
     q: Optional[str] = None
     needs_magnet: Optional[bool] = None
+    missing_cover: Optional[bool] = None
+    latest_event_action: Optional[str] = None
     limit: int = 50
 
 
@@ -173,6 +175,8 @@ async def list_candidates(
     source: Optional[str] = None,
     q: Optional[str] = None,
     needs_magnet: Optional[bool] = None,
+    missing_cover: Optional[bool] = None,
+    latest_event_action: Optional[str] = None,
     limit: int = 200,
     page: int = 1,
     page_size: Optional[int] = None,
@@ -190,6 +194,8 @@ async def list_candidates(
         "source": source,
         "q": q,
         "needs_magnet": needs_magnet,
+        "missing_cover": missing_cover,
+        "latest_event_action": latest_event_action,
         "page": current_page,
         "page_size": size,
         "include_stats": include_stats,
@@ -203,6 +209,8 @@ async def list_candidates(
             source=source,
             q=q,
             needs_magnet=needs_magnet,
+            missing_cover=missing_cover,
+            latest_event_action=latest_event_action,
             limit=size,
             offset=(current_page - 1) * size,
             include_stats=include_stats,
@@ -236,6 +244,8 @@ async def candidate_summary(
     source: Optional[str] = None,
     q: Optional[str] = None,
     needs_magnet: Optional[bool] = None,
+    missing_cover: Optional[bool] = None,
+    latest_event_action: Optional[str] = None,
     include_sources: bool = False,
     cache_control: Optional[str] = Query(None, alias="cache"),
 ) -> Dict[str, Any]:
@@ -247,6 +257,8 @@ async def candidate_summary(
         "source": source,
         "q": q,
         "needs_magnet": needs_magnet,
+        "missing_cover": missing_cover,
+        "latest_event_action": latest_event_action,
         "include_sources": include_sources,
     }
 
@@ -259,6 +271,8 @@ async def candidate_summary(
             source=source,
             q=q,
             needs_magnet=needs_magnet,
+            missing_cover=missing_cover,
+            latest_event_action=latest_event_action,
         )
 
     return await response_cache.get_or_set_response(
@@ -422,6 +436,8 @@ async def process_candidates_endpoint(req: ProcessCandidatesRequest | None = Non
         "source": body.source,
         "q": body.q,
         "needs_magnet": body.needs_magnet,
+        "missing_cover": body.missing_cover,
+        "latest_event_action": body.latest_event_action,
     }
     if body.dry_run:
         return await preview_candidates(

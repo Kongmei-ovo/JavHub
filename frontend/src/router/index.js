@@ -1,5 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+const supplementPanelRedirect = (tab) => (to) => ({
+  path: '/supplement',
+  query: { ...to.query, tab },
+})
+
 const routes = [
   { path: '/', redirect: '/search' },
   { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
@@ -27,6 +32,10 @@ const routes = [
   { path: '/normalize', name: 'Normalize', redirect: { path: '/library-organize', query: { tab: 'mapping' } } },
   { path: '/translations', name: 'TranslationJobs', component: () => import('../views/TranslationJobs.vue') },
   { path: '/supplement', name: 'Supplement', component: () => import('../views/SupplementManagement.vue') },
+  { path: '/supplement/movies', redirect: supplementPanelRedirect('movies') },
+  { path: '/supplement/jobs', redirect: supplementPanelRedirect('jobs') },
+  { path: '/supplement/sources', redirect: supplementPanelRedirect('sources') },
+  { path: '/supplement/stats', redirect: supplementPanelRedirect('stats') },
   { path: '/tasks', redirect: '/downloads' },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]

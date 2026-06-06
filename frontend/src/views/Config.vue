@@ -71,7 +71,7 @@
               <p>配置基础连接与外部服务集成，包括媒体服务器和元数据来源。</p>
             </div>
             <section class="settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                   <line x1="8" y1="21" x2="16" y2="21"/>
@@ -108,7 +108,7 @@
             </section>
             <!-- JavInfoApi -->
             <section class="settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <ellipse cx="12" cy="5" rx="9" ry="3"/>
                   <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
@@ -165,7 +165,7 @@
               <p>配置 Telegram Bot、接收用户和通知事件。</p>
             </div>
             <section class="settings-group telegram-settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
@@ -230,7 +230,7 @@
               </div>
             </section>
             <section class="settings-group notification-settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                   <path d="M13.73 21a2 2 0 01-3.46 0"/>
@@ -244,7 +244,7 @@
                     <span class="setting-note">允许系统发送所有通知事件。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" />
+                    <input type="checkbox" id="notifEnabled" v-model="config.notification.enabled" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row settings-row--toggle" for="notifTelegram">
@@ -253,7 +253,7 @@
                     <span class="setting-note">通过 Telegram Bot 发送通知。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" />
+                    <input type="checkbox" id="notifTelegram" v-model="config.notification.telegram" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row settings-row--toggle" for="notifAutoDownload">
@@ -262,7 +262,7 @@
                     <span class="setting-note">自动任务下发下载时提醒。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" />
+                    <input type="checkbox" id="notifAutoDownload" v-model="config.notification.auto_download_notify" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row settings-row--toggle" for="notifComplete">
@@ -271,7 +271,7 @@
                     <span class="setting-note">下载器报告完成后提醒。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" />
+                    <input type="checkbox" id="notifComplete" v-model="config.notification.download_complete_notify" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row settings-row--toggle" for="notifNewMovie">
@@ -280,7 +280,7 @@
                     <span class="setting-note">订阅或库存扫描发现新内容时提醒。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" />
+                    <input type="checkbox" id="notifNewMovie" v-model="config.notification.new_movie_notify" role="switch" />
                   </span>
                 </label>
               </div>
@@ -293,7 +293,7 @@
               <p>控制候选生成后的处理强度，默认保持人工批准。</p>
             </div>
             <section class="settings-group automation-settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <path d="M3 3v18h18"/>
                   <path d="M7 15l3-3 3 2 5-7"/>
@@ -323,15 +323,12 @@
                     <span class="setting-title">允许自动处理的来源</span>
                     <span class="setting-note">只对勾选来源的下载候选执行自动规则。</span>
                   </div>
-                  <div class="settings-control settings-control--wide">
-                    <div class="source-check-grid">
-                      <label v-for="source in candidateSourceOptions" :key="source.value" class="source-check-item">
-                        <input
-                          type="checkbox"
-                          :checked="config.automation.candidate_sources.includes(source.value)"
-                          @change="toggleAutomationSource(source.value)"
-                        />
-                        <span>{{ source.label }}</span>
+                  <div class="settings-control settings-control--wide source-check-list-control">
+                    <div class="source-check-list" role="group" aria-label="允许自动处理的来源">
+                      <label v-for="source in candidateSourceOptions" :key="source.value" :class="['source-check-item', { 'is-selected': config.automation.candidate_sources.includes(source.value) }]">
+                        <input type="checkbox" :checked="config.automation.candidate_sources.includes(source.value)" @change="toggleAutomationSource(source.value)" />
+                        <span class="source-check-dot" aria-hidden="true"></span>
+                        <span class="source-check-label">{{ source.label }}</span>
                       </label>
                     </div>
                   </div>
@@ -342,7 +339,7 @@
                     <span class="setting-note">规则模式只处理已有 magnet 的候选。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="rulesRequireMagnet" v-model="config.automation.rules_require_magnet" />
+                    <input type="checkbox" id="rulesRequireMagnet" v-model="config.automation.rules_require_magnet" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row">
@@ -350,8 +347,12 @@
                     <span class="setting-title">自动处理间隔</span>
                     <span class="setting-note">分钟，0 表示关闭后台自动处理。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model.number="config.automation.auto_process_interval_minutes" type="number" min="0" max="1440" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.automation.auto_process_interval_minutes" type="number" min="0" max="1440" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">分钟</span>
+                      <span class="settings-number-range">0-1440</span>
+                    </span>
                   </span>
                 </label>
                 <label class="settings-row">
@@ -359,8 +360,12 @@
                     <span class="setting-title">单次自动下发上限</span>
                     <span class="setting-note">0 表示不限。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model.number="config.automation.max_auto_downloads_per_run" type="number" min="0" max="500" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.automation.max_auto_downloads_per_run" type="number" min="0" max="500" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">次</span>
+                      <span class="settings-number-range">0-500</span>
+                    </span>
                   </span>
                 </label>
                 <label class="settings-row">
@@ -368,15 +373,19 @@
                     <span class="setting-title">24 小时自动下发上限</span>
                     <span class="setting-note">0 表示不限。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model.number="config.automation.max_auto_downloads_per_24h" type="number" min="0" max="5000" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.automation.max_auto_downloads_per_24h" type="number" min="0" max="5000" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">24 小时</span>
+                      <span class="settings-number-range">0-5000</span>
+                    </span>
                   </span>
                 </label>
               </div>
             </section>
             <!-- 磁力索引源 -->
             <section class="settings-group torznab-settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03"/>
                   <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22"/>
@@ -390,7 +399,7 @@
                     <span class="setting-note">连接 Prowlarr、Jackett 或 Torznab 服务。</span>
                   </span>
                   <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="torznabEnabled" v-model="config.sources.torznab.enabled" />
+                    <input type="checkbox" id="torznabEnabled" v-model="config.sources.torznab.enabled" role="switch" />
                   </span>
                 </label>
                 <label class="settings-row">
@@ -445,8 +454,12 @@
                     <span class="setting-title">Limit</span>
                     <span class="setting-note">单次查询返回上限。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model.number="config.sources.torznab.limit" type="number" min="1" max="100" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.sources.torznab.limit" type="number" min="1" max="100" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">条</span>
+                      <span class="settings-number-range">1-100</span>
+                    </span>
                   </span>
                 </label>
                 <label class="settings-row">
@@ -454,15 +467,19 @@
                     <span class="setting-title">Timeout</span>
                     <span class="setting-note">请求等待秒数。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model.number="config.sources.torznab.timeout" type="number" min="1" max="60" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.sources.torznab.timeout" type="number" min="1" max="60" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">秒</span>
+                      <span class="settings-number-range">1-60</span>
+                    </span>
                   </span>
                 </label>
               </div>
             </section>
             <!-- 爬虫 -->
             <section class="settings-group crawler-settings-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
@@ -475,8 +492,12 @@
                     <span class="setting-title">请求间隔</span>
                     <span class="setting-note">秒，控制爬虫访问节奏。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model="config.crawler.request_interval" type="number" min="1" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.crawler.request_interval" type="number" min="1" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">秒</span>
+                      <span class="settings-number-range">>=1</span>
+                    </span>
                   </span>
                 </label>
                 <label class="settings-row">
@@ -484,15 +505,19 @@
                     <span class="setting-title">订阅检查时间</span>
                     <span class="setting-note">小时，0-23。</span>
                   </span>
-                  <span class="settings-control settings-control--compact">
-                    <input class="input" v-model="config.scheduler.subscription_check_hour" type="number" min="0" max="23" />
+                  <span class="settings-control settings-control--compact settings-control--number">
+                    <span class="settings-number-control">
+                      <input class="input" v-model.number="config.scheduler.subscription_check_hour" type="number" min="0" max="23" step="1" inputmode="numeric" />
+                      <span class="settings-number-unit">时</span>
+                      <span class="settings-number-range">0-23</span>
+                    </span>
                   </span>
                 </label>
               </div>
             </section>
             <!-- 库存对比定时任务 -->
             <section class="settings-group inventory-schedule-group">
-              <div class="settings-card-header">
+              <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
@@ -540,7 +565,7 @@
             </div>
             <div class="appearance-settings-stack">
               <section class="settings-group appearance-global-group">
-                <div class="settings-card-header">
+                <div class="settings-group-header">
                   <h2>全局偏好</h2>
                   <span class="appearance-chip">{{ displayLangLabel }}</span>
                 </div>
@@ -566,7 +591,7 @@
                 </div>
               </section>
               <section class="settings-group appearance-search-group">
-                <div class="settings-card-header">
+                <div class="settings-group-header">
                   <h2>影片检索</h2>
                   <span class="appearance-chip">{{ config.javinfo.page_size }} 条 / 页</span>
                 </div>
@@ -622,7 +647,7 @@
                 </div>
               </section>
               <section class="settings-group appearance-discovery-group">
-                <div class="settings-card-header">
+                <div class="settings-group-header">
                   <h2>随机探索</h2>
                   <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
                 </div>
@@ -702,7 +727,7 @@
                 </div>
               </section>
               <section class="settings-group appearance-visual-group">
-                <div class="settings-card-header">
+                <div class="settings-group-header">
                   <h2>题材 / 系列气泡</h2>
                 </div>
                 <div class="settings-list">
@@ -756,7 +781,7 @@
             </div>
           </div>
           <AdvancedSettingsPanel
-            v-else-if="activeGroup === 'advanced'"
+            v-if="activeGroup === 'advanced'"
             :config="config"
             :can-save-config="canSaveConfig"
           />
@@ -785,17 +810,17 @@
   </div>
 </template>
 <script>
-import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import { displayLang } from '../utils/displayLang.js'
 import { DEFAULT_SEARCH_PREFERENCES, loadSearchPreferences, saveSearchPreferences } from '../utils/searchPreferences.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import GlassSelect from '../components/GlassSelect.vue'
+import { AdvancedSettingsPanel } from '../features/config/advancedSettingsAsync.js'
 import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG } from '../features/config/configDefaults.js'
+import { actressPageSizeOptions, avatarSizeOptions, candidateSourceOptions, defaultTabOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchServiceOptions, searchSortOptions, seriesPageSizeOptions, tagTuningControls } from '../features/config/configOptions.js'
 const BUBBLE_CFG_KEYS = Object.keys(DEFAULT_BUBBLE_CFG)
 const AI_PROVIDER_KEYS = ['openai_compatible', 'gemini', 'ollama']
-const AdvancedSettingsPanel = defineAsyncComponent(() => import('../features/config/AdvancedSettingsPanel.vue'))
 export default {
   name: 'Config',
   components: { AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect },
@@ -830,58 +855,17 @@ export default {
       activeGroup: 'services',
       bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       searchPrefs: { ...DEFAULT_SEARCH_PREFERENCES },
-      pageSizeOptions: [15, 30, 50, 100],
-      avatarSizeOptions: [
-        { value: 'small', label: '小', hint: '头像 60px' },
-        { value: 'medium', label: '中', hint: '头像 80px' },
-        { value: 'large', label: '大', hint: '头像 100px' },
-      ],
-      actressPageSizeOptions: [24, 36, 48, 60],
-      seriesPageSizeOptions: [12, 24, 36, 48],
-      defaultTabOptions: [
-        { value: 'genre', label: '题材' },
-        { value: 'actress', label: '演员' },
-        { value: 'series', label: '系列' },
-      ],
-      displayLangOptions: [
-        { value: 'ja', label: '日文' },
-        { value: 'zh', label: '中文' },
-        { value: 'en', label: '英文' },
-      ],
-      searchSortOptions: [
-        { value: 'random', label: '随机' },
-        { value: 'none', label: '无排序' },
-        { value: 'release_date_desc', label: '发行日新到旧' },
-        { value: 'release_date_asc', label: '发行日旧到新' },
-        { value: 'title_ja_asc', label: '标题 A-Z' },
-        { value: 'title_ja_desc', label: '标题 Z-A' },
-        { value: 'runtime_mins_desc', label: '时长长到短' },
-        { value: 'runtime_mins_asc', label: '时长短到长' },
-      ],
-      searchServiceOptions: [
-        { value: '', label: '全部版本' },
-        { value: 'digital', label: '数字版' },
-        { value: 'mono', label: '单体版' },
-        { value: 'rental', label: '租赁版' },
-        { value: 'ebook', label: '写真' },
-      ],
-      downloadPolicyOptions: [
-        { value: 'manual', label: '人工批准', hint: '只生成候选，下载必须手动批准。' },
-        { value: 'rules', label: '规则自动', hint: '自动处理允许来源中符合规则的候选。' },
-        { value: 'auto', label: '全自动', hint: '自动补磁力并下发允许来源中的候选。' },
-      ],
-      candidateSourceOptions: [
-        { value: 'subscription', label: '订阅发现' },
-        { value: 'inventory', label: '库存发现' },
-        { value: 'supplement', label: '补全发现' },
-        { value: 'manual', label: '手动加入' },
-      ],
-      tagTuningControls: [
-        { key: 'bubbleCount', label: '显示数量', min: 12, max: 120, step: 6, unit: '' },
-        { key: 'baseSize', label: '基础尺寸', min: 8, max: 48, step: 1, unit: 'px' },
-        { key: 'fillPercent', label: '填充间距', min: 30, max: 200, step: 5, unit: '%' },
-        { key: 'spacing', label: '标签间距', min: 0, max: 48, step: 2, unit: 'px' },
-      ],
+      pageSizeOptions,
+      avatarSizeOptions,
+      actressPageSizeOptions,
+      seriesPageSizeOptions,
+      defaultTabOptions,
+      displayLangOptions,
+      searchSortOptions,
+      searchServiceOptions,
+      downloadPolicyOptions,
+      candidateSourceOptions,
+      tagTuningControls,
       previewTags: ['剧情', '高清', '限定', '新作', '字幕'],
     }
   },
@@ -1225,3 +1209,4 @@ export default {
 }
 </script>
 <style scoped src="../features/config/config.css"></style>
+<style scoped src="../features/config/configAppearance.css"></style>

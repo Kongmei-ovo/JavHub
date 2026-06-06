@@ -16,14 +16,20 @@ const files = {
   libraryOrganize: readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
   logs: readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8'),
   supplement: readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8'),
-  supplementDiagnostics: readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
+  supplementDiagnostics: [
+    readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8'),
+  ].join('\n'),
   operations: readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8'),
   videoModal: readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8'),
   candidates: readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
   entities: readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8'),
   magnetParse: readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8'),
   config: readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
-  advancedConfig: readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
+  advancedConfig: [
+    readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/config/advancedSettingsPanelResponsive.css', import.meta.url), 'utf8'),
+  ].join('\n'),
   translations: [
     readFileSync(new URL('../features/translations/translationJobs.css', import.meta.url), 'utf8'),
     readFileSync(new URL('../features/translations/translationPanelControls.css', import.meta.url), 'utf8'),

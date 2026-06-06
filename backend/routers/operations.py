@@ -42,6 +42,10 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
 
         supplement = await get_supplement_status()
         repair_progress = data_quality_repair_progress(supplement)
+        candidate_preview = await _candidate_repair_preview(candidate_stats)
+        if candidate_preview:
+            repair_progress.setdefault("missing_download_link", {})["candidate_preview"] = candidate_preview
+        visible_supplement = _public_supplement_status(supplement)
         if repair_progress:
             data_quality = build_data_quality_overview(limit=8, repair_progress=repair_progress)
         else:
@@ -74,7 +78,7 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
                 "running": sum(1 for job in jobs if job.get("status") == "running"),
                 "failed": sum(1 for job in jobs if job.get("status") == "failed"),
             },
-            "supplement": supplement,
+            "supplement": visible_supplement,
             "variant_index": variant_index,
             "data_quality": data_quality,
         }
@@ -88,6 +92,25 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
             bypass=True,
         )
     return await cache.get_or_set_response(_CACHE_NAMESPACE, {}, produce, ttl=_CACHE_TTL)
+
+
+def _public_supplement_status(supplement: dict[str, Any]) -> dict[str, Any]:
+    public = dict(supplement)
+    public.pop("failed_diagnostics", None)
+    return public
+
+
+async def _candidate_repair_preview(candidate_stats: dict[str, Any]) -> dict[str, Any] | None:
+    if int(candidate_stats.get("needs_magnet") or 0) <= 0:
+        return None
+    from services.candidate_processor import preview_candidates
+
+    return await preview_candidates(
+        filters={"status": "candidate", "needs_magnet": True},
+        policy="rules",
+        enrich=True,
+        limit=50,
+    )
 
 
 @router.post("/candidate-processing/run")

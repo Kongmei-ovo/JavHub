@@ -432,6 +432,7 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
                 status="failed",
                 actress_id=123,
                 error_provider="avbase",
+                error_reason="concurrency_limit",
             )
 
         mock_client.proxy_get.assert_awaited_once_with(
@@ -443,6 +444,7 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
                 "status": "failed",
                 "actress_id": 123,
                 "error_provider": "avbase",
+                "error_reason": "concurrency_limit",
             },
         )
 

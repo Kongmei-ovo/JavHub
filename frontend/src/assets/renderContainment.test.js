@@ -16,7 +16,9 @@ const sources = new Map([
   ['subscription.css', readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8')],
   ['supplementManagement.css', readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8')],
   ['supplementMoviesPanel.css', readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8')],
+  ['supplementMovieRepair.css', readFileSync(new URL('../features/supplement/supplementMovieRepair.css', import.meta.url), 'utf8')],
   ['supplementSourceDiagnosticsDialog.css', readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8')],
+  ['supplementDiagnosticsFields.css', readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8')],
   ['SupplementJobList.vue', readFileSync(new URL('../features/supplement/SupplementJobList.vue', import.meta.url), 'utf8')],
 ])
 

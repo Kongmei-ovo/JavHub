@@ -119,6 +119,9 @@
         <span class="metric-label">补全发现</span>
       </button>
     </div>
+    <div v-if="candidateFilterLedger.length" class="candidate-filter-ledger" aria-label="当前候选筛选">
+      <span v-for="filter in candidateFilterLedger" :key="filter.key" class="candidate-filter-token">{{ filter.label }}</span>
+    </div>
 
     <!-- 任务过滤栏 -->
     <div v-if="filterStatus" class="filter-bar" @click="clearTaskStatus">
@@ -216,6 +219,7 @@
       :candidate-total-pages="candidateTotalPages"
       :candidate-page="candidatePage"
       :candidate-total="candidateTotal"
+      :candidate-repair-scope="candidateRepairScope"
       :filtered-candidates="filteredCandidates"
       :candidate-mutations="candidateMutations"
       :magnet-editor="magnetEditor"
@@ -225,6 +229,7 @@
       @set-status="setCandidateStatus"
       @set-needs-magnet="setNeedsMagnet"
       @set-source="setCandidateSource"
+      @set-latest-event="setCandidateLatestEvent"
       @toggle-selection="toggleCandidateSelection"
       @enrich-visible="enrichVisibleCandidateMagnets"
       @process-visible="processVisibleCandidates"
@@ -311,7 +316,16 @@
 import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import * as homePresentation from '../features/home/homePresentation'
 import { requestConfirm } from '../utils/confirmDialog'
+import {
+  createDefaultDownloaderTypes,
+  downloaderAddressPlaceholder as defaultDownloaderAddressPlaceholder,
+  downloaderPathPlaceholder as defaultDownloaderPathPlaceholder,
+  downloaderTypeMark as defaultDownloaderTypeMark,
+  supportsDownloaderTags as defaultSupportsDownloaderTags,
+  tokenPlaceholder as defaultTokenPlaceholder,
+} from '../features/downloaders/downloaderPresentation'
 
 const DownloadCandidatePanel = defineAsyncComponent(() => import('../features/candidates/DownloadCandidatePanel.vue'))
 const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
@@ -325,17 +339,7 @@ export default {
       tasks: [],
       candidates: [],
       downloaders: { default_id: '', clients: [], types: [] },
-      downloaderTypes: [
-        { value: 'openlist', label: 'OpenList / 115' },
-        { value: 'qbittorrent', label: 'qBittorrent' },
-        { value: 'transmission', label: 'Transmission' },
-        { value: 'synology', label: 'Synology Download Station' },
-        { value: 'aria2', label: 'Aria2' },
-        { value: 'deluge', label: 'Deluge' },
-        { value: 'flood', label: 'Flood' },
-        { value: 'rutorrent', label: 'ruTorrent' },
-        { value: 'utorrent', label: 'µTorrent / uTorrent' },
-      ],
+      downloaderTypes: createDefaultDownloaderTypes(),
       savingDownloaders: false,
       testingDownloaderId: '',
       downloaderTestMessages: {},
@@ -356,7 +360,9 @@ export default {
         source: this.$route.query.source || '',
         actress_id: this.$route.query.actress_id || '',
         q: this.$route.query.q || '',
-        needs_magnet: this.$route.query.needs_magnet === '1' ? true : (this.$route.query.needs_magnet === '0' ? false : null)
+        needs_magnet: this.$route.query.needs_magnet === '1' ? true : (this.$route.query.needs_magnet === '0' ? false : null),
+        missing_cover: this.$route.query.missing_cover === '1',
+        latest_event_action: this.$route.query.latest_event_action || '',
       },
       candidatePage: Number(this.$route.query.page || 1) || 1,
       candidatePageSize: 50,
@@ -402,6 +408,41 @@ export default {
     },
     readyCandidateCount() {
       return Math.max((this.candidateStats.candidate || 0) - (this.candidateStats.needs_magnet || 0), 0)
+    },
+    candidateFilterLedger() {
+      if (this.activeTab !== 'candidates') return []
+      const items = [{ key: 'status', label: this.candidateStatusLabel(this.candidateFilter.status || 'candidate') }]
+      if (this.candidateFilter.needs_magnet === true) items.push({ key: 'needs_magnet', label: '待补磁力' })
+      if (this.candidateFilter.needs_magnet === false) items.push({ key: 'ready', label: '可批准' })
+      if (this.candidateFilter.missing_cover) items.push({ key: 'missing_cover', label: '缺封面' })
+      if (this.candidateFilter.source) items.push({ key: 'source', label: `来源 ${this.candidateSourceLabel(this.candidateFilter.source)}` })
+      if (this.candidateFilter.latest_event_action) items.push({ key: 'event', label: `最近 ${this.candidateEventActionLabel(this.candidateFilter.latest_event_action)}` })
+      if (this.candidateFilter.actress_id) items.push({ key: 'actor', label: `演员 ${this.candidateFilter.actress_id}` })
+      if (this.candidateFilter.q) items.push({ key: 'q', label: `搜索 ${this.candidateFilter.q}` })
+      items.push({ key: 'total', label: `当前 ${this.candidateTotal} 条` })
+      return items
+    },
+    visibleMagnetTargetCount() {
+      return this.filteredCandidates.filter(candidate => (
+        (candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet
+      )).length
+    },
+    candidateRepairScopeLabel() {
+      if (this.candidateFilter.needs_magnet === true) return '待补磁力修复'
+      if (this.candidateFilter.missing_cover) return '缺封面候选修复'
+      if (this.candidateFilter.latest_event_action) return `最近 ${this.candidateEventActionLabel(this.candidateFilter.latest_event_action)}`
+      return ''
+    },
+    candidateRepairScope() {
+      const scopeLabel = this.candidateRepairScopeLabel
+      if (!scopeLabel) return null
+      const visibleMagnetTargets = this.visibleMagnetTargetCount
+      return {
+        scopeLabel: this.candidateRepairScopeLabel,
+        total: this.candidateTotal,
+        visibleCount: this.filteredCandidates.length,
+        visibleMagnetTargets,
+      }
     },
     downloaderClients() {
       return this.downloaders.clients || []
@@ -464,6 +505,8 @@ export default {
         actress_id: tab === 'candidates' ? (query.actress_id || '') : this.candidateFilter.actress_id,
         q: tab === 'candidates' ? (query.q || '') : this.candidateFilter.q,
         needs_magnet: query.needs_magnet === '1' ? true : (query.needs_magnet === '0' ? false : null),
+        missing_cover: tab === 'candidates' ? query.missing_cover === '1' : this.candidateFilter.missing_cover,
+        latest_event_action: tab === 'candidates' ? (query.latest_event_action || '') : this.candidateFilter.latest_event_action,
         page: tab === 'candidates' ? (Number(query.page || 1) || 1) : this.candidatePage,
       }
       const { page, ...filterOnly } = nextFilter
@@ -502,6 +545,8 @@ export default {
       if (filter.q) query.q = filter.q
       if (filter.needs_magnet === true) query.needs_magnet = '1'
       if (filter.needs_magnet === false) query.needs_magnet = '0'
+      if (filter.missing_cover) query.missing_cover = '1'
+      if (filter.latest_event_action) query.latest_event_action = filter.latest_event_action
       if (filter.page && Number(filter.page) > 1) query.page = String(Number(filter.page))
       return query
     },
@@ -528,6 +573,8 @@ export default {
         if (this.candidateFilter.actress_id) params.actress_id = this.candidateFilter.actress_id
         if (this.candidateFilter.q) params.q = this.candidateFilter.q
         if (this.candidateFilter.needs_magnet !== null) params.needs_magnet = this.candidateFilter.needs_magnet
+        if (this.candidateFilter.missing_cover) params.missing_cover = this.candidateFilter.missing_cover
+        if (this.candidateFilter.latest_event_action) params.latest_event_action = this.candidateFilter.latest_event_action
         params.page = this.candidatePage
         params.page_size = this.candidatePageSize
         params.include_stats = false
@@ -715,60 +762,21 @@ export default {
       return this.downloaderTypes.find(item => item.value === type)?.label || type || '下载器'
     },
     downloaderTypeMark(type) {
-      const map = {
-        openlist: '115',
-        qbittorrent: 'QB',
-        transmission: 'TR',
-        synology: 'SY',
-        aria2: 'A2',
-        deluge: 'DE',
-        flood: 'FL',
-        rutorrent: 'RU',
-        utorrent: 'µT',
-      }
-      return map[type] || String(type || 'DL').slice(0, 2).toUpperCase()
+      return defaultDownloaderTypeMark(type)
     },
     downloaderAddressPlaceholder(type) {
-      const map = {
-        openlist: 'https://fox.oplist.org',
-        qbittorrent: 'http://localhost:8080',
-        transmission: 'http://localhost:9091',
-        synology: 'http://nas:5000',
-        aria2: 'http://localhost:6800',
-        deluge: 'http://localhost:8112',
-        flood: 'http://localhost:3000',
-        rutorrent: 'https://myrut.com/rutorrent',
-        utorrent: 'http://127.0.0.1:8080/gui/',
-      }
-      return map[type] || 'http://localhost'
+      return defaultDownloaderAddressPlaceholder(type)
     },
     downloaderPathPlaceholder(type) {
-      if (type === 'synology') return 'video/downloads'
-      if (type === 'qbittorrent') return '/downloads 或 category:Movies'
-      if (type === 'openlist') return '/115/AV'
-      if (type === 'utorrent') return 'movie\\ 或留空'
-      return '/downloads'
+      return defaultDownloaderPathPlaceholder(type)
     },
     supportsDownloaderTags(type) {
-      return ['qbittorrent', 'transmission', 'deluge', 'flood', 'rutorrent', 'utorrent'].includes(type)
+      return defaultSupportsDownloaderTags(type)
     },
-    shortDownloaderAddress(address) {
-      const value = String(address || '').trim()
-      if (!value) return ''
-      try {
-        const url = new URL(value)
-        return `${url.host}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/$/, '')
-      } catch (_) {
-        return value.replace(/^https?:\/\//, '').replace(/\/$/, '')
-      }
-    },
-    downloaderPathSummary(client) {
-      if (client.default_path) return client.default_path
-      if (client.category) return `分类 ${client.category}`
-      return '默认路径'
-    },
+    shortDownloaderAddress: homePresentation.shortDownloaderAddress,
+    downloaderPathSummary: homePresentation.downloaderPathSummary,
     tokenPlaceholder(type) {
-      return type === 'aria2' ? 'rpc-secret，可选' : '可选'
+      return defaultTokenPlaceholder(type)
     },
     normalizedDownloaderPayload() {
       return {
@@ -838,6 +846,9 @@ export default {
     setCandidateSource(source) {
       this.pushDownloadRoute(this.candidateRouteQuery({ source, page: 1 }))
     },
+    setCandidateLatestEvent(action) {
+      this.pushDownloadRoute(this.candidateRouteQuery({ latest_event_action: action, page: 1 }))
+    },
     openCandidatePreset({ status = 'candidate', source = '', needs_magnet = null } = {}) {
       this.pushDownloadRoute(this.candidateRouteQuery({ status, source, needs_magnet, page: 1 }))
     },
@@ -848,14 +859,7 @@ export default {
     },
     applyCandidateRunFilters(run, overrides = {}) {
       const filters = { ...(run.filters || {}), ...overrides }
-      this.pushDownloadRoute(this.candidateRouteQuery({
-        status: filters.status || 'candidate',
-        source: filters.source || '',
-        actress_id: filters.actress_id || '',
-        q: filters.q || '',
-        needs_magnet: filters.needs_magnet === undefined ? null : filters.needs_magnet,
-        page: 1,
-      }))
+      this.pushDownloadRoute(this.candidateRouteQuery({ status: filters.status || 'candidate', source: filters.source || '', actress_id: filters.actress_id || '', q: filters.q || '', needs_magnet: filters.needs_magnet === undefined ? null : filters.needs_magnet, missing_cover: Boolean(filters.missing_cover), latest_event_action: filters.latest_event_action || '', page: 1 }))
     },
     toggleCandidateSelection() {
       this.selectingCandidates = !this.selectingCandidates
@@ -965,6 +969,8 @@ export default {
         actress_id: this.candidateFilter.actress_id ? Number(this.candidateFilter.actress_id) : undefined,
         q: this.candidateFilter.q || undefined,
         needs_magnet: this.candidateFilter.needs_magnet,
+        missing_cover: this.candidateFilter.missing_cover || undefined,
+        latest_event_action: this.candidateFilter.latest_event_action || undefined,
         limit: this.candidates.length || 50,
         ...overrides,
       }
@@ -1025,7 +1031,7 @@ export default {
       }
       const confirmed = await requestConfirm({
         title: '批量补充磁力',
-        message: `确认为当前列表中的 ${targets.length} 个下载候选查找并写入磁力？`,
+        message: `确认为当前列表中的 ${targets.length} 个下载候选查找并写入磁力？当前筛选总量 ${this.candidateTotal} 个。`,
         details: '会逐个访问候选的磁力来源，并把找到的磁力保存到候选记录。',
         confirmText: '开始补磁力',
       })
@@ -1095,6 +1101,18 @@ export default {
       const perRun = limits.per_run || 0
       const per24h = limits.per_24h || 0
       return `策略跳过 ${skipped}。单次上限 ${perRun || '不限'}，24 小时上限 ${per24h || '不限'}，当前剩余额度 ${remaining}。`
+    },
+    candidateEventActionLabel(action) {
+      const map = {
+        without_event: '未处理',
+        magnet_enrich_failed: '补磁力失败',
+        magnet_enriched: '已补磁力',
+        policy_skipped: '策略跳过',
+        process_failed: '处理失败',
+        approve_failed: '批准失败',
+        supplement_imported: '补全导入',
+      }
+      return map[action] || action
     },
     async retryFailedCandidateRun(run) {
       if (!run?.id || this.candidateBatchProcessing) return
@@ -1247,31 +1265,12 @@ export default {
         this.setTaskRetrying(task.id, false)
       }
     },
-    statusBadge(status) {
-      const map = { pending: 'badge-pending', downloading: 'badge-info', completed: 'badge-success', failed: 'badge-error' }
-      return map[status] || 'badge-pending'
-    },
-    statusLabel(status) {
-      const map = { pending: '待处理', downloading: '下载中', completed: '已完成', failed: '失败' }
-      return map[status] || status
-    },
-    candidateBadge(status) {
-      const map = { candidate: 'badge-pending', approved: 'badge-info', sent: 'badge-success', failed: 'badge-error', rejected: 'badge-pending' }
-      return map[status] || 'badge-pending'
-    },
-    candidateStatusLabel(status) {
-      const map = { candidate: '待确认', approved: '已批准', sent: '已下发', failed: '失败', rejected: '已拒绝' }
-      return map[status] || status
-    },
-    candidateSourceLabel(source) {
-      const map = { subscription: '订阅', inventory: '库存', supplement: '补全', manual: '手动' }
-      return map[source] || source || '未知来源'
-    },
-    formatTime(time) {
-      if (!time) return ''
-      const d = new Date(time)
-      return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
-    }
+    statusBadge: homePresentation.statusBadge,
+    statusLabel: homePresentation.statusLabel,
+    candidateBadge: homePresentation.candidateBadge,
+    candidateStatusLabel: homePresentation.candidateStatusLabel,
+    candidateSourceLabel: homePresentation.candidateSourceLabel,
+    formatTime: homePresentation.formatDownloadTime,
   }
 }
 </script>

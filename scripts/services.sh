@@ -327,8 +327,8 @@ restart_and_check_label() {
       print_service_log_paths "${name}"
       return 1
     fi
-    if [[ "${label}" == "${BACKEND_LABEL}" ]] && ! check_label_restart_stability "${label}"; then
-      echo "${name} ${url}: unstable after restart"
+    if label_needs_restart_stability_check "${label}" && ! check_label_restart_stability "${label}"; then
+      print_label_unstable "${label}" "after restart"
       print_service_log_paths "${name}"
       return 1
     fi
@@ -727,6 +727,24 @@ check_label_restart_stability() {
   return "${failed}"
 }
 
+label_needs_restart_stability_check() {
+  [[ "$1" == "${BACKEND_LABEL}" || "$1" == "${FRONTEND_LABEL}" ]]
+}
+
+print_label_unstable() {
+  local label="$1"
+  local context="${2:-}"
+  local name url suffix
+
+  name="$(service_name_for_label "${label}")"
+  url="$(health_url_for_label "${label}")"
+  suffix=""
+  if [[ -n "${context}" ]]; then
+    suffix=" ${context}"
+  fi
+  echo "${name} ${url}: unstable${suffix}"
+}
+
 health_url_for_label() {
   case "$1" in
     "${JAVINFO_LABEL}") echo "http://127.0.0.1:8080/health" ;;
@@ -834,6 +852,9 @@ except Exception as exc:
 
 status = text(payload.get("status")) or "unknown"
 print(f"backend readiness: {status}")
+has_detail = any(isinstance(payload.get(key), dict) for key in ("database", "javinfo", "cache"))
+if not has_detail:
+    sys.exit(0 if status == "ok" else 1)
 
 database = payload.get("database") if isinstance(payload.get("database"), dict) else {}
 db_context = ":".join(
@@ -894,6 +915,11 @@ recover_unhealthy_http_services() {
     fi
     if restart_label "${label}" && wait_for_label_http_health "${label}"; then
       echo "${name} ${url}: recovered"
+      if label_needs_restart_stability_check "${label}" && ! check_label_restart_stability "${label}"; then
+        print_label_unstable "${label}" "after restart"
+        print_service_log_paths "${name}"
+        failed=1
+      fi
     else
       echo "${name} ${url}: still failed after restart"
       print_service_log_paths "${name}"
@@ -908,7 +934,13 @@ recover_backend_readiness() {
   local failed=0
 
   if backend_readiness_is_ok; then
-    print_backend_readiness_summary || failed=1
+    if ! print_backend_readiness_summary; then
+      failed=1
+    elif ! check_label_restart_stability "${BACKEND_LABEL}"; then
+      print_label_unstable "${BACKEND_LABEL}"
+      print_service_log_paths "backend"
+      failed=1
+    fi
     return "${failed}"
   fi
 
@@ -917,6 +949,10 @@ recover_backend_readiness() {
   echo "backend readiness: degraded; restarting backend"
   if restart_label "${BACKEND_LABEL}" && wait_for_label_http_health "${BACKEND_LABEL}"; then
     if ! print_backend_readiness_summary; then
+      print_service_log_paths "backend"
+      failed=1
+    elif ! check_label_restart_stability "${BACKEND_LABEL}"; then
+      print_label_unstable "${BACKEND_LABEL}" "after restart"
       print_service_log_paths "backend"
       failed=1
     fi

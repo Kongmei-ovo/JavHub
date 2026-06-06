@@ -1,0 +1,260 @@
+.appearance-section .section-header {
+  margin-bottom: 22px;
+}
+.appearance-settings-stack {
+  display: grid;
+  gap: 18px;
+}
+.preference-stack {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-inner-shadow);
+}
+.preference-section {
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+}
+.preference-section-header,
+.appearance-scope-card-header,
+.scope-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.appearance-section .settings-group-header {
+  justify-content: flex-start;
+}
+.appearance-section .settings-group-header .appearance-chip,
+.appearance-section .settings-group-header .btn {
+  margin-left: auto;
+}
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.preference-section-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 17px;
+  letter-spacing: 0;
+}
+.appearance-scope-grid,
+.discovery-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.discovery-preference-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+.appearance-scope-card,
+.scope-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+}
+.appearance-scope-card.compact-card,
+.scope-card.compact-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.appearance-scope-card-header,
+.scope-card-header {
+  align-items: flex-start;
+}
+.appearance-scope-card-header > div,
+.appearance-scope-card-header .setting-title,
+.appearance-scope-card-header .setting-note,
+.scope-card-header > div,
+.scope-card-header .setting-title,
+.scope-card-header .setting-note {
+  min-width: 0;
+}
+.appearance-scope-card-header .setting-title,
+.appearance-scope-card-header .setting-note,
+.scope-card-header .setting-title,
+.scope-card-header .setting-note {
+  display: block;
+}
+.visual-card {
+  margin-top: 12px;
+}
+.appearance-chip {
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.appearance-setting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.appearance-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 14px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+.appearance-visual-row,
+.appearance-setting-row.vertical {
+  align-items: start;
+}
+.appearance-setting-row.vertical {
+  align-items: stretch;
+  flex-direction: column;
+}
+.appearance-visual-group .settings-list {
+  overflow: visible;
+}
+.appearance-visual-group .settings-row {
+  align-items: start;
+}
+.appearance-section .settings-control .segmented-mini,
+.appearance-section .settings-control .glass-select-control {
+  max-width: 100%;
+}
+.aura-preview {
+  display: flex;
+  align-items: center;
+  align-content: center;
+  flex-wrap: wrap;
+  gap: var(--preview-gap);
+  min-height: 118px;
+  margin-bottom: 10px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 16px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  box-shadow: var(--glass-inner-shadow);
+}
+.preview-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  font-size: var(--preview-font);
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: var(--glass-inner-shadow);
+}
+.threshold-slider {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--glass-active-border);
+  cursor: pointer;
+}
+.tag-tuning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.tuning-control {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 12px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+}
+.tuning-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tuning-copy strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 900px) {
+  .appearance-scope-grid,
+  .discovery-preference-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .preference-section {
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .preference-section-header,
+  .scope-card-header {
+    align-items: center;
+  }
+  .appearance-setting-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .appearance-section .settings-group-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .tag-tuning-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

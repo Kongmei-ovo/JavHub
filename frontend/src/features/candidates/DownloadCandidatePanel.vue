@@ -37,6 +37,40 @@
       </button>
     </div>
 
+    <div v-if="candidateRepairScope" class="candidate-repair-scope" aria-label="候选修复范围">
+      <div>
+        <span>修复范围</span>
+        <strong>{{ candidateRepairScope.scopeLabel }}</strong>
+      </div>
+      <div class="candidate-repair-scope-grid">
+        <span><b>{{ candidateRepairScope.total || 0 }}</b><small>筛选总量</small></span>
+        <span><b>{{ candidateRepairScope.visibleCount || 0 }}</b><small>当前页</small></span>
+        <span><b>{{ candidateRepairScope.visibleMagnetTargets || 0 }}</b><small>当前页可补磁力</small></span>
+      </div>
+    </div>
+
+    <div v-if="candidateLatestEventFilters.length" class="candidate-event-toolbar">
+      <span class="candidate-event-toolbar-label">最近动作</span>
+      <button
+        class="chip"
+        type="button"
+        :class="{ active: !candidateFilter.latest_event_action }"
+        @click="$emit('set-latest-event', '')"
+      >
+        全部
+      </button>
+      <button
+        v-for="filter in candidateLatestEventFilters"
+        :key="filter.action"
+        class="chip"
+        type="button"
+        :class="{ active: candidateFilter.latest_event_action === filter.action }"
+        @click="$emit('set-latest-event', filter.action)"
+      >
+        {{ filter.label }} {{ filter.count }}
+      </button>
+    </div>
+
     <div v-if="selectingCandidates" class="bulk-toolbar">
       <span>已选 {{ selectedCandidateIds.length }} 个</span>
       <button class="btn btn-ghost" type="button" @click="$emit('select-all-visible')">选择当前页</button>
@@ -240,6 +274,7 @@ export default {
     candidateTotalPages: { type: Number, default: 1 },
     candidatePage: { type: Number, default: 1 },
     candidateTotal: { type: Number, default: 0 },
+    candidateRepairScope: { type: Object, default: null },
     filteredCandidates: { type: Array, default: () => [] },
     candidateMutations: { type: Object, default: () => ({}) },
     magnetEditor: { type: Object, required: true },
@@ -251,6 +286,7 @@ export default {
     'set-status',
     'set-needs-magnet',
     'set-source',
+    'set-latest-event',
     'toggle-selection',
     'enrich-visible',
     'process-visible',
@@ -283,6 +319,16 @@ export default {
       if (this.candidateBatchProcessing === 'process') return '处理中...'
       return '按策略处理当前'
     },
+    candidateLatestEventFilters() {
+      const counts = this.candidateStats.latest_event_by_action || {}
+      return Object.entries(counts)
+        .filter(([, count]) => Number(count || 0) > 0)
+        .map(([action, count]) => ({
+          action,
+          count: Number(count || 0),
+          label: this.eventActionLabel(action),
+        }))
+    },
   },
   methods: {
     isCandidateMutating(id) {
@@ -306,6 +352,7 @@ export default {
     },
     eventActionLabel(action) {
       const map = {
+        without_event: '未处理',
         upsert: '写入候选',
         magnet_updated: '手动更新磁力',
         magnet_enriched: '自动补充磁力',
@@ -319,6 +366,7 @@ export default {
         rejected: '拒绝候选',
         bulk_rejected: '批量拒绝',
         bulk_restored: '批量恢复',
+        supplement_imported: '补全导入',
       }
       return map[action] || action
     },

@@ -4,11 +4,23 @@ import { existsSync, readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./Config.vue', import.meta.url), 'utf8')
 const advancedPanelSource = readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8')
+const advancedAsyncSource = readFileSync(new URL('../features/config/advancedSettingsAsync.js', import.meta.url), 'utf8')
+const advancedImportPresentationSource = readFileSync(new URL('../features/config/advancedSettingsImportPresentation.js', import.meta.url), 'utf8')
 const baseStyle = readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8')
 const advancedStyleUrl = new URL('../features/config/advancedSettingsPanel.css', import.meta.url)
-const advancedStyle = existsSync(advancedStyleUrl) ? readFileSync(advancedStyleUrl, 'utf8') : ''
-const externalStyle = `${baseStyle}\n${advancedStyle}`
-const source = `${vueSource}\n${advancedPanelSource}\n${externalStyle}`
+const appearanceStyleUrl = new URL('../features/config/configAppearance.css', import.meta.url)
+const advancedResponsiveStyleUrl = new URL('../features/config/advancedSettingsPanelResponsive.css', import.meta.url)
+const advancedAiStyleUrl = new URL('../features/config/advancedSettingsAi.css', import.meta.url)
+const advancedActionRowsStyleUrl = new URL('../features/config/advancedActionRows.css', import.meta.url)
+const advancedSwitchesStyleUrl = new URL('../features/config/advancedSwitches.css', import.meta.url)
+const advancedStyle = readFileSync(advancedStyleUrl, 'utf8')
+const appearanceStyle = readFileSync(appearanceStyleUrl, 'utf8')
+const advancedResponsiveStyle = readFileSync(advancedResponsiveStyleUrl, 'utf8')
+const advancedAiStyle = readFileSync(advancedAiStyleUrl, 'utf8')
+const advancedBaseStyle = advancedStyle
+const advancedCombinedStyle = `${advancedStyle}\n${advancedAiStyle}\n${advancedResponsiveStyle}`
+const externalStyle = `${baseStyle}\n${appearanceStyle}\n${advancedCombinedStyle}`
+const source = `${vueSource}\n${advancedPanelSource}\n${advancedAsyncSource}\n${externalStyle}`
 const cssBlocksBySelector = new Map()
 
 for (const [, selectors, block] of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
@@ -37,7 +49,9 @@ function singleLayerGlassBackgrounds(css) {
 
 function selectorDefinitionCount(css, selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return [...css.matchAll(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{`, 'g'))].length
+  return [...css.matchAll(/([^{}]+)\{/g)]
+    .filter(([, selectors]) => selectors.split(',').map(part => part.trim()).includes(selector))
+    .length
 }
 
 function vueSectionBlock(className) {
@@ -46,6 +60,26 @@ function vueSectionBlock(className) {
   const end = vueSource.indexOf('\n              </section>', start)
   assert.notEqual(end, -1, `expected ${className} section to close`)
   return vueSource.slice(start, end)
+}
+
+function advancedSectionBlock(className) {
+  const start = advancedPanelSource.indexOf(`<section class="${className}">`)
+  assert.notEqual(start, -1, `expected ${className} section to exist`)
+  const end = advancedPanelSource.indexOf('\n    </section>', start)
+  assert.notEqual(end, -1, `expected ${className} section to close`)
+  return advancedPanelSource.slice(start, end)
+}
+
+function advancedNativeImportFileInput() {
+  const match = advancedPanelSource.match(/<input ref="javinfoImportFileInput"[^>]*>/)
+  assert.ok(match, 'expected JavInfo import native file input to exist')
+  return match[0]
+}
+
+function toggleSwitchInputs(sourceText) {
+  return [...sourceText.matchAll(/<label class="settings-row settings-row--toggle[^"]*"[^>]*>[\s\S]*?<input type="checkbox"[^>]*>/g)]
+    .map(match => match[0].match(/<input type="checkbox"[^>]*>/)?.[0])
+    .filter(Boolean)
 }
 
 test('settings secret reveal controls use shared Apple glass button chrome', () => {
@@ -109,8 +143,6 @@ test('settings controls mirror hover glass treatment for keyboard focus', () => 
 })
 
 test('settings workspace panels use shared Apple glass materials instead of legacy cards', () => {
-  const cardContent = cssBlock('.card-content')
-  const formSlot = cssBlock('.form-slot')
   const runtimePanel = cssBlock('.javinfo-runtime-panel')
   const sourceCheck = cssBlock('.source-check-item')
   const appearanceStack = cssBlock('.appearance-settings-stack')
@@ -122,16 +154,12 @@ test('settings workspace panels use shared Apple glass materials instead of lega
   const importJobRow = cssBlock('.import-job-row')
   const settingsTabs = cssBlock('.settings-tabs')
 
-  for (const block of [cardContent, formSlot, runtimePanel, sourceCheck, appearanceStack, sharedGroup, sharedList, importFileControl, importProgress, importLogTail, importJobRow]) {
+  for (const block of [runtimePanel, sourceCheck, appearanceStack, sharedGroup, sharedList, importFileControl, importProgress, importLogTail, importJobRow]) {
     assert.ok(block, 'expected settings workspace block to exist')
     assert.doesNotMatch(block, /var\(--bg-card\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|var\(--surface-card\)/)
   }
 
-  assert.match(cardContent, backgroundIncludes('material-glass-sheet'))
-  assert.match(cardContent, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(cardContent, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-
-  for (const block of [formSlot, runtimePanel, sharedList, importProgress, importJobRow]) {
+  for (const block of [runtimePanel, sharedList, importProgress, importJobRow]) {
     assert.match(block, /background:[\s\S]*var\(--material-glass-(?:subtle|control)\)/)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
   }
@@ -146,6 +174,110 @@ test('settings workspace panels use shared Apple glass materials instead of lega
   assert.doesNotMatch(settingsTabs, /var\(--border-light\)/)
 })
 
+test('advanced import flow owns a grouped process container instead of legacy form shells', () => {
+  assert.match(advancedPanelSource, /class="javinfo-import-panel"/)
+  assert.doesNotMatch(advancedPanelSource, /class="form-slot javinfo-import-panel"/)
+  assert.doesNotMatch(advancedPanelSource, /class="settings-card"|class="card-content"|class="form-group"|class="checkbox import-confirm"/)
+  assert.doesNotMatch(advancedStyle, /\.settings-card(?=[\s,{.:#])|\.card-content\b|\.form-slot\b|\.form-group\b|\.checkbox\.import-confirm\b|accent-color/)
+
+  const importPanel = cssBlock('.javinfo-import-panel')
+
+  assert.match(importPanel, /display:\s*grid/)
+  assert.match(importPanel, /gap:\s*14px/)
+  assert.match(importPanel, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(importPanel, backgroundIncludes('material-glass-subtle'))
+  assert.match(importPanel, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+})
+
+test('automation source picker reads like a System Settings multi-select list', () => {
+  assert.match(vueSource, /class="settings-control settings-control--wide source-check-list-control"/)
+  assert.match(vueSource, /class="source-check-list"/)
+  assert.match(vueSource, /:class="\['source-check-item', \{ 'is-selected': config\.automation\.candidate_sources\.includes\(source\.value\) \}\]"/)
+  assert.match(vueSource, /class="source-check-dot" aria-hidden="true"/)
+  assert.match(vueSource, /class="source-check-label"/)
+
+  const listControl = cssBlock('.source-check-list-control')
+  const list = cssBlock('.source-check-list')
+  const item = cssBlock('.source-check-item')
+  const selected = cssBlock('.source-check-item.is-selected')
+  const input = cssBlock('.source-check-item input')
+  const dot = cssBlock('.source-check-dot')
+  const selectedDot = cssBlock('.source-check-item.is-selected .source-check-dot')
+  const label = cssBlock('.source-check-label')
+
+  assert.match(listControl, /width:\s*100%/)
+  assert.match(list, /display:\s*grid/)
+  assert.match(list, /gap:\s*6px/)
+  assert.match(item, /display:\s*grid/)
+  assert.match(item, /grid-template-columns:\s*14px\s+minmax\(0,\s*1fr\)/)
+  assert.match(item, backgroundIncludes('material-glass-control'))
+  assert.match(item, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(selected, backgroundIncludes('glass-active-material'))
+  assert.match(selected, /border-color:\s*var\(--glass-active-border\)/)
+  assert.match(input, /position:\s*absolute/)
+  assert.match(input, /opacity:\s*0/)
+  assert.match(dot, /border-radius:\s*50%/)
+  assert.match(dot, /background:\s*var\(--text-muted\)/)
+  assert.match(selectedDot, /background:\s*var\(--badge-success-text\)/)
+  assert.match(label, /overflow-wrap:\s*anywhere/)
+})
+
+test('settings numeric inputs use compact System Settings stepper controls', () => {
+  const numberControlMatches = [...vueSource.matchAll(/class="settings-number-control"/g)]
+  assert.equal(numberControlMatches.length, 7)
+  const numberControlWrapperMatches = [...vueSource.matchAll(/class="settings-control settings-control--compact settings-control--number"[\s\S]*?<input/g)]
+  assert.equal(numberControlWrapperMatches.length, 7)
+
+  for (const markup of [
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.auto_process_interval_minutes"[\s\S]*<span class="settings-number-unit">分钟<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.max_auto_downloads_per_run"[\s\S]*<span class="settings-number-unit">次<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.max_auto_downloads_per_24h"[\s\S]*<span class="settings-number-unit">24 小时<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.limit"[\s\S]*<span class="settings-number-unit">条<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.timeout"[\s\S]*<span class="settings-number-unit">秒<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.crawler\.request_interval"[\s\S]*<span class="settings-number-unit">秒<\/span>/,
+    /class="settings-number-control"[\s\S]*v-model\.number="config\.scheduler\.subscription_check_hour"[\s\S]*<span class="settings-number-unit">时<\/span>/,
+  ]) {
+    assert.match(vueSource, markup)
+  }
+  assert.match(vueSource, /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.limit" type="number" min="1" max="100" step="1" inputmode="numeric"[\s\S]*<span class="settings-number-range">1-100<\/span>/)
+  assert.match(vueSource, /class="settings-number-control"[\s\S]*v-model\.number="config\.scheduler\.subscription_check_hour" type="number" min="0" max="23" step="1" inputmode="numeric"[\s\S]*<span class="settings-number-range">0-23<\/span>/)
+
+  const control = cssBlock('.settings-number-control')
+  const input = cssBlock('.settings-number-control .input')
+  const spinButton = cssBlock('.settings-number-control .input::-webkit-outer-spin-button')
+  const unit = cssBlock('.settings-number-unit')
+  const range = cssBlock('.settings-number-range')
+  const focus = cssBlock('.settings-number-control:focus-within')
+  const mobile = baseStyle.slice(baseStyle.indexOf('@media (max-width: 768px)'))
+
+  assert.match(control, /display:\s*grid/)
+  assert.match(control, /grid-template-columns:\s*minmax\(64px,\s*1fr\)\s+auto\s+auto/)
+  assert.match(control, /align-items:\s*center/)
+  assert.match(control, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(control, backgroundIncludes('material-glass-control'))
+  assert.match(control, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(input, /border:\s*0/)
+  assert.match(input, /background:\s*transparent/)
+  assert.match(input, /font-variant-numeric:\s*tabular-nums/)
+  assert.match(spinButton, /-webkit-appearance:\s*none/)
+  assert.match(unit, /color:\s*var\(--text-secondary\)/)
+  assert.match(unit, /font-weight:\s*700/)
+  assert.match(range, /color:\s*var\(--text-muted\)/)
+  assert.match(range, /border-left:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(focus, /outline:\s*none/)
+  assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(mobile, /\.settings-number-control\s*\{[\s\S]*grid-template-columns:\s*minmax\(68px,\s*1fr\)\s+auto/)
+})
+
+test('settings number control width class stays off switch rows', () => {
+  const switchRows = [...vueSource.matchAll(/<label class="settings-row settings-row--toggle"[\s\S]*?<\/label>/g)].map(match => match[0])
+  assert.equal(switchRows.length, 7)
+  for (const row of switchRows) {
+    assert.doesNotMatch(row, /settings-control--number/)
+  }
+})
+
 test('settings visual preview and loading states avoid hardcoded white glass fragments', () => {
   const auraPreview = cssBlock('.aura-preview')
   const previewBubble = cssBlock('.preview-bubble')
@@ -153,6 +285,10 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
   assert.match(vueSource, /import AppleSkeleton from '\.\.\/components\/AppleSkeleton\.vue'/)
   assert.match(vueSource, /<AppleSkeleton\s+v-if="configLoading"[\s\S]*label="配置加载中"/)
   assert.doesNotMatch(vueSource, /<div class="spinner-large"><\/div>/)
+  assert.doesNotMatch(baseStyle, /\.settings-loading-skeleton\b/)
+  assert.doesNotMatch(baseStyle, /settings-skeleton-shimmer/)
+  assert.doesNotMatch(baseStyle, /\.spinner-large\b/)
+  assert.match(baseStyle, /\.save-spinner\s*\{[\s\S]*width:\s*16px/)
 
   assert.match(auraPreview, backgroundIncludes('material-glass-subtle'))
   assert.match(auraPreview, /box-shadow:\s*var\(--glass-inner-shadow\)/)
@@ -164,25 +300,86 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
 
 test('settings page keeps heavyweight styles in external scoped stylesheets', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
-  assert.ok(baseStyle.length > 16000, 'settings shell stylesheet should carry shared workspace CSS')
-  assert.ok(advancedStyle.length > 5000, 'advanced lazy chunk should carry its own workspace CSS')
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/configAppearance\.css"><\/style>/)
+  assert.ok(`${baseStyle}\n${appearanceStyle}`.length > 16000, 'settings shell stylesheets should carry shared workspace CSS')
+  assert.ok(advancedCombinedStyle.length > 5000, 'advanced lazy chunk should carry its own workspace CSS')
   assert.ok(vueSource.split('\n').length < 1300, 'Config.vue should stay small enough to review and parse quickly')
 })
 
 test('settings advanced workspace stays in a lazy child chunk', () => {
-  assert.match(vueSource, /const AdvancedSettingsPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/config\/AdvancedSettingsPanel\.vue'\)\)/)
-  assert.match(vueSource, /<AdvancedSettingsPanel\s+v-else-if="activeGroup === 'advanced'"/)
+  assert.match(vueSource, /import \{ AdvancedSettingsPanel \} from '\.\.\/features\/config\/advancedSettingsAsync\.js'/)
+  assert.match(advancedAsyncSource, /export const AdvancedSettingsPanel = defineAsyncComponent\(\{[\s\S]*loader:\s*\(\)\s*=>\s*import\('\.\/AdvancedSettingsPanel\.vue'\)/)
+  assert.match(vueSource, /<AdvancedSettingsPanel\s+v-if="activeGroup === 'advanced'"/)
+  assert.doesNotMatch(vueSource, /<AdvancedSettingsPanel\s+v-else-if="activeGroup === 'advanced'"/)
   assert.doesNotMatch(vueSource, /JavInfo 数据库导入/)
   assert.doesNotMatch(vueSource, /<h2>公共智能模型<\/h2>/)
   assert.doesNotMatch(vueSource, /<h2>网络代理<\/h2>/)
 })
 
+test('advanced route renders from an independent branch instead of the appearance else-chain', () => {
+  const appearanceIndex = vueSource.indexOf('<div v-if="activeGroup === \'appearance\'"')
+  const advancedIndex = vueSource.indexOf('<AdvancedSettingsPanel')
+
+  assert.notEqual(appearanceIndex, -1, 'appearance branch should exist')
+  assert.notEqual(advancedIndex, -1, 'advanced branch should exist')
+  assert.ok(advancedIndex > appearanceIndex, 'advanced branch should follow appearance in the settings pane')
+  assert.match(vueSource.slice(advancedIndex, advancedIndex + 160), /v-if="activeGroup === 'advanced'"/)
+  assert.doesNotMatch(vueSource.slice(appearanceIndex, advancedIndex + 160), /v-else-if="activeGroup === 'advanced'"/)
+})
+
+test('advanced lazy chunk shows a System Settings skeleton while loading', () => {
+  assert.match(advancedAsyncSource, /const AdvancedSettingsSkeleton = \{[\s\S]*name:\s*'AdvancedSettingsSkeleton'/)
+  assert.match(advancedAsyncSource, /<AppleSkeleton class="advanced-settings-skeleton apple-surface" variant="list" :items="4" label="高级设置加载中" \/>/)
+  assert.match(advancedAsyncSource, /export const AdvancedSettingsPanel = defineAsyncComponent\(\{[\s\S]*loader:\s*\(\)\s*=>\s*import\('\.\/AdvancedSettingsPanel\.vue'\)/)
+  assert.match(advancedAsyncSource, /loadingComponent:\s*AdvancedSettingsSkeleton/)
+  assert.match(advancedAsyncSource, /delay:\s*120/)
+  assert.match(advancedAsyncSource, /suspensible:\s*false/)
+  assert.match(vueSource, /components:\s*\{ AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect \}/)
+
+  const skeleton = cssBlock('.advanced-settings-skeleton')
+  assert.match(skeleton, /min-height:\s*320px/)
+  assert.match(skeleton, /padding:\s*18px/)
+  assert.match(skeleton, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(skeleton, backgroundIncludes('material-glass-sheet'))
+  assert.match(skeleton, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(skeleton, /overflow:\s*hidden/)
+})
+
+test('advanced lazy chunk shows an inline System Settings error state if loading fails', () => {
+  assert.match(advancedAsyncSource, /const AdvancedSettingsError = \{[\s\S]*name:\s*'AdvancedSettingsError'/)
+  assert.match(advancedAsyncSource, /components:\s*\{ AppleErrorState \}/)
+  assert.match(advancedAsyncSource, /<AppleErrorState class="advanced-settings-error apple-surface"[\s\S]*title="高级设置加载失败"/)
+  assert.match(advancedAsyncSource, /description="无法载入高级设置模块，刷新页面会重新请求这个模块。"/)
+  assert.match(advancedAsyncSource, /retry-label="刷新页面"/)
+  assert.match(advancedAsyncSource, /@retry="reloadPage"/)
+  assert.match(advancedAsyncSource, /reloadPage\(\)\s*\{[\s\S]*window\.location\.reload\(\)/)
+  assert.match(advancedAsyncSource, /errorComponent:\s*AdvancedSettingsError/)
+  assert.match(advancedAsyncSource, /timeout:\s*15000/)
+
+  const error = cssBlock('.advanced-settings-error')
+  assert.match(error, /min-height:\s*320px/)
+  assert.match(error, /border:\s*1px solid var\(--badge-warning-border\)/)
+  assert.match(error, backgroundIncludes('material-glass-sheet'))
+  assert.match(error, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(error, /overflow:\s*hidden/)
+})
+
 test('settings advanced lazy chunk owns its scoped stylesheet boundary', () => {
   assert.match(advancedPanelSource, /<style scoped src="\.\/advancedSettingsPanel\.css"><\/style>/)
+  assert.match(advancedPanelSource, /<style scoped src="\.\/advancedSettingsAi\.css"><\/style>/)
+  assert.match(advancedPanelSource, /<style scoped src="\.\/advancedSettingsPanelResponsive\.css"><\/style>/)
+  assert.doesNotMatch(advancedPanelSource, /<style scoped src="\.\/advancedActionRows\.css"><\/style>/)
+  assert.doesNotMatch(advancedPanelSource, /<style scoped src="\.\/advancedSwitches\.css"><\/style>/)
+  assert.equal(existsSync(advancedActionRowsStyleUrl), false, 'advanced action row styles should stay inside advancedSettingsPanel.css')
+  assert.equal(existsSync(advancedSwitchesStyleUrl), false, 'advanced switch styles should stay inside advancedSettingsPanel.css')
   assert.match(vueSource, /<style scoped src="\.\.\/features\/config\/config\.css"><\/style>/)
   assert.match(advancedStyle, /\.javinfo-import-panel\s*\{/)
-  assert.match(advancedStyle, /\.card-content\s*\{/)
+  assert.match(advancedStyle, /\.import-actions--danger\s*\{/)
+  assert.match(advancedStyle, /\.export-action-control\s*\{/)
+  assert.match(advancedAiStyle, /\.ai-test-row\s*\{/)
+  assert.match(advancedStyle, /\.import-confirm-switch\s*\{/)
   assert.doesNotMatch(baseStyle, /\.javinfo-import-panel\s*\{|\.import-log-tail\s*\{|\.ai-provider-control\s*\{/)
+  assert.match(appearanceStyle, /\.appearance-settings-stack\s*\{/)
 })
 
 test('settings glass backgrounds are layered with specular and noise surfaces', () => {
@@ -307,6 +504,10 @@ test('advanced settings chunk keeps every panel in grouped settings rows', () =>
 
 test('settings base tabs have no legacy card form layouts after grouping pass', () => {
   assert.doesNotMatch(vueSource, /<div class="settings-card">/)
+  assert.doesNotMatch(vueSource, /class="settings-card-header"/)
+  assert.doesNotMatch(baseStyle, /\.settings-card-header\b/)
+  assert.doesNotMatch(baseStyle, /\.settings-card\b|\.card-content\b|\.form-slot\b/)
+  assert.match(vueSource, /class="settings-group-header"/)
   assert.doesNotMatch(vueSource, /<div class="form-slot">/)
   assert.match(vueSource, /class="settings-group telegram-settings-group"/)
   assert.match(vueSource, /class="settings-group notification-settings-group"/)
@@ -317,9 +518,65 @@ test('settings base tabs have no legacy card form layouts after grouping pass', 
 
   const actionRow = cssBlock('.settings-row--actions')
   const toggleRow = cssBlock('.settings-row--toggle')
+  const groupHeader = cssBlock('.settings-group-header')
+  const groupHeaderTitle = cssBlock('.settings-group-header h2')
+  const appearanceHeader = cssBlock('.appearance-section .settings-group-header')
+  const appearanceHeaderTrailing = `${cssBlock('.appearance-section .settings-group-header .appearance-chip')}\n${cssBlock('.appearance-section .settings-group-header .btn')}`
 
   assert.match(actionRow, /align-items:\s*start/)
   assert.match(toggleRow, /min-height:\s*54px/)
+  assert.match(groupHeader, /display:\s*flex/)
+  assert.match(groupHeader, /margin-bottom:\s*24px/)
+  assert.match(groupHeaderTitle, /font-size:\s*var\(--type-panel-title\)/)
+  assert.match(appearanceHeader, /justify-content:\s*flex-start/)
+  assert.match(appearanceHeaderTrailing, /margin-left:\s*auto/)
+})
+
+test('settings boolean rows use System Settings-style switch controls', () => {
+  assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="notifEnabled">/)
+  assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="rulesRequireMagnet">/)
+  assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="torznabEnabled">/)
+  const proxySection = advancedSectionBlock('advanced-settings-group proxy-settings-group')
+  assert.match(proxySection, /<label class="settings-row settings-row--toggle" for="proxyEnabled">[\s\S]*<span class="setting-title">启用代理<\/span>[\s\S]*id="proxyEnabled"/)
+  const aiSection = advancedSectionBlock('advanced-settings-group ai-settings-group')
+  assert.doesNotMatch(aiSection, /for="proxyEnabled"/)
+  const baseSwitchInputs = toggleSwitchInputs(vueSource)
+  const advancedSwitchInputs = toggleSwitchInputs(advancedPanelSource)
+  assert.equal(baseSwitchInputs.length, 7)
+  assert.equal(advancedSwitchInputs.length, 3)
+  for (const inputMarkup of [...baseSwitchInputs, ...advancedSwitchInputs]) {
+    assert.match(inputMarkup, /role="switch"/)
+  }
+  assert.doesNotMatch(vueSource, /class="source-check-item"[\s\S]*<input type="checkbox"[^>]*role="switch"/)
+
+  for (const [selector, style] of [
+    ['base', baseStyle],
+    ['advanced', advancedCombinedStyle],
+  ]) {
+    const toggle = cssBlocksBySelector.get('.settings-row--toggle .settings-control > input[type="checkbox"]') || ''
+    const checked = cssBlocksBySelector.get('.settings-row--toggle .settings-control > input[type="checkbox"]:checked') || ''
+    const thumb = cssBlocksBySelector.get('.settings-row--toggle .settings-control > input[type="checkbox"]::before') || ''
+    const checkedThumb = cssBlocksBySelector.get('.settings-row--toggle .settings-control > input[type="checkbox"]:checked::before') || ''
+    const focus = cssBlocksBySelector.get('.settings-row--toggle .settings-control > input[type="checkbox"]:focus-visible') || ''
+
+    assert.match(style, /\.settings-row--toggle \.settings-control > input\[type="checkbox"\]\s*\{/, `${selector} stylesheet should own switch track styles`)
+    assert.match(toggle, /appearance:\s*none/, `${selector} switch should remove native checkbox chrome`)
+    assert.match(toggle, /width:\s*46px/, `${selector} switch should have fixed track width`)
+    assert.match(toggle, /height:\s*28px/, `${selector} switch should have fixed track height`)
+    assert.match(toggle, /border-radius:\s*999px/, `${selector} switch should use capsule track`)
+    assert.match(toggle, backgroundIncludes('material-glass-control'), `${selector} switch should use glass control material`)
+    assert.match(toggle, /border:\s*1px solid var\(--glass-control-border\)/, `${selector} switch should keep grouped-list border`)
+    assert.match(checked, backgroundIncludes('badge-success-bg'), `${selector} checked switch should use success material`)
+    assert.match(checked, /border-color:\s*var\(--badge-success-border\)/, `${selector} checked switch should use success border`)
+    assert.match(thumb, /width:\s*22px/, `${selector} switch thumb should have fixed width`)
+    assert.match(thumb, /height:\s*22px/, `${selector} switch thumb should have fixed height`)
+    assert.match(thumb, /background:\s*var\(--text-secondary\)/, `${selector} switch thumb should use muted off color`)
+    assert.match(thumb, /transform:\s*translateX\(0\)/, `${selector} switch thumb should start on the left`)
+    assert.match(thumb, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${selector} switch thumb should animate state changes`)
+    assert.match(checkedThumb, /background:\s*var\(--badge-success-text\)/, `${selector} checked thumb should use success color`)
+    assert.match(checkedThumb, /transform:\s*translateX\(18px\)/, `${selector} checked thumb should move to the right`)
+    assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow\),\s*var\(--focus-ring\)/, `${selector} switch should expose focus state`)
+  }
 })
 
 test('advanced import exposes a macOS-style readiness summary before danger action', () => {
@@ -361,23 +618,68 @@ test('advanced import progress exposes accessible loading semantics', () => {
   assert.match(fill, /transition:\s*transform var\(--motion-standard\)/)
 })
 
+test('advanced numeric inputs use compact lazy-chunk stepper controls', () => {
+  const controlMatches = [...advancedPanelSource.matchAll(/class="advanced-number-control"/g)]
+  assert.equal(controlMatches.length, 2)
+  const wrapperMatches = [...advancedPanelSource.matchAll(/class="settings-control settings-control--compact advanced-control--number"[\s\S]*?<input/g)]
+  assert.equal(wrapperMatches.length, 2)
+
+  assert.match(advancedPanelSource, /class="advanced-number-control"[\s\S]*v-model\.number="config\.javinfo\.import_db\.port" type="number" min="1" max="65535" step="1" inputmode="numeric"[\s\S]*<span class="advanced-number-unit">端口<\/span>[\s\S]*<span class="advanced-number-range">1-65535<\/span>/)
+  assert.match(advancedPanelSource, /class="advanced-number-control"[\s\S]*v-model\.number="currentAiConfig\.timeout" type="number" min="1" step="1" inputmode="numeric"[\s\S]*<span class="advanced-number-unit">秒<\/span>[\s\S]*<span class="advanced-number-range">>=1<\/span>/)
+  assert.doesNotMatch(advancedPanelSource, /<input class="input" v-model\.number="config\.javinfo\.import_db\.port" type="number" min="1" max="65535" \/>/)
+  assert.doesNotMatch(advancedPanelSource, /<input class="input" v-model\.number="currentAiConfig\.timeout" type="number" min="1" \/>/)
+
+  const control = cssBlock('.advanced-number-control')
+  const input = cssBlock('.advanced-number-control .input')
+  const spinButton = cssBlock('.advanced-number-control .input::-webkit-outer-spin-button')
+  const unit = cssBlock('.advanced-number-unit')
+  const range = cssBlock('.advanced-number-range')
+  const focus = cssBlock('.advanced-number-control:focus-within')
+  const mobile = advancedResponsiveStyle
+
+  assert.match(control, /display:\s*grid/)
+  assert.match(control, /grid-template-columns:\s*minmax\(64px,\s*1fr\)\s+auto\s+auto/)
+  assert.match(control, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(control, backgroundIncludes('material-glass-control'))
+  assert.match(control, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(input, /border:\s*0/)
+  assert.match(input, /background:\s*transparent/)
+  assert.match(input, /font-variant-numeric:\s*tabular-nums/)
+  assert.match(spinButton, /-webkit-appearance:\s*none/)
+  assert.match(unit, /color:\s*var\(--text-secondary\)/)
+  assert.match(range, /border-left:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(mobile, /\.advanced-number-control\s*\{[\s\S]*grid-template-columns:\s*minmax\(68px,\s*1fr\)\s+auto/)
+  assert.match(mobile, /\.advanced-number-range\s*\{[\s\S]*display:\s*none/)
+  assert.doesNotMatch(baseStyle, /\.advanced-number-control|\.advanced-control--number/)
+})
+
 test('advanced import preflight actions expose busy status semantics', () => {
   assert.match(advancedPanelSource, /class="import-actions import-actions--preflight"/)
   assert.match(advancedPanelSource, /:aria-busy="javinfoImportPreflighting \|\| javinfoMigrating"/)
   assert.match(advancedPanelSource, /aria-live="polite"/)
+  assert.match(advancedPanelSource, /class="import-preflight-action-buttons"/)
   assert.match(advancedPanelSource, /id="javinfo-preflight-action-status"/)
   assert.match(advancedPanelSource, /role="status"/)
   assert.match(advancedPanelSource, /{{ javinfoPreflightActionStatus }}/)
+  assert.match(advancedPanelSource, /:aria-describedby="'javinfo-preflight-action-status'"/)
   assert.match(advancedPanelSource, /javinfoPreflightActionStatus\(\)/)
 
   const actions = cssBlock('.import-actions--preflight')
+  const buttons = cssBlock('.import-preflight-action-buttons')
   const status = cssBlock('.import-action-status')
   const busy = cssBlock('.import-actions--preflight[aria-busy="true"]')
+  const mobile = advancedResponsiveStyle
 
+  assert.match(actions, /display:\s*grid/)
+  assert.match(actions, /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)/)
   assert.match(actions, /align-items:\s*center/)
-  assert.match(status, /color:\s*var\(--text-muted\)/)
-  assert.match(status, /font-size:\s*12px/)
+  assert.match(buttons, /display:\s*flex/)
+  assert.match(status, /color:\s*var\(--text-secondary\)/)
+  assert.match(status, /overflow-wrap:\s*anywhere/)
   assert.match(busy, /cursor:\s*progress/)
+  assert.match(mobile, /\.import-actions--preflight,[\s\S]*\.ai-test-row\s*\{[\s\S]*grid-template-columns:\s*1fr/)
+  assert.match(mobile, /\.import-preflight-action-buttons,[\s\S]*\.ai-test-actions\s*\{[\s\S]*grid-template-columns:\s*1fr/)
 })
 
 test('advanced export flow exposes readiness and busy status before download action', () => {
@@ -403,7 +705,45 @@ test('advanced export flow exposes readiness and busy status before download act
   assert.match(row, /grid-template-columns:\s*16px\s+minmax\(0,\s*1fr\)/)
   assert.match(ready, /color:\s*var\(--badge-success-text\)/)
   assert.match(pending, /color:\s*var\(--text-muted\)/)
-  assert.match(note, /color:\s*var\(--text-muted\)/)
+  assert.match(note, /color:\s*var\(--text-secondary\)/)
+})
+
+test('advanced export action exposes row-native busy status semantics', () => {
+  assert.match(advancedPanelSource, /class="settings-control settings-control--wide export-action-control"/)
+  assert.match(advancedPanelSource, /:aria-busy="exportingConfig"/)
+  assert.match(advancedPanelSource, /aria-live="polite"/)
+  assert.match(advancedPanelSource, /class="export-action-buttons"/)
+  assert.match(advancedPanelSource, /id="config-export-note"/)
+  assert.match(advancedPanelSource, /role="status"/)
+  assert.match(advancedPanelSource, /:class="\{ error: exportConfigStatusType === 'error' \}"/)
+  assert.match(advancedPanelSource, /{{ exportActionNote }}/)
+  assert.match(advancedPanelSource, /:aria-describedby="'config-export-note'"/)
+  assert.match(advancedPanelSource, /exportConfigStatus:\s*''/)
+  assert.match(advancedPanelSource, /exportConfigStatusType:\s*'info'/)
+  assert.match(advancedPanelSource, /if \(this\.exportConfigStatus\) return this\.exportConfigStatus/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatus = ''/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatusType = 'info'/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatus = `已导出 \$\{link\.download\}`/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatusType = 'success'/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatus = e\.response\?\.data\?\.detail \|\| '导出失败'/)
+  assert.match(advancedPanelSource, /this\.exportConfigStatusType = 'error'/)
+
+  const control = cssBlock('.export-action-control')
+  const buttons = cssBlock('.export-action-buttons')
+  const note = cssBlock('.export-action-note')
+  const error = cssBlock('.export-action-note.error')
+  const busy = cssBlock('.export-action-control[aria-busy="true"]')
+  const mobile = advancedResponsiveStyle
+
+  assert.match(control, /display:\s*grid/)
+  assert.match(control, /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)/)
+  assert.match(control, /align-items:\s*center/)
+  assert.match(buttons, /display:\s*flex/)
+  assert.match(note, /color:\s*var\(--text-secondary\)/)
+  assert.match(note, /overflow-wrap:\s*anywhere/)
+  assert.match(error, /color:\s*var\(--badge-error-text\)/)
+  assert.match(busy, /cursor:\s*progress/)
+  assert.match(mobile, /\.export-action-control\s*\{[\s\S]*grid-template-columns:\s*1fr/)
 })
 
 test('appearance settings use the shared macOS grouped row layout', () => {
@@ -437,8 +777,6 @@ test('appearance settings use the shared macOS grouped row layout', () => {
 })
 
 test('advanced export readiness styles are defined once in the lazy stylesheet', () => {
-  const baseAdvancedStyle = advancedStyle.split('@media')[0]
-
   for (const selector of [
     '.export-settings-group[aria-busy="true"]',
     '.export-readiness-summary',
@@ -450,11 +788,11 @@ test('advanced export readiness styles are defined once in the lazy stylesheet',
     '.export-action-control',
     '.export-action-note',
   ]) {
-    assert.equal(selectorDefinitionCount(baseAdvancedStyle, selector), 1, `${selector} should have one base definition`)
+    assert.equal(selectorDefinitionCount(advancedBaseStyle, selector), 1, `${selector} should have one base definition`)
   }
 
-  assert.match(advancedStyle, /@media \(max-width:\s*768px\)[\s\S]*\.export-action-control\s*\{[\s\S]*justify-items:\s*stretch/)
-  assert.match(advancedStyle, /@media \(max-width:\s*768px\)[\s\S]*\.export-action-note\s*\{[\s\S]*text-align:\s*left/)
+  assert.match(advancedResponsiveStyle, /@media \(max-width:\s*768px\)[\s\S]*\.export-action-control\s*\{[\s\S]*grid-template-columns:\s*1fr/)
+  assert.match(advancedResponsiveStyle, /@media \(max-width:\s*768px\)[\s\S]*\.export-action-buttons \.btn\s*\{[\s\S]*width:\s*100%/)
 })
 
 test('advanced import file and confirmation controls use row-native settings structure', () => {
@@ -476,6 +814,41 @@ test('advanced import file and confirmation controls use row-native settings str
   assert.match(confirmRow, /cursor:\s*pointer/)
 })
 
+test('advanced import confirmation controls render as System Settings-style switches', () => {
+  assert.match(advancedPanelSource, /:class="\['import-confirm-switch', \{ 'is-on': javinfoImportConfirm \}\]"[\s\S]*<input type="checkbox" v-model="javinfoImportConfirm"[\s\S]*:class="\['import-confirm-switch-track', \{ 'is-on': javinfoImportConfirm \}\]" aria-hidden="true"[\s\S]*:class="\['import-confirm-switch-thumb', \{ 'is-on': javinfoImportConfirm \}\]" aria-hidden="true"/)
+  assert.match(advancedPanelSource, /:class="\['import-confirm-switch', \{ 'is-on': javinfoImportDirectConfirm \}\]"[\s\S]*<input type="checkbox" v-model="javinfoImportDirectConfirm"[\s\S]*:class="\['import-confirm-switch-track', \{ 'is-on': javinfoImportDirectConfirm \}\]" aria-hidden="true"[\s\S]*:class="\['import-confirm-switch-thumb', \{ 'is-on': javinfoImportDirectConfirm \}\]" aria-hidden="true"/)
+  assert.doesNotMatch(advancedPanelSource, /<span class="settings-control settings-control--compact">\s*<input type="checkbox" v-model="javinfoImport(?:Direct)?Confirm" \/>/)
+
+  const switchWrap = cssBlock('.import-confirm-switch')
+  const switchInput = cssBlock('.import-confirm-switch input')
+  const switchTrack = cssBlock('.import-confirm-switch-track')
+  const switchThumb = cssBlock('.import-confirm-switch-thumb')
+  const checkedTrack = cssBlock('.import-confirm-switch-track.is-on')
+  const checkedThumb = cssBlock('.import-confirm-switch-thumb.is-on')
+  const focusedTrack = cssBlock('.import-confirm-switch input:focus-visible + .import-confirm-switch-track')
+
+  assert.match(switchWrap, /position:\s*relative/)
+  assert.match(switchWrap, /display:\s*inline-flex/)
+  assert.match(switchInput, /position:\s*absolute/)
+  assert.match(switchInput, /opacity:\s*0/)
+  assert.match(switchTrack, /width:\s*46px/)
+  assert.match(switchTrack, /height:\s*28px/)
+  assert.match(switchTrack, backgroundIncludes('material-glass-control'))
+  assert.match(switchTrack, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.doesNotMatch(switchTrack, /transition:\s*(?:background|border-color|box-shadow)/)
+  assert.match(switchThumb, /width:\s*22px/)
+  assert.match(switchThumb, /height:\s*22px/)
+  assert.match(switchThumb, /--import-confirm-thumb-scale:\s*1/)
+  assert.match(switchThumb, /background:\s*var\(--text-secondary\)/)
+  assert.match(switchThumb, /transform:\s*translateX\(0\)\s+scale\(var\(--import-confirm-thumb-scale\)\)/)
+  assert.match(switchThumb, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.match(checkedTrack, /border-color:\s*var\(--badge-success-border\)/)
+  assert.match(checkedTrack, backgroundIncludes('badge-success-bg'))
+  assert.match(checkedThumb, /background:\s*var\(--badge-success-text\)/)
+  assert.match(checkedThumb, /transform:\s*translateX\(18px\)\s+scale\(var\(--import-confirm-thumb-scale\)\)/)
+  assert.match(focusedTrack, /box-shadow:\s*var\(--glass-control-shadow\),\s*var\(--focus-ring\)/)
+})
+
 test('advanced import file picker exposes explicit file status and busy semantics', () => {
   assert.match(advancedPanelSource, /:aria-busy="javinfoImportFileInputDisabled"/)
   assert.match(advancedPanelSource, /:aria-disabled="javinfoImportFileInputDisabled"/)
@@ -490,9 +863,20 @@ test('advanced import file picker exposes explicit file status and busy semantic
   assert.match(advancedPanelSource, /javinfoImportFileInputDisabled\(\)/)
   assert.match(advancedPanelSource, /javinfoImportFileStatus\(\)/)
   assert.match(advancedPanelSource, /javinfoImportFileNote\(\)/)
+  const nativeInputMarkup = advancedNativeImportFileInput()
+  assert.match(nativeInputMarkup, /class="import-file-native-input"/)
+  assert.match(nativeInputMarkup, /aria-hidden="true"/)
+  assert.match(nativeInputMarkup, /tabindex="-1"/)
+  assert.match(advancedPanelSource, /class="btn btn-secondary import-file-trigger"/)
+  assert.match(advancedPanelSource, /@click="openJavInfoImportFilePicker"/)
+  assert.match(advancedPanelSource, /{{ javinfoImportFile \? '更换文件' : '选择文件' }}/)
+  assert.doesNotMatch(advancedPanelSource, /class="input file-input"/)
+  assert.match(advancedPanelSource, /openJavInfoImportFilePicker\(\)/)
 
   const fileControl = cssBlock('.import-file-control')
   const fileState = cssBlock('.import-file-state')
+  const nativeInput = cssBlock('.import-file-native-input')
+  const trigger = cssBlock('.import-file-trigger')
   const selectedDot = cssBlock('.import-file-control.is-selected .import-file-state-dot')
   const disabledControl = cssBlock('.import-file-control[aria-disabled="true"]')
   const status = cssBlock('.import-file-status')
@@ -501,6 +885,11 @@ test('advanced import file picker exposes explicit file status and busy semantic
   assert.match(fileControl, /position:\s*relative/)
   assert.match(fileState, /grid-template-columns:\s*10px\s+minmax\(0,\s*1fr\)/)
   assert.match(fileState, backgroundIncludes('material-glass-control'))
+  assert.match(nativeInput, /position:\s*absolute/)
+  assert.match(nativeInput, /width:\s*1px/)
+  assert.match(nativeInput, /opacity:\s*0/)
+  assert.match(trigger, /justify-self:\s*start/)
+  assert.match(trigger, /min-width:\s*104px/)
   assert.match(selectedDot, /background:\s*var\(--badge-success-text\)/)
   assert.match(disabledControl, /cursor:\s*progress/)
   assert.match(status, /overflow-wrap:\s*anywhere/)
@@ -510,6 +899,7 @@ test('advanced import file picker exposes explicit file status and busy semantic
 test('advanced import recent jobs render as a grouped status list with an empty state', () => {
   assert.match(advancedPanelSource, /class="settings-list import-job-settings-list"/)
   assert.match(advancedPanelSource, /class="settings-row settings-row--stacked import-job-summary-row"/)
+  assert.match(advancedPanelSource, /class="settings-control settings-control--wide import-job-control"/)
   assert.match(advancedPanelSource, /id="javinfo-import-job-summary"/)
   assert.match(advancedPanelSource, /role="status"/)
   assert.match(advancedPanelSource, /{{ javinfoImportJobSummary }}/)
@@ -520,12 +910,14 @@ test('advanced import recent jobs render as a grouped status list with an empty 
   assert.match(advancedPanelSource, /{{ javinfoImportJobEmptyNote }}/)
   assert.match(advancedPanelSource, /class="import-job-meta"/)
   assert.match(advancedPanelSource, /{{ javinfoImportJobDetail\(job\) }}/)
-  assert.match(advancedPanelSource, /javinfoImportJobSummary\(\)/)
-  assert.match(advancedPanelSource, /javinfoImportJobEmptyNote\(\)/)
+  assert.match(advancedPanelSource, /\.\.\.javinfoImportJobComputed/)
+  assert.match(advancedImportPresentationSource, /javinfoImportJobSummary\(\)/)
+  assert.match(advancedImportPresentationSource, /javinfoImportJobEmptyNote\(\)/)
   assert.match(advancedPanelSource, /javinfoImportJobDetail\(job\)/)
 
   const settingsList = cssBlock('.import-job-settings-list')
   const summaryRow = cssBlock('.import-job-summary-row')
+  const control = cssBlock('.import-job-control')
   const items = cssBlock('.import-job-items')
   const empty = cssBlock('.import-job-empty')
   const row = cssBlock('.import-job-row')
@@ -533,12 +925,55 @@ test('advanced import recent jobs render as a grouped status list with an empty 
 
   assert.match(settingsList, /margin-top:\s*4px/)
   assert.match(summaryRow, /align-items:\s*start/)
+  assert.match(control, /display:\s*grid/)
+  assert.match(control, /gap:\s*10px/)
   assert.match(items, /display:\s*grid/)
   assert.match(empty, backgroundIncludes('material-glass-control'))
   assert.match(empty, /color:\s*var\(--text-muted\)/)
   assert.match(row, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/)
   assert.match(row, backgroundIncludes('material-glass-control'))
   assert.match(meta, /color:\s*var\(--text-muted\)/)
+})
+
+test('advanced import recent jobs expose loading and recoverable error states', () => {
+  assert.match(advancedPanelSource, /class="settings-control settings-control--wide import-job-control"/)
+  assert.match(advancedPanelSource, /:aria-busy="javinfoImportJobsLoading"/)
+  assert.match(advancedPanelSource, /aria-live="polite"/)
+  assert.match(advancedPanelSource, /class="import-job-state"/)
+  assert.match(advancedPanelSource, /:class="\{ error: javinfoImportJobsError \}"/)
+  assert.match(advancedPanelSource, /{{ javinfoImportJobsStateNote }}/)
+  assert.match(advancedPanelSource, /v-if="javinfoImportJobsError"/)
+  assert.match(advancedPanelSource, /class="btn btn-ghost import-job-retry"/)
+  assert.match(advancedPanelSource, /@click="listJavInfoImportJobs"/)
+  assert.match(advancedPanelSource, /javinfoImportJobsLoading:\s*false/)
+  assert.match(advancedPanelSource, /javinfoImportJobsError:\s*''/)
+  assert.match(advancedPanelSource, /\.\.\.javinfoImportJobComputed/)
+  assert.match(advancedImportPresentationSource, /javinfoImportJobsStateNote\(\)/)
+  assert.match(advancedImportPresentationSource, /if \(this\.javinfoImportJobsLoading\) return '正在读取最近导入任务。'/)
+  assert.match(advancedImportPresentationSource, /if \(this\.javinfoImportJobsError\) return this\.javinfoImportJobsError/)
+  assert.match(advancedPanelSource, /this\.javinfoImportJobsLoading = true/)
+  assert.match(advancedPanelSource, /this\.javinfoImportJobsError = ''/)
+  assert.match(advancedPanelSource, /this\.javinfoImportJobsError = e\.response\?\.data\?\.detail \|\| '最近任务读取失败'/)
+  assert.doesNotMatch(advancedPanelSource, /catch \(e\) \{\s*this\.javinfoImportJobs = \[\]\s*\}/)
+
+  const control = cssBlock('.import-job-control')
+  const busy = cssBlock('.import-job-control[aria-busy="true"]')
+  const state = cssBlock('.import-job-state')
+  const error = cssBlock('.import-job-state.error')
+  const retry = cssBlock('.import-job-retry')
+  const mobile = advancedResponsiveStyle
+
+  assert.match(control, /display:\s*grid/)
+  assert.match(control, /gap:\s*10px/)
+  assert.match(busy, /cursor:\s*progress/)
+  assert.match(state, /grid-template-columns:\s*10px\s+minmax\(0,\s*1fr\)\s+auto/)
+  assert.match(state, backgroundIncludes('material-glass-control'))
+  assert.match(state, /color:\s*var\(--text-secondary\)/)
+  assert.match(error, /border-color:\s*var\(--badge-error-border\)/)
+  assert.match(error, /color:\s*var\(--badge-error-text\)/)
+  assert.match(retry, /justify-self:\s*end/)
+  assert.match(mobile, /\.import-job-state\s*\{[\s\S]*grid-template-columns:\s*10px\s+minmax\(0,\s*1fr\)/)
+  assert.match(mobile, /\.import-job-retry\s*\{[\s\S]*justify-self:\s*stretch/)
 })
 
 test('advanced import danger actions expose a dedicated busy status row', () => {
@@ -548,6 +983,7 @@ test('advanced import danger actions expose a dedicated busy status row', () => 
   assert.match(advancedPanelSource, /id="javinfo-import-danger-action-status"/)
   assert.match(advancedPanelSource, /role="status"/)
   assert.match(advancedPanelSource, /{{ javinfoImportDangerActionStatus }}/)
+  assert.match(advancedPanelSource, /class="btn btn-danger"[\s\S]*aria-label="开始 JavInfo 全量替换导入"/)
   assert.match(advancedPanelSource, /:aria-describedby="'javinfo-import-danger-action-status javinfo-import-start-note'"/)
   assert.match(advancedPanelSource, /javinfoImportDangerActionsBusy\(\)/)
   assert.match(advancedPanelSource, /javinfoImportDangerActionStatus\(\)/)
@@ -572,7 +1008,7 @@ test('advanced AI connection check exposes System Settings-style busy status', (
   assert.match(advancedPanelSource, /role="status"/)
   assert.match(advancedPanelSource, /{{ aiConnectionStatus }}/)
   assert.match(advancedPanelSource, /:aria-describedby="'ai-connection-status'"/)
-  assert.match(advancedPanelSource, /aiConnectionBusy\(\)/)
+  assert.match(advancedPanelSource, /\.\.\.aiConnectionComputed/)
   assert.match(advancedPanelSource, /aiConnectionStatus\(\)/)
 
   const row = cssBlock('.ai-test-row')
