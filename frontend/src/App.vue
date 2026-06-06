@@ -472,7 +472,6 @@ export default {
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow), var(--focus-ring);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transform: translateY(0);
 }
 /* ===== Sidebar ===== */
@@ -483,7 +482,6 @@ export default {
   margin: var(--app-chrome-inset) 0 var(--app-chrome-inset) var(--app-chrome-inset);
   background: var(--surface-nav);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--surface-nav-border);
   border-radius: var(--radius-sheet);
   box-shadow: var(--chrome-floating-shadow);
@@ -596,7 +594,6 @@ export default {
   color: var(--text-primary);
   cursor: pointer;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: transform var(--motion-standard);
 }
 .theme-toggle:hover {
@@ -659,7 +656,6 @@ export default {
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .collapse-btn:focus-visible {
   outline: none;
@@ -723,7 +719,6 @@ export default {
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .nav-item:active {
   transform: translateY(0) scale(0.985);
@@ -737,7 +732,6 @@ export default {
   border: 1px solid var(--active-border);
   box-shadow: var(--glass-active-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .nav-item.active:active {
   box-shadow: var(--glass-active-shadow);
@@ -780,7 +774,6 @@ export default {
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
@@ -846,7 +839,6 @@ export default {
   min-height: var(--mobile-bottom-nav-height);
   background: var(--surface-nav);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--surface-nav-border);
   border-radius: var(--radius-sheet);
   box-shadow: var(--chrome-floating-shadow);
@@ -953,7 +945,6 @@ export default {
     align-items: flex-end;
     background: var(--surface-scrim);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-    -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     padding: 0 12px var(--mobile-bottom-nav-reserve);
   }
   .mobile-more-sheet {
@@ -971,7 +962,6 @@ export default {
       var(--material-glass-sheet); background-color: color-mix(in srgb, var(--bg-primary) 88%, transparent);
     box-shadow: var(--shadow-sheet);
     backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-    -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   }
   .mobile-more-sheet:focus {
     outline: none;
@@ -1074,7 +1064,6 @@ export default {
     color: var(--text-primary);
     box-shadow: var(--glass-control-shadow);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-    -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     font: inherit;
     font-size: 13px;
     font-weight: 700;
@@ -1128,7 +1117,6 @@ export default {
       var(--material-glass-control); background-color: color-mix(in srgb, var(--bg-primary) 70%, transparent);
     box-shadow: var(--glass-control-shadow);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-    -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 12px;
