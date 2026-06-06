@@ -176,7 +176,7 @@ test('app shell chrome keeps scroll layers stable and focus states glassy', () =
 
 test('app shell exposes named landmarks and isolates modal background chrome', () => {
   assert.match(source, /<aside[\s\S]*class="sidebar"[\s\S]*:inert="mobileMoreOpen \? '' : undefined"/)
-  assert.match(source, /<nav class="sidebar-nav"\s+aria-label="主导航">/)
+  assert.match(source, /<nav class="sidebar-nav"\s+aria-label="主导航"\s+id="primary-navigation">/)
   assert.match(source, /<nav[\s\S]*class="bottom-nav"[\s\S]*aria-label="移动端主导航"[\s\S]*:inert="mobileMoreOpen \? '' : undefined"/)
   assert.match(source, /<nav class="mobile-more-grid"\s+aria-label="更多功能导航">/)
   assert.match(source, /<main[\s\S]*id="main-content"[\s\S]*class="main-content"[\s\S]*tabindex="-1"[\s\S]*aria-label="应用内容"[\s\S]*:inert="mobileMoreOpen \? '' : undefined"/)
@@ -190,7 +190,10 @@ test('mobile more locks the background scroll layer while the dialog is active',
 test('keyboard entry points expose visible system focus surfaces', () => {
   assert.match(sourceBlock('.theme-toggle:focus-visible'), /outline:\s*none/)
   assert.match(sourceBlock('.theme-toggle:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(sourceBlock('.skip-link:focus-visible'), /color:\s*var\(--text-primary\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /background:[\s\S]*var\(--glass-active-material\)/)
+  assert.match(sourceBlock('.skip-link:focus-visible'), /border:\s*1px solid var\(--glass-active-border\)/)
+  assert.match(sourceBlock('.skip-link:focus-visible'), /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\) saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /transform:\s*translateY\(0\)/)
   assert.match(sourceBlock('.main-content:focus-visible'), /outline:\s*none/)
@@ -288,6 +291,9 @@ test('mobile more tab trap loops focus when starting outside actionable controls
 test('collapsed sidebar keeps icon rail navigation named and visually centered', () => {
   assert.match(source, /:aria-label="sidebarCollapsed \? item\.label : undefined"/)
   assert.match(source, /:title="sidebarCollapsed \? item\.label : undefined"/)
+  assert.match(source, /<nav class="sidebar-nav"\s+aria-label="主导航"\s+id="primary-navigation">/)
+  assert.match(source, /aria-controls="primary-navigation"/)
+  assert.match(source, /:aria-expanded="!sidebarCollapsed"/)
   assert.match(source, /:aria-label="sidebarCollapsed \? '展开侧边栏' : '收起侧边栏'"/)
   assert.match(source, /:title="sidebarCollapsed \? '展开侧边栏' : '收起侧边栏'"/)
   assert.match(source, /\.sidebar\.collapsed :is\(\.logo, \.theme-toggle\)\s*\{ display:\s*none; \}/)

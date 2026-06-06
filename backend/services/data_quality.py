@@ -32,6 +32,7 @@ def build_data_quality_overview(
             _missing_field_issue(snapshot_key),
             _invalid_field_issue(),
             _low_quality_cover_issue(progress.get("low_quality_cover")),
+            _missing_download_link_issue(),
             _dead_link_issue(),
             _inconsistent_metadata_issue(),
         )
@@ -321,6 +322,53 @@ def _dead_link_issue() -> dict[str, Any] | None:
         base_score=68,
         samples=samples,
         action={"label": "打开补全来源诊断", "route": "/supplement?tab=sources"},
+    )
+
+
+def _missing_download_link_issue() -> dict[str, Any] | None:
+    samples: list[dict[str, Any]] = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, content_id, dvd_id, title, source, actress_name
+            FROM download_candidates
+            WHERE status = 'candidate'
+              AND COALESCE(magnet, '') = ''
+            ORDER BY created_at DESC, id DESC
+            LIMIT 6
+            """
+        )
+        rows = [dict(row) for row in cursor.fetchall()]
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM download_candidates
+            WHERE status = 'candidate'
+              AND COALESCE(magnet, '') = ''
+            """
+        )
+        count = int(cursor.fetchone()["cnt"] or 0)
+    if count <= 0:
+        return None
+    for row in rows:
+        samples.append({
+            "source": "download_candidate",
+            "id": row.get("id"),
+            "content_id": row.get("content_id") or row.get("dvd_id") or "",
+            "candidate_source": row.get("source") or "",
+            "title": row.get("title") or "",
+            "actress_name": row.get("actress_name") or "",
+            "missing_fields": ["magnet"],
+        })
+    return _issue(
+        issue_type="missing_download_link",
+        title="缺失下载链接",
+        summary=f"{count} 个下载候选缺少 magnet，无法批准或下发下载任务。",
+        count=count,
+        base_score=80,
+        samples=samples,
+        action={"label": "打开待补磁力候选", "route": "/downloads?tab=candidates&status=candidate&needs_magnet=1"},
     )
 
 

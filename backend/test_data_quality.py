@@ -68,6 +68,14 @@ class DataQualityOverviewTest(TempPostgresMixin, unittest.TestCase):
                 """,
                 ("3DSVR609", "3DSVR-609", "数字前缀番号", 901, "Emby Actor", "https://example.com/3dsvr609.jpg", "inventory", "test", "candidate", ""),
             )
+            cursor.execute(
+                """
+                INSERT INTO download_candidates
+                    (content_id, dvd_id, title, actress_id, actress_name, jacket_thumb_url, source, reason, status, magnet)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("SSIS-777", "SSIS-777", "缺磁力候选", 901, "Emby Actor", "https://example.com/ssis777.jpg", "supplement", "test", "candidate", ""),
+            )
 
         result = build_data_quality_overview(limit=20)
 
@@ -81,6 +89,7 @@ class DataQualityOverviewTest(TempPostgresMixin, unittest.TestCase):
         self.assertIn("low_quality_cover", issue_types)
         self.assertIn("dead_link", issue_types)
         self.assertIn("inconsistent_metadata", issue_types)
+        self.assertIn("missing_download_link", issue_types)
         invalid_issue = next(issue for issue in result["issues"] if issue["type"] == "invalid_field")
         self.assertEqual(invalid_issue["count"], 1)
         self.assertEqual(invalid_issue["samples"][0]["value"], "bad code")
@@ -89,6 +98,10 @@ class DataQualityOverviewTest(TempPostgresMixin, unittest.TestCase):
         self.assertTrue(result["issues"][0]["action"]["route"].startswith("/library-organize"))
         cover_issue = next(issue for issue in result["issues"] if issue["type"] == "low_quality_cover")
         self.assertEqual(cover_issue["action"]["route"], "/supplement?tab=movies&quality=missing_cover")
+        link_issue = next(issue for issue in result["issues"] if issue["type"] == "missing_download_link")
+        self.assertEqual(link_issue["count"], 5)
+        self.assertEqual(link_issue["severity"], "high")
+        self.assertEqual(link_issue["action"]["route"], "/downloads?tab=candidates&status=candidate&needs_magnet=1")
         self.assertLessEqual(len(result["issues"]), 20)
 
     def test_low_quality_cover_issue_exposes_repair_progress_when_supplied(self):

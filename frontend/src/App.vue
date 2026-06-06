@@ -30,6 +30,8 @@
           <button
             class="collapse-btn"
             type="button"
+            aria-controls="primary-navigation"
+            :aria-expanded="!sidebarCollapsed"
             :aria-label="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
             :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
             @click="sidebarCollapsed = !sidebarCollapsed"
@@ -41,7 +43,7 @@
           </button>
         </div>
       </div>
-      <nav class="sidebar-nav" aria-label="主导航">
+      <nav class="sidebar-nav" aria-label="主导航" id="primary-navigation">
         <div v-for="group in navGroups" :key="group.label" class="nav-group">
           <div v-if="!sidebarCollapsed" class="nav-group-label">{{ group.label }}</div>
           <router-link
@@ -462,11 +464,15 @@ export default {
 }
 .skip-link:focus-visible {
   outline: none;
+  color: var(--text-primary);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--glass-active-material);
+  border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow), var(--focus-ring);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transform: translateY(0);
 }
 /* ===== Sidebar ===== */
