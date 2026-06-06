@@ -112,6 +112,17 @@ test('actor page uses backend variant groups and can expand all versions', () =>
   assert.doesNotMatch(source, /from '..\/utils\/videoVariant\.js'/)
 })
 
+test('actor variant count hint is a clickable flow control outside card metadata', () => {
+  assert.match(vueSource, /<button\s+v-if="movie\.variant_group_count > 1 && !showVariants"\s+class="variant-label"[\s\S]*@click\.stop="showVariants = true"/)
+
+  const variantLabel = cssBlock('.variant-label')
+  assert.match(variantLabel, /display:\s*inline-flex/)
+  assert.match(variantLabel, /margin-top:\s*8px/)
+  assert.match(variantLabel, /cursor:\s*pointer/)
+  assert.doesNotMatch(variantLabel, /position:\s*absolute/)
+  assert.doesNotMatch(variantLabel, /pointer-events:\s*none/)
+})
+
 test('actor page version and year controls use shared Apple glass materials', () => {
   const variantSwitch = cssBlock('.variant-switch')
   const switchButton = cssBlock('.switch-btn')

@@ -323,14 +323,18 @@
 
 .movie-card-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   content-visibility: auto;
   contain-intrinsic-size: 1px 390px;
 }
 
 .variant-label {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
   padding: 2px 8px;
   background:
     var(--surface-specular-edge-strong),
@@ -344,8 +348,30 @@
   font-size: 11px;
   color: var(--text-primary);
   font-weight: 600;
-  pointer-events: none;
+  line-height: 1.35;
+  font-family: inherit;
+  cursor: pointer;
   z-index: 1;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.variant-label:hover,
+.variant-label:focus-visible {
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+}
+
+.variant-label:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide);
+}
+
+.variant-label:active {
+  transform: translateY(1px) scale(0.99);
 }
 
 /* Year Groups */

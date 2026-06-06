@@ -176,9 +176,14 @@
               :sampleUrl="movie._raw?.sample_url || ''"
               @click="openModal(movie)"
             />
-            <span v-if="movie.variant_group_count > 1 && !showVariants" class="variant-label">
+            <button
+              v-if="movie.variant_group_count > 1 && !showVariants"
+              class="variant-label"
+              type="button"
+              @click.stop="showVariants = true"
+            >
               另 {{ movie.variant_group_count - 1 }} 个版本
-            </span>
+            </button>
           </div>
         </div>
         <div v-else class="year-empty">该年份暂无作品</div>
