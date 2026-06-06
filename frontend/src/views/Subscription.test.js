@@ -17,6 +17,13 @@ function layeredSemanticBackground(token) {
   return new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
 }
 
+function cssGroupedBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = source.match(new RegExp(`${escaped}[\\s\\S]*?\\{([^}]*)\\}`))
+  assert.ok(match, `${selector} should exist`)
+  return match[1]
+}
+
 test('subscription page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/subscription\/subscription\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 600, 'Subscription.vue should stay below 600 lines')
@@ -186,4 +193,159 @@ test('subscription loading spinners use shared glass border tokens', () => {
     assert.match(block, /border-top-color:\s*var\(--text-primary\)/)
     assert.doesNotMatch(block, /var\(--border\)/)
   }
+})
+
+test('subscription liquid glass controls keep inner edge highlights and compact press states', () => {
+  for (const [selector, shadowToken] of [
+    ['.hero-metrics span', 'subscription-control-shadow'],
+    ['.inline-badge', 'subscription-control-shadow'],
+    ['.search-bar', 'subscription-control-shadow'],
+    ['.clear-btn', 'subscription-control-shadow'],
+    ['.skel-card', 'subscription-control-shadow'],
+    ['.pill-btn', 'subscription-control-shadow'],
+    ['.sheet', 'shadow-sheet'],
+    ['.sheet-top-bar', 'subscription-control-shadow'],
+    ['.top-action-btn', 'subscription-control-shadow'],
+    ['.sheet-avatar', 'subscription-control-shadow'],
+    ['.name-pill', 'subscription-control-shadow'],
+    ['.toggle-pill', 'subscription-control-shadow'],
+    ['.action-btn', 'subscription-control-shadow'],
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, new RegExp(`box-shadow:\\s*var\\(--${shadowToken}\\),\\s*var\\(--glass-inner-shadow\\)`), `${selector} should keep a refractive inner edge`)
+  }
+
+  for (const selector of [
+    '.top-action-btn:active',
+    '.action-btn:active',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.9[78]\)/, `${selector} should use the same pressed motion as compact controls`)
+  }
+})
+
+test('subscription sheets expose a liquid grabber and loading shimmer', () => {
+  const sheetTopBarBefore = cssBlock('.sheet-top-bar::before')
+  const skelCover = cssBlock('.skel-cover')
+  const skelLine = cssBlock('.skel-line')
+  const skelCoverShine = cssGroupedBlock('.skel-cover::after,')
+  const skelLineShine = cssBlock('.skel-line::after')
+
+  assert.match(sheetTopBarBefore, /content:\s*""/)
+  assert.match(sheetTopBarBefore, /width:\s*42px/)
+  assert.match(sheetTopBarBefore, /height:\s*4px/)
+  assert.match(sheetTopBarBefore, /border-radius:\s*999px/)
+  assert.match(sheetTopBarBefore, /background:\s*var\(--subscription-control-bg-hover\)/)
+  assert.match(sheetTopBarBefore, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+
+  for (const block of [skelCover, skelLine]) {
+    assert.match(block, /position:\s*relative/)
+    assert.match(block, /overflow:\s*hidden/)
+  }
+
+  for (const block of [skelCoverShine, skelLineShine]) {
+    assert.match(block, /content:\s*""/)
+    assert.match(block, /background:\s*linear-gradient\(100deg,\s*transparent 0%,\s*var\(--skeleton-highlight\) 46%,\s*transparent 72%\)/)
+    assert.match(block, /animation:\s*subscription-skeleton-shimmer 1\.8s ease-in-out infinite/)
+  }
+})
+
+test('subscription empty states are centered glass callouts', () => {
+  const emptyState = cssBlock('.empty-state')
+  const emptyStateIcon = cssGroupedBlock('.empty-state svg')
+
+  assert.match(emptyState, /max-width:\s*min\(520px,\s*100%\)/)
+  assert.match(emptyState, /margin:\s*36px auto/)
+  assert.match(emptyState, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(emptyState, /background:\s*var\(--subscription-sheet-bg\)/)
+  assert.match(emptyState, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(emptyState, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+
+  assert.match(emptyStateIcon, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(emptyStateIcon, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(emptyStateIcon, /box-shadow:\s*var\(--subscription-control-shadow\),\s*var\(--glass-inner-shadow\)/)
+})
+
+test('subscription page supports edit mode and bulk unsubscribe management', () => {
+  assert.match(vueSource, /subscriptionEditMode/)
+  assert.match(vueSource, /selectedSubscriptionIds/)
+  assert.match(vueSource, /selectedSubscriptionCount/)
+  assert.match(vueSource, /allSubscriptionsSelected/)
+  assert.match(vueSource, /toggleSubscriptionEditMode/)
+  assert.match(vueSource, /selectAllSubscriptions/)
+  assert.match(vueSource, /clearSubscriptionSelection/)
+  assert.match(vueSource, /removeSelectedSubscriptions/)
+  assert.match(vueSource, /class="subscription-management-bar"[\s\S]*role="toolbar"[\s\S]*aria-label="订阅批量操作"/)
+  assert.match(vueSource, /class="subscription-select-button"/)
+  assert.match(vueSource, /取消订阅 \{\{ selectedSubscriptionCount/)
+
+  const managementBar = cssBlock('.subscription-management-bar')
+  const managementSummary = cssBlock('.subscription-management-summary')
+  const managementSummaryStrong = cssBlock('.subscription-management-summary strong')
+  const subscriptionGridEditing = cssBlock('.card-grid.is-subscription-editing')
+  const selectable = cssBlock('.subscription-selectable')
+  const selectableSelected = cssBlock('.subscription-selectable.is-selected')
+  const selectButton = cssBlock('.subscription-select-button')
+  const selectedSelectButton = cssBlock('.subscription-selectable.is-selected .subscription-select-button')
+
+  assert.match(managementBar, /display:\s*flex/)
+  assert.match(managementBar, /justify-content:\s*space-between/)
+  assert.match(managementBar, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(managementBar, /background:\s*var\(--subscription-sheet-bg\)/)
+  assert.match(managementBar, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(managementSummary, /display:\s*grid/)
+  assert.match(managementSummaryStrong, /font-variant-numeric:\s*tabular-nums/)
+  assert.match(subscriptionGridEditing, /user-select:\s*none/)
+  assert.match(selectable, /position:\s*relative/)
+  assert.match(selectableSelected, /outline:\s*2px solid var\(--glass-active-border\)/)
+  assert.match(selectButton, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(selectButton, /box-shadow:\s*var\(--subscription-control-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(selectedSelectButton, /background:\s*var\(--subscription-active-bg\)/)
+  assert.match(selectedSelectButton, /border-color:\s*var\(--glass-active-border\)/)
+})
+
+test('subscription edit mode supports bulk monitoring and auto policy updates', () => {
+  assert.match(vueSource, /class="sheet-top-actions subscription-batch-actions"/)
+  assert.match(vueSource, /@click="pauseSelectedSubscriptions"[\s\S]*暂停监控/)
+  assert.match(vueSource, /@click="resumeSelectedSubscriptions"[\s\S]*恢复监控/)
+  assert.match(vueSource, /@click="enableSelectedAutoDownload"[\s\S]*开启自动策略/)
+  assert.match(vueSource, /@click="disableSelectedAutoDownload"[\s\S]*关闭自动策略/)
+  assert.match(vueSource, /updateSelectedSubscriptions/)
+  assert.match(vueSource, /api\.updateSubscription\(sub\.id,\s*patch\)/)
+  assert.match(vueSource, /subs\.value = subs\.value\.map/)
+  assert.match(vueSource, /clearSubscriptionSelection\(\)/)
+
+  const batchActions = cssBlock('.subscription-batch-actions')
+  assert.match(batchActions, /display:\s*flex/)
+  assert.match(batchActions, /flex-wrap:\s*wrap/)
+  assert.match(batchActions, /justify-content:\s*flex-end/)
+})
+
+test('subscription discovery sheet has a default landing and retryable empty search state', () => {
+  assert.match(vueSource, /class="discover-kicker"/)
+  assert.match(vueSource, /订阅发现/)
+  assert.match(vueSource, /class="discover-suggestions"/)
+  assert.match(vueSource, /v-else-if="!searched"/)
+  assert.match(vueSource, /最近订阅/)
+  assert.match(vueSource, /v-for="sub in recentSubscriptions"/)
+  assert.match(vueSource, /recentSubscriptions/)
+  assert.match(vueSource, /class="empty-state compact"/)
+  assert.match(vueSource, /重新搜索/)
+
+  const discoverHead = cssBlock('.discover-head')
+  const discoverKicker = cssBlock('.discover-kicker')
+  const discoverSuggestions = cssBlock('.discover-suggestions')
+  const suggestionChip = cssBlock('.suggestion-chip')
+  const compactEmpty = cssBlock('.empty-state.compact')
+
+  assert.match(discoverHead, /text-align:\s*left/)
+  assert.match(discoverKicker, /font-size:\s*var\(--type-caption\)/)
+  assert.match(discoverKicker, /color:\s*var\(--text-muted\)/)
+  assert.match(discoverSuggestions, /display:\s*flex/)
+  assert.match(discoverSuggestions, /flex-wrap:\s*wrap/)
+  assert.match(suggestionChip, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(suggestionChip, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(suggestionChip, /box-shadow:\s*var\(--subscription-control-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(compactEmpty, /padding:\s*36px 20px/)
+  assert.match(compactEmpty, /margin:\s*20px auto/)
 })

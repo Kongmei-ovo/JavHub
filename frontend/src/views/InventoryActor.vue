@@ -36,11 +36,19 @@
       </button>
     </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading">
-      <span v-if="activeTab === 'emby'">从 Emby 加载影片中...</span>
-      <span v-else>加载中...</span>
-    </div>
+    <AppleSkeleton v-if="loading" class="loading" variant="gallery" :items="8" columns="repeat(auto-fill, minmax(160px, 1fr))" :label="activeTab === 'emby' ? 'Emby 影片加载中' : '缺失影片加载中'" />
+
+    <AppleErrorState
+      v-else-if="error"
+      class="empty"
+      title="演员库存加载失败"
+      :description="error"
+      next-step="重新加载会保留当前演员；如果仍失败，可以回到库存列表重新进入。"
+      retry-label="重新加载"
+      secondary-action-label="返回库存"
+      @retry="reloadCurrentTab"
+      @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'inventory' } })"
+    />
 
     <!-- Emby 已有影片 -->
     <template v-else-if="activeTab === 'emby'">
@@ -75,9 +83,18 @@
           </div>
         </div>
       </div>
-      <div v-if="!loading && Object.keys(groupedEmbyByYear).length === 0" class="empty">
-        Emby 中暂无该演员的影片
-      </div>
+      <AppleEmptyState
+        v-if="!loading && Object.keys(groupedEmbyByYear).length === 0"
+        class="empty"
+        title="Emby 中暂无该演员影片"
+        description="当前库存快照没有关联到这个演员的 Emby 影片。"
+        next-step="可以重新读取 Emby 影片，或回到库存工作台确认演员映射和快照。"
+        action-label="重新读取 Emby"
+        secondary-action-label="库存工作台"
+        density="compact"
+        @action="reloadEmbyVideos"
+        @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'inventory' } })"
+      />
     </template>
 
     <!-- 缺失影片 -->
@@ -100,9 +117,18 @@
           </div>
         </div>
       </div>
-      <div v-if="!loading && Object.keys(groupedMissingByYear).length === 0" class="empty">
-        暂无缺失影片
-      </div>
+      <AppleEmptyState
+        v-if="!loading && Object.keys(groupedMissingByYear).length === 0"
+        class="empty"
+        title="暂无缺失影片"
+        description="当前对比结果没有发现这个演员的缺失影片。"
+        next-step="可以查看库存下载候选，或回到库存工作台继续处理其他演员。"
+        action-label="查看候选"
+        secondary-action-label="库存工作台"
+        density="compact"
+        @action="viewInventoryCandidates"
+        @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'inventory' } })"
+      />
       <div v-else class="candidate-link">
         <button class="back-btn" type="button" @click="viewInventoryCandidates">查看库存下载候选</button>
       </div>
@@ -123,6 +149,9 @@ import axios from 'axios'
 import { ElMessage } from '../utils/message.js'
 import ActressAvatar from '../components/ActressAvatar.vue'
 import VideoCard from '../components/VideoCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import { openVideoModal } from '../utils/modalState'
 import { groupEmbyVideosByYear, groupMissingVideosByYear } from '../utils/inventoryVideoGrouping'
 import { applyImageFallback } from '../utils/imageFallback.js'
@@ -135,6 +164,7 @@ const actor = ref({})
 const embyVideos = ref([])
 const missingVideos = ref([])
 const loading = ref(false)
+const error = ref('')
 const activeTab = ref('emby')
 
 // Emby 已有影片按年分组（编年正序：最早的在前）
@@ -145,10 +175,13 @@ const groupedMissingByYear = computed(() => groupMissingVideosByYear(missingVide
 
 const fetchActor = async () => {
   loading.value = true
+  error.value = ''
   try {
     const res = await axios.get(`/api/inventory/actors/${actorId}`)
     actor.value = res.data
     missingVideos.value = res.data.missing_videos || []
+  } catch (e) {
+    error.value = e.response?.data?.detail || e.message || '演员库存加载失败'
   } finally {
     loading.value = false
   }
@@ -157,15 +190,30 @@ const fetchActor = async () => {
 const loadEmbyVideos = async () => {
   if (embyVideos.value.length > 0) return // 已有数据不重复加载
   loading.value = true
+  error.value = ''
   try {
     const res = await axios.get(`/api/inventory/actors/${actorId}/emby-videos`)
     embyVideos.value = res.data.data || []
   } catch (e) {
     console.error('Failed to load Emby videos:', e)
+    error.value = e.response?.data?.detail || e.message || 'Emby 影片加载失败'
     embyVideos.value = []
   } finally {
     loading.value = false
   }
+}
+
+const reloadEmbyVideos = async () => {
+  embyVideos.value = []
+  await loadEmbyVideos()
+}
+
+const reloadCurrentTab = async () => {
+  if (!actor.value.actress_id && !actor.value.display_name) {
+    await fetchActor()
+  }
+  if (activeTab.value === 'emby') await reloadEmbyVideos()
+  else await fetchActor()
 }
 
 const embyImageUrl = (itemId, imageTag) => {
@@ -240,7 +288,7 @@ onMounted(async () => {
   cursor: pointer;
   font-size: 14px;
   padding: 0 14px;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .back-btn:hover {
   border-color: var(--glass-control-border-hover);
@@ -288,7 +336,7 @@ onMounted(async () => {
   text-underline-offset: 3px;
   min-height: 44px;
   padding: 0 12px;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .mapping-link:hover {
   border-color: var(--glass-control-border-hover);
@@ -329,7 +377,7 @@ onMounted(async () => {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   font-size: 14px;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), font-weight var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .tab-btn:hover {
   color: var(--text-primary);
@@ -374,7 +422,7 @@ onMounted(async () => {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   overflow: hidden;
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .video-card:hover {
   transform: translateY(-2px);
@@ -425,7 +473,7 @@ onMounted(async () => {
   min-height: 44px;
   cursor: pointer;
   font-size: 12px;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .candidate-btn:hover {
   transform: translateY(-1px);

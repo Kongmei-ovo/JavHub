@@ -62,6 +62,7 @@ async def list_jobs(
     source: str | None = Query(None),
     status: str | None = Query(None),
     actress_id: int | None = Query(None),
+    error_provider: str | None = Query(None),
 ) -> dict[str, Any]:
     client = get_info_client()
     p = page.default if hasattr(page, "default") else page
@@ -69,6 +70,7 @@ async def list_jobs(
     src = source.default if hasattr(source, "default") else source
     st = status.default if hasattr(status, "default") else status
     aid = actress_id.default if hasattr(actress_id, "default") else actress_id
+    ep = error_provider.default if hasattr(error_provider, "default") else error_provider
     params: dict[str, Any] = {"page": p, "page_size": ps}
     if src:
         params["source"] = src
@@ -76,6 +78,8 @@ async def list_jobs(
         params["status"] = st
     if aid is not None:
         params["actress_id"] = aid
+    if ep:
+        params["error_provider"] = ep
     return await client.proxy_get("/api/v1/supplement/jobs", params=params)
 
 

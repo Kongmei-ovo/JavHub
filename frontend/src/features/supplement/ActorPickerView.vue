@@ -51,30 +51,29 @@
           @open="$emit('select', actor)"
         />
       </div>
-      <div v-else-if="searched && !searching" class="empty-panel apple-surface">
-        <h3>没有匹配演员</h3>
-        <p>换一个日文名、罗马音再试。</p>
-      </div>
-      <div v-else class="empty-panel apple-surface">
-        <h3>{{ error ? '补全队列不可用' : '暂无可选演员' }}</h3>
-        <p>{{ error ? '补全接口暂时无法连接，可稍后重试。' : '搜索后会显示可补全的演员。' }}</p>
-        <button
-          v-if="error"
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="$emit('retry')"
-        >重试</button>
-      </div>
+      <AppleEmptyState
+        v-else
+        class="empty-panel"
+        :title="actorEmptyState.title"
+        :description="actorEmptyState.description"
+        :next-step="actorEmptyState.nextStep"
+        :action-label="actorEmptyState.actionLabel"
+        :secondary-action-label="actorEmptyState.secondaryActionLabel"
+        density="compact"
+        @action="handleEmptyAction"
+        @secondary-action="handleEmptySecondaryAction"
+      />
     </section>
   </section>
 </template>
 
 <script>
 import ActorPortraitCard from '../../components/ActorPortraitCard.vue'
+import AppleEmptyState from '../../components/AppleEmptyState.vue'
 
 export default {
   name: 'ActorPickerView',
-  components: { ActorPortraitCard },
+  components: { ActorPortraitCard, AppleEmptyState },
   props: {
     actors: { type: Array, default: () => [] },
     keyword: { type: String, default: '' },
@@ -86,7 +85,50 @@ export default {
     actorChoiceStatus: { type: Function, required: true },
   },
   emits: ['update:keyword', 'search', 'clear-search', 'select', 'retry'],
+  computed: {
+    actorEmptyState() {
+      if (this.error) {
+        return {
+          title: '补全队列不可用',
+          description: '补全接口暂时无法连接。',
+          nextStep: '重试会重新读取最近补全演员；也可以清除搜索后稍后再筛选。',
+          actionLabel: '重试',
+          secondaryActionLabel: this.searched ? '清除搜索' : '',
+        }
+      }
+      if (this.searched && !this.searching) {
+        return {
+          title: '没有匹配演员',
+          description: '当前关键词没有找到可补全的演员。',
+          nextStep: '换一个日文名或罗马音继续搜索，或清除搜索回到最近补全列表。',
+          actionLabel: this.keyword.trim() ? '重新搜索' : '',
+          secondaryActionLabel: '清除搜索',
+        }
+      }
+      return {
+        title: '暂无可选演员',
+        description: '最近补全列表还没有可选演员。',
+        nextStep: '可以输入演员名筛选，或刷新最近补全队列等待新任务写入。',
+        actionLabel: this.keyword.trim() ? '筛选演员' : '刷新最近补全',
+        secondaryActionLabel: this.keyword.trim() ? '清除搜索' : '',
+      }
+    },
+  },
   methods: {
+    handleEmptyAction() {
+      if (this.error) {
+        this.$emit('retry')
+        return
+      }
+      if (this.keyword.trim()) {
+        this.$emit('search')
+        return
+      }
+      this.$emit('retry')
+    },
+    handleEmptySecondaryAction() {
+      this.$emit('clear-search')
+    },
     actorBadges(actor) {
       const status = this.actorChoiceStatus(actor)
       if (!status) return []
@@ -156,7 +198,7 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .search-shell:focus-within {

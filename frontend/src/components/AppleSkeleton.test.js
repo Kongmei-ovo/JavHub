@@ -26,3 +26,14 @@ test('AppleSkeleton card loading state uses layered subtle glass material', () =
   assert.doesNotMatch(card, /background:\s*var\(--material-glass-subtle\);/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--border\)|var\(--glass-surface-shadow\)|var\(--glass-blur-surface\)/)
 })
+
+test('AppleSkeleton supports reusable page and list loading layouts', () => {
+  assert.match(source, /variant === 'gallery'/)
+  assert.match(source, /variant === 'list'/)
+  assert.match(source, /:style="\[styleVars, gridVars\]"/)
+  assert.match(source, /items:\s*\{\s*type:\s*Number,\s*default:\s*6\s*\}/)
+  assert.match(source, /columns:\s*\{\s*type:\s*String,\s*default:\s*'repeat\(auto-fill, minmax\(180px, 1fr\)\)'\s*\}/)
+  assert.match(source, /class="apple-skeleton-grid"/)
+  assert.match(source, /class="apple-skeleton-list"/)
+  assert.match(source, /--skeleton-grid-columns/)
+})

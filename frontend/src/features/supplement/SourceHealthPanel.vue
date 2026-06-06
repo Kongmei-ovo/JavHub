@@ -12,6 +12,50 @@
         </button>
       </div>
     </div>
+    <div class="source-health-modebar">
+      <button
+        v-for="mode in sourceHealthModes"
+        :key="mode.key"
+        type="button"
+        :class="{ active: sourceHealthMode === mode.key }"
+        @click="sourceHealthMode = mode.key"
+      >
+        <strong>{{ mode.label }}</strong>
+        <em class="mode-count">{{ sourceHealthModeCount(mode.key) }}</em>
+        <span>{{ mode.description }}</span>
+      </button>
+    </div>
+    <div class="source-health-summary-grid">
+      <div v-for="card in sourceHealthSummary" :key="card.label" class="health-summary-card">
+        <strong>{{ card.value }}</strong>
+        <span>{{ card.label }}</span>
+      </div>
+    </div>
+    <div class="source-next-actions">
+      <article
+        v-for="action in sourceHealthActionQueue"
+        :key="action.mode"
+        class="source-next-action-card"
+        :class="sourceNextActionCardClass(action)"
+      >
+        <div>
+          <strong>{{ action.label }}</strong>
+          <em v-if="action.primary">当前模式</em>
+        </div>
+        <span class="source-next-action-value">{{ action.count }}</span>
+        <small>{{ action.detail }}</small>
+        <button
+          :class="['btn', action.tone, 'btn-xs']"
+          type="button"
+          :disabled="action.loading"
+          @click="action.event ? $emit(action.event) : sourceHealthMode = action.mode"
+        >{{ action.cta }}</button>
+      </article>
+    </div>
+    <div class="source-runbook">
+      <strong>{{ activeRunbook.title }}</strong>
+      <span>{{ activeRunbook.detail }}</span>
+    </div>
     <section class="avatar-sync-panel">
       <div class="avatar-sync-head">
         <div>
@@ -139,16 +183,47 @@
           <small>{{ smokeRunLabel(run) }}</small>
         </button>
       </div>
-      <small v-else class="empty-inline">暂无诊断历史</small>
+      <small v-else class="empty-inline">运行诊断后会在这里保留最近样本</small>
     </div>
-    <div v-if="sourceHealthLoading" class="loading-wrap"><div class="spinner-large"></div></div>
+    <AppleSkeleton
+      v-if="sourceHealthLoading"
+      class="source-health-state"
+      variant="list"
+      :items="5"
+      label="来源状态加载中"
+    />
     <div v-else class="source-health-grid">
-      <article v-for="source in sourceHealthRows" :key="source.source" class="source-health-card">
+      <div class="source-health-queue-head">
+        <div>
+          <strong>{{ sourceHealthQueueTitle }}</strong>
+          <span>{{ sourceHealthQueueHint }}</span>
+        </div>
+        <small>{{ sourceHealthVisibleRows.length }} / {{ sourceHealthRows.length }}</small>
+      </div>
+      <AppleEmptyState
+        v-if="!sourceHealthVisibleRows.length"
+        class="source-health-empty"
+        :title="sourceHealthEmptyState.title"
+        :description="sourceHealthEmptyState.description"
+        :next-step="sourceHealthEmptyState.nextStep"
+        action-label="刷新来源"
+        secondary-action-label="运行诊断"
+        density="compact"
+        @action="$emit('refresh-health')"
+        @secondary-action="$emit('run-smoke')"
+      />
+      <article v-for="source in sourceHealthVisibleRows" :key="source.source" class="source-health-card">
         <div>
           <strong>{{ source.display_name || source.source }}</strong>
           <span>{{ source.source }}</span>
         </div>
         <span class="status-pill" :class="`health-${source.runtime_status}`">{{ sourceHealthLabel(source.runtime_status) }}</span>
+        <div class="source-risk-row">
+          <span v-for="item in sourceHealthRiskItems(source)" :key="item.label">
+            <b>{{ item.value }}</b>
+            <em>{{ item.label }}</em>
+          </span>
+        </div>
         <div class="source-budget-meter">
           <div>
             <strong>{{ source.budget?.local_active ?? 0 }} / {{ source.budget?.local_limit ?? '—' }}</strong>
@@ -160,19 +235,11 @@
         <small>{{ sourceHealthDetail(source) }}</small>
         <div class="source-health-actions">
           <button
-            v-if="source.runtime_status === 'paused'"
-            class="btn btn-primary btn-xs"
+            :class="['btn', sourceHealthPrimaryAction(source).tone, 'btn-xs']"
             type="button"
             :disabled="sourceActionLoading === source.source"
-            @click="$emit('resume-source', source.source)"
-          >恢复</button>
-          <button
-            v-else
-            class="btn btn-ghost btn-xs"
-            type="button"
-            :disabled="sourceActionLoading === source.source"
-            @click="$emit('pause-source', source.source)"
-          >暂停 24h</button>
+            @click="$emit(sourceHealthPrimaryAction(source).event, source.source)"
+          >{{ sourceHealthActionLabel(sourceHealthPrimaryAction(source)) }}</button>
         </div>
       </article>
     </div>
@@ -181,10 +248,12 @@
 
 <script>
 import GlassSelect from '../../components/GlassSelect.vue'
+import AppleEmptyState from '../../components/AppleEmptyState.vue'
+import AppleSkeleton from '../../components/AppleSkeleton.vue'
 
 export default {
   name: 'SourceHealthPanel',
-  components: { GlassSelect },
+  components: { GlassSelect, AppleEmptyState, AppleSkeleton },
   props: {
     providerSmokeForm: { type: Object, required: true },
     providerSourceOptions: { type: Array, default: () => [] },
@@ -213,13 +282,169 @@ export default {
     'pause-source',
     'resume-source',
   ],
+  data() {
+    return {
+      sourceHealthMode: 'diagnose',
+    }
+  },
   computed: {
+    sourceHealthModes() {
+      return [
+        { key: 'diagnose', label: '诊断模式', description: '跑样本、看字段分' },
+        { key: 'recover', label: '恢复模式', description: '清冷却、看预算' },
+        { key: 'isolate', label: '隔离模式', description: '暂停异常来源' },
+      ]
+    },
+    degradedSources() {
+      return this.sourceHealthRows.filter(source => ['degraded', 'cooling_down'].includes(source.runtime_status))
+    },
+    pausedSources() {
+      return this.sourceHealthRows.filter(source => source.runtime_status === 'paused')
+    },
+    diagnoseQueueRows() {
+      return this.sourceHealthRows.filter(source => ['unknown', 'healthy', 'degraded'].includes(source.runtime_status))
+    },
+    recoverQueueRows() {
+      return this.sourceHealthRows.filter(source => source.runtime_status === 'cooling_down' || source.runtime_status === 'paused')
+    },
+    isolateQueueRows() {
+      return this.sourceHealthRows.filter(source => (
+        ['degraded', 'cooling_down', 'paused'].includes(source.runtime_status)
+        || (source.consecutive_failures || 0) >= 2
+      ))
+    },
+    sourceHealthSummary() {
+      return [
+        { label: '来源总数', value: this.sourceHealthRows.length },
+        { label: '异常来源', value: this.degradedSources.length },
+        { label: '已暂停', value: this.pausedSources.length },
+        { label: '头像任务', value: this.avatarJobRunning ? '运行中' : '待命' },
+      ]
+    },
+    sourceHealthActionQueue() {
+      return [
+        {
+          mode: 'diagnose',
+          label: '运行诊断',
+          count: this.diagnoseQueueRows.length,
+          detail: '样本字段分与最近错误',
+          cta: this.providerSmokeLoading ? '诊断中...' : '运行诊断',
+          event: 'run-smoke',
+          tone: 'btn-primary',
+          loading: this.providerSmokeLoading,
+          primary: this.sourceHealthMode === 'diagnose',
+        },
+        {
+          mode: 'recover',
+          label: '恢复来源',
+          count: this.recoverQueueRows.length,
+          detail: '冷却与人工暂停入口',
+          cta: '查看恢复',
+          tone: 'btn-ghost',
+          primary: this.sourceHealthMode === 'recover',
+        },
+        {
+          mode: 'isolate',
+          label: '隔离风险',
+          count: this.isolateQueueRows.length,
+          detail: '连续失败与异常来源',
+          cta: '查看隔离',
+          tone: 'btn-ghost',
+          primary: this.sourceHealthMode === 'isolate',
+        },
+      ]
+    },
+    activeRunbook() {
+      if (this.sourceHealthMode === 'recover') {
+        return { title: '恢复模式', detail: '优先恢复人工暂停或冷却结束的来源，再回看最近诊断样本。' }
+      }
+      if (this.sourceHealthMode === 'isolate') {
+        return { title: '隔离模式', detail: '连续失败或预算异常的来源先暂停 24h，避免污染字段补全。' }
+      }
+      return { title: '诊断模式', detail: '先运行默认样本，确认字段分、缺失字段和详情来源是否稳定。' }
+    },
     avatarJobRunning() {
       const status = this.gfriendsAvatarJob?.status
       return status === 'queued' || status === 'running'
     },
+    sourceHealthVisibleRows() {
+      if (this.sourceHealthMode === 'recover') {
+        return this.sourceHealthRows.filter(source => source.runtime_status === 'cooling_down' || source.runtime_status === 'paused')
+      }
+      if (this.sourceHealthMode === 'isolate') {
+        return this.sourceHealthRows.filter(source => ['degraded', 'cooling_down', 'paused'].includes(source.runtime_status))
+      }
+      return this.sourceHealthRows
+    },
+    sourceHealthQueueTitle() {
+      if (this.sourceHealthMode === 'recover') return '恢复队列'
+      if (this.sourceHealthMode === 'isolate') return '隔离队列'
+      return '来源诊断队列'
+    },
+    sourceHealthQueueHint() {
+      if (this.sourceHealthMode === 'recover') return '只显示冷却中或人工暂停的来源，优先恢复可用入口。'
+      if (this.sourceHealthMode === 'isolate') return '只显示异常来源，便于快速暂停高风险来源。'
+      return '显示全部来源，按当前运行状态查看字段补全风险。'
+    },
+    sourceHealthEmptyHint() {
+      if (this.sourceHealthMode === 'recover') return '没有冷却中或人工暂停的来源，可以回到诊断模式检查样本质量。'
+      if (this.sourceHealthMode === 'isolate') return '没有需要隔离的异常来源，当前来源池可继续观察。'
+      return '来源池暂无记录，先刷新来源状态或运行诊断样本。'
+    },
+    sourceHealthEmptyState() {
+      if (this.sourceHealthMode === 'recover') {
+        return {
+          title: '恢复队列为空',
+          description: '当前没有冷却中或人工暂停的来源。',
+          nextStep: '刷新来源确认最新预算，或运行诊断样本检查是否有新异常。',
+        }
+      }
+      if (this.sourceHealthMode === 'isolate') {
+        return {
+          title: '隔离队列为空',
+          description: '当前没有需要隔离的异常来源。',
+          nextStep: '运行诊断可以重新采样来源质量；刷新来源会同步最新暂停和冷却状态。',
+        }
+      }
+      return {
+        title: '暂无来源状态',
+        description: '来源池还没有可展示的健康记录。',
+        nextStep: '先刷新来源状态，或运行诊断样本建立第一批质量记录。',
+      }
+    },
+    sourceHealthPrimaryAction() {
+      return source => {
+        if (source.runtime_status === 'paused') {
+          return { event: 'resume-source', label: '恢复', tone: 'btn-primary' }
+        }
+        if (this.sourceHealthMode === 'recover' && source.runtime_status === 'cooling_down') {
+          return { event: 'resume-source', label: '解除冷却', tone: 'btn-primary' }
+        }
+        return { event: 'pause-source', label: '暂停 24h', tone: 'btn-ghost' }
+      }
+    },
   },
   methods: {
+    sourceHealthModeCount(mode) {
+      if (mode === 'recover') {
+        return this.recoverQueueRows.length
+      }
+      if (mode === 'isolate') {
+        return this.isolateQueueRows.length
+      }
+      return this.sourceHealthRows.length
+    },
+    sourceNextActionCardClass(action) {
+      return { active: action.primary }
+    },
+    sourceHealthRiskItems(source) {
+      const budget = source.budget || {}
+      return [
+        { label: '连续失败', value: source.consecutive_failures || 0 },
+        { label: '预算占用', value: budget.local_active ?? 0 },
+        { label: '最近错误', value: source.last_error_type || '无' },
+      ]
+    },
     avatarJobStatusLabel(status) {
       const map = { queued: '排队中', running: '同步中', succeeded: '已完成', failed: '失败', idle: '待开始' }
       return map[status] || status || '待开始'
@@ -227,530 +452,12 @@ export default {
     updateProviderSmokeForm(patch) {
       this.$emit('update:providerSmokeForm', { ...this.providerSmokeForm, ...patch })
     },
+    sourceHealthActionLabel(action) {
+      if (action.event === 'resume-source') return action.label
+      return action.label
+    },
   },
 }
 </script>
 
-<style scoped>
-.workspace-panel {
-  padding: 18px;
-  border-radius: var(--radius-card);
-}
-
-.workspace-panel h2,
-.workspace-panel p {
-  margin: 0;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 14px;
-}
-
-.panel-header h2 {
-  color: var(--text-primary);
-  font-size: 20px;
-}
-
-.source-health-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.provider-smoke-controls {
-  display: grid;
-  grid-template-columns: minmax(150px, 220px) minmax(180px, 1fr) auto;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.provider-smoke-controls .glass-select {
-  width: 100%;
-}
-
-.filter-input {
-  min-height: 44px;
-  padding: 0 14px;
-  color: var(--text-primary);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
-  border-radius: 999px;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  outline: none;
-  font-size: 13px;
-  transition: background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
-}
-
-.filter-input:focus {
-  border-color: var(--glass-active-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--glass-active-material);
-  box-shadow: var(--glass-active-shadow);
-}
-
-.avatar-sync-panel {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding: 14px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-}
-
-.avatar-sync-head,
-.avatar-sync-actions,
-.avatar-sync-steps {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.avatar-sync-head {
-  justify-content: space-between;
-}
-
-.avatar-sync-head h3 {
-  color: var(--text-primary);
-  font-size: 16px;
-}
-
-.avatar-sync-head p,
-.avatar-sync-footnote,
-.avatar-sync-error {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.avatar-sync-error {
-  color: var(--badge-error-text);
-  overflow-wrap: anywhere;
-}
-
-.avatar-sync-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.avatar-sync-metrics div {
-  padding: 10px 12px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-}
-
-.avatar-sync-metrics strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 18px;
-}
-
-.avatar-sync-metrics span,
-.avatar-sync-steps span {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.avatar-sync-steps.active span {
-  color: var(--text-secondary);
-}
-
-.mini-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--glass-control-border);
-  border-top-color: var(--badge-info-text);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.provider-smoke-panel {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.provider-smoke-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-}
-
-.provider-smoke-summary div {
-  display: grid;
-  gap: 2px;
-}
-
-.provider-smoke-summary strong {
-  color: var(--text-primary);
-  font-size: 18px;
-}
-
-.provider-smoke-summary span,
-.provider-smoke-summary small {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.provider-smoke-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.provider-smoke-card {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-}
-
-.provider-smoke-card.failed {
-  border-color: var(--badge-error-border);
-}
-
-.provider-smoke-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.provider-smoke-card strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--text-primary);
-}
-
-.provider-smoke-card p,
-.provider-smoke-card small {
-  color: var(--text-muted);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.provider-smoke-detail {
-  display: grid;
-  gap: 3px;
-  padding-top: 4px;
-}
-
-.provider-smoke-detail span {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.provider-smoke-history {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 12px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-}
-
-.provider-smoke-history-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.provider-smoke-history-head strong {
-  color: var(--text-primary);
-}
-
-.provider-smoke-run-list {
-  display: grid;
-  gap: 8px;
-}
-
-.provider-smoke-run {
-  display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto minmax(120px, 1fr);
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: transform var(--motion-fast), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
-}
-
-.provider-smoke-run:hover {
-  transform: translateY(-1px);
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-}
-
-.provider-smoke-run:focus-visible {
-  outline: none;
-  transform: translateY(-1px);
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
-}
-
-.provider-smoke-run span,
-.provider-smoke-run small {
-  color: var(--text-muted);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.provider-smoke-run strong {
-  color: var(--text-primary);
-}
-
-.source-health-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.source-health-card {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-}
-
-.source-health-card strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 15px;
-}
-
-.source-health-card span,
-.source-health-card p,
-.source-health-card small {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.source-budget-meter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-}
-
-.source-budget-meter strong {
-  font-size: 18px;
-}
-
-.source-budget-meter span,
-.source-budget-meter small {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.source-budget-meter small {
-  text-align: right;
-}
-
-.source-health-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 3px 9px;
-  border: 1px solid var(--badge-info-border);
-  border-radius: 999px;
-  color: var(--badge-info-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  white-space: nowrap;
-}
-
-.status-succeeded {
-  color: var(--badge-success-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
-  border-color: var(--badge-success-border);
-}
-
-.status-running,
-.status-queued {
-  color: var(--badge-warning-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
-  border-color: var(--badge-warning-border);
-}
-
-.status-failed {
-  color: var(--badge-error-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
-  border-color: var(--badge-error-border);
-}
-
-.status-idle {
-  color: var(--badge-pending-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
-  border-color: var(--badge-pending-border);
-}
-
-.health-healthy {
-  color: var(--badge-success-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
-  border-color: var(--badge-success-border);
-}
-
-.health-degraded {
-  color: var(--badge-warning-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
-  border-color: var(--badge-warning-border);
-}
-
-.health-cooling_down {
-  color: var(--badge-error-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
-  border-color: var(--badge-error-border);
-}
-
-.health-paused {
-  color: var(--badge-pending-text);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
-  border-color: var(--badge-pending-border);
-}
-
-.health-unknown {
-  color: var(--text-muted);
-}
-
-.loading-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 140px;
-}
-
-.spinner-large {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--glass-control-border);
-  border-top-color: var(--badge-info-text);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.empty-inline {
-  padding: 20px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-@media (max-width: 860px) {
-  .panel-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .source-health-toolbar {
-    justify-content: flex-start;
-  }
-
-  .provider-smoke-controls,
-  .provider-smoke-run,
-  .avatar-sync-metrics {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style scoped src="./sourceHealthPanel.css"></style>

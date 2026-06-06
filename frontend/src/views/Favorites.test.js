@@ -189,7 +189,7 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
   assert.match(entityFavButtonFocus, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(entityFavButtonFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
   assert.doesNotMatch(entityFavButtonFocus, /rgba\(var\(--error-rgb\)/)
-  assert.match(entityFavButtonFocus, /transform:\s*translateY\(-1px\) scale\(1\.05\)/)
+  assert.match(entityFavButtonFocus, /transform:\s*translateY\(-1px\) scale\(1\.02\)/)
 
   assert.match(exploreFocus, /outline:\s*none/)
   assert.match(exploreFocus, backgroundIncludes('glass-active-material'))
@@ -200,4 +200,115 @@ test('favorites keyboard focus mirrors hover glass treatment', () => {
 
 test('favorites glass backgrounds are layered with specular and noise surfaces', () => {
   assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
+})
+
+test('favorites liquid glass surfaces keep inner edge highlights and pressed feedback', () => {
+  for (const [selector, shadowToken] of [
+    ['.collection-manager', 'glass-surface-shadow'],
+    ['.collection-form input', 'glass-control-shadow'],
+    ['.btn-mini', 'glass-control-shadow'],
+    ['.collection-row', 'glass-control-shadow'],
+    ['.segmented-control', 'glass-control-shadow'],
+    ['.segment-item', 'glass-control-shadow'],
+    ['.entity-bubble', 'glass-control-shadow'],
+    ['.select-check', 'glass-control-shadow'],
+    ['.empty-icon', 'glass-control-shadow'],
+    ['.skeleton-card', 'glass-surface-shadow'],
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, new RegExp(`box-shadow:\\s*var\\(--${shadowToken}\\),\\s*var\\(--glass-inner-shadow\\)`), `${selector} should keep an inner glass edge`)
+  }
+
+  for (const selector of [
+    '.btn-mini:active:not(:disabled)',
+    '.segment-item:active',
+    '.select-check:active',
+    '.entity-bubble:active',
+    '.entity-fav-btn:active',
+    '.btn-explore:active',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.9[78]\)/, `${selector} should have compact pressed feedback`)
+    assert.doesNotMatch(block, /transition:\s*all\b/, `${selector} should avoid transition-all`)
+  }
+})
+
+test('favorites empty and loading states are composed glass surfaces', () => {
+  const emptyState = cssBlock('.curate-empty')
+  const skeletonCover = cssBlock('.skeleton-cover')
+  const skeletonLine = cssBlock('.skeleton-line')
+  const skeletonCoverShine = cssGroupedBlock('.skeleton-cover::after,')
+  const skeletonLineShine = cssBlock('.skeleton-line::after')
+
+  assert.match(emptyState, /max-width:\s*min\(520px,\s*100%\)/)
+  assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(emptyState, backgroundIncludes('material-glass-sheet'))
+  assert.match(emptyState, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(emptyState, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+
+  for (const block of [skeletonCover, skeletonLine]) {
+    assert.match(block, /position:\s*relative/)
+    assert.match(block, /overflow:\s*hidden/)
+  }
+
+  for (const block of [skeletonCoverShine, skeletonLineShine]) {
+    assert.match(block, /content:\s*""/)
+    assert.match(block, /background:\s*linear-gradient\(100deg,\s*transparent 0%,\s*var\(--skeleton-highlight\) 46%,\s*transparent 72%\)/)
+    assert.match(block, /animation:\s*favorites-skeleton-shimmer 1\.8s ease-in-out infinite/)
+    assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
+  }
+})
+
+test('favorites edit mode exposes a Photos-style selection bar for batch curation', () => {
+  assert.match(vueSource, /class="selection-bar"[\s\S]*role="toolbar"[\s\S]*aria-label="收藏批量操作"/)
+  assert.match(vueSource, /selectedFavoriteCount/)
+  assert.match(vueSource, /visibleFavoriteCount/)
+  assert.match(vueSource, /allVisibleSelected/)
+  assert.match(vueSource, /selectAllVisibleFavorites/)
+  assert.match(vueSource, /clearFavoriteSelection/)
+  assert.match(vueSource, /取消收藏 \{\{ selectedFavoriteCount/)
+
+  const selectionBar = cssBlock('.selection-bar')
+  const selectionSummary = cssBlock('.selection-summary')
+  const selectionSummaryStrong = cssBlock('.selection-summary strong')
+  const selectionActions = cssBlock('.selection-actions')
+
+  assert.match(selectionBar, /display:\s*flex/)
+  assert.match(selectionBar, /align-items:\s*center/)
+  assert.match(selectionBar, /justify-content:\s*space-between/)
+  assert.match(selectionBar, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(selectionBar, backgroundIncludes('material-glass-sheet'))
+  assert.match(selectionBar, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(selectionBar, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+
+  assert.match(selectionSummary, /display:\s*grid/)
+  assert.match(selectionSummaryStrong, /font-variant-numeric:\s*tabular-nums/)
+  assert.match(selectionActions, /display:\s*flex/)
+  assert.match(selectionActions, /flex-wrap:\s*wrap/)
+})
+
+test('favorites edit mode trims stale selections to the visible collection', () => {
+  assert.match(vueSource, /trimSelectionToVisibleFavorites/)
+  assert.match(vueSource, /watch\(\s*allVisibleFavoriteItems/)
+  assert.match(vueSource, /const visibleKeys = new Set\(items\.map\(favoriteKey\)\)/)
+  assert.match(vueSource, /selectedFavoriteKeys\.value = new Set\(\[\.\.\.selectedFavoriteKeys\.value\]\.filter\(key => visibleKeys\.has\(key\)\)\)/)
+})
+
+test('favorites edit mode can always be finished after switching to an empty view', () => {
+  assert.match(vueSource, /:disabled="!editMode && visibleFavoriteCount === 0"/)
+  assert.match(vueSource, /{{ editMode \? '完成' : '编辑' }}/)
+})
+
+test('favorites empty state offers media-library next actions without entering edit mode', () => {
+  assert.match(vueSource, /<AppleEmptyState/)
+  assert.match(vueSource, /:next-step="emptyNextStep"/)
+  assert.match(vueSource, /:action-label="emptyActionLabel"/)
+  assert.match(vueSource, /:secondary-action-label="emptySecondaryActionLabel"/)
+  assert.match(vueSource, /@action="handleEmptyAction"/)
+  assert.match(vueSource, /@secondary-action="handleEmptySecondaryAction"/)
+  assert.match(vueSource, /浏览题材/)
+  assert.match(vueSource, /订阅演员/)
+  assert.match(vueSource, /activeTab\.value === 'all'[\s\S]*router\.push\('\/genres'\)/)
+  assert.match(vueSource, /router\.push\('\/subscription'\)/)
+  assert.match(vueSource, /:disabled="!editMode && visibleFavoriteCount === 0"[\s\S]*{{ editMode \? '完成' : '编辑' }}/)
 })

@@ -97,18 +97,37 @@
       </div>
     </section>
 
-    <div v-else-if="hasParsed && !loading && hasInput && !parsedMagnets.length" class="empty-state">
-      <p>没有解析出可添加的磁力链接。</p>
-    </div>
+    <AppleEmptyState
+      v-else-if="hasParsed && !loading && hasInput && !parsedMagnets.length"
+      class="parse-empty-state"
+      title="没有可添加的磁力链接"
+      description="当前输入没有解析出有效且未重复的 magnet 链接。"
+      next-step="检查需要处理的行，修正链接格式后重新解析；如果只是想重新开始，可以清空输入。"
+      action-label="重新解析"
+      secondary-action-label="清空输入"
+      density="compact"
+      @action="parseMagnets"
+      @secondary-action="clearAll"
+    >
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="7.5"/>
+          <path d="m20 20-3.8-3.8"/>
+          <path d="M8 11h6"/>
+        </svg>
+      </template>
+    </AppleEmptyState>
   </div>
 </template>
 
 <script>
 import api from '../api'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 import { requestConfirm } from '../utils/confirmDialog'
 
 export default {
   name: 'MagnetParse',
+  components: { AppleEmptyState },
   data() {
     return {
       magnetInput: '',
@@ -435,7 +454,7 @@ export default {
   border-radius: var(--radius-md);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-fast), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -578,16 +597,8 @@ export default {
   white-space: nowrap;
 }
 
-.empty-state {
+.parse-empty-state {
   width: 100%;
-  padding: 44px 20px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-card);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
-  color: var(--text-muted);
-  font-size: var(--type-body);
-  text-align: center;
 }
 
 @media (max-width: 768px) {
@@ -617,6 +628,11 @@ export default {
   .parse-actions .btn,
   .clear-results-btn {
     width: 100%;
+  }
+
+  .clear-input-btn,
+  .clear-results-btn {
+    min-height: var(--touch-target);
   }
 
   .magnet-row {

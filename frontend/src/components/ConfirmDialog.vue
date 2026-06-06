@@ -163,7 +163,7 @@ const confirm = () => resolveConfirm(true)
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .confirm-btn:focus-visible {
@@ -219,12 +219,12 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-fade-enter-active,
 .confirm-fade-leave-active {
-  transition: opacity 180ms var(--ease-pro);
+  transition: opacity var(--motion-fast);
 }
 
 .confirm-fade-enter-active .confirm-dialog,
 .confirm-fade-leave-active .confirm-dialog {
-  transition: transform 220ms var(--ease-pro);
+  transition: transform var(--motion-standard);
 }
 
 .confirm-fade-enter-from,

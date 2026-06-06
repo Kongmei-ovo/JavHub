@@ -120,7 +120,7 @@
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .actor-action-btn:hover {
@@ -280,7 +280,7 @@
   font-size: 13px;
   cursor: pointer;
   box-shadow: var(--glass-inner-shadow);
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s, transform 0.2s;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .switch-btn:hover {
@@ -327,7 +327,7 @@
   flex-direction: column;
   align-items: stretch;
   content-visibility: auto;
-  contain-intrinsic-size: 1px 450px;
+  contain-intrinsic-size: 1px 520px;
 }
 
 .movie-card-wrap > .apple-video-card {
@@ -335,49 +335,118 @@
   width: 100%;
 }
 
-.variant-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
+.variant-expand-btn {
+  width: 100%;
   margin-top: 8px;
-  padding: 2px 8px;
+  min-height: 32px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-control);
   background:
-    var(--surface-specular-edge-strong),
+    var(--surface-specular-edge),
     var(--surface-noise),
-    var(--glass-active-material);
-  border: 1px solid var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  border-radius: 10px;
-  font-size: 11px;
-  color: var(--text-primary);
+    var(--material-glass-control);
+  color: var(--text-secondary);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.35;
   font-family: inherit;
   cursor: pointer;
-  z-index: 1;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.variant-label:hover,
-.variant-label:focus-visible {
+.variant-expand-btn:hover {
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.variant-expand-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.variant-expand-btn:focus-visible,
+.variant-inline-item:focus-visible {
+  outline: none;
+  box-shadow: var(--glass-control-shadow), var(--focus-ring-wide-strong);
+}
+
+.variant-inline-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.variant-inline-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: var(--radius-md);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
+}
+
+.variant-inline-item:hover {
   border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
   box-shadow: var(--glass-control-shadow-hover);
 }
 
-.variant-label:focus-visible {
-  outline: none;
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide);
+.variant-inline-item:active {
+  transform: translateY(0) scale(0.99);
 }
 
-.variant-label:active {
-  transform: translateY(1px) scale(0.99);
+.variant-inline-code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.variant-inline-labels {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.variant-inline-labels span {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
+  border: 1px solid var(--badge-info-border);
+  color: var(--badge-info-text);
+  font-size: 10px;
+  font-weight: 650;
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 /* Year Groups */
@@ -475,7 +544,7 @@
   border-radius: 6px;
   cursor: pointer;
   box-shadow: var(--glass-inner-shadow);
-  transition: background 0.2s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.2s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1), color 0.2s cubic-bezier(0.23, 1, 0.32, 1), transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   text-align: center;
   min-width: 32px;
 }
@@ -506,8 +575,8 @@
   cursor: wait;
 }
 
-.nav-fade-enter-active { transition: opacity 0.3s ease; }
-.nav-fade-leave-active { transition: opacity 0.2s ease; }
+.nav-fade-enter-active { transition: transform var(--motion-standard), opacity var(--motion-fast); }
+.nav-fade-leave-active { transition: transform var(--motion-standard), opacity var(--motion-fast); }
 .nav-fade-enter-from, .nav-fade-leave-to { opacity: 0; }
 
 /* Empty */
@@ -653,6 +722,8 @@
   .actor-meta,
   .actor-actions {
     justify-content: center;
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
   .movies-section {
@@ -664,6 +735,22 @@
     gap: var(--video-grid-gap-mobile) !important;
   }
 
+  .variant-inline-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .variant-inline-labels {
+    justify-content: flex-start;
+  }
+
+  .variant-expand-btn,
+  .year-nav-item {
+    min-height: 40px;
+  }
+
   .year-nav {
     right: 6px;
     padding: 4px 3px;
@@ -672,7 +759,7 @@
   .year-nav-item {
     font-size: 10px;
     padding: 3px 5px;
-    min-width: 26px;
+    min-width: 32px;
   }
 
   .year-label {
@@ -681,6 +768,9 @@
 
   .supplement-card {
     margin-bottom: 16px;
+  }
+  .supplement-actions {
+    align-items: stretch;
   }
   .supplement-counters {
     gap: 16px;

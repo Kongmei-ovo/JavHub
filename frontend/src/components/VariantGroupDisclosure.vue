@@ -82,7 +82,7 @@ function variantKey(variant) {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .variant-group-disclosure__toggle:hover {
@@ -125,7 +125,7 @@ function variantKey(variant) {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .variant-group-disclosure__row:hover {
@@ -168,5 +168,12 @@ function variantKey(variant) {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+@media (max-width: 768px) {
+  .variant-group-disclosure__toggle,
+  .variant-group-disclosure__row {
+    min-height: 40px;
+  }
 }
 </style>

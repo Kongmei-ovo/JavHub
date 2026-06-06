@@ -84,6 +84,12 @@ function backgroundIncludes(token) {
   return new RegExp(`background:[\\s\\S]*var\\(--${token}\\)`)
 }
 
+function rootVar(name) {
+  const match = mainCss.match(new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*([^;]+);`))
+  assert.ok(match, `:root should define ${name}`)
+  return match[1].trim()
+}
+
 function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
   return readdirSync(dirUrl, { withFileTypes: true }).flatMap((entry) => {
     const entryUrl = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dirUrl)
@@ -92,6 +98,71 @@ function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
     return [entryUrl]
   })
 }
+
+test('root defaults stay aligned with every light theme runtime token', () => {
+  for (const [token, value] of Object.entries(THEMES['apple-light'].vars)) {
+    assert.equal(rootVar(token), value, `${token} should match apple-light before applyTheme() runs`)
+  }
+})
+
+test('global motion and radius tokens use the shared glass contract', () => {
+  const expectedSharedTokens = {
+    '--ease-pro': 'cubic-bezier(0.16, 1, 0.3, 1)',
+    '--transition-pro': 'transform var(--motion-standard), opacity var(--motion-fast)',
+    '--motion-fast': '140ms var(--ease-pro)',
+    '--motion-standard': '260ms var(--ease-pro)',
+    '--motion-emphasized': '420ms var(--ease-pro)',
+    '--motion-reveal': '380ms var(--ease-pro)',
+    '--radius-xs': '6px',
+    '--radius-sm': '8px',
+    '--radius-md': '12px',
+    '--radius-lg': '16px',
+    '--radius-xl': '20px',
+    '--radius-card': '22px',
+    '--radius-sheet': '28px',
+    '--radius-control': '999px',
+  }
+
+  for (const [token, value] of Object.entries(expectedSharedTokens)) {
+    assert.equal(rootVar(token), value, `:root should define ${token} from the shared contract`)
+    for (const [themeKey, theme] of Object.entries(THEMES)) {
+      assert.equal(theme.vars[token], value, `${themeKey} should share ${token}`)
+    }
+  }
+
+  const globalMotionBlocks = [
+    cssBlock('.skip-link'),
+    cssBlock('.badge'),
+    cssBlock('.btn'),
+    cssBlock('.glass-select__button'),
+    cssBlock('.glass-select__option'),
+    cssBlock('.av-card'),
+    cssBlock('.apple-reveal'),
+    cssBlock('.progress-bar-fill'),
+  ].join('\n')
+
+  assert.doesNotMatch(globalMotionBlocks, /(?:0\.[0-9]+s|[1-9]\d+ms)\s+cubic-bezier\(/)
+  assert.doesNotMatch(globalMotionBlocks, /(?:0\.[0-9]+s|[1-9]\d+ms)\s+ease(?:[;\s,)]|$)/)
+  assert.match(cssBlock('.av-card'), /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.match(cssBlock('.progress-bar-fill'), /transition:\s*transform var\(--motion-emphasized\)/)
+})
+
+test('global glass controls keep material state changes off expensive transition properties', () => {
+  const compositedTransitionPattern = /transition:\s*transform var\(--motion-(?:fast|standard|emphasized)\)(?:,\s*opacity var\(--motion-fast\))?/
+
+  for (const selector of [
+    '.badge',
+    '.btn',
+    '.glass-select__button',
+    '.glass-select__option',
+    '.el-input__wrapper, .input',
+    '.el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, compositedTransitionPattern, `${selector} should use composited motion tokens`)
+    assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|color|filter|backdrop-filter)/, `${selector} should not animate paint-heavy glass material changes`)
+  }
+})
 
 test('theme materials include refractive liquid glass layers', () => {
   const requiredTokens = [
@@ -190,7 +261,7 @@ test('global controls use shared liquid glass material instead of flat tint', ()
   const secondaryButtonBlock = cssBlock('.btn-secondary')
   const secondaryButtonHoverBlock = cssBlock('.btn-secondary:hover')
 
-  assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.match(buttonBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(buttonBlock, /letter-spacing:\s*-0\.01em/)
   assert.match(buttonFocusBlock, /outline:\s*none/)
@@ -338,11 +409,12 @@ test('native form controls use active glass accents instead of raw theme accent 
 })
 
 test('video modal sheet uses a translucent material without backdrop-filter differences', () => {
-  assert.match(videoModal, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(videoModal, /--modal-scrim-core:\s*var\(--media-blackout\)/)
+  assert.match(videoModal, /--modal-scrim-sheet:\s*color-mix\(in srgb,\s*var\(--media-blackout\) 64%,\s*transparent\)/)
   assert.match(videoModal, /--modal-sheet-bg:\s*var\(--modal-scrim-sheet\)/)
   assert.match(videoModal, /--modal-sheet-fallback:\s*var\(--modal-scrim-sheet\)/)
-  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
-  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-fallback\)[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
+  assert.match(videoModal, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*color-mix\(in srgb,\s*var\(--media-blackout\) 68%,\s*transparent\)/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*background:[\s\S]*var\(--surface-specular-edge-strong\),[\s\S]*var\(--surface-noise\),[\s\S]*var\(--modal-sheet-bg\)/)
   assert.match(videoModal, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none[\s\S]*-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(videoModal, /--modal-(?:panel|gallery|overlay)-bg:\s*rgba\(0,\s*0,\s*0/)
 })

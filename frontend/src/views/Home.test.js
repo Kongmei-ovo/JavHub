@@ -63,9 +63,20 @@ function singleLayerGlassBackgrounds(css) {
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
   assert.match(source, /import \{ defineAsyncComponent \} from 'vue'/)
   assert.match(source, /const DownloaderManagementPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/downloaders\/DownloaderManagementPanel\.vue'\)\)/)
-  assert.match(source, /components:\s*\{ DownloadCandidatePanel, DownloaderManagementPanel \}/)
+  assert.match(source, /components:\s*\{[^}]*AppleEmptyState[^}]*DownloadCandidatePanel[^}]*DownloaderManagementPanel[^}]*\}/)
   assert.match(source, /<DownloaderManagementPanel[\s\S]*v-else-if="activeTab === 'downloaders'"/)
   assert.doesNotMatch(source, /<div\s+v-else-if="activeTab === 'downloaders'"\s+class="downloaders-panel apple-reveal"/)
+})
+
+test('home task empty state uses the shared state component with explicit next actions', () => {
+  assert.match(vueSource, /import AppleEmptyState from '\.\.\/components\/AppleEmptyState\.vue'/)
+  assert.match(vueSource, /<AppleEmptyState[\s\S]*v-else-if="activeTab === 'tasks'"/)
+  assert.match(vueSource, /:action-label="taskEmptyPrimaryLabel"/)
+  assert.match(vueSource, /secondary-action-label="磁链解析"/)
+  assert.match(vueSource, /@action="handleTaskEmptyAction"/)
+  assert.match(vueSource, /@secondary-action="\$router\.push\('\/parse'\)"/)
+  assert.match(vueSource, /taskEmptyPrimaryLabel\(\)/)
+  assert.match(vueSource, /handleTaskEmptyAction\(\)[\s\S]*this\.clearTaskStatus\(\)[\s\S]*this\.openCandidatePreset\(\{ status: 'candidate', source: '' \}\)[\s\S]*this\.\$router\.push\('\/search'\)/)
 })
 
 test('home lazy-loads download candidate workspace outside the base downloads chunk', () => {

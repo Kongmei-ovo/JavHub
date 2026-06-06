@@ -12,14 +12,12 @@ export default defineConfig({
   },
   build: {
     cssTarget: ['chrome107', 'firefox103', 'safari15'],
-    cssMinify: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
           if (id.includes('vue') || id.includes('vue-router')) return 'vue-vendor'
-          if (id.includes('hls.js') || id.includes('plyr') || id.includes('vue-video-player')) return 'media-player'
-          if (id.includes('gsap')) return 'motion'
+          if (id.includes('hls.js')) return 'media-player'
           if (id.includes('axios')) return 'network'
           return 'vendor'
         }

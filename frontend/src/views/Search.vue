@@ -189,9 +189,14 @@
     </div>
 
     <!-- 加载骨架屏 -->
-    <div v-if="loading" class="skeleton-grid page-rail page-rail--gallery">
-      <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
-    </div>
+    <AppleSkeleton
+      v-if="loading"
+      class="skeleton-grid page-rail page-rail--gallery"
+      variant="gallery"
+      :items="12"
+      columns="repeat(auto-fill, minmax(200px, 1fr))"
+      label="影片结果加载中"
+    />
 
     <AppleErrorState
       v-else-if="searchError"
@@ -200,9 +205,12 @@
       :description="searchError.message"
       :source-label="searchError.serviceLabel"
       :details="searchError.status ? `HTTP ${searchError.status}` : '网络连接'"
+      next-step="检查 JavInfo 服务状态，或稍后重新发起检索。"
       retry-label="重试"
+      secondary-action-label="清除条件"
       :retrying="loading"
       @retry="runSearchFromRoute"
+      @secondary-action="clearFilters"
     />
 
     <!-- 搜索结果网格 -->
@@ -262,8 +270,11 @@
       class="page-rail page-rail--standard"
       :title="sortState.random ? '暂无随机探索结果' : '未找到相关影片'"
       description="尝试其他关键词、番号或筛选条件。"
+      next-step="清除筛选后会回到随机探索，也可以保留条件继续调整关键词。"
       action-label="重置筛选"
+      secondary-action-label="随机探索"
       @action="clearFilters"
+      @secondary-action="startRandomExplore"
     />
 
     <!-- 分页控制（底部） -->
@@ -294,7 +305,7 @@ import api from '../api'
 import { videoCardCoverUrl } from '../utils/imageUrl.js'
 import { openVideoModal } from '../utils/modalState'
 import { createRequestSequence } from '../utils/requestSequence.js'
-import { loadSearchPreferences } from '../utils/searchPreferences.js'
+import { buildSearchPreferenceParams, loadSearchPreferences, recordSearchHistoryPreference } from '../utils/searchPreferences.js'
 import { variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 import {
   buildSearchApiParams,
@@ -529,6 +540,22 @@ export default {
       this.searched = false
       this.replaceSearchRoute({ sort: 'random', page: 1 }, { replace: true })
     },
+    startRandomExplore() {
+      this.keyword = ''
+      this.contentId = ''
+      this.makerName = ''
+      this.seriesName = ''
+      this.actressName = ''
+      this.categoryName = ''
+      this.categoryTags = []
+      this.categoryInput = ''
+      this.year = null
+      this.serviceCode = ''
+      this.sortState = sortStateFromSortValue('random')
+      this.page = 1
+      this.jumpPage = null
+      this.replaceSearchRoute({ sort: 'random', page: 1 })
+    },
     addCategoryTag() {
       const tag = this.categoryInput.trim()
       if (tag && !this.categoryTags.includes(tag)) {
@@ -557,11 +584,14 @@ export default {
       this.doSearch()
     },
     buildSearchParams(page) {
-      return {
+      const params = {
         ...buildSearchApiParams({ ...this.searchState, page }, { pageSize: this.pageSize }),
+        ...buildSearchPreferenceParams(),
         variant_mode: 'grouped',
         include_variant_explanations: 1,
       }
+      if (this.$route.query.debug_search === '1') params.include_search_diagnostics = 1
+      return params
     },
     replaceSearchRoute(patch = {}, { replace = false } = {}) {
       const query = searchQueryFromState({ ...this.searchState, ...patch })
@@ -634,6 +664,7 @@ export default {
       this.replaceSearchRoute(canonicalizeSearchState({ ...this.searchState, ...patch }))
     },
     openModal(video) {
+      recordSearchHistoryPreference(video)
       openVideoModal(video, this.$route.fullPath || this.$route.path)
     },
     cardImageUrl(item) {

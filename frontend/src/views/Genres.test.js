@@ -48,7 +48,8 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(card, /transition:\s*background var\(--motion-fast\)/)
+  assert.match(card, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(card, /transition:[^;]*background/)
   assert.doesNotMatch(card, /background:\s*transparent|border:\s*0|transition:\s*all/)
 
   const hover = cssBlock('.actress-card:hover')
@@ -98,14 +99,13 @@ test('genres primary controls mirror hover glass treatment for keyboard focus', 
 })
 
 test('genres loading and actress skeletons use shared Apple glass materials', () => {
-  const spinner = cssBlock('.spinner-large')
   const skeleton = cssBlock('.actress-skeleton-avatar,\n.actress-skeleton-line')
   const shimmer = cssBlock('.actress-skeleton-avatar::after,\n.actress-skeleton-line::after')
 
-  assert.match(spinner, /border:\s*3px solid var\(--glass-control-border\)/)
-  assert.match(spinner, /border-top-color:\s*var\(--glass-active-border\)/)
-  assert.match(spinner, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.doesNotMatch(spinner, /var\(--border-light\)|var\(--accent\)/)
+  assert.match(source, /import AppleSkeleton from '\.\.\/components\/AppleSkeleton\.vue'/)
+  assert.match(source, /<AppleSkeleton\s+v-if="loading"[\s\S]*label="题材加载中"/)
+  assert.match(source, /<AppleSkeleton\s+v-if="seriesLoading"[\s\S]*label="系列加载中"/)
+  assert.doesNotMatch(source, /<div class="spinner-large"><\/div>/)
 
   assert.ok(backgroundIncludes(skeleton, '--material-glass-subtle'))
   assert.match(skeleton, /var\(--surface-specular-edge/)

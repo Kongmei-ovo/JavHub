@@ -34,17 +34,17 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading-wrap">
-        <div class="spinner-large"></div>
-        <p>加载题材中...</p>
-      </div>
+      <AppleSkeleton v-if="loading" class="loading-wrap" variant="list" :items="4" label="题材加载中" />
 
       <AppleErrorState
         v-else-if="categoryError"
         title="题材加载失败"
         description="数据源当前不可用，探索内容暂时不能刷新。"
+        next-step="重新加载题材气泡，或先切到演员探索继续浏览。"
         retry-label="重试"
+        secondary-action-label="看演员"
         @retry="reloadGenreData"
+        @secondary-action="switchTab('actress')"
       />
 
       <div v-else ref="tagCloudRef" class="tag-cloud" :style="cloudStyle">
@@ -90,8 +90,11 @@
         v-else-if="actressError"
         title="演员加载失败"
         description="演员数据源暂时不可用。"
+        next-step="重新加载演员卡片，或切回题材探索继续浏览。"
         retry-label="重试"
+        secondary-action-label="看题材"
         @retry="loadActresses(actressPage)"
+        @secondary-action="switchTab('genre')"
       />
 
       <div v-else class="actress-grid" :style="actressGridStyle">
@@ -130,17 +133,17 @@
         </button>
       </div>
 
-      <div v-if="seriesLoading" class="loading-wrap">
-        <div class="spinner-large"></div>
-        <p>加载系列中...</p>
-      </div>
+      <AppleSkeleton v-if="seriesLoading" class="loading-wrap" variant="list" :items="4" label="系列加载中" />
 
       <AppleErrorState
         v-else-if="seriesError"
         title="系列加载失败"
         description="系列数据源暂时不可用。"
+        next-step="重新加载系列气泡，或切回题材探索继续浏览。"
         retry-label="重试"
+        secondary-action-label="看题材"
         @retry="loadSeries(seriesPage)"
+        @secondary-action="switchTab('genre')"
       />
 
       <div v-else ref="seriesCloudRef" class="tag-cloud" :style="cloudStyle">
@@ -166,6 +169,7 @@ import api from '../api'
 import { displayName } from '../utils/displayLang.js'
 import { applyImageFallback } from '../utils/imageFallback.js'
 import AppleErrorState from '../components/AppleErrorState.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -199,7 +203,7 @@ const CFG_KEYS = Object.keys(DEFAULT_CFG)
 
 export default {
   name: 'Genres',
-  components: { AppleErrorState },
+  components: { AppleErrorState, AppleSkeleton },
   data() {
     return {
       activeTab: DEFAULT_CFG.defaultTab,
@@ -522,7 +526,7 @@ export default {
   cursor: pointer;
   padding: 7px 16px;
   border-radius: 999px;
-  transition: background 0.25s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s cubic-bezier(0.23, 1, 0.32, 1), color 0.25s cubic-bezier(0.23, 1, 0.32, 1), transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .shuffle-btn:hover:not(:disabled) { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover); }
 .shuffle-btn:focus-visible:not(:disabled) { outline: none; background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); border-color: var(--glass-control-border-hover); color: var(--text-primary); box-shadow: var(--glass-control-shadow-hover), var(--focus-ring); }
@@ -555,7 +559,7 @@ export default {
   cursor: pointer;
   border-radius: 999px;
   box-shadow: var(--glass-control-shadow);
-  transition: var(--transition);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -598,13 +602,13 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .actress-card:hover {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 .actress-card:focus-visible {
   outline: none;
@@ -621,7 +625,7 @@ export default {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-inner-shadow);
-  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard);
   flex-shrink: 0;
 }
 .actress-card:hover .actress-avatar { border-color: var(--glass-control-border-hover); box-shadow: var(--glass-control-shadow-hover); }
@@ -706,10 +710,10 @@ export default {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-control-shadow);
-  transition: background 0.4s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1), color 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1), transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   overflow: hidden;
   opacity: 0;
-  transform: scale(0.92);
+  transform: scale(0.98);
   animation: bubble-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   animation-delay: min(calc(var(--bubble-index, 0) * 5ms), 180ms);
 }
@@ -744,7 +748,7 @@ export default {
 @keyframes bubble-enter {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(4px);
+    transform: scale(0.98) translateY(4px);
   }
   to {
     opacity: 1;

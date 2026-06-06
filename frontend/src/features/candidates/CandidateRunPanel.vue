@@ -112,7 +112,7 @@ export default {
   border: 1px solid var(--glass-control-border);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .candidate-run-row:hover {
   border-color: var(--glass-control-border-hover);

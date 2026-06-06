@@ -65,7 +65,7 @@
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .input:focus {
@@ -227,7 +227,7 @@
   cursor: pointer;
   text-align: left;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   content-visibility: auto;
   contain-intrinsic-size: 1px 58px;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

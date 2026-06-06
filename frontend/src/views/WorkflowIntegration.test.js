@@ -127,11 +127,12 @@ function loadConfigOptions() {
     'loadSearchPreferences',
     'saveSearchPreferences',
     'AppleErrorState',
+    'AppleSkeleton',
     'GlassSelect',
     'DEFAULT_BUBBLE_CFG',
     'DEFAULT_CONFIG',
     `${script}`
-  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {})
+  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {}, {})
 }
 
 test('sidebar displays the package version without a hardcoded release string', () => {
@@ -248,7 +249,8 @@ test('actor portrait cards unify favorites subscriptions and supplement actor pi
 test('supplement actor picker distinguishes empty recent jobs from load failures', () => {
   assert.match(supplement, /actorPickerError:\s*''/)
   assert.match(supplement, /actorPickerLoadFailed\(\)/)
-  assert.match(supplementActorPicker, /error \? '补全队列不可用' : '暂无可选演员'/)
+  assert.match(supplementActorPicker, /actorEmptyState\(\)[\s\S]*title: '补全队列不可用'[\s\S]*title: '暂无可选演员'/)
+  assert.match(supplementActorPicker, /:title="actorEmptyState\.title"/)
   assert.match(supplement, /:error="actorPickerLoadFailed\(\)"/)
   assert.doesNotMatch(supplement, /:error="actorPickerError"/)
 })
@@ -517,8 +519,9 @@ test('primary pages use unified breathing rails', () => {
   assert.match(mainCss, /\.page-rail\s*\{[\s\S]*width: min\(var\(--page-max\), calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)\)/)
 
   const mainContentBlock = app.match(/\.main-content\s*\{[^}]*\}/)?.[0] || ''
-  assert.doesNotMatch(mainContentBlock, /padding/)
-  assert.match(app, /@media \(max-width: 768px\)\s*\{[\s\S]*\.main-content\s*\{[\s\S]*padding-bottom: calc\(74px \+ env\(safe-area-inset-bottom, 0px\)\)/)
+  assert.doesNotMatch(mainContentBlock, /(?:^|[;\s])padding(?:-inline|-block)?\s*:/)
+  assert.match(app, /--mobile-bottom-nav-reserve:\s*calc\(var\(--mobile-bottom-nav-height\) \+ var\(--mobile-bottom-nav-offset\) \+ 12px\)/)
+  assert.match(app, /@media \(max-width: 768px\)\s*\{[\s\S]*\.main-content\s*\{[\s\S]*padding-bottom:\s*var\(--mobile-bottom-nav-reserve\)/)
 
   for (const [name, source] of Object.entries({
     home,
@@ -572,10 +575,10 @@ test('primary pages use unified breathing rails', () => {
 })
 
 test('mobile video surfaces share compact gallery density', () => {
-  assert.match(mainCss, /--video-grid-min-mobile:\s*clamp\(136px, 40vw, 172px\)/)
-  assert.match(mainCss, /--video-grid-gap-mobile:\s*clamp\(10px, 3vw, 14px\)/)
+  assert.match(mainCss, /--video-grid-min-mobile:\s*clamp\(126px, 42vw, 168px\)/)
+  assert.match(mainCss, /--video-grid-gap-mobile:\s*clamp\(9px, 2\.8vw, 13px\)/)
   assert.match(mainCss, /--video-card-radius-mobile:\s*18px/)
-  assert.match(mainCss, /--video-card-body-padding-mobile:\s*10px 10px 12px/)
+  assert.match(mainCss, /--video-card-body-padding-mobile:\s*9px 10px 11px/)
   assert.match(mainCss, /--compact-toolbar-height:\s*44px/)
 
   const appleVideoCard = readFileSync(new URL('../components/AppleVideoCard.vue', import.meta.url), 'utf8')
@@ -595,10 +598,10 @@ test('mobile video surfaces share compact gallery density', () => {
 
 test('video modal and recommendation page use mobile-specific proportions', () => {
   assert.match(videoModal, /@media\s*\(max-width:\s*768px\)[\s\S]*\.modal-overlay\s*\{[\s\S]*padding:\s*0/)
-  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*width:\s*100vw[\s\S]*height:\s*100dvh/)
+  assert.match(videoModal, /\.modal-container\s*\{[\s\S]*width:\s*100vw[\s\S]*height:\s*calc\(100dvh - 24px - env\(safe-area-inset-bottom, 0px\)\)/)
   assert.match(videoModal, /\.modal-content\s*\{[\s\S]*padding:\s*18px max\(14px, env\(safe-area-inset-right, 0px\)\) 28px max\(14px, env\(safe-area-inset-left, 0px\)\)[\s\S]*gap:\s*20px/)
-  assert.match(videoModal, /\.modal-code-block\s*\{[\s\S]*flex-direction:\s*column/)
-  assert.match(videoModal, /\.modal-actions\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(96px,\s*1fr\)\)/)
+  assert.match(videoModal, /\.modal-code-block\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/)
+  assert.match(videoModal, /\.modal-actions\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
   assert.match(videoModal, /\.modal-meta\s*\{[\s\S]*grid-template-columns:\s*1fr/)
   assert.match(videoModal, /\.modal-meta::before\s*\{[\s\S]*display:\s*none/)
   assert.match(videoModal, /overflow-wrap:\s*anywhere/)
@@ -842,6 +845,30 @@ test('operations overview exposes candidate automation controls', () => {
   assert.match(operations, /refreshMissingCache/)
 })
 
+test('operations overview surfaces prioritized data quality issues', () => {
+  assert.match(operations, /数据质量优先级/)
+  assert.match(operations, /topDataQualityIssues/)
+  assert.match(operations, /dataQualitySummary/)
+  assert.match(operations, /openDataQualityIssue\(issue\)/)
+  assert.match(operations, /overview\?\.data_quality/)
+  assert.match(operations, /issue\.score/)
+  assert.match(operations, /issue\?\.action\?\.route/)
+  assert.match(operations, /quality:\s*'missing_cover'/)
+  assert.match(operations, /issueRepairProgressLabel\(issue\)/)
+  assert.match(operations, /repair_progress\?\.label/)
+  assert.match(operations, /openDataQualityProgress\(issue, \$event\)/)
+  assert.match(operations, /repair_progress\?\.action\?\.route/)
+  assert.match(operations, /issueRepairReasonLabel\(issue\)/)
+  assert.match(operations, /repair_progress\?\.reason_label/)
+  assert.match(operations, /openDataQualityReason\(issue, \$event\)/)
+  assert.match(operations, /repair_progress\?\.reason_action\?\.route/)
+  assert.match(operations, /issueRepairProviderLabel\(issue\)/)
+  assert.match(operations, /repair_progress\?\.provider_label/)
+  assert.match(operations, /issueRepairProviderActions\(issue\)/)
+  assert.match(operations, /repair_progress\?\.provider_actions/)
+  assert.match(operations, /openDataQualityProvider\(action, \$event\)/)
+})
+
 test('operations overview uses a restrained Apple operations layout', () => {
   assert.match(operations, /operations-hero/)
   assert.match(operations, /priority-board/)
@@ -853,7 +880,7 @@ test('operations overview uses a restrained Apple operations layout', () => {
   assert.match(operations, /hero-stat-grid/)
   assert.match(operations, /--operations-panel-gap:\s*clamp\(12px,\s*1\.4vw,\s*18px\)/)
   assert.match(operations, /\.workbench-panel[\s\S]*background:[\s\S]*var\(--material-glass-sheet\)/)
-  assert.match(operations, /\.hero-stat-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(132px,\s*1fr\)\)/)
+  assert.match(operations, /\.hero-stat-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(108px,\s*1fr\)\)/)
   assert.doesNotMatch(operations, /status-cell\.urgent/)
   assert.doesNotMatch(operations, /title:\s*'活动中心'/)
 })
@@ -1192,9 +1219,9 @@ test('interactive filters avoid stale actions and stale pagination', () => {
 })
 
 test('appearance settings are grouped by scope and persist discovery preferences', () => {
-  const globalSection = config.slice(config.indexOf('<h3>全局偏好</h3>'), config.indexOf('<h3>影片检索</h3>'))
-  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>随机探索</h3>'))
-  const discoverySection = config.slice(config.indexOf('<h3>随机探索</h3>'), config.indexOf('</template>'))
+  const globalSection = config.slice(config.indexOf('<h2>全局偏好</h2>'), config.indexOf('<h2>影片检索</h2>'))
+  const searchSection = config.slice(config.indexOf('<h2>影片检索</h2>'), config.indexOf('<h2>随机探索</h2>'))
+  const discoverySection = config.slice(config.indexOf('<h2>随机探索</h2>'), config.indexOf('</template>'))
   assert.match(globalSection, /<span class="setting-title">显示语言<\/span>/)
   assert.match(searchSection, /<span class="setting-title">检索页数量<\/span>/)
   assert.match(searchSection, /<span class="setting-title">默认排序<\/span>/)
@@ -1202,7 +1229,7 @@ test('appearance settings are grouped by scope and persist discovery preferences
   assert.match(discoverySection, /<span class="setting-title">演员头像<\/span>/)
   assert.match(discoverySection, /<span class="setting-title">演员每批数量<\/span>/)
   assert.match(discoverySection, /<span class="setting-title">系列每批数量<\/span>/)
-  assert.match(config, /<span class="setting-title">题材 \/ 系列气泡<\/span>/)
+  assert.match(config, /<h2>题材 \/ 系列气泡<\/h2>/)
   assert.doesNotMatch(discoverySection, /材质|金传说|稀有度|色系预设/)
   assert.doesNotMatch(searchSection, /演员头像/)
   assert.doesNotMatch(discoverySection, /检索页数量/)
@@ -1227,7 +1254,7 @@ test('global dropdowns use the unified glass select control', () => {
     assert.doesNotMatch(source, /<select\b/, `${name} should not use native select controls`)
   }
 
-  const searchSection = config.slice(config.indexOf('<h3>影片检索</h3>'), config.indexOf('<h3>随机探索</h3>'))
+  const searchSection = config.slice(config.indexOf('<h2>影片检索</h2>'), config.indexOf('<h2>随机探索</h2>'))
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultSort"/)
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultServiceCode"/)
   assert.doesNotMatch(config, /v-model="bubbleCfg\.palette"/)
@@ -1268,7 +1295,7 @@ test('search preferences drive initial search params', () => {
   assert.match(searchPreferences, /normalizeSearchPreferences/)
   assert.match(config, /loadSearchPreferences/)
   assert.match(config, /saveSearchPreferences/)
-  assert.match(search, /import \{ loadSearchPreferences \} from '\.\.\/utils\/searchPreferences\.js'/)
+  assert.match(search, /import\s+\{[\s\S]*loadSearchPreferences[\s\S]*\}\s+from '\.\.\/utils\/searchPreferences\.js'/)
   assert.match(search, /buildSearchApiParams/)
   assert.match(search, /parseSearchQuery/)
   assert.match(search, /searchHasUserConditions/)

@@ -1,8 +1,23 @@
 <template>
-  <div v-if="loading" class="loading-wrap">
-    <div class="spinner-large"></div>
-  </div>
-  <div v-else-if="!jobs.length" class="empty-inline">暂无任务</div>
+  <AppleSkeleton
+    v-if="loading"
+    class="panel-state"
+    variant="list"
+    :items="4"
+    label="补全任务加载中"
+  />
+  <AppleEmptyState
+    v-else-if="!jobs.length"
+    class="panel-state empty-inline"
+    title="暂无补全任务"
+    :description="emptyDescription"
+    :next-step="emptyNextStep"
+    action-label="刷新任务"
+    secondary-action-label="补全作品"
+    density="compact"
+    @action="$emit('refresh')"
+    @secondary-action="$emit('start-supplement')"
+  />
   <div v-else class="ios-list job-list">
     <article v-for="job in jobs" :key="job.id" class="ios-row job-row">
       <div class="job-main">
@@ -42,16 +57,34 @@
 </template>
 
 <script>
+import AppleEmptyState from '../../components/AppleEmptyState.vue'
+import AppleSkeleton from '../../components/AppleSkeleton.vue'
+
 export default {
   name: 'SupplementJobList',
+  components: { AppleEmptyState, AppleSkeleton },
   props: {
     jobs: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     actorContext: { type: Object, default: null },
     jobLabel: { type: Function, required: true },
     statusLabel: { type: Function, required: true },
+    contextLabel: { type: String, default: '' },
   },
-  emits: ['retry', 'cancel', 'actor'],
+  emits: ['retry', 'cancel', 'actor', 'refresh', 'start-supplement'],
+  computed: {
+    emptyDescription() {
+      if (this.contextLabel) return this.contextLabel
+      return this.actorContext
+        ? '这个演员还没有补全任务记录。'
+        : '当前队列筛选下没有任务记录。'
+    },
+    emptyNextStep() {
+      return this.actorContext
+        ? '可以先启动作品补全，或刷新任务队列等待后端写入新状态。'
+        : '刷新队列确认最新状态，或回到演员工作台启动具体演员的补全任务。'
+    },
+  },
   methods: {
     isGfriendsAvatarSyncJob(job) {
       return job?.source === 'gfriends' && job?.job_type === 'actress_avatar_sync'
@@ -80,23 +113,9 @@ export default {
 </script>
 
 <style scoped>
-.loading-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 140px;
-}
-
-.spinner-large {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--glass-control-border);
-  border-top-color: var(--badge-info-text);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 .empty-inline {
+  display: grid;
+  gap: 4px;
   padding: 20px;
   color: var(--text-muted);
   text-align: center;
@@ -124,7 +143,7 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-fast), opacity var(--motion-fast);
 }
 
 .ios-row:hover {

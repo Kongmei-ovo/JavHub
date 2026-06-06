@@ -1,6 +1,5 @@
 <template>
   <div class="actor-page page-bleed">
-    <!-- Hero -->
     <div class="actor-hero page-rail page-rail--gallery">
       <div class="hero-content">
         <div class="actor-avatar">
@@ -63,7 +62,6 @@
         返回
       </button>
     </div>
-
     <!-- Supplement Status Card -->
     <div v-if="actressId && supplementStatus" class="supplement-card page-rail page-rail--gallery">
       <div class="supplement-header">
@@ -85,19 +83,19 @@
       <div class="supplement-counters">
         <div class="counter-item">
           <span class="counter-value">{{ supplementStatus.supplement_movies ?? '—' }}</span>
-          <span class="counter-label">补全影片</span>
+          <span class="counter-label">补全来源</span>
         </div>
         <div class="counter-item">
           <span class="counter-value">{{ supplementStatus.matched_r18 ?? '—' }}</span>
-          <span class="counter-label">已匹配</span>
+          <span class="counter-label">已匹配片库</span>
         </div>
         <div class="counter-item">
           <span class="counter-value">{{ supplementStatus.supplement_only ?? '—' }}</span>
-          <span class="counter-label">仅补全</span>
+          <span class="counter-label">补全新增</span>
         </div>
         <div class="counter-item">
           <span class="counter-value">{{ supplementStatus.resolved_videos ?? '—' }}</span>
-          <span class="counter-label">可展示</span>
+          <span class="counter-label">含版本条目</span>
         </div>
         <div class="counter-item">
           <span class="counter-value">{{ candidateSummary.candidate }}</span>
@@ -105,7 +103,7 @@
         </div>
       </div>
       <div v-if="candidateSummary.candidate > 0" class="candidate-summary">
-        {{ candidateSummary.needsMagnet }} 个待补磁力，{{ candidateSummary.ready }} 个可批准
+        {{ candidateSummary.needsMagnet }} 个还缺磁力，{{ candidateSummary.ready }} 个可直接批准
       </div>
       <div class="supplement-actions">
         <button
@@ -115,18 +113,26 @@
         >
           {{ isSupplementRunning ? '补全中...' : '补全作品' }}
         </button>
-        <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新 resolved</button>
+        <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新版本条目</button>
         <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">字段管理</button>
         <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">任务队列</button>
         <button class="btn btn-ghost btn-sm" @click="goDownloadCandidates">处理候选</button>
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="loading-wrap page-rail page-rail--standard">
-      <div class="spinner-large"></div>
-      <p>加载作品集中...</p>
-    </div>
+    <AppleSkeleton v-if="loading" class="loading-wrap page-rail page-rail--standard" variant="gallery" :items="8" label="演员作品加载中" />
+
+    <AppleErrorState
+      v-else-if="movieError"
+      class="empty-state page-rail page-rail--standard"
+      title="演员作品加载失败"
+      :description="movieError"
+      next-step="重新加载会保留当前演员；如果仍失败，可以返回上一页重新进入。"
+      retry-label="重新加载"
+      secondary-action-label="轻量加载首屏"
+      @retry="loadActorMovies"
+      @secondary-action="loadActorMoviesCompact"
+    />
 
     <!-- Movies by Year -->
     <div v-else-if="movies.length > 0" class="movies-section page-rail page-rail--gallery">
@@ -169,6 +175,7 @@
               :variantLabels="movie.variant_labels || []"
               :variantExplanations="movie.variant_explanations || []"
               :coverUrl="cardImageUrl(movie)"
+              :coverAspectRatio="'16 / 9'"
               :title="movie.title || ''"
               :serviceCode="displayServiceCode(movie)"
               :releaseDate="movie.date || ''"
@@ -178,12 +185,30 @@
             />
             <button
               v-if="movie.variant_group_count > 1 && !showVariants"
-              class="variant-label"
+              class="variant-expand-btn"
               type="button"
-              @click.stop="showVariants = true"
+              @click.stop="toggleVariantGroup(movie)"
             >
-              另 {{ movie.variant_group_count - 1 }} 个版本
+              <span v-if="isVariantGroupExpanded(movie)">收起版本</span>
+              <span v-else>另 {{ movie.variant_group_count - 1 }} 个版本</span>
             </button>
+            <div v-if="isVariantGroupExpanded(movie)" class="variant-inline-list">
+              <button
+                v-for="variant in variantGroupItems(movie)"
+                :key="variant.content_id || variant.dvd_id || variant.display_code"
+                class="variant-inline-item"
+                type="button"
+                @click.stop="openModal(variant)"
+              >
+                <span class="variant-inline-code">{{ variant.display_code || variant.dvd_id || variant.content_id }}</span>
+                <span class="variant-inline-labels">
+                  <span
+                    v-for="label in (variant.variant_labels || []).slice(0, 2)"
+                    :key="label.key || label.label"
+                  >{{ label.short_label || label.label }}</span>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
         <div v-else class="year-empty">该年份暂无作品</div>
@@ -199,16 +224,18 @@
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="empty-state page-rail page-rail--standard">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <p>暂无演员信息</p>
-    </div>
+    <AppleEmptyState
+      v-else
+      class="empty-state page-rail page-rail--standard"
+      title="暂无演员作品"
+      description="当前演员还没有可展示的作品或补全记录。"
+      next-step="可以重新加载作品集，或回到随机探索继续发现演员。"
+      action-label="重新加载"
+      secondary-action-label="随机探索"
+      density="compact"
+      @action="loadActorMovies"
+      @secondary-action="$router.push('/genres')"
+    />
 
     <!-- Year Navigator (right side) -->
     <transition name="nav-fade">
@@ -237,13 +264,18 @@ import { openVideoModal } from '../utils/modalState.js'
 import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { applyImageFallback } from '../utils/imageFallback.js'
+import { variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 import MovieCard from '../components/MovieCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 const MOVIE_PAGE_SIZE = 100
+const RECOVERY_MOVIE_PAGE_SIZE = 24
 
 export default {
   name: 'Actor',
-  components: { MovieCard },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState },
   data() {
     return {
       actorName: '',
@@ -252,14 +284,17 @@ export default {
       totalCount: 0,
       catalogTotalCount: 0,
       moviePage: 1,
+      moviePageSize: MOVIE_PAGE_SIZE,
       movieTotalPages: 1,
       loadingMoreMovies: false,
       loading: false,
+      movieError: '',
       activeYear: null,
       yearRange: [],
       yearLoadState: {},
       yearLoadingYear: null,
       showVariants: false,
+      expandedVariantGroups: {},
       supplementStatus: null,
       candidateSummary: { candidate: 0, needsMagnet: 0, ready: 0 },
       supplementLoading: false,
@@ -352,7 +387,7 @@ export default {
     },
     hasMoreMovies() {
       if (this.totalCount < 0 || this.movieTotalPages < 0) {
-        return this.movies.length >= this.moviePage * MOVIE_PAGE_SIZE
+        return this.movies.length >= this.moviePage * this.moviePageSize
       }
       return this.moviePage < this.movieTotalPages
     },
@@ -403,6 +438,7 @@ export default {
       this.yearLoadState = {}
       this.yearLoadingYear = null
       this.activeYear = null
+      this.expandedVariantGroups = {}
       this._stopSupplementPolling()
       if (!this.actorName) return
       await this.loadActressInfo()
@@ -558,32 +594,39 @@ export default {
       }
       this.yearRange = this.buildYearRange(latestYear, earliestYear)
     },
-    async loadActorMovies() {
+    async loadActorMovies({ pageSize = MOVIE_PAGE_SIZE } = {}) {
       this.loading = true
+      this.movieError = ''
       try {
         this.movies = []
         this.moviePage = 1
+        this.moviePageSize = pageSize
         this.movieTotalPages = 1
         this.totalCount = 0
         this.catalogTotalCount = 0
         this.yearRange = []
         this.yearLoadState = {}
         this.yearLoadingYear = null
-        const first = await this.fetchActorMoviePage(1, { includeTotal: true })
+        this.expandedVariantGroups = {}
+        const first = await this.fetchActorMoviePage(1, { pageSize, includeTotal: true })
         this.appendMoviePage(first, { trustTotals: true })
         this.loadYearBounds(first)
       } catch (e) {
         console.error('Load actor movies failed:', e)
+        this.movieError = e.response?.data?.detail || e.message || '演员作品加载失败'
       } finally {
         this.loading = false
       }
+    },
+    async loadActorMoviesCompact() {
+      return this.loadActorMovies({ pageSize: RECOVERY_MOVIE_PAGE_SIZE })
     },
     async loadMoreMovies() {
       if (!this.hasMoreMovies || this.loadingMoreMovies) return
       this.loadingMoreMovies = true
       try {
         const nextPage = this.moviePage + 1
-        const data = await this.fetchActorMoviePage(nextPage)
+        const data = await this.fetchActorMoviePage(nextPage, { pageSize: this.moviePageSize })
         this.moviePage = nextPage
         this.appendMoviePage(data)
       } catch (e) {
@@ -673,6 +716,23 @@ export default {
     },
     openModal(movie) {
       openVideoModal(movie._raw || movie, this.$route.fullPath || this.$route.path)
+    },
+    variantGroupKey,
+    isVariantGroupExpanded(movie) {
+      if (this.showVariants) return false
+      const key = this.variantGroupKey(movie)
+      return Boolean(key && this.expandedVariantGroups[key])
+    },
+    toggleVariantGroup(movie) {
+      const key = this.variantGroupKey(movie)
+      if (!key) return
+      this.expandedVariantGroups = {
+        ...this.expandedVariantGroups,
+        [key]: !this.expandedVariantGroups[key],
+      }
+    },
+    variantGroupItems(movie) {
+      return visibleVariantItems(movie._raw || movie)
     },
     cardImageUrl(movie) {
       return movie.cover_url || movie.jacket_thumb_url || movie.jacket_full_url || ''

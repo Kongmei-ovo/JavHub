@@ -425,11 +425,25 @@ class SupplementRouterTest(unittest.IsolatedAsyncioTestCase):
         mock_client.proxy_get.return_value = {"data": [], "total_count": 0}
 
         with patch("routers.supplement.get_info_client", return_value=mock_client):
-            await supplement.list_jobs(page=2, page_size=50, status="failed", actress_id=123)
+            await supplement.list_jobs(
+                page=2,
+                page_size=50,
+                source="all",
+                status="failed",
+                actress_id=123,
+                error_provider="avbase",
+            )
 
         mock_client.proxy_get.assert_awaited_once_with(
             "/api/v1/supplement/jobs",
-            params={"page": 2, "page_size": 50, "status": "failed", "actress_id": 123},
+            params={
+                "page": 2,
+                "page_size": 50,
+                "source": "all",
+                "status": "failed",
+                "actress_id": 123,
+                "error_provider": "avbase",
+            },
         )
 
     async def test_create_gfriends_avatar_sync_job_proxies_to_info_client(self):

@@ -9,6 +9,9 @@ const SYSTEM_FONT = "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI
 const MONO_FONT = "'SF Mono', 'JetBrains Mono', monospace"
 
 const SHARED_TOKENS = {
+  '--ease-pro': 'cubic-bezier(0.16, 1, 0.3, 1)',
+  '--transition-pro': 'transform var(--motion-standard), opacity var(--motion-fast)',
+
   '--radius-xs': '6px',
   '--radius-sm': '8px',
   '--radius-md': '12px',
@@ -20,10 +23,10 @@ const SHARED_TOKENS = {
   '--radius-control': '999px',
   '--touch-target': '40px',
 
-  '--motion-fast': '160ms var(--ease-pro)',
-  '--motion-standard': '280ms var(--ease-pro)',
-  '--motion-emphasized': '460ms var(--ease-pro)',
-  '--motion-reveal': '420ms var(--ease-pro)',
+  '--motion-fast': '140ms var(--ease-pro)',
+  '--motion-standard': '260ms var(--ease-pro)',
+  '--motion-emphasized': '420ms var(--ease-pro)',
+  '--motion-reveal': '380ms var(--ease-pro)',
   '--focus-ring': '0 0 0 3px rgba(var(--accent-rgb), 0.12)',
   '--focus-ring-strong': '0 0 0 3px rgba(var(--accent-rgb), 0.14)',
   '--focus-ring-wide': '0 0 0 4px rgba(var(--accent-rgb), 0.12)',

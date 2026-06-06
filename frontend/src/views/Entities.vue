@@ -51,47 +51,11 @@
       </div>
     </section>
 
-    <div
-      v-if="loading"
-      :class="usesPortraitCards ? 'entity-grid entity-grid--loading' : 'entity-list-grid entity-list-grid--loading'"
-      aria-label="实体目录加载中"
-    >
-      <article
-        v-for="n in 12"
-        :key="n"
-        :class="[usesPortraitCards ? 'entity-card entity-card--skeleton' : 'entity-list-card entity-list-card--skeleton', 'apple-surface']"
-        aria-hidden="true"
-      >
-        <template v-if="usesPortraitCards">
-          <div class="entity-card__media apple-skeleton-block"></div>
-          <div class="entity-card__body">
-            <div class="entity-skeleton-line entity-skeleton-line--short apple-skeleton-block"></div>
-            <div class="entity-skeleton-line apple-skeleton-block"></div>
-          </div>
-        </template>
-        <div v-else class="entity-list-card__body">
-          <div class="entity-skeleton-line entity-skeleton-line--short apple-skeleton-block"></div>
-          <div class="entity-skeleton-line apple-skeleton-block"></div>
-          <div class="entity-skeleton-line entity-skeleton-line--tiny apple-skeleton-block"></div>
-        </div>
-      </article>
-    </div>
+    <AppleSkeleton v-if="loading" :class="usesPortraitCards ? 'entity-grid entity-grid--loading' : 'entity-list-grid entity-list-grid--loading'" :variant="usesPortraitCards ? 'gallery' : 'list'" :items="12" :columns="usesPortraitCards ? 'repeat(auto-fill, minmax(148px, 1fr))' : 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))'" label="实体目录加载中" />
 
-    <div v-else-if="error" class="state-panel state-panel--error apple-surface">
-      <div>
-        <strong>目录加载失败</strong>
-        <span>{{ error }}</span>
-      </div>
-      <button class="btn btn-primary btn-sm" type="button" @click="loadEntities">重试</button>
-    </div>
+    <AppleErrorState v-else-if="error" class="state-panel state-panel--error" title="目录加载失败" :description="error" next-step="重新加载会保留当前目录类型和搜索条件；如果仍失败，可以查看运行日志。" retry-label="重试" secondary-action-label="查看日志" @retry="loadEntities" @secondary-action="$router.push('/logs')" />
 
-    <div v-else-if="items.length === 0" class="state-panel apple-surface">
-      <div>
-        <strong>暂无{{ activeConfig.label }}</strong>
-        <span>换个关键词或实体类型再试试。</span>
-      </div>
-      <button v-if="searchKeyword" class="btn btn-ghost btn-sm" type="button" @click="clearSearch">清空搜索</button>
-    </div>
+    <AppleEmptyState v-else-if="items.length === 0" class="state-panel" :title="`暂无${activeConfig.label}`" description="当前目录没有匹配的实体。" next-step="可以清空搜索查看全部实体，或切换到资料库演员继续浏览。" action-label="清空搜索" secondary-action-label="资料库演员" density="compact" @action="clearSearch" @secondary-action="switchTab('actresses')" />
 
     <div v-else-if="usesPortraitCards" class="entity-grid">
       <ActorPortraitCard
@@ -147,6 +111,9 @@
 import api from '../api'
 import { favoriteState } from '../utils/favoriteState'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import { actressImgUrl } from '../utils/imageUrl.js'
 
 const ENTITY_TABS = [
@@ -179,7 +146,7 @@ const ENTITY_LOADERS = {
 
 export default {
   name: 'Entities',
-  components: { ActorPortraitCard },
+  components: { ActorPortraitCard, AppleSkeleton, AppleEmptyState, AppleErrorState },
   data() {
     return {
       entityTabs: ENTITY_TABS,

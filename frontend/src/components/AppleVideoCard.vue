@@ -139,13 +139,13 @@ function handleKeydown(event) {
   border: 1px solid var(--glass-control-border);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), background var(--motion-standard);
+  transition: transform var(--motion-standard);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .apple-video-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
@@ -164,7 +164,7 @@ function handleKeydown(event) {
 
 .apple-video-card__cover {
   position: relative;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: var(--movie-card-cover-aspect, 3 / 4);
   overflow: hidden;
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
@@ -179,16 +179,16 @@ function handleKeydown(event) {
 .apple-video-card__image {
   object-fit: cover;
   object-position: center;
-  transition: transform var(--motion-emphasized), filter var(--motion-emphasized);
+  transition: transform var(--motion-standard);
 }
 
 .apple-video-card:hover .apple-video-card__image {
-  transform: scale(1.045);
+  transform: scale(1.03);
   filter: saturate(1.08);
 }
 
 .apple-video-card:focus-visible .apple-video-card__image {
-  transform: scale(1.045);
+  transform: scale(1.03);
   filter: saturate(1.08);
 }
 

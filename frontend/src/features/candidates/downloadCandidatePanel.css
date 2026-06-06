@@ -19,7 +19,7 @@
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .candidate-search-input:focus {
@@ -67,7 +67,7 @@
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .chip:hover:not(:disabled) {
@@ -270,7 +270,7 @@
   text-decoration: underline;
   text-decoration-color: var(--link-underline);
   text-underline-offset: 3px;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .link-btn:hover {
@@ -360,7 +360,7 @@
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .page-btn:hover:not(:disabled) {
@@ -482,7 +482,7 @@
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   outline: none;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .magnet-editor-input:focus {
@@ -632,6 +632,11 @@
   }
   .candidate-toolbar {
     align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .candidate-toolbar::-webkit-scrollbar {
+    display: none;
   }
   .candidate-search-input {
     width: 100%;

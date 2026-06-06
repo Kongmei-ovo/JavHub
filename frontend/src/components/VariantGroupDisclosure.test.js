@@ -55,7 +55,8 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
     assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use lightweight motion tokens`)
+    assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/, `${name} should keep material changes out of transitions`)
     assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|rgba\(255,\s*255,\s*255,\s*0\.04\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat surfaces`)
   }
 

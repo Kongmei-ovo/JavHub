@@ -14,13 +14,26 @@ BONUS_EVIDENCE_RE = re.compile(
 FC2_RE = re.compile(r"(?i)\bFC2(?:[-_\s]*PPV)?[-_\s]*([0-9]{3,})\b")
 FC2_NORMALIZED_RE = re.compile(r"^FC2(?:PPV)?([0-9]+)$", re.IGNORECASE)
 CODE_RE = re.compile(r"^([A-Z]+)([0-9]+)([A-Z]*)$")
+ALNUM_CODE_RE = re.compile(r"^([0-9]*[A-Z][A-Z0-9]*?)([0-9]+)([A-Z]*)$")
 # DMM "domestic" content_ids prefix the real code with a maker-bucket marker like
 # `h_706naac00047b` (== NAAC-047B) or `h_1240sw00789` (== SW-789). Strip the
 # prefix BEFORE the standard code analyzer so the canonical code matches the
 # unprefixed FANZA/r18 form and variant grouping works across origins.
 DOMESTIC_BUCKET_RE = re.compile(r"^H[0-9]{2,5}([A-Z][A-Z0-9]*[0-9][A-Z0-9]*)$")
+BLURAY_BD_INFIX_RE = re.compile(r"^([A-Z]{2,})BD([0-9]+[A-Z]*)$")
+BLURAY_B_PREFIX_RE = re.compile(r"^(PRBY)B([0-9]+[A-Z]*)$")
+BLURAY_B_SUFFIX_RE = re.compile(r"^([A-Z]{2,})([0-9]+)B$")
 ON_DEMAND_SUFFIXES = ("RDOD", "BOD", "DOD")
 BONUS_SUFFIXES = ("BTK", "TK", "EC", "DL")
+BLURAY_B_SUFFIX_PREFIXES = {"AP", "GTRP", "NAAC"}
+BLURAY_BD_INFIX_PREFIXES = {"SSHN", "STAR"}
+BLURAY_MARKERS = {
+    "leading_9_bluray_prefix",
+    "bluray_bd_infix",
+    "bluray_b_prefix",
+    "bluray_b_suffix",
+}
+RENTAL_R_STRIPPABLE_PREFIXES = {"DANDY", "NHDTA", "SSHN", "STAR", "STARS"}
 LOW_NUMBER_COLLISION_PREFIXES = {
     "DIC",
     "DOG",
@@ -105,7 +118,10 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             meaning="DMM/FANZA 数字内容 ID，不等同传统商品番号",
             evidence="service_code=digital" if service == "digital" else "content_id 使用 DMM 补零格式",
         )
-    if service == "rental" or "rental_4_prefix" in analysis["markers"]:
+    if service == "rental" or any(
+        marker in analysis["markers"]
+        for marker in ("rental_4_prefix", "rental_r_prefix", "h_bucket_rental_suffix")
+    ):
         add_label(
             "rental",
             "租赁版",
@@ -113,7 +129,7 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             source="service",
             confidence="high",
             meaning="FANZA/DMM 租赁版条目",
-            evidence="service_code=rental" if service == "rental" else "番号带 4 前缀",
+            evidence="service_code=rental" if service == "rental" else "番号包含租赁服务标记",
         )
     if "bod_suffix" in analysis["markers"]:
         add_label(
@@ -134,6 +150,16 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             confidence="high",
             meaning="DVD Disc On Demand，FANZA 官方说明为 DVD-R 按需盘",
             evidence="FANZA 帮助中心说明 DOD 为 DVD Disc On Demand",
+        )
+    if any(marker in analysis["markers"] for marker in BLURAY_MARKERS):
+        add_label(
+            "blu_ray",
+            "蓝光版",
+            "蓝光",
+            source="code",
+            confidence="medium",
+            meaning="番号包含常见 Blu-ray 版本标记，和基础番号归为同一作品的不同介质版本",
+            evidence=", ".join(marker for marker in analysis["markers"] if marker in BLURAY_MARKERS),
         )
     if analysis["bonus_evidence"] and (
         "tk_prefix" in analysis["markers"]
@@ -159,6 +185,7 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
     row["_variant_sort_rank"] = _variant_sort_rank(row, labels)
     row["_variant_groupable"] = _is_groupable(analysis)
     row["_variant_title_key"] = _title_key(row)
+    row["_variant_markers"] = analysis["markers"]
     return row
 
 
@@ -168,7 +195,28 @@ def _analyze_item(row: dict[str, Any]) -> dict[str, Any]:
     dvd_norm = _normalize(row.get("dvd_id"))
     title = str(row.get("title_ja") or row.get("title_en") or row.get("title") or "")
     bonus_evidence = _bonus_evidence(title)
-    analysis = _analyze_code(raw_code, allow_title_tk=bool(bonus_evidence))
+    service = str(row.get("service_code") or "").strip().lower()
+    raw_is_content_id = bool(content_norm and _normalize(raw_code) == content_norm)
+    analysis = _analyze_code(
+        raw_code,
+        allow_title_tk=bool(bonus_evidence),
+        allow_rental_r_prefix=service == "rental",
+        allow_service_digit_prefix=service == "rental" or (service == "digital" and raw_is_content_id),
+        allow_leading_9_bluray=True,
+        allow_bluray_markers=True,
+    )
+    if service == "digital" and content_norm:
+        content_analysis = _analyze_code(
+            row.get("content_id"),
+            allow_title_tk=bool(bonus_evidence),
+            allow_service_digit_prefix=True,
+            allow_bluray_markers=True,
+        )
+        if _should_prefer_digital_content_id(analysis, content_analysis, dvd_norm):
+            content_analysis["markers"] = tuple(
+                dict.fromkeys((*content_analysis["markers"], "digital_content_id_source"))
+            )
+            analysis = content_analysis
     analysis["raw_code"] = raw_code
     analysis["content_id_padded"] = bool(content_norm and not dvd_norm and "padded_digits" in analysis["markers"])
     analysis["title"] = title
@@ -176,7 +224,31 @@ def _analyze_item(row: dict[str, Any]) -> dict[str, Any]:
     return analysis
 
 
-def _analyze_code(raw: Any, *, allow_title_tk: bool) -> dict[str, Any]:
+def _should_prefer_digital_content_id(
+    raw_analysis: dict[str, Any],
+    content_analysis: dict[str, Any],
+    dvd_norm: str,
+) -> bool:
+    if not dvd_norm:
+        return False
+    if not _is_groupable(content_analysis):
+        return False
+    if not any(marker in content_analysis["markers"] for marker in ("padded_digits", "dmm_service_digit_prefix")):
+        return False
+    if not _is_groupable(raw_analysis):
+        return True
+    return str(raw_analysis.get("canonical_norm") or "") != str(content_analysis.get("canonical_norm") or "")
+
+
+def _analyze_code(
+    raw: Any,
+    *,
+    allow_title_tk: bool,
+    allow_rental_r_prefix: bool = False,
+    allow_service_digit_prefix: bool = False,
+    allow_leading_9_bluray: bool = False,
+    allow_bluray_markers: bool = False,
+) -> dict[str, Any]:
     original = str(raw or "").strip()
     normalized = _normalize(original)
     markers: list[str] = []
@@ -192,17 +264,40 @@ def _analyze_code(raw: Any, *, allow_title_tk: bool) -> dict[str, Any]:
 
     working = normalized
     if match := DOMESTIC_BUCKET_RE.match(working):
-        # h_706naac00047b → NAAC00047B (canonicalises to NAAC-47B, matches the
-        # FANZA/r18 dvd_id NAAC-047B). The bucket digits are routing metadata,
-        # not part of the code; we discard them deliberately.
+        # h_706naac00047b → NAAC00047B. The bucket digits are routing metadata,
+        # not part of the code; later edition-marker rules may still fold the
+        # remaining suffix (for example Blu-ray B) into the base code.
         markers.append("h_bucket_prefix")
         working = match.group(1)
+        if working.endswith("R") and _matches_parseable_code(working[:-1]):
+            markers.append("h_bucket_rental_suffix")
+            working = working[:-1]
     if allow_title_tk and working.startswith("TK") and _looks_like_wrapped_tk(working):
         markers.append("tk_prefix")
         working = working[2:]
-    if working.startswith("4") and len(working) > 1 and working[1].isalpha():
+    if allow_service_digit_prefix:
+        digit_stripped = _strip_leading_service_digit(working)
+        if digit_stripped:
+            markers.append("dmm_service_digit_prefix")
+            working = digit_stripped
+    elif working.startswith("4") and len(working) > 1 and working[1].isalpha():
         markers.append("rental_4_prefix")
         working = working[1:]
+    if allow_rental_r_prefix:
+        rental_stripped = _strip_leading_rental_r(working)
+        if rental_stripped:
+            markers.append("rental_r_prefix")
+            working = rental_stripped
+    if allow_leading_9_bluray:
+        bluray_stripped = _strip_leading_9_bluray(working)
+        if bluray_stripped:
+            markers.append("leading_9_bluray_prefix")
+            working = bluray_stripped
+    if allow_bluray_markers:
+        bluray_stripped, marker = _strip_bluray_marker(working)
+        if bluray_stripped:
+            markers.append(marker)
+            working = bluray_stripped
 
     for suffix in ON_DEMAND_SUFFIXES:
         if working.endswith(suffix) and len(working) > len(suffix):
@@ -216,6 +311,14 @@ def _analyze_code(raw: Any, *, allow_title_tk: bool) -> dict[str, Any]:
             break
 
     if match := CODE_RE.match(working):
+        prefix, raw_digits, extra = match.groups()
+        digits = _trim_digits(raw_digits)
+        if raw_digits.startswith("0") and len(raw_digits) > max(3, len(digits)):
+            markers.append("padded_digits")
+        canonical_norm = f"{prefix}{digits}{extra}"
+        return _analysis(original, canonical_norm, _display_from_parts(prefix, digits, extra), prefix, digits, tuple(dict.fromkeys(markers)))
+
+    if match := ALNUM_CODE_RE.match(working):
         prefix, raw_digits, extra = match.groups()
         digits = _trim_digits(raw_digits)
         if raw_digits.startswith("0") and len(raw_digits) > max(3, len(digits)):
@@ -244,6 +347,54 @@ def _looks_like_wrapped_tk(normalized: str) -> bool:
     if not match:
         return False
     return len(match.group(1)) >= 3
+
+
+def _strip_leading_service_digit(normalized: str) -> str:
+    if len(normalized) < 3 or not normalized[0].isdigit():
+        return ""
+    candidate = normalized[1:]
+    return candidate if _matches_parseable_code(candidate) else ""
+
+
+def _strip_leading_rental_r(normalized: str) -> str:
+    if len(normalized) < 4 or not normalized.startswith("R"):
+        return ""
+    candidate = normalized[1:]
+    match = CODE_RE.match(candidate)
+    if not match:
+        return ""
+    prefix = match.group(1)
+    return candidate if prefix in RENTAL_R_STRIPPABLE_PREFIXES else ""
+
+
+def _strip_leading_9_bluray(normalized: str) -> str:
+    if len(normalized) < 4 or not normalized.startswith("9"):
+        return ""
+    candidate = normalized[1:]
+    match = CODE_RE.match(candidate)
+    if not match:
+        return ""
+    prefix = match.group(1)
+    return candidate if len(prefix) >= 2 else ""
+
+
+def _strip_bluray_marker(normalized: str) -> tuple[str, str]:
+    if match := BLURAY_BD_INFIX_RE.match(normalized):
+        prefix, tail = match.groups()
+        if prefix in BLURAY_BD_INFIX_PREFIXES:
+            return f"{prefix}{tail}", "bluray_bd_infix"
+    if match := BLURAY_B_PREFIX_RE.match(normalized):
+        prefix, tail = match.groups()
+        return f"{prefix}{tail}", "bluray_b_prefix"
+    if match := BLURAY_B_SUFFIX_RE.match(normalized):
+        prefix, digits = match.groups()
+        if prefix in BLURAY_B_SUFFIX_PREFIXES:
+            return f"{prefix}{digits}", "bluray_b_suffix"
+    return "", ""
+
+
+def _matches_parseable_code(normalized: str) -> bool:
+    return bool(CODE_RE.match(normalized) or ALNUM_CODE_RE.match(normalized))
 
 
 def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -404,14 +555,48 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
     if not titles_match:
         return False
 
-    runtimes = [_runtime_minutes(item.get("runtime_mins")) for item in items]
+    # Supplement-origin runtimes are known to carry partial scrapes (half-disc
+    # figures, "BEST" excerpt durations, etc.) and shouldn't veto a merge that
+    # the trusted r18/mono/digital runtimes agree on. Skip them in the tolerance
+    # check; they're advisory, not authoritative.
+    runtimes = [
+        _runtime_minutes(item.get("runtime_mins"))
+        for item in items
+        if not _is_supplement_origin(item)
+    ]
     runtimes = [value for value in runtimes if value]
     if len(runtimes) >= 2:
-        tolerance = max(3, round(max(runtimes) * 0.05))
-        if max(runtimes) - min(runtimes) > tolerance:
-            return False
+        if not _can_ignore_runtime_divergence_for_bluray(items):
+            tolerance = max(3, round(max(runtimes) * 0.05))
+            if max(runtimes) - min(runtimes) > tolerance:
+                return False
 
     return True
+
+
+def _is_supplement_origin(item: dict[str, Any]) -> bool:
+    return (
+        str(item.get("service_code") or "").lower() == "supplement"
+        or str(item.get("data_origin") or "").lower() == "supplement"
+    )
+
+
+def _can_ignore_runtime_divergence_for_bluray(items: list[dict[str, Any]]) -> bool:
+    if not any(_has_bluray_marker(item) for item in items):
+        return False
+    titles = [str(item.get("_variant_title_key") or "") for item in items]
+    non_empty_titles = [title for title in titles if title]
+    if len(non_empty_titles) < 2:
+        return False
+    base = max(non_empty_titles, key=len)
+    return all(_title_similarity(base, title) >= 0.95 for title in non_empty_titles)
+
+
+def _has_bluray_marker(item: dict[str, Any]) -> bool:
+    markers = item.get("_variant_markers")
+    if not isinstance(markers, (list, tuple, set)):
+        return False
+    return any(marker in BLURAY_MARKERS for marker in markers)
 
 
 def _is_groupable(analysis: dict[str, Any]) -> bool:
@@ -440,7 +625,7 @@ def _variant_sort_rank(row: dict[str, Any], labels: list[dict[str, Any]]) -> int
         return 10
     if "rental" in keys:
         return 20
-    if "bod" in keys or "dod" in keys:
+    if "bod" in keys or "dod" in keys or "blu_ray" in keys:
         return 30
     if "fanza_bonus" in keys or "bonus" in keys:
         return 40

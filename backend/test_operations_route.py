@@ -17,7 +17,14 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             {"total_jobs": 12},
             {"total": 3},
             {"total_count": 1},
-            {"total": 2},
+            {
+                "total": 2,
+                "data": [
+                    {"last_error": "javlibrary source is temporarily unavailable by source health control"},
+                    {"last_error": "fanza: no high-confidence fanza candidate for MIAA-001"},
+                    {"last_error": "mgstage request failed: 403 Forbidden"},
+                ],
+            },
         ]))
         captured: dict[str, object] = {}
         original_get_or_set = cache.get_or_set_response
@@ -42,6 +49,11 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
                 "top_actresses": [{"actress_id": 1, "actress_name": "A", "missing_count": 2}],
             })) as missing, \
             patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 4})) as variant_stats, \
+            patch.object(operations, "build_data_quality_overview", Mock(return_value={
+                "status": "ok",
+                "summary": {"total_issues": 0},
+                "issues": [],
+            })) as data_quality, \
             patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 2})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[{"id": 5}])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
@@ -63,6 +75,27 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         jobs.assert_called_once_with(limit=10)
         missing.assert_called_once_with(limit=8)
         variant_stats.assert_called_once()
+        data_quality.assert_called_once_with(
+            limit=8,
+            repair_progress={
+                "low_quality_cover": {
+                    "available": True,
+                    "queued": 3,
+                    "running": 1,
+                    "failed": 2,
+                    "failed_reasons": [
+                        {"label": "来源暂不可用", "count": 1},
+                        {"label": "低置信匹配", "count": 1},
+                        {"label": "请求失败", "count": 1},
+                    ],
+                    "provider_failures": [
+                        {"provider": "fanza", "count": 1},
+                        {"provider": "javlibrary", "count": 1},
+                        {"provider": "mgstage", "count": 1},
+                    ],
+                },
+            },
+        )
         mapping.assert_called_once_with("snap-1")
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()
@@ -76,6 +109,11 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             "queued": 3,
             "running": 1,
             "failed": 2,
+            "failed_samples": [
+                {"last_error": "javlibrary source is temporarily unavailable by source health control"},
+                {"last_error": "fanza: no high-confidence fanza candidate for MIAA-001"},
+                {"last_error": "mgstage request failed: 403 Forbidden"},
+            ],
         })
 
     async def test_overview_fetches_supplement_statuses_concurrently(self):
@@ -107,6 +145,11 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             patch.object(operations, "get_inventory_jobs", Mock(return_value=[])), \
             patch.object(operations, "missing_videos_summary", Mock(return_value={"total": 0, "top_actresses": []})), \
             patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 0})), \
+            patch.object(operations, "build_data_quality_overview", Mock(return_value={
+                "status": "ok",
+                "summary": {"total_issues": 0},
+                "issues": [],
+            })), \
             patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 0})), \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])), \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
@@ -135,6 +178,36 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             "failed": 2,
         })
 
+    async def test_failed_job_provider_breakdown_counts_compound_errors(self):
+        from services import supplement_repair_progress
+
+        samples = [
+            {
+                "source": "all",
+                "last_error": (
+                    "partial retryable detail failures: avbase: avbase request failed: 404 Not Found; "
+                    "fanza: no high-confidence fanza candidate for MIAA-001; "
+                    "javlibrary: javlibrary cloudflare challenge returned; "
+                    "mgstage: mgstage source is temporarily unavailable by source health control"
+                ),
+            },
+            {
+                "source": "all",
+                "last_error": (
+                    "partial retryable detail failures: avbase: avbase request failed: 404 Not Found; "
+                    "fanza: no high-confidence fanza candidate for MIAA-002"
+                ),
+            },
+            {"source": "javlibrary", "last_error": "javlibrary source is temporarily unavailable by source health control"},
+        ]
+
+        self.assertEqual(supplement_repair_progress.failed_job_providers(samples), [
+            {"provider": "avbase", "count": 2, "route_source": "all"},
+            {"provider": "fanza", "count": 2, "route_source": "all"},
+            {"provider": "javlibrary", "count": 2, "route_source": "all"},
+            {"provider": "mgstage", "count": 1, "route_source": "all"},
+        ])
+
     async def test_overview_caches_supplement_fallback_when_info_client_fails(self):
         from routers import operations
 
@@ -148,6 +221,11 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             patch.object(operations, "get_inventory_jobs", Mock(return_value=[])) as jobs, \
             patch.object(operations, "missing_videos_summary", Mock(return_value={"total": 0, "top_actresses": []})) as missing, \
             patch.object(operations, "variant_group_stats", Mock(return_value={"groups": 0})) as variant_stats, \
+            patch.object(operations, "build_data_quality_overview", Mock(return_value={
+                "status": "ok",
+                "summary": {"total_issues": 0},
+                "issues": [],
+            })) as data_quality, \
             patch.object(operations, "mapping_summary_for_snapshot", Mock(return_value={"mapped": 0})) as mapping, \
             patch.object(operations, "list_candidate_process_runs", Mock(return_value=[])) as runs, \
             patch.object(operations, "_candidate_schedule_state", Mock(return_value={
@@ -168,6 +246,7 @@ class OperationsRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         jobs.assert_called_once_with(limit=10)
         missing.assert_called_once_with(limit=8)
         variant_stats.assert_called_once()
+        data_quality.assert_called_once_with(limit=8)
         mapping.assert_called_once_with(None)
         runs.assert_called_once_with(limit=5)
         schedule.assert_called_once()

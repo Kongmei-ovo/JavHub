@@ -55,7 +55,8 @@ test('discovery detail filter and pagination controls use shared glass materials
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use lightweight motion tokens`)
+    assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/, `${name} should keep material changes out of transitions`)
     assert.doesNotMatch(block, /border:\s*1px solid transparent|transition:\s*all\b|transition:\s*var\(--transition-pro\)/, `${name} should not keep legacy flat control behavior`)
   }
 
@@ -101,7 +102,8 @@ test('discovery detail toolbar actions use shared glass controls without legacy 
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use lightweight motion tokens`)
+    assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/, `${name} should keep material changes out of transitions`)
     assert.doesNotMatch(block, /background:\s*none|transition:\s*all\b|transition:\s*var\(--transition-pro\)/, `${name} should not keep flat legacy toolbar behavior`)
   }
 
@@ -220,4 +222,67 @@ test('discovery detail chronicle headings use shared glass border tokens', () =>
 
 test('discovery detail does not retain unused legacy shuffle button chrome', () => {
   assert.doesNotMatch(source, /\.shuffle-btn\b/, 'unused shuffle button styles should not remain in discovery detail')
+})
+
+test('discovery detail exposes inline error state with shared Apple state chrome', () => {
+  assert.match(source, /import AppleErrorState from '\.\.\/components\/AppleErrorState\.vue'/)
+  assert.match(source, /components:\s*\{[^}]*AppleErrorState/)
+  assert.match(source, /searchError:\s*null/)
+  assert.match(source, /this\.searchError\s*=\s*null/)
+  assert.match(source, /this\.searchError\s*=\s*api\.formatApiError/)
+  assert.match(source, /<AppleErrorState[\s\S]*title="发现页加载失败"[\s\S]*@retry="refresh"/)
+  assert.match(source, /v-else-if="searchError"/)
+})
+
+test('discovery detail bars and state panels use compact glass trays', () => {
+  const resultBarBlock = cssBlock('.result-bar')
+  const paginationBarBlock = cssBlock('.pagination-bar')
+  const statePanelBlock = cssBlock('.genre-detail-page :deep(.apple-empty-state),\n.genre-detail-page :deep(.apple-error-state)')
+  const skeletonGridBlock = cssBlock('.skeleton-grid')
+
+  for (const [block, name] of [[resultBarBlock, 'result bar'], [paginationBarBlock, 'pagination bar']]) {
+    assertLayeredBackground(block, '--material-glass-sheet', name)
+    assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use shared glass edge`)
+    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/, `${name} should keep an inner refractive edge`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/, `${name} should use surface blur`)
+  }
+
+  assert.match(resultBarBlock, /padding:\s*6px/)
+  assert.match(paginationBarBlock, /width:\s*fit-content/)
+  assert.match(paginationBarBlock, /max-width:\s*calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)/)
+  assertLayeredBackground(statePanelBlock, '--material-glass-sheet', 'state panel')
+  assert.match(statePanelBlock, /border:\s*1px solid var\(--glass-edge-strong\)/)
+  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
+  assert.match(statePanelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(skeletonGridBlock, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(180px,\s*1fr\)\)/)
+  assert.match(skeletonGridBlock, /align-items:\s*start/)
+})
+
+test('discovery detail page polishes variant disclosure focus without editing shared component', () => {
+  const toggleFocusBlock = cssBlock('.genre-detail-page :deep(.variant-group-disclosure__toggle:focus-visible)')
+  const rowFocusBlock = cssBlock('.genre-detail-page :deep(.variant-group-disclosure__row:focus-visible)')
+  const labelBlock = cssBlock('.genre-detail-page :deep(.variant-group-disclosure__labels span)')
+
+  for (const [block, name] of [[toggleFocusBlock, 'variant toggle focus'], [rowFocusBlock, 'variant row focus']]) {
+    assertLayeredBackground(block, '--material-glass-control-hover', name)
+    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
+    assert.match(block, /color:\s*var\(--text-primary\)/, `${name} should keep readable focus text`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/, `${name} should use page-level focus depth`)
+  }
+
+  assertLayeredBackground(labelBlock, '--badge-info-bg', 'variant label')
+  assert.match(labelBlock, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+})
+
+test('discovery detail controls include pressed feedback across toolbar and filters', () => {
+  for (const selector of [
+    '.back-btn:active',
+    '.entity-fav-btn:active',
+    '.entity-sub-btn:active',
+    '.sort-pill:active',
+    '.chronicle-btn:active',
+    '.page-btn:active:not(:disabled)',
+  ]) {
+    assert.match(cssBlock(selector), /transform:\s*translateY\(0\)\s*scale\(0\.(?:96|99)\)/, `${selector} should provide pressed feedback`)
+  }
 })

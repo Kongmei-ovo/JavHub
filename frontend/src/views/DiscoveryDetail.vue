@@ -101,6 +101,18 @@
       <AppleSkeleton v-for="n in 12" :key="n" variant="card" />
     </div>
 
+    <AppleErrorState
+      v-else-if="searchError"
+      class="page-rail page-rail--standard"
+      title="发现页加载失败"
+      :description="searchError.message"
+      :source-label="searchError.serviceLabel"
+      :details="searchError.status ? `HTTP ${searchError.status}` : '网络连接'"
+      retry-label="重试"
+      :retrying="loading"
+      @retry="refresh"
+    />
+
     <!-- 结果网格：年份编年模式 -->
     <template v-else-if="results.length > 0 && isChronicle">
       <div v-for="(group, year) in groupedByYear" :key="year" class="year-section">
@@ -190,6 +202,7 @@ import { createRequestSequence } from '../utils/requestSequence.js'
 import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
 import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
@@ -198,7 +211,7 @@ const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState, GlassSelect, VariantGroupDisclosure },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState, GlassSelect, VariantGroupDisclosure },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -225,6 +238,7 @@ export default {
       results: [],
       loading: false,
       searched: false,
+      searchError: null,
       page: 1,
       total: 0,
       totalPages: 1,
@@ -421,6 +435,7 @@ export default {
       this.loading = true
       this.searched = true
       this.page = 1
+      this.searchError = null
       const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
@@ -431,6 +446,9 @@ export default {
       } catch (e) {
         if (!this.searchSequence.isCurrent(token)) return
         console.error('Search failed:', e)
+        this.searchError = api.formatApiError
+          ? api.formatApiError(e, { service: 'JavInfo', action: '加载发现页', fallback: '请检查 JavInfo 服务后重试。' })
+          : { message: '加载失败，请稍后重试。', serviceLabel: 'JavInfo', status: e.response?.status || 0 }
         this.results = []; this.total = 0
       } finally {
         if (this.searchSequence.isCurrent(token)) this.loading = false
@@ -441,6 +459,7 @@ export default {
       if (p < 1 || p > this.totalPages) return
       this.page = p
       this.loading = true
+      this.searchError = null
       const token = this.searchSequence.next()
       try {
         const resp = await api.searchVideos(this.buildParams())
@@ -450,6 +469,9 @@ export default {
       } catch (e) {
         if (!this.searchSequence.isCurrent(token)) return
         console.error('Page change failed:', e)
+        this.searchError = api.formatApiError
+          ? api.formatApiError(e, { service: 'JavInfo', action: '翻页', fallback: '请检查 JavInfo 服务后重试。' })
+          : { message: '翻页失败，请稍后重试。', serviceLabel: 'JavInfo', status: e.response?.status || 0 }
       } finally {
         if (this.searchSequence.isCurrent(token)) this.loading = false
       }
@@ -484,7 +506,7 @@ export default {
   display: flex; align-items: center; gap: 4px; min-height: 44px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border); color: var(--text-secondary); font-size: 13px; cursor: pointer;
   padding: 6px 12px; border-radius: var(--radius-sm); box-shadow: var(--glass-control-shadow); flex-shrink: 0;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -494,7 +516,7 @@ export default {
   width: 44px; height: 44px; border-radius: 50%; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border); display: flex; align-items: center; justify-content: center;
   color: var(--text-muted); cursor: pointer; box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   flex-shrink: 0; padding: 0;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -516,7 +538,7 @@ export default {
   align-items: center;
   justify-content: center;
   box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   margin-left: 6px;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -538,7 +560,24 @@ export default {
 .entity-sub-btn:active { transform: translateY(0) scale(0.99); }
 .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .type-label { font-size: 14px; color: var(--text-muted); margin-right: 8px; font-weight: normal; }
-.result-bar { --filter-control-height: 32px; --filter-control-radius: 16px; --filter-control-width: 112px; display: flex; align-items: center; justify-content: space-between; padding-block: 12px; position: relative; z-index: var(--z-raised); }
+.result-bar {
+  --filter-control-height: 32px;
+  --filter-control-radius: 16px;
+  --filter-control-width: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px;
+  position: relative;
+  z-index: var(--z-raised);
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
 .result-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .result-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .bar-divider { width: 1px; height: 20px; background: var(--glass-control-border); flex-shrink: 0; }
@@ -549,7 +588,7 @@ export default {
   padding: 0 12px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius); color: var(--text-secondary); font-size: 13px; font-weight: 500;
   box-shadow: var(--glass-control-shadow);
-  cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast); user-select: none;
+  cursor: pointer; transition: transform var(--motion-standard), opacity var(--motion-fast); user-select: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -567,7 +606,7 @@ export default {
   padding: 0 12px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); border: 1px solid var(--glass-control-border);
   border-radius: var(--filter-control-radius); color: var(--text-muted); font-size: 12px; font-weight: 600;
   box-shadow: var(--glass-control-shadow);
-  cursor: pointer; transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast); user-select: none;
+  cursor: pointer; transition: transform var(--motion-standard), opacity var(--motion-fast); user-select: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -584,7 +623,21 @@ export default {
   --glass-select-font: 12px;
   --glass-select-radius: var(--filter-control-radius);
 }
-.pagination-bar { display: flex; justify-content: center; align-items: center; gap: 8px; padding-block: 12px; }
+.pagination-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: calc(100% - var(--page-gutter) - var(--page-gutter));
+  padding: 6px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
+  box-shadow: var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+}
 .pagination-bar.bottom { border-top: 1px solid var(--glass-edge); }
 .page-btn {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
@@ -595,7 +648,7 @@ export default {
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
   font-size: 13px;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -640,11 +693,39 @@ export default {
   transform: translateY(-1px);
 }
 .page-indicator { font-size: 13px; color: var(--text-secondary); padding: 0 4px; }
-.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding-block: 20px; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; align-items: start; padding-block: 20px; }
 .year-section { margin-bottom: 8px; }
 .year-header { font-size: 13px; font-weight: 700; color: var(--text-secondary); padding: 12px 0 8px 12px; letter-spacing: 0.05em; border-left: 3px solid var(--glass-control-border); font-family: var(--font-mono); }
 .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px !important; padding-block: 0 24px; }
 .result-card-group { min-width: 0; }
+
+.genre-detail-page :deep(.apple-empty-state),
+.genre-detail-page :deep(.apple-error-state) {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  border: 1px solid var(--glass-edge-strong);
+  box-shadow: var(--shadow-sheet), var(--glass-surface-shadow);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+}
+
+.genre-detail-page :deep(.variant-group-disclosure__toggle:focus-visible) {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide-strong);
+}
+
+.genre-detail-page :deep(.variant-group-disclosure__row:focus-visible) {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide-strong);
+}
+
+.genre-detail-page :deep(.variant-group-disclosure__labels span) {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
+  box-shadow: var(--glass-inner-shadow);
+}
 
 @media (max-width: 768px) {
   .toolbar-left {
@@ -657,6 +738,7 @@ export default {
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
+    border-radius: 24px;
   }
   .result-bar-left,
   .result-bar-right {
@@ -680,6 +762,10 @@ export default {
   .page-btn,
   .chronicle-btn {
     min-height: var(--compact-toolbar-height);
+  }
+  .pagination-bar {
+    flex-wrap: wrap;
+    width: min(100%, calc(100% - var(--page-gutter) - var(--page-gutter)));
   }
 }
 </style>

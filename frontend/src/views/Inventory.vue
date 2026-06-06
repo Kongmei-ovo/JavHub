@@ -118,21 +118,21 @@
 
     <!-- 对比概览 -->
     <div class="tab-content">
-      <div v-if="loadingActors" class="loading">加载中...</div>
-      <div v-if="errorActors" class="error">{{ errorActors }}</div>
+      <AppleSkeleton v-if="loadingActors" class="actors-grid loading" variant="gallery" :items="12" columns="repeat(auto-fill, minmax(140px, 1fr))" label="库存演员加载中" />
 
-      <!-- 骨架屏 -->
-      <div v-if="loadingActors" class="actors-grid">
-        <div v-for="n in 12" :key="n" class="actor-card skeleton">
-          <div class="actor-cover skeleton-cover"></div>
-          <div class="actor-info">
-            <div class="skeleton-line w-60"></div>
-            <div class="skeleton-line w-40"></div>
-          </div>
-        </div>
-      </div>
+      <AppleErrorState
+        v-else-if="errorActors"
+        class="error"
+        title="库存演员加载失败"
+        :description="errorActors"
+        next-step="重新加载会保留当前搜索和排序；如果仍失败，请查看库存作业历史。"
+        retry-label="重新加载"
+        secondary-action-label="作业历史"
+        @retry="fetchActors"
+        @secondary-action="showJobs = true; fetchJobs()"
+      />
 
-      <div v-else class="actors-grid">
+      <div v-else-if="actors.length > 0" class="actors-grid">
         <div
           v-for="actor in actors"
           :key="actor.actress_id"
@@ -160,13 +160,26 @@
         </div>
       </div>
 
-      <div v-if="!loadingActors && actors.length === 0 && snapshotKey" class="empty">
-        <template v-if="searchKeyword">未找到匹配「{{ searchKeyword }}」的演员</template>
-        <template v-else>暂无演员数据</template>
-      </div>
-      <div v-if="!loadingActors && !snapshotKey" class="empty">
-        请先采集 Emby 数据
-      </div>
+      <AppleEmptyState
+        v-else-if="snapshotKey"
+        class="empty"
+        :title="searchKeyword ? `未找到匹配「${searchKeyword}」的演员` : '暂无演员数据'"
+        description="当前快照下没有可展示的演员记录。"
+        next-step="可以清除搜索条件重新查看，也可以回到片库整理继续处理库存。"
+        action-label="清除搜索" secondary-action-label="片库整理" density="compact"
+        @action="clearSearch"
+        @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'inventory' } })"
+      />
+      <AppleEmptyState
+        v-else
+        class="empty"
+        title="请先采集 Emby 数据"
+        description="库存对比需要先生成 Emby 快照。"
+        next-step="采集完成后再执行全量对比，就能看到演员库存和缺失影片。"
+        action-label="采集 Emby 数据" secondary-action-label="片库整理" density="compact"
+        @action="triggerCollect"
+        @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'inventory' } })"
+      />
     </div>
 
     <!-- 底部分页 -->
@@ -196,9 +209,19 @@
           <h3>作业历史</h3>
           <button @click="showJobs = false" class="close-btn">×</button>
         </div>
-        <div v-if="loadingJobs" class="loading">加载中...</div>
-        <div v-if="errorJobs" class="error">{{ errorJobs }}</div>
-        <div class="jobs-list">
+        <AppleSkeleton v-if="loadingJobs" class="loading" variant="list" :items="4" label="库存作业加载中" />
+        <AppleErrorState
+          v-else-if="errorJobs"
+          class="error"
+          title="作业历史加载失败"
+          :description="errorJobs"
+          next-step="重新加载作业历史，或回到片库整理查看统一工作台。"
+          retry-label="重新加载"
+          secondary-action-label="片库整理"
+          @retry="fetchJobs"
+          @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'jobs' } })"
+        />
+        <div v-else-if="jobs.length > 0" class="jobs-list">
           <div
             v-for="job in jobs"
             :key="job.id"
@@ -223,7 +246,16 @@
             <div v-else-if="job.error_msg" class="job-error">{{ job.error_msg }}</div>
           </div>
         </div>
-        <div v-if="!loadingJobs && jobs.length === 0" class="empty">暂无作业记录</div>
+        <AppleEmptyState
+          v-else
+          class="empty"
+          title="暂无作业记录"
+          description="还没有采集或对比作业。"
+          next-step="可以先采集 Emby 数据，或去片库整理查看完整作业工作台。"
+          action-label="采集 Emby 数据" secondary-action-label="片库整理" density="compact"
+          @action="triggerCollect"
+          @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'jobs' } })"
+        />
       </div>
     </div>
   </div>
@@ -237,6 +269,9 @@ import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 const router = useRouter()
 const showJobs = ref(false)

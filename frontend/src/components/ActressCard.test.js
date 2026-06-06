@@ -30,7 +30,8 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(card, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\)/)
+  assert.match(card, /transition:\s*transform var\(--motion-standard\)/)
+  assert.doesNotMatch(card, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--glass-surface-shadow\)|var\(--glass-blur-surface\)|transition:\s*all|blur\(80px\)|rgba\(255,\s*255,\s*255,\s*0\.04\)/)
 
   assert.match(hover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
@@ -42,7 +43,7 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   assert.match(focus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\),\s*var\(--glass-inner-shadow\)/)
   assert.doesNotMatch(focus, /var\(--shadow-floating\)/)
-  assert.match(imageFocus, /transform:\s*scale\(1\.06\)/)
+  assert.match(imageFocus, /transform:\s*scale\(1\.03\)/)
 
   assert.match(media, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
   assert.match(media, /box-shadow:\s*var\(--glass-inner-shadow\)/)

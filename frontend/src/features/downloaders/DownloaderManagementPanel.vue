@@ -285,7 +285,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .icon-action svg {
   width: 17px;
@@ -374,7 +374,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast);
+  transition: opacity var(--motion-fast);
 }
 .downloader-row:last-child {
   border-bottom-color: var(--glass-control-border);
@@ -549,7 +549,7 @@ export default {
   height: 18px;
   border-radius: 50%;
   background: var(--text-secondary);
-  transition: transform 160ms ease, background 160ms ease;
+  transition: transform var(--motion-standard);
 }
 .switch-mini input:checked + span {
   border-color: var(--badge-success-border);

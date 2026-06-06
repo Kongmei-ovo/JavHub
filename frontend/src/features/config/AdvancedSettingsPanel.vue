@@ -1,12 +1,10 @@
 <template>
-  <div class="config-section">
+  <div class="config-section advanced-settings-stack">
     <div class="section-header">
       <h2>高级配置</h2>
       <p>进阶功能设置，包括配置备份、数据库导入、公共智能模型和网络代理。</p>
     </div>
-
-    <div class="settings-card">
-      <div class="card-content">
+    <section class="advanced-settings-group export-settings-group" :aria-busy="exportingConfig" aria-live="polite">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -15,19 +13,36 @@
           </svg>
           <h2>配置备份</h2>
         </div>
-        <div class="form-slot">
-          <div class="form-group">
-            <button class="btn btn-secondary" type="button" @click="exportUserConfig" :disabled="exportingConfig || !canSaveConfig">
-              {{ exportingConfig ? '导出中...' : '导出用户配置' }}
-            </button>
-            <small>导出当前可见配置，敏感字段会自动脱敏。</small>
+        <div class="settings-list">
+          <div class="settings-row settings-row--stacked">
+            <div class="setting-copy">
+              <span class="setting-title">导出前检查</span>
+              <span class="setting-note">确认配置状态和备份文件处理方式。</span>
+            </div>
+            <div class="settings-control settings-control--wide">
+              <div class="export-readiness-summary" aria-label="导出前检查">
+                <div v-for="item in exportReadinessItems" :key="item.key" :class="['export-readiness-row', item.state]">
+                  <span aria-hidden="true"></span>
+                  <p>{{ item.label }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="settings-row settings-row--actions">
+            <div class="setting-copy">
+              <span class="setting-title">导出用户配置</span>
+              <span class="setting-note">导出当前可见配置，敏感字段会自动脱敏。</span>
+            </div>
+            <div class="settings-control export-action-control">
+              <button class="btn btn-secondary" type="button" @click="exportUserConfig" :disabled="exportingConfig || !canSaveConfig" :aria-describedby="'config-export-note'">
+                {{ exportingConfig ? '导出中...' : '导出' }}
+              </button>
+              <span id="config-export-note" class="export-action-note">{{ exportActionNote }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="card-content">
+    </section>
+    <section class="advanced-settings-group import-danger-zone">
         <div class="settings-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -36,144 +51,257 @@
           </svg>
           <h2>JavInfo 数据库导入</h2>
         </div>
-        <div class="form-slot javinfo-import-panel">
-          <div class="import-warning">
+        <div class="form-slot javinfo-import-panel" :aria-busy="javinfoImportUploading || isJavInfoImportActive(javinfoImportJob)" aria-live="polite">
+          <div class="danger-summary">
             <strong>危险操作：全量替换</strong>
             <span>导入成功后会替换 JavInfoApi 当前 PostgreSQL 库。系统会自动使用临时库恢复并保留最近旧库。</span>
           </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>数据库地址</label>
-              <input class="input" v-model="config.javinfo.import_db.host" placeholder="postgres" />
-            </div>
-            <div class="form-group compact-number">
-              <label>端口</label>
-              <input class="input" v-model.number="config.javinfo.import_db.port" type="number" min="1" max="65535" />
-            </div>
+          <div class="import-step-list">
+            <section class="import-step">
+              <div class="import-step-index" aria-hidden="true"></div>
+              <div class="import-step-body">
+                <div class="import-step-head">
+                  <h3>连接目标数据库</h3>
+                  <span class="import-step-state">必填</span>
+                </div>
+                <div class="settings-list">
+                  <label class="settings-row">
+                    <span class="setting-copy">
+                      <span class="setting-title">数据库地址</span>
+                      <span class="setting-note">PostgreSQL 主机名或容器服务名。</span>
+                    </span>
+                    <span class="settings-control">
+                      <input class="input" v-model="config.javinfo.import_db.host" placeholder="postgres" />
+                    </span>
+                  </label>
+                  <label class="settings-row">
+                    <span class="setting-copy">
+                      <span class="setting-title">端口</span>
+                      <span class="setting-note">默认 PostgreSQL 端口为 5432。</span>
+                    </span>
+                    <span class="settings-control settings-control--compact">
+                      <input class="input" v-model.number="config.javinfo.import_db.port" type="number" min="1" max="65535" />
+                    </span>
+                  </label>
+                  <label class="settings-row">
+                    <span class="setting-copy">
+                      <span class="setting-title">目标库</span>
+                      <span class="setting-note">导入完成后 JavInfoApi 使用的库。</span>
+                    </span>
+                    <span class="settings-control">
+                      <input class="input" v-model="config.javinfo.import_db.database" placeholder="r18" />
+                    </span>
+                  </label>
+                  <label class="settings-row">
+                    <span class="setting-copy">
+                      <span class="setting-title">维护库</span>
+                      <span class="setting-note">用于建库、切换和恢复流程。</span>
+                    </span>
+                    <span class="settings-control">
+                      <input class="input" v-model="config.javinfo.import_db.maintenance_database" placeholder="postgres" />
+                    </span>
+                  </label>
+                  <label class="settings-row">
+                    <span class="setting-copy">
+                      <span class="setting-title">用户</span>
+                      <span class="setting-note">需要恢复 dump 的数据库账号。</span>
+                    </span>
+                    <span class="settings-control">
+                      <input class="input" v-model="config.javinfo.import_db.user" placeholder="javhub" />
+                    </span>
+                  </label>
+                  <div class="settings-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">密码</span>
+                      <span class="setting-note">空白保存时不覆盖现有密码。</span>
+                    </div>
+                    <div class="settings-control">
+                      <div class="input-password-wrap">
+                        <input
+                          class="input"
+                          :type="showImportPassword ? 'text' : 'password'"
+                          v-model="config.javinfo.import_db.password"
+                          autocomplete="off"
+                          placeholder="空白保存不覆盖现有密码"
+                        />
+                        <button class="input-eye-btn" type="button" @click="showImportPassword = !showImportPassword" :title="showImportPassword ? '隐藏' : '显示'">
+                          <svg v-if="!showImportPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="import-step">
+              <div class="import-step-index" aria-hidden="true"></div>
+              <div class="import-step-body">
+                <div class="import-step-head">
+                  <h3>预检与迁移</h3>
+                  <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
+                    {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
+                  </span>
+                </div>
+                <div class="import-actions import-actions--preflight" :aria-busy="javinfoImportPreflighting || javinfoMigrating" aria-live="polite">
+                  <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
+                    {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
+                  </button>
+                  <button class="btn btn-secondary" type="button" @click="runJavInfoMigrations" :disabled="javinfoMigrating || !canSaveConfig">
+                    {{ javinfoMigrating ? '运行中...' : '运行 JavInfo 迁移' }}
+                  </button>
+                  <span v-if="javinfoMigrationStatus" class="import-status" :class="{ error: javinfoMigrationStatusType === 'error' }">
+                    {{ javinfoMigrationStatus }}
+                  </span>
+                  <span id="javinfo-preflight-action-status" class="import-action-status" role="status">
+                    {{ javinfoPreflightActionStatus }}
+                  </span>
+                </div>
+              </div>
+            </section>
+            <section class="import-step">
+              <div class="import-step-index" aria-hidden="true"></div>
+              <div class="import-step-body">
+                <div class="import-step-head">
+                  <h3>选择 dump 文件</h3>
+                  <span v-if="javinfoImportFile" class="import-step-state">{{ formatBytes(javinfoImportFile.size) }}</span>
+                </div>
+                <div class="settings-list">
+                  <div class="settings-row settings-row--stacked import-file-row">
+                    <div class="setting-copy">
+                      <span class="setting-title">Dump 文件</span>
+                      <span class="setting-note">支持 .dump / .backup / .sql / .sql.gz。</span>
+                    </div>
+                    <div class="settings-control settings-control--wide">
+                      <div class="import-file-control" :class="{ 'is-selected': javinfoImportFile }" :aria-busy="javinfoImportFileInputDisabled" :aria-disabled="javinfoImportFileInputDisabled" @dragover.prevent @drop.prevent="onJavInfoImportFileDrop">
+                        <div class="import-file-state">
+                          <span class="import-file-state-dot" aria-hidden="true"></span>
+                          <span id="javinfo-import-file-status" class="import-file-status" role="status">
+                            {{ javinfoImportFileStatus }}
+                          </span>
+                        </div>
+                        <input class="input file-input" type="file" accept=".dump,.backup,.sql,.gz" @change="onJavInfoImportFileChange" :disabled="javinfoImportFileInputDisabled" aria-describedby="javinfo-import-file-status javinfo-import-file-note" />
+                        <small id="javinfo-import-file-note" class="import-file-note">{{ javinfoImportFileNote }}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="import-step">
+              <div class="import-step-index" aria-hidden="true"></div>
+              <div class="import-step-body">
+                <div class="import-step-head">
+                  <h3>确认并执行</h3>
+                  <span class="import-step-state">危险</span>
+                </div>
+                <label class="settings-row settings-row--toggle import-confirm-row">
+                  <span class="setting-copy">
+                    <span class="setting-title">确认全量替换</span>
+                    <span class="setting-note">我确认这是全量替换导入，并已确认 dump 来源可信。</span>
+                  </span>
+                  <span class="settings-control settings-control--compact">
+                    <input type="checkbox" v-model="javinfoImportConfirm" />
+                  </span>
+                </label>
+                <div v-if="javinfoImportRequiresDirectConfirm" class="import-warning import-warning-direct">
+                  <strong>无法使用临时库</strong>
+                  <span>当前账号没有建库权限，将直接清空目标库恢复；失败不能自动回滚。</span>
+                  <label class="settings-row settings-row--toggle import-confirm-row import-confirm-row--direct">
+                    <span class="setting-copy">
+                      <span class="setting-title">直接恢复目标库</span>
+                      <span class="setting-note">我确认接受直接恢复目标库模式。</span>
+                    </span>
+                    <span class="settings-control settings-control--compact">
+                      <input type="checkbox" v-model="javinfoImportDirectConfirm" />
+                    </span>
+                  </label>
+                </div>
+                <div class="import-readiness-summary" aria-label="导入前检查">
+                  <div v-for="item in javinfoImportReadinessItems" :key="item.key" :class="['readiness-row', item.state]">
+                    <span aria-hidden="true"></span>
+                    <p>{{ item.label }}</p>
+                  </div>
+                </div>
+                <div v-if="javinfoImportJob" class="import-progress">
+                  <div class="import-progress-head">
+                    <span>{{ javinfoImportStatusLabel(javinfoImportJob) }}</span>
+                    <strong>{{ javinfoImportProgress }}%</strong>
+                  </div>
+                  <div class="progress-bar" role="progressbar" aria-label="JavInfo 数据库导入进度" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="javinfoImportProgress">
+                    <div class="progress-bar-fill" :style="{ transform: `scaleX(${javinfoImportProgress / 100})` }"></div>
+                  </div>
+                  <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
+                  <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>
+                </div>
+                <div class="import-actions import-actions--danger" :aria-busy="javinfoImportDangerActionsBusy" aria-live="polite">
+                  <div class="import-danger-action-buttons">
+                    <button class="btn btn-danger" type="button" @click="startJavInfoImport" :disabled="!javinfoImportCanStart" :aria-describedby="'javinfo-import-danger-action-status javinfo-import-start-note'">
+                      {{ javinfoImportUploading ? '上传中...' : '开始导入' }}
+                    </button>
+                    <button v-if="javinfoImportJob && isJavInfoImportActive(javinfoImportJob)" class="btn btn-ghost" type="button" @click="cancelJavInfoImport">
+                      取消任务
+                    </button>
+                  </div>
+                  <div class="import-danger-action-copy">
+                    <span id="javinfo-import-danger-action-status" class="import-danger-action-status" role="status">
+                      {{ javinfoImportDangerActionStatus }}
+                    </span>
+                    <span id="javinfo-import-start-note" class="danger-action-note">{{ javinfoImportStartNote }}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>目标库</label>
-              <input class="input" v-model="config.javinfo.import_db.database" placeholder="r18" />
-            </div>
-            <div class="form-group">
-              <label>维护库</label>
-              <input class="input" v-model="config.javinfo.import_db.maintenance_database" placeholder="postgres" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>用户</label>
-              <input class="input" v-model="config.javinfo.import_db.user" placeholder="javhub" />
-            </div>
-            <div class="form-group">
-              <label>密码</label>
-              <div class="input-password-wrap">
-                <input
-                  class="input"
-                  :type="showImportPassword ? 'text' : 'password'"
-                  v-model="config.javinfo.import_db.password"
-                  autocomplete="off"
-                  placeholder="空白保存不覆盖现有密码"
-                />
-                <button class="input-eye-btn" type="button" @click="showImportPassword = !showImportPassword" :title="showImportPassword ? '隐藏' : '显示'">
-                  <svg v-if="!showImportPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                </button>
+          <div class="settings-list import-job-settings-list">
+            <div class="settings-row settings-row--stacked import-job-summary-row">
+              <div class="setting-copy">
+                <span class="setting-title">最近任务</span>
+                <span class="setting-note">保留最近 JavInfo 导入任务的执行状态。</span>
+              </div>
+              <div class="settings-control settings-control--wide">
+                <span id="javinfo-import-job-summary" class="import-action-status" role="status">
+                  {{ javinfoImportJobSummary }}
+                </span>
+                <div v-if="javinfoImportJobs.length" class="import-job-items">
+                  <div v-for="job in javinfoImportJobs" :key="job.id" class="import-job-row">
+                    <span>
+                      <strong>{{ job.filename || `任务 #${job.id}` }}</strong>
+                      <small class="import-job-meta">{{ javinfoImportJobDetail(job) }}</small>
+                    </span>
+                    <strong>{{ javinfoImportStatusLabel(job) }}</strong>
+                  </div>
+                </div>
+                <div v-else class="import-job-empty">
+                  {{ javinfoImportJobEmptyNote }}
+                </div>
               </div>
             </div>
           </div>
-          <div class="import-actions">
-            <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig">
-              {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
-            </button>
-            <button class="btn btn-secondary" type="button" @click="runJavInfoMigrations" :disabled="javinfoMigrating || !canSaveConfig">
-              {{ javinfoMigrating ? '运行中...' : '运行 JavInfo 迁移' }}
-            </button>
-            <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
-              {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
-            </span>
-            <span v-if="javinfoMigrationStatus" class="import-status" :class="{ error: javinfoMigrationStatusType === 'error' }">
-              {{ javinfoMigrationStatus }}
-            </span>
-          </div>
-
-          <div
-            class="form-group import-file-drop"
-            @dragover.prevent
-            @drop.prevent="onJavInfoImportFileDrop"
-          >
-            <label>Dump 文件（.dump / .backup / .sql / .sql.gz）</label>
-            <input class="input file-input" type="file" accept=".dump,.backup,.sql,.gz" @change="onJavInfoImportFileChange" />
-            <small v-if="javinfoImportFile">{{ javinfoImportFile.name }} · {{ formatBytes(javinfoImportFile.size) }}</small>
-          </div>
-
-          <label class="form-group checkbox import-confirm">
-            <input type="checkbox" v-model="javinfoImportConfirm" />
-            <span>我确认这是全量替换导入，并已确认 dump 来源可信。</span>
-          </label>
-
-          <div v-if="javinfoImportRequiresDirectConfirm" class="import-warning import-warning-direct">
-            <strong>无法使用临时库</strong>
-            <span>当前账号没有建库权限，将直接清空目标库恢复；失败不能自动回滚。</span>
-            <label class="checkbox import-confirm">
-              <input type="checkbox" v-model="javinfoImportDirectConfirm" />
-              <span>我确认接受直接恢复目标库模式。</span>
-            </label>
-          </div>
-
-          <div v-if="javinfoImportJob" class="import-progress">
-            <div class="import-progress-head">
-              <span>{{ javinfoImportStatusLabel(javinfoImportJob) }}</span>
-              <strong>{{ javinfoImportProgress }}%</strong>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" :style="{ transform: `scaleX(${javinfoImportProgress / 100})` }"></div>
-            </div>
-            <small v-if="javinfoImportJob.error" class="import-error">{{ javinfoImportJob.error }}</small>
-            <pre v-if="javinfoImportLogTail" class="import-log-tail">{{ javinfoImportLogTail }}</pre>
-          </div>
-
-          <div class="import-actions">
-            <button class="btn btn-primary" type="button" @click="startJavInfoImport" :disabled="!javinfoImportCanStart">
-              {{ javinfoImportUploading ? '上传中...' : '开始导入' }}
-            </button>
-            <button v-if="javinfoImportJob && isJavInfoImportActive(javinfoImportJob)" class="btn btn-ghost" type="button" @click="cancelJavInfoImport">
-              取消任务
-            </button>
-          </div>
-
-          <div v-if="javinfoImportJobs.length" class="import-job-list">
-            <div class="import-job-list-title">最近任务</div>
-            <div v-for="job in javinfoImportJobs" :key="job.id" class="import-job-row">
-              <span>{{ job.filename || `任务 #${job.id}` }}</span>
-              <strong>{{ javinfoImportStatusLabel(job) }}</strong>
-            </div>
-          </div>
         </div>
+    </section>
+    <section class="advanced-settings-group ai-settings-group">
+      <div class="settings-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+          <path d="M12 2v4"/>
+          <path d="M12 18v4"/>
+          <path d="M4.93 4.93l2.83 2.83"/>
+          <path d="M16.24 16.24l2.83 2.83"/>
+          <path d="M2 12h4"/>
+          <path d="M18 12h4"/>
+          <path d="M4.93 19.07l2.83-2.83"/>
+          <path d="M16.24 7.76l2.83-2.83"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <h2>公共智能模型</h2>
       </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="card-content">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-            <path d="M12 2v4"/>
-            <path d="M12 18v4"/>
-            <path d="M4.93 4.93l2.83 2.83"/>
-            <path d="M16.24 16.24l2.83 2.83"/>
-            <path d="M2 12h4"/>
-            <path d="M18 12h4"/>
-            <path d="M4.93 19.07l2.83-2.83"/>
-            <path d="M16.24 7.76l2.83-2.83"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <h2>公共智能模型</h2>
-        </div>
-        <div class="form-slot">
-          <div class="form-group">
-            <label>接口类型</label>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="setting-copy">
+            <span class="setting-title">接口类型</span>
+            <span class="setting-note">{{ currentAiProviderHint }}</span>
+          </div>
+          <div class="settings-control settings-control--wide">
             <div class="segmented-mini wide ai-provider-control">
               <button
                 v-for="option in aiProviderOptions"
@@ -183,27 +311,44 @@
                 @click="config.ai.provider = option.value"
               >{{ option.label }}</button>
             </div>
-            <small>{{ currentAiProviderHint }}</small>
           </div>
-          <div class="form-group">
-            <label>{{ currentAiProviderLabel }} 接口地址</label>
+        </div>
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">{{ currentAiProviderLabel }} 接口地址</span>
+            <span class="setting-note">连接公共或自托管智能模型 API。</span>
+          </span>
+          <span class="settings-control">
             <input class="input" v-model="currentAiConfig.base_url" :placeholder="currentAiProviderPlaceholder" />
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">模型</span>
+            <span class="setting-note">用于翻译兜底和演员映射判断。</span>
+          </span>
+          <span class="settings-control">
+            <input class="input" v-model="currentAiConfig.model" :placeholder="currentAiModelPlaceholder" list="ai-model-options" />
+            <datalist id="ai-model-options">
+              <option v-for="model in aiModelOptions" :key="model.id" :value="model.id">{{ model.name || model.id }}</option>
+            </datalist>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">超时（秒）</span>
+            <span class="setting-note">模型调用最长等待时间。</span>
+          </span>
+          <span class="settings-control settings-control--compact">
+            <input class="input" v-model.number="currentAiConfig.timeout" type="number" min="1" />
+          </span>
+        </label>
+        <div v-if="config.ai.provider !== 'ollama'" class="settings-row">
+          <div class="setting-copy">
+            <span class="setting-title">密钥</span>
+            <span class="setting-note">空白保存时不覆盖现有密钥。</span>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>模型</label>
-              <input class="input" v-model="currentAiConfig.model" :placeholder="currentAiModelPlaceholder" list="ai-model-options" />
-              <datalist id="ai-model-options">
-                <option v-for="model in aiModelOptions" :key="model.id" :value="model.id">{{ model.name || model.id }}</option>
-              </datalist>
-            </div>
-            <div class="form-group">
-              <label>超时（秒）</label>
-              <input class="input" v-model.number="currentAiConfig.timeout" type="number" min="1" />
-            </div>
-          </div>
-          <div v-if="config.ai.provider !== 'ollama'" class="form-group">
-            <label>密钥</label>
+          <div class="settings-control">
             <div class="input-password-wrap">
               <input
                 class="input"
@@ -217,71 +362,91 @@
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               </button>
             </div>
-            <small>用于智能翻译兜底、演员映射判断等智能功能。</small>
           </div>
-          <div class="form-group ai-test-row">
-            <button
-              class="btn btn-ghost"
-              type="button"
-              @click="loadAiModels"
-              :disabled="aiLoadingModels || !canSaveConfig || !currentAiConfig.base_url"
-            >
-              {{ aiLoadingModels ? '获取中...' : '获取模型列表' }}
-            </button>
-            <button
-              class="btn btn-secondary"
-              type="button"
-              @click="testAIModel"
-              :disabled="aiTesting || !canSaveConfig || !currentAiConfig.base_url || !currentAiConfig.model"
-            >
-              {{ aiTesting ? '测试中...' : '测试模型调用' }}
-            </button>
-            <span v-if="aiTestMsg" class="ai-test-msg" :class="{ error: aiTestType === 'error' }">{{ aiTestMsg }}</span>
+        </div>
+        <div class="settings-row">
+          <div class="setting-copy">
+            <span class="setting-title">连接检查</span>
+            <span class="setting-note">获取模型列表或发送一次测试调用。</span>
+          </div>
+          <div class="settings-control settings-control--wide ai-test-row" :aria-busy="aiConnectionBusy" aria-live="polite">
+            <div class="ai-test-actions">
+              <button
+                class="btn btn-ghost"
+                type="button"
+                @click="loadAiModels"
+                :disabled="aiLoadingModels || !canSaveConfig || !currentAiConfig.base_url"
+                :aria-describedby="'ai-connection-status'"
+              >
+                {{ aiLoadingModels ? '获取中...' : '获取模型列表' }}
+              </button>
+              <button
+                class="btn btn-secondary"
+                type="button"
+                @click="testAIModel"
+                :disabled="aiTesting || !canSaveConfig || !currentAiConfig.base_url || !currentAiConfig.model"
+                :aria-describedby="'ai-connection-status'"
+              >
+                {{ aiTesting ? '测试中...' : '测试模型调用' }}
+              </button>
+            </div>
+            <span id="ai-connection-status" class="ai-connection-status" :class="{ error: aiTestType === 'error' }" role="status">
+              {{ aiConnectionStatus }}
+            </span>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="card-content">
-        <div class="settings-card-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
-          </svg>
-          <h2>网络代理</h2>
-        </div>
-        <div class="form-slot">
-          <div class="form-group checkbox">
+    </section>
+    <section class="advanced-settings-group proxy-settings-group">
+      <div class="settings-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+        </svg>
+        <h2>网络代理</h2>
+      </div>
+      <div class="settings-list">
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">启用代理</span>
+            <span class="setting-note">影响后端向外部服务发起的网络请求。</span>
+          </span>
+          <span class="settings-control settings-control--compact">
             <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" />
-            <label for="proxyEnabled">启用代理</label>
-          </div>
-          <div class="form-group">
-            <label>HTTP 代理</label>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">HTTP 代理</span>
+            <span class="setting-note">用于普通 HTTP 请求。</span>
+          </span>
+          <span class="settings-control">
             <input class="input" v-model="config.proxy.http_url" placeholder="http://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
-          </div>
-          <div class="form-group">
-            <label>HTTPS 代理</label>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">HTTPS 代理</span>
+            <span class="setting-note">用于 HTTPS 外部请求。</span>
+          </span>
+          <span class="settings-control">
             <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
-          </div>
-        </div>
+          </span>
+        </label>
       </div>
-    </div>
+    </section>
   </div>
 </template>
-
 <script>
 import api from '../../api'
 import { requestConfirm } from '../../utils/confirmDialog'
 import { formatBytes, isJavInfoImportActive, javinfoImportProgress, javinfoImportStatusLabel } from '../../utils/javinfoImportPresentation.js'
-
 const AI_PROVIDER_OPTIONS = [
   { value: 'openai_compatible', label: 'OpenAI 兼容', hint: '适合 OpenAI、One API、LiteLLM、OpenRouter 等兼容接口。', placeholder: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   { value: 'gemini', label: 'Gemini', hint: '使用 Google Gemini 原生 generateContent 接口。', placeholder: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash' },
   { value: 'ollama', label: 'Ollama', hint: '连接本机或局域网 Ollama 服务。', placeholder: 'http://localhost:11434', model: 'qwen2.5:7b' },
 ]
-
 export default {
   name: 'AdvancedSettingsPanel',
   props: {
@@ -319,21 +484,37 @@ export default {
     currentAiProvider() {
       return this.aiProviderOptions.find(option => option.value === this.config.ai.provider) || this.aiProviderOptions[0]
     },
-    currentAiProviderLabel() {
-      return this.currentAiProvider.label
-    },
-    currentAiProviderHint() {
-      return this.currentAiProvider.hint
-    },
-    currentAiProviderPlaceholder() {
-      return this.currentAiProvider.placeholder
-    },
-    currentAiModelPlaceholder() {
-      return this.currentAiProvider.model
-    },
+    currentAiProviderLabel() { return this.currentAiProvider.label },
+    currentAiProviderHint() { return this.currentAiProvider.hint },
+    currentAiProviderPlaceholder() { return this.currentAiProvider.placeholder },
+    currentAiModelPlaceholder() { return this.currentAiProvider.model },
     currentAiConfig() {
       const provider = this.config.ai.provider || 'openai_compatible'
       return this.config.ai[provider] || this.config.ai.openai_compatible
+    },
+    aiConnectionBusy() {
+      return Boolean(this.aiLoadingModels || this.aiTesting)
+    },
+    aiConnectionStatus() {
+      if (this.aiLoadingModels) return '正在获取模型列表。'
+      if (this.aiTesting) return '正在发送模型测试调用。'
+      if (this.aiTestMsg) return this.aiTestMsg
+      if (!this.canSaveConfig) return '配置未加载成功，连接检查已暂停。'
+      if (!this.currentAiConfig.base_url) return '填写接口地址后可检查连接。'
+      if (!this.currentAiConfig.model) return '填写模型名称后可测试调用。'
+      return '可获取模型列表或测试一次模型调用。'
+    },
+    exportReadinessItems() {
+      return [
+        { key: 'config', label: this.canSaveConfig ? '配置已加载' : '等待配置加载', state: this.canSaveConfig ? 'ready' : 'pending' },
+        { key: 'redaction', label: '敏感字段会自动脱敏', state: 'ready' },
+        { key: 'format', label: '将下载 YAML 备份文件', state: 'ready' },
+      ]
+    },
+    exportActionNote() {
+      if (this.exportingConfig) return '正在生成配置备份，请等待下载开始。'
+      if (!this.canSaveConfig) return '配置未加载成功，导出已暂停。'
+      return '准备就绪，导出后会下载到本机。'
     },
     javinfoImportCanStart() {
       return Boolean(
@@ -346,6 +527,63 @@ export default {
         && !this.isJavInfoImportActive(this.javinfoImportJob)
       )
     },
+    javinfoImportReadinessItems() {
+      const preflight = this.javinfoImportPreflightCurrent()
+      return [
+        { key: 'file', label: this.javinfoImportFile ? `已选择 ${this.javinfoImportFile.name}` : '选择 dump 文件', state: this.javinfoImportFile ? 'ready' : 'pending' },
+        { key: 'preflight', label: preflight?.ok ? '数据库预检通过' : '完成数据库预检', state: preflight?.ok ? 'ready' : 'pending' },
+        { key: 'confirm', label: this.javinfoImportConfirm ? '已确认全量替换' : '确认全量替换风险', state: this.javinfoImportConfirm ? 'ready' : 'pending' },
+        {
+          key: 'direct',
+          label: this.javinfoImportRequiresDirectConfirm
+            ? (this.javinfoImportDirectConfirm ? '已确认直接恢复模式' : '确认直接恢复模式')
+            : '可使用临时库恢复',
+          state: this.javinfoImportRequiresDirectConfirm && !this.javinfoImportDirectConfirm ? 'pending' : 'ready',
+        },
+      ]
+    },
+    javinfoImportStartNote() {
+      if (this.javinfoImportUploading) return 'Dump 正在上传，请等待任务进入恢复阶段。'
+      if (this.isJavInfoImportActive(this.javinfoImportJob)) return '已有导入任务正在运行。'
+      if (!this.canSaveConfig) return '配置未加载成功，导入已暂停。'
+      if (!this.javinfoImportFile) return '先选择 dump 文件。'
+      if (!this.javinfoImportPreflightCurrent()?.ok) return '先完成数据库预检。'
+      if (!this.javinfoImportConfirm) return '需要确认全量替换风险。'
+      if (this.javinfoImportRequiresDirectConfirm && !this.javinfoImportDirectConfirm) return '需要确认直接恢复模式。'
+      return '准备就绪，开始后会创建导入任务。'
+    },
+    javinfoImportDangerActionsBusy() {
+      return Boolean(this.javinfoImportUploading || this.isJavInfoImportActive(this.javinfoImportJob))
+    },
+    javinfoImportDangerActionStatus() {
+      if (this.javinfoImportUploading) return '正在上传 dump 并创建恢复任务。'
+      if (this.isJavInfoImportActive(this.javinfoImportJob)) return '导入任务正在执行，可在必要时取消。'
+      if (this.javinfoImportCanStart) return '导入条件已满足。'
+      return '导入暂不可开始。'
+    },
+    javinfoImportFileInputDisabled() {
+      return Boolean(this.javinfoImportUploading || this.isJavInfoImportActive(this.javinfoImportJob))
+    },
+    javinfoImportFileStatus() {
+      if (this.javinfoImportUploading) {
+        return this.javinfoImportFile ? `正在上传 ${this.javinfoImportFile.name}` : '正在上传 dump 文件'
+      }
+      if (this.isJavInfoImportActive(this.javinfoImportJob)) return '导入任务正在运行，文件选择已锁定'
+      if (this.javinfoImportFile) return `${this.javinfoImportFile.name} · ${this.formatBytes(this.javinfoImportFile.size)}`
+      return '未选择 dump 文件'
+    },
+    javinfoImportFileNote() {
+      if (this.javinfoImportFileInputDisabled) return '导入运行期间不能更换 dump 文件。'
+      if (this.javinfoImportFile) return '更换文件会清除当前预检结果。'
+      return '拖入文件或从本机选择。'
+    },
+    javinfoPreflightActionStatus() {
+      if (this.javinfoImportPreflighting) return '正在检查数据库连接和恢复权限。'
+      if (this.javinfoMigrating) return '正在运行 JavInfoApi 迁移。'
+      if (this.javinfoMigrationStatus) return this.javinfoMigrationStatus
+      if (this.javinfoImportPreflightCurrent()?.ok) return '数据库预检已通过。'
+      return '先运行预检，确认数据库可以安全恢复。'
+    },
     javinfoImportRequiresDirectConfirm() {
       return Boolean(
         this.javinfoImportPreflightCurrent()?.ok
@@ -354,6 +592,15 @@ export default {
     },
     javinfoImportLogTail() {
       return (this.javinfoImportJob?.logs || []).slice(-12).join('\n')
+    },
+    javinfoImportJobSummary() {
+      if (this.javinfoImportJobs.length) return `最近 ${this.javinfoImportJobs.length} 个导入任务`
+      return '暂无导入任务'
+    },
+    javinfoImportJobEmptyNote() {
+      return this.javinfoImportUploading || this.isJavInfoImportActive(this.javinfoImportJob)
+        ? '任务创建后会显示在这里。'
+        : '完成一次导入后会在这里显示结果。'
     },
     javinfoImportProgress() {
       return javinfoImportProgress({
@@ -459,9 +706,14 @@ export default {
       this.javinfoImportJob = null
     },
     onJavInfoImportFileChange(event) {
+      if (this.javinfoImportFileInputDisabled) {
+        if (event?.target) event.target.value = ''
+        return
+      }
       this.setJavInfoImportFile(event?.target?.files?.[0] || null)
     },
     onJavInfoImportFileDrop(event) {
+      if (this.javinfoImportFileInputDisabled) return
       this.setJavInfoImportFile(event?.dataTransfer?.files?.[0] || null)
     },
     javinfoImportRequestSignature() {
@@ -473,6 +725,12 @@ export default {
     javinfoImportPreflightCurrent() {
       if (this.javinfoImportPreflightSignature !== this.javinfoImportRequestSignature()) return null
       return this.javinfoImportPreflight
+    },
+    javinfoImportJobDetail(job) {
+      const parts = []
+      if (job.file_size) parts.push(this.formatBytes(job.file_size))
+      if (job.created_at) parts.push(new Date(job.created_at).toLocaleString())
+      return parts.length ? parts.join(' · ') : `任务 #${job.id}`
     },
     async preflightJavInfoImport() {
       if (!this.canSaveConfig) {
@@ -626,5 +884,4 @@ export default {
   },
 }
 </script>
-
 <style scoped src="./advancedSettingsPanel.css"></style>

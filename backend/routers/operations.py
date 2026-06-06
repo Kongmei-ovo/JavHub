@@ -19,6 +19,8 @@ from database import (
     variant_group_stats,
 )
 from services import cache
+from services.data_quality import build_data_quality_overview
+from services.supplement_repair_progress import data_quality_repair_progress, get_supplement_status
 
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
 _CACHE_NAMESPACE = "operations_overview"
@@ -38,35 +40,12 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
         missing = missing_videos_summary(limit=8)
         variant_index = variant_group_stats()
 
-        supplement: dict[str, Any] = {"available": False}
-        try:
-            from modules.info_client import get_info_client
-
-            client = get_info_client()
-            stats, queued, running, failed = await asyncio.gather(
-                client.proxy_get("/api/v1/supplement/stats", params=None),
-                client.proxy_get(
-                    "/api/v1/supplement/jobs",
-                    params={"page": 1, "page_size": 1, "status": "queued"},
-                ),
-                client.proxy_get(
-                    "/api/v1/supplement/jobs",
-                    params={"page": 1, "page_size": 1, "status": "running"},
-                ),
-                client.proxy_get(
-                    "/api/v1/supplement/jobs",
-                    params={"page": 1, "page_size": 1, "status": "failed"},
-                ),
-            )
-            supplement = {
-                "available": True,
-                "stats": stats,
-                "queued": _total_from_response(queued),
-                "running": _total_from_response(running),
-                "failed": _total_from_response(failed),
-            }
-        except Exception as exc:
-            supplement = {"available": False, "error": str(exc)}
+        supplement = await get_supplement_status()
+        repair_progress = data_quality_repair_progress(supplement)
+        if repair_progress:
+            data_quality = build_data_quality_overview(limit=8, repair_progress=repair_progress)
+        else:
+            data_quality = build_data_quality_overview(limit=8)
 
         return {
             "status": "ok",
@@ -97,6 +76,7 @@ async def operations_overview(cache_control: str | None = Query(None, alias="cac
             },
             "supplement": supplement,
             "variant_index": variant_index,
+            "data_quality": data_quality,
         }
 
     if cache_bypass:
@@ -122,12 +102,6 @@ async def run_candidate_processing_now() -> dict[str, Any]:
         "manual_noop": action == "manual_policy",
         "effective": action not in {"manual_policy", "busy"},
     }
-
-def _total_from_response(value: Any) -> int:
-    if not isinstance(value, dict):
-        return 0
-    return int(value.get("total") or value.get("total_count") or 0)
-
 
 def _candidate_schedule_state() -> dict[str, Any]:
     try:

@@ -18,7 +18,6 @@
         <button class="btn btn-ghost btn-sm" type="button" @click="reloadAll">刷新</button>
       </div>
     </header>
-
     <section class="status-strip organize-status apple-surface" aria-label="片库整理状态">
       <button
         v-for="metric in statusMetrics"
@@ -33,7 +32,6 @@
         <small>{{ metric.hint }}</small>
       </button>
     </section>
-
     <section v-if="!snapshotKey" class="setup-banner apple-surface">
       <div>
         <strong>还没有 Emby 快照</strong>
@@ -43,7 +41,6 @@
         {{ collecting ? '采集中...' : '开始采集' }}
       </button>
     </section>
-
     <nav class="organize-tabs apple-surface" aria-label="片库整理视图">
       <button
         v-for="tab in tabs"
@@ -54,17 +51,17 @@
         @click="setTab(tab.value)"
       >
         <span>{{ tab.label }}</span>
-        <small v-if="tab.count !== null">{{ tab.count }}</small>
+        <small v-if="tab.count !== null" class="tab-count">{{ tab.count }}</small>
       </button>
     </nav>
-
-    <div v-if="loadingInitial" class="loading-panel">加载中...</div>
-    <div v-else-if="error" class="empty-panel">
-      <h2>片库整理加载失败</h2>
-      <p>{{ error }}</p>
-      <button class="btn btn-primary" type="button" @click="reloadAll">重试</button>
+    <div v-if="loadingInitial" class="organize-state-shell">
+      <div class="state-ledger" aria-label="片库整理加载范围"><span>overview</span><span>inventory</span><span>mapping</span></div>
+      <AppleSkeleton class="loading-panel console-state" variant="list" :items="5" label="片库整理加载中" />
     </div>
-
+    <div v-else-if="error" class="organize-state-shell">
+      <div class="state-ledger" aria-label="片库整理错误范围"><span>overview</span><span>inventory</span><span>mapping</span></div>
+      <AppleErrorState class="empty-panel console-state" title="片库整理加载失败" :description="error" next-step="重新加载会刷新库存、映射、候选和重复清理状态。" retry-label="重试" secondary-action-label="查看日志" source-label="Library organize API" details="overview · inventory · mapping" @retry="reloadAll" @secondary-action="$router.push('/logs')" />
+    </div>
     <template v-else>
       <section v-if="activeTab === 'queue'" class="organize-workbench">
         <article class="workbench-panel queue-panel">
@@ -75,7 +72,6 @@
             </div>
             <button class="btn btn-ghost btn-sm" type="button" @click="reloadAll">刷新队列</button>
           </div>
-
           <div class="priority-list">
             <button class="priority-row" type="button" @click="setTab('mapping')">
               <span class="priority-mark warning">{{ mappingSummary.unmapped || 0 }}</span>
@@ -111,7 +107,6 @@
             </button>
           </div>
         </article>
-
         <aside class="side-stack">
           <article class="workbench-panel">
             <div class="panel-head">
@@ -128,7 +123,6 @@
               </button>
             </div>
           </article>
-
           <article class="workbench-panel compact-check">
             <div class="panel-head">
               <div>
@@ -150,7 +144,6 @@
           </article>
         </aside>
       </section>
-
       <section v-else-if="activeTab === 'inventory'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -162,13 +155,11 @@
             <button class="btn btn-primary btn-sm" type="button" :disabled="collecting || comparing || !snapshotKey" @click="triggerFullCompare">全量对比</button>
           </div>
         </div>
-
         <div class="organize-filters">
           <input v-model.trim="actorSearch" placeholder="搜索演员" @keyup.enter="loadInventoryActors" />
           <GlassSelect v-model="actorSort" :options="actorSortOptions" size="regular" @change="loadInventoryActors" />
           <button class="btn btn-ghost btn-sm" type="button" @click="loadInventoryActors">搜索</button>
         </div>
-
         <div v-if="selectedActor" class="actor-detail-panel">
           <div class="actor-detail-head">
             <button class="btn btn-ghost btn-sm" type="button" @click="clearActorDetail">返回演员列表</button>
@@ -190,12 +181,11 @@
               <button class="btn btn-ghost btn-sm" type="button" @click="fillVideo(video)">转为候选</button>
             </article>
           </div>
-          <div v-if="actorMissingVideos.length === 0" class="empty-inline">这个演员暂无缺失影片。</div>
+          <AppleEmptyState v-if="actorMissingVideos.length === 0" class="empty-inline" title="这个演员暂无缺失影片" description="当前对比结果没有发现这个演员的库存缺口。" next-step="可以返回演员列表继续处理其他演员，或重新执行全量对比刷新缺口。" action-label="返回演员列表" secondary-action-label="全量对比" density="compact" @action="clearActorDetail" @secondary-action="triggerFullCompare" />
         </div>
-
         <template v-else>
-          <div v-if="loadingActors" class="empty-inline">加载演员中...</div>
-          <div v-else-if="inventoryActors.length === 0" class="empty-inline">暂无可对比演员。</div>
+          <AppleSkeleton v-if="loadingActors" class="empty-inline" variant="gallery" :items="6" columns="repeat(auto-fill, minmax(148px, 1fr))" label="库存演员加载中" />
+          <AppleEmptyState v-else-if="inventoryActors.length === 0" class="empty-inline" title="暂无可对比演员" description="当前快照下没有可展示的库存演员。" next-step="可以采集 Emby 快照，或清除搜索条件后重新加载演员列表。" action-label="采集 Emby" secondary-action-label="清除搜索" density="compact" @action="triggerCollect" @secondary-action="clearActorSearch" />
           <div v-else class="actor-grid">
             <ActorPortraitCard
               v-for="actor in inventoryActors"
@@ -211,7 +201,6 @@
           </div>
         </template>
       </section>
-
       <section v-else-if="activeTab === 'check'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -236,7 +225,6 @@
           <button v-else class="btn btn-ghost btn-sm" type="button" @click="createManualInventoryCandidate">转为库存候选</button>
         </div>
       </section>
-
       <section v-else-if="activeTab === 'mapping'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -250,7 +238,6 @@
             <button class="btn btn-primary btn-sm" type="button" :disabled="autoMatching" @click="runAutoMatch">执行自动匹配</button>
           </div>
         </div>
-
         <div class="organize-filters">
           <input v-model.trim="mappingSearch" placeholder="搜索 Emby 演员" @keyup.enter="loadUnmappedActors" />
           <button class="btn btn-ghost btn-sm" type="button" @click="loadUnmappedActors">搜索</button>
@@ -258,14 +245,16 @@
             {{ generatingCandidates ? '生成中...' : '生成建议' }}
           </button>
         </div>
-
+        <div v-if="mappingFilterLedger.length" class="filter-ledger organize-filter-ledger" aria-label="当前映射筛选">
+          <span v-for="filter in mappingFilterLedger" :key="filter.key" class="filter-token">{{ filter.label }}</span>
+          <button class="filter-reset" type="button" @click="clearMappingFilters">清除筛选</button>
+        </div>
         <div v-if="lastAutoMatch" class="auto-match-panel">
           <strong>{{ lastAutoMatch.dry_run ? '自动匹配预演' : '自动匹配结果' }}</strong>
           <span>检查 {{ lastAutoMatch.checked || 0 }} · 自动确认 {{ lastAutoMatch.auto_confirmed || 0 }} · 待审 {{ lastAutoMatch.candidates_created || 0 }} · 歧义 {{ lastAutoMatch.ambiguous || 0 }}</span>
         </div>
-
-        <div v-if="loadingMappings" class="empty-inline">加载映射中...</div>
-        <div v-else-if="unmappedActors.length === 0" class="empty-inline">暂无待映射演员。</div>
+        <AppleSkeleton v-if="loadingMappings" class="empty-inline" variant="list" :items="4" label="演员映射加载中" />
+        <AppleEmptyState v-else-if="unmappedActors.length === 0" class="empty-inline" title="暂无待映射演员" description="当前没有需要人工确认的演员映射。" next-step="可以生成映射建议，或刷新列表确认最新采集结果。" action-label="生成建议" secondary-action-label="刷新映射" density="compact" @action="generateMappingCandidates" @secondary-action="loadUnmappedActors" />
         <div v-else class="mapping-list">
           <article v-for="actor in unmappedActors" :key="actor.emby_actor_id" class="mapping-item">
             <div class="actor-avatar small">
@@ -286,7 +275,6 @@
           </article>
         </div>
       </section>
-
       <section v-else-if="activeTab === 'candidates'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -302,6 +290,10 @@
           <button class="chip" type="button" :class="{ active: candidateNeedsMagnet === false }" @click="setCandidateNeedsMagnet(false)">可批准</button>
           <button class="chip" type="button" :class="{ active: !candidateStatus && candidateNeedsMagnet === null }" @click="setCandidateStatus('')">全部</button>
           <button class="btn btn-ghost btn-sm" type="button" @click="loadInventoryCandidates">搜索</button>
+        </div>
+        <div v-if="candidateFilterLedger.length" class="filter-ledger organize-filter-ledger" aria-label="当前候选筛选">
+          <span v-for="filter in candidateFilterLedger" :key="filter.key" class="filter-token">{{ filter.label }}</span>
+          <button class="filter-reset" type="button" @click="clearCandidateFilters">清除筛选</button>
         </div>
         <div v-if="inventoryCandidates.length" class="candidate-grid">
           <article v-for="candidate in inventoryCandidates" :key="candidate.id" class="inventory-candidate">
@@ -319,9 +311,8 @@
             </div>
           </article>
         </div>
-        <div v-else class="empty-inline">暂无库存来源下载候选。</div>
+        <AppleEmptyState v-else class="empty-inline" title="暂无库存来源下载候选" description="当前筛选下没有库存发现的下载候选。" next-step="可以打开下载任务页查看全部来源，或清除筛选后重新加载库存候选。" action-label="打开下载任务页" secondary-action-label="清除筛选" density="compact" @action="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })" @secondary-action="clearCandidateFilters" />
       </section>
-
       <section v-else-if="activeTab === 'duplicates'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -353,10 +344,9 @@
             </div>
           </article>
         </div>
-        <div v-else-if="loadingDuplicates" class="empty-inline">扫描重复条目中...</div>
-        <div v-else class="empty-inline">暂无可疑重复。</div>
+        <AppleSkeleton v-else-if="loadingDuplicates" class="empty-inline" variant="list" :items="4" label="重复条目扫描中" />
+        <AppleEmptyState v-else class="empty-inline" title="暂无可疑重复" description="当前快照没有发现需要人工清理的重复条目。" next-step="可以重新扫描确认最新结果，或查看作业历史确认最近一次清理状态。" action-label="重新扫描" secondary-action-label="作业历史" density="compact" @action="loadDuplicates" @secondary-action="setTab('jobs')" />
       </section>
-
       <section v-else-if="activeTab === 'jobs'" class="workbench-panel apple-reveal">
         <div class="panel-head">
           <div>
@@ -375,25 +365,25 @@
             <span>{{ job.progress || 0 }}%</span>
           </article>
         </div>
-        <div v-else class="empty-inline">暂无作业记录。</div>
+        <AppleEmptyState v-else class="empty-inline" title="暂无作业记录" description="还没有采集、全量对比或单演员对比记录。" next-step="可以先采集 Emby 数据，或刷新作业列表等待新事件写入。" action-label="采集 Emby" secondary-action-label="刷新" density="compact" @action="triggerCollect" @secondary-action="loadJobs" />
       </section>
     </template>
   </div>
 </template>
-
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import GlassSelect from '../components/GlassSelect.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import { ElMessage } from '../utils/message.js'
 import { requestConfirm } from '../utils/confirmDialog'
 import { candidateKey, candidateName, confidenceText, initials } from '../utils/inventoryPresentation.js'
-
 const route = useRoute()
 const router = useRouter()
-
 const activeTab = ref('queue')
 const loadingInitial = ref(true)
 const error = ref('')
@@ -431,15 +421,12 @@ const currentProgress = ref(0)
 const checkCode = ref('')
 const checkingVideo = ref(false)
 const checkResult = ref(null)
-
 let pollTimer = null
-
 const actorSortOptions = [
   { value: 'missing_count', label: '缺失 多→少' },
   { value: 'total_videos', label: '影片数 多→少' },
   { value: 'actress_name', label: '名称 A→Z' },
 ]
-
 const tabs = computed(() => [
   { value: 'queue', label: '待处理', count: queueCount.value },
   { value: 'inventory', label: '库存对比', count: missingTotal.value },
@@ -449,20 +436,17 @@ const tabs = computed(() => [
   { value: 'duplicates', label: '重复清理', count: duplicateTotal.value },
   { value: 'jobs', label: '作业历史', count: jobs.value.length },
 ])
-
 const queueCount = computed(() => (
   Number(mappingSummary.value.unmapped || 0)
   + Number(missingTotal.value || 0)
   + Number(inventoryCandidateStats.value.candidate || 0)
   + Number(duplicateTotal.value || 0)
 ))
-
 const isJobRunning = computed(() => collecting.value || comparing.value)
 const headerSummary = computed(() => snapshotKey.value
   ? `当前快照 ${snapshotKey.value}，待处理 ${queueCount.value} 项`
   : '采集快照后统一处理库存、映射、候选和重复项')
 const queueSummary = computed(() => queueCount.value ? `当前有 ${queueCount.value} 个整理项需要处理。` : '片库状态干净，暂无集中待处理项。')
-
 const statusMetrics = computed(() => [
   { key: 'inventory', label: '演员', value: inventoryActors.value.length, hint: snapshotKey.value ? '来自最新快照' : '等待采集', urgent: false },
   { key: 'mapping', label: '待映射', value: mappingSummary.value.unmapped || 0, hint: `覆盖率 ${coverageText.value}`, urgent: Number(mappingSummary.value.unmapped || 0) > 0 },
@@ -471,27 +455,52 @@ const statusMetrics = computed(() => [
   { key: 'duplicates', label: '重复条目', value: duplicateTotal.value, hint: '待人工清理', urgent: duplicateTotal.value > 0 },
   { key: 'jobs', label: '最近作业', value: jobs.value.length, hint: jobs.value[0]?.status || '暂无记录', urgent: jobs.value[0]?.status === 'failed' },
 ])
-
 const flowSteps = computed(() => [
   { index: '1', key: 'inventory', title: '采集快照', hint: snapshotKey.value ? '快照已就绪' : '先采集 Emby' },
   { index: '2', key: 'mapping', title: '确认映射', hint: `${mappingSummary.value.unmapped || 0} 位待处理` },
   { index: '3', key: 'inventory', title: '全量对比', hint: `${missingTotal.value} 个缺口` },
   { index: '4', key: 'candidates', title: '处理候选', hint: `${inventoryCandidateStats.value.candidate || 0} 个库存候选` },
 ])
-
 const coverageText = computed(() => `${Math.round((Number(mappingSummary.value.coverage || 0)) * 100)}%`)
-
+const mappingFilterLedger = computed(() => {
+  const filters = []
+  const query = mappingSearch.value.trim()
+  if (query) filters.push({ key: 'mapping_search', label: `mapping:${query}` })
+  return filters
+})
+const candidateFilterLedger = computed(() => {
+  const filters = []
+  const query = candidateSearch.value.trim()
+  if (query) filters.push({ key: 'candidate_search', label: `query:${query}` })
+  if (candidateStatus.value) filters.push({ key: 'candidate_status', label: `status:${candidateStatus.value}` })
+  if (candidateNeedsMagnet.value !== null) {
+    filters.push({ key: 'candidate_magnet', label: candidateNeedsMagnet.value ? 'magnet:missing' : 'magnet:ready' })
+  }
+  return filters
+})
 function setTab(tab) {
   activeTab.value = tab || 'queue'
   const query = { ...route.query, tab: activeTab.value }
   delete query.actor_id
   router.replace({ path: '/library-organize', query })
 }
-
 function openMetric(key) {
   setTab(key || 'queue')
 }
-
+function clearActorSearch() {
+  actorSearch.value = ''
+  loadInventoryActors()
+}
+function clearCandidateFilters() {
+  candidateSearch.value = ''
+  candidateStatus.value = ''
+  candidateNeedsMagnet.value = null
+  loadInventoryCandidates()
+}
+function clearMappingFilters() {
+  mappingSearch.value = ''
+  loadUnmappedActors()
+}
 function syncTabFromRoute() {
   const tab = String(route.query.tab || 'queue')
   activeTab.value = tabs.value.some(item => item.value === tab) ? tab : 'queue'
@@ -500,7 +509,6 @@ function syncTabFromRoute() {
     goActorDetail(route.query.actor_id, { syncRoute: false })
   }
 }
-
 async function reloadAll() {
   error.value = ''
   try {
@@ -511,7 +519,6 @@ async function reloadAll() {
     loadingInitial.value = false
   }
 }
-
 function overviewParams() {
   const params = {
     actor_sort: actorSort.value,
@@ -523,7 +530,6 @@ function overviewParams() {
   if (candidateNeedsMagnet.value !== null) params.candidate_needs_magnet = candidateNeedsMagnet.value
   return params
 }
-
 function applyOverview(data) {
   snapshotKey.value = data?.snapshot?.snapshot_key || ''
   inventoryActors.value = data?.actors?.data || []
@@ -543,7 +549,6 @@ function applyOverview(data) {
   jobs.value = data?.jobs?.data || []
   ensureDuplicateTabLoaded()
 }
-
 async function loadOverview() {
   loadingActors.value = true
   loadingMappings.value = true
@@ -555,12 +560,10 @@ async function loadOverview() {
     loadingMappings.value = false
   }
 }
-
 async function loadSnapshot() {
   const resp = await api.getInventorySnapshotLatest()
   snapshotKey.value = resp.data?.snapshot_key || ''
 }
-
 async function loadInventoryActors() {
   loadingActors.value = true
   try {
@@ -582,12 +585,10 @@ async function loadInventoryActors() {
     loadingActors.value = false
   }
 }
-
 async function loadMappingSummary() {
   const resp = await api.getActorMappingSummary()
   mappingSummary.value = resp.data || {}
 }
-
 async function loadUnmappedActors() {
   loadingMappings.value = true
   try {
@@ -597,13 +598,11 @@ async function loadUnmappedActors() {
     loadingMappings.value = false
   }
 }
-
 async function loadMissingVideos() {
   const resp = await api.listInventoryMissing({ page: 1, page_size: 80 })
   missingVideos.value = resp.data?.data || []
   missingTotal.value = Number(resp.data?.total || missingVideos.value.length || 0)
 }
-
 async function loadInventoryCandidates() {
   const params = {
     source: 'inventory',
@@ -623,7 +622,6 @@ async function loadInventoryCandidates() {
     candidate: stats.candidate ?? inventoryCandidates.value.filter(item => item.status === 'candidate').length,
   }
 }
-
 async function loadDuplicates() {
   if (loadingDuplicates.value) return
   loadingDuplicates.value = true
@@ -636,7 +634,6 @@ async function loadDuplicates() {
     loadingDuplicates.value = false
   }
 }
-
 function ensureDuplicateTabLoaded() {
   if (activeTab.value === 'duplicates' && duplicatesDeferred.value && !loadingDuplicates.value) {
     loadDuplicates().catch(err => {
@@ -644,12 +641,10 @@ function ensureDuplicateTabLoaded() {
     })
   }
 }
-
 async function loadJobs() {
   const resp = await api.listInventoryJobs()
   jobs.value = resp.data?.data || []
 }
-
 async function triggerCollect() {
   const confirmed = await requestConfirm({
     title: '采集 Emby 数据',
@@ -663,7 +658,6 @@ async function triggerCollect() {
   await api.triggerInventoryJob({ job_type: 'collect' })
   pollJobStatus()
 }
-
 async function triggerFullCompare() {
   if (!snapshotKey.value) {
     ElMessage.warning('请先采集 Emby 数据')
@@ -681,7 +675,6 @@ async function triggerFullCompare() {
   await api.triggerInventoryJob({ job_type: 'full', snapshot_key: snapshotKey.value })
   pollJobStatus()
 }
-
 function pollJobStatus() {
   clearTimeout(pollTimer)
   pollTimer = setTimeout(async () => {
@@ -704,7 +697,6 @@ function pollJobStatus() {
     }
   }, 1500)
 }
-
 async function goActorDetail(actorId, options = {}) {
   const resp = await api.getInventoryActor(actorId)
   selectedActor.value = resp.data || null
@@ -713,7 +705,6 @@ async function goActorDetail(actorId, options = {}) {
     router.replace({ path: '/library-organize', query: { ...route.query, tab: 'inventory', actor_id: actorId } })
   }
 }
-
 function clearActorDetail() {
   selectedActor.value = null
   actorMissingVideos.value = []
@@ -721,14 +712,12 @@ function clearActorDetail() {
   delete query.actor_id
   router.replace({ path: '/library-organize', query })
 }
-
 async function fillVideo(video) {
   await api.fillInventoryVideo(video.content_id)
   ElMessage.success('已加入库存候选')
   missingTotal.value = Math.max(0, missingTotal.value - 1)
   await Promise.all([loadInventoryCandidates(), loadMissingVideos()])
 }
-
 async function checkOneVideo() {
   if (!checkCode.value) return
   checkingVideo.value = true
@@ -740,7 +729,6 @@ async function checkOneVideo() {
     checkingVideo.value = false
   }
 }
-
 async function createManualInventoryCandidate() {
   if (!checkCode.value) return
   await api.createDownloadCandidate({
@@ -753,11 +741,9 @@ async function createManualInventoryCandidate() {
   ElMessage.success('已加入库存候选')
   await loadInventoryCandidates()
 }
-
 async function previewAutoMatch() {
   await runAutoMatchRequest(true)
 }
-
 async function runAutoMatch() {
   const confirmed = await requestConfirm({
     title: '执行自动匹配?',
@@ -769,7 +755,6 @@ async function runAutoMatch() {
   if (!confirmed) return
   await runAutoMatchRequest(false)
 }
-
 async function runAutoMatchRequest(dryRun) {
   autoMatching.value = true
   try {
@@ -780,7 +765,6 @@ async function runAutoMatchRequest(dryRun) {
     autoMatching.value = false
   }
 }
-
 async function generateMappingCandidates() {
   generatingCandidates.value = true
   try {
@@ -790,7 +774,6 @@ async function generateMappingCandidates() {
     generatingCandidates.value = false
   }
 }
-
 async function confirmMapping(actor, candidate) {
   await api.confirmActorMapping({
     emby_actor_id: actor.emby_actor_id,
@@ -807,7 +790,6 @@ async function confirmMapping(actor, candidate) {
   })
   await Promise.all([loadMappingSummary(), loadUnmappedActors(), loadInventoryActors()])
 }
-
 async function ignoreActor(actor) {
   await api.ignoreActorMapping({
     emby_actor_id: actor.emby_actor_id,
@@ -816,19 +798,16 @@ async function ignoreActor(actor) {
   })
   await Promise.all([loadMappingSummary(), loadUnmappedActors()])
 }
-
 function setCandidateStatus(status) {
   candidateStatus.value = status
   candidateNeedsMagnet.value = null
   loadInventoryCandidates()
 }
-
 function setCandidateNeedsMagnet(value) {
   candidateStatus.value = 'candidate'
   candidateNeedsMagnet.value = candidateNeedsMagnet.value === value ? null : value
   loadInventoryCandidates()
 }
-
 async function enrichCandidate(candidate) {
   mutatingCandidateId.value = candidate.id
   try {
@@ -838,7 +817,6 @@ async function enrichCandidate(candidate) {
     mutatingCandidateId.value = null
   }
 }
-
 async function approveCandidate(candidate) {
   mutatingCandidateId.value = candidate.id
   try {
@@ -848,7 +826,6 @@ async function approveCandidate(candidate) {
     mutatingCandidateId.value = null
   }
 }
-
 async function rejectCandidate(candidate) {
   mutatingCandidateId.value = candidate.id
   try {
@@ -858,9 +835,7 @@ async function rejectCandidate(candidate) {
     mutatingCandidateId.value = null
   }
 }
-
 const duplicateItems = item => item.items?.length ? item.items : [item]
-
 function removeDuplicateItem(embyItemId) {
   let removedGroup = false
   duplicates.value = duplicates.value
@@ -882,7 +857,6 @@ function removeDuplicateItem(embyItemId) {
     .filter(Boolean)
   if (removedGroup) duplicateTotal.value = Math.max(0, duplicateTotal.value - 1)
 }
-
 async function deleteDuplicate(item) {
   const confirmed = await requestConfirm({
     title: '删除 Emby 条目',
@@ -895,34 +869,27 @@ async function deleteDuplicate(item) {
   await api.deleteDuplicate(item.emby_item_id)
   removeDuplicateItem(item.emby_item_id)
 }
-
 async function ignoreDuplicate(item) {
   await api.ignoreDuplicate(item.emby_item_id)
   removeDuplicateItem(item.emby_item_id)
 }
-
 function inventoryActorName(actor) {
   return actor?.display_name || actor?.actress_name || `演员 ${actor?.actress_id || ''}`.trim()
 }
-
 function inventoryActorSubtitle(actor) {
   const rawName = actor?.actress_name || ''
   return rawName && rawName !== inventoryActorName(actor) ? rawName : ''
 }
-
 function inventoryActorAvatar(actor) {
   return actor?.avatar_url || actor?.javinfo_avatar_url || ''
 }
-
 function inventoryActorMissingText(actor) {
   const missing = Number(actor?.missing_count ?? 0)
   return missing < 0 ? '待对比' : `缺失 ${missing.toLocaleString()}`
 }
-
 function inventoryActorMeta(actor) {
   return `Emby ${Number(actor?.total_videos || 0).toLocaleString()} 部 · ${inventoryActorMissingText(actor)}`
 }
-
 function inventoryActorCardActor(actor) {
   return {
     id: actor?.actress_id,
@@ -932,24 +899,19 @@ function inventoryActorCardActor(actor) {
     image_url: inventoryActorAvatar(actor),
   }
 }
-
 function candidateStatusLabel(status) {
   const labels = { candidate: '待确认', sent: '已下发', failed: '失败', rejected: '已拒绝', approved: '已批准' }
   return labels[status] || status || '未知'
 }
-
 function jobTypeLabel(type) {
   const labels = { collect: '采集 Emby', full: '全量对比', actor: '演员对比' }
   return labels[type] || type
 }
-
 watch(() => route.query, syncTabFromRoute, { deep: true })
 watch(activeTab, ensureDuplicateTabLoaded)
-
 onMounted(async () => {
   syncTabFromRoute()
   await reloadAll()
 })
 </script>
-
 <style scoped src="../features/library/libraryOrganize.css"></style>

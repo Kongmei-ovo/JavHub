@@ -41,7 +41,7 @@ test('favorites header surfaces use the global page rail', () => {
 })
 
 test('magnet parser workbench surfaces use the global page rail', () => {
-  for (const selector of ['.parse-console', '.result-section', '.issue-panel', '.empty-state']) {
+  for (const selector of ['.parse-console', '.result-section', '.issue-panel', '.parse-empty-state']) {
     assertUsesPageRail(cssBlock(magnetParse, selector), selector)
   }
 })

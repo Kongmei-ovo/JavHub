@@ -51,7 +51,7 @@ export default {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-control-border);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -88,7 +88,7 @@ export default {
   color: var(--text-primary);
   font-size: var(--type-control);
   font-weight: 600;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

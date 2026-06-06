@@ -21,6 +21,17 @@ function layeredSemanticBackground(token) {
   return new RegExp(`background:\\s*var\\(--surface-specular-edge\\),\\s*var\\(--surface-noise\\),\\s*var\\(--${token}\\)`)
 }
 
+function transitionValue(block) {
+  const match = block.match(/transition:\s*([^;]+);?/)
+  assert.ok(match, 'control should declare a transition')
+  return match[1]
+}
+
+function assertMotionOnlyTransition(block, name) {
+  assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should animate only transform and opacity`)
+  assert.doesNotMatch(transitionValue(block), /\b(background|border-color|box-shadow|color|filter|backdrop-filter)\b/, `${name} should not transition glass material state`)
+}
+
 test('search page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/search\/search\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 800, 'Search.vue should stay below 800 lines')
@@ -31,6 +42,16 @@ test('search page requests grouped variants with explanations by default', () =>
   assert.match(source, /variant_mode:\s*'grouped'/)
   assert.match(source, /include_variant_explanations:\s*1/)
   assert.doesNotMatch(source, /variant_scope:\s*'indexed'/)
+})
+
+test('search page feeds local history preference hints into searches', () => {
+  assert.match(source, /import \{ buildSearchPreferenceParams, loadSearchPreferences, recordSearchHistoryPreference \} from '\.\.\/utils\/searchPreferences\.js'/)
+  assert.match(source, /\.\.\.buildSearchPreferenceParams\(\)/)
+  assert.match(source, /recordSearchHistoryPreference\(video\)[\s\S]*openVideoModal\(video/)
+})
+
+test('search page can request backend search diagnostics from route query', () => {
+  assert.match(source, /if \(this\.\$route\.query\.debug_search === '1'\) params\.include_search_diagnostics = 1/)
 })
 
 test('search page can expand backend-provided variant groups inline', () => {
@@ -181,7 +202,7 @@ test('search inline variant controls use shared glass materials and explicit mot
     assert.match(block, backgroundIncludes('material-glass-control'), `${name} should use shared glass material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assertMotionOnlyTransition(block, name)
     assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat controls`)
   }
 
@@ -217,7 +238,7 @@ test('search pagination controls use shared glass materials and explicit motion'
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assertMotionOnlyTransition(block, name)
     assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy pagination material`)
   }
 
@@ -237,7 +258,7 @@ test('search pagination controls use shared glass materials and explicit motion'
 
   assert.match(jumpInputBlock, backgroundIncludes('material-glass-control'))
   assert.match(jumpInputBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(jumpInputBlock, /transition:\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assertMotionOnlyTransition(jumpInputBlock, 'jump input')
   assert.doesNotMatch(jumpInputBlock, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-input\)/)
   assert.match(jumpInputFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(jumpInputFocusBlock, backgroundIncludes('material-glass-control-hover'))
@@ -262,7 +283,7 @@ test('search primary action buttons use active glass instead of solid accent fil
     assert.match(block, /box-shadow:\s*var\(--glass-active-shadow\)/, `${name} should use active glass shadow`)
     assert.match(block, /color:\s*var\(--text-primary\)/, `${name} should keep text on glass, not accent fill`)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
+    assertMotionOnlyTransition(block, name)
     assert.doesNotMatch(block, /background:\s*var\(--accent\)|color:\s*var\(--text-on-accent\)|border:\s*none|transition:\s*all\b|box-shadow:\s*none/, `${name} should not keep the legacy solid primary`)
   }
 
@@ -270,7 +291,7 @@ test('search primary action buttons use active glass instead of solid accent fil
   assert.match(clearButtonBlock, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(clearButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(clearButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(clearButtonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assertMotionOnlyTransition(clearButtonBlock, 'clear button')
   assert.doesNotMatch(clearButtonBlock, /background:\s*var\(--surface-control\)|transition:\s*all\b/)
 
   for (const [block, name] of [[capsuleButtonHoverBlock, 'capsule hover'], [clearButtonHoverBlock, 'clear hover'], [applyButtonHoverBlock, 'apply hover']]) {
@@ -330,4 +351,82 @@ test('search command and result controls use layered liquid glass backgrounds', 
   assert.match(sourceBlock('.jump-input:focus'), layeredControlHover)
   assert.match(sourceBlock('.jump-btn'), layeredControl)
   assert.match(sourceBlock('.jump-btn:hover'), layeredControlHover)
+})
+
+test('search page owns back toolbar and state panels with liquid glass depth', () => {
+  const backButtonBlock = sourceBlock('.search-back-toolbar .back-btn')
+  const backButtonHoverBlock = sourceBlock('.search-back-toolbar .back-btn:hover')
+  const backButtonActiveBlock = sourceBlock('.search-back-toolbar .back-btn:active')
+  const backButtonFocusBlock = sourceBlock('.search-back-toolbar .back-btn:focus-visible')
+  const statePanelBlock = sourceBlock('.search-page :deep(.apple-empty-state),\n.search-page :deep(.apple-error-state)')
+
+  assert.match(backButtonBlock, layeredSemanticBackground('material-glass-control'))
+  assert.match(backButtonBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(backButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(backButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assertMotionOnlyTransition(backButtonBlock, 'back button')
+  assert.doesNotMatch(backButtonBlock, /background:\s*none|transition:\s*all\b/)
+
+  assert.match(backButtonHoverBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(backButtonHoverBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(backButtonHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(backButtonHoverBlock, /transform:\s*translateY\(-1px\)/)
+  assert.match(backButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  assert.match(backButtonFocusBlock, /outline:\s*none/)
+  assert.match(backButtonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
+
+  assert.match(statePanelBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
+  assert.match(statePanelBlock, /border:\s*1px solid var\(--glass-edge-strong\)/)
+  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
+  assert.match(statePanelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+})
+
+test('search filter and pagination rails use compact glass trays', () => {
+  const sortStripBlock = sourceBlock('.sort-strip')
+  const paginationBarBlock = sourceBlock('.pagination-bar')
+  const advancedPanelBlock = sourceBlock('.advanced-panel')
+  const advancedPanelEdgeBlock = sourceBlock('.advanced-panel::before')
+  const advancedPanelChildBlock = sourceBlock('.advanced-panel > *')
+  const skeletonGridBlock = sourceBlock('.skeleton-grid')
+
+  for (const [block, name] of [[sortStripBlock, 'sort strip'], [paginationBarBlock, 'pagination bar']]) {
+    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/, `${name} should use a sheet material tray`)
+    assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use shared glass edge`)
+    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/, `${name} should keep an inner refractive edge`)
+    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/, `${name} should use surface blur`)
+  }
+
+  assert.match(sortStripBlock, /padding:\s*6px/)
+  assert.match(paginationBarBlock, /width:\s*fit-content/)
+  assert.match(paginationBarBlock, /max-width:\s*calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)/)
+  assert.match(advancedPanelBlock, /isolation:\s*isolate/)
+  assert.match(advancedPanelBlock, /overflow:\s*hidden/)
+  assert.match(advancedPanelEdgeBlock, /content:\s*""/)
+  assert.match(advancedPanelEdgeBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\)/)
+  assert.match(advancedPanelEdgeBlock, /opacity:\s*var\(--surface-overlay-opacity\)/)
+  assert.match(advancedPanelChildBlock, /z-index:\s*1/)
+  assert.match(skeletonGridBlock, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(200px,\s*1fr\)\)/)
+  assert.match(skeletonGridBlock, /align-items:\s*start/)
+})
+
+test('search controls include pressed and focused glass microinteractions', () => {
+  const sortPillActiveBlock = sourceBlock('.sort-pill:active')
+  const filterItemActiveBlock = sourceBlock('.filter-item:active')
+  const appliedChipActiveBlock = sourceBlock('.applied-chip:active')
+  const variantFocusBlock = sourceBlock('.variant-expand-btn:focus-visible,\n.variant-inline-item:focus-visible')
+  const panelInputFocusBlock = sourceBlock('.panel-input:focus')
+
+  for (const [block, name] of [
+    [sortPillActiveBlock, 'sort pill active'],
+    [filterItemActiveBlock, 'filter item active'],
+    [appliedChipActiveBlock, 'applied chip active'],
+  ]) {
+    assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/, `${name} should provide pressed feedback`)
+  }
+
+  assert.match(variantFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(variantFocusBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(variantFocusBlock, /color:\s*var\(--text-primary\)/)
+  assert.match(variantFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.match(panelInputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring-wide\)/)
 })

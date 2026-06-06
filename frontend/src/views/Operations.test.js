@@ -43,7 +43,7 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   const segmentButton = lastCssBlock(source, '.operations-segments button')
   const segmentHover = lastCssBlock(source, '.operations-segments button:hover')
   const segmentActive = lastCssBlock(source, '.operations-segments button.active')
-  const blockHeadButton = lastCssBlock(source, '.block-head button')
+  const blockHeadButton = cssBlocks(source, '.block-head button').find(block => /border:\s*1px solid var\(--glass-control-border\)/.test(block)) || ''
   const operationsPage = lastCssBlock(source, '.operations-page')
   const actionCard = cssBlocks(source, '.action-card').join('\n')
   const actionCardHover = cssBlocks(source, '.action-card:hover').join('\n')
@@ -101,6 +101,7 @@ test('operations workbench controls use shared Apple glass tokens', () => {
     assert.match(block, /background:\s*var\(--operations-warning-material\)/)
     assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|rgba\(255,255,255/i)
   }
+  assert.match(source, /--operations-warning-material:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*linear-gradient/)
 
   for (const block of [segmentButton, blockHeadButton, actionCard, queueFocus, compactList, runList, compactRow, runRow, stateItem, miniStat, backendPill]) {
     assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
@@ -139,6 +140,197 @@ test('operations keyboard focus mirrors hover glass control treatment', () => {
   }
   assert.match(segmentFocus, /color:\s*var\(--text-primary\)/)
   assert.match(blockHeadFocus, /color:\s*var\(--text-primary\)/)
+})
+
+test('operations dense dashboard surfaces expose liquid glass edge refraction', () => {
+  const hero = cssBlocks(source, '.operations-hero').join('\n')
+  const heroBefore = lastCssBlock(source, '.operations-hero::before')
+  const heroChildren = lastCssBlock(source, '.operations-hero > *')
+  const panel = cssBlocks(source, '.workbench-panel').join('\n')
+  const panelBefore = lastCssBlock(source, '.workbench-panel::before')
+  const panelChildren = lastCssBlock(source, '.workbench-panel > *')
+  const segments = cssBlocks(source, '.operations-segments').join('\n')
+
+  for (const [block, label] of [[hero, 'hero'], [panel, 'panel'], [segments, 'segments']]) {
+    assert.match(block, /position:\s*relative/, `${label} should anchor the inner refraction layer`)
+    assert.match(block, /isolation:\s*isolate/, `${label} should isolate glass highlights`)
+    assert.match(block, /overflow:\s*hidden/, `${label} should clip liquid glass edges`)
+  }
+
+  for (const [block, label] of [[heroBefore, 'hero edge'], [panelBefore, 'panel edge']]) {
+    assert.match(block, /content:\s*""/, `${label} should render a pseudo layer`)
+    assert.match(block, /position:\s*absolute/, `${label} should cover the surface`)
+    assert.match(block, /inset:\s*0/, `${label} should cover the whole surface`)
+    assert.match(block, /border-radius:\s*inherit/, `${label} should preserve concentric corners`)
+    assert.match(block, backgroundIncludes('surface-specular-edge-strong'), `${label} should use shared specular highlights`)
+    assert.match(block, backgroundIncludes('surface-noise'), `${label} should keep material texture`)
+    assert.match(block, /opacity:\s*0\.[34]8/, `${label} should stay subtle`)
+    assert.match(block, /pointer-events:\s*none/, `${label} should not block controls`)
+    assert.match(block, /z-index:\s*0/, `${label} should sit behind content`)
+  }
+
+  for (const block of [heroChildren, panelChildren]) {
+    assert.match(block, /position:\s*relative/)
+    assert.match(block, /z-index:\s*1/)
+  }
+}
+)
+
+test('operations rows and segments add pressed feedback with stable tabular metrics', () => {
+  const segmentButton = lastCssBlock(source, '.operations-segments button')
+  const segmentActive = lastCssBlock(source, '.operations-segments button:active')
+  const heroStrong = lastCssBlock(source, '.hero-stat strong')
+  const stateStrong = lastCssBlock(source, '.state-item strong')
+  const miniStatsStrong = lastCssBlock(source, '.mini-stats strong')
+  const actionActive = cssBlocks(source, '.action-card:active').join('\n')
+  const queueActive = cssBlocks(source, '.queue-focus:active').join('\n')
+  const compactActive = cssBlocks(source, '.compact-row:active').join('\n')
+  const scopeActive = cssBlocks(source, '.scope-chip:active').join('\n')
+
+  assert.match(segmentButton, /transition:[\s\S]*transform var\(--motion-fast\)/)
+  assert.match(segmentActive, /transform:\s*scale\(0\.99\)/)
+  for (const block of [heroStrong, stateStrong, miniStatsStrong]) {
+    assert.match(block, /font-variant-numeric:\s*tabular-nums/)
+  }
+  for (const block of [actionActive, queueActive, compactActive, scopeActive]) {
+    assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
+  }
+})
+
+test('operations top chrome stays console-dense instead of campaign-like', () => {
+  const hero = cssBlocks(source, '.operations-hero').join('\n')
+  const heroTitle = lastCssBlock(source, '.operations-hero h1')
+  const heroCopy = lastCssBlock(source, '.operations-hero p')
+  const heroStatGrid = cssBlocks(source, '.hero-stat-grid').join('\n')
+  const heroStat = lastCssBlock(source, '.hero-stat')
+  const heroStatStrong = lastCssBlock(source, '.hero-stat strong')
+
+  assert.match(hero, /min-height:\s*92px/)
+  assert.match(hero, /padding:\s*12px/)
+  assert.match(hero, /border-radius:\s*var\(--radius-lg\)/)
+  assert.doesNotMatch(hero, /100vh|148px|clamp\(22px/)
+  assert.match(heroTitle, /font-size:\s*var\(--type-workbench-title\)/)
+  assert.match(heroCopy, /white-space:\s*nowrap/)
+  assert.match(heroStatGrid, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(108px,\s*1fr\)\)/)
+  assert.match(heroStat, /min-height:\s*52px/)
+  assert.match(heroStat, /padding:\s*8px 10px/)
+  assert.match(heroStatStrong, /font-size:\s*20px/)
+})
+
+test('operations hero metrics expose compact hints and urgency markers', () => {
+  const heroStat = lastCssBlock(source, '.hero-stat')
+  const urgentStat = cssBlocks(source, '.hero-stat.urgent').join('\n')
+  const urgentBefore = cssBlocks(source, '.hero-stat.urgent::before').join('\n')
+  const hint = cssBlocks(source, '.hero-stat small').join('\n')
+
+  assert.match(vueSource, /:class="\{ urgent: metric\.urgent \}"/)
+  assert.match(vueSource, /<small>\{\{\s*metric\.hint\s*\}\}<\/small>/)
+  assert.match(heroStat, /position:\s*relative/)
+  assert.match(heroStat, /overflow:\s*hidden/)
+  assert.match(urgentStat, /border-color:\s*var\(--badge-warning-border\)/)
+  assert.match(urgentStat, /box-shadow:\s*inset 2px 0 0 var\(--badge-warning-border\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(urgentBefore, /content:\s*""/)
+  assert.match(urgentBefore, /inset:\s*7px auto 7px 6px/)
+  assert.match(urgentBefore, /background:\s*var\(--badge-warning-border\)/)
+  assert.match(hint, /display:\s*block/)
+  assert.match(hint, /font-size:\s*var\(--type-micro\)/)
+  assert.match(hint, /text-overflow:\s*ellipsis/)
+})
+
+test('operations diagnostic rows use table-like tracks for fast scanning', () => {
+  const compactList = cssBlocks(source, '.compact-list').join('\n')
+  const runList = cssBlocks(source, '.run-list').join('\n')
+  const compactRow = cssBlocks(source, '.compact-row').join('\n')
+  const runRow = cssBlocks(source, '.run-row').join('\n')
+  const runRowSmall = cssBlocks(source, '.run-row small').join('\n')
+
+  for (const block of [compactList, runList]) {
+    assert.match(block, /gap:\s*4px/)
+    assert.match(block, /padding:\s*4px/)
+  }
+  assert.match(compactRow, /display:\s*grid/)
+  assert.match(compactRow, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/)
+  assert.match(compactRow, /min-height:\s*32px/)
+  assert.match(runRow, /display:\s*grid/)
+  assert.match(runRow, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/)
+  assert.match(runRow, /min-height:\s*36px/)
+  assert.match(runRowSmall, /font-family:\s*var\(--font-mono\)/)
+  assert.match(runRowSmall, /font-variant-numeric:\s*tabular-nums/)
+})
+
+test('operations compact diagnostic rows reserve a second-line metadata track', () => {
+  const compactRowWithMeta = cssBlocks(source, '.compact-row:has(small)').join('\n')
+  const compactRowSmall = cssBlocks(source, '.compact-row small').join('\n')
+  const qualityProgressMeta = cssBlocks(source, '.quality-progress-meta').join('\n')
+  const qualityProgress = cssBlocks(source, '.quality-progress').join('\n')
+  const qualityProgressActions = cssBlocks(source, '.quality-progress-actions').join('\n')
+  const qualityProgressAction = cssBlocks(source, '.quality-progress-action').join('\n')
+
+  assert.match(vueSource, /class="quality-progress-meta"/)
+  assert.match(vueSource, /issue\?\.priority_reason/)
+  assert.match(vueSource, /issueRepairMetaItems\(issue\)/)
+  assert.match(vueSource, /class="quality-progress-separator"/)
+  assert.match(vueSource, /class="quality-progress-separator"[^>]*>\s*·\s*<\/span>/)
+  assert.match(vueSource, /<small>\s*\{\{\s*issue\.summary\s*\}\}\s*<\/small>/)
+  assert.match(vueSource, /issueRepairMetaItems\(issue\)/)
+  assert.match(vueSource, /class="quality-progress"/)
+  assert.match(vueSource, /class="quality-progress-actions"/)
+  assert.match(compactRowWithMeta, /align-content:\s*center/)
+  assert.match(compactRowWithMeta, /gap:\s*2px 8px/)
+  assert.match(compactRowWithMeta, /min-height:\s*44px/)
+  assert.match(compactRowSmall, /grid-column:\s*1 \/ -1/)
+  assert.match(compactRowSmall, /color:\s*var\(--text-secondary\)/)
+  assert.match(compactRowSmall, /font-size:\s*11px/)
+  assert.match(compactRowSmall, /line-height:\s*1\.25/)
+  assert.match(compactRowSmall, /white-space:\s*nowrap/)
+  assert.match(compactRowSmall, /text-overflow:\s*ellipsis/)
+  assert.match(qualityProgressMeta, /grid-column:\s*1 \/ -1/)
+  assert.match(qualityProgressMeta, /display:\s*flex/)
+  assert.match(qualityProgressMeta, /flex-wrap:\s*wrap/)
+  assert.match(qualityProgressMeta, /white-space:\s*normal/)
+  assert.match(qualityProgress, /min-width:\s*0/)
+  assert.match(qualityProgress, /white-space:\s*normal/)
+  assert.doesNotMatch(qualityProgress, /text-overflow:\s*ellipsis/)
+  assert.match(qualityProgressActions, /grid-column:\s*1 \/ -1/)
+  assert.match(qualityProgressActions, /display:\s*flex/)
+  assert.match(qualityProgressActions, /flex-wrap:\s*wrap/)
+  assert.match(qualityProgressAction, /white-space:\s*nowrap/)
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.quality-progress\s*\{[\s\S]*grid-column:\s*1 \/ -1/)
+})
+
+test('operations top-level loading error and empty states use console state shells', () => {
+  const shell = cssBlocks(source, '.console-state-shell').join('\n')
+  const ledger = cssBlocks(source, '.state-ledger').join('\n')
+  const ledgerSpan = cssBlocks(source, '.state-ledger span').join('\n')
+  const consoleState = cssBlocks(source, '.console-state').join('\n')
+
+  assert.match(vueSource, /class="console-state-shell operations-state-shell"/)
+  assert.match(vueSource, /class="state-ledger"/)
+  assert.match(vueSource, /<AppleSkeleton[\s\S]*class="loading-panel console-state"[\s\S]*label="运营总览加载中"/)
+  assert.match(vueSource, /<AppleErrorState[\s\S]*class="empty-panel console-state"[\s\S]*source-label="Operations API"[\s\S]*details="overview · cache · health"/)
+  assert.match(vueSource, /<AppleEmptyState[\s\S]*class="empty-panel console-state"[\s\S]*density="compact"/)
+
+  assert.match(shell, /display:\s*grid/)
+  assert.match(shell, /gap:\s*6px/)
+  assert.match(shell, /margin-bottom:\s*var\(--operations-panel-gap\)/)
+  assert.match(ledger, /display:\s*grid/)
+  assert.match(ledger, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(ledger, /font-family:\s*var\(--font-mono\)/)
+  assert.match(ledger, /font-variant-numeric:\s*tabular-nums/)
+  assert.match(ledger, backgroundIncludes('material-glass-control'))
+  assert.match(ledgerSpan, /overflow:\s*hidden/)
+  assert.match(ledgerSpan, /text-overflow:\s*ellipsis/)
+  assert.match(consoleState, /max-width:\s*none/)
+  assert.match(consoleState, /margin:\s*0/)
+  assert.match(consoleState, /text-align:\s*left/)
+})
+
+test('operations mobile state and metric surfaces keep stable scan tracks', () => {
+  assert.match(source, /@media \(max-width: 900px\)[\s\S]*\.state-ledger\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.state-ledger\s*\{[\s\S]*grid-template-columns:\s*1fr/)
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.hero-stat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.state-item\s*\{[\s\S]*min-height:\s*46px/)
+  assert.match(source, /@media \(max-width: 560px\)[\s\S]*\.compact-row:has\(small\)\s*\{[\s\S]*min-height:\s*42px/)
 })
 
 test('operations glass backgrounds are layered with specular and noise surfaces', () => {

@@ -62,7 +62,7 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
   assert.doesNotMatch(closeHoverBlock, /background:\s*var\(--surface-control-hover\)/)
   assert.match(closeFocusBlock, /outline:\s*none/)
   assert.match(closeFocusBlock, /box-shadow:\s*var\(--toast-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
-  assert.match(closeActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.94\)/)
+  assert.match(closeActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
   for (const block of [enterBlock, leaveBlock]) {
     assert.doesNotMatch(block, /transition:\s*all\b|var\(--transition-pro\)/)

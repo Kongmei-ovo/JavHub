@@ -1,6 +1,5 @@
 <template>
   <div class="sub-page page-shell page-shell--standard">
-    <!-- Hero -->
     <div class="sub-hero">
       <div class="hero-copy">
         <h1 class="hero-title">订阅演员</h1>
@@ -11,6 +10,9 @@
         </div>
       </div>
       <div class="hero-actions">
+        <button class="top-action-btn" type="button" :class="{ primary: subscriptionEditMode }" :disabled="loading || subs.length === 0" @click="toggleSubscriptionEditMode">
+          {{ subscriptionEditMode ? '完成' : '编辑' }}
+        </button>
         <button class="top-action-btn" type="button" :disabled="checkingAll || loading" @click="checkAllNow">
           <span v-if="checkingAll" class="spinner-tiny"></span>
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -23,35 +25,58 @@
       </div>
     </div>
 
-    <!-- ===== 已订阅管理 ===== -->
     <div class="tab-content subscription-content">
-      <div v-if="loading" class="card-grid">
-        <div v-for="n in 6" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
+      <div v-if="subscriptionEditMode" class="subscription-management-bar" role="toolbar" aria-label="订阅批量操作">
+        <div class="subscription-management-summary">
+          <strong>{{ selectedSubscriptionCount }}</strong>
+          <span>已选择 · 共 {{ subs.length }} 个订阅</span>
+        </div>
+        <div class="sheet-top-actions subscription-batch-actions">
+          <button class="top-action-btn" type="button" :disabled="subs.length === 0 || allSubscriptionsSelected" @click="selectAllSubscriptions">全选</button>
+          <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="clearSubscriptionSelection">清空</button>
+          <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="pauseSelectedSubscriptions">暂停监控</button><button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="resumeSelectedSubscriptions">恢复监控</button>
+          <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="enableSelectedAutoDownload">开启自动策略</button><button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="disableSelectedAutoDownload">关闭自动策略</button>
+          <button class="top-action-btn danger" type="button" :disabled="selectedSubscriptionCount === 0" @click="removeSelectedSubscriptions">
+            取消订阅 {{ selectedSubscriptionCount || '' }}
+          </button>
+        </div>
       </div>
 
-      <div v-else-if="subs.length > 0" class="card-grid">
-        <ActorPortraitCard
-          v-for="sub in subs"
-          :key="sub.id"
-          :actor="subActor(sub)"
-          :name="subDisplayName(sub)"
-          :subtitle="subOriginalName(sub)"
-          :meta="subCardMeta(sub)"
-          :avatar-url="subCoverUrl(sub)"
-          :badges="subCardBadges(sub)"
-          density="standard"
-          @open="openSubSheet(sub)"
-        />
+      <AppleSkeleton v-if="loading" class="card-grid" variant="gallery" :items="6" label="订阅演员加载中" />
+
+      <div v-else-if="subs.length > 0" class="card-grid" :class="{ 'is-subscription-editing': subscriptionEditMode }">
+        <div v-for="sub in subs" :key="sub.id" class="subscription-selectable" :class="{ 'is-selected': isSubscriptionSelected(sub) }">
+          <ActorPortraitCard
+            :actor="subActor(sub)"
+            :name="subDisplayName(sub)"
+            :subtitle="subOriginalName(sub)"
+            :meta="subCardMeta(sub)"
+            :avatar-url="subCoverUrl(sub)"
+            :badges="subCardBadges(sub)"
+            density="standard"
+            @open="handleSubscriptionCardOpen(sub)"
+          />
+          <button v-if="subscriptionEditMode" class="subscription-select-button" type="button" :aria-label="isSubscriptionSelected(sub) ? '取消选择订阅' : '选择订阅'" @click.stop="toggleSubscriptionSelection(sub)">
+            <span></span>
+          </button>
+        </div>
       </div>
 
-      <div v-else class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        <p>还没有订阅任何演员</p>
-        <button class="pill-btn pill-btn-primary empty-action" type="button" @click="openDiscover">添加演员</button>
-      </div>
+      <AppleEmptyState
+        v-else
+        class="empty-state"
+        title="还没有订阅任何演员"
+        description="订阅后可以定期检查新作品，并把缺失影片写入下载候选。"
+        next-step="先搜索演员添加订阅；添加后可以立即检查，或到下载候选处理待补磁力。"
+        action-label="添加演员" secondary-action-label="浏览演员目录"
+        @action="openDiscover" @secondary-action="router.push('/entities?tab=actresses')"
+      >
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </template>
+      </AppleEmptyState>
     </div>
 
-    <!-- ===== Discover Sheet ===== -->
     <teleport to="body">
       <transition name="sheet">
         <div v-if="discoverOpen" class="sheet-overlay discover-overlay" @click.self="closeDiscover">
@@ -62,9 +87,7 @@
               </div>
             </div>
 
-            <div class="discover-head">
-              <h2>发现演员</h2>
-            </div>
+            <div class="discover-head"><span class="discover-kicker">订阅发现</span><h2>发现演员</h2><p>搜索演员名称，添加后会进入订阅检查和候选整理。</p></div>
 
             <div class="discover-body">
               <div class="search-bar-wrap">
@@ -81,9 +104,7 @@
                 </div>
               </div>
 
-              <div v-if="searching" class="card-grid">
-                <div v-for="n in 8" :key="n" class="skel-card"><div class="skel-cover"></div><div class="skel-info"><div class="skel-line w60"></div><div class="skel-line w40"></div></div></div>
-              </div>
+              <AppleSkeleton v-if="searching" class="card-grid" variant="gallery" :items="8" label="演员搜索中" />
 
               <div v-else-if="searchResults.length > 0" class="card-grid">
                 <ActorPortraitCard
@@ -100,9 +121,24 @@
                 />
               </div>
 
-              <div v-else-if="searched && searchResults.length === 0" class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
-                <p>未找到相关演员</p>
+              <AppleEmptyState
+                v-else-if="searched && searchResults.length === 0"
+                class="empty-state compact"
+                title="未找到相关演员"
+                description="当前关键词没有匹配到可订阅的演员。"
+                next-step="换一个日文名、罗马音或更短关键词再试。"
+                action-label="重新搜索" secondary-action-label="清空关键词" density="compact"
+                @action="doSearch" @secondary-action="clearSearch"
+              >
+                <template #icon>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
+                </template>
+              </AppleEmptyState>
+
+              <div v-else-if="!searched" class="discover-suggestions" aria-label="最近订阅">
+                <span class="discover-suggestion-title">最近订阅</span>
+                <button v-for="sub in recentSubscriptions" :key="sub.id" class="suggestion-chip" type="button" @click="openSubSheet(sub)">{{ subDisplayName(sub) }}</button>
+                <span v-if="recentSubscriptions.length === 0" class="suggestion-chip is-empty">搜索演员后可在这里订阅</span>
               </div>
             </div>
           </div>
@@ -110,12 +146,10 @@
       </transition>
     </teleport>
 
-    <!-- ===== Detail Sheet ===== -->
     <teleport to="body">
       <transition name="sheet">
         <div v-if="sheetActor" class="sheet-overlay" @click.self="closeSheet">
           <div class="sheet" @click.stop>
-            <!-- Top Bar: grabber + actions -->
             <div class="sheet-top-bar">
               <div v-if="sheetSub" class="sheet-top-actions">
                 <button class="top-action-btn" @click="checkNow(sheetSub)" :disabled="checkingId === sheetSub.id">
@@ -131,7 +165,6 @@
               </div>
             </div>
 
-            <!-- Avatar -->
             <div class="sheet-avatar-wrap">
               <div class="sheet-avatar-glow"></div>
               <div class="sheet-avatar">
@@ -140,16 +173,13 @@
               </div>
             </div>
 
-            <!-- Translated Name -->
             <div v-if="sheetTranslatedName" class="sheet-translated">{{ sheetTranslatedName }}</div>
-            <!-- Name pills row -->
             <div class="sheet-name-row">
               <span v-if="sheetActor.name_kanji" class="name-pill">{{ sheetActor.name_kanji }}</span>
               <span v-if="sheetActor.name_romaji" class="name-pill">{{ sheetActor.name_romaji }}</span>
               <span v-if="sheetActor.name_kana" class="name-pill dim">{{ sheetActor.name_kana }}</span>
             </div>
 
-            <!-- Stats -->
             <div v-if="sheetActor.movie_count != null" class="sheet-stat-line">
               {{ sheetActor.movie_count.toLocaleString() }} 部作品
             </div>
@@ -157,7 +187,6 @@
               待处理候选 {{ sheetSub.candidate_count || newMovieCount(sheetSub.actress_id) }} · 待补磁力 {{ sheetSub.needs_magnet_count || 0 }}
             </div>
 
-            <!-- Toggle Pills + 全部作品 -->
             <div class="sheet-toggles">
               <button v-if="sheetSub" class="toggle-pill" :class="{ on: sheetSub.enabled }" @click="toggleEnabled(sheetSub)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -173,7 +202,6 @@
               </button>
             </div>
 
-            <!-- Works: MovieCard grid (random) -->
             <div v-if="sheetMovies.length > 0" class="sheet-works">
               <div class="works-grid">
                 <div v-for="movie in sheetMovies" :key="movie.content_id || movie.dvd_id" class="work-card-wrap">
@@ -200,7 +228,6 @@
             </div>
             <div v-else-if="sheetLoading" class="sheet-loading"><div class="spinner-small"></div></div>
 
-            <!-- Bottom action for discover -->
             <div v-if="!sheetSub" class="sheet-bottom-action">
               <button v-if="!isSubscribed(sheetActor.id)" class="action-btn primary" :disabled="subscribing" @click="subscribeFromSheet">
                 {{ subscribing ? '订阅中...' : '订阅' }}
@@ -226,6 +253,8 @@ import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import subscriptionState from '../utils/subscriptionState'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
 import MovieCard from '../components/MovieCard.vue'
 import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
 import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
@@ -237,19 +266,18 @@ const searchKeyword = ref('')
 const searchResults = ref([])
 const searching = ref(false)
 const searched = ref(false)
-
 const subs = ref([])
 const loading = ref(false)
 const checkingAll = ref(false)
 const checkingId = ref(null)
-
+const subscriptionEditMode = ref(false)
+const selectedSubscriptionIds = ref(new Set())
 const sheetActor = ref(null)
 const sheetSub = ref(null)
 const sheetMovies = ref([])
 const sheetLoading = ref(false)
 const subscribing = ref(false)
 const expandedVariantGroups = ref({})
-
 const actressMetaMap = ref({})
 const lastCheckReport = ref(null)
 
@@ -261,12 +289,13 @@ const totalNeedsMagnet = computed(() => subs.value.reduce(
   (sum, sub) => sum + Number(sub.needs_magnet_count || 0),
   0,
 ))
-
+const selectedSubscriptionCount = computed(() => selectedSubscriptionIds.value.size)
+const allSubscriptionsSelected = computed(() => subs.value.length > 0 && subs.value.every(sub => selectedSubscriptionIds.value.has(subscriptionKey(sub))))
+const recentSubscriptions = computed(() => subs.value.slice(0, 6))
 const sheetCoverUrl = computed(() => {
   if (!sheetActor.value) return ''
   return actressImgUrl(sheetActor.value.image_url) || ''
 })
-
 const sheetTranslatedName = computed(() => {
   if (!sheetActor.value) return ''
   return displayName(sheetActor.value, 'name_kanji', 'name_romaji') || ''
@@ -319,7 +348,26 @@ function subCardBadges(sub) {
   if (sub.auto_download) badges.push({ label: '自动策略', tone: 'success' })
   return badges
 }
-
+function subscriptionKey(sub) { return String(sub?.id || '') }
+function isSubscriptionSelected(sub) { return selectedSubscriptionIds.value.has(subscriptionKey(sub)) }
+function toggleSubscriptionSelection(sub) {
+  const key = subscriptionKey(sub)
+  if (!key) return
+  const next = new Set(selectedSubscriptionIds.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  selectedSubscriptionIds.value = next
+}
+function selectAllSubscriptions() { selectedSubscriptionIds.value = new Set(subs.value.map(subscriptionKey).filter(Boolean)) }
+function clearSubscriptionSelection() { selectedSubscriptionIds.value = new Set() }
+function toggleSubscriptionEditMode() {
+  subscriptionEditMode.value = !subscriptionEditMode.value
+  if (!subscriptionEditMode.value) clearSubscriptionSelection()
+}
+function handleSubscriptionCardOpen(sub) {
+  if (subscriptionEditMode.value) { toggleSubscriptionSelection(sub); return }
+  openSubSheet(sub)
+}
 function subscriptionSheetActor(sub, meta = null) {
   const actorMeta = meta || {}
   return {
@@ -344,13 +392,10 @@ function shuffleArray(arr) {
 function openDiscover() {
   discoverOpen.value = true
 }
-
 function closeDiscover() {
   discoverOpen.value = false
   clearSearch()
 }
-
-// ===== Search =====
 async function doSearch() {
   const q = searchKeyword.value.trim(); if (!q) return
   searching.value = true; searched.value = true; searchResults.value = []
@@ -359,13 +404,11 @@ async function doSearch() {
 }
 
 function clearSearch() { searchKeyword.value = ''; searchResults.value = []; searched.value = false }
-
 function handleSheetAvatarError(event) {
   const label = actorName(sheetActor.value) || sheetActor.value?.name_kanji || '?'
   applyImageFallback(event, { label: label.slice(0, 1) })
 }
 
-// ===== Sheet =====
 async function openActorSheet(actor) {
   closeDiscover()
   sheetActor.value = actor; sheetSub.value = null
@@ -395,7 +438,6 @@ async function openSubSheet(sub) {
 }
 
 function closeSheet() { sheetActor.value = null; sheetSub.value = null; sheetMovies.value = []; expandedVariantGroups.value = {} }
-
 function viewAllVideos() {
   if (!sheetActor.value) return
   const actressId = sheetActor.value.actress_id || sheetActor.value.id
@@ -410,7 +452,6 @@ function openVideoModal(movie) {
   const route = router.currentRoute.value
   openVideoModalFn(movie, route?.fullPath || route?.path || '/subscription')
 }
-
 function isVariantGroupExpanded(movie) {
   const key = variantGroupKey(movie)
   return Boolean(key && expandedVariantGroups.value[key])
@@ -423,7 +464,6 @@ function toggleVariantGroup(key) {
     [key]: !expandedVariantGroups.value[key],
   }
 }
-
 async function syncSubscriptionState() {
   try {
     await subscriptionState.refresh()
@@ -431,7 +471,6 @@ async function syncSubscriptionState() {
     console.error('Sync subscription state failed:', e)
   }
 }
-
 async function subscribeFromSheet() {
   if (!sheetActor.value) return
   const a = sheetActor.value; const name = a.name_kanji || a.name_romaji || ''
@@ -439,8 +478,6 @@ async function subscribeFromSheet() {
   try { await api.addSubscription({ actress_id: a.id, actress_name: name }); await syncSubscriptionState(); ElMessage.success(`已订阅 ${name}`); await loadSubs(); closeSheet() }
   catch (e) { ElMessage.error('订阅失败') } finally { subscribing.value = false }
 }
-
-// ===== Subscriptions =====
 async function loadSubs() {
   loading.value = true
   try {
@@ -513,9 +550,39 @@ async function toggleAutoDownload(sub) {
   catch (e) { ElMessage.error('操作失败') }
 }
 
+async function updateSelectedSubscriptions(patch, label) {
+  const selectedIds = new Set(selectedSubscriptionIds.value)
+  const selectedSubs = subs.value.filter(sub => selectedIds.has(subscriptionKey(sub)))
+  if (selectedSubs.length === 0) return
+  try {
+    for (const sub of selectedSubs) await api.updateSubscription(sub.id, patch)
+    subs.value = subs.value.map(sub => selectedIds.has(subscriptionKey(sub)) ? { ...sub, ...patch } : sub)
+    clearSubscriptionSelection()
+    ElMessage.success(`已${label} ${selectedSubs.length} 个订阅`)
+  } catch (e) { ElMessage.error('批量更新失败') }
+}
+const pauseSelectedSubscriptions = () => updateSelectedSubscriptions({ enabled: false }, '暂停'), resumeSelectedSubscriptions = () => updateSelectedSubscriptions({ enabled: true }, '恢复')
+const enableSelectedAutoDownload = () => updateSelectedSubscriptions({ auto_download: true }, '开启自动策略'), disableSelectedAutoDownload = () => updateSelectedSubscriptions({ auto_download: false }, '关闭自动策略')
+
 async function remove(id) {
   try { await api.deleteSubscription(id); await syncSubscriptionState(); subs.value = subs.value.filter(s => s.id !== id); closeSheet(); ElMessage.success('已取消订阅') }
   catch (e) { ElMessage.error('删除失败') }
+}
+
+async function removeSelectedSubscriptions() {
+  const selectedIds = new Set(selectedSubscriptionIds.value)
+  const selectedSubs = subs.value.filter(sub => selectedIds.has(subscriptionKey(sub)))
+  if (selectedSubs.length === 0) return
+  try {
+    for (const sub of selectedSubs) await api.deleteSubscription(sub.id)
+    await syncSubscriptionState()
+    subs.value = subs.value.filter(sub => !selectedIds.has(subscriptionKey(sub)))
+    clearSubscriptionSelection()
+    if (subs.value.length === 0) subscriptionEditMode.value = false
+    ElMessage.success(`已取消 ${selectedSubs.length} 个订阅`)
+  } catch (e) {
+    ElMessage.error('批量取消失败')
+  }
 }
 
 function viewCandidates(sub) {

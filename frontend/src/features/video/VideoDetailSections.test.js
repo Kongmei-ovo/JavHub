@@ -58,7 +58,8 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   assert.match(focusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(itemBlock, /appearance:\s*none/)
   assert.match(itemBlock, /padding:\s*0/)
-  assert.match(imageBlock, /transition:\s*transform var\(--motion-standard\),\s*filter var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.match(imageBlock, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(imageBlock, /transition:[^;]*filter/)
   assert.match(imageHoverBlock, /transform:\s*scale\(1\.015\)/)
   assert.match(imageFocusBlock, /transform:\s*scale\(1\.015\)/)
   assert.match(skeletonBlock, /background:\s*var\(--skeleton-base\)/)
@@ -66,6 +67,12 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   assert.match(skeletonBlock, /pointer-events:\s*none/)
   assert.match(skeletonAfterBlock, /var\(--skeleton-highlight\)/)
   assert.doesNotMatch(gallerySource, /rgba\(255,\s*255,\s*255,\s*0\.05\)|transition:\s*var\(--transition-pro\)|transition:\s*all\b/)
+})
+
+test('video gallery grid prefers lightweight thumbnails over full lightbox images', () => {
+  assert.match(gallerySource, /import \{ galleryFullUrl, galleryThumbUrl \}/)
+  assert.match(gallerySource, /return galleryThumbUrl\(path\) \|\| galleryFullUrl\(path\) \|\| null/)
+  assert.doesNotMatch(gallerySource, /return galleryFullUrl\(path\) \|\| galleryThumbUrl\(path\)/)
 })
 
 test('video magnet section uses shared glass controls and mobile-safe rows', () => {

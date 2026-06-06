@@ -70,7 +70,7 @@
   padding: 10px 16px;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .tab-btn:hover {
   border-color: var(--glass-control-border-hover);
@@ -113,7 +113,7 @@
   cursor: pointer;
   white-space: nowrap;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .filter-chip:hover {
   border-color: var(--glass-control-border-hover);
@@ -149,7 +149,7 @@
   color: var(--text-primary);
   padding: 8px 10px;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .search-input:focus {
   border-color: var(--glass-control-border-hover);
@@ -232,7 +232,7 @@
   border-radius: var(--radius-sm);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .candidate-card.high { border-color: var(--badge-success-border); }
 .candidate-card.risky { border-color: var(--badge-warning-border); }
@@ -362,7 +362,7 @@
   border-radius: var(--radius-sm);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
   box-shadow: var(--glass-surface-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .mapping-row:focus-within {
   border-color: var(--glass-control-border-hover);

@@ -48,7 +48,7 @@ test('actor page treats supplement as part of the default catalog', () => {
 
 test('actor page keeps loading more when totals are unknown', () => {
   assert.match(source, /if \(this\.totalCount < 0 \|\| this\.movieTotalPages < 0\)/)
-  assert.match(source, /return this\.movies\.length >= this\.moviePage \* MOVIE_PAGE_SIZE/)
+  assert.match(source, /return this\.movies\.length >= this\.moviePage \* this\.moviePageSize/)
   assert.match(source, /appendMoviePage\(data,\s*\{\s*trustTotals = false\s*\} = \{\}\)/)
   assert.match(source, /Number\.isInteger\(data\.total_count\) && data\.total_count >= 0/)
   assert.match(source, /if \(!this\.catalogTotalCount\) this\.catalogTotalCount = data\.total_count/)
@@ -58,16 +58,45 @@ test('actor page keeps loading more when totals are unknown', () => {
   assert.match(source, /this\.appendMoviePage\(data\)/)
 })
 
+test('actor page offers lightweight first-screen recovery after catalog load failures', () => {
+  assert.match(source, /const MOVIE_PAGE_SIZE = 100/)
+  assert.match(source, /const RECOVERY_MOVIE_PAGE_SIZE = 24/)
+  assert.match(source, /moviePageSize:\s*MOVIE_PAGE_SIZE/)
+  assert.match(vueSource, /<AppleErrorState[\s\S]*secondary-action-label="轻量加载首屏"/)
+  assert.match(vueSource, /@secondary-action="loadActorMoviesCompact"/)
+  assert.match(source, /async loadActorMovies\(\{\s*pageSize = MOVIE_PAGE_SIZE\s*\} = \{\}\)/)
+  assert.match(source, /const first = await this\.fetchActorMoviePage\(1,\s*\{\s*pageSize,\s*includeTotal:\s*true\s*\}\)/)
+  assert.match(source, /this\.moviePageSize = pageSize/)
+  assert.match(source, /const data = await this\.fetchActorMoviePage\(nextPage,\s*\{\s*pageSize:\s*this\.moviePageSize\s*\}\)/)
+  assert.match(source, /async loadActorMoviesCompact\(\)[\s\S]*return this\.loadActorMovies\(\{\s*pageSize:\s*RECOVERY_MOVIE_PAGE_SIZE\s*\}\)/)
+})
+
 test('actor page surfaces download candidate handoff', () => {
   assert.match(source, /candidateSummary/)
   assert.match(source, /下载候选/)
-  assert.match(source, /待补磁力/)
+  assert.match(source, /还缺磁力/)
+  assert.match(source, /可直接批准/)
   assert.match(source, /api\.getDownloadCandidateSummary/)
   assert.doesNotMatch(source, /api\.listDownloadCandidates/)
   assert.doesNotMatch(source, /limit:\s*100000/)
   assert.match(source, /goDownloadCandidates/)
   assert.match(source, /path: '\/downloads'/)
   assert.match(source, /tab: 'candidates'/)
+})
+
+test('actor supplement status labels describe source and variant counts clearly', () => {
+  assert.match(vueSource, />补全来源<\/span>/)
+  assert.match(vueSource, />已匹配片库<\/span>/)
+  assert.match(vueSource, />补全新增<\/span>/)
+  assert.match(vueSource, />含版本条目<\/span>/)
+  assert.match(vueSource, />刷新版本条目<\/button>/)
+  assert.doesNotMatch(vueSource, />补全影片<\/span>/)
+  assert.doesNotMatch(vueSource, />已匹配<\/span>/)
+  assert.doesNotMatch(vueSource, />仅补全<\/span>/)
+  assert.doesNotMatch(vueSource, />可展示<\/span>/)
+  assert.doesNotMatch(vueSource, /待补磁力/)
+  assert.doesNotMatch(vueSource, /个可批准/)
+  assert.doesNotMatch(vueSource, /刷新 resolved/)
 })
 
 test('actor page reloads the catalog when route identity changes', () => {
@@ -96,13 +125,14 @@ test('actor page shows API totals separately from loaded movie counts', () => {
   assert.doesNotMatch(source, /\{\{ variantInfo\.canonical\.length \}\} 部作品/)
   assert.match(source, /actorMovieCountLabel\(\)[\s\S]*this\.catalogTotalCount/)
   assert.match(source, /sectionMovieCountLabel\(\)[\s\S]*已显示/)
-  assert.match(source, /const first = await this\.fetchActorMoviePage\(1,\s*\{\s*includeTotal:\s*true\s*\}\)/)
+  assert.match(source, /const first = await this\.fetchActorMoviePage\(1,\s*\{\s*pageSize,\s*includeTotal:\s*true\s*\}\)/)
 })
 
 test('actor page uses backend variant groups and can expand all versions', () => {
   assert.match(source, /合并版本/)
   assert.match(source, /展开版本/)
   assert.match(source, /showVariants/)
+  assert.match(source, /expandedVariantGroups/)
   assert.match(source, /variant_group_items/)
   assert.match(source, /displayMovies\(\)[\s\S]*flattenVariantGroups/)
   assert.match(source, /variant_group_count/)
@@ -112,26 +142,36 @@ test('actor page uses backend variant groups and can expand all versions', () =>
   assert.doesNotMatch(source, /from '..\/utils\/videoVariant\.js'/)
 })
 
-test('actor variant count hint is a clickable flow control outside card metadata', () => {
-  assert.match(vueSource, /<button\s+v-if="movie\.variant_group_count > 1 && !showVariants"\s+class="variant-label"[\s\S]*@click\.stop="showVariants = true"/)
+test('actor variant count hint expands only the current movie group inline', () => {
+  assert.match(vueSource, /import \{ variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
+  assert.match(vueSource, /:coverAspectRatio="'16 \/ 9'"/)
+  assert.match(vueSource, /<button\s+v-if="movie\.variant_group_count > 1 && !showVariants"\s+class="variant-expand-btn"[\s\S]*@click\.stop="toggleVariantGroup\(movie\)"/)
+  assert.match(vueSource, /<span v-if="isVariantGroupExpanded\(movie\)">收起版本<\/span>/)
+  assert.match(vueSource, /<div v-if="isVariantGroupExpanded\(movie\)" class="variant-inline-list">/)
+  assert.match(vueSource, /v-for="variant in variantGroupItems\(movie\)"/)
+  assert.match(vueSource, /@click\.stop="openModal\(variant\)"/)
+  assert.doesNotMatch(vueSource, /@click\.stop="showVariants = true"/)
 
   const movieCardWrap = cssBlock('.movie-card-wrap')
   const movieCard = cssBlock('.movie-card-wrap > .apple-video-card')
-  const variantLabel = cssBlock('.variant-label')
+  const variantButton = cssBlock('.variant-expand-btn')
+  const variantRow = cssBlock('.variant-inline-item')
+  const variantLabel = cssBlock('.variant-inline-labels span')
   assert.match(movieCardWrap, /display:\s*flex/)
   assert.match(movieCardWrap, /flex-direction:\s*column/)
   assert.match(movieCardWrap, /align-items:\s*stretch/)
-  assert.match(movieCardWrap, /contain-intrinsic-size:\s*1px\s+450px/)
+  assert.match(movieCardWrap, /contain-intrinsic-size:\s*1px\s+520px/)
   assert.doesNotMatch(movieCardWrap, /contain-intrinsic-size:\s*1px\s+390px/)
   assert.doesNotMatch(movieCardWrap, /align-items:\s*flex-start/)
   assert.match(movieCard, /flex:\s*0 0 auto/)
   assert.match(movieCard, /width:\s*100%/)
-  assert.match(variantLabel, /display:\s*inline-flex/)
-  assert.match(variantLabel, /align-self:\s*flex-start/)
-  assert.match(variantLabel, /margin-top:\s*8px/)
-  assert.match(variantLabel, /cursor:\s*pointer/)
-  assert.doesNotMatch(variantLabel, /position:\s*absolute/)
-  assert.doesNotMatch(variantLabel, /pointer-events:\s*none/)
+  assert.match(variantButton, /width:\s*100%/)
+  assert.match(variantButton, /margin-top:\s*8px/)
+  assert.match(variantButton, /cursor:\s*pointer/)
+  assert.match(variantRow, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/)
+  assert.match(variantRow, /cursor:\s*pointer/)
+  assert.match(variantLabel, /border:\s*1px solid var\(--badge-info-border\)/)
+  assert.doesNotMatch(`${variantButton}\n${variantRow}`, /position:\s*absolute|pointer-events:\s*none/)
 })
 
 test('actor page version and year controls use shared Apple glass materials', () => {
@@ -140,7 +180,9 @@ test('actor page version and year controls use shared Apple glass materials', ()
   const switchButtonHover = cssBlock('.switch-btn:hover')
   const switchButtonActive = cssBlock('.switch-btn.active')
   const variantBadge = cssBlock('.variant-badge')
-  const variantLabel = cssBlock('.variant-label')
+  const variantButton = cssBlock('.variant-expand-btn')
+  const variantRow = cssBlock('.variant-inline-item')
+  const variantInlineLabel = cssBlock('.variant-inline-labels span')
   const yearNav = cssBlock('.year-nav')
   const yearNavItem = cssBlock('.year-nav-item')
   const yearNavItemHover = cssBlock('.year-nav-item:hover')
@@ -163,11 +205,15 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.ok(backgroundIncludes(variantBadge, '--material-glass-control'))
   assert.match(variantBadge, /border:\s*1px solid var\(--glass-control-border\)/)
 
-  assert.ok(backgroundIncludes(variantLabel, '--glass-active-material'))
-  assert.match(variantLabel, /border:\s*1px solid var\(--glass-active-border\)/)
-  assert.match(variantLabel, /box-shadow:\s*var\(--glass-active-shadow\)/)
-  assert.match(variantLabel, /color:\s*var\(--text-primary\)/)
-  assert.doesNotMatch(variantLabel, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+  for (const [block, name] of [[variantButton, 'variant button'], [variantRow, 'variant row']]) {
+    assert.ok(backgroundIncludes(block, '--material-glass-control'), `${name} should use shared material`)
+    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared border`)
+    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared shadow`)
+    assert.doesNotMatch(block, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
+  }
+  assert.ok(backgroundIncludes(variantInlineLabel, '--badge-info-bg'))
+  assert.match(variantInlineLabel, /border:\s*1px solid var\(--badge-info-border\)/)
+  assert.match(variantInlineLabel, /color:\s*var\(--badge-info-text\)/)
 
   assert.match(yearNav, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(yearNav, /box-shadow:\s*var\(--glass-surface-shadow\)/)
@@ -185,14 +231,16 @@ test('actor page version and year controls use shared Apple glass materials', ()
 })
 
 test('actor page loading and year empty states use shared subtle materials', () => {
-  const spinner = cssBlock('.spinner-large')
   const yearHeader = cssBlock('.year-header')
   const yearEmpty = cssBlock('.year-empty')
 
-  assert.match(spinner, /border:\s*3px solid var\(--glass-control-border\)/)
-  assert.match(spinner, /border-top-color:\s*var\(--glass-active-border\)/)
-  assert.doesNotMatch(spinner, /border-top-color:\s*var\(--accent\)/)
-  assert.doesNotMatch(spinner, /rgba\(255,255,255/)
+  assert.match(vueSource, /import AppleSkeleton from '\.\.\/components\/AppleSkeleton\.vue'/)
+  assert.match(vueSource, /import AppleEmptyState from '\.\.\/components\/AppleEmptyState\.vue'/)
+  assert.match(vueSource, /import AppleErrorState from '\.\.\/components\/AppleErrorState\.vue'/)
+  assert.match(vueSource, /<AppleSkeleton\s+v-if="loading"[\s\S]*label="演员作品加载中"/)
+  assert.match(vueSource, /<AppleEmptyState[\s\S]*title="暂无演员作品"[\s\S]*action-label="重新加载"/)
+  assert.match(vueSource, /<AppleErrorState[\s\S]*title="演员作品加载失败"[\s\S]*retry-label="重新加载"/)
+  assert.doesNotMatch(vueSource, /<div class="spinner-large"><\/div>/)
 
   assert.match(yearHeader, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
   assert.doesNotMatch(yearHeader, /rgba\(255,\s*255,\s*255/)
@@ -291,7 +339,9 @@ test('actor glass backgrounds are layered with specular and noise surfaces', () 
     '.switch-btn:hover',
     '.switch-btn.active',
     '.variant-badge',
-    '.variant-label',
+    '.variant-expand-btn',
+    '.variant-inline-item',
+    '.variant-inline-labels span',
     '.year-nav',
     '.year-nav-item',
     '.year-nav-item:hover',

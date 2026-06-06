@@ -1,8 +1,8 @@
 /* ===== CSS Variables - Design System ===== */
 :root {
   /* Motion Physics - Apple Style */
-  --ease-pro: cubic-bezier(0.23, 1, 0.32, 1);
-  --transition-pro: background 0.5s var(--ease-pro), border-color 0.5s var(--ease-pro), box-shadow 0.5s var(--ease-pro), color 0.5s var(--ease-pro), opacity 0.5s var(--ease-pro), transform 0.5s var(--ease-pro);
+  --ease-pro: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-pro: transform var(--motion-standard), opacity var(--motion-fast);
   
   /* Materials */
   --glass-bg: rgba(255, 255, 255, 0.86);
@@ -18,6 +18,8 @@
   --glass-surface-overlay-opacity: 0.72;
   --glass-nav-bg: rgba(246, 246, 248, 0.72);
   --glass-nav-material: linear-gradient(145deg, rgba(255,255,255,0.80), rgba(246,246,248,0.62) 46%, rgba(255,255,255,0.50));
+  --glass-subtle-bg: rgba(255, 255, 255, 0.36);
+  --glass-subtle-material: linear-gradient(145deg, rgba(255,255,255,0.44), rgba(255,255,255,0.25) 56%, rgba(255,255,255,0.38));
   --glass-control-bg: rgba(255, 255, 255, 0.34);
   --glass-control-bg-hover: rgba(255, 255, 255, 0.50);
   --glass-control-material: linear-gradient(145deg, rgba(255,255,255,0.54), rgba(255,255,255,0.25) 48%, rgba(255,255,255,0.42));
@@ -59,27 +61,30 @@
   --radius-control: 999px;
   --touch-target: 40px;
 
-  --material-glass-subtle: linear-gradient(145deg, rgba(255,255,255,0.44), rgba(255,255,255,0.25) 56%, rgba(255,255,255,0.38));
+  --material-glass-subtle: var(--glass-subtle-material);
   --material-glass-control: var(--glass-control-material);
   --material-glass-control-hover: var(--glass-control-material-hover);
   --material-glass-elevated: var(--glass-card-material);
   --material-glass-sheet: var(--glass-sheet-material);
   --surface-card: var(--glass-card-material);
   --surface-card-hover: var(--glass-card-material-hover);
+  --hero-background: radial-gradient(circle at 50% 0%, var(--ambient-hero), transparent 36%), var(--bg-primary);
   --media-blackout: #030304;
   --media-edge-mask-strong: color-mix(in srgb, var(--text-primary) 76%, transparent);
   --media-edge-mask-clear: transparent;
   --media-caption-scrim-clear: transparent;
   --media-caption-scrim-strong: color-mix(in srgb, var(--media-blackout) 82%, transparent);
   --media-caption-text: #F5F5F7;
+  --skeleton-base: var(--skeleton-track);
+  --skeleton-highlight: var(--skeleton-glint);
 
-  --shadow-floating: 0 16px 38px rgba(29, 29, 31, 0.10);
-  --shadow-sheet: 0 28px 80px rgba(29, 29, 31, 0.16);
+  --shadow-floating: 0 20px 52px rgba(29, 29, 31, 0.13);
+  --shadow-sheet: 0 30px 86px rgba(29, 29, 31, 0.18);
 
-  --motion-fast: 160ms var(--ease-pro);
-  --motion-standard: 280ms var(--ease-pro);
-  --motion-emphasized: 460ms var(--ease-pro);
-  --motion-reveal: 420ms var(--ease-pro);
+  --motion-fast: 140ms var(--ease-pro);
+  --motion-standard: 260ms var(--ease-pro);
+  --motion-emphasized: 420ms var(--ease-pro);
+  --motion-reveal: 380ms var(--ease-pro);
   --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
   --focus-ring-strong: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
   --focus-ring-wide: 0 0 0 4px rgba(var(--accent-rgb), 0.12);
@@ -97,24 +102,24 @@
   --bg-card-hover: rgba(255, 255, 255, 0.86);
   
   /* 强调色 - neutral action */
-  --accent: #1d1d1f;
+  --accent: #1D1D1F;
   --accent-rgb: 29, 29, 31;
   --accent-light: #000000;
   --accent-glow: rgba(29, 29, 31, 0.12);
   --accent-bg: rgba(29, 29, 31, 0.07);
   
   /* 文字 */
-  --text-primary: #1d1d1f;
-  --text-secondary: #474747;
-  --text-muted: #707070;
+  --text-primary: #1D1D1F;
+  --text-secondary: #515154;
+  --text-muted: #77777D;
   
   /* 边框与高光 */
   --border: rgba(29, 29, 31, 0.10);
   --border-light: rgba(29, 29, 31, 0.15);
   
   /* 阴影 - Apple light */
-  --shadow-card: 0 1px 2px rgba(29, 29, 31, 0.04);
-  --shadow-hover: 0 12px 30px rgba(29, 29, 31, 0.09);
+  --shadow-card: 0 1px 2px rgba(29, 29, 31, 0.04), 0 18px 46px rgba(29, 29, 31, 0.08);
+  --shadow-hover: 0 18px 48px rgba(29, 29, 31, 0.13);
   
   /* 字体 */
   --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -149,27 +154,24 @@
   --z-lightbox: 950;
   --z-toast: 1000;
   --z-confirm: 1100;
-  --text-on-accent: #ffffff;
+  --text-on-accent: var(--bg-primary);
   --surface-nav: var(--glass-nav-material);
   --surface-nav-border: var(--glass-edge);
   --surface-control: var(--material-glass-control);
   --surface-control-hover: var(--material-glass-control-hover);
   --surface-input: var(--material-glass-control);
   --surface-input-focus: var(--glass-active-material);
-  --surface-scrim: rgba(29, 29, 31, 0.18);
-  --hero-background: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 34%), var(--bg-primary);
+  --surface-scrim: var(--scrim);
   --surface-specular-edge: var(--glass-specular-edge);
   --surface-specular-edge-strong: var(--glass-specular-edge-strong);
   --surface-noise: var(--glass-surface-noise);
   --surface-overlay-opacity: var(--glass-surface-overlay-opacity);
-  --skeleton-base: rgba(112, 112, 112, 0.08);
-  --skeleton-highlight: rgba(255, 255, 255, 0.9);
   --active-bg: var(--glass-active-material);
   --active-border: var(--glass-active-border);
-  --active-indicator: #1d1d1f;
+  --active-indicator: var(--text-primary);
   --link-text: var(--text-primary);
-  --link-underline: #d6d6d6;
-  --link-underline-hover: rgba(29, 29, 31, 0.32);
+  --link-underline: rgba(29, 29, 31, 0.18);
+  --link-underline-hover: rgba(29, 29, 31, 0.38);
 
   /* 侧边栏宽度 */
   --sidebar-width: 224px;
@@ -178,6 +180,11 @@
   --content-material: rgba(255, 255, 255, 0.66);
   --content-material-border: rgba(255, 255, 255, 0.82);
   --chrome-floating-shadow: 0 22px 58px rgba(29,29,31,0.12), inset 0 1px 0 rgba(255,255,255,0.78), inset 0 -1px 0 rgba(29,29,31,0.045);
+  --ambient-hero: rgba(29, 29, 31, 0.08);
+  --scrim: rgba(29, 29, 31, 0.18);
+  --skeleton-track: rgba(112,112,112,0.08);
+  --skeleton-glint: rgba(255,255,255,0.92);
+  --nav-active-bg: var(--glass-active-material);
   /* 页面呼吸轨道 */
   --page-gutter: clamp(18px, 2.4vw, 36px);
   --page-gutter-compact: clamp(12px, 2vw, 24px);
@@ -192,7 +199,7 @@
   --video-card-body-padding-mobile: 14px 15px 16px;
   --compact-toolbar-height: 32px;
   /* 过渡 */
-  --transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: transform var(--motion-standard), opacity var(--motion-fast);
   /* 通用白色叠加层 */
   --white-00: rgba(255,255,255,0);
   --white-06: rgba(255,255,255,0.06);
@@ -206,21 +213,21 @@
   --black-60: rgba(0,0,0,0.60);
   --black-80: rgba(0,0,0,0.80);
   /* 徽章色 - 与新accent协调 (Apple Pro 风格：低饱和，清晰边框) */
-  --badge-success-bg: rgba(52, 199, 89, 0.08);
-  --badge-success-border: rgba(52, 199, 89, 0.25);
-  --badge-success-text: #32D74B;
-  --badge-warning-bg: rgba(255, 159, 10, 0.08);
-  --badge-warning-border: rgba(255, 159, 10, 0.25);
-  --badge-warning-text: #FF9F0A;
-  --badge-error-bg: rgba(255, 69, 58, 0.08);
-  --badge-error-border: rgba(255, 69, 58, 0.25);
-  --badge-error-text: #FF453A;
-  --badge-info-bg: rgba(255, 255, 255, 0.05);
-  --badge-info-border: rgba(255, 255, 255, 0.15);
-  --badge-info-text: #F2F2F7;
-  --badge-pending-bg: rgba(142, 142, 147, 0.08);
-  --badge-pending-border: rgba(142, 142, 147, 0.25);
-  --badge-pending-text: #8E8E93;
+  --badge-success-bg: rgba(52, 199, 89, 0.10);
+  --badge-success-border: rgba(52, 199, 89, 0.24);
+  --badge-success-text: #248A3D;
+  --badge-warning-bg: rgba(255, 149, 0, 0.11);
+  --badge-warning-border: rgba(255, 149, 0, 0.25);
+  --badge-warning-text: #B86E00;
+  --badge-error-bg: rgba(255, 59, 48, 0.10);
+  --badge-error-border: rgba(255, 59, 48, 0.24);
+  --badge-error-text: #C5271F;
+  --badge-info-bg: rgba(29, 29, 31, 0.06);
+  --badge-info-border: rgba(29, 29, 31, 0.12);
+  --badge-info-text: #3A3A3C;
+  --badge-pending-bg: rgba(110, 115, 122, 0.09);
+  --badge-pending-border: rgba(110, 115, 122, 0.20);
+  --badge-pending-text: #69707A;
 
   /* ---------------------------------------------------- */
   /* 💎 1. 接管 Element Plus 的核心色彩 (去油第一步：统一色调) */
@@ -318,7 +325,7 @@ a:hover {
   background: var(--accent);
   color: var(--text-on-accent);
   transform: translateY(-140%);
-  transition: transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .skip-link:focus {
@@ -369,7 +376,7 @@ a:hover {
   letter-spacing: 0;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: var(--transition-pro);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .badge-success { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg); color: var(--badge-success-text); border: 1px solid var(--badge-success-border); }
 .badge-warning { background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg); color: var(--badge-warning-text); border: 1px solid var(--badge-warning-border); }
@@ -390,7 +397,7 @@ a:hover {
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--glass-control-border);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   outline: none;
   letter-spacing: 0;
 }
@@ -584,12 +591,7 @@ a:hover {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition:
-    transform var(--motion-fast),
-    color var(--motion-fast),
-    border-color var(--motion-fast),
-    background var(--motion-fast),
-    box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .glass-select__button:hover,
@@ -661,7 +663,7 @@ a:hover {
   height: 13px;
   color: var(--text-muted);
   flex: 0 0 auto;
-  transition: transform var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .glass-select.is-open .glass-select__chevron {
@@ -706,7 +708,7 @@ a:hover {
   letter-spacing: 0;
   text-align: left;
   cursor: pointer;
-  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .glass-select__option:hover,
@@ -747,11 +749,11 @@ a:hover {
 }
 
 .glass-select-menu-enter-active {
-  transition: opacity var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .glass-select-menu-leave-active {
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .glass-select-menu-enter-from,
@@ -793,11 +795,11 @@ a:hover {
   box-shadow: var(--glass-surface-shadow);
   backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-color 0.3s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   overflow: hidden;
 }
 .av-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--border-light);
   box-shadow: var(--shadow-hover);
 }
@@ -902,8 +904,8 @@ a:hover {
 }
 
 @keyframes apple-content-reveal {
-  from { opacity: 0; transform: translateY(6px); filter: blur(6px); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes apple-skeleton-shimmer {
@@ -914,7 +916,7 @@ a:hover {
 .apple-skeleton-block {
   background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
   background-size: 200% 100%;
-  animation: apple-skeleton-shimmer 1.4s ease-in-out infinite;
+  animation: apple-skeleton-shimmer calc(var(--motion-emphasized) * 3.3) var(--ease-pro) infinite;
 }
 
 /* ===== Progress Bar ===== */
@@ -932,7 +934,7 @@ a:hover {
   border-radius: 4px;
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.4s ease;
+  transition: transform var(--motion-emphasized);
   will-change: transform;
 }
 
@@ -947,7 +949,7 @@ a:hover {
   border-radius: var(--radius-md) !important;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
-  transition: var(--transition-pro) !important;
+  transition: transform var(--motion-standard), opacity var(--motion-fast) !important;
 }
 
 .el-input__wrapper:hover, .input:hover {
@@ -1004,33 +1006,65 @@ a:hover {
 
 @media (prefers-reduced-motion: no-preference) {
   .edit-mode .settings-card {
-    animation: jiggle 0.3s infinite ease-in-out;
+    animation: jiggle var(--motion-standard) infinite var(--ease-pro);
   }
   .edit-mode .settings-card:nth-child(even) {
-    animation-duration: 0.27s;
+    animation-duration: var(--motion-standard);
     animation-direction: reverse;
   }
 }
 
 @media (max-width: 768px) {
   :root {
-    --page-gutter: 16px;
-    --page-gutter-compact: 16px;
+    --page-gutter: clamp(12px, 4vw, 16px);
+    --page-gutter-compact: clamp(12px, 4vw, 16px);
     --page-top-space: 20px;
-    --page-bottom-space: calc(40px + 70px + env(safe-area-inset-bottom, 0px));
-    --video-grid-min-mobile: clamp(136px, 40vw, 172px);
-    --video-grid-gap-mobile: clamp(10px, 3vw, 14px);
+    --page-bottom-space: calc(36px + 74px + env(safe-area-inset-bottom, 0px));
+    --touch-target: 44px !important;
+    --video-grid-min-mobile: clamp(126px, 42vw, 168px);
+    --video-grid-gap-mobile: clamp(9px, 2.8vw, 13px);
     --video-card-radius-mobile: 18px;
-    --video-card-body-padding-mobile: 10px 10px 12px;
+    --video-card-body-padding-mobile: 9px 10px 11px;
     --compact-toolbar-height: 44px;
   }
 
-  .page-shell {
+  html,
+  body,
+  #app {
+    overflow-x: clip;
+  }
+
+  .page-shell,
+  .page-rail {
+    max-width: 100%;
     width: min(var(--page-max), calc(100% - var(--page-gutter) - var(--page-gutter)));
   }
 
   .page-bleed {
-    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    overflow-x: clip;
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .btn,
+  .btn-mini,
+  .el-button,
+  .glass-select__button,
+  .input {
+    min-height: var(--touch-target);
+  }
+
+  .btn-sm,
+  .btn-mini,
+  .segmented-control button,
+  .tab-btn,
+  .segment-item {
+    min-height: 40px;
+  }
+
+  .results-grid {
+    grid-template-columns: repeat(auto-fit, minmax(var(--video-grid-min-mobile), 1fr));
+    gap: var(--video-grid-gap-mobile) !important;
+    padding-inline: 0;
   }
 }
 
@@ -1044,17 +1078,17 @@ a:hover {
   border-radius: 50% 0 0 0;
 }
 
-.fade-enter-active { animation: fadeIn 0.3s ease; }
-.fade-leave-active { animation: fadeIn 0.2s ease reverse; }
-.slide-up-enter-active { animation: slideUp 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
-.slide-up-leave-active { animation: slideUp 0.25s ease reverse; }
+.fade-enter-active { animation: fadeIn var(--motion-standard); }
+.fade-leave-active { animation: fadeIn var(--motion-fast) reverse; }
+.slide-up-enter-active { animation: slideUp var(--motion-emphasized); }
+.slide-up-leave-active { animation: slideUp var(--motion-standard) reverse; }
 
 /* ===== Page Transition ===== */
 .page-enter-active {
-  animation: pageIn 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pageIn var(--motion-reveal);
 }
 .page-leave-active {
-  animation: pageOut 0.2s cubic-bezier(0.4, 0, 1, 1);
+  animation: pageOut var(--motion-fast);
 }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -1072,7 +1106,7 @@ a:hover {
   border: 2px solid var(--border-light);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin calc(var(--motion-standard) * 3) linear infinite;
 }
 
 /* ===== Empty State ===== */
@@ -1119,7 +1153,7 @@ a:hover {
   border-radius: var(--radius-md) !important;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)) !important;
-  transition: var(--transition-pro) !important;
+  transition: transform var(--motion-standard), opacity var(--motion-fast) !important;
 }
 
 .el-input__wrapper:hover, .el-textarea__inner:hover, .el-select:hover .el-input__wrapper {

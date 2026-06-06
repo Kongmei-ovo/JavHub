@@ -82,11 +82,11 @@ const handleImgError = (e) => {
   cursor: pointer;
   color: var(--text-primary);
   outline: none;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard);
 }
 
 .actress-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-2px);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
@@ -127,18 +127,18 @@ const handleImgError = (e) => {
 }
 
 .actress-card:hover .cover-img {
-  transform: scale(1.06);
+  transform: scale(1.03);
 }
 
 .actress-card:focus-visible .cover-img {
-  transform: scale(1.06);
+  transform: scale(1.03);
 }
 
 .cover-fade {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 50%;
-  background: linear-gradient(to top, var(--surface-scrim) 0%, rgba(var(--accent-rgb), 0.18) 48%, transparent 100%);
+  background: linear-gradient(to top, var(--surface-scrim) 0%, color-mix(in srgb, var(--accent) 18%, transparent) 48%, transparent 100%);
   pointer-events: none;
 }
 

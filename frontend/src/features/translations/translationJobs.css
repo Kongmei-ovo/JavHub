@@ -87,7 +87,7 @@
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -375,7 +375,7 @@
   box-shadow: var(--glass-active-shadow);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.28s ease;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   will-change: transform;
 }
 
@@ -615,7 +615,7 @@
   cursor: pointer;
   text-align: left;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -738,7 +738,7 @@
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .input:focus {
@@ -786,7 +786,7 @@
     var(--material-glass-control);
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -1053,7 +1053,7 @@
 
   .segmented-control button {
     min-width: 88px;
-    min-height: 38px;
+    min-height: 40px;
   }
 
   .overview-grid,

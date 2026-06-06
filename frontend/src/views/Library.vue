@@ -81,7 +81,7 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .check-form input:focus {
   border-color: var(--glass-active-border);
@@ -102,7 +102,7 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .check-form button:hover:not(:disabled) {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);

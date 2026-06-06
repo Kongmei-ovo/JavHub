@@ -94,7 +94,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .vp-close:hover {
   background: var(--vp-control-bg-hover);
@@ -126,7 +126,7 @@ export default {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: background var(--motion-standard), color var(--motion-fast), transform var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .vp-speed-btn:hover {
   background: var(--vp-control-bg-hover);

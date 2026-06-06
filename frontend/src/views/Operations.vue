@@ -11,11 +11,13 @@
           v-for="metric in statusMetrics"
           :key="metric.key"
           class="hero-stat"
+          :class="{ urgent: metric.urgent }"
           type="button"
           @click="openStatusMetric(metric.key)"
         >
           <strong>{{ metric.value }}</strong>
           <span>{{ metric.label }}</span>
+          <small>{{ metric.hint }}</small>
         </button>
       </div>
       <div class="header-actions">
@@ -26,11 +28,13 @@
       </div>
     </header>
 
-    <div v-if="loading && !overview" class="loading-panel">加载中...</div>
-    <div v-else-if="error" class="empty-panel">
-      <h2>总览加载失败</h2>
-      <p>{{ error }}</p>
-      <button class="btn btn-primary" type="button" @click="loadOverview">重试</button>
+    <div v-if="loading && !overview" class="console-state-shell operations-state-shell">
+      <div class="state-ledger" aria-label="运营加载范围"><span>overview</span><span>cache</span><span>health</span></div>
+      <AppleSkeleton class="loading-panel console-state" variant="list" :items="5" label="运营总览加载中" />
+    </div>
+    <div v-else-if="error" class="console-state-shell operations-state-shell">
+      <div class="state-ledger" aria-label="运营错误范围"><span>overview</span><span>cache</span><span>health</span></div>
+      <AppleErrorState class="empty-panel console-state" title="总览加载失败" :description="error" next-step="重新加载会刷新运营总览、缓存统计和健康检查。" retry-label="重试" secondary-action-label="查看日志" source-label="Operations API" details="overview · cache · health" @retry="loadOverview" @secondary-action="goLogs" />
     </div>
 
     <template v-else-if="overview">
@@ -113,6 +117,29 @@
                 <small v-if="!topMissingActors.length" class="empty-line">暂无缺口记录</small>
               </div>
             </div>
+
+            <div class="list-block data-quality-block">
+              <div class="block-head">
+                <h3>数据质量优先级</h3>
+                <span>{{ dataQualitySummary }}</span>
+              </div>
+              <div class="compact-list">
+                <div v-for="issue in topDataQualityIssues" :key="issue.id" class="compact-row" role="button" tabindex="0" @click="openDataQualityIssue(issue)" @keydown.enter.prevent="openDataQualityIssue(issue)" @keydown.space.prevent="openDataQualityIssue(issue)">
+                  <span>{{ issue.title }}</span>
+                  <strong>{{ issue.score }}</strong>
+                  <small>{{ issue.summary }}</small>
+                  <div v-if="issueRepairMetaItems(issue).length" class="quality-progress-meta">
+                    <template v-for="(item, index) in issueRepairMetaItems(issue)" :key="item"><span v-if="index > 0" class="quality-progress-separator" aria-hidden="true"> · </span><span class="quality-progress">{{ item }}</span></template>
+                  </div>
+                  <div v-if="issue.repair_progress?.action?.route || issue.repair_progress?.reason_action?.route || issueRepairProviderActions(issue).length" class="quality-progress-actions">
+                    <button v-if="issue.repair_progress?.action?.route" class="quality-progress-action" type="button" @click="openDataQualityProgress(issue, $event)">{{ issue.repair_progress.action.label }}</button>
+                    <button v-if="issue.repair_progress?.reason_action?.route" class="quality-progress-action" type="button" @click="openDataQualityReason(issue, $event)">{{ issue.repair_progress.reason_action.label }}</button>
+                    <button v-for="action in issueRepairProviderActions(issue)" :key="action.route || action.provider" class="quality-progress-action" type="button" @click="openDataQualityProvider(action, $event)">{{ action.label }}</button>
+                  </div>
+                </div>
+                <small v-if="!topDataQualityIssues.length" class="empty-line">暂无高优先级问题</small>
+              </div>
+            </div>
           </div>
         </article>
 
@@ -186,39 +213,18 @@
               </div>
             </div>
             <div class="health-grid">
-              <div class="state-item" :class="{ warning: !health?.config?.loaded }">
-                <span>配置已加载</span>
-                <strong>{{ health?.config?.loaded ? '是' : '否' }}</strong>
-              </div>
-              <div class="state-item" :class="{ warning: health?.database && !health.database.connectable }">
-                <span>数据库</span>
-                <strong>{{ healthDatabaseSummary }}</strong>
-              </div>
-              <div class="state-item" :class="{ warning: health?.javinfo && (!health.javinfo.api_url_configured || health.javinfo.legacy) }">
-                <span>JavInfo</span>
-                <strong>{{ healthJavInfoSummary }}</strong>
-              </div>
-              <div class="state-item" :class="{ warning: !!health?.cache?.error }">
-                <span>缓存</span>
-                <strong>{{ healthCacheSummary }}</strong>
-              </div>
-              <div class="state-item" :class="{ warning: health?.downloaders && !health.downloaders.default_available }">
-                <span>默认下载器</span>
-                <strong>{{ healthDownloaderSummary }}</strong>
-              </div>
+              <div class="state-item" :class="{ warning: !health?.config?.loaded }"><span>配置已加载</span><strong>{{ health?.config?.loaded ? '是' : '否' }}</strong></div>
+              <div class="state-item" :class="{ warning: health?.database && !health.database.connectable }"><span>数据库</span><strong>{{ healthDatabaseSummary }}</strong></div>
+              <div class="state-item" :class="{ warning: health?.javinfo && (!health.javinfo.api_url_configured || health.javinfo.legacy) }"><span>JavInfo</span><strong>{{ healthJavInfoSummary }}</strong></div>
+              <div class="state-item" :class="{ warning: !!health?.cache?.error }"><span>缓存</span><strong>{{ healthCacheSummary }}</strong></div>
+              <div class="state-item" :class="{ warning: health?.downloaders && !health.downloaders.default_available }"><span>默认下载器</span><strong>{{ healthDownloaderSummary }}</strong></div>
               <div class="state-item" :class="{ warning: health?.sources && (!health.sources.available || health.sources.latest_attempt_error) }">
                 <span>磁力源</span>
                 <strong>{{ healthSourceSummary }}</strong>
                 <small v-if="healthSourceAttemptSummary">{{ healthSourceAttemptSummary }}</small>
               </div>
-              <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }">
-                <span>调度有效性</span>
-                <strong>{{ healthSchedulerSummary }}</strong>
-              </div>
-              <div class="state-item" :class="{ warning: health?.javinfo?.legacy || health?.javinfo?.error }">
-                <span>JavInfo 地址</span>
-                <strong>{{ healthJavInfoUrlSummary }}</strong>
-              </div>
+              <div class="state-item" :class="{ warning: health?.scheduler && !health.scheduler.effective_enabled }"><span>调度有效性</span><strong>{{ healthSchedulerSummary }}</strong></div>
+              <div class="state-item" :class="{ warning: health?.javinfo?.legacy || health?.javinfo?.error }"><span>JavInfo 地址</span><strong>{{ healthJavInfoUrlSummary }}</strong></div>
             </div>
           </article>
 
@@ -231,30 +237,15 @@
               <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">策略设置</button>
             </div>
             <div class="state-grid">
-              <button class="state-item" type="button" @click="$router.push('/settings')">
-                <span>当前策略</span>
-                <strong>{{ policyLabel(overview.automation?.download_policy) }}</strong>
-              </button>
-              <div class="state-item">
-                <span>自动处理间隔</span>
-                <strong>{{ overview.automation?.auto_process_interval_minutes || 0 }} 分钟</strong>
-              </div>
-              <div class="state-item">
-                <span>调度</span>
-                <strong>{{ scheduleStatusLabel }}</strong>
-              </div>
-              <div class="state-item">
-                <span>下一次</span>
-                <strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong>
-              </div>
+              <button class="state-item" type="button" @click="$router.push('/settings')"><span>当前策略</span><strong>{{ policyLabel(overview.automation?.download_policy) }}</strong></button>
+              <div class="state-item"><span>自动处理间隔</span><strong>{{ overview.automation?.auto_process_interval_minutes || 0 }} 分钟</strong></div>
+              <div class="state-item"><span>调度</span><strong>{{ scheduleStatusLabel }}</strong></div>
+              <div class="state-item"><span>下一次</span><strong>{{ formatTime(candidateSchedule.next_run_time) || '未计划' }}</strong></div>
               <button class="state-item" type="button" @click="goLibraryOrganize('mapping')">
                 <span>自动匹配</span>
                 <strong>{{ overview.mapping?.auto_match?.auto_match_after_collect ? '采集后自动匹配' : '手动匹配' }}</strong>
               </button>
-              <div class="state-item">
-                <span>确认策略</span>
-                <strong>保守唯一</strong>
-              </div>
+              <div class="state-item"><span>确认策略</span><strong>保守唯一</strong></div>
               <div class="state-item">
                 <span>番号索引</span>
                 <strong>{{ variantIndexSummary }}</strong>
@@ -404,15 +395,24 @@
         </article>
       </section>
     </template>
+
+    <div v-else class="console-state-shell operations-state-shell">
+      <div class="state-ledger" aria-label="运营空状态范围"><span>overview</span><span>empty</span><span>manual</span></div>
+      <AppleEmptyState class="empty-panel console-state" title="暂无运营总览" description="后端还没有返回可展示的运营状态。" next-step="可以刷新总览，或先去策略设置确认初始化配置。" action-label="刷新" secondary-action-label="策略设置" density="compact" @action="loadOverview" @secondary-action="goSettings" />
+    </div>
   </div>
 </template>
 
 <script>
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 export default {
   name: 'Operations',
+  components: { AppleSkeleton, AppleEmptyState, AppleErrorState },
   data() {
     return {
       overview: null,
@@ -484,6 +484,13 @@ export default {
           value: missing.total || 0,
           hint: '片库整理',
           urgent: (missing.total || 0) > 0,
+        },
+        {
+          key: 'data_quality',
+          label: '数据质量',
+          value: this.overview?.data_quality?.summary?.total_issues || 0,
+          hint: '优先修复',
+          urgent: (this.overview?.data_quality?.summary?.high || 0) > 0 || (this.overview?.data_quality?.summary?.critical || 0) > 0,
         },
         {
           key: 'mapping',
@@ -640,6 +647,14 @@ export default {
     },
     topMissingActors() {
       return (this.overview?.missing?.top_actresses || []).slice(0, 6)
+    },
+    topDataQualityIssues() { return (this.overview?.data_quality?.issues || []).slice(0, 4) },
+    dataQualitySummary() {
+      const summary = this.overview?.data_quality?.summary || {}
+      const total = Number(summary.total_issues || 0)
+      const high = Number(summary.high || 0) + Number(summary.critical || 0)
+      if (!total) return '暂无问题'
+      return `${total} 项 · 高优先 ${high}`
     },
   },
   mounted() {
@@ -814,10 +829,59 @@ export default {
         ready: () => this.goCandidates({ status: 'candidate', needs_magnet: false }),
         needs_magnet: () => this.goCandidates({ status: 'candidate', needs_magnet: true }),
         missing: () => this.goLibraryOrganize('inventory'),
+        data_quality: () => this.openDataQualityIssue(this.topDataQualityIssues[0] || {}),
         mapping: () => this.goLibraryOrganize('mapping'),
         supplement_failed: () => this.$router.push('/supplement'),
       }
       actions[key]?.()
+    },
+    openDataQualityIssue(issue) {
+      const route = issue?.action?.route
+      if (!route) {
+        this.setActiveSegment('diagnostics')
+        return
+      }
+      const [path, queryString = ''] = String(route).split('?')
+      const query = Object.fromEntries(new URLSearchParams(queryString))
+      if (issue?.type === 'low_quality_cover' && path === '/supplement' && !query.quality) {
+        Object.assign(query, { tab: 'movies', quality: 'missing_cover' })
+      }
+      this.$router.push({ path, query })
+    },
+    openDataQualityProgress(issue, event) {
+      event?.stopPropagation?.()
+      this.openDataQualityRoute(issue?.repair_progress?.action?.route)
+    },
+    openDataQualityReason(issue, event) {
+      event?.stopPropagation?.()
+      this.openDataQualityRoute(issue?.repair_progress?.reason_action?.route)
+    },
+    openDataQualityProvider(action, event) {
+      event?.stopPropagation?.()
+      this.openDataQualityRoute(action?.route)
+    },
+    openDataQualityRoute(route) {
+      if (!route) return
+      const [path, queryString = ''] = String(route).split('?')
+      const query = Object.fromEntries(new URLSearchParams(queryString))
+      this.$router.push({ path, query })
+    },
+    issueRepairProgressLabel(issue) {
+      return issue?.repair_progress?.label || ''
+    },
+    issueRepairReasonLabel(issue) {
+      return issue?.repair_progress?.reason_label || ''
+    },
+    issueRepairProviderLabel(issue) {
+      return issue?.repair_progress?.provider_label || ''
+    },
+    issueRepairMetaItems(issue) {
+      return [issue?.priority_reason, this.issueRepairProgressLabel(issue), this.issueRepairReasonLabel(issue), this.issueRepairProviderLabel(issue)].filter(Boolean)
+    },
+    issueRepairProviderActions(issue) {
+      return Array.isArray(issue?.repair_progress?.provider_actions)
+        ? issue.repair_progress.provider_actions.filter(action => action?.route)
+        : []
     },
     formatTime(value) {
       if (!value) return ''

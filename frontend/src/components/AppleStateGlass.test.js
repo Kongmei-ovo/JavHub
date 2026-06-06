@@ -17,8 +17,8 @@ function assertGlassAction(block, name) {
   assert.match(block, /border:\s*1px solid var\(--apple-state-action-border\)/, `${name} should use active glass border`)
   assert.match(block, /box-shadow:\s*var\(--apple-state-action-shadow\)/, `${name} should use active glass shadow`)
   assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-  assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use explicit motion tokens`)
-  assert.doesNotMatch(block, /background:\s*var\(--accent\)|border:\s*1px solid transparent|color:\s*var\(--text-on-accent\)|transition:\s*transform var\(--motion-fast\),\s*background var\(--motion-fast\)/, `${name} should not keep the legacy solid accent button`)
+  assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use composited motion tokens`)
+  assert.doesNotMatch(block, /background:\s*var\(--accent\)|border:\s*1px solid transparent|color:\s*var\(--text-on-accent\)|transition:[^;]*(?:background|border-color|box-shadow|color|filter|backdrop-filter)/, `${name} should not keep the legacy solid accent button or paint-heavy transitions`)
 }
 
 function assertGlassActionHover(block, name) {
@@ -34,8 +34,8 @@ test('Apple empty and error states use shared glass actions', () => {
   const emptyActionBlock = sourceBlock(emptySource, '.empty-action')
   const emptyActionHoverBlock = sourceBlock(emptySource, '.empty-action:hover')
   const errorRootBlock = sourceBlock(errorSource, '.apple-error-state')
-  const errorButtonBlock = sourceBlock(errorSource, 'button')
-  const errorButtonHoverBlock = sourceBlock(errorSource, 'button:hover')
+  const errorButtonBlock = sourceBlock(errorSource, '.error-action')
+  const errorButtonHoverBlock = sourceBlock(errorSource, '.error-action:hover')
 
   for (const [source, name] of [[emptySource, 'empty state'], [errorSource, 'error state']]) {
     assert.match(source, /--apple-state-action-bg:\s*var\(--glass-active-material\)/, `${name} should define active action material`)
@@ -55,4 +55,24 @@ test('Apple empty and error states use shared glass actions', () => {
   assertGlassActionHover(emptyActionHoverBlock, 'empty action')
   assertGlassAction(errorButtonBlock, 'error retry button')
   assertGlassActionHover(errorButtonHoverBlock, 'error retry button')
+})
+
+test('AppleEmptyState exposes a complete action area for next steps', () => {
+  assert.match(emptySource, /:class="\['apple-empty-state apple-surface', `apple-empty-state--\$\{density\}`\]"/)
+  assert.match(emptySource, /<div v-if="hasActions" class="apple-state-actions"/)
+  assert.match(emptySource, /<button v-if="actionLabel" class="empty-action empty-action--primary"/)
+  assert.match(emptySource, /<button v-if="secondaryActionLabel" class="empty-action empty-action--secondary"/)
+  assert.match(emptySource, /<slot name="actions"/)
+  assert.match(emptySource, /defineEmits\(\['action', 'secondary-action'\]\)/)
+})
+
+test('AppleErrorState uses alert semantics and offers primary plus secondary recovery actions', () => {
+  assert.match(errorSource, /role="alert"/)
+  assert.match(errorSource, /aria-live="assertive"/)
+  assert.match(errorSource, /<div class="error-mark" aria-hidden="true"/)
+  assert.match(errorSource, /<div v-if="hasActions" class="apple-state-actions"/)
+  assert.match(errorSource, /<button v-if="retryLabel" class="error-action error-action--primary"/)
+  assert.match(errorSource, /<button v-if="secondaryActionLabel" class="error-action error-action--secondary"/)
+  assert.match(errorSource, /<slot name="actions"/)
+  assert.match(errorSource, /defineEmits\(\['retry', 'secondary-action'\]\)/)
 })

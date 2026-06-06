@@ -33,7 +33,7 @@ export default {
   emits: ['open'],
   methods: {
     formatGalleryUrl(path) {
-      return galleryFullUrl(path) || galleryThumbUrl(path) || null
+      return galleryThumbUrl(path) || galleryFullUrl(path) || null
     },
     onGalleryError(e) {
       e.target.style.display = 'none'
@@ -57,7 +57,7 @@ export default {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   cursor: pointer;
   border: 1px solid var(--glass-control-border);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -76,9 +76,9 @@ export default {
   box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .gallery-item:active { transform: translateY(0) scale(0.99); }
-.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--motion-standard), filter var(--motion-standard), opacity var(--motion-fast); }
-.gallery-item:hover img { filter: saturate(1.08); transform: scale(1.015); }
-.gallery-item:focus-visible img { filter: saturate(1.08); transform: scale(1.015); }
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--motion-standard), opacity var(--motion-fast); }
+.gallery-item:hover img { transform: scale(1.015); }
+.gallery-item:focus-visible img { transform: scale(1.015); }
 .skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); cursor: default; pointer-events: none; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }

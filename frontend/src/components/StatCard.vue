@@ -36,11 +36,11 @@ const handleClick = () => {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .stat-card:hover {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
 }
@@ -68,7 +68,7 @@ const handleClick = () => {
 .stat-arrow {
   color: var(--text-muted);
   font-size: 20px;
-  transition: color var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .stat-card:hover .stat-arrow {
   color: var(--text-primary);

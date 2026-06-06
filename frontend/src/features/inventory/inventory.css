@@ -21,7 +21,7 @@
 }
 .progress-ring { position: absolute; top: 0; left: 0; }
 .progress-ring-fill {
-  transition: stroke-dashoffset 0.3s ease;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .progress-text {
   position: relative;
@@ -60,7 +60,7 @@
   text-decoration: underline;
   text-decoration-color: var(--link-underline);
   text-underline-offset: 3px;
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -116,7 +116,7 @@
   flex: 1;
   max-width: 320px;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -155,7 +155,7 @@
   font-size: 18px;
   padding: 0 4px;
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .search-clear:hover {
   border-color: var(--glass-control-border-hover);
@@ -238,7 +238,7 @@
   overflow: hidden;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -248,7 +248,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--glass-control-shadow-hover);
 }
 .actor-card:focus-visible {
@@ -258,7 +258,7 @@
     var(--surface-noise),
     var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
 .actor-cover {
@@ -276,7 +276,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .actor-card:hover .actor-cover img {
 }
@@ -380,7 +380,7 @@
   cursor: pointer;
   font-size: 13px;
   box-shadow: var(--glass-control-shadow);
-  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.2s;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .page-btn:hover:not(:disabled) {
   border-color: var(--glass-control-border-hover);
@@ -430,7 +430,7 @@
     var(--material-glass-control);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .jump-input:focus {
   border-color: var(--glass-control-border-hover);
@@ -457,7 +457,7 @@
   cursor: pointer;
   font-size: 12px;
   box-shadow: var(--glass-control-shadow);
-  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.2s;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .jump-btn:hover {
   border-color: var(--glass-control-border-hover);
@@ -531,7 +531,7 @@
     var(--material-glass-control);
   border: 1px solid var(--glass-control-border); border-radius: 50%; font-size: 24px; cursor: pointer; color: var(--text-muted);
   box-shadow: var(--glass-control-shadow);
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .close-btn:hover {
   border-color: var(--glass-control-border-hover);

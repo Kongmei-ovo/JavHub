@@ -96,7 +96,7 @@ defineEmits(['close', 'organize'])
   box-shadow: var(--toast-action-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .toast-action:hover {
@@ -132,7 +132,7 @@ defineEmits(['close', 'organize'])
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform var(--motion-standard), background var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   box-shadow: var(--toast-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -155,7 +155,7 @@ defineEmits(['close', 'organize'])
 }
 
 .toast-close:active {
-  transform: translateY(0) scale(0.94);
+  transform: translateY(0) scale(0.97);
 }
 
 /* Animations */
@@ -167,10 +167,17 @@ defineEmits(['close', 'organize'])
 }
 .toast-slide-enter-from {
   opacity: 0;
-  transform: translate(-50%, 40px) scale(0.9);
+  transform: translate(-50%, 20px) scale(0.97);
 }
 .toast-slide-leave-to {
   opacity: 0;
-  transform: translate(-50%, 20px) scale(0.95);
+  transform: translate(-50%, 16px) scale(0.97);
+}
+
+@media (max-width: 768px) {
+  .toast-close {
+    width: 40px;
+    height: 40px;
+  }
 }
 </style>

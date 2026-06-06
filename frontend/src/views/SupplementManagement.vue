@@ -5,99 +5,90 @@
         <h1>补全演员</h1>
       </div>
       <div class="topbar-actions">
-        <button
-          v-if="actorContext"
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="clearActorContext"
-        >更换演员</button>
-        <button
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="openSourceHealth"
-        >来源状态</button>
-        <button
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="openGlobalQueue"
-        >全局队列</button>
+        <button v-if="actorContext" class="btn btn-ghost btn-sm" type="button" @click="clearActorContext">更换演员</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="openSourceHealth">来源状态</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="openGlobalQueue">全局队列</button>
       </div>
     </header>
-
-    <ActorPickerView
-      v-if="showActorPicker"
-      v-model:keyword="actorSearchKeyword"
-      :actors="actorChoiceCards"
-      :searched="actorSearched"
-      :searching="actorSearching"
-      :error="actorPickerLoadFailed()"
-      :actor-avatar="actorAvatar"
-      :actor-display-name="actorDisplayName"
-      :actor-choice-status="actorChoiceStatus"
-      @search="searchActorContext"
-      @clear-search="clearActorSearch"
-      @select="selectActorContext"
-      @retry="loadRecentActorJobs"
-    />
-
+    <ActorPickerView v-if="showActorPicker" v-model:keyword="actorSearchKeyword" :actors="actorChoiceCards" :searched="actorSearched" :searching="actorSearching" :error="actorPickerLoadFailed()" :actor-avatar="actorAvatar" :actor-display-name="actorDisplayName" :actor-choice-status="actorChoiceStatus" @search="searchActorContext" @clear-search="clearActorSearch" @select="selectActorContext" @retry="loadRecentActorJobs" />
     <section v-else-if="actorContext" class="workspace-view">
       <div class="actor-workspace-hero apple-surface">
         <div class="actor-context-card">
           <div class="workspace-identity">
-          <div class="workspace-avatar">
-            <img
-              v-if="actorContextAvatar"
-              :src="actorContextAvatar"
-              :alt="actorContextName"
-              loading="eager"
-              decoding="async"
-              @error="handleWorkspaceAvatarError"
-            />
-            <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
+            <div class="workspace-avatar">
+              <img
+                v-if="actorContextAvatar"
+                :src="actorContextAvatar"
+                :alt="actorContextName"
+                loading="eager"
+                decoding="async"
+                @error="handleWorkspaceAvatarError"
+              />
+              <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
+            </div>
+            <div class="workspace-title">
+              <h2>{{ actorContextName }}</h2>
+              <p>编号 {{ actorContext.id }}</p>
+            </div>
           </div>
-          <div class="workspace-title">
-            <h2>{{ actorContextName }}</h2>
-            <p>编号 {{ actorContext.id }}</p>
-          </div>
-        </div>
         </div>
         <div class="workspace-status">
-          <span
-            class="status-pill"
-            :class="`status-${supplementStatus?.last_job?.status || 'idle'}`"
-          >{{ statusLabel(supplementStatus?.last_job?.status) }}</span>
+          <span class="status-pill" :class="`status-${supplementStatus?.last_job?.status || 'idle'}`">{{ statusLabel(supplementStatus?.last_job?.status) }}</span>
           <div class="workspace-actions">
-            <button
-              class="btn btn-primary btn-sm"
-              type="button"
-              :disabled="isSupplementRunning"
-              @click="startSupplement"
-            >{{ isSupplementRunning ? '补全中...' : '补全作品' }}</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="refreshResolved">刷新可展示</button>
+            <button class="btn btn-primary btn-sm" type="button" :disabled="isSupplementRunning" @click="startSupplement">{{ isSupplementRunning ? '补全中...' : '补全作品' }}</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="refreshResolved">刷新版本条目</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="goActorContext">返回演员页</button>
           </div>
         </div>
       </div>
-
+      <div class="workspace-command-strip" :class="`tone-${workspaceRepairTone}`">
+        <div class="command-strip-primary">
+          <span class="status-pill" :class="`status-${supplementStatus?.last_job?.status || 'idle'}`">
+            {{ workspaceRepairSummary }}
+          </span>
+          <div>
+            <strong>修复台状态</strong>
+            <p>按字段缺口、匹配候选和任务队列安排下一步动作。</p>
+          </div>
+        </div>
+        <div class="task-state-track" aria-label="补全任务状态">
+          <span class="task-state-dot" :class="{ active: isSupplementRunning, failed: isSupplementFailed }"></span>
+          <span>{{ statusLabel(supplementStatus?.last_job?.status) }}</span>
+          <small v-if="supplementStatus?.last_job?.id">任务 #{{ supplementStatus.last_job.id }}</small>
+          <small v-else>暂无运行任务</small>
+        </div>
+        <div class="workspace-repair-actions" aria-label="修复台下一步动作">
+          <button v-for="action in workspaceRepairActions" :key="action.key" type="button" class="workspace-repair-action" :class="workspaceRepairActionClass(action)" @click="runWorkspaceRepairAction(action)">
+            <span class="repair-action-value">{{ action.value }}</span>
+            <span class="repair-action-label">{{ action.label }}</span>
+            <span class="repair-action-hint">{{ action.hint }}</span>
+          </button>
+        </div>
+        <div v-if="workspaceTaskDetails.length" class="task-state-detail-grid" aria-label="补全任务详情">
+          <span v-for="detail in workspaceTaskDetails" :key="detail.label" class="task-state-detail">
+            <b>{{ detail.label }}</b>
+            <em>{{ detail.value }}</em>
+          </span>
+        </div>
+      </div>
       <div class="workspace-metrics">
         <div class="metric-card apple-surface">
           <span>{{ supplementStatus?.supplement_movies ?? '—' }}</span>
-          <p>补全影片</p>
+          <p>补全来源</p>
         </div>
         <div class="metric-card apple-surface">
           <span>{{ supplementStatus?.matched_r18 ?? '—' }}</span>
-          <p>已匹配</p>
+          <p>已匹配片库</p>
         </div>
         <div class="metric-card apple-surface">
           <span>{{ supplementStatus?.supplement_only ?? '—' }}</span>
-          <p>仅补全</p>
+          <p>补全新增</p>
         </div>
         <div class="metric-card apple-surface">
           <span>{{ supplementStatus?.resolved_videos ?? '—' }}</span>
-          <p>可展示</p>
+          <p>含版本条目</p>
         </div>
       </div>
-
       <nav class="segmented-control apple-surface" aria-label="补全工作台视图">
         <button
           v-for="segment in workspaceSegments"
@@ -105,186 +96,84 @@
           type="button"
           :class="{ active: activeWorkspaceSegment === segment.key }"
           @click="setWorkspaceSegment(segment.key)"
-        >{{ segment.label }}</button>
+        >
+          <span class="segment-label">{{ segment.label }}</span>
+          <span class="segment-count">{{ workspaceSegmentMeta(segment.key).count }}</span>
+          <span class="segment-status">{{ workspaceSegmentMeta(segment.key).status }}</span>
+        </button>
       </nav>
-
-      <SupplementMoviesPanel
-        v-if="activeWorkspaceSegment === 'movies'"
-        :movie-filters="movieFilters"
-        :match-filter-options="matchFilterOptions"
-        :quality-filter-options="qualityFilterOptions"
-        :movies-loading="moviesLoading"
-        :supplement-movies="supplementMovies"
-        :movies-total-pages="moviesTotalPages"
-        :movie-page="moviePage"
-        :batch-enriching="batchEnriching"
-        :candidate-importing="candidateImporting"
-        :enriching-movies="enrichingMovies"
-        :apply-image-fallback="applyImageFallback"
-        :movie-cover="movieCover"
-        :movie-categories="movieCategories"
-        :movie-match-class="movieMatchClass"
-        :movie-match-label="movieMatchLabel"
-        @apply-filters="applyMovieFilters"
-        @batch-enrich="batchEnrichMovies"
-        @create-candidates="createDownloadCandidates"
-        @enrich="enrichMovie"
-        @open-sources="openMovieSources"
-        @go-page="goMoviePage"
-      />
-
+      <SupplementMoviesPanel v-if="activeWorkspaceSegment === 'movies'" :movie-filters="movieFilters" :match-filter-options="matchFilterOptions" :quality-filter-options="qualityFilterOptions" :movies-loading="moviesLoading" :supplement-movies="supplementMovies" :movies-total-pages="moviesTotalPages" :movie-page="moviePage" :batch-enriching="batchEnriching" :candidate-importing="candidateImporting" :enriching-movies="enrichingMovies" :apply-image-fallback="applyImageFallback" :movie-cover="movieCover" :movie-categories="movieCategories" :movie-match-class="movieMatchClass" :movie-match-label="movieMatchLabel" @apply-filters="applyMovieFilters" @batch-enrich="batchEnrichMovies" @create-candidates="createDownloadCandidates" @enrich="enrichMovie" @open-sources="openMovieSources" @go-page="goMoviePage" @refresh="loadMovies" @clear-filters="clearMovieFilters" />
       <section v-if="activeWorkspaceSegment === 'jobs'" class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
             <h2>任务队列</h2>
           </div>
           <div class="filter-bar compact">
-            <GlassSelect
-              v-model="jobFilters.status"
-              :options="jobStatusOptions"
-              size="compact"
-              aria-label="任务状态筛选"
-              @change="applyJobFilters"
-            />
+            <GlassSelect v-model="jobFilters.status" :options="jobStatusOptions" size="compact" aria-label="任务状态筛选" @change="applyJobFilters" />
             <button class="btn btn-ghost btn-sm" type="button" @click="applyJobFilters">刷新</button>
           </div>
         </div>
-        <JobList
-          :jobs="jobs"
-          :loading="jobsLoading"
-          :actor-context="actorContext"
-          :job-label="jobActorLabel"
-          :status-label="statusLabel"
-          @retry="retryJob"
-          @cancel="cancelJob"
-          @actor="applyJobActorContext"
-        />
+        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="actorContext" :job-label="jobActorLabel" :status-label="statusLabel" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="startSupplement" />
         <div v-if="jobsTotalPages > 1" class="pagination">
           <button class="btn btn-ghost btn-sm" :disabled="jobPage <= 1" @click="jobPage--; loadJobs()">上一页</button>
           <span>{{ jobPage }} / {{ jobsTotalPages }}</span>
           <button class="btn btn-ghost btn-sm" :disabled="jobPage >= jobsTotalPages" @click="jobPage++; loadJobs()">下一页</button>
         </div>
       </section>
-
       <section v-if="activeWorkspaceSegment === 'diagnostics'" class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
             <h2>来源诊断</h2>
           </div>
         </div>
-        <div class="empty-panel inner">
+        <div v-if="sourceDiagnosticsOpen" class="diagnostics-inline-state">
+          <span class="status-pill" :class="sourceDiagnosticsLoading ? 'status-running' : 'status-succeeded'">
+            {{ sourceDiagnosticsLoading ? '读取中' : '已载入' }}
+          </span>
+          <div>
+            <h3>正在查看诊断：{{ diagnosticsMovieTitle }}</h3>
+            <p>{{ diagnosticsMovieSubtitle || '字段来源、匹配候选和人工校正记录已在弹窗中展开。' }}</p>
+          </div>
+        </div>
+        <div v-else class="empty-panel inner">
           <h3>从作品字段打开诊断</h3>
           <p>在作品字段列表中点击“诊断”，可查看该影片的字段来源、源身份、详情来源和匹配候选。</p>
         </div>
       </section>
-
-      <SourceHealthPanel
-        v-if="activeWorkspaceSegment === 'sourceHealth'"
-        v-model:provider-smoke-form="providerSmokeForm"
-        v-model:provider-smoke-report="providerSmokeReport"
-        :provider-source-options="providerSourceOptions"
-        :provider-smoke-loading="providerSmokeLoading"
-        :provider-smoke-runs="providerSmokeRuns"
-        :source-health-loading="sourceHealthLoading"
-        :source-health-rows="sourceHealthRows"
-        :source-action-loading="sourceActionLoading"
-        :gfriends-avatar-job="gfriendsAvatarJob"
-        :gfriends-avatar-syncing="gfriendsAvatarSyncing"
-        :format-action-time="formatActionTime"
-        :smoke-run-label="smokeRunLabel"
-        :source-health-label="sourceHealthLabel"
-        :source-budget-label="sourceBudgetLabel"
-        :source-health-detail="sourceHealthDetail"
-        @refresh-health="loadSourceHealth"
-        @run-smoke="runProviderSmoke"
-        @sync-gfriends-avatars="syncGfriendsAvatars"
-        @view-avatar-jobs="viewGfriendsAvatarJobs"
-        @load-smoke-runs="loadProviderSmokeRuns"
-        @pause-source="pauseSource"
-        @resume-source="resumeSource"
-      />
+      <SourceHealthPanel v-if="activeWorkspaceSegment === 'sourceHealth'" v-model:provider-smoke-form="providerSmokeForm" v-model:provider-smoke-report="providerSmokeReport" :provider-source-options="providerSourceOptions" :provider-smoke-loading="providerSmokeLoading" :provider-smoke-runs="providerSmokeRuns" :source-health-loading="sourceHealthLoading" :source-health-rows="sourceHealthRows" :source-action-loading="sourceActionLoading" :gfriends-avatar-job="gfriendsAvatarJob" :gfriends-avatar-syncing="gfriendsAvatarSyncing" :format-action-time="formatActionTime" :smoke-run-label="smokeRunLabel" :source-health-label="sourceHealthLabel" :source-budget-label="sourceBudgetLabel" :source-health-detail="sourceHealthDetail" @refresh-health="loadSourceHealth" @run-smoke="runProviderSmoke" @sync-gfriends-avatars="syncGfriendsAvatars" @view-avatar-jobs="viewGfriendsAvatarJobs" @load-smoke-runs="loadProviderSmokeRuns" @pause-source="pauseSource" @resume-source="resumeSource" />
     </section>
-
+    <section v-else-if="showGlobalMovieRepair" class="global-movie-repair-view">
+      <SupplementMoviesPanel v-if="activeWorkspaceSegment === 'movies' || showGlobalMovieRepair" :movie-filters="movieFilters" :match-filter-options="matchFilterOptions" :quality-filter-options="qualityFilterOptions" :movies-loading="moviesLoading" :supplement-movies="supplementMovies" :movies-total-pages="moviesTotalPages" :movie-page="moviePage" :batch-enriching="batchEnriching" :candidate-importing="candidateImporting" :enriching-movies="enrichingMovies" :apply-image-fallback="applyImageFallback" :movie-cover="movieCover" :movie-categories="movieCategories" :movie-match-class="movieMatchClass" :movie-match-label="movieMatchLabel" @apply-filters="applyMovieFilters" @batch-enrich="batchEnrichMovies" @create-candidates="createDownloadCandidates" @enrich="enrichMovie" @open-sources="openMovieSources" @go-page="goMoviePage" @refresh="loadMovies" @clear-filters="clearMovieFilters" />
+    </section>
     <section v-else-if="showSourceHealthGlobal" class="global-source-health-view">
-      <SourceHealthPanel
-        v-model:provider-smoke-form="providerSmokeForm"
-        v-model:provider-smoke-report="providerSmokeReport"
-        :provider-source-options="providerSourceOptions"
-        :provider-smoke-loading="providerSmokeLoading"
-        :provider-smoke-runs="providerSmokeRuns"
-        :source-health-loading="sourceHealthLoading"
-        :source-health-rows="sourceHealthRows"
-        :source-action-loading="sourceActionLoading"
-        :gfriends-avatar-job="gfriendsAvatarJob"
-        :gfriends-avatar-syncing="gfriendsAvatarSyncing"
-        :format-action-time="formatActionTime"
-        :smoke-run-label="smokeRunLabel"
-        :source-health-label="sourceHealthLabel"
-        :source-budget-label="sourceBudgetLabel"
-        :source-health-detail="sourceHealthDetail"
-        @refresh-health="loadSourceHealth"
-        @run-smoke="runProviderSmoke"
-        @sync-gfriends-avatars="syncGfriendsAvatars"
-        @view-avatar-jobs="viewGfriendsAvatarJobs"
-        @load-smoke-runs="loadProviderSmokeRuns"
-        @pause-source="pauseSource"
-        @resume-source="resumeSource"
-      />
+      <SourceHealthPanel v-model:provider-smoke-form="providerSmokeForm" v-model:provider-smoke-report="providerSmokeReport" :provider-source-options="providerSourceOptions" :provider-smoke-loading="providerSmokeLoading" :provider-smoke-runs="providerSmokeRuns" :source-health-loading="sourceHealthLoading" :source-health-rows="sourceHealthRows" :source-action-loading="sourceActionLoading" :gfriends-avatar-job="gfriendsAvatarJob" :gfriends-avatar-syncing="gfriendsAvatarSyncing" :format-action-time="formatActionTime" :smoke-run-label="smokeRunLabel" :source-health-label="sourceHealthLabel" :source-budget-label="sourceBudgetLabel" :source-health-detail="sourceHealthDetail" @refresh-health="loadSourceHealth" @run-smoke="runProviderSmoke" @sync-gfriends-avatars="syncGfriendsAvatars" @view-avatar-jobs="viewGfriendsAvatarJobs" @load-smoke-runs="loadProviderSmokeRuns" @pause-source="pauseSource" @resume-source="resumeSource" />
     </section>
-
     <section v-else-if="showGlobalQueue" class="global-queue-view">
       <div class="workspace-panel apple-surface">
         <div class="panel-header">
           <div>
             <h2>全局队列</h2>
-            <p v-if="jobFilters.source" class="panel-subtitle">{{ jobFilters.source }} 任务</p>
+            <p class="panel-subtitle">{{ globalQueueContextLabel }}</p>
           </div>
           <div class="filter-bar compact">
-            <GlassSelect
-              v-model="jobFilters.status"
-              :options="jobStatusOptions"
-              size="compact"
-              aria-label="全局队列状态筛选"
-              @change="loadJobs"
-            />
+            <GlassSelect v-model="jobFilters.status" :options="jobStatusOptions" size="compact" aria-label="全局队列状态筛选" @change="loadJobs" />
             <button class="btn btn-ghost btn-sm" type="button" :disabled="recovering" @click="recoverStale">
               {{ recovering ? '恢复中...' : '恢复卡住任务' }}
             </button>
           </div>
         </div>
-        <JobList
-          :jobs="jobs"
-          :loading="jobsLoading"
-          :actor-context="null"
-          :job-label="jobActorLabel"
-          :status-label="statusLabel"
-          @retry="retryJob"
-          @cancel="cancelJob"
-          @actor="applyJobActorContext"
-        />
+        <div v-if="globalQueueContextItems.length" class="queue-filter-summary" aria-label="全局队列筛选上下文">
+          <span v-for="item in globalQueueContextItems" :key="item.label" class="queue-filter-chip">
+            <b>{{ item.label }}</b>
+            <em>{{ item.value }}</em>
+          </span>
+        </div>
+        <JobList :jobs="jobs" :loading="jobsLoading" :actor-context="null" :job-label="jobActorLabel" :status-label="statusLabel" :context-label="globalQueueContextLabel" @retry="retryJob" @cancel="cancelJob" @actor="applyJobActorContext" @refresh="loadJobs" @start-supplement="clearActorContext" />
       </div>
     </section>
-
-    <SupplementSourceDiagnosticsDialog
-      v-if="sourceDiagnosticsOpen"
-      v-model:manual-content-id="manualContentId"
-      :source-diagnostics-loading="sourceDiagnosticsLoading"
-      :source-diagnostics="sourceDiagnostics"
-      :diagnostics-movie-title="diagnosticsMovieTitle"
-      :diagnostics-movie-subtitle="diagnosticsMovieSubtitle"
-      :manual-action-loading="manualActionLoading"
-      :field-label="fieldLabel"
-      :field-value-preview="fieldValuePreview"
-      :manual-action-label="manualActionLabel"
-      :format-action-time="formatActionTime"
-      @close="closeMovieSources"
-      @match="manualMatchMovie"
-      @unmatch="manualUnmatchMovie"
-      @ignore="manualIgnoreMovie"
-    />
+    <SupplementSourceDiagnosticsDialog v-if="sourceDiagnosticsOpen" v-model:manual-content-id="manualContentId" :source-diagnostics-loading="sourceDiagnosticsLoading" :source-diagnostics="sourceDiagnostics" :diagnostics-movie-title="diagnosticsMovieTitle" :diagnostics-movie-subtitle="diagnosticsMovieSubtitle" :manual-action-loading="manualActionLoading" :field-label="fieldLabel" :field-value-preview="fieldValuePreview" :manual-action-label="manualActionLabel" :format-action-time="formatActionTime" @close="closeMovieSources" @match="manualMatchMovie" @unmatch="manualUnmatchMovie" @ignore="manualIgnoreMovie" />
   </div>
 </template>
-
 <script>
 import { defineAsyncComponent } from 'vue'
 import api from '../api'
@@ -294,13 +183,11 @@ import { applyImageFallback } from '../utils/imageFallback.js'
 import { displayName } from '../utils/displayLang.js'
 import { requestConfirm } from '../utils/confirmDialog'
 import GlassSelect from '../components/GlassSelect.vue'
-
 const ActorPickerView = defineAsyncComponent(() => import('../features/supplement/ActorPickerView.vue'))
 const JobList = defineAsyncComponent(() => import('../features/supplement/SupplementJobList.vue'))
 const SourceHealthPanel = defineAsyncComponent(() => import('../features/supplement/SourceHealthPanel.vue'))
 const SupplementMoviesPanel = defineAsyncComponent(() => import('../features/supplement/SupplementMoviesPanel.vue'))
 const SupplementSourceDiagnosticsDialog = defineAsyncComponent(() => import('../features/supplement/SupplementSourceDiagnosticsDialog.vue'))
-
 export default {
   name: 'SupplementManagement',
   components: {
@@ -324,7 +211,7 @@ export default {
       jobPage: 1,
       jobsTotalCount: 0,
       jobsTotalPages: 1,
-      jobFilters: { status: '', actress_id: '', source: '' },
+      jobFilters: { status: '', actress_id: '', source: '', error_provider: '' },
       actorContext: null,
       actorContextLoading: false,
       actorSearchKeyword: '',
@@ -333,6 +220,7 @@ export default {
       actorSearched: false,
       showGlobalQueue: false,
       showSourceHealthGlobal: false,
+      showGlobalMovieRepair: false,
       activeWorkspaceSegment: 'movies',
       workspaceSegments: [
         { key: 'movies', label: '作品字段' },
@@ -397,7 +285,7 @@ export default {
   },
   computed: {
     showActorPicker() {
-      return !this.actorContext && !this.showGlobalQueue && !this.showSourceHealthGlobal
+      return !this.actorContext && !this.showGlobalQueue && !this.showSourceHealthGlobal && !this.showGlobalMovieRepair
     },
     recentActorJobs() {
       const seen = new Set()
@@ -419,12 +307,116 @@ export default {
       if (!this.actorContext) return ''
       return this.actorDisplayName(this.actorContext)
     },
-    actorContextAvatar() {
-      return this.actorAvatar(this.actorContext)
-    },
+    actorContextAvatar() { return this.actorAvatar(this.actorContext) },
     isSupplementRunning() {
       const status = this.supplementStatus?.last_job?.status
       return status === 'running' || status === 'queued'
+    },
+    isSupplementFailed() { return this.supplementStatus?.last_job?.status === 'failed' },
+    workspaceRepairTone() {
+      if (this.isSupplementFailed) return 'failed'
+      if (this.isSupplementRunning) return 'running'
+      if ((this.supplementStatus?.supplement_only || 0) > 0) return 'candidate'
+      if ((this.supplementStatus?.supplement_movies || 0) > (this.supplementStatus?.resolved_videos || 0)) return 'repair'
+      return 'stable'
+    },
+    workspaceRepairSummary() {
+      if (this.isSupplementFailed) return '任务失败待处理'
+      if (this.isSupplementRunning) return '任务进行中'
+      if ((this.supplementStatus?.supplement_only || 0) > 0) return '等待匹配确认'
+      if ((this.supplementStatus?.supplement_movies || 0) > (this.supplementStatus?.resolved_videos || 0)) return '需要补字段'
+      return '字段完整度稳定'
+    },
+    workspaceTaskDetails() {
+      const job = this.supplementStatus?.last_job
+      if (!job) return []
+      const details = []
+      if (job.last_error) details.push({ label: '失败原因', value: this.fieldValuePreview(job.last_error) })
+      if (job.attempt_count) details.push({ label: '尝试次数', value: `${job.attempt_count}/3` })
+      if (job.next_run_at && ['queued', 'running'].includes(job.status)) {
+        details.push({ label: '下次执行', value: this.formatActionTime(job.next_run_at) })
+      }
+      if (this.isSupplementFailed) {
+        details.push({ label: '下一步动作', value: '查看来源状态' })
+      } else if (this.isSupplementRunning) {
+        details.push({ label: '下一步动作', value: '等待任务结束' })
+      } else if ((this.supplementStatus?.supplement_only || 0) > 0) {
+        details.push({ label: '下一步动作', value: '确认匹配候选' })
+      }
+      return details
+    },
+    workspaceMovieFieldGapCount() {
+      return this.supplementMovies.reduce((total, movie) => {
+        return total + this.movieFieldChips(movie).filter(chip => !chip.value).length
+      }, 0)
+    },
+    workspacePendingCandidateCount() {
+      return this.supplementMovies.filter(movie => this.movieMatchClass(movie) === 'candidate').length
+    },
+    workspaceDetailTargetCount() {
+      return this.supplementMovies.filter(movie => {
+        return Boolean(movie?.source_movie_id) && this.movieFieldChips(movie).some(chip => !chip.value)
+      }).length
+    },
+    workspaceRepairActions() {
+      const job = this.supplementStatus?.last_job
+      const actions = []
+      if (this.isSupplementFailed) {
+        actions.push({
+          key: 'failed-source',
+          target: 'sourceHealth',
+          tone: 'failed',
+          primary: true,
+          value: '失败来源',
+          label: '查看来源状态',
+          hint: job?.last_error ? this.fieldValuePreview(job.last_error) : '查看来源冷却和降级状态',
+        })
+      }
+      if (this.isSupplementRunning || this.isSupplementFailed || job?.id) {
+        actions.push({
+          key: 'task-queue',
+          target: 'jobs',
+          tone: this.isSupplementFailed ? 'failed' : (this.isSupplementRunning ? 'running' : 'stable'),
+          primary: !actions.length,
+          value: job?.id ? `#${job.id}` : '任务',
+          label: '查看任务队列',
+          hint: job?.attempt_count ? `尝试次数 ${job.attempt_count}/3` : '查看补全和详情任务',
+        })
+      }
+      if (this.workspaceMovieFieldGapCount > 0 || this.workspaceDetailTargetCount > 0) {
+        actions.push({
+          key: 'field-gaps',
+          target: 'movies',
+          tone: 'ready',
+          primary: !actions.length,
+          value: this.workspaceMovieFieldGapCount,
+          label: '字段缺口',
+          hint: `修复作品字段 · ${this.workspaceDetailTargetCount} 部可补详情`,
+        })
+      }
+      if (this.workspacePendingCandidateCount > 0 || this.sourceDiagnosticsOpen) {
+        actions.push({
+          key: 'diagnostics',
+          target: 'diagnostics',
+          tone: 'ready',
+          primary: !actions.length,
+          value: this.workspacePendingCandidateCount || '诊断',
+          label: this.workspacePendingCandidateCount > 0 ? '候选确认' : '诊断入口',
+          hint: '打开来源诊断',
+        })
+      }
+      if (!actions.length) {
+        actions.push({
+          key: 'stable-source-health',
+          target: 'sourceHealth',
+          tone: 'stable',
+          primary: true,
+          value: '巡检',
+          label: '诊断入口',
+          hint: '查看来源状态',
+        })
+      }
+      return actions.slice(0, 4)
     },
     diagnosticsMovieTitle() {
       const movie = this.sourceDiagnostics?.movie
@@ -448,6 +440,30 @@ export default {
           value: source.source,
           label: source.display_name || source.source,
         })),
+      ]
+    },
+    globalQueueSourceLabel() {
+      const source = String(this.jobFilters.source || '').trim()
+      if (!source) return '全部来源'
+      if (this.jobFilters.source === 'all' && this.jobFilters.error_provider) return `含 ${this.jobFilters.error_provider} 的复合失败`
+      if (this.jobFilters.source === 'all') return '包含多个来源的复合失败'
+      if (source === 'gfriends') return 'gfriends 头像来源'
+      return `${source} 来源`
+    },
+    globalQueueStatusLabel() {
+      return this.jobFilters.status ? this.statusLabel(this.jobFilters.status) : '全部状态'
+    },
+    globalQueueContextLabel() {
+      return `${this.globalQueueStatusLabel} · ${this.globalQueueSourceLabel}`
+    },
+    globalQueueContextItems() {
+      return [
+        { label: '状态', value: this.globalQueueStatusLabel },
+        { label: '来源', value: this.globalQueueSourceLabel },
+        ...(this.jobFilters.error_provider
+          ? [{ label: '定位', value: this.jobFilters.error_provider, provider: this.jobFilters.error_provider }]
+          : []),
+        { label: '结果', value: this.jobsLoading ? '读取中' : `${this.jobsTotalCount || 0} 个任务` },
       ]
     },
     isGfriendsAvatarJobRunning() {
@@ -505,7 +521,10 @@ export default {
         tab: field('tab'),
         actress_id: field('actress_id'),
         source: field('source'),
+        status: field('status'),
+        error_provider: field('error_provider'),
         q: field('q'),
+        quality: field('quality'),
       })
     },
     buildSupplementQuery(query = {}) {
@@ -536,15 +555,25 @@ export default {
       const tab = this.$route.query.tab
       const actressId = this.$route.query.actress_id
       const source = typeof this.$route.query.source === 'string' ? this.$route.query.source.trim() : ''
+      const status = typeof this.$route.query.status === 'string' ? this.$route.query.status.trim() : ''
+      const errorProvider = typeof this.$route.query.error_provider === 'string' ? this.$route.query.error_provider.trim() : ''
       const q = typeof this.$route.query.q === 'string' ? this.$route.query.q.trim() : ''
+      const quality = typeof this.$route.query.quality === 'string' ? this.$route.query.quality.trim() : ''
       this.jobFilters.source = source
+      this.jobFilters.status = status
+      this.jobFilters.error_provider = errorProvider
       if (this.movieFilters.q !== q) {
         this.movieFilters.q = q
+        this.moviePage = 1
+      }
+      if (this.movieFilters.quality !== quality) {
+        this.movieFilters.quality = quality
         this.moviePage = 1
       }
       if (actressId) {
         this.showGlobalQueue = false
         this.showSourceHealthGlobal = false
+        this.showGlobalMovieRepair = false
         this.activeWorkspaceSegment = this.segmentFromTab(tab)
         await this.applyActorContext(actressId)
         await this.loadWorkspaceSegment(this.activeWorkspaceSegment)
@@ -555,15 +584,24 @@ export default {
       this.movieFilters.actress_id = ''
       if (tab === 'jobs') {
         this.showSourceHealthGlobal = false
+        this.showGlobalMovieRepair = false
         this.showGlobalQueue = true
         await this.loadJobs()
       } else if (tab === 'sources') {
         this.showGlobalQueue = false
+        this.showGlobalMovieRepair = false
         this.showSourceHealthGlobal = true
         await this.loadSourceHealth()
+      } else if (tab === 'movies' && quality) {
+        this.showGlobalQueue = false
+        this.showSourceHealthGlobal = false
+        this.showGlobalMovieRepair = true
+        this.activeWorkspaceSegment = 'movies'
+        await this.loadMovies()
       } else {
         this.showGlobalQueue = false
         this.showSourceHealthGlobal = false
+        this.showGlobalMovieRepair = false
       }
     },
     segmentFromTab(tab) {
@@ -582,8 +620,33 @@ export default {
       this.activeWorkspaceSegment = segment
       const query = { tab: this.tabFromSegment(segment), actress_id: this.actorContext?.id }
       if (this.movieFilters.q) query.q = this.movieFilters.q
+      if (this.movieFilters.quality) query.quality = this.movieFilters.quality
       const routeChanged = await this.replaceSupplementRoute(query)
       if (!routeChanged) await this.loadWorkspaceSegment(segment)
+    },
+    workspaceSegmentMeta(key) {
+      if (key === 'movies') {
+        return { count: this.moviesTotalCount || this.supplementStatus?.supplement_movies || 0, status: this.movieFilters.quality || this.movieFilters.q ? '已筛选' : '字段池' }
+      }
+      if (key === 'jobs') {
+        const runningJobs = this.jobs.filter(job => ['queued', 'running'].includes(job.status))
+        const lastJobStatus = this.supplementStatus?.last_job?.status
+        const lastJobCount = this.supplementStatus?.last_job?.id ? 1 : 0
+        if (lastJobStatus === 'failed') {
+          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务失败' }
+        }
+        if (['queued', 'running'].includes(lastJobStatus) || runningJobs.length) {
+          return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '任务进行中' }
+        }
+        return { count: this.jobsTotalCount || this.jobs.length || lastJobCount, status: '可调度' }
+      }
+      if (key === 'diagnostics') {
+        return { count: this.sourceDiagnostics?.chosen_fields?.length || 0, status: this.sourceDiagnosticsOpen ? '检查中' : '待选择' }
+      }
+      if (key === 'sourceHealth') {
+        return { count: this.sourceHealthRows.length, status: this.sourceHealthLoading ? '刷新中' : '来源池' }
+      }
+      return { count: 0, status: '' }
     },
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
@@ -709,6 +772,7 @@ export default {
       this.supplementStatus = null
       this.jobFilters.actress_id = ''
       this.jobFilters.source = ''
+      this.jobFilters.error_provider = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       this.actorSearchKeyword = ''
@@ -716,15 +780,19 @@ export default {
       this.actorSearched = false
       this.showGlobalQueue = false
       this.showSourceHealthGlobal = false
+      this.showGlobalMovieRepair = false
       await this.replaceSupplementRoute()
       this.loadRecentActorJobs({ silent: true })
     },
     async openGlobalQueue() {
       this.showGlobalQueue = true
       this.showSourceHealthGlobal = false
+      this.showGlobalMovieRepair = false
       this.actorContext = null
       this.jobFilters.actress_id = ''
       this.jobFilters.source = ''
+      this.jobFilters.status = ''
+      this.jobFilters.error_provider = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs' })
@@ -733,9 +801,11 @@ export default {
     async openSourceHealth() {
       this.showGlobalQueue = false
       this.showSourceHealthGlobal = true
+      this.showGlobalMovieRepair = false
       this.actorContext = null
       this.jobFilters.actress_id = ''
       this.jobFilters.source = ''
+      this.jobFilters.error_provider = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'sources' })
@@ -744,10 +814,12 @@ export default {
     async viewGfriendsAvatarJobs() {
       this.showSourceHealthGlobal = false
       this.showGlobalQueue = true
+      this.showGlobalMovieRepair = false
       this.actorContext = null
       this.jobFilters.actress_id = ''
       this.jobFilters.status = ''
       this.jobFilters.source = 'gfriends'
+      this.jobFilters.error_provider = ''
       this.movieFilters.actress_id = ''
       this.movieFilters.q = ''
       const routeChanged = await this.replaceSupplementRoute({ tab: 'jobs', source: 'gfriends' })
@@ -785,7 +857,7 @@ export default {
       if (!this.actorContext?.id) return
       try {
         await api.refreshSupplementActressResolved(this.actorContext.id)
-        ElMessage.success('已刷新可展示影片')
+        ElMessage.success('已刷新版本条目')
         await this.loadSupplementStatus()
         await this.loadMovies()
       } catch (e) {
@@ -843,6 +915,16 @@ export default {
       }
       if (!Array.isArray(list)) return String(raw)
       return list.slice(0, 3).join(' · ')
+    },
+    movieFieldChips(movie) {
+      return [
+        { key: 'cover', label: '封面', value: this.movieCover(movie) ? '已取' : '' },
+        { key: 'runtime', label: '时长', value: movie?.runtime_mins ? `${movie.runtime_mins}m` : '' },
+        { key: 'maker', label: '厂商', value: movie?.maker_name || '' },
+        { key: 'label', label: '厂牌', value: movie?.label_name || '' },
+        { key: 'series', label: '系列', value: movie?.series_name || '' },
+        { key: 'category', label: '分类', value: this.movieCategories(movie) || '' },
+      ]
     },
     fieldLabel(fieldName) {
       const map = {
@@ -970,6 +1052,32 @@ export default {
       const map = { match: '确认匹配', ignore: '忽略', unmatch: '解除匹配' }
       return map[action] || action || '人工操作'
     },
+    workspaceRepairActionClass(action) {
+      return {
+        primary: action.primary,
+        failed: action.tone === 'failed',
+        ready: action.tone === 'ready',
+        running: action.tone === 'running',
+      }
+    },
+    async runWorkspaceRepairAction(action) {
+      if (!action) return
+      if (action.target === 'sourceHealth') {
+        await this.setWorkspaceSegment('sourceHealth')
+        return
+      }
+      if (action.target === 'jobs') {
+        await this.setWorkspaceSegment('jobs')
+        return
+      }
+      if (action.target === 'movies') {
+        await this.setWorkspaceSegment('movies')
+        return
+      }
+      if (action.target === 'diagnostics') {
+        await this.setWorkspaceSegment('diagnostics')
+      }
+    },
     formatActionTime(value) {
       if (!value) return ''
       return new Date(value).toLocaleString()
@@ -1016,7 +1124,6 @@ export default {
         confirmText: '开始同步',
       })
       if (!confirmed) return
-
       this.gfriendsAvatarSyncing = true
       try {
         const resp = await api.startGfriendsAvatarSyncJob()
@@ -1146,6 +1253,7 @@ export default {
         if (this.jobFilters.status) params.status = this.jobFilters.status
         if (this.jobFilters.actress_id) params.actress_id = this.jobFilters.actress_id
         if (this.jobFilters.source) params.source = this.jobFilters.source
+        if (this.jobFilters.error_provider) params.error_provider = this.jobFilters.error_provider
         const resp = await api.listSupplementJobs(params)
         const data = resp.data || resp
         this.jobs = data.data || []
@@ -1159,7 +1267,14 @@ export default {
     },
     async applyJobFilters() {
       this.jobPage = 1
-      await this.loadJobs()
+      const routeChanged = await this.replaceSupplementRoute({
+        tab: 'jobs',
+        status: this.jobFilters.status,
+        source: this.jobFilters.source,
+        error_provider: this.jobFilters.error_provider,
+        actress_id: this.jobFilters.actress_id,
+      })
+      if (!routeChanged) await this.loadJobs()
     },
     async retryJob(jobId) {
       try {
@@ -1206,7 +1321,20 @@ export default {
     },
     async applyMovieFilters() {
       this.moviePage = 1
-      await this.loadMovies()
+      const routeChanged = await this.replaceSupplementRoute({
+        tab: this.tabFromSegment(this.activeWorkspaceSegment),
+        actress_id: this.actorContext?.id,
+        q: this.movieFilters.q,
+        quality: this.movieFilters.quality,
+      })
+      if (!routeChanged) await this.loadMovies()
+    },
+    async clearMovieFilters() {
+      this.movieFilters.matched = null
+      this.movieFilters.quality = ''
+      this.movieFilters.q = ''
+      this.moviePage = 1
+      await this.applyMovieFilters()
     },
     async goMoviePage(page) {
       this.moviePage = page
@@ -1286,5 +1414,4 @@ export default {
   },
 }
 </script>
-
 <style scoped src="../features/supplement/supplementManagement.css"></style>

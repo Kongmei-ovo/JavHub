@@ -14,18 +14,10 @@
             class="btn-mini"
             type="button"
             :class="{ active: editMode }"
+            :disabled="!editMode && visibleFavoriteCount === 0"
             @click="toggleEditMode"
           >
             {{ editMode ? '完成' : '编辑' }}
-          </button>
-          <button
-            v-if="editMode"
-            class="btn-mini danger"
-            type="button"
-            :disabled="selectedFavoriteKeys.size === 0"
-            @click="removeSelectedFavorites"
-          >
-            取消收藏 {{ selectedFavoriteKeys.size || '' }}
           </button>
         </div>
       </div>
@@ -75,18 +67,36 @@
           <span v-if="tab.count > 0" class="tab-badge">{{ tab.count }}</span>
         </button>
       </div>
-    </div>
 
-    <!-- 加载状态 -->
-    <div v-if="videoLoading" class="favorites-grid favorites-grid-loading">
-      <div v-for="n in 8" :key="n" class="skeleton-card">
-        <div class="skeleton-cover"></div>
-        <div class="skeleton-info">
-          <div class="skeleton-line w-60"></div>
-          <div class="skeleton-line w-80"></div>
+      <div
+        v-if="editMode"
+        class="selection-bar"
+        role="toolbar"
+        aria-label="收藏批量操作"
+      >
+        <div class="selection-summary">
+          <strong>{{ selectedFavoriteCount }}</strong>
+          <span>已选择 · 当前视图 {{ visibleFavoriteCount }}</span>
+        </div>
+        <div class="selection-actions">
+          <button class="btn-mini" type="button" :disabled="visibleFavoriteCount === 0 || allVisibleSelected" @click="selectAllVisibleFavorites">全选</button>
+          <button class="btn-mini" type="button" :disabled="selectedFavoriteCount === 0" @click="clearFavoriteSelection">清空</button>
+          <button class="btn-mini danger" type="button" :disabled="selectedFavoriteCount === 0" @click="removeSelectedFavorites">
+            取消收藏 {{ selectedFavoriteCount || '' }}
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- 加载状态 -->
+    <AppleSkeleton
+      v-if="videoLoading"
+      class="favorites-grid favorites-grid-loading"
+      variant="gallery"
+      :items="8"
+      columns="repeat(auto-fill, minmax(180px, 1fr))"
+      label="收藏影片加载中"
+    />
 
     <!-- 收藏内容 -->
     <div v-else class="curate-content">
@@ -197,22 +207,28 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="displayVideoItems.length === 0 && actorFavoriteItems.length === 0 && otherEntityItems.length === 0" class="curate-empty">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+      <AppleEmptyState
+        v-if="displayVideoItems.length === 0 && actorFavoriteItems.length === 0 && otherEntityItems.length === 0"
+        :title="emptyTitle"
+        :description="emptyDescription"
+        :next-step="emptyNextStep"
+        :action-label="emptyActionLabel"
+        :secondary-action-label="emptySecondaryActionLabel"
+        @action="handleEmptyAction"
+        @secondary-action="handleEmptySecondaryAction"
+      >
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
           </svg>
-        </div>
-        <h3>{{ emptyTitle }}</h3>
-        <p>{{ emptyDescription }}</p>
-        <button v-if="activeTab === 'all'" class="btn-explore" type="button" @click="$router.push('/genres')">去探索</button>
-      </div>
+        </template>
+      </AppleEmptyState>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { state, favoriteState } from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
@@ -223,6 +239,8 @@ import api from '../api'
 import MovieCard from '../components/MovieCard.vue'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 
 const TYPE_LABELS = {
@@ -236,7 +254,7 @@ const FAVORITE_VIDEO_PAGE_SIZE = 48
 
 export default {
   name: 'Favorites',
-  components: { MovieCard, ActorPortraitCard, VariantGroupDisclosure },
+  components: { MovieCard, ActorPortraitCard, VariantGroupDisclosure, AppleSkeleton, AppleEmptyState },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
@@ -366,6 +384,13 @@ export default {
         ? '这里显示当前 JavHub 实例的本地收藏。'
         : `当前实例暂无${activeTabLabel.value}收藏，可切换到其他分类查看。`
     ))
+    const emptyNextStep = computed(() => (
+      activeTab.value === 'all'
+        ? '先浏览题材添加影片，或订阅演员让系统持续发现缺失作品。'
+        : '切回全部收藏确认是否有其他类型，或去发现页添加当前分类内容。'
+    ))
+    const emptyActionLabel = computed(() => activeTab.value === 'all' ? '浏览题材' : '查看全部')
+    const emptySecondaryActionLabel = computed(() => activeTab.value === 'all' ? '订阅演员' : '浏览题材')
 
     const typeLabel = (type) => TYPE_LABELS[type] || type
 
@@ -420,6 +445,14 @@ export default {
       activeTab.value = tabId
       selectedFavoriteKeys.value = new Set()
     }
+    const handleEmptyAction = () => {
+      if (activeTab.value === 'all') router.push('/genres')
+      else setActiveTab('all')
+    }
+    const handleEmptySecondaryAction = () => {
+      if (activeTab.value === 'all') router.push('/subscription')
+      else router.push('/genres')
+    }
     const handleFavoriteItemClick = (item) => {
       if (editMode.value) {
         toggleFavoriteSelection(item)
@@ -434,6 +467,23 @@ export default {
       ...actorFavoriteItems.value,
       ...otherEntityItems.value,
     ])
+    const trimSelectionToVisibleFavorites = (items) => {
+      if (selectedFavoriteKeys.value.size === 0) return
+      const visibleKeys = new Set(items.map(favoriteKey))
+      selectedFavoriteKeys.value = new Set([...selectedFavoriteKeys.value].filter(key => visibleKeys.has(key)))
+    }
+    watch(allVisibleFavoriteItems, trimSelectionToVisibleFavorites)
+    const selectedFavoriteCount = computed(() => selectedFavoriteKeys.value.size)
+    const visibleFavoriteCount = computed(() => allVisibleFavoriteItems.value.length)
+    const allVisibleSelected = computed(() => (
+      visibleFavoriteCount.value > 0 && allVisibleFavoriteItems.value.every(item => isSelected(item))
+    ))
+    const selectAllVisibleFavorites = () => {
+      selectedFavoriteKeys.value = new Set(allVisibleFavoriteItems.value.map(favoriteKey))
+    }
+    const clearFavoriteSelection = () => {
+      selectedFavoriteKeys.value = new Set()
+    }
     const removeSelectedFavorites = async () => {
       const selectedItems = allVisibleFavoriteItems.value.filter(item => isSelected(item))
       for (const item of selectedItems) {
@@ -548,6 +598,9 @@ export default {
       activeTab,
       editMode,
       selectedFavoriteKeys,
+      selectedFavoriteCount,
+      visibleFavoriteCount,
+      allVisibleSelected,
       tabs,
       videoLoading,
       videoLoadingMore,
@@ -562,6 +615,9 @@ export default {
       instanceNote,
       emptyTitle,
       emptyDescription,
+      emptyNextStep,
+      emptyActionLabel,
+      emptySecondaryActionLabel,
       typeLabel,
       entityDisplayName,
       navigateToEntity,
@@ -571,8 +627,12 @@ export default {
       favoriteKey,
       isSelected,
       toggleFavoriteSelection,
+      selectAllVisibleFavorites,
+      clearFavoriteSelection,
       toggleEditMode,
       setActiveTab,
+      handleEmptyAction,
+      handleEmptySecondaryAction,
       handleFavoriteItemClick,
       removeSelectedFavorites,
       loadMoreVideos,

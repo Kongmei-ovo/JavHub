@@ -155,18 +155,14 @@ function emitSubscribe() {
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
-  transition:
-    transform var(--motion-standard),
-    border-color var(--motion-standard),
-    background var(--motion-standard),
-    box-shadow var(--motion-standard);
+  transition: transform var(--motion-standard);
   outline: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .actor-portrait-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-2px);
   border-color: var(--glass-control-border-hover);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
@@ -212,11 +208,11 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card:hover .actor-portrait-card__media img {
-  transform: scale(1.045);
+  transform: scale(1.03);
 }
 
 .actor-portrait-card:focus-visible .actor-portrait-card__media img {
-  transform: scale(1.045);
+  transform: scale(1.03);
 }
 
 .actor-portrait-card__fallback {
@@ -244,7 +240,7 @@ function emitSubscribe() {
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .actor-portrait-card__favorite {
@@ -259,7 +255,7 @@ function emitSubscribe() {
 
 .actor-portrait-card__favorite:hover,
 .actor-portrait-card__subscribe:hover {
-  transform: scale(1.07);
+  transform: scale(1.03);
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
   border-color: var(--glass-control-border-hover);
   box-shadow: var(--glass-control-shadow-hover);
@@ -306,7 +302,7 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:hover {
-  transform: scale(1.07);
+  transform: scale(1.03);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
@@ -317,7 +313,7 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card.is-favorited .actor-portrait-card__favorite:hover {
-  transform: scale(1.07);
+  transform: scale(1.03);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
@@ -329,7 +325,7 @@ function emitSubscribe() {
 
 .actor-portrait-card.is-subscribed .actor-portrait-card__subscribe:focus-visible {
   outline: none;
-  transform: scale(1.07);
+  transform: scale(1.03);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
@@ -341,7 +337,7 @@ function emitSubscribe() {
 
 .actor-portrait-card.is-favorited .actor-portrait-card__favorite:focus-visible {
   outline: none;
-  transform: scale(1.07);
+  transform: scale(1.03);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
@@ -459,6 +455,14 @@ function emitSubscribe() {
 .actor-portrait-card--compact .actor-portrait-card__subtitle,
 .actor-portrait-card--compact .actor-portrait-card__meta {
   font-size: var(--type-micro);
+}
+
+@media (max-width: 768px) {
+  .actor-portrait-card__favorite,
+  .actor-portrait-card__subscribe {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 </style>

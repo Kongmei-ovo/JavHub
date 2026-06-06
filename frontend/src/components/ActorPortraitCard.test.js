@@ -99,7 +99,7 @@ test('ActorPortraitCard mirrors glass hover motion for keyboard focus and action
   assert.match(focusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(focusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
-  assert.match(imageFocusRule, /transform:\s*scale\(1\.045\)/)
+  assert.match(imageFocusRule, /transform:\s*scale\(1\.03\)/)
 
   assert.match(actionFocusRule, /outline:\s*none/)
   assert.match(actionFocusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
@@ -236,7 +236,7 @@ test('ActorPortraitCard active quick actions preserve semantic layered glass on 
     assert.match(block, /var\(--surface-noise\)/, `${name} should preserve texture`)
     assert.match(block, new RegExp(`border-color:\\s*var\\(${border}\\)`), `${name} should keep semantic border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should keep hover depth`)
-    assert.match(block, /transform:\s*scale\(1\.07\)/, `${name} should keep tactile lift`)
+    assert.match(block, /transform:\s*scale\(1\.03\)/, `${name} should keep tactile lift`)
   }
 
   assert.match(activeFavoriteFocus, /outline:\s*none/)

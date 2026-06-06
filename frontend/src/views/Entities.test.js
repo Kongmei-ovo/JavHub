@@ -34,7 +34,7 @@ test('entities page keeps large scoped styles in a feature stylesheet', () => {
 test('entities portrait directories reuse actor portrait cards with API image fields', () => {
   assert.match(source, /import ActorPortraitCard from '\.\.\/components\/ActorPortraitCard\.vue'/)
   assert.match(source, /import \{ actressImgUrl \} from '\.\.\/utils\/imageUrl\.js'/)
-  assert.match(source, /components:\s*\{\s*ActorPortraitCard\s*\}/)
+  assert.match(source, /components:\s*\{[^}]*ActorPortraitCard[^}]*AppleSkeleton[^}]*AppleEmptyState[^}]*AppleErrorState[^}]*\}/)
   assert.match(source, /<ActorPortraitCard[\s\S]*v-for="item in items"/)
   assert.match(source, /:actor="entityActorCard\(item\)"/)
   assert.match(source, /:name="displayName\(item\)"/)
@@ -66,7 +66,7 @@ test('entities portrait cards delegate image fallback to the shared card', () =>
 })
 
 test('people entities render portrait media cards while metadata stays text-only', () => {
-  assert.match(source, /v-if="usesPortraitCards"/)
+  assert.match(source, /v-else-if="usesPortraitCards"/)
   assert.match(source, /v-else :class="\['entity-list-grid', \{ 'entity-list-grid--wide': usesWideTextCards \}\]"/)
   assert.match(source, /usesPortraitCards\(\) \{[\s\S]*return this\.activeConfig\.portrait === true/)
   assert.match(source, /key: 'actresses'[\s\S]*portrait: true/)
@@ -85,7 +85,7 @@ test('entities actor tab uses inventory actors so portraits can come from Emby',
 test('entities page keeps chrome lean and hides raw ids', () => {
   assert.doesNotMatch(source, /<p>\{\{ heroDescription \}\}<\/p>/)
   assert.doesNotMatch(source, /heroDescription\(\)/)
-  assert.doesNotMatch(source, /当前目录/)
+  assert.doesNotMatch(source, /<span>当前目录/)
   assert.doesNotMatch(source, /\.entities-hero__metrics div/)
   assert.doesNotMatch(source, /ID \$\{id\}/)
   assert.doesNotMatch(source, /点击查看相关作品/)
@@ -231,7 +231,7 @@ test('entities keyboard focus mirrors hover glass control treatment', () => {
   assert.match(searchClearFocus, /color:\s*var\(--text-primary\)/)
   assert.match(searchClearFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
 
-  assert.match(listCardFocus, /transform:\s*translateY\(-3px\)/)
+  assert.match(listCardFocus, /transform:\s*translateY\(-2px\)/)
   assert.match(listCardFocus, backgroundIncludes('material-glass-elevated'))
   assert.match(listCardFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(listCardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\)/)
@@ -240,12 +240,12 @@ test('entities keyboard focus mirrors hover glass control treatment', () => {
   assert.match(openFocus, /box-shadow:\s*var\(--focus-ring-inset\)/)
 
   assert.match(favoriteFocus, /outline:\s*none/)
-  assert.match(favoriteFocus, /transform:\s*scale\(1\.06\)/)
+  assert.match(favoriteFocus, /transform:\s*scale\(1\.03\)/)
   assert.match(favoriteFocus, backgroundIncludes('material-glass-control-hover'))
   assert.match(favoriteFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(favoriteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
   assert.match(favoriteActiveFocus, /outline:\s*none/)
-  assert.match(favoriteActiveFocus, /transform:\s*scale\(1\.06\)/)
+  assert.match(favoriteActiveFocus, /transform:\s*scale\(1\.03\)/)
   assert.match(favoriteActiveFocus, backgroundIncludes('badge-error-bg'))
   assert.match(favoriteActiveFocus, /var\(--surface-specular-edge-strong\)/)
   assert.match(favoriteActiveFocus, /var\(--surface-noise\)/)

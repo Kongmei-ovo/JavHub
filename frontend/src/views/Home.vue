@@ -283,23 +283,26 @@
       @apply-editor="applyDownloaderEditor"
     />
 
-    <!-- 空状态 -->
-    <div v-else-if="activeTab === 'tasks'" class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <p>暂无{{ filterStatus ? statusLabel(filterStatus) : '' }}任务</p>
-      <p class="text-secondary empty-state-hint">{{ taskEmptyHint }}</p>
-      <div class="empty-actions">
-        <button v-if="filterStatus" class="btn btn-ghost" type="button" @click="clearTaskStatus">清除筛选</button>
-        <button v-if="candidateStats.candidate > 0" class="btn btn-primary" type="button" @click="openCandidatePreset({ status: 'candidate', source: '' })">
-          查看 {{ candidateStats.candidate }} 个候选
-        </button>
-        <button v-else class="btn btn-primary" type="button" @click="$router.push('/search')">搜索影片</button>
-      </div>
-    </div>
+    <AppleEmptyState
+      v-else-if="activeTab === 'tasks'"
+      class="empty-state"
+      :title="taskEmptyTitle"
+      :description="taskEmptyHint"
+      next-step="可以清除筛选、处理下载候选，或从影片检索和磁链解析添加新任务。"
+      :action-label="taskEmptyPrimaryLabel"
+      secondary-action-label="磁链解析"
+      density="compact"
+      @action="handleTaskEmptyAction"
+      @secondary-action="$router.push('/parse')"
+    >
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </template>
+    </AppleEmptyState>
 
   </div>
 </template>
@@ -307,6 +310,7 @@
 <script>
 import { defineAsyncComponent } from 'vue'
 import api from '../api'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 import { requestConfirm } from '../utils/confirmDialog'
 
 const DownloadCandidatePanel = defineAsyncComponent(() => import('../features/candidates/DownloadCandidatePanel.vue'))
@@ -314,7 +318,7 @@ const DownloaderManagementPanel = defineAsyncComponent(() => import('../features
 
 export default {
   name: 'Home',
-  components: { DownloadCandidatePanel, DownloaderManagementPanel },
+  components: { AppleEmptyState, DownloadCandidatePanel, DownloaderManagementPanel },
   data() {
     return {
       activeTab: ['candidates', 'downloaders'].includes(this.$route.query.tab) ? this.$route.query.tab : 'tasks',
@@ -413,6 +417,14 @@ export default {
       if (this.filterStatus) return '当前筛选没有任务，可以清除筛选查看全部。'
       if (this.candidateStats.candidate > 0) return '已有下载候选待确认，优先处理候选再下发任务。'
       return '可以从影片检索或磁链解析添加下载任务。'
+    },
+    taskEmptyTitle() {
+      return `暂无${this.filterStatus ? this.statusLabel(this.filterStatus) : ''}任务`
+    },
+    taskEmptyPrimaryLabel() {
+      if (this.filterStatus) return '清除筛选'
+      if (this.candidateStats.candidate > 0) return `查看 ${this.candidateStats.candidate} 个候选`
+      return '搜索影片'
     }
   },
   mounted() {
@@ -563,6 +575,15 @@ export default {
     },
     clearTaskStatus() {
       this.pushDownloadRoute({ tab: 'tasks' })
+    },
+    handleTaskEmptyAction() {
+      if (this.filterStatus) {
+        this.clearTaskStatus()
+      } else if (this.candidateStats.candidate > 0) {
+        this.openCandidatePreset({ status: 'candidate', source: '' })
+      } else {
+        this.$router.push('/search')
+      }
     },
     updateCandidateSearch(value) {
       this.candidateFilter = { ...this.candidateFilter, q: value }

@@ -2,6 +2,7 @@
   <AppleVideoCard
     :video="video"
     :cover-url="coverUrl"
+    :style="cardStyle"
     @open="$emit('click')"
   />
 </template>
@@ -19,6 +20,7 @@ const props = defineProps({
   releaseDate: { type: String, default: '' },
   runtimeMins: { type: [String, Number], default: '' },
   sampleUrl: { type: String, default: '' },
+  coverAspectRatio: { type: String, default: '3 / 4' },
   displayCode: { type: String, default: '' },
   canonicalCode: { type: String, default: '' },
   variantLabels: { type: Array, default: () => [] },
@@ -40,5 +42,9 @@ const video = computed(() => ({
   release_date: props.releaseDate,
   runtime_mins: props.runtimeMins,
   sample_url: props.sampleUrl,
+}))
+
+const cardStyle = computed(() => ({
+  '--movie-card-cover-aspect': props.coverAspectRatio,
 }))
 </script>

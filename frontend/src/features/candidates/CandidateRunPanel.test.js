@@ -44,7 +44,8 @@ test('candidate run rows mirror Apple glass hover while actions are focused', ()
   const hover = cssBlock('.candidate-run-row:hover')
   const focusWithin = cssBlock('.candidate-run-row:focus-within')
 
-  assert.match(row, /transition:\s*transform var\(--motion-fast\),\s*background var\(--motion-fast\),\s*border-color var\(--motion-fast\),\s*box-shadow var\(--motion-fast\)/)
+  assert.match(row, /transition:\s*transform var\(--motion-standard\)/)
+  assert.doesNotMatch(row, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/)
 
   for (const [block, name] of [
     [hover, 'candidate run row hover'],

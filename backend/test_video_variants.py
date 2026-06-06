@@ -243,6 +243,36 @@ class VideoVariantAnalysisTest(unittest.TestCase):
 
         self.assertEqual(len(grouped), 2)
 
+    def test_padded_digit_variants_merge_when_supplement_runtime_is_bogus(self):
+        # JUMS-095 / JUMS-95 family — both canonicalise to "JUMS-95" via _trim_digits.
+        # The supplement record carried a bogus runtime (255 vs the real ~480) which
+        # was vetoing the merge despite identical titles + identical canonical_code.
+        title = "美熟女の超S級デカ尻が乱高下するマラ食い騎乗位BEST 102本番8時間"
+        rows = [
+            item(content_id="jums095", dvd_id="JUMS-095", title_ja=title, service_code="mono", runtime_mins=480),
+            item(content_id="jums00095", dvd_id=None, title_ja=title, service_code="digital", runtime_mins=481),
+            item(content_id="supp586", dvd_id="JUMS-95", title_ja=title, service_code="supplement", runtime_mins=255),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1, "near-identical titles + same canonical should beat a bogus supplement runtime")
+        self.assertEqual(grouped[0]["canonical_code"], "JUMS-95")
+        self.assertEqual(grouped[0]["variant_group_count"], 3)
+
+    def test_runtime_divergence_still_splits_when_titles_only_partially_match(self):
+        # Sanity check the advisory-runtime relaxation only kicks in for near-identical
+        # titles. If titles only partially overlap (≥0.56 but <0.95) and runtimes diverge
+        # by >5%, keep them apart — those are plausibly different movies.
+        rows = [
+            item(content_id="abc001", dvd_id="ABC-001", title_ja="Title BasePart One Different Suffix Here", runtime_mins=120),
+            item(content_id="abc1", dvd_id="ABC-1", title_ja="Title BasePart One Slightly Different Tail End", runtime_mins=240),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
     def test_dmm_domestic_h_bucket_prefix_is_stripped_for_grouping(self):
         # h_706naac00047b is DMM's "domestic" content id for what FANZA/r18 lists as NAAC-047B.
         # The leading h_<digits> is a maker-bucket marker, not part of the code itself.
@@ -266,8 +296,135 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
 
         self.assertEqual(len(grouped), 1)
-        self.assertEqual(grouped[0]["canonical_code"], "NAAC-47B")
+        self.assertEqual(grouped[0]["canonical_code"], "NAAC-47")
         self.assertEqual(grouped[0]["variant_group_count"], 2)
+
+    def test_dmm_domestic_h_bucket_rental_suffix_is_stripped_for_grouping(self):
+        rows = [
+            item(
+                content_id="h_906gaso0013",
+                dvd_id="GASO-0013",
+                title_ja="白石茉莉奈はオレのカノジョ。",
+                service_code="digital",
+                runtime_mins=146,
+            ),
+            item(
+                content_id="supp:817",
+                dvd_id="H-906GASO0013R",
+                title_ja="白石茉莉奈はオレのカノジョ。",
+                service_code="supplement",
+                runtime_mins=None,
+            ),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "GASO-13")
+        self.assertEqual(grouped[0]["variant_group_count"], 2)
+
+    def test_rental_leading_r_prefix_merges_with_retail_code(self):
+        title = "白石茉莉奈 おっぱい吸いながらバブバブ赤ちゃんプレイでオナニーのお手伝いしてあげる"
+        rows = [
+            item(content_id="1star993", dvd_id="STAR-993", title_ja=title, service_code="mono", runtime_mins=120),
+            item(content_id="1star00993", dvd_id=None, title_ja=title, service_code="digital", runtime_mins=121),
+            item(content_id="1rstar993r", dvd_id="RSTAR993", title_ja=title, service_code="rental", runtime_mins=120),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "STAR-993")
+        self.assertEqual(grouped[0]["variant_group_count"], 3)
+
+    def test_non_rental_leading_r_prefix_does_not_merge(self):
+        rows = [
+            item(content_id="abc001", dvd_id="ABC-001", title_ja="Shared Title", service_code="mono", runtime_mins=120),
+            item(content_id="rabc001", dvd_id="RABC-001", title_ja="Shared Title", service_code="mono", runtime_mins=120),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_real_r_prefix_rental_codes_are_not_stripped(self):
+        rows = [
+            item(content_id="h_346rebd298r", dvd_id="REBD298", title_ja="Marina5", service_code="rental", runtime_mins=60),
+            item(content_id="h_346rebdb284r", dvd_id="REBDB284", title_ja="Marina5", service_code="rental", runtime_mins=60),
+        ]
+
+        enriched = video_variants.enrich_video_variants(rows, variant_mode="flat")
+
+        self.assertEqual(enriched[0]["canonical_code"], "REBD-298")
+        self.assertEqual(enriched[1]["canonical_code"], "REBDB-284")
+
+    def test_rental_numeric_service_prefix_merges_with_retail_code(self):
+        title = "AVファンを熱狂させた伝説企画を、豪華S級女優競演で全編完全撮りおろし！"
+        rows = [
+            item(content_id="1avop003", dvd_id="AVOP-003", title_ja=title, service_code="mono", runtime_mins=225),
+            item(content_id="2avop003", dvd_id="2AVOP003", title_ja=title, service_code="rental", runtime_mins=225),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "AVOP-3")
+
+    def test_digital_padded_content_id_wins_over_misparsed_dvd_id(self):
+        title = "悩めるバキバキ童貞にオトナの美女が与える人生最高の射精体験 筆おろしBEST35人 8時間"
+        rows = [
+            item(content_id="jums131", dvd_id="JUMS-131", title_ja=title, service_code="mono", runtime_mins=480),
+            item(content_id="jums00131", dvd_id="BEST-35", title_ja=title, service_code="digital", runtime_mins=481),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "JUMS-131")
+        self.assertEqual(grouped[0]["variant_group_count"], 2)
+
+    def test_bluray_code_markers_merge_as_format_variants(self):
+        rows = [
+            item(content_id="1star444re", dvd_id="STAR-444", title_ja="芸能人 白石茉莉奈 AV Debut", service_code="mono", runtime_mins=200),
+            item(content_id="1starbd444re", dvd_id="STARBD-444", title_ja="芸能人 白石茉莉奈 AV Debut", service_code="mono", runtime_mins=200),
+            item(content_id="n_1541naac047", dvd_id="NAAC-047", title_ja="Best naked 04/白石茉莉奈", service_code="mono", runtime_mins=111),
+            item(content_id="n_1541naac047b", dvd_id="NAAC-047B", title_ja="Best naked 04/白石茉莉奈", service_code="mono", runtime_mins=124),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped", include_explanations=True)
+        by_code = {row["canonical_code"]: row for row in grouped}
+
+        self.assertEqual(len(grouped), 2)
+        self.assertEqual(by_code["STAR-444"]["variant_group_count"], 2)
+        self.assertEqual(by_code["NAAC-47"]["variant_group_count"], 2)
+        self.assertIn(
+            "蓝光版",
+            [label["label"] for item in by_code["STAR-444"]["variant_group_items"] for label in item["variant_labels"]],
+        )
+
+    def test_leading_9_bluray_prefix_merges_with_base_code(self):
+        title = "世界一豪華な記念作！！ マドンナ20周年記念 湯煙舞う中出し無制限史上初ALL専属バスツアー！！前編"
+        rows = [
+            item(content_id="juq510", dvd_id="JUQ-510", title_ja=title, service_code="mono", runtime_mins=290),
+            item(content_id="9juq510", dvd_id="9JUQ-510", title_ja=title, service_code="mono", runtime_mins=290),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "JUQ-510")
+
+    def test_digit_prefixed_code_family_is_parsed_without_stripping_real_prefix(self):
+        title = "【VR】【初VR】リアル結婚生活"
+        rows = [
+            item(content_id="13dsvr00609", dvd_id="3DSVR-0609", title_ja=title, service_code="digital", runtime_mins=106),
+            item(content_id="supp:735", dvd_id="3DSVR609", title_ja=title, service_code="supplement", runtime_mins=106),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "3DSVR-609")
 
 
 if __name__ == "__main__":

@@ -765,6 +765,10 @@ export default {
     return api.get('/v1/operations/overview')
   },
 
+  getDataQualityOverview(limit = 8) {
+    return api.get('/v1/data-quality/overview', { params: { limit } })
+  },
+
   runCandidateProcessingNow() {
     return api.post('/v1/operations/candidate-processing/run')
   }

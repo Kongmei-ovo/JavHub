@@ -35,7 +35,8 @@ test('global confirm dialog uses shared Apple glass sheet and controls', () => {
   assert.match(dialogBlock, /border:\s*1px solid var\(--confirm-sheet-border\)/)
   assert.match(dialogBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
 
-  assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.match(buttonBlock, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(buttonBlock, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/)
   assert.doesNotMatch(buttonBlock, /transition:\s*var\(--transition-pro\)/)
   assert.match(buttonFocusBlock, /outline:\s*none/)
   assert.match(buttonFocusBlock, /box-shadow:\s*var\(--confirm-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)

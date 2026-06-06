@@ -48,9 +48,8 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   const statusPill = cssBlock(source, '.status-pill')
   const issuePanel = cssBlock(source, '.issue-panel')
   const issueRow = cssBlock(source, '.issue-row')
-  const emptyState = cssBlock(source, '.empty-state')
 
-  for (const block of [parseConsole, summaryItem, magnetsCard, magnetsHeader, magnetsList, magnetRow, magnetRowEven, magnetRowHover, magnetIndex, statusPill, issuePanel, issueRow, emptyState]) {
+  for (const block of [parseConsole, summaryItem, magnetsCard, magnetsHeader, magnetsList, magnetRow, magnetRowEven, magnetRowHover, magnetIndex, statusPill, issuePanel, issueRow]) {
     assert.doesNotMatch(block, /var\(--surface-card\)|var\(--bg-card\)|var\(--bg-secondary\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|var\(--transition\)/)
   }
 
@@ -71,7 +70,8 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.ok(backgroundIncludes(magnetRow, '--material-glass-control'))
   assert.match(magnetRow, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(magnetRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(magnetRow, /transition:\s*background var\(--motion-fast\)/)
+  assert.match(magnetRow, /transition:\s*transform var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
+  assert.doesNotMatch(magnetRow, /transition:[^;]*(?:background|border-color|box-shadow|color|filter|backdrop-filter)/)
   assert.ok(backgroundIncludes(magnetRowEven, '--material-glass-control'))
   assert.ok(backgroundIncludes(magnetRowHover, '--material-glass-control-hover'))
   assert.match(magnetRowHover, /border-color:\s*var\(--glass-control-border-hover\)/)
@@ -86,8 +86,10 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.match(issuePanel, /box-shadow:\s*var\(--glass-surface-shadow\)/)
   assertLayeredSubtle(issueRow)
   assert.match(issueRow, /border:\s*1px solid var\(--glass-control-border\)/)
-  assertLayeredSubtle(emptyState)
-  assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(source, /<AppleEmptyState/)
+  assert.match(source, /class="parse-empty-state"/)
+  assert.match(source, /action-label="重新解析"/)
+  assert.match(source, /secondary-action-label="清空输入"/)
 })
 
 test('magnet rows mirror hover glass treatment while child actions are focused', () => {
@@ -130,6 +132,9 @@ test('magnet parser semantic status surfaces use layered glass badge materials',
 test('magnet parser glass backgrounds are layered with specular and noise surfaces', () => {
   const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|material-glass-subtle)\);$/gm
   assert.doesNotMatch(source, singleLayerGlass)
+  assert.match(source, /<AppleEmptyState[\s\S]*class="parse-empty-state"[\s\S]*next-step=/)
+  assert.match(source, /@action="parseMagnets"/)
+  assert.match(source, /@secondary-action="clearAll"/)
 
   const layeredBlocks = [
     cssBlock(source, '.parse-console'),
@@ -142,7 +147,6 @@ test('magnet parser glass backgrounds are layered with specular and noise surfac
     cssBlock(source, '.status-pill'),
     cssBlock(source, '.issue-panel'),
     cssBlock(source, '.issue-row'),
-    cssBlock(source, '.empty-state'),
   ]
 
   for (const block of layeredBlocks) {

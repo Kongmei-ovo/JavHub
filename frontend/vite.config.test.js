@@ -6,12 +6,12 @@ const resolvedConfig = typeof viteConfig === 'function'
   ? await viteConfig({ command: 'build', mode: 'production' })
   : viteConfig
 
-test('production CSS targets preserve both unprefixed and WebKit backdrop filters', () => {
+test('production CSS targets keep backdrop compatibility without disabling minification', () => {
   const cssTarget = resolvedConfig.build?.cssTarget
 
   assert.ok(Array.isArray(cssTarget), 'build.cssTarget should be an explicit browser target list')
   for (const target of ['chrome107', 'firefox103', 'safari15']) {
     assert.ok(cssTarget.includes(target), `build.cssTarget should include ${target}`)
   }
-  assert.equal(resolvedConfig.build?.cssMinify, false, 'CSS minification should preserve unprefixed backdrop-filter declarations')
+  assert.notEqual(resolvedConfig.build?.cssMinify, false, 'production CSS minification should stay enabled for smaller web payloads')
 })

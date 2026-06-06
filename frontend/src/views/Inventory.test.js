@@ -173,7 +173,7 @@ test('inventory interactive controls expose Apple glass keyboard focus states', 
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should expose a subtle focus ring`)
   }
 
-  assert.match(actorFocus, /transform:\s*translateY\(-4px\)/)
+  assert.match(actorFocus, /transform:\s*translateY\(-2px\)/)
   assert.match(pageButtonFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(jumpButtonFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(searchClearFocus, /transform:\s*translateY\(-1px\)/)

@@ -5,7 +5,7 @@
       <button @click="rescan" class="rescan-btn">重新扫描</button>
     </div>
 
-    <div class="duplicate-list">
+    <div v-if="!loading && !error && duplicates.length > 0" class="duplicate-list">
       <div
         v-for="item in duplicates"
         :key="item.emby_item_id"
@@ -40,9 +40,36 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="!loading && duplicates.length === 0" class="empty">暂无可疑重复</div>
+    <AppleSkeleton
+      v-if="loading"
+      class="loading"
+      variant="list"
+      :items="5"
+      label="重复条目加载中"
+    />
+    <AppleErrorState
+      v-else-if="error"
+      class="error"
+      title="重复扫描加载失败"
+      :description="error"
+      next-step="重新扫描会再次读取 Emby 条目；如果仍失败，请去运行日志查看接口错误。"
+      retry-label="重新扫描"
+      secondary-action-label="查看日志"
+      @retry="rescan"
+      @secondary-action="$router.push('/logs')"
+    />
+    <AppleEmptyState
+      v-else-if="duplicates.length === 0"
+      class="empty"
+      title="暂无可疑重复"
+      description="当前快照没有发现需要清理的重复条目。"
+      next-step="可以重新扫描确认最新结果，或回到片库整理继续处理缺失和映射。"
+      action-label="重新扫描"
+      secondary-action-label="片库整理"
+      density="compact"
+      @action="rescan"
+      @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'duplicates' } })"
+    />
   </div>
 </template>
 
@@ -51,6 +78,9 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 
 const duplicates = ref([])
 const loading = ref(false)
@@ -154,7 +184,7 @@ onMounted(fetchDuplicates)
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   font-weight: 700;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .rescan-btn:hover {
   transform: translateY(-1px);
@@ -245,7 +275,7 @@ onMounted(fetchDuplicates)
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .duplicate-entry:focus-within {
   transform: translateY(-1px);
@@ -285,7 +315,7 @@ onMounted(fetchDuplicates)
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   cursor: pointer;
   font-weight: 700;
-  transition: transform var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 .action-btn:hover {
   transform: translateY(-1px);

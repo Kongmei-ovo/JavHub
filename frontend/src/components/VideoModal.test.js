@@ -88,7 +88,7 @@ test('modal overlay teleports globally and can render inline on the detail page'
 test('modal sheet keeps a visible translucent fallback without relying on backdrop filtering', () => {
   assert.match(source, /--modal-sheet-bg/)
   assert.match(source, /--modal-panel-bg/)
-  assert.match(source, /\.modal-container\s*\{[\s\S]*background:\s*var\(--modal-sheet-bg\)/)
+  assert.match(source, /\.modal-container\s*\{[\s\S]*background:[\s\S]*var\(--surface-specular-edge-strong\),[\s\S]*var\(--surface-noise\),[\s\S]*var\(--modal-sheet-bg\)/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*backdrop-filter:\s*none/)
   assert.match(source, /\.modal-container\s*\{[\s\S]*-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(source, /\.modal-container\s*\{[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\)/)
@@ -97,12 +97,13 @@ test('modal sheet keeps a visible translucent fallback without relying on backdr
 test('modal material stays readable and consistent over busy result grids', () => {
   const overlayBlock = source.match(/\.modal-overlay\s*\{[^}]*\}/)?.[0] || ''
 
-  assert.match(source, /--modal-scrim-sheet:\s*rgba\(18,\s*18,\s*20,\s*0\.64\)/)
+  assert.match(source, /--modal-scrim-core:\s*var\(--media-blackout\)/)
+  assert.match(source, /--modal-scrim-sheet:\s*color-mix\(in srgb,\s*var\(--media-blackout\) 64%,\s*transparent\)/)
   assert.match(source, /--modal-scrim-panel:\s*color-mix\(in srgb,\s*var\(--modal-scrim-core\) 24%,\s*transparent\)/)
   assert.match(source, /--modal-sheet-bg:\s*var\(--modal-scrim-sheet\)/)
   assert.match(source, /--modal-sheet-fallback:\s*var\(--modal-scrim-sheet\)/)
   assert.match(source, /--modal-panel-bg:\s*var\(--modal-scrim-panel\)/)
-  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*rgba\(14,\s*14,\s*16,\s*0\.68\)/)
+  assert.match(source, /:root\[data-theme="dark"\]\s+\.modal-overlay\s*\{[\s\S]*--modal-scrim-sheet:\s*color-mix\(in srgb,\s*var\(--media-blackout\) 68%,\s*transparent\)/)
   assert.match(overlayBlock, /backdrop-filter:\s*none/)
   assert.match(overlayBlock, /-webkit-backdrop-filter:\s*none/)
   assert.doesNotMatch(source, /--modal-backdrop-blur/)
@@ -140,6 +141,27 @@ test('modal actions use liquid glass control tokens instead of hardcoded pills',
   assert.doesNotMatch(source, /\.stream-btn\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.9\)/)
 })
 
+test('mobile modal header keeps code and actions in stable scan rows', () => {
+  const mobileBlock = source.match(/@media \(max-width: 768px\)\s*\{([\s\S]*)\n\}/)?.[1] || ''
+  const mobileCodeBlock = mobileBlock.match(/\.modal-code-block\s*\{([^}]*)\}/)?.[1] || ''
+  const mobileCode = mobileBlock.match(/\.modal-code\s*\{([^}]*)\}/)?.[1] || ''
+  const mobileActions = mobileBlock.match(/\.modal-actions\s*\{([^}]*)\}/)?.[1] || ''
+  const mobileActionButtons = mobileBlock.match(/\.preview-btn,\s*\n\s*\.stream-btn,\s*\n\s*\.favorite-btn\s*\{([^}]*)\}/)?.[1] || ''
+
+  assert.match(vueSource, /<div class="modal-code-block">[\s\S]*<div class="modal-actions"/)
+  assert.match(mobileCodeBlock, /display:\s*grid/)
+  assert.match(mobileCodeBlock, /grid-template-columns:\s*minmax\(0,\s*1fr\)/)
+  assert.match(mobileCodeBlock, /align-items:\s*start/)
+  assert.match(mobileCode, /min-width:\s*0/)
+  assert.match(mobileCode, /overflow-wrap:\s*anywhere/)
+  assert.match(mobileActions, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(mobileActions, /align-items:\s*stretch/)
+  assert.match(mobileActionButtons, /width:\s*100%/)
+  assert.match(mobileActionButtons, /overflow:\s*hidden/)
+  assert.match(mobileActionButtons, /text-overflow:\s*ellipsis/)
+  assert.doesNotMatch(mobileActions, /repeat\(auto-fit,\s*minmax\(96px,\s*1fr\)\)/)
+})
+
 test('modal people chips and lightbox controls use shared glass surfaces', () => {
   const closeBlock = sourceBlock(source, '.modal-close')
   const avatarBlock = sourceBlock(source, '.actress-avatar')
@@ -151,9 +173,10 @@ test('modal people chips and lightbox controls use shared glass surfaces', () =>
   const lightboxNavBlock = sourceBlock(source, '.lightbox-prev, .lightbox-next')
 
   assert.doesNotMatch(source, /transition:\s*var\(--transition-pro\)/)
-  assert.match(closeBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\)/)
-  assert.match(avatarBlock, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\)/)
-  assert.match(tagBlock, /transition:\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*color var\(--motion-fast\)/)
+  for (const block of [closeBlock, avatarBlock, tagBlock]) {
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+    assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|color|filter|backdrop-filter)/)
+  }
 
   assert.match(source, /--modal-chip-bg:\s*var\(--material-glass-control\)/)
   assert.match(source, /--modal-chip-bg-hover:\s*var\(--material-glass-control-hover\)/)
@@ -200,7 +223,7 @@ test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => 
   assert.match(overlayBlock, /background:\s*var\(--modal-lightbox-bg\)/)
   assert.match(overlayBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
   assert.match(overlayBlock, /-webkit-backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
-  assert.match(overlayBlock, /transition:\s*opacity var\(--motion-standard\),\s*backdrop-filter var\(--motion-standard\)/)
+  assert.match(overlayBlock, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(overlayBlock, /rgba\(0,\s*0,\s*0,\s*0\.95\)|blur\(20px\)|transition:\s*var\(--transition-pro\)/)
 
   assert.match(imageBlock, /box-shadow:\s*var\(--modal-lightbox-image-shadow\)/)
@@ -217,7 +240,7 @@ test('modal gallery lightbox uses shared Apple glass backdrop and depth', () => 
 
   for (const block of [closeBlock, navBlock]) {
     assert.match(block, /color:\s*var\(--modal-chip-color\)/)
-    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*background var\(--motion-standard\),\s*border-color var\(--motion-standard\),\s*box-shadow var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
+    assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
     assert.doesNotMatch(block, /color:\s*#fff|transition:\s*var\(--transition-pro\)/)
   }
 })
@@ -256,7 +279,7 @@ test('modal detail typography and dividers use modal semantic text tokens', () =
   const skeleton = sourceBlock(source, '.skeleton')
   const skeletonAfter = sourceBlock(source, '.skeleton::after')
 
-  assert.match(source, /--modal-text-primary:\s*#F5F5F7/)
+  assert.match(source, /--modal-text-primary:\s*var\(--media-caption-text\)/)
   assert.match(source, /--modal-text-secondary:\s*var\(--modal-text-secondary-base\)/)
   assert.match(source, /--modal-divider-subtle:\s*var\(--modal-divider-subtle-base\)/)
   assert.match(source, /--modal-skeleton-bg:\s*var\(--modal-skeleton-bg-base\)/)
@@ -371,7 +394,16 @@ test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () =>
 
 test('mobile modal sheet uses stable poster sizing and momentum scrolling', () => {
   assert.match(source, /-webkit-overflow-scrolling:\s*touch/)
-  assert.match(source, /\.modal-gallery\s*\{[\s\S]*height:\s*min\(42dvh,\s*320px\)/)
+  assert.match(source, /\.modal-gallery\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9/)
+  assert.match(source, /\.modal-gallery\s*\{[\s\S]*flex:\s*0 0 auto/)
+  assert.match(source, /\.modal-gallery\s*\{[\s\S]*height:\s*clamp\(210px,\s*48vh,\s*420px\)[\s\S]*height:\s*clamp\(210px,\s*48dvh,\s*420px\)/)
+  assert.match(source, /\.modal-gallery\s*\{[\s\S]*height:\s*clamp\(210px,\s*48dvh,\s*420px\)/)
+  assert.match(source, /\.modal-gallery\.image-fallback\s*\{[\s\S]*min-height:\s*clamp\(210px,\s*48vh,\s*420px\)[\s\S]*min-height:\s*clamp\(210px,\s*48dvh,\s*420px\)/)
+  assert.match(source, /\.modal-gallery\.image-fallback\s*\{[\s\S]*min-height:\s*clamp\(210px,\s*48dvh,\s*420px\)/)
   assert.match(source, /\.gallery-img\s*\{[\s\S]*height:\s*100%[\s\S]*object-fit:\s*contain/)
-  assert.match(source, /\.modal-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(96px,\s*1fr\)\)/)
+  assert.match(source, /@media \(max-width: 768px\)\s*\{[\s\S]*\.modal-gallery\s*\{[\s\S]*height:\s*clamp\(190px,\s*38vh,\s*320px\)[\s\S]*height:\s*clamp\(190px,\s*38dvh,\s*320px\)/)
+  assert.match(source, /@media \(max-width: 768px\)\s*\{[\s\S]*\.modal-gallery\s*\{[\s\S]*height:\s*clamp\(190px,\s*38dvh,\s*320px\)/)
+  assert.match(source, /@media \(max-width: 768px\)\s*\{[\s\S]*\.modal-gallery\.image-fallback\s*\{[\s\S]*min-height:\s*clamp\(190px,\s*38vh,\s*320px\)[\s\S]*min-height:\s*clamp\(190px,\s*38dvh,\s*320px\)/)
+  assert.match(source, /@media \(max-width: 768px\)\s*\{[\s\S]*\.modal-gallery\.image-fallback\s*\{[\s\S]*min-height:\s*clamp\(190px,\s*38dvh,\s*320px\)/)
+  assert.match(source, /\.modal-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
 })

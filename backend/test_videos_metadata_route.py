@@ -42,6 +42,11 @@ def _search_kwargs(**overrides):
         "variant_mode": "grouped",
         "variant_scope": "page",
         "include_variant_explanations": True,
+        "include_search_diagnostics": False,
+        "preferred_actresses": None,
+        "preferred_makers": None,
+        "preferred_series": None,
+        "preferred_categories": None,
         "page": 1,
         "page_size": 20,
     }
@@ -268,6 +273,537 @@ class VideosMetadataRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["total_count"], -1)
         self.assertFalse(client.search_videos.await_args.kwargs["include_total"])
+
+    async def test_search_route_understands_code_and_remaining_keywords_from_free_text(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [{"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "制服作品"}],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="miaa 784 制服"))
+
+        self.assertEqual(result["data"][0]["display_code"], "MIAA-784")
+        client.search_videos.assert_awaited_once()
+        self.assertEqual(client.search_videos.await_args.kwargs["content_id"], "MIAA-784")
+        self.assertEqual(client.search_videos.await_args.kwargs["q"], "制服")
+
+    async def test_search_route_expands_free_text_into_metadata_recall_and_reranks_matches(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("q") == "yotsuha moodyz cosplay":
+                return {
+                    "data": [
+                        {
+                            "content_id": "weak-title",
+                            "dvd_id": "WTA-001",
+                            "title_ja": "Yotsuha Cosplay Mention",
+                            "maker_name": "Other",
+                            "release_date": "2021-01-01",
+                        }
+                    ],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("actress_name") == "小湊よつ葉":
+                return {
+                    "data": [
+                        {
+                            "content_id": "actor-hit",
+                            "dvd_id": "MIAA-101",
+                            "title_ja": "演员命中",
+                            "actress_name": "小湊よつ葉",
+                            "release_date": "2024-03-01",
+                        }
+                    ],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("maker_name") == "MOODYZ":
+                return {
+                    "data": [
+                        {
+                            "content_id": "maker-hit",
+                            "dvd_id": "MIAA-102",
+                            "title_ja": "厂商命中",
+                            "maker_name": "MOODYZ",
+                            "release_date": "2024-02-01",
+                        }
+                    ],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("category_name") == "コスプレ":
+                return {
+                    "data": [
+                        {
+                            "content_id": "tag-hit",
+                            "dvd_id": "MIAA-103",
+                            "title_ja": "题材命中",
+                            "categories": [{"name_ja": "コスプレ"}],
+                            "release_date": "2024-01-01",
+                        }
+                    ],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("year") == 2024:
+                return {
+                    "data": [
+                        {
+                            "content_id": "maker-hit",
+                            "dvd_id": "MIAA-102",
+                            "title_ja": "厂商命中",
+                            "maker_name": "MOODYZ",
+                            "release_date": "2024-02-01",
+                        }
+                    ],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {
+            "data": [{"id": 26225, "actress_name": "小湊よつ葉", "name_romaji": "Yotsuha Kominato"}]
+        }
+        client.list_makers.return_value = [{"id": 1, "name": "MOODYZ", "name_ja": "MOODYZ"}]
+        client.list_series.return_value = []
+        client.list_categories.return_value = [{"id": 5023, "name_ja": "コスプレ", "name_en": "Cosplay"}]
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="yotsuha moodyz cosplay 2024", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], [
+            "actor-hit",
+            "maker-hit",
+            "tag-hit",
+            "weak-title",
+        ])
+        self.assertEqual(result["total_count"], 4)
+        calls = [call.kwargs for call in client.search_videos.await_args_list]
+        self.assertIn({"q": "yotsuha moodyz cosplay", "content_id": None, "dvd_id": None}, [
+            {key: kwargs.get(key) for key in ("q", "content_id", "dvd_id")}
+            for kwargs in calls
+        ])
+        self.assertIn("小湊よつ葉", [kwargs.get("actress_name") for kwargs in calls])
+        self.assertIn("MOODYZ", [kwargs.get("maker_name") for kwargs in calls])
+        self.assertIn("コスプレ", [kwargs.get("category_name") for kwargs in calls])
+        self.assertIn(2024, [kwargs.get("year") for kwargs in calls])
+
+    async def test_search_route_applies_history_preference_hints_as_lightweight_ranking(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [
+                {
+                    "content_id": "plain",
+                    "dvd_id": "AAA-001",
+                    "title_ja": "普通结果",
+                    "actress_name": "其他演员",
+                    "maker_name": "Other",
+                    "release_date": "2024-04-01",
+                },
+                {
+                    "content_id": "preferred",
+                    "dvd_id": "MIAA-101",
+                    "title_ja": "偏好结果",
+                    "actress_name": "小湊よつ葉",
+                    "maker_name": "MOODYZ",
+                    "release_date": "2024-01-01",
+                },
+            ],
+            "total_count": 2,
+            "total_pages": 1,
+        }
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(
+                **_search_kwargs(
+                    q="制服",
+                    preferred_actresses="小湊よつ葉",
+                    preferred_makers="MOODYZ",
+                )
+            )
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["preferred", "plain"])
+        client.search_videos.assert_awaited_once()
+        self.assertNotIn("preferred_actresses", client.search_videos.await_args.kwargs)
+
+    async def test_search_route_tolerates_typoed_alias_tokens_in_metadata_recall(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("actress_name") == "小湊よつ葉":
+                return {
+                    "data": [{"content_id": "actor-hit", "dvd_id": "MIAA-101", "actress_name": "小湊よつ葉"}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("maker_name") == "MOODYZ":
+                return {
+                    "data": [{"content_id": "maker-hit", "dvd_id": "MIAA-102", "maker_name": "MOODYZ"}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("category_name") == "コスプレ":
+                return {
+                    "data": [{"content_id": "tag-hit", "dvd_id": "MIAA-103", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {
+            "data": [{"id": 26225, "actress_name": "小湊よつ葉", "name_romaji": "Yotsuha Kominato"}]
+        }
+        client.list_makers.return_value = [{"id": 1, "name": "MOODYZ"}]
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="yotuha moodyz cosply 2024", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], [
+            "actor-hit",
+            "maker-hit",
+            "tag-hit",
+        ])
+
+    async def test_search_route_matches_compact_initial_and_consonant_tokens_in_metadata_recall(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("actress_name") == "小湊よつ葉":
+                return {
+                    "data": [{"content_id": "actor-hit", "dvd_id": "MIAA-101", "actress_name": "小湊よつ葉"}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("maker_name") == "MOODYZ":
+                return {
+                    "data": [{"content_id": "maker-hit", "dvd_id": "MIAA-102", "maker_name": "MOODYZ"}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if kwargs.get("category_name") == "コスプレ":
+                return {
+                    "data": [{"content_id": "tag-hit", "dvd_id": "MIAA-103", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {
+            "data": [{"id": 26225, "actress_name": "小湊よつ葉", "name_romaji": "Yotsuha Kominato"}]
+        }
+        client.list_makers.return_value = [{"id": 1, "name": "MOODYZ"}]
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="yk mdz cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], [
+            "actor-hit",
+            "maker-hit",
+            "tag-hit",
+        ])
+
+    async def test_search_route_supports_compact_field_operators_and_year_ranges(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [{"content_id": "structured-hit", "dvd_id": "MIAA-201"}],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="actor:yotsuha maker:moodyz tag:cosplay 2024..2026"))
+
+        self.assertEqual(result["data"][0]["content_id"], "structured-hit")
+        client.search_videos.assert_awaited_once()
+        kwargs = client.search_videos.await_args.kwargs
+        self.assertIsNone(kwargs["q"])
+        self.assertEqual(kwargs["actress_name"], "yotsuha")
+        self.assertEqual(kwargs["maker_name"], "moodyz")
+        self.assertEqual(kwargs["category_name"], "コスプレ")
+        self.assertEqual(kwargs["year_from"], 2024)
+        self.assertEqual(kwargs["year_to"], 2026)
+
+    async def test_search_route_can_return_search_diagnostics_for_recall_budget(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("category_name") == "コスプレ":
+                return {
+                    "data": [{"content_id": "tag-hit", "dvd_id": "MIAA-103", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="cosplay 2024", include_search_diagnostics=True))
+
+        diagnostics = result["search_diagnostics"]
+        self.assertTrue(diagnostics["metadata_recall"])
+        self.assertIn("category_name", diagnostics["recall_fields"])
+        self.assertIn("コスプレ", diagnostics["semantic_categories"])
+        self.assertLessEqual(diagnostics["recall_request_count"], diagnostics["recall_request_limit"])
+
+    async def test_search_route_understands_season_words_as_release_date_ranges(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if (
+                kwargs.get("category_name") == "コスプレ"
+                and kwargs.get("release_date_from") == "2024-03-01"
+                and kwargs.get("release_date_to") == "2024-05-31"
+            ):
+                return {
+                    "data": [{"content_id": "spring-hit", "dvd_id": "MIAA-301", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="spring 2024 cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["spring-hit"])
+
+    async def test_search_route_expands_multiple_semantic_category_aliases(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            category_name = kwargs.get("category_name")
+            if category_name == "メイド":
+                return {
+                    "data": [{"content_id": "maid-hit", "dvd_id": "MIAA-401", "categories": [{"name_ja": "メイド"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if category_name == "水着":
+                return {
+                    "data": [{"content_id": "swimsuit-hit", "dvd_id": "MIAA-402", "categories": [{"name_ja": "水着"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            if category_name == "アイドル":
+                return {
+                    "data": [{"content_id": "idol-hit", "dvd_id": "MIAA-403", "categories": [{"name_ja": "アイドル"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="maid swimsuit idol 2024", include_search_diagnostics=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], [
+            "maid-hit",
+            "swimsuit-hit",
+            "idol-hit",
+        ])
+        self.assertEqual(result["search_diagnostics"]["semantic_categories"], ["メイド", "水着", "アイドル"])
+
+    async def test_search_route_understands_recency_sort_words(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [{"content_id": "latest-hit", "dvd_id": "MIAA-501"}],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="latest"))
+
+        self.assertEqual(result["data"][0]["content_id"], "latest-hit")
+        client.search_videos.assert_awaited_once()
+        kwargs = client.search_videos.await_args.kwargs
+        self.assertIsNone(kwargs["q"])
+        self.assertEqual(kwargs["sort_by"], "release_date")
+        self.assertEqual(kwargs["sort_order"], "desc")
+
+    async def test_search_route_understands_quarter_words_as_release_date_ranges(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if (
+                kwargs.get("category_name") == "コスプレ"
+                and kwargs.get("release_date_from") == "2024-04-01"
+                and kwargs.get("release_date_to") == "2024-06-30"
+            ):
+                return {
+                    "data": [{"content_id": "quarter-hit", "dvd_id": "MIAA-601", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="q2 2024 cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["quarter-hit"])
+
+    async def test_search_route_understands_chinese_relative_year_words(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("category_name") == "コスプレ" and kwargs.get("year") == 2025:
+                return {
+                    "data": [{"content_id": "last-year-hit", "dvd_id": "MIAA-701", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator), \
+             patch("routers.videos._current_year", return_value=2026, create=True):
+            result = await search_videos(**_search_kwargs(q="去年 cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["last-year-hit"])
+
+    async def test_search_route_normalizes_full_width_pasted_code_tokens(self):
+        client = AsyncMock()
+        client.search_videos.return_value = {
+            "data": [{"content_id": "miaa784", "dvd_id": "MIAA-784", "title_ja": "命中"}],
+            "total_count": 1,
+            "total_pages": 1,
+        }
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="ＭＩＡＡ＿７８４ 制服"))
+
+        self.assertEqual(result["data"][0]["content_id"], "miaa784")
+        kwargs = client.search_videos.await_args.kwargs
+        self.assertEqual(kwargs["content_id"], "MIAA-784")
+        self.assertEqual(kwargs["q"], "制服")
+
+    async def test_search_route_understands_year_month_as_release_date_range(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if (
+                kwargs.get("category_name") == "コスプレ"
+                and kwargs.get("release_date_from") == "2024-05-01"
+                and kwargs.get("release_date_to") == "2024-05-31"
+            ):
+                return {
+                    "data": [{"content_id": "month-hit", "dvd_id": "MIAA-801", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="2024-05 cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["month-hit"])
+
+    async def test_search_route_understands_oldest_sort_words(self):
+        client = AsyncMock()
+
+        async def fake_search(**kwargs):
+            if kwargs.get("category_name") == "コスプレ" and kwargs.get("sort_order") == "asc":
+                return {
+                    "data": [{"content_id": "oldest-hit", "dvd_id": "MIAA-901", "categories": [{"name_ja": "コスプレ"}]}],
+                    "total_count": 1,
+                    "total_pages": 1,
+                }
+            return {"data": [], "total_count": 0, "total_pages": 0}
+
+        client.search_videos.side_effect = fake_search
+        client.list_actresses.return_value = {"data": []}
+        client.list_makers.return_value = []
+        client.list_series.return_value = []
+        client.list_categories.return_value = []
+        client.list_labels.return_value = []
+        translator = passthrough_video_translator()
+
+        with patch("routers.videos.get_info_client", return_value=client), \
+             patch("routers.videos.get_translator_service", return_value=translator):
+            result = await search_videos(**_search_kwargs(q="oldest cosplay", include_total=True))
+
+        self.assertEqual([item["content_id"] for item in result["data"]], ["oldest-hit"])
 
     async def test_search_route_caches_translated_response_for_non_random_requests(self):
         client = AsyncMock()

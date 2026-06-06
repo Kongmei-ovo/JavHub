@@ -83,8 +83,9 @@
         </button>
       </div>
 
-      <div v-if="loading" class="empty">加载中...</div>
-      <div v-else-if="filteredUnmappedActors.length === 0" class="empty">{{ reviewEmptyText }}</div>
+      <AppleSkeleton v-if="loading" class="empty" variant="list" :items="4" label="待映射演员加载中" />
+      <AppleErrorState v-else-if="reviewError" class="empty" title="待映射演员加载失败" :description="reviewError" next-step="重新加载会保留当前搜索词；如果持续失败，可以回到片库整理查看统一工作台。" retry-label="重新加载" secondary-action-label="片库整理" @retry="loadUnmapped" @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'mapping' } })" />
+      <AppleEmptyState v-else-if="filteredUnmappedActors.length === 0" class="empty" :title="reviewEmptyText" description="当前筛选下没有待审核的演员映射。" next-step="可以生成映射建议，或清除搜索条件后查看全部待映射演员。" action-label="生成建议" secondary-action-label="清除搜索" density="compact" @action="generateCandidates" @secondary-action="clearReviewSearch" />
       <div v-else class="actor-list">
         <div v-for="actor in filteredUnmappedActors" :key="actor.emby_actor_id" class="mapping-card">
           <div class="actor-side">
@@ -177,8 +178,9 @@
     </div>
 
     <div v-else class="panel">
-      <div v-if="loadingMappings" class="empty">加载中...</div>
-      <div v-else-if="currentMappings.length === 0" class="empty">{{ emptyText }}</div>
+      <AppleSkeleton v-if="loadingMappings" class="empty" variant="list" :items="5" label="演员映射加载中" />
+      <AppleErrorState v-else-if="mappingError" class="empty" title="演员映射加载失败" :description="mappingError" next-step="重新加载映射列表，或回到片库整理查看统一工作台。" retry-label="重新加载" secondary-action-label="片库整理" @retry="loadMappings" @secondary-action="$router.push({ path: '/library-organize', query: { tab: 'mapping' } })" />
+      <AppleEmptyState v-else-if="currentMappings.length === 0" class="empty" :title="emptyText" description="这个分组目前没有演员映射记录。" next-step="刷新映射列表，或回到待映射审核继续确认演员关系。" action-label="刷新" secondary-action-label="待映射审核" density="compact" @action="loadMappings" @secondary-action="activeTab = 'review'" />
       <div v-else class="mapping-table">
         <div v-for="mapping in currentMappings" :key="mapping.id" class="mapping-row">
           <div>
@@ -213,6 +215,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
+import AppleSkeleton from '../components/AppleSkeleton.vue'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import { actressImgUrl } from '../utils/imageUrl.js'
 import { requestConfirm } from '../utils/confirmDialog'
 import { candidateKey, candidateName, confidenceText, initials } from '../utils/inventoryPresentation.js'
@@ -222,6 +227,8 @@ const search = ref('')
 const reviewFilter = ref('all')
 const loading = ref(false)
 const loadingMappings = ref(false)
+const reviewError = ref('')
+const mappingError = ref('')
 const generatingCandidates = ref(false)
 const autoMatching = ref(false)
 const AUTO_MATCH_BATCH_LIMIT = 500
@@ -263,6 +270,7 @@ async function loadSummary() {
 
 async function loadUnmapped() {
   loading.value = true
+  reviewError.value = ''
   try {
     const resp = await api.listUnmappedActors({ search: search.value })
     unmappedActors.value = resp.data.data || []
@@ -271,6 +279,8 @@ async function loadUnmapped() {
         candidateQuery.value[actor.emby_actor_id] = actor.emby_actor_name
       }
     }
+  } catch (error) {
+    reviewError.value = error.response?.data?.detail || error.message || '待映射演员加载失败'
   } finally {
     loading.value = false
   }
@@ -278,15 +288,24 @@ async function loadUnmapped() {
 
 async function loadMappings() {
   loadingMappings.value = true
+  mappingError.value = ''
   try {
     const statuses = ['confirmed', 'ignored']
     const responses = await Promise.all(
       statuses.map(status => api.listActorMappings({ status, limit: MAPPING_LIST_LIMIT }))
     )
     mappings.value = responses.flatMap(resp => resp.data.data || [])
+  } catch (error) {
+    mappingError.value = error.response?.data?.detail || error.message || '演员映射加载失败'
   } finally {
     loadingMappings.value = false
   }
+}
+
+function clearReviewSearch() {
+  search.value = ''
+  reviewFilter.value = 'all'
+  loadUnmapped()
 }
 
 function actorCandidates(actor) {

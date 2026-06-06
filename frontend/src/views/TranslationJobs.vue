@@ -328,7 +328,18 @@
             <small>{{ job.progress_percent || 0 }}% · 成功 {{ job.translated || 0 }} · 失败 {{ job.failed || 0 }}</small>
           </button>
         </div>
-        <div v-else class="empty-panel">暂无历史作业</div>
+        <AppleEmptyState
+          v-else
+          class="empty-panel"
+          title="暂无历史作业"
+          description="还没有可查看的翻译批处理记录。"
+          next-step="可以创建一个翻译作业，或刷新历史确认后台是否已有新记录。"
+          action-label="创建作业"
+          secondary-action-label="刷新历史"
+          density="compact"
+          @action="setActiveSegment('create')"
+          @secondary-action="loadJobs"
+        />
 
         <aside v-if="selectedJob" class="result-summary">
           <strong>结果摘要</strong>
@@ -348,6 +359,7 @@ import { defineAsyncComponent } from 'vue'
 import { ElMessage } from '../utils/message.js'
 import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
+import AppleEmptyState from '../components/AppleEmptyState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'
 import {
@@ -405,7 +417,7 @@ function cloneTranslationConfig() {
 
 export default {
   name: 'TranslationJobs',
-  components: { GlassSelect, TranslationSourcesPanel, TranslationReviewPanel },
+  components: { AppleEmptyState, GlassSelect, TranslationSourcesPanel, TranslationReviewPanel },
   data() {
     return {
       activeSegment: 'overview',
