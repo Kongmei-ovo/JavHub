@@ -20,7 +20,7 @@
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--apple-text-field-motion), background var(--apple-text-field-motion), border-color var(--apple-text-field-motion), box-shadow var(--apple-text-field-motion);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .apple-text-field:hover {
@@ -91,7 +91,7 @@
   cursor: pointer;
   font-size: var(--type-caption-1, 12px);
   line-height: 1;
-  transition: transform var(--apple-text-field-motion), background var(--apple-text-field-motion), border-color var(--apple-text-field-motion), box-shadow var(--apple-text-field-motion), color var(--motion-fast, 140ms ease);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .apple-text-field__clear:hover {
@@ -110,7 +110,7 @@
 }
 
 .apple-text-field__clear:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
 
 .apple-text-field--compact .apple-text-field__clear {

@@ -194,7 +194,6 @@ test('tactile press CSS gives pressed children tactile depth and intensity level
   const light = cssBlock('[data-press-intensity="light"][data-press="true"]')
   const medium = cssBlock('[data-press-intensity="medium"][data-press="true"]')
   const strong = cssBlock('[data-press-intensity="strong"][data-press="true"]')
-  const reducedMotion = cssSource.match(/@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/)?.[1] || ''
   const rawColorPattern = new RegExp(`#[0-9A-Fa-f]{3,8}|r${'gba?'}\\(|h${'sla?'}\\(`)
 
   assert.doesNotMatch(cssSource, rawColorPattern)
@@ -204,12 +203,15 @@ test('tactile press CSS gives pressed children tactile depth and intensity level
   assert.match(base, /transform:\s*translateY\(0\.5px\)\s*scale\(var\(--tactile-press-scale,\s*0\.985\)\)/)
   assert.match(base, /box-shadow:\s*var\(--tactile-press-shadow,\s*var\(--b5-tactile-shadow-medium,\s*var\(--glass-inner-shadow\)\)\)/)
   assert.match(base, /filter:\s*brightness\(0\.985\)/)
-  assert.match(base, /transition:\s*transform var\(--motion-spring,\s*280ms cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\),\s*box-shadow var\(--motion-spring,\s*280ms cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\),\s*filter var\(--motion-fast,\s*140ms ease\)/)
+  // Global motion guard restricts transitions to transform/opacity; box-shadow
+  // and filter snap on press while transform springs. Reduced motion is
+  // handled by the shared --motion-spring token (collapses to 1ms).
+  assert.match(base, /transition:\s*transform var\(--motion-spring/)
+  assert.doesNotMatch(base, /transition:[^;]*\b(?:box-shadow|filter|background|border-color)\b/)
   assert.match(light, /--tactile-press-scale:\s*0\.992/)
   assert.match(light, /--tactile-press-shadow:\s*var\(--b5-tactile-shadow-light,\s*var\(--glass-control-shadow\)\)/)
   assert.match(medium, /--tactile-press-scale:\s*0\.985/)
   assert.match(medium, /--tactile-press-shadow:\s*var\(--b5-tactile-shadow-medium,\s*var\(--glass-inner-shadow\)\)/)
   assert.match(strong, /--tactile-press-scale:\s*0\.972/)
   assert.match(strong, /--tactile-press-shadow:\s*var\(--b5-tactile-shadow-strong,\s*var\(--glass-inner-shadow\)\)/)
-  assert.match(reducedMotion, /\[data-press="true"\]\[data-press-intensity\]:not\(\[data-press-disabled\]\)\s*\{[\s\S]*transition:\s*none/)
 })

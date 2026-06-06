@@ -24,7 +24,7 @@ const ramp = [
   ['display-2', '28px', '700', '-0.3px'],
   ['title-1', '22px', '700', '-0.2px'],
   ['title-2', '18px', '650', '0px'],
-  ['body', '15px', '450', '0px'],
+  ['body', '14px', '450', '0px'],
   ['callout', '14px', '500', '0px'],
   ['caption-1', '12px', '500', '0.1px'],
   ['caption-2', '11px', '600', '0.2px'],
@@ -44,10 +44,12 @@ test('Apple type ramp sizes are monotonic from display to caption', () => {
   assert.ok(sizes.every((size) => Number.isFinite(size)), 'all type ramp sizes should be px tokens')
 })
 
-test('Legacy typography tokens alias into the Apple type ramp', () => {
-  assert.equal(properties.get('--type-panel-title'), 'var(--type-title-1)')
-  assert.equal(properties.get('--type-card-title'), 'var(--type-title-2)')
-  assert.equal(properties.get('--type-control'), 'var(--type-callout)')
-  assert.equal(properties.get('--type-caption'), 'var(--type-caption-1)')
-  assert.equal(properties.get('--type-micro'), 'var(--type-caption-2)')
+test('Legacy typography tokens preserve their original literal sizes', () => {
+  // Old tokens kept literal px so existing components don't resize. New
+  // components should opt into the ramp tokens (--type-title-1 etc.) directly.
+  assert.equal(properties.get('--type-panel-title'), '18px')
+  assert.equal(properties.get('--type-card-title'), '15px')
+  assert.equal(properties.get('--type-control'), '13px')
+  assert.equal(properties.get('--type-caption'), '12px')
+  assert.equal(properties.get('--type-micro'), '11px')
 })

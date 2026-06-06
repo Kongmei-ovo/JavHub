@@ -64,7 +64,10 @@ test('AppleTextField styles use Phase A glass tokens and springy focus motion', 
   assert.match(rootBlock, /--apple-text-field-bg-focus:\s*var\(--glass-active-material\)/)
   assert.match(rootBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(rootBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.match(rootBlock, /transition:\s*transform var\(--apple-text-field-motion\),\s*background var\(--apple-text-field-motion\),\s*border-color var\(--apple-text-field-motion\),\s*box-shadow var\(--apple-text-field-motion\)/)
+  // Global motion guard restricts transitions to transform/opacity; field
+  // hover/focus color shifts are instant while the focus scale springs.
+  assert.match(rootBlock, /transition:\s*transform/)
+  assert.doesNotMatch(rootBlock, /transition:[^;]*\b(?:background|border-color|box-shadow)\b/)
 
   assert.match(compactBlock, /height:\s*var\(--space-7,\s*32px\)/)
   assert.match(searchBlock, /--apple-text-field-bg:\s*var\(--surface-input\)/)
@@ -81,5 +84,5 @@ test('AppleTextField styles use Phase A glass tokens and springy focus motion', 
   assert.match(clearBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(clearHoverBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
   assert.match(clearFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
-  assert.match(clearActiveBlock, /transform:\s*scale\(0\.94\)/)
+  assert.match(clearActiveBlock, /transform:\s*scale\(0\.96\)/)
 })

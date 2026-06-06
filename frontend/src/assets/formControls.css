@@ -54,7 +54,6 @@
   background: var(--b2-local-track-bg);
   border: 1px solid var(--b2-local-track-border);
   box-shadow: var(--apple-form-track-shadow);
-  transition: background var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
 }
 
 .apple-switch__thumb {
@@ -69,7 +68,7 @@
     var(--b2-local-thumb-bg);
   box-shadow: var(--b2-local-thumb-shadow);
   transform: translateX(0);
-  transition: transform var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
+  transition: transform var(--motion-standard);
 }
 
 .apple-switch--on .apple-switch__track {
@@ -110,7 +109,6 @@
   background: var(--b2-local-track-bg);
   border: 1px solid var(--b2-local-track-border);
   box-shadow: var(--apple-form-track-shadow);
-  transition: background var(--apple-form-motion-spring), border-color var(--apple-form-motion-spring), box-shadow var(--apple-form-motion-spring);
 }
 
 .apple-checkbox--checked .apple-checkbox__box,
@@ -133,7 +131,6 @@
 .apple-checkbox__mark {
   stroke-dasharray: 18;
   stroke-dashoffset: 18;
-  transition: stroke-dashoffset var(--apple-form-motion-spring);
 }
 
 .apple-checkbox--checked .apple-checkbox__mark {
@@ -143,7 +140,6 @@
 .apple-checkbox__mixed-line {
   stroke-dasharray: 12;
   stroke-dashoffset: 12;
-  transition: stroke-dashoffset var(--apple-form-motion-spring);
 }
 
 .apple-checkbox--indeterminate .apple-checkbox__mixed-line {

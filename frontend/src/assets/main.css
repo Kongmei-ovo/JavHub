@@ -138,13 +138,15 @@
   --type-display-2: 28px; --type-display-2-weight: 700; --type-display-2-tracking: -0.3px;
   --type-title-1: 22px; --type-title-1-weight: 700; --type-title-1-tracking: -0.2px;
   --type-title-2: 18px; --type-title-2-weight: 650; --type-title-2-tracking: 0px;
-  --type-body: 15px; --type-body-weight: 450; --type-body-tracking: 0px;
+  --type-body: 14px; --type-body-weight: 450; --type-body-tracking: 0px;
   --type-callout: 14px; --type-callout-weight: 500; --type-callout-tracking: 0px;
   --type-caption-1: 12px; --type-caption-1-weight: 500; --type-caption-1-tracking: 0.1px;
   --type-caption-2: 11px; --type-caption-2-weight: 600; --type-caption-2-tracking: 0.2px;
   --type-display: 50px; --type-display-mobile: 32px; --type-page-title: 28px; --type-page-title-mobile: 26px;
   --type-workbench-title: 24px; --type-entity-title: 28px; --type-section-title: 20px;
-  --type-panel-title: var(--type-title-1); --type-card-title: var(--type-title-2); --type-control: var(--type-callout); --type-caption: var(--type-caption-1); --type-micro: var(--type-caption-2);
+  /* Legacy type tokens keep their original literal values to preserve
+     existing component sizes. New components should adopt the ramp above. */
+  --type-panel-title: 18px; --type-card-title: 15px; --type-control: 13px; --type-caption: 12px; --type-micro: 11px;
   --type-badge: 10px;
   --page-title-size: 40px; --page-title-size-mobile: var(--type-display-mobile); --page-title-line: 1.12; --page-title-weight: 650;
 
