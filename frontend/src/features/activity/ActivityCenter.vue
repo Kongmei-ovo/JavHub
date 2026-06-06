@@ -1,22 +1,33 @@
 <template>
-  <section class="activity-center" :class="{ expanded: isExpanded }" aria-label="后台活动中心">
-    <button
-      class="activity-pill"
-      type="button"
-      :aria-expanded="isExpanded"
-      aria-controls="activity-center-panel"
-      @click="toggleExpanded"
-    >
-      <span class="activity-pill-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <path d="M4 14h4l2-8 4 14 2-6h4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
-      <span>{{ runningSummary }}</span>
-    </button>
+  <section
+    class="activity-center"
+    :class="{ expanded: isExpanded, 'has-running-jobs': hasRunningJobs }"
+    aria-label="后台活动中心"
+  >
+    <div class="activity-island" :data-state="isExpanded ? 'panel' : 'pill'">
+      <button
+        class="activity-pill"
+        type="button"
+        :aria-expanded="isExpanded"
+        aria-controls="activity-center-panel"
+        @click="toggleExpanded"
+      >
+        <span class="activity-pill-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 14h4l2-8 4 14 2-6h4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>{{ runningSummary }}</span>
+      </button>
 
-    <transition name="activity-panel">
-      <div v-if="isExpanded" id="activity-center-panel" class="activity-panel" role="region" aria-label="最近后台作业">
+      <div
+        id="activity-center-panel"
+        class="activity-panel"
+        role="region"
+        aria-label="最近后台作业"
+        :aria-hidden="isExpanded ? undefined : 'true'"
+        :inert="isExpanded ? undefined : ''"
+      >
         <div class="activity-panel-head">
           <div>
             <h2>Activity Center</h2>
@@ -55,12 +66,12 @@
           <span>暂无后台作业</span>
         </div>
       </div>
-    </transition>
+    </div>
   </section>
 </template>
 
 <script>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useJobStream } from './useJobStream.js'
 import './activityCenter.css'
 
@@ -84,6 +95,7 @@ export default {
     const { orderedJobs, runningJobs, connected, nextRetryDelayMs } = useJobStream()
     const isExpanded = computed(() => props.expanded === undefined ? localExpanded.value : props.expanded)
     const recentJobs = computed(() => orderedJobs.value.slice(0, 10))
+    const hasRunningJobs = computed(() => runningJobs.value.length > 0)
     const runningSummary = computed(() => `${runningJobs.value.length} 个进行中`)
     const retrySummary = computed(() => nextRetryDelayMs.value ? `${Math.round(nextRetryDelayMs.value / 1000)} 秒后重连` : '等待连接')
 
@@ -91,9 +103,19 @@ export default {
       if (value !== undefined) localExpanded.value = value
     })
 
-    const setExpanded = (value) => {
+    const setExpandedState = (value) => {
       localExpanded.value = value
       emit('update:expanded', value)
+    }
+    const setExpanded = (value) => {
+      if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
+        document.startViewTransition(async () => {
+          setExpandedState(value)
+          await nextTick()
+        })
+        return
+      }
+      setExpandedState(value)
     }
     const toggleExpanded = () => setExpanded(!isExpanded.value)
     const statusLabel = (status) => STATUS_LABELS[status] || status || '未知'
@@ -107,6 +129,7 @@ export default {
 
     return {
       connected,
+      hasRunningJobs,
       isExpanded,
       jobTime,
       recentJobs,

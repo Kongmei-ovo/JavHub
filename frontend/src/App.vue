@@ -1,13 +1,13 @@
 <template>
   <div class="app-layout" :class="{ 'mobile-more-active': mobileMoreActive }">
     <a class="skip-link" href="#main-content" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined" @click.prevent="focusMainContent">跳到主要内容</a>
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
+    <aside class="sidebar material-L2" :class="{ collapsed: sidebarCollapsed }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <div class="sidebar-header">
         <div class="logo">
           <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span v-if="!sidebarCollapsed" class="logo-text">JavHub</span>
+          <span class="logo-text sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">JavHub</span>
         </div>
         <div class="sidebar-header-actions">
           <button class="theme-toggle" type="button" :aria-label="isDarkMode ? '开灯' : '关灯'" :aria-pressed="isDarkMode" :title="isDarkMode ? '开灯' : '关灯'" @click="toggleAppTheme">
@@ -53,7 +53,7 @@
       </div>
       <nav class="sidebar-nav" aria-label="主导航" id="primary-navigation">
         <div v-for="group in navGroups" :key="group.label" class="nav-group">
-          <div v-if="!sidebarCollapsed" class="nav-group-label">{{ group.label }}</div>
+          <div class="nav-group-label sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">{{ group.label }}</div>
           <router-link
             v-for="item in group.items"
             :key="item.path"
@@ -66,13 +66,13 @@
             @click="focusMainContentFromNavigation"
           >
             <component :is="item.icon" />
-            <span v-if="!sidebarCollapsed" class="nav-text">{{ item.label }}</span>
-            <span v-if="!sidebarCollapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
+            <span class="nav-text sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">{{ item.label }}</span>
+            <span v-if="item.badge" class="nav-badge sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">{{ item.badge }}</span>
           </router-link>
         </div>
       </nav>
       <div class="sidebar-footer">
-        <div v-if="!sidebarCollapsed" class="version">v{{ appVersion }}</div>
+        <div class="version sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">v{{ appVersion }}</div>
       </div>
     </aside>
     <nav class="bottom-nav" aria-label="移动端主导航" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
@@ -465,18 +465,29 @@ export default {
 }
 /* ===== Sidebar ===== */
 .sidebar {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
+  --c1-sidebar-width: var(--sidebar-width, 224px);
+  --c1-sidebar-collapsed-width: calc(var(--space-10, 44px) + var(--space-5, 20px));
+  --c1-sidebar-gutter: var(--space-3, 12px);
+  --c1-sidebar-copy-offset: calc(var(--space-1, 4px) * -1);
+  --c1-sidebar-material-blur: var(--material-L2-blur, blur(34px));
+  --c1-sidebar-material-vibrancy: var(--material-L2-vibrancy, saturate(1.14));
+  --c1-sidebar-spring: var(--motion-spring, 280ms var(--ease-spring-soft, cubic-bezier(0.34, 1.56, 0.64, 1)));
+  --c1-sidebar-fast: var(--motion-fast, 140ms var(--ease-pro, cubic-bezier(0.16, 1, 0.3, 1)));
+  --c1-sidebar-standard: var(--motion-standard, 260ms var(--ease-pro, cubic-bezier(0.16, 1, 0.3, 1)));
+  --c1-sidebar-hairline: var(--surface-specular-edge, var(--glass-specular-edge));
+  width: var(--c1-sidebar-width);
+  min-width: var(--c1-sidebar-width);
   height: calc(100dvh - (var(--app-chrome-inset) * 2));
   margin: var(--app-chrome-inset) 0 var(--app-chrome-inset) var(--app-chrome-inset);
   background: var(--surface-nav);
-  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  backdrop-filter: var(--c1-sidebar-material-blur) var(--c1-sidebar-material-vibrancy);
+  -webkit-backdrop-filter: var(--c1-sidebar-material-blur) var(--c1-sidebar-material-vibrancy);
   border: 1px solid var(--surface-nav-border);
   border-radius: var(--radius-sheet);
   box-shadow: var(--chrome-floating-shadow);
   display: flex;
   flex-direction: column;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--c1-sidebar-spring), opacity var(--c1-sidebar-fast);
   z-index: var(--z-nav);
   flex-shrink: 0;
   overflow: hidden;
@@ -507,15 +518,27 @@ export default {
   z-index: 1;
 }
 .sidebar.collapsed {
-  width: 64px;
-  min-width: 64px;
+  width: var(--c1-sidebar-collapsed-width);
+  min-width: var(--c1-sidebar-collapsed-width);
+  transform: translateX(0) scaleX(0.995);
 }
 .sidebar.collapsed .sidebar-header {
   justify-content: center;
-  padding-inline: 10px;
+  padding-inline: var(--c1-sidebar-gutter);
 }
-.sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
-.sidebar.collapsed .activity-toggle { display: none; }
+.sidebar.collapsed .logo,
+.sidebar.collapsed .theme-toggle,
+.sidebar.collapsed .activity-toggle {
+  inline-size: 0;
+  width: 0;
+  min-width: 0;
+  padding-inline: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.sidebar.collapsed .sidebar-header-actions { gap: 0; }
 .sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) { justify-content: center; }
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
 .sidebar.collapsed .sidebar-nav { padding: 12px 8px; mask-image: linear-gradient(to bottom, transparent, currentColor 10px, currentColor calc(100% - 14px), transparent); }
@@ -523,6 +546,7 @@ export default {
 .sidebar.collapsed .nav-item {
   justify-content: center;
   padding: 11px 0;
+  gap: 0;
 }
 .sidebar.collapsed .nav-item.active::after {
   content: "";
@@ -538,16 +562,40 @@ export default {
 }
 .sidebar.collapsed .nav-item.active:focus-visible { box-shadow: var(--glass-active-shadow), var(--focus-ring); }
 .sidebar.collapsed .nav-item.active:focus-visible::after { opacity: 0.34; transform: scaleY(0.74); }
+.sidebar-copy {
+  opacity: 1;
+  transform: translateX(0);
+  transform-origin: left center;
+  transition: transform var(--c1-sidebar-spring), opacity var(--c1-sidebar-fast);
+  transition-delay: 60ms;
+  will-change: transform, opacity;
+}
+.sidebar.collapsed .sidebar-copy {
+  opacity: 0;
+  transform: translateX(var(--c1-sidebar-copy-offset));
+  transition-delay: 0ms;
+  pointer-events: none;
+}
 .sidebar-header {
   position: relative;
   z-index: 1;
   display: flex; align-items: center;
   justify-content: space-between;
   padding: 20px 16px;
-  border-bottom: 1px solid var(--surface-nav-border);
   min-height: 72px;
+  overflow: hidden;
 }
-.logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); }
+.sidebar-header::after {
+  content: "";
+  position: absolute;
+  left: var(--c1-sidebar-gutter);
+  right: var(--c1-sidebar-gutter);
+  bottom: 0;
+  height: 1px;
+  background: var(--c1-sidebar-hairline);
+  pointer-events: none;
+}
+.logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); transition: opacity var(--c1-sidebar-fast); }
 .logo-text { font-size: 17px; font-weight: 650; color: var(--text-primary); white-space: nowrap; letter-spacing: 0; }
 .sidebar-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .theme-toggle {
@@ -567,7 +615,7 @@ export default {
   color: var(--text-primary);
   cursor: pointer;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard);
+  transition: transform var(--c1-sidebar-standard), opacity var(--c1-sidebar-fast);
 }
 .theme-toggle:hover {
   background:
@@ -604,7 +652,7 @@ export default {
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
   transform: translateX(-4px);
-  transition: transform var(--motion-standard);
+  transition: transform var(--c1-sidebar-standard);
 }
 .theme-toggle__orb.dark { transform: translateX(4px); }
 .activity-toggle,
@@ -617,7 +665,7 @@ export default {
   border-radius: 999px;
   display: flex;
   align-items: center;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
+  transition: transform var(--c1-sidebar-standard), opacity var(--c1-sidebar-fast);
   flex-shrink: 0;
 }
 .activity-toggle {
@@ -684,7 +732,7 @@ export default {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: transform var(--motion-standard);
+  transition: transform var(--c1-sidebar-standard);
   white-space: nowrap;
   overflow: hidden;
   position: relative;
@@ -720,8 +768,8 @@ export default {
 .nav-item.active::before {
   display: none;
 }
-.nav-item.active::after { content: ""; position: absolute; left: 7px; width: 3px; height: 18px; border-radius: 999px; background: var(--active-indicator); opacity: 0.52; box-shadow: var(--glass-inner-shadow); pointer-events: none; transition: opacity var(--motion-fast), transform var(--motion-standard); }
-.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--motion-standard); }
+.nav-item.active::after { content: ""; position: absolute; left: 7px; width: 3px; height: 18px; border-radius: 999px; background: var(--active-indicator); opacity: 0.52; box-shadow: var(--glass-inner-shadow); pointer-events: none; transition: opacity var(--c1-sidebar-fast), transform var(--c1-sidebar-standard); }
+.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--c1-sidebar-standard); }
 .nav-item.active svg { filter: none; }
 .nav-item:focus-visible {
   outline: none;
@@ -759,7 +807,17 @@ export default {
   min-width: 18px;
   text-align: center;
 }
-.sidebar-footer { position: relative; z-index: 1; padding: 16px; border-top: 1px solid var(--surface-nav-border); }
+.sidebar-footer { position: relative; z-index: 1; padding: 16px; overflow: hidden; }
+.sidebar-footer::before {
+  content: "";
+  position: absolute;
+  left: var(--c1-sidebar-gutter);
+  right: var(--c1-sidebar-gutter);
+  top: 0;
+  height: 1px;
+  background: var(--c1-sidebar-hairline);
+  pointer-events: none;
+}
 .version { font-size: 11px; color: var(--text-muted); text-align: center; }
 /* ===== Main Content ===== */
 .main-content {

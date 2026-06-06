@@ -8,6 +8,7 @@ import { installAxiosAdapter } from '../../testSupport/axiosAdapter.js'
 
 const vueUrl = await import.meta.resolve('vue')
 const useJobStreamUrl = new URL('./useJobStream.js', import.meta.url).href
+const activityCssSource = readFileSync(new URL('./activityCenter.css', import.meta.url), 'utf8')
 let sharedWindow = null
 
 class MockEventSource {
@@ -118,6 +119,13 @@ async function importActivityCenter() {
   return (await import(moduleUrl)).default
 }
 
+function cssBlock(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = activityCssSource.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\n\\}`, 'm'))
+  assert.ok(match, `${selector} block should exist`)
+  return match[1]
+}
+
 test('activity API exposes snapshot and stream helpers for global jobs', async (t) => {
   installDom(t)
   const calls = []
@@ -202,4 +210,91 @@ test('ActivityCenter renders EventSource job progress and stays mounted across r
 
   app.unmount()
   assert.equal(MockEventSource.instances[0].closeCalled, true)
+})
+
+test('ActivityCenter uses one morphing Dynamic Island surface for pill and panel states', async (t) => {
+  installDom(t)
+  installAxiosAdapter(t, async (config) => {
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  })
+  const { createApp } = await import(vueUrl)
+  const ActivityCenter = await importActivityCenter()
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  const app = createApp({
+    components: { ActivityCenter },
+    template: '<ActivityCenter :initial-expanded="true" />',
+  })
+
+  app.mount(host)
+  await waitFor(() => document.querySelector('.activity-island'), 'ActivityCenter should render a single island surface')
+
+  const island = document.querySelector('.activity-island')
+  assert.equal(document.querySelectorAll('.activity-island').length, 1)
+  assert.equal(island?.getAttribute('data-state'), 'panel')
+  assert.equal(document.querySelector('.activity-pill')?.closest('.activity-island'), island)
+  assert.equal(document.querySelector('.activity-panel')?.closest('.activity-island'), island)
+
+  const glassSurfaceChildren = Array.from(document.querySelectorAll('.activity-pill, .activity-panel'))
+    .filter(element => element.parentElement !== island)
+  assert.deepEqual(glassSurfaceChildren, [], 'pill and panel should be content inside the shared island surface')
+
+  app.unmount()
+})
+
+test('ActivityCenter starts a same-element view transition when toggling the island', async (t) => {
+  const window = installDom(t)
+  installAxiosAdapter(t, async (config) => {
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { data: [] } }
+  })
+  const { createApp } = await import(vueUrl)
+  const ActivityCenter = await importActivityCenter()
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  let transitionCalls = 0
+  window.document.startViewTransition = function startViewTransition(callback) {
+    transitionCalls += 1
+    assert.equal(this, window.document)
+    const result = callback()
+    return {
+      finished: Promise.resolve(result),
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(result),
+    }
+  }
+  const app = createApp({
+    components: { ActivityCenter },
+    template: '<ActivityCenter />',
+  })
+
+  app.mount(host)
+  await waitFor(() => document.querySelector('.activity-island')?.getAttribute('data-state') === 'pill', 'ActivityCenter should start collapsed')
+  document.querySelector('.activity-pill')?.click()
+  await waitFor(() => document.querySelector('.activity-island')?.getAttribute('data-state') === 'panel', 'ActivityCenter should expand after click')
+
+  assert.equal(transitionCalls, 1)
+
+  delete window.document.startViewTransition
+  app.unmount()
+})
+
+test('ActivityCenter CSS defines a tokenized island morph without guarded transition properties', () => {
+  const islandBlock = cssBlock('.activity-island')
+  assert.match(islandBlock, /view-transition-name:\s*activity-island/)
+  assert.match(islandBlock, /transition:\s*transform var\(--motion-spring,\s*280ms cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\), opacity var\(--motion-fast,\s*140ms/)
+  assert.doesNotMatch(islandBlock, /transition:[^;]*(width|height|border-color|background|box-shadow|filter|stroke-dashoffset)/)
+  assert.match(activityCssSource, /::view-transition-group\(activity-island\)\s*\{[\s\S]*animation-timing-function:\s*var\(--ease-spring-soft,\s*cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\)/)
+
+  const expandedBlock = cssBlock('.activity-center.expanded .activity-island')
+  assert.match(expandedBlock, /width:\s*min\(390px,\s*calc\(100vw - var\(--space-10,\s*44px\)\)\)/)
+  assert.match(expandedBlock, /max-width:\s*min\(390px,\s*calc\(100vw - var\(--space-10,\s*44px\)\)\)/)
+  assert.match(expandedBlock, /border-radius:\s*var\(--radius-sheet\)/)
+
+  const runningBlock = cssBlock('.activity-center.has-running-jobs .activity-island::after')
+  assert.match(runningBlock, /background:\s*radial-gradient\(circle at 50% 100%, var\(--c3-local-activity-halo\), transparent 68%\)/)
+  assert.match(runningBlock, /animation:\s*activity-island-halo/)
+
+  const mobileBlock = cssBlock('@media (max-width: 768px)')
+  assert.match(mobileBlock, /z-index:\s*calc\(var\(--z-nav\) \+ 2\)/)
+  assert.match(mobileBlock, /bottom:\s*calc\(var\(--mobile-bottom-nav-reserve,\s*94px\) \+ var\(--space-2,\s*8px\)\)/)
 })

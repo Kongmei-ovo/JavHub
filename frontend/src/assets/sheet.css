@@ -1,0 +1,151 @@
+:root {
+  --b3-local-backdrop: var(--surface-scrim, var(--scrim));
+  --b3-local-sheet-bg: var(--material-glass-sheet);
+  --b3-local-sheet-border: var(--glass-sheet-border);
+  --b3-local-sheet-shadow: var(--shadow-sheet);
+  --b3-local-handle-bg: var(--text-muted);
+  --b3-local-title: var(--text-primary);
+  --b3-local-body: var(--text-secondary);
+}
+
+.apple-sheet-shell {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  padding: var(--space-4, 16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-standard, 260ms ease);
+}
+
+.apple-sheet-shell--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.apple-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: var(--b3-local-backdrop);
+  opacity: calc(0.4 + (var(--apple-sheet-progress, 1) * 0.6));
+  transition: opacity var(--motion-standard, 260ms ease);
+}
+
+.apple-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 720px);
+  max-height: min(var(--apple-sheet-max-height, 50dvh), calc(100dvh - var(--space-4, 16px)));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--b3-local-sheet-border);
+  border-radius: var(--radius-3xl, 28px) var(--radius-3xl, 28px) 0 0;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--b3-local-sheet-bg);
+  box-shadow: var(--b3-local-sheet-shadow);
+  color: var(--b3-local-body);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  opacity: 0.98;
+  transform: translateY(calc(100% + var(--apple-sheet-drag-y, 0px)));
+  transition:
+    transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)),
+    opacity var(--motion-fast, 140ms ease);
+}
+
+.apple-sheet-shell--open .apple-sheet {
+  opacity: 1;
+  transform: translateY(var(--apple-sheet-drag-y, 0px));
+}
+
+.apple-sheet__header {
+  display: grid;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-5, 20px) var(--space-4, 16px);
+  flex: 0 0 auto;
+}
+
+.apple-sheet__grabber-button {
+  min-width: var(--space-10, 44px);
+  min-height: var(--space-7, 32px);
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  padding: 0 var(--space-2, 8px);
+  cursor: grab;
+  touch-action: none;
+}
+
+.apple-sheet__grabber-button:active {
+  cursor: grabbing;
+  transform: translateY(1px);
+}
+
+.apple-sheet__grabber-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.apple-sheet__grabber {
+  width: 36px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--b3-local-handle-bg);
+  opacity: 0.42;
+}
+
+.apple-sheet__title {
+  margin: 0;
+  color: var(--b3-local-title);
+  font-size: var(--type-title-2, 18px);
+  font-weight: var(--type-title-2-weight, 650);
+  letter-spacing: var(--type-title-2-tracking, 0);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.apple-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--space-5, 20px) calc(var(--space-6, 24px) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 769px) {
+  .apple-sheet-shell {
+    align-items: center;
+    padding: var(--space-6, 24px);
+  }
+
+  .apple-sheet {
+    width: min(100%, 560px);
+    max-width: 560px;
+    max-height: min(78dvh, 720px);
+    border-radius: var(--radius-3xl, 28px);
+    transform: translateY(calc(var(--space-4, 16px) + var(--apple-sheet-drag-y, 0px)));
+  }
+
+  .apple-sheet-shell--open .apple-sheet {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-sheet-shell,
+  .apple-sheet-backdrop,
+  .apple-sheet {
+    --apple-sheet-motion: 1ms linear;
+    transition-duration: 1ms;
+  }
+}
