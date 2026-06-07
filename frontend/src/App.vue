@@ -1,7 +1,7 @@
 <template>
   <div class="app-layout" :class="{ 'mobile-more-active': mobileMoreActive }">
     <a class="skip-link" href="#main-content" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined" @click.prevent="focusMainContent">跳到主要内容</a>
-    <aside class="sidebar material-L2" :class="{ collapsed: sidebarCollapsed }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'material-L2': true }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <div class="sidebar-header">
         <div class="logo">
           <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
@@ -471,23 +471,19 @@ export default {
   --c1-sidebar-copy-offset: calc(var(--space-1, 4px) * -1);
   --c1-sidebar-material-blur: var(--material-L2-blur, blur(34px));
   --c1-sidebar-material-vibrancy: var(--material-L2-vibrancy, saturate(1.14));
-  --c1-sidebar-spring: var(--motion-spring, 280ms var(--ease-spring-soft, cubic-bezier(0.34, 1.56, 0.64, 1)));
-  --c1-sidebar-fast: var(--motion-fast, 140ms var(--ease-pro, cubic-bezier(0.16, 1, 0.3, 1)));
-  --c1-sidebar-standard: var(--motion-standard, 260ms var(--ease-pro, cubic-bezier(0.16, 1, 0.3, 1)));
   --c1-sidebar-hairline: var(--surface-specular-edge, var(--glass-specular-edge));
   width: var(--c1-sidebar-width);
   min-width: var(--c1-sidebar-width);
   height: calc(100dvh - (var(--app-chrome-inset) * 2));
   margin: var(--app-chrome-inset) 0 var(--app-chrome-inset) var(--app-chrome-inset);
   background: var(--surface-nav);
-  backdrop-filter: var(--c1-sidebar-material-blur) var(--c1-sidebar-material-vibrancy);
-  -webkit-backdrop-filter: var(--c1-sidebar-material-blur) var(--c1-sidebar-material-vibrancy);
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   border: 1px solid var(--surface-nav-border);
   border-radius: var(--radius-sheet);
   box-shadow: var(--chrome-floating-shadow);
   display: flex;
   flex-direction: column;
-  transition: transform var(--c1-sidebar-spring), opacity var(--c1-sidebar-fast);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast);
   z-index: var(--z-nav);
   flex-shrink: 0;
   overflow: hidden;
@@ -526,18 +522,8 @@ export default {
   justify-content: center;
   padding-inline: var(--c1-sidebar-gutter);
 }
-.sidebar.collapsed .logo,
-.sidebar.collapsed .theme-toggle,
-.sidebar.collapsed .activity-toggle {
-  inline-size: 0;
-  width: 0;
-  min-width: 0;
-  padding-inline: 0;
-  border: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
+.sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
+.sidebar.collapsed .activity-toggle { display: none; }
 .sidebar.collapsed .sidebar-header-actions { gap: 0; }
 .sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) { justify-content: center; }
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
@@ -566,7 +552,7 @@ export default {
   opacity: 1;
   transform: translateX(0);
   transform-origin: left center;
-  transition: transform var(--c1-sidebar-spring), opacity var(--c1-sidebar-fast);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast);
   transition-delay: 60ms;
   will-change: transform, opacity;
 }
@@ -595,7 +581,7 @@ export default {
   background: var(--c1-sidebar-hairline);
   pointer-events: none;
 }
-.logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); transition: opacity var(--c1-sidebar-fast); }
+.logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); transition: opacity var(--motion-fast); }
 .logo-text { font-size: 17px; font-weight: 650; color: var(--text-primary); white-space: nowrap; letter-spacing: 0; }
 .sidebar-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .theme-toggle {
@@ -615,7 +601,7 @@ export default {
   color: var(--text-primary);
   cursor: pointer;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--c1-sidebar-standard), opacity var(--c1-sidebar-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .theme-toggle:hover {
   background:
@@ -652,7 +638,7 @@ export default {
   border: 1px solid var(--glass-active-border);
   box-shadow: var(--glass-active-shadow);
   transform: translateX(-4px);
-  transition: transform var(--c1-sidebar-standard);
+  transition: transform var(--motion-standard);
 }
 .theme-toggle__orb.dark { transform: translateX(4px); }
 .activity-toggle,
@@ -665,7 +651,7 @@ export default {
   border-radius: 999px;
   display: flex;
   align-items: center;
-  transition: transform var(--c1-sidebar-standard), opacity var(--c1-sidebar-fast);
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
   flex-shrink: 0;
 }
 .activity-toggle {
@@ -732,7 +718,7 @@ export default {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: transform var(--c1-sidebar-standard);
+  transition: transform var(--motion-standard);
   white-space: nowrap;
   overflow: hidden;
   position: relative;
@@ -768,8 +754,8 @@ export default {
 .nav-item.active::before {
   display: none;
 }
-.nav-item.active::after { content: ""; position: absolute; left: 7px; width: 3px; height: 18px; border-radius: 999px; background: var(--active-indicator); opacity: 0.52; box-shadow: var(--glass-inner-shadow); pointer-events: none; transition: opacity var(--c1-sidebar-fast), transform var(--c1-sidebar-standard); }
-.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--c1-sidebar-standard); }
+.nav-item.active::after { content: ""; position: absolute; left: 7px; width: 3px; height: 18px; border-radius: 999px; background: var(--active-indicator); opacity: 0.52; box-shadow: var(--glass-inner-shadow); pointer-events: none; transition: opacity var(--motion-fast), transform var(--motion-standard); }
+.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--motion-standard); }
 .nav-item.active svg { filter: none; }
 .nav-item:focus-visible {
   outline: none;

@@ -123,9 +123,6 @@ onUnmounted(() => {
 
 <style scoped>
 :global(:root) {
-  --b4-local-island-motion: var(--motion-spring-emphasized, 420ms cubic-bezier(0.5, 1.7, 0.6, 1));
-  --b4-local-exit-motion: var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1));
-  --b4-local-fast-motion: var(--motion-fast, 140ms cubic-bezier(0.16, 1, 0.3, 1));
   --b4-local-specular-edge: var(--surface-specular-edge, none);
   --b4-local-specular-edge-strong: var(--surface-specular-edge-strong, none);
   --b4-local-surface-noise: var(--surface-noise, none);
@@ -231,7 +228,7 @@ onUnmounted(() => {
   box-shadow: var(--toast-action-shadow);
   backdrop-filter: blur(var(--b4-local-blur-control)) saturate(var(--b4-local-saturate-control));
   -webkit-backdrop-filter: blur(var(--b4-local-blur-control)) saturate(var(--b4-local-saturate-control));
-  transition: transform var(--b4-local-exit-motion), opacity var(--b4-local-fast-motion);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast, 140ms cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .toast-action:hover {
@@ -267,7 +264,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform var(--b4-local-exit-motion), opacity var(--b4-local-fast-motion);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast, 140ms cubic-bezier(0.16, 1, 0.3, 1));
   box-shadow: var(--toast-control-shadow);
   backdrop-filter: blur(var(--b4-local-blur-control)) saturate(var(--b4-local-saturate-control));
   -webkit-backdrop-filter: blur(var(--b4-local-blur-control)) saturate(var(--b4-local-saturate-control));
@@ -295,21 +292,21 @@ onUnmounted(() => {
 
 /* Animations */
 .toast-slide-enter-active {
-  transition: opacity var(--b4-local-exit-motion), transform var(--b4-local-island-motion);
+  transition: opacity var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), transform var(--motion-spring-emphasized, 420ms cubic-bezier(0.5, 1.7, 0.6, 1));
 }
 .toast-slide-leave-active {
-  transition: opacity var(--b4-local-exit-motion), transform var(--b4-local-island-motion);
+  transition: opacity var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), transform var(--motion-spring-emphasized, 420ms cubic-bezier(0.5, 1.7, 0.6, 1));
 }
 .toast-slide-enter-from {
   opacity: 0;
-  transform: translate3d(-50%, -100%, 0) scale(0.6);
+  transform: translate3d(-50%, -100%, 0) scale(0.96);
 }
 .toast-slide-enter-to {
   transform: translate3d(-50%, 8px, 0) scale(1);
 }
 .toast-slide-leave-to {
   opacity: 0;
-  transform: translate3d(-50%, -100%, 0) scale(0.6);
+  transform: translate3d(-50%, -100%, 0) scale(0.96);
 }
 
 .toast-capsule--stacked {

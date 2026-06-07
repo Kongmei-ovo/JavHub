@@ -70,7 +70,9 @@ test('toast capsule uses shared Apple glass sheet and controls', () => {
 
   for (const block of [enterBlock, leaveBlock]) {
     assert.doesNotMatch(block, /transition:\s*all\b|var\(--transition-pro\)/)
-    assert.match(block, /transition:\s*opacity var\(--b4-local-exit-motion\),\s*transform var\(--b4-local-island-motion\)/)
+    // Use shared motion tokens directly (the global motion-token guard
+    // forbids local indirections like --b4-local-*-motion).
+    assert.match(block, /transition:\s*opacity var\(--motion-spring,\s*\d+ms[\s\S]*?\),\s*transform var\(--motion-spring-emphasized,\s*\d+ms/)
   }
 })
 
@@ -82,8 +84,11 @@ test('toast capsule morphs from the top notch with spring motion and rubber-band
   const enterToBlock = sourceBlock('.toast-slide-enter-to')
   const leaveToBlock = sourceBlock('.toast-slide-leave-to')
 
-  assert.match(source, /--b4-local-island-motion:\s*var\(--motion-spring-emphasized,\s*420ms cubic-bezier\(0\.5,\s*1\.7,\s*0\.6,\s*1\)\)/)
-  assert.match(source, /--b4-local-exit-motion:\s*var\(--motion-spring,\s*280ms cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\)/)
+  // Motion tokens are referenced directly with inline fallbacks (the
+  // b4-local indirections were dropped to satisfy the global
+  // motion-token guard; spring values still come from main.css).
+  assert.match(source, /var\(--motion-spring-emphasized,\s*420ms cubic-bezier\(0\.5,\s*1\.7,\s*0\.6,\s*1\)\)/)
+  assert.match(source, /var\(--motion-spring,\s*280ms cubic-bezier\(0\.34,\s*1\.56,\s*0\.64,\s*1\)\)/)
   assert.match(rootBlock, /top:\s*max\(env\(safe-area-inset-top,\s*0px\),\s*0px\)/)
   assert.match(rootBlock, /bottom:\s*auto/)
   assert.match(rootBlock, /width:\s*min\(calc\(100vw - var\(--space-6,\s*24px\)\),\s*480px\)/)
@@ -92,13 +97,19 @@ test('toast capsule morphs from the top notch with spring motion and rubber-band
   assert.match(rootBlock, /opacity:\s*var\(--toast-stack-opacity,\s*1\)/)
   assert.match(rootBlock, /z-index:\s*calc\(var\(--z-toast,\s*1000\) \+ var\(--toast-stack-z,\s*0\)\)/)
 
-  assert.match(enterActiveBlock, /transition:\s*opacity var\(--b4-local-exit-motion\),\s*transform var\(--b4-local-island-motion\)/)
-  assert.match(leaveActiveBlock, /transition:\s*opacity var\(--b4-local-exit-motion\),\s*transform var\(--b4-local-island-motion\)/)
+  // Use shared motion tokens (motion-spring-emphasized + motion-fast)
+  // instead of B4-local indirections — the global motion-token guard
+  // requires direct references.
+  assert.match(enterActiveBlock, /transition:\s*opacity var\(--motion-spring,\s*\d+ms[\s\S]*?\),\s*transform var\(--motion-spring-emphasized/)
+  assert.match(leaveActiveBlock, /transition:\s*opacity var\(--motion-spring,\s*\d+ms[\s\S]*?\),\s*transform var\(--motion-spring-emphasized/)
   assert.match(enterFromBlock, /opacity:\s*0/)
-  assert.match(enterFromBlock, /transform:\s*translate3d\(-50%,\s*-100%,\s*0\)\s*scale\(0\.6\)/)
+  // Entry/exit scale clamps to 0.96 (lightest entry transform permitted by
+  // the entry-and-exit-transforms-stay-light guard). Visual still morphs
+  // from above with translateY(-100%).
+  assert.match(enterFromBlock, /transform:\s*translate3d\(-50%,\s*-100%,\s*0\)\s*scale\(0\.96\)/)
   assert.match(enterToBlock, /transform:\s*translate3d\(-50%,\s*8px,\s*0\)\s*scale\(1\)/)
   assert.match(leaveToBlock, /opacity:\s*0/)
-  assert.match(leaveToBlock, /transform:\s*translate3d\(-50%,\s*-100%,\s*0\)\s*scale\(0\.6\)/)
+  assert.match(leaveToBlock, /transform:\s*translate3d\(-50%,\s*-100%,\s*0\)\s*scale\(0\.96\)/)
 })
 
 test('toast capsule keeps a local five item Dynamic Island visual stack without changing the message bus', () => {
