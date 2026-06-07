@@ -178,7 +178,9 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card:active {
-  transform: translateY(-2px) scale(0.99);
+  /* WAVE-3 E3: sink 0.5px on press for tactile push (depth comes from
+     shadow contrast, not from rising). */
+  transform: translateY(0.5px) scale(0.99);
 }
 
 .actor-portrait-card__media {

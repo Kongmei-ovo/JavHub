@@ -17,11 +17,12 @@
 .header-actions .btn { gap: 6px; }
 
 /* ===== Stats Bar ===== */
+/* WAVE-3 D1: apply spacing ramp section gap, card-gap, and card-inner. */
 .stats-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-card-gap, var(--space-5, 20px));
+  margin-bottom: var(--space-section, var(--space-8, 32px));
 }
 
 .stat-card {
@@ -82,9 +83,10 @@
 .stat-info { min-width: 0; }
 .stat-num {
   font-family: var(--font-mono);
-  font-size: var(--type-entity-title);
-  letter-spacing: 0;
-  font-weight: 600;
+  /* WAVE-3 D1: A1 ramp display-2 for stat numbers. */
+  font-size: var(--type-display-2, 28px);
+  letter-spacing: var(--type-display-2-tracking, -0.3px);
+  font-weight: var(--type-display-2-weight, 700);
   color: var(--text-primary);
   line-height: 1;
   animation: statPop 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
@@ -98,7 +100,8 @@
 .stat-card:nth-child(2) .stat-num { animation-delay: 0.1s; }
 .stat-card:nth-child(3) .stat-num { animation-delay: 0.15s; }
 .stat-card:nth-child(4) .stat-num { animation-delay: 0.2s; }
-.stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+/* WAVE-3 D1: A1 ramp caption-1 for stat labels. */
+.stat-label { font-size: var(--type-caption-1, 12px); color: var(--text-secondary); margin-top: var(--space-1, 4px); letter-spacing: var(--type-caption-1-tracking, 0.1px); }
 
 .candidate-overview {
   display: grid;
@@ -132,17 +135,23 @@
   box-shadow: var(--glass-control-shadow-hover);
   transform: translateY(-2px);
 }
+/* WAVE-3 D1: A1 ramp — callout for chip value, caption-1 for chip label,
+   aligned with baseline so the candidate-overview reads as one row of facts. */
 .metric-value {
   display: block;
   font-family: var(--font-mono);
-  font-size: var(--type-section-title);
-  font-weight: 700;
+  font-size: var(--type-callout, 14px);
+  font-weight: var(--type-callout-weight, 500);
+  letter-spacing: 0;
+  line-height: 1.2;
 }
 .metric-label {
   display: block;
-  margin-top: 3px;
+  margin-top: var(--space-1, 4px);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
+  letter-spacing: var(--type-caption-1-tracking, 0.1px);
+  line-height: 1.2;
 }
 .candidate-filter-ledger {
   display: flex;

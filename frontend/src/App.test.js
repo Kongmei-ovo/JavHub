@@ -480,7 +480,9 @@ test('app shell respects reduced motion without removing focus or active afforda
 
 test('mobile app shell reserves viewport space from a single bottom chrome contract', () => {
   assert.match(sourceBlock('.app-layout'), /--mobile-bottom-nav-height:\s*70px/)
-  assert.match(sourceBlock('.app-layout'), /--mobile-bottom-nav-offset:\s*max\(10px,\s*env\(safe-area-inset-bottom,\s*0px\)\)/)
+  // WAVE-3 C2: Liquid Glass floating tab bar — minimum offset 20px floor and
+  // stacks 12px on top of the env-driven safe area when the device reports one.
+  assert.match(sourceBlock('.app-layout'), /--mobile-bottom-nav-offset:\s*max\(20px,\s*calc\(env\(safe-area-inset-bottom,\s*0px\)\s*\+\s*12px\)\)/)
   assert.match(sourceBlock('.app-layout'), /--mobile-bottom-nav-reserve:\s*calc\(var\(--mobile-bottom-nav-height\) \+ var\(--mobile-bottom-nav-offset\) \+ 12px\)/)
   assert.match(sourceBlock('.bottom-nav'), /min-height:\s*var\(--mobile-bottom-nav-height\)/)
   assert.match(sourceBlock('.bottom-nav'), /bottom:\s*var\(--mobile-bottom-nav-offset\)/)

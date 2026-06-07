@@ -433,7 +433,9 @@ export default {
 <style scoped>
 .app-layout {
   --mobile-bottom-nav-height: 70px;
-  --mobile-bottom-nav-offset: max(10px, env(safe-area-inset-bottom, 0px));
+  /* WAVE-3 C2 START — Liquid Glass floating pill needs a real gap from the home indicator. */
+  --mobile-bottom-nav-offset: max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  /* WAVE-3 C2 END */
   --mobile-bottom-nav-reserve: calc(var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-offset) + 12px);
   display: flex;
   height: 100dvh;
@@ -931,6 +933,14 @@ export default {
     var(--surface-noise),
     var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
+  /* WAVE-3 C2: active item lifts with spring for Liquid Glass floating feel. */
+  transform: translateY(-2px);
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast, 140ms cubic-bezier(0.16, 1, 0.3, 1));
+}
+.bottom-nav-item.active:focus-visible {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--active-border);
+  box-shadow: var(--glass-active-shadow), var(--focus-ring);
 }
 .bottom-nav-item.active::before {
   content: "";

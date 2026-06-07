@@ -100,7 +100,9 @@ test('mobile shell reserves iPhone safe area and prevents document-wide horizont
   assert.match(mainMobile, /\.page-shell,\s*\.page-rail\s*\{[\s\S]*max-width:\s*100%/)
   assert.match(mainMobile, /\.page-bleed\s*\{[\s\S]*overflow-x:\s*clip/)
 
-  assert.match(files.app, /--mobile-bottom-nav-offset:\s*max\(10px,\s*env\(safe-area-inset-bottom,\s*0px\)\)/)
+  // WAVE-3 C2: Liquid Glass floating tab bar — 20px floor + 12px stacked on
+  // the env-driven safe area.
+  assert.match(files.app, /--mobile-bottom-nav-offset:\s*max\(20px,\s*calc\(env\(safe-area-inset-bottom,\s*0px\)\s*\+\s*12px\)\)/)
   assert.match(files.app, /--mobile-bottom-nav-reserve:\s*calc\(var\(--mobile-bottom-nav-height\) \+ var\(--mobile-bottom-nav-offset\) \+ 12px\)/)
   assert.match(appMobile, /\.main-content\s*\{[\s\S]*padding-bottom:\s*var\(--mobile-bottom-nav-reserve\)/)
   assert.match(appMobile, /\.bottom-nav\s*\{[\s\S]*padding-bottom:\s*max\(8px,\s*env\(safe-area-inset-bottom,\s*0px\)\)/)

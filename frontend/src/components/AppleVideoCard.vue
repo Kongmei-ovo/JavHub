@@ -159,7 +159,12 @@ function handleKeydown(event) {
 }
 
 .apple-video-card:active {
-  transform: translateY(-1px) scale(0.995);
+  /* WAVE-3 E3: card depth on press — sink 0.5px and scale tight, image
+     pulls back from hover scale for a synchronised tactile push. */
+  transform: translateY(0.5px) scale(0.99);
+}
+.apple-video-card:active .apple-video-card__image {
+  transform: scale(1.01);
 }
 
 .apple-video-card__cover {

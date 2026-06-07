@@ -60,8 +60,10 @@
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   color: var(--text-secondary);
-  font-size: var(--type-caption);
-  font-weight: 600;
+  /* WAVE-3 D2: A1 ramp — chip uses caption-1 with its tracking. */
+  font-size: var(--type-caption-1, 12px);
+  font-weight: var(--type-caption-1-weight, 500);
+  letter-spacing: var(--type-caption-1-tracking, 0.1px);
   white-space: nowrap;
 }
 
@@ -196,10 +198,11 @@
 }
 
 /* ===== Card Grid ===== */
+/* WAVE-3 D2: A2 spacing ramp — gap uses --space-card-gap (20px). */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 16px;
+  gap: var(--space-card-gap, var(--space-5, 20px));
 }
 
 .card-grid.is-subscription-editing {
