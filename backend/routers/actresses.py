@@ -224,13 +224,20 @@ async def _get_grouped_actress_videos_collection(
     include_variant_explanations: bool,
     cache_bypass: bool,
 ) -> dict[str, Any]:
+    # The full grouped catalog is the same dataset no matter what the caller
+    # passed for include_total — that flag only governs whether the outer
+    # response exposes a count. Keying the cache on include_total would
+    # silently split the catalog into two buckets and let page=2 with
+    # include_total=false stop after the upstream API's first page (because
+    # the upstream omits total_pages when include_total is false, which makes
+    # _get_all_pages think it's done after page 1). Force the inner fetch to
+    # always request the total so pagination walks the whole catalog.
     cache_params = {
         "actress_id": actress_id,
         "include_supplement": include_supplement,
         "service_code": service_code,
         "year": year,
         "sort_by": sort_by,
-        "include_total": include_total,
         "include_variant_explanations": include_variant_explanations,
     }
 
@@ -241,7 +248,7 @@ async def _get_grouped_actress_videos_collection(
             service_code=service_code,
             year=year,
             sort_by=sort_by,
-            include_total=include_total,
+            include_total=True,
             cache_bypass=cache_bypass,
         )
         items = result.get("data", []) if isinstance(result, dict) else []

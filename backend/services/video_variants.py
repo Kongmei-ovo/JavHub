@@ -24,7 +24,33 @@ BLURAY_BD_INFIX_RE = re.compile(r"^([A-Z]{2,})BD([0-9]+[A-Z]*)$")
 BLURAY_B_PREFIX_RE = re.compile(r"^(PRBY)B([0-9]+[A-Z]*)$")
 BLURAY_B_SUFFIX_RE = re.compile(r"^([A-Z]{2,})([0-9]+)B$")
 ON_DEMAND_SUFFIXES = ("RDOD", "BOD", "DOD")
-BONUS_SUFFIXES = ("BTK", "TK", "EC", "DL")
+# Media-format suffix that DMM/FANZA tacks onto an otherwise identical code so
+# the digital storefront can distinguish the physical disc package from the
+# stream. The base code (without the suffix) is the canonical work id; the
+# variant_labels machinery still surfaces "DVD 版"/"BD 版" through the existing
+# label flow. We strip these unconditionally because DVD/BD is never the tail
+# of a real upstream prefix.
+MEDIA_SUFFIXES = ("DVD", "BD")
+# Bonus-edition suffixes — Tower Records (TK/TKT/TKTB), HMV (HM), Amazon (AM),
+# Tsutaya (TS), Rakuten (RK) and the legacy 数量限定/特典版 DP/SP markers all
+# encode "same work, different store-exclusive bonus" and merge into the base
+# code only when the title carries clear bonus evidence (FANZA限定/数量限定/
+# チェキ/パンティ/...). Longer suffixes come first so the strip matches
+# greedily — TKTB must beat TKT, BTK must beat TK.
+BONUS_SUFFIXES = (
+    "TKTB",
+    "BTK",
+    "TKT",
+    "TK",
+    "HM",
+    "AM",
+    "TS",
+    "RK",
+    "DP",
+    "SP",
+    "EC",
+    "DL",
+)
 BLURAY_B_SUFFIX_PREFIXES = {"AP", "GTRP", "NAAC"}
 BLURAY_BD_INFIX_PREFIXES = {"SSHN", "STAR"}
 BLURAY_MARKERS = {
@@ -151,7 +177,7 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             meaning="DVD Disc On Demand，FANZA 官方说明为 DVD-R 按需盘",
             evidence="FANZA 帮助中心说明 DOD 为 DVD Disc On Demand",
         )
-    if any(marker in analysis["markers"] for marker in BLURAY_MARKERS):
+    if any(marker in analysis["markers"] for marker in BLURAY_MARKERS) or "bd_media_suffix" in analysis["markers"]:
         add_label(
             "blu_ray",
             "蓝光版",
@@ -159,8 +185,46 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             source="code",
             confidence="medium",
             meaning="番号包含常见 Blu-ray 版本标记，和基础番号归为同一作品的不同介质版本",
-            evidence=", ".join(marker for marker in analysis["markers"] if marker in BLURAY_MARKERS),
+            evidence=", ".join(marker for marker in analysis["markers"] if marker in BLURAY_MARKERS or marker == "bd_media_suffix"),
         )
+    if "dvd_media_suffix" in analysis["markers"]:
+        add_label(
+            "dvd",
+            "DVD 版",
+            "DVD",
+            source="code",
+            confidence="medium",
+            meaning="番号末尾的 DVD 标记表示物理 DVD 介质版本，与基础番号合并为同一作品的不同介质版本",
+            evidence="番号含 DVD 介质后缀",
+        )
+    # Store-exclusive bonus markers (Tower Records 限定/特典 etc.). Only label
+    # them when the title carries bonus evidence so the chip reads consistently
+    # with the existing "bonus"/"fanza_bonus" labels.
+    store_marker_to_label = {
+        "tkt_suffix": ("tower_bonus", "Tower 特典", "TKT"),
+        "tktb_suffix": ("tower_bonus", "Tower 特典", "TKTB"),
+        "tk_suffix": ("tower_bonus", "Tower 特典", "TK"),
+        "btk_suffix": ("tower_bonus", "Tower 特典", "BTK"),
+        "hm_suffix": ("hmv_bonus", "HMV 特典", "HMV"),
+        "am_suffix": ("amazon_bonus", "Amazon 特典", "AMZN"),
+        "ts_suffix": ("tsutaya_bonus", "Tsutaya 特典", "TSU"),
+        "rk_suffix": ("rakuten_bonus", "Rakuten 特典", "楽天"),
+        "dp_suffix": ("deluxe_pack", "豪华套装", "DP"),
+        "sp_suffix": ("special_edition", "特别版", "SP"),
+    }
+    if analysis["bonus_evidence"]:
+        for marker, (key, label, short) in store_marker_to_label.items():
+            if marker not in analysis["markers"]:
+                continue
+            add_label(
+                key,
+                label,
+                short,
+                source="code",
+                confidence="medium",
+                meaning="番号尾部包含店铺限定/豪华套装等特典标记，和基础番号合并为同一作品的不同特典版本",
+                evidence=marker,
+            )
     if analysis["bonus_evidence"] and (
         "tk_prefix" in analysis["markers"]
         or any(marker in analysis["markers"] for marker in ("tk_suffix", "btk_suffix", "ec_suffix", "dl_suffix"))
@@ -304,11 +368,30 @@ def _analyze_code(
             markers.append("rdod_suffix" if suffix == "RDOD" else f"{suffix.lower()}_suffix")
             working = working[: -len(suffix)]
             break
+    # Peel a trailing media suffix (DVD/BD) BEFORE bonus stripping so that
+    # NACT-138TKTDVD / NACT-138TKTBDVD reduce to NACT-138TKT / NACT-138TKTB
+    # first, then the next BONUS_SUFFIXES sweep collapses the bonus marker.
+    # The peel only fires when the remainder still parses as a real code so
+    # we never butcher prefixes that genuinely end in DVD/BD.
+    media_suffix = _strip_trailing_media_suffix(working)
+    if media_suffix:
+        marker, working = media_suffix
+        markers.append(marker)
     for suffix in BONUS_SUFFIXES:
         if allow_title_tk and working.endswith(suffix) and len(working) > len(suffix):
+            # Guard the minimum length so trimming the bonus marker still
+            # leaves at least 3 digits' worth of code (prefix letters + digits).
+            if len(working) - len(suffix) < 3:
+                continue
             markers.append(f"{suffix.lower()}_suffix")
             working = working[: -len(suffix)]
             break
+    # Pick up media suffixes that hid behind a bonus marker (e.g. some bonus
+    # codes are followed by another DVD/BD tag like NACT-138BTKDVD).
+    media_suffix = _strip_trailing_media_suffix(working)
+    if media_suffix:
+        marker, working = media_suffix
+        markers.append(marker)
 
     if match := CODE_RE.match(working):
         prefix, raw_digits, extra = match.groups()
@@ -327,6 +410,27 @@ def _analyze_code(
         return _analysis(original, canonical_norm, _display_from_parts(prefix, digits, extra), prefix, digits, tuple(dict.fromkeys(markers)))
 
     return _analysis(original, working, original.upper(), "", "", tuple(dict.fromkeys(markers)))
+
+
+def _strip_trailing_media_suffix(working: str) -> tuple[str, str] | None:
+    """Peel a trailing DVD/BD media suffix if doing so still leaves a parseable
+    code. Returns (marker_name, stripped_working) or None when no media suffix
+    applies. Done as a helper because _analyze_code calls it twice — once
+    before the bonus sweep and once after, so a layered XXXX-123 TKT DVD
+    pattern collapses both ways."""
+    for suffix in MEDIA_SUFFIXES:
+        if not working.endswith(suffix) or len(working) <= len(suffix):
+            continue
+        candidate = working[: -len(suffix)]
+        # Only commit the strip when the remainder looks like a real upstream
+        # code — at least one letter and one digit so we never butcher pure-
+        # alpha prefixes that genuinely end in DVD (none observed in production
+        # data so far, but cheap insurance).
+        if not _matches_parseable_code(candidate):
+            continue
+        marker = f"{suffix.lower()}_media_suffix"
+        return marker, candidate
+    return None
 
 
 def _analysis(raw: str, canonical_norm: str, canonical_code: str, prefix: str, digits: str, markers: tuple[str, ...]) -> dict[str, Any]:

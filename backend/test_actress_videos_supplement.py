@@ -25,10 +25,14 @@ class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
             include_variant_explanations=True,
         )
 
+        # The router always asks the underlying client for the full catalog
+        # with include_total=True; the caller-facing include_total only
+        # governs what we expose, not what we fetch. See the
+        # _get_grouped_actress_videos_collection cache-key comment.
         mock_client.get_all_actress_videos.assert_awaited_once_with(
             123,
             include_supplement="1", service_code="digital", year=2024,
-            sort_by="release_date:desc", include_total=None, cache_bypass=False,
+            sort_by="release_date:desc", include_total=True, cache_bypass=False,
         )
         self.assertEqual(result["data"][0]["variant_group_count"], 1)
 
@@ -39,9 +43,12 @@ class ActressVideosSupplementTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
         with patch("routers.actresses.get_info_client", return_value=mock_client):
             result = await actresses.get_actress_videos(actress_id=123, page=1, page_size=20)
 
+        # Inner fetch always walks the full catalog with include_total=True
+        # so the upstream API returns total_pages (otherwise _get_all_pages
+        # stops after page 1, breaking actor-page pagination).
         mock_client.get_all_actress_videos.assert_awaited_once_with(
             123,
-            include_supplement=None, service_code=None, year=None, sort_by=None, include_total=False, cache_bypass=False,
+            include_supplement=None, service_code=None, year=None, sort_by=None, include_total=True, cache_bypass=False,
         )
         self.assertEqual(result["data"], [])
 
