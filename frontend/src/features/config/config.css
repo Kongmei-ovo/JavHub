@@ -370,7 +370,7 @@
   min-height: 24px;
   padding: 0 8px;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--type-caption-2, 11px);
   line-height: 1;
 }
 .settings-number-unit {
@@ -397,12 +397,12 @@
 }
 .setting-title {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-callout, 14px);
   font-weight: 700;
 }
 .setting-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
   line-height: 1.45;
 }
 .settings-group-header {
@@ -426,7 +426,7 @@
   padding-top: 0;
 }
 .settings-sub-header {
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 16px;
@@ -661,13 +661,13 @@
   gap: 10px;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
 }
 .javinfo-runtime-row code {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
 }
 .javinfo-runtime-warning {
   display: grid;
@@ -677,7 +677,7 @@
   border-radius: 12px;
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control, 13px);
   line-height: 1.5;
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -685,7 +685,7 @@
 }
 .javinfo-runtime-warning strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-callout, 14px);
 }
 .javinfo-runtime-warning p {
   margin: 0;
@@ -706,7 +706,7 @@
 }
 .telegram-test-status {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control, 13px);
   line-height: 1.45;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -727,7 +727,7 @@
 }
 .inventory-cron-status {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control, 13px);
   line-height: 1.45;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -849,12 +849,12 @@
 }
 .setting-title {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-callout, 14px);
   font-weight: 700;
 }
 .setting-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
 }
 .segmented-mini {
   display: inline-flex;
@@ -885,7 +885,7 @@
     var(--surface-noise),
     var(--material-glass-subtle);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption-1, 12px);
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);

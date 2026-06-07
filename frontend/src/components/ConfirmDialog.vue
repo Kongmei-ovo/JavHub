@@ -224,7 +224,8 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-fade-enter-active .confirm-dialog,
 .confirm-fade-leave-active .confirm-dialog {
-  transition: transform var(--motion-standard);
+  /* WAVE-4 E2: spring entry for a more iOS-26-feeling pop. */
+  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 
 .confirm-fade-enter-from,
@@ -235,6 +236,39 @@ const confirm = () => resolveConfirm(true)
 .confirm-fade-enter-from .confirm-dialog,
 .confirm-fade-leave-to .confirm-dialog {
   transform: translateY(12px) scale(0.98);
+}
+
+/* WAVE-4 E2: mobile breakpoints push the dialog to the bottom of the
+   viewport as a system-style sheet (drag handle + thumb-reach actions). */
+@media (max-width: 640px) {
+  .confirm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .confirm-dialog {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    position: relative;
+  }
+  .confirm-dialog::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto var(--space-3, 12px);
+    border-radius: 999px;
+    background: var(--text-muted);
+    opacity: 0.35;
+  }
+  .confirm-fade-enter-from .confirm-dialog,
+  .confirm-fade-leave-to .confirm-dialog {
+    transform: translateY(100%) scale(1);
+  }
 }
 
 @media (max-width: 768px) {

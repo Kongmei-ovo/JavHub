@@ -270,7 +270,9 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-subtle);
-  border-bottom: 1px solid var(--glass-control-border);
+  /* WAVE-4 D3: hairline divider via inset box-shadow avoids double-borders
+     against the card frame below. */
+  box-shadow: inset 0 -1px 0 var(--glass-control-border);
 }
 .actor-cover img {
   width: 100%;

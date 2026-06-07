@@ -1031,9 +1031,23 @@ a:hover {
 
 @media (prefers-reduced-motion: reduce) {
   :root {
+    /* WAVE-5 F1: collapse every shared motion duration so any component
+       transitioning on these tokens snaps to its end state. */
+    --motion-fast: 1ms var(--ease-pro);
+    --motion-standard: 1ms var(--ease-pro);
+    --motion-emphasized: 1ms var(--ease-pro);
+    --motion-reveal: 1ms var(--ease-pro);
     --motion-spring: 1ms var(--ease-spring-soft);
     --motion-spring-emphasized: 1ms var(--ease-spring-snappy);
   }
+}
+
+/* WAVE-5 F1: keep a visible focus ring on any focusable surface that did
+   not opt into a component-specific :focus-visible treatment. Components
+   that want a custom focus presentation still override this rule. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @media (max-width: 768px) {

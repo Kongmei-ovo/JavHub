@@ -291,7 +291,8 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
   assert.match(actorCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
   assertLayeredBackground(actorCover, '--material-glass-subtle', 'inventory actor cover')
-  assert.match(actorCover, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
+  // WAVE-4 D3: hairline divider via inset box-shadow avoids double-borders.
+  assert.match(actorCover, /(?:border-bottom:\s*1px solid var\(--glass-control-border\)|box-shadow:\s*inset 0 -1px 0 var\(--glass-control-border\))/)
 
   for (const block of [skeletonCover, skeletonLine]) {
     assertLayeredBackground(block, '--material-glass-subtle', 'inventory skeleton')

@@ -277,7 +277,8 @@ test('operations top chrome stays console-dense instead of campaign-like', () =>
   assert.match(heroStatGrid, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(108px,\s*1fr\)\)/)
   assert.match(heroStat, /min-height:\s*52px/)
   assert.match(heroStat, /padding:\s*8px 10px/)
-  assert.match(heroStatStrong, /font-size:\s*20px/)
+  // WAVE-4 D4: hero stat font-size moved to --type-section-title token.
+  assert.match(heroStatStrong, /font-size:\s*(?:20px|var\(--type-section-title,\s*20px\))/)
 })
 
 test('operations hero metrics expose compact hints and urgency markers', () => {
@@ -366,7 +367,8 @@ test('operations compact diagnostic rows reserve a second-line metadata track', 
   assert.match(compactRowWithMeta, /min-height:\s*44px/)
   assert.match(compactRowSmall, /grid-column:\s*1 \/ -1/)
   assert.match(compactRowSmall, /color:\s*var\(--text-secondary\)/)
-  assert.match(compactRowSmall, /font-size:\s*11px/)
+  // WAVE-4 D4: compact row small font-size moved to --type-caption-2 token.
+  assert.match(compactRowSmall, /font-size:\s*(?:11px|var\(--type-caption-2,\s*11px\))/)
   assert.match(compactRowSmall, /line-height:\s*1\.25/)
   assert.match(compactRowSmall, /white-space:\s*nowrap/)
   assert.match(compactRowSmall, /text-overflow:\s*ellipsis/)

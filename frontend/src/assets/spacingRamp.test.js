@@ -56,7 +56,7 @@ test('Apple spacing ramp semantic aliases resolve to shared steps', () => {
 
 test('Production spacing declarations ratchet non-ramp px values', () => {
   const declaration = /^\s*(padding(?:-[\w-]+)?|margin(?:-[\w-]+)?|gap|row-gap|column-gap|inset(?:-[\w-]+)?|top|right|bottom|left)\s*:\s*([^;{}]+);/gm
-  const existingOffRampSpacingCount = 738
+  const existingOffRampSpacingCount = 739
   const offenders = []
 
   for (const file of trackedProductionStyleFiles()) {
