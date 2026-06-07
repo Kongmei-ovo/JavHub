@@ -140,4 +140,41 @@ const gridVars = computed(() => ({ '--skeleton-grid-columns': props.columns }))
 .apple-skeleton--text .apple-skeleton-line:nth-child(even) {
   width: 78%;
 }
+
+/* R2.2: low-contrast shimmer wave on every skeleton block; transform-only
+   so it complies with the global motion guard and falls back to a static
+   tint when prefers-reduced-motion is set (the @keyframes name is
+   exempted from the entry/exit transform check). */
+.apple-skeleton-block {
+  position: relative;
+  overflow: hidden;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+.apple-skeleton-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--text-primary) 8%, transparent) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1600ms var(--ease-pro, cubic-bezier(0.16, 1, 0.3, 1)) infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-skeleton-block::after { animation: none; }
+}
 </style>

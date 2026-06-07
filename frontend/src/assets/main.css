@@ -1120,8 +1120,11 @@ a:hover {
 .slide-up-leave-active { animation: slideUp var(--motion-standard) reverse; }
 
 /* ===== Page Transition ===== */
+/* R2.3: spring entry so routing in feels iOS-style bouncy without spending
+   any JS on direction tracking. Leave keeps the snappy fast easing so the
+   outgoing view never lingers. */
 .page-enter-active {
-  animation: pageIn var(--motion-reveal);
+  animation: pageIn var(--motion-spring-emphasized, 420ms cubic-bezier(0.5, 1.7, 0.6, 1));
 }
 .page-leave-active {
   animation: pageOut var(--motion-fast);
