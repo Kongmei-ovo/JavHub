@@ -312,12 +312,20 @@ export default defineComponent({
       }
     },
     statItems() {
+      // 精修 4: delta 要么给新信息要么不给;只在确实正向时用绿,积压/中性走 flat。
+      const fastestPct = this.activeDownloads.length > 0
+        ? Math.max(...this.activeDownloads.map(d => Number(d.pct) || 0))
+        : 0
+      const pendingDelta = this.candidateSummary.candidate > 0
+        ? `${this.candidateSummary.candidate} 候选${this.candidateSummary.missing_magnet ? ` · ${this.candidateSummary.missing_magnet} 缺档` : ''}`
+        : '已清空'
       return [
         {
           key: 'library',
           label: '影库',
           value: this.libraryTotal != null ? this.formatNumber(this.libraryTotal) : '—',
-          delta: this.libraryTotal != null ? `${this.formatNumber(this.libraryTotal)} 部入库` : '',
+          // 暂无"本周新增"数据源,留空胜过回显总数。
+          delta: '',
           deltaTone: 'flat',
           icon: ICON_LIBRARY,
           to: '/search',
@@ -326,8 +334,8 @@ export default defineComponent({
           key: 'downloading',
           label: '下载中',
           value: this.formatNumber(this.activeDownloads.length),
-          delta: this.activeDownloads.length > 0 ? '进行中' : '空闲',
-          deltaTone: this.activeDownloads.length > 0 ? 'up' : 'flat',
+          delta: this.activeDownloads.length > 0 ? `${fastestPct}% 最快` : '空闲',
+          deltaTone: 'flat',
           icon: ICON_DOWNLOAD,
           to: '/downloads',
         },
@@ -344,8 +352,9 @@ export default defineComponent({
           key: 'pending',
           label: '待处理',
           value: this.formatNumber(this.candidateSummary.candidate + this.missingActressesCount),
-          delta: this.candidateSummary.candidate > 0 ? `${this.candidateSummary.candidate} 候选` : '已清空',
-          deltaTone: this.candidateSummary.candidate > 0 ? 'up' : 'flat',
+          delta: pendingDelta,
+          // 积压不是好事,走中性灰。
+          deltaTone: 'flat',
           icon: ICON_CHECK,
           to: '/candidates',
         },

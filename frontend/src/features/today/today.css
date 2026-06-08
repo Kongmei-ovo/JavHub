@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4) var(--page-gutter);
+  padding: var(--space-5) var(--page-gutter);
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
@@ -25,9 +25,9 @@
 .today-topbar__title h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--type-title-1);
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.4px;
   color: var(--text-primary);
 }
 
@@ -150,15 +150,15 @@
   inset: 0;
   background-color: var(--card-2);
   background-size: cover;
-  background-position: center 22%;
-  filter: saturate(1.06);
+  background-position: center 30%;
+  filter: saturate(1.12);
 }
 
 .today-hero__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(105deg, var(--black-80) 0%, var(--black-40) 42%, var(--white-00) 78%);
+    linear-gradient(100deg, var(--black-80) 0%, var(--black-40) 38%, var(--black-10) 72%, var(--white-00) 100%);
 }
 
 .today-hero__body {
@@ -286,9 +286,9 @@
 .today-section__head h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--type-title-1);
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: var(--type-section-title);
+  font-weight: 680;
+  letter-spacing: -0.2px;
   color: var(--text-primary);
 }
 
@@ -330,8 +330,9 @@
   gap: var(--space-3);
   padding: var(--space-5);
   border-radius: var(--radius-card);
-  border: 1px solid var(--hairline);
-  background: var(--card);
+  border: 1px solid var(--hairline-strong);
+  background: var(--card-elevated);
+  box-shadow: inset 0 1px 0 var(--white-06), 0 1px 2px var(--black-20);
   text-align: left;
   color: var(--text-primary);
   text-decoration: none;
@@ -411,8 +412,9 @@
   gap: var(--space-3);
   padding: var(--space-5);
   border-radius: var(--radius-card);
-  border: 1px solid var(--hairline);
-  background: var(--card);
+  border: 1px solid var(--hairline-strong);
+  background: var(--card-elevated);
+  box-shadow: inset 0 1px 0 var(--white-06), 0 1px 2px var(--black-20);
 }
 
 .today-attn__top {
@@ -517,8 +519,9 @@
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--hairline);
-  background: var(--card);
+  border: 1px solid var(--hairline-strong);
+  background: var(--card-elevated);
+  box-shadow: inset 0 1px 0 var(--white-06);
   transition: opacity var(--motion-fast);
 }
 
