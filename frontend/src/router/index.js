@@ -10,6 +10,7 @@ const routes = [
   { path: '/today', redirect: '/' },
   { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
   { path: '/downloads', component: () => import('../views/Home.vue') },
+  { path: '/candidates', name: 'Candidates', component: () => import('../views/Candidates.vue') },
   { path: '/search', component: () => import('../views/Search.vue') },
   { path: '/genres', component: () => import('../views/Genres.vue') },
   { path: '/discovery/:type/:value', name: 'DiscoveryDetail', component: () => import('../views/DiscoveryDetail.vue') },

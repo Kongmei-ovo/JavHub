@@ -267,7 +267,7 @@ export default defineComponent({
           delta: this.candidateSummary.candidate > 0 ? `${this.candidateSummary.candidate} 候选` : '已清空',
           deltaTone: this.candidateSummary.candidate > 0 ? 'up' : 'flat',
           icon: ICON_CHECK,
-          to: '/downloads',
+          to: '/candidates',
         },
       ]
     },
@@ -280,9 +280,9 @@ export default defineComponent({
           icon: ICON_ALERT,
           title: '候选确认',
           desc: `订阅有 ${this.candidateSummary.candidate} 个新候选等待审核。`,
-          primary: { label: '去确认', to: '/downloads' },
+          primary: { label: '去确认', to: '/candidates' },
           secondary: this.candidateSummary.missing_magnet > 0
-            ? { label: `缺磁力 ${this.candidateSummary.missing_magnet}`, to: '/downloads' }
+            ? { label: `缺磁力 ${this.candidateSummary.missing_magnet}`, to: '/candidates' }
             : null,
         })
       }

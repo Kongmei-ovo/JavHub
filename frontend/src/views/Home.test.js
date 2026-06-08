@@ -8,6 +8,12 @@ const candidatePanelSource = existsSync(candidatePanelUrl) ? readFileSync(candid
 const externalStyle = readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8')
 const candidateStyleUrl = new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url)
 const candidateStyle = existsSync(candidateStyleUrl) ? readFileSync(candidateStyleUrl, 'utf8') : ''
+// Wave P1-1: candidate logic now lives in useDownloadCandidates composable.
+// Tests that pin candidate state/methods read from this combined scope so the
+// assertion follows the truth source rather than Home.vue history.
+const candidateComposableUrl = new URL('../features/candidates/useDownloadCandidates.js', import.meta.url)
+const candidateComposable = existsSync(candidateComposableUrl) ? readFileSync(candidateComposableUrl, 'utf8') : ''
+const candidatesScope = `${vueSource}\n${candidateComposable}`
 const source = `${vueSource}\n${candidatePanelSource}\n${externalStyle}\n${candidateStyle}`
 
 function cssBlocks(content, selector) {
@@ -61,7 +67,10 @@ function singleLayerGlassBackgrounds(css) {
 }
 
 test('home lazy-loads downloader management outside the base downloads chunk', () => {
-  assert.match(source, /import \{ defineAsyncComponent \} from 'vue'/)
+  // Wave P1-1: Home.vue now also imports ref/computed from vue to drive the
+  // composable's enabled flag, so match defineAsyncComponent inside the same
+  // import list rather than as a singleton.
+  assert.match(source, /import \{[^}]*\bdefineAsyncComponent\b[^}]*\} from 'vue'/)
   assert.match(source, /const DownloaderManagementPanel = defineAsyncComponent\(\(\) => import\('\.\.\/features\/downloaders\/DownloaderManagementPanel\.vue'\)\)/)
   assert.match(source, /components:\s*\{[^}]*DownloadStatsBar[^}]*TaskList[^}]*DownloadCandidatePanel[^}]*DownloaderManagementPanel[^}]*\}/)
   assert.match(source, /<DownloaderManagementPanel[\s\S]*v-else-if="activeTab === 'downloaders'"/)
@@ -107,24 +116,24 @@ test('download candidate panel exposes latest event filters from summary counts'
   assert.match(candidatePanelSource, /candidateFilter\.latest_event_action === filter\.action/)
   assert.match(candidatePanelSource, /\$emit\('set-latest-event', filter\.action\)/)
   assert.match(vueSource, /@set-latest-event="setCandidateLatestEvent"/)
-  assert.match(vueSource, /setCandidateLatestEvent\(action\)/)
-  assert.match(vueSource, /latest_event_action: action/)
-  assert.match(vueSource, /without_event:\s*'未处理'/)
-  assert.match(vueSource, /missing_cover: this\.\$route\.query\.missing_cover === '1'/)
-  assert.match(vueSource, /params\.missing_cover = this\.candidateFilter\.missing_cover/)
-  assert.match(vueSource, /if \(filter\.missing_cover\) query\.missing_cover = '1'/)
-  assert.match(vueSource, /缺封面/)
+  assert.match(candidatesScope, /setCandidateLatestEvent\(action\)/)
+  assert.match(candidatesScope, /latest_event_action: action/)
+  assert.match(candidatesScope, /without_event:\s*'未处理'/)
+  assert.match(candidatesScope, /missing_cover:\s*(?:this\.\$route\.)?query\.missing_cover === '1'/)
+  assert.match(candidatesScope, /params\.missing_cover = (?:this\.)?candidateFilter\.missing_cover/)
+  assert.match(candidatesScope, /if \(filter\.missing_cover\) query\.missing_cover = '1'/)
+  assert.match(candidatesScope, /缺封面/)
 })
 
 test('download candidate panel exposes repair scope for data quality routes', () => {
   assert.match(vueSource, /:candidate-repair-scope="candidateRepairScope"/)
-  assert.match(vueSource, /candidateRepairScope\(\)/)
-  assert.match(vueSource, /const visibleMagnetTargets = this\.visibleMagnetTargetCount/)
-  assert.match(vueSource, /visibleMagnetTargetCount\(\)/)
-  assert.match(vueSource, /this\.filteredCandidates\.filter\(candidate =>/)
-  assert.match(vueSource, /total:\s*this\.candidateTotal/)
-  assert.match(vueSource, /scopeLabel:\s*this\.candidateRepairScopeLabel/)
-  assert.match(vueSource, /candidateRepairScopeLabel\(\)/)
+  assert.match(candidatesScope, /(?:candidateRepairScope\(\)|const candidateRepairScope = computed)/)
+  assert.match(candidatesScope, /visibleMagnetTargets[:\s].*?visibleMagnetTargetCount/)
+  assert.match(candidatesScope, /(?:visibleMagnetTargetCount\(\)|const visibleMagnetTargetCount = computed)/)
+  assert.match(candidatesScope, /filteredCandidates(?:\.value)?\s*[\s\S]*?\.filter\(candidate =>/)
+  assert.match(candidatesScope, /total:\s*(?:this\.candidateTotal|candidateTotal\.value)/)
+  assert.match(candidatesScope, /scopeLabel(?:[,:]|\s*:\s*(?:this\.)?candidateRepairScopeLabel)/)
+  assert.match(candidatesScope, /(?:candidateRepairScopeLabel\(\)|const candidateRepairScopeLabel = computed)/)
   assert.match(candidatePanelSource, /candidateRepairScope/)
   assert.match(candidatePanelSource, /class="candidate-repair-scope"/)
   assert.match(candidatePanelSource, /candidateRepairScope\.total/)

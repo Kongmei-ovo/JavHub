@@ -31,6 +31,7 @@ export const navGroups = [
   {
     label: '自动化维护',
     items: [
+      { path: '/candidates', label: '候选确认', icon: IconParse },
       { path: '/subscription', label: '演员订阅', icon: IconStar },
       { path: '/library-organize', label: '片库整理', icon: IconInventory },
       { path: '/supplement', label: '补全管理', icon: IconSupplement },
@@ -69,6 +70,7 @@ export const mobileMoreItems = [
 
 export const navActivePaths = {
   '/': ['/', '/today'],
+  '/candidates': ['/candidates'],
   '/search': ['/search', '/actor'],
   '/genres': ['/genres', '/discovery'],
   '/downloads': ['/downloads', '/tasks'],

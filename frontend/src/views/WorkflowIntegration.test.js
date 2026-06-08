@@ -27,6 +27,9 @@ const downloadCandidatePanel = readFileSync(new URL('../features/candidates/Down
 const home = [
   homeVue,
   downloadCandidatePanel,
+  // Wave P1-1: candidate logic lives in the composable; keep it in scope so
+  // existing candidate-truth assertions follow the source through the move.
+  readFileSync(new URL('../features/candidates/useDownloadCandidates.js', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/CandidateOverview.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/DownloadStatsBar.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/TaskList.vue', import.meta.url), 'utf8'),
@@ -475,11 +478,18 @@ test('library organizer unifies inventory check duplicates and actor mapping', (
 })
 
 test('downloads page summary uses the lightweight candidate summary endpoint', () => {
-  const summaryBlock = home.match(/async loadCandidateSummary\(\) \{[\s\S]*?\n    \},/)?.[0] || ''
-  const listBlock = home.match(/async loadCandidates\(\) \{[\s\S]*?\n    \},/)?.[0] || ''
+  // Wave P1-1: blocks now live in useDownloadCandidates.js as standalone
+  // async functions; loosen the bookend to accept either Options-API style or
+  // function-declaration style.
+  const summaryBlock = home.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
+    || home.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \}/)?.[0]
+    || ''
+  const listBlock = home.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
+    || home.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \}/)?.[0]
+    || ''
 
   assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)
-  assert.match(summaryBlock, /this\.candidateStats = resp\.data \|\| this\.candidateStats/)
+  assert.match(summaryBlock, /candidateStats(?:\.value)?\s*=\s*resp\.data\s*\|\|\s*candidateStats(?:\.value)?/)
   assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
   assert.doesNotMatch(listBlock, /resp\.data\.stats/)
   assert.match(listBlock, /params\.include_stats = false/)
@@ -806,18 +816,21 @@ test('download page exposes candidate approval workflow', () => {
   assert.match(home, /candidate_by_source/)
   assert.match(home, /readyCandidateCount/)
   assert.match(home, /openCandidatePreset/)
-  assert.match(home, /candidatePage: Number\(this\.\$route\.query\.page \|\| 1\) \|\| 1/)
-  assert.match(home, /candidateTotalPages: 1/)
-  assert.match(home, /page: tab === 'candidates' \? \(Number\(query\.page \|\| 1\) \|\| 1\) : this\.candidatePage/)
+  // Wave P1-1: state/methods moved into useDownloadCandidates composable.
+  // Truth-source assertions accept either Options-API style (this.X) or
+  // composable style (X / X.value).
+  assert.match(home, /candidatePage\s*[:=]\s*(?:ref\()?Number\((?:this\.\$)?route\.query\.page \|\| 1\) \|\| 1/)
+  assert.match(home, /candidateTotalPages[:= ]+\s*(?:ref\(1\)|1)/)
+  assert.match(home, /(?:page:\s*tab === 'candidates' \?|nextPage\s*=\s*Number\(query\.page \|\| 1\) \|\| 1)/)
   assert.match(home, /if \(filter\.page && Number\(filter\.page\) > 1\) query\.page = String\(Number\(filter\.page\)\)/)
-  assert.match(home, /params\.page = this\.candidatePage/)
-  assert.match(home, /params\.page_size = this\.candidatePageSize/)
-  assert.match(home, /params\.latest_event_action = this\.candidateFilter\.latest_event_action/)
-  assert.match(home, /this\.candidateTotalPages = Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
-  assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ status, needs_magnet: null, page: 1 \}\)\)/)
+  assert.match(home, /params\.page = (?:this\.)?candidatePage(?:\.value)?/)
+  assert.match(home, /params\.page_size = (?:this\.)?candidatePageSize(?:\.value)?/)
+  assert.match(home, /params\.latest_event_action = (?:this\.)?candidateFilter\.latest_event_action/)
+  assert.match(home, /(?:this\.)?candidateTotalPages(?:\.value)?\s*=\s*Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
+  assert.match(home, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ status,? needs_magnet: null, page: 1 \}\)\)?/)
   assert.match(home, /candidateFilter\.needs_magnet === true/)
   assert.match(home, /goCandidatePage\(page\)/)
-  assert.match(home, /pushDownloadRoute\(this\.candidateRouteQuery\(\{ page: nextPage \}\)\)/)
+  assert.match(home, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ page: nextPage \}\)\)?/)
   assert.match(home, /candidateTotalPages > 1/)
   assert.match(home, /goCandidateActor/)
   assert.match(home, /goCandidateSupplement/)
@@ -1476,22 +1489,24 @@ test('vite dev server proxies bare health checks to the backend', () => {
 })
 
 test('download mutations are guarded by in-flight state', () => {
-  assert.match(home, /bulkCandidateLoading: false/)
-  assert.match(home, /candidateMutations: \{\}/)
+  // Wave P1-1: candidate state lives in useDownloadCandidates.js as refs/reactive,
+  // while retryingTasks remains Home-owned. Accept either initialization style.
+  assert.match(home, /bulkCandidateLoading(?:: false|\s*=\s*ref\(false\))/)
+  assert.match(home, /candidateMutations(?:: \{\}|\s*=\s*ref\(\{\}\))/)
   assert.match(home, /retryingTasks: \{\}/)
   assert.match(home, /isCandidateMutating\(id\)/)
-  assert.match(home, /this\.setCandidateMutation\(candidate\.id, 'approve'\)/)
-  assert.match(home, /this\.clearCandidateMutation\(candidate\.id\)/)
-  assert.match(home, /if \(this\.selectedCandidateIds\.length === 0 \|\| this\.bulkCandidateLoading\) return/)
+  assert.match(home, /setCandidateMutation\(candidate\.id, 'approve'\)/)
+  assert.match(home, /clearCandidateMutation\(candidate\.id\)/)
+  assert.match(home, /if \(selectedCandidateIds(?:\.value)?\.length === 0 \|\| bulkCandidateLoading(?:\.value)?\) return/)
   assert.match(home, /async retry\(task\)/)
   assert.match(home, /await api\.createDownload/)
   assert.match(home, /await this\.loadTasks\(\)/)
-  const enrichVisibleBlock = home.slice(
-    home.indexOf('async enrichVisibleCandidateMagnets()'),
-    home.indexOf('async processVisibleCandidates()')
-  )
+  // Match either Options-API `async name()` or composable `async function name()`.
+  const enrichStart = home.indexOf('enrichVisibleCandidateMagnets()')
+  const enrichEnd = home.indexOf('processVisibleCandidates()', enrichStart + 1)
+  const enrichVisibleBlock = home.slice(enrichStart, enrichEnd)
   assert.match(enrichVisibleBlock, /const confirmed = await requestConfirm\(/)
   assert.match(enrichVisibleBlock, /title: '批量补充磁力'/)
-  assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？当前筛选总量 \$\{this\.candidateTotal\} 个。`/)
-  assert.match(enrichVisibleBlock, /if \(!confirmed\) return[\s\S]*this\.candidateBatchProcessing = 'enrich'/)
+  assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？当前筛选总量 \$\{(?:this\.)?candidateTotal(?:\.value)?\} 个。`/)
+  assert.match(enrichVisibleBlock, /if \(!confirmed\) return[\s\S]*candidateBatchProcessing(?:\.value)?\s*=\s*'enrich'/)
 })

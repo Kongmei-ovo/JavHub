@@ -52,6 +52,7 @@ test('primary navigation is grouped around daily workflows first', () => {
     '下载任务',
     '磁链解析',
     '实体目录',
+    '候选确认',
     '演员订阅',
     '片库整理',
     '补全管理',
