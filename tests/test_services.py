@@ -1,5 +1,16 @@
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
+
+# scripts/services.sh 是 macOS launchd 工具 (launchctl bootstrap/kickstart/print 等),
+# 所有用例都通过 `bash scripts/services.sh ...` 走那条路径。Linux CI 没有 launchctl,
+# 测试桩对不齐就会全炸 —— 这里整文件 skip,保留本地 macOS 上的 dev-tooling 保护。
+pytestmark = pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="scripts/services.sh is macOS-only (uses launchctl); skip on non-darwin CI runners",
+)
 
 
 def write_executable(path, contents):

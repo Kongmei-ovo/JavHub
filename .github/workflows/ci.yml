@@ -71,9 +71,48 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # horizontalOverflow.test.js drives a real chromium against the running
+      # dev server; pull just the chromium binary + the linux system libs it
+      # needs (fonts, libnss3, libasound2, etc) so Playwright can launch headless.
+      - name: Install Playwright chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # 起 vite dev server 后台,horizontalOverflow 测试要 fetch http://127.0.0.1:5174
+      # 才能拉真页面对比视口宽度。失败信息进 vite.log,方便 tail 看。
+      - name: Start frontend dev server
+        working-directory: frontend
+        run: |
+          nohup npm run dev > vite.log 2>&1 &
+          echo $! > vite.pid
+
+      - name: Wait for dev server
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5174 > /dev/null; then
+              echo "dev server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "dev server failed to start; vite.log:"
+          cat frontend/vite.log || true
+          exit 1
+
       - name: Run frontend tests
         working-directory: frontend
         run: npm test
+        env:
+          JAVHUB_FRONTEND_URL: http://127.0.0.1:5174
+
+      - name: Stop frontend dev server
+        if: always()
+        working-directory: frontend
+        run: |
+          if [ -f vite.pid ]; then
+            kill "$(cat vite.pid)" 2>/dev/null || true
+            rm -f vite.pid
+          fi
 
       - name: Build frontend
         working-directory: frontend
