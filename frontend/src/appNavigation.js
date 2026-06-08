@@ -20,7 +20,7 @@ export const navGroups = [
     label: '日常使用',
     items: [
       { path: '/', label: '今日', icon: IconHome },
-      { path: '/search', label: '影片检索', icon: IconSearch },
+      { path: '/search', label: '影库', icon: IconSearch },
       { path: '/genres', label: '随机探索', icon: IconGenres },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/downloads', label: '下载任务', icon: IconDownload },
@@ -50,7 +50,7 @@ export const navGroups = [
 
 export const bottomNavItems = [
   { path: '/', label: '今日', icon: IconHome },
-  { path: '/search', label: '检索', icon: IconSearch },
+  { path: '/search', label: '影库', icon: IconSearch },
   { path: '/favorites', label: '收藏', icon: IconHeart },
   { path: '/downloads', label: '下载', icon: IconDownload },
 ]
@@ -71,12 +71,12 @@ export const mobileMoreItems = [
 export const navActivePaths = {
   '/': ['/', '/today'],
   '/candidates': ['/candidates'],
-  '/search': ['/search', '/actor'],
+  '/search': ['/search', '/actor', '/library'],
   '/genres': ['/genres', '/discovery'],
   '/downloads': ['/downloads', '/tasks'],
   '/entities': ['/entities', '/entity'],
   '/subscription': ['/subscription', '/subscriptions'],
-  '/library-organize': ['/library-organize', '/inventory', '/library', '/duplicates', '/normalize'],
+  '/library-organize': ['/library-organize', '/inventory', '/duplicates', '/normalize'],
   '/supplement': ['/supplement', '/supplement/actor', '/supplement/movies', '/supplement/jobs', '/supplement/sources', '/supplement/stats'],
   '/settings': ['/settings', '/config'],
   '/logs': ['/logs', '/log'],

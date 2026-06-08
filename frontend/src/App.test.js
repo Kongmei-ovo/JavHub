@@ -46,7 +46,7 @@ test('primary navigation is grouped around daily workflows first', () => {
   assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统管理'])
   assert.deepEqual(labels, [
     '今日',
-    '影片检索',
+    '影库',
     '随机探索',
     '我的收藏',
     '下载任务',
@@ -91,7 +91,8 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 test('maintenance routes converge on the unified library organizer', () => {
   assert.match(routerSource, /path:\s*'\/library-organize'[\s\S]*LibraryOrganize/)
   assert.match(routerSource, /path:\s*'\/inventory'[\s\S]*tab:\s*'inventory'/)
-  assert.match(routerSource, /path:\s*'\/library'[\s\S]*tab:\s*'check'/)
+  // P2: /library 词义归位为浏览入口,重定向到 /search 海报墙,而非维护台 check tab。
+  assert.match(routerSource, /\{\s*path:\s*'\/library',\s*redirect:\s*'\/search'\s*\}/)
   assert.match(routerSource, /path:\s*'\/duplicates'[\s\S]*tab:\s*'duplicates'/)
   assert.match(routerSource, /path:\s*'\/normalize'[\s\S]*tab:\s*'mapping'/)
   assert.match(routerSource, /path:\s*'\/inventory\/actors\/:id'[\s\S]*actor_id:\s*to\.params\.id/)
@@ -176,7 +177,8 @@ test('app navigation controls use layered liquid glass materials', () => {
 })
 
 test('app shell navigation marks current route semantically across desktop mobile and more menu', () => {
-  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/library-organize': \['\/library-organize', '\/inventory', '\/library', '\/duplicates', '\/normalize'\]/)
+  // P2: '/library' 从 library-organize 桶移到 search 桶,让"影库"导航在 /library 时也高亮。
+  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/actor', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/library-organize': \['\/library-organize', '\/inventory', '\/duplicates', '\/normalize'\]/)
   assert.match(source, /const isNavItemActive = \(path\) => \{[\s\S]*const currentPath = normalizedRoutePath\.value[\s\S]*const activePaths = navActivePaths\[path\] \|\| \[path\][\s\S]*currentPath === activePath \|\| currentPath\.startsWith\(`\$\{activePath\}\/`\)/)
   assert.match(source, /:class="\{ active: isNavItemActive\(item\.path\) \}"/)
   assert.match(source, /:aria-current="isNavItemActive\(item\.path\) \? 'page' : undefined"/)
@@ -457,7 +459,8 @@ test('app shell route families keep system navigation active on related pages', 
   const navStart = navigationSource.indexOf('export const navActivePaths')
   const navBlock = navigationSource.slice(navStart)
 
-  assert.match(navBlock, /'\/search':\s*\['\/search', '\/actor'\]/)
+  // P2: '/library' 已被并入"影库" (= /search) 桶,让深链落到浏览而不是维护台。
+  assert.match(navBlock, /'\/search':\s*\['\/search', '\/actor', '\/library'\]/)
   assert.match(navBlock, /'\/downloads':\s*\['\/downloads', '\/tasks'\]/)
   assert.match(navBlock, /'\/entities':\s*\['\/entities', '\/entity'\]/)
   assert.match(navBlock, /'\/subscription':\s*\['\/subscription', '\/subscriptions'\]/)

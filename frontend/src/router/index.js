@@ -18,7 +18,7 @@ const routes = [
   { path: '/entities', name: 'Entities', component: () => import('../views/Entities.vue') },
   { path: '/subscription', component: () => import('../views/Subscription.vue') },
   { path: '/library-organize', name: 'LibraryOrganize', component: () => import('../views/LibraryOrganize.vue') },
-  { path: '/library', redirect: { path: '/library-organize', query: { tab: 'check' } } },
+  { path: '/library', redirect: '/search' },
   { path: '/logs', component: () => import('../views/Logs.vue') },
   { path: '/settings', component: () => import('../views/Config.vue') },
   { path: '/config', redirect: '/settings' },
