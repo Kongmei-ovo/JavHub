@@ -50,6 +50,17 @@
           </div>
         </div>
       </section>
+      <AppleErrorState
+        v-else-if="heroError"
+        class="today-section today-section--error"
+        title="最近查看加载失败"
+        :description="heroError"
+        next-step="可以单独重试,或继续浏览其它区块。"
+        source-label="JavInfo · /v1/videos"
+        retry-label="重试"
+        :retrying="heroRetrying"
+        @retry="loadHero"
+      />
 
       <section class="today-section">
         <div class="today-stat-strip">
@@ -112,7 +123,18 @@
             </svg>
           </router-link>
         </header>
-        <div v-if="activeDownloads.length" class="today-dl-list">
+        <AppleErrorState
+          v-if="downloadsError"
+          class="today-section--error"
+          title="下载任务加载失败"
+          :description="downloadsError"
+          next-step="只会重拉下载任务列表,不会刷整页其它区块。"
+          source-label="JavHub · /v1/downloads"
+          retry-label="重试"
+          :retrying="downloadsRetrying"
+          @retry="loadDownloads"
+        />
+        <div v-else-if="activeDownloads.length" class="today-dl-list">
           <div
             v-for="dl in activeDownloads.slice(0, 4)"
             :key="dl.id"
@@ -140,10 +162,10 @@
         <p v-else class="today-empty">当前没有下载中的任务。</p>
       </section>
 
-      <section v-if="subscriptionUpdates.length" class="today-section">
+      <section v-if="subscriptionUpdates.length || subscriptionUpdatesError" class="today-section">
         <header class="today-section__head">
           <h2>订阅更新</h2>
-          <span class="today-section__count">{{ subscriptionUpdates.length }} 部新片</span>
+          <span v-if="!subscriptionUpdatesError" class="today-section__count">{{ subscriptionUpdates.length }} 部新片</span>
           <span class="today-section__spacer"></span>
           <router-link to="/subscription" class="today-section__link">
             演员订阅
@@ -152,7 +174,18 @@
             </svg>
           </router-link>
         </header>
-        <div class="today-sub-grid">
+        <AppleErrorState
+          v-if="subscriptionUpdatesError"
+          class="today-section--error"
+          title="订阅更新加载失败"
+          :description="subscriptionUpdatesError"
+          next-step="只会重拉订阅更新,不会刷整页其它区块。"
+          source-label="JavHub · /v1/subscriptions/new-movies"
+          retry-label="重试"
+          :retrying="subscriptionUpdatesRetrying"
+          @retry="loadSubscriptionUpdates"
+        />
+        <div v-else class="today-sub-grid">
           <AppleVideoCard
             v-for="video in subscriptionUpdates.slice(0, 6)"
             :key="video.content_id || video.dvd_id || video.id"
@@ -169,6 +202,7 @@
 import { defineComponent } from 'vue'
 import api, { formatApiError } from '../api'
 import AppleVideoCard from '../components/AppleVideoCard.vue'
+import AppleErrorState from '../components/AppleErrorState.vue'
 import { normalizeVideo } from '../utils/videoNormalize.js'
 import { openVideoModal } from '../utils/modalState.js'
 
@@ -181,10 +215,44 @@ const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const ICON_SUPPLEMENT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="19" height="19"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'
 
 const HERO_STORAGE_KEY = 'javhub_today_last_opened'
+// P3-2: 缓存最近查看 7 天即视为过期 — 比 hero 这种快被替换的引用足够,也避免久旧记录卡住首屏。
+const HERO_STORAGE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+function readHeroFromStorage() {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(HERO_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const video = parsed.video || parsed
+    if (!video || (!video.content_id && !video.dvd_id)) return null
+    const savedAt = Number(parsed.savedAt)
+    if (Number.isFinite(savedAt) && (Date.now() - savedAt) > HERO_STORAGE_MAX_AGE_MS) {
+      return null
+    }
+    return { video, savedAt: Number.isFinite(savedAt) ? savedAt : null }
+  } catch (err) {
+    return null
+  }
+}
+
+function dropHeroStorage() {
+  if (typeof localStorage === 'undefined') return
+  try { localStorage.removeItem(HERO_STORAGE_KEY) } catch (err) { /* private mode */ }
+}
+
+function formatErrorMessage(error, action) {
+  if (!error) return `${action}失败`
+  if (formatApiError) {
+    return formatApiError(error, { service: 'JavHub', action, fallback: `${action}失败,请稍后重试。` }).message
+  }
+  return error.message || `${action}失败`
+}
 
 export default defineComponent({
   name: 'Today',
-  components: { AppleVideoCard },
+  components: { AppleVideoCard, AppleErrorState },
   data() {
     return {
       hero: null,
@@ -195,6 +263,18 @@ export default defineComponent({
       libraryTotal: null,
       subscribedActressCount: null,
       loading: false,
+      // P3-1: 每个 loader 自记 xxxError,失败时区块用 AppleErrorState 显示重试,
+      // 不再静默置空让"加载失败"与"真没数据"混在一起。
+      heroError: '',
+      heroRetrying: false,
+      downloadsError: '',
+      downloadsRetrying: false,
+      candidateSummaryError: '',
+      missingActressesError: '',
+      subscriptionUpdatesError: '',
+      subscriptionUpdatesRetrying: false,
+      libraryCountError: '',
+      subscribedCountError: '',
     }
   },
   computed: {
@@ -320,19 +400,20 @@ export default defineComponent({
     },
     openVideo(video) {
       if (!video) return
-      try {
-        const safe = {
-          ...video,
-          content_id: video.content_id || video.dvd_id || video.code || video.id,
-          display_code: video.display_code || video.dvd_id || video.content_id,
-        }
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(HERO_STORAGE_KEY, JSON.stringify(safe))
-        }
-      } catch (err) {
-        // localStorage may throw in private mode; non-fatal.
+      const safe = {
+        ...video,
+        content_id: video.content_id || video.dvd_id || video.code || video.id,
+        display_code: video.display_code || video.dvd_id || video.content_id,
       }
-      // 与全站一致：打开全局详情弹窗，而不是把用户甩进搜索页
+      // P3-2: 写入时带 savedAt;读出时 7 天过期/取详情 404 都会丢弃。
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(HERO_STORAGE_KEY, JSON.stringify({ video: safe, savedAt: Date.now() }))
+        } catch (err) {
+          // localStorage may throw in private mode; non-fatal.
+        }
+      }
+      // 与全站一致:打开全局详情弹窗,而不是把用户甩进搜索页
       openVideoModal(video, '/')
     },
     async loadAll() {
@@ -352,39 +433,66 @@ export default defineComponent({
         this.loading = false
       }
     },
-    loadHero() {
+    // P3-2: 优先读 localStorage 缓存,但用 savedAt 校验时效,再用 api.getVideo
+    // 校验番号还在;失效就丢缓存,回退到"最新入库第一部"。404 / 显式失败都算失效。
+    async loadHero() {
+      this.heroError = ''
+      this.heroRetrying = true
       try {
-        if (typeof localStorage !== 'undefined') {
-          const raw = localStorage.getItem(HERO_STORAGE_KEY)
-          if (raw) {
-            const parsed = JSON.parse(raw)
-            if (parsed && (parsed.content_id || parsed.dvd_id)) {
-              this.hero = parsed
-              return Promise.resolve()
+        const stored = readHeroFromStorage()
+        if (stored?.video) {
+          const code = stored.video.content_id || stored.video.dvd_id
+          if (code) {
+            try {
+              const resp = await api.getVideo(code, { service_code: stored.video.service_code })
+              const fresh = resp?.data?.data || resp?.data
+              if (fresh && (fresh.content_id || fresh.dvd_id)) {
+                this.hero = fresh
+                return
+              }
+              // 接口返回空体:同 404 处理,丢缓存。
+              dropHeroStorage()
+            } catch (err) {
+              if (err?.response?.status === 404) {
+                dropHeroStorage()
+              } else {
+                // 非 404 错误(网络/5xx)— 仍可用缓存影片维持 hero,不阻塞首屏。
+                this.hero = stored.video
+                return
+              }
             }
           }
         }
+        // 回退到"最新入库第一部"。
+        const res = await api.searchVideos({ page: 1, page_size: 1, sort: 'release_date_desc' })
+        const list = res?.data?.data || res?.data?.items || []
+        if (list.length) {
+          this.hero = list[0]
+        } else {
+          this.hero = null
+        }
       } catch (err) {
-        // ignore — fall through to API lookup
+        this.hero = null
+        this.heroError = formatErrorMessage(err, '加载最近查看')
+      } finally {
+        this.heroRetrying = false
       }
-      return api.searchVideos({ page: 1, page_size: 1, sort: 'release_date_desc' })
-        .then(res => {
-          const list = res?.data?.data || res?.data?.items || []
-          if (list.length) this.hero = list[0]
-        })
-        .catch(() => {})
     },
-    loadDownloads() {
-      return api.getDownloads()
-        .then(res => {
-          const list = Array.isArray(res?.data) ? res.data : (res?.data?.data || res?.data?.items || [])
-          this.activeDownloads = list
-            .map(this.normalizeDownload)
-            .filter(item => item.status === 'downloading' || item.status === 'queued')
-        })
-        .catch(() => {
-          this.activeDownloads = []
-        })
+    async loadDownloads() {
+      this.downloadsError = ''
+      this.downloadsRetrying = true
+      try {
+        const res = await api.getDownloads()
+        const list = Array.isArray(res?.data) ? res.data : (res?.data?.data || res?.data?.items || [])
+        this.activeDownloads = list
+          .map(this.normalizeDownload)
+          .filter(item => item.status === 'downloading' || item.status === 'queued')
+      } catch (err) {
+        this.activeDownloads = []
+        this.downloadsError = formatErrorMessage(err, '加载下载任务')
+      } finally {
+        this.downloadsRetrying = false
+      }
     },
     normalizeDownload(raw) {
       const pct = Number(raw?.progress ?? raw?.percent ?? raw?.pct ?? 0)
@@ -401,56 +509,66 @@ export default defineComponent({
         jacket_thumb_url: raw?.jacket_thumb_url || raw?.cover_url || '',
       }
     },
-    loadCandidateSummary() {
-      return api.getDownloadCandidateSummary()
-        .then(res => {
-          const data = res?.data || {}
-          this.candidateSummary = {
-            candidate: Number(data.candidate ?? data.pending ?? 0) || 0,
-            missing_magnet: Number(data.missing_magnet ?? data.no_magnet ?? 0) || 0,
-            approved: Number(data.approved ?? 0) || 0,
-            rejected: Number(data.rejected ?? 0) || 0,
-          }
-        })
-        .catch(() => {
-          this.candidateSummary = { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 }
-        })
+    async loadCandidateSummary() {
+      this.candidateSummaryError = ''
+      try {
+        const res = await api.getDownloadCandidateSummary()
+        const data = res?.data || {}
+        this.candidateSummary = {
+          candidate: Number(data.candidate ?? data.pending ?? 0) || 0,
+          missing_magnet: Number(data.missing_magnet ?? data.no_magnet ?? 0) || 0,
+          approved: Number(data.approved ?? 0) || 0,
+          rejected: Number(data.rejected ?? 0) || 0,
+        }
+      } catch (err) {
+        this.candidateSummary = { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 }
+        this.candidateSummaryError = formatErrorMessage(err, '加载候选汇总')
+      }
     },
-    loadMissingActresses() {
-      return api.getMissingActresses()
-        .then(res => {
-          const list = res?.data?.data || res?.data?.items || res?.data || []
-          this.missingActressesCount = Array.isArray(list) ? list.length : Number(res?.data?.total || 0)
-        })
-        .catch(() => {
-          this.missingActressesCount = 0
-        })
+    async loadMissingActresses() {
+      this.missingActressesError = ''
+      try {
+        const res = await api.getMissingActresses()
+        const list = res?.data?.data || res?.data?.items || res?.data || []
+        this.missingActressesCount = Array.isArray(list) ? list.length : Number(res?.data?.total || 0)
+      } catch (err) {
+        this.missingActressesCount = 0
+        this.missingActressesError = formatErrorMessage(err, '加载缺失演员')
+      }
     },
-    loadSubscriptionUpdates() {
-      return api.getNewMovies({ page: 1, page_size: 12 })
-        .then(res => {
-          const list = res?.data?.data || res?.data?.items || []
-          this.subscriptionUpdates = Array.isArray(list) ? list : []
-        })
-        .catch(() => {
-          this.subscriptionUpdates = []
-        })
+    async loadSubscriptionUpdates() {
+      this.subscriptionUpdatesError = ''
+      this.subscriptionUpdatesRetrying = true
+      try {
+        const res = await api.getNewMovies({ page: 1, page_size: 12 })
+        const list = res?.data?.data || res?.data?.items || []
+        this.subscriptionUpdates = Array.isArray(list) ? list : []
+      } catch (err) {
+        this.subscriptionUpdates = []
+        this.subscriptionUpdatesError = formatErrorMessage(err, '加载订阅更新')
+      } finally {
+        this.subscriptionUpdatesRetrying = false
+      }
     },
-    loadLibraryCount() {
-      return api.searchVideos({ page: 1, page_size: 1, include_total: true })
-        .then(res => {
-          const total = res?.data?.total ?? res?.data?.count ?? res?.data?.data?.length ?? null
-          if (total != null) this.libraryTotal = Number(total)
-        })
-        .catch(() => {})
+    async loadLibraryCount() {
+      this.libraryCountError = ''
+      try {
+        const res = await api.searchVideos({ page: 1, page_size: 1, include_total: true })
+        const total = res?.data?.total ?? res?.data?.count ?? res?.data?.data?.length ?? null
+        if (total != null) this.libraryTotal = Number(total)
+      } catch (err) {
+        this.libraryCountError = formatErrorMessage(err, '加载影库总数')
+      }
     },
-    loadSubscribedCount() {
-      return api.getSubscriptions()
-        .then(res => {
-          const list = res?.data?.data || res?.data?.items || res?.data || []
-          this.subscribedActressCount = Array.isArray(list) ? list.length : 0
-        })
-        .catch(() => {})
+    async loadSubscribedCount() {
+      this.subscribedCountError = ''
+      try {
+        const res = await api.getSubscriptions()
+        const list = res?.data?.data || res?.data?.items || res?.data || []
+        this.subscribedActressCount = Array.isArray(list) ? list.length : 0
+      } catch (err) {
+        this.subscribedCountError = formatErrorMessage(err, '加载订阅数量')
+      }
     },
   },
 })
