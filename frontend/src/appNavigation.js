@@ -19,10 +19,11 @@ export const navGroups = [
   {
     label: '日常使用',
     items: [
+      { path: '/', label: '今日', icon: IconHome },
       { path: '/search', label: '影片检索', icon: IconSearch },
       { path: '/genres', label: '随机探索', icon: IconGenres },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
-      { path: '/downloads', label: '下载任务', icon: IconHome },
+      { path: '/downloads', label: '下载任务', icon: IconDownload },
       { path: '/parse', label: '磁链解析', icon: IconParse },
       { path: '/entities', label: '实体目录', icon: IconList },
     ],
@@ -47,14 +48,15 @@ export const navGroups = [
 ]
 
 export const bottomNavItems = [
-  { path: '/operations', label: '总览', icon: IconOperations },
-  { path: '/genres', label: '探索', icon: IconGenres },
+  { path: '/', label: '今日', icon: IconHome },
   { path: '/search', label: '检索', icon: IconSearch },
-  { path: '/downloads', label: '下载', icon: IconHome },
+  { path: '/favorites', label: '收藏', icon: IconHeart },
+  { path: '/downloads', label: '下载', icon: IconDownload },
 ]
 
 export const mobileMoreItems = [
-  { path: '/favorites', label: '我的收藏', icon: IconHeart },
+  { path: '/genres', label: '随机探索', icon: IconGenres },
+  { path: '/operations', label: '运营总览', icon: IconOperations },
   { path: '/parse', label: '磁链解析', icon: IconParse },
   { path: '/entities', label: '实体目录', icon: IconList },
   { path: '/subscription', label: '订阅演员', icon: IconStar },
@@ -66,6 +68,7 @@ export const mobileMoreItems = [
 ]
 
 export const navActivePaths = {
+  '/': ['/', '/today'],
   '/search': ['/search', '/actor'],
   '/genres': ['/genres', '/discovery'],
   '/downloads': ['/downloads', '/tasks'],

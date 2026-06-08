@@ -818,13 +818,12 @@ export default {
   scroll-padding-block: 30px var(--app-chrome-inset);
   min-width: 0;
   margin: var(--app-chrome-inset);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--content-material);
-  border: 1px solid var(--content-material-border);
+  /* 内容区 = 不透明窗体底色。玻璃只留给 chrome（侧栏/底栏/工具栏）。
+     这样海报与封面成为画面里唯一的颜色与深度，图底关系清晰。 */
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sheet);
-  box-shadow: var(--glass-surface-shadow);
+  box-shadow: var(--shadow-card);
   position: relative;
   z-index: var(--z-raised);
 }
@@ -855,8 +854,8 @@ export default {
 .main-content:focus { outline: none; }
 .main-content:focus-visible {
   outline: none;
-  border-color: var(--glass-active-border);
-  box-shadow: var(--glass-surface-shadow), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card), var(--focus-ring);
 }
 .app-layout.mobile-more-active { overscroll-behavior: none; } .app-layout.mobile-more-active .main-content { overflow: hidden; }
 /* ===== Bottom Nav (Mobile) ===== */

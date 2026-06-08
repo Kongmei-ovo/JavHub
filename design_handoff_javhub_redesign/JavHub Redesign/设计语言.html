@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JavHub 设计语言 · 交接文档</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body { overflow: auto; }
+  .doc { max-width: 920px; margin: 0 auto; padding: var(--s10) var(--s6) var(--s10); }
+  .doc-hero { padding: var(--s9) 0 var(--s7); border-bottom: 1px solid var(--hairline); margin-bottom: var(--s8); }
+  .doc-hero .eyebrow { font-size: var(--t-cap); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+  .doc-hero h1 { font-size: 48px; font-weight: 700; letter-spacing: -1px; line-height: 1.05; margin: var(--s4) 0 var(--s3); text-wrap: balance; }
+  .doc-hero p { font-size: var(--t-h3); color: var(--tx-2); line-height: 1.5; max-width: 640px; }
+  .doc h2 { font-size: var(--t-h1); font-weight: 700; letter-spacing: -0.5px; margin: var(--s9) 0 var(--s4); }
+  .doc h3 { font-size: var(--t-h3); font-weight: 650; margin: var(--s6) 0 var(--s3); }
+  .doc p, .doc li { font-size: var(--t-body); line-height: 1.62; color: var(--tx-2); }
+  .doc p { margin-bottom: var(--s3); }
+  .doc ul { padding-left: var(--s5); margin-bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+  .doc strong { color: var(--tx); font-weight: 650; }
+  .doc code { font-family: var(--font-mono); font-size: 13px; background: var(--card-2); padding: 2px 7px; border-radius: 6px; color: var(--tx); border: 1px solid var(--hairline); }
+  .principle { display: grid; grid-template-columns: 44px 1fr; gap: var(--s4); padding: var(--s5) 0; border-top: 1px solid var(--hairline); }
+  .principle .n { font-size: var(--t-h2); font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .principle h3 { margin: 0 0 6px; }
+  .principle p { margin: 0; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); margin: var(--s4) 0; }
+  .swatch { border-radius: 12px; overflow: hidden; border: 1px solid var(--hairline); }
+  .swatch .chip-color { height: 64px; }
+  .swatch .lbl { padding: 10px 12px; font-size: var(--t-cap); }
+  .swatch .lbl b { display: block; color: var(--tx); font-weight: 600; }
+  .swatch .lbl span { font-family: var(--font-mono); font-size: 11px; color: var(--tx-3); }
+  .type-row { display: flex; align-items: baseline; gap: var(--s4); padding: var(--s3) 0; border-top: 1px solid var(--hairline); }
+  .type-row .meta { font-family: var(--font-mono); font-size: 12px; color: var(--tx-3); width: 200px; flex-shrink: 0; }
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); margin: var(--s4) 0; }
+  @media (max-width: 700px) { .ba { grid-template-columns: 1fr; } }
+  .ba .col { padding: var(--s5); border-radius: var(--r-card); border: 1px solid var(--hairline); }
+  .ba .before { background: var(--card-2); }
+  .ba .after { background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.10), var(--card)); border-color: rgba(var(--accent-rgb), 0.22); }
+  .ba .tag { font-size: var(--t-micro); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .ba .before .tag { color: var(--tx-3); }
+  .ba .after .tag { color: var(--accent); }
+  .ba p { margin: var(--s2) 0 0; font-size: var(--t-callout); }
+  .map-table { width: 100%; border-collapse: collapse; margin: var(--s4) 0; font-size: var(--t-callout); }
+  .map-table th, .map-table td { text-align: left; padding: var(--s3) var(--s4); border-bottom: 1px solid var(--hairline); }
+  .map-table th { font-size: var(--t-cap); color: var(--tx-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .map-table td { color: var(--tx-2); }
+  .map-table code { font-size: 12px; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-callout); font-weight: 600; color: var(--accent); margin-bottom: var(--s5); }
+</style>
+</head>
+<body data-theme="dark">
+<div class="doc">
+  <a class="back-link" href="JavHub Redesign.html">← 回到原型</a>
+  <div class="doc-hero">
+    <div class="eyebrow">JavHub · Design Language v2</div>
+    <h1>从"精致的玻璃"到"内容当主角"</h1>
+    <p>这份文档记录重设计背后的判断与系统，方便照着改回现有 Vue 代码。核心不是推翻你的 Liquid Glass，而是把它放回正确的位置。</p>
+  </div>
+
+  <h2>四条核心修正</h2>
+  <div class="principle">
+    <div class="n">01</div>
+    <div>
+      <h3>玻璃只给 chrome，内容区改实底</h3>
+      <p>原方案侧栏、内容、卡片全是半透明玻璃，导致没有图/底层次。新方案：<strong>侧栏 / 顶栏 / 浮动工具栏 = 玻璃</strong>（blur + saturate），<strong>内容画布 / 卡片 = 实底</strong>（<code>--canvas</code> / <code>--card</code>）。这样海报才能跳出来。</p>
+    </div>
+  </div>
+  <div class="principle">
+    <div class="n">02</div>
+    <div>
+      <h3>Poster-first，色彩从内容来</h3>
+      <p>影片库的视觉锚点是封面。卡片 3:4 大图、edge-to-edge，UI 的彩色全部由封面提供。深色底让这种色彩张力最大化——这也是你那张策展稿的方向。</p>
+    </div>
+  </div>
+  <div class="principle">
+    <div class="n">03</div>
+    <div>
+      <h3>引入克制的 accent tint</h3>
+      <p>原方案 <code>--accent: #1D1D1F</code>（纯黑），全站灰阶 → 像线框。新方案给一个真正的强调色（默认靛蓝），只用于：主按钮、激活态、进度、关键数字。封面色不抢，accent 才克制。</p>
+    </div>
+  </div>
+  <div class="principle">
+    <div class="n">04</div>
+    <div>
+      <h3>用起 display 字阶，标题更自信</h3>
+      <p>原方案 body 14px、满屏 11–12px，密而不分层。新方案 hero 用 40px display、区块标题 22–30px，层级靠"字号 × 字重 × 色阶"三轴拉开。</p>
+    </div>
+  </div>
+
+  <h2>颜色</h2>
+  <p><strong>深色为主</strong>（封面色彩最突出），浅色完整兜底。背景不是纯黑，带极轻的冷调与 accent 辉光。</p>
+  <div class="swatches">
+    <div class="swatch"><div class="chip-color" style="background:#08080B"></div><div class="lbl"><b>背景 bg</b><span>#08080B</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#0F0F14"></div><div class="lbl"><b>画布 canvas</b><span>#0F0F14</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#17171E"></div><div class="lbl"><b>卡片 card</b><span>#17171E</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#7C8CFF"></div><div class="lbl"><b>强调 accent</b><span>#7C8CFF</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#54D596"></div><div class="lbl"><b>成功 / 已订阅</b><span>#54D596</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#FFC24B"></div><div class="lbl"><b>警告</b><span>#FFC24B</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#FF6F6F"></div><div class="lbl"><b>错误 / 缺磁力</b><span>#FF6F6F</span></div></div>
+    <div class="swatch"><div class="chip-color" style="background:#62B6FF"></div><div class="lbl"><b>信息</b><span>#62B6FF</span></div></div>
+  </div>
+  <p>Accent 在 Tweaks 里有 5 个候选（靛蓝 / 珊瑚 / 翡翠 / 品红 / 纯白），方便你试调主色而不动其余 token。</p>
+
+  <h2>字阶</h2>
+  <div class="type-row"><div class="meta">display · 40 / 700 / -0.8</div><div style="font-size:40px;font-weight:700;letter-spacing:-0.8px;color:var(--tx)">Hero 标题</div></div>
+  <div class="type-row"><div class="meta">h1 · 30 / 700 / -0.5</div><div style="font-size:30px;font-weight:700;letter-spacing:-0.5px;color:var(--tx)">页面主标题</div></div>
+  <div class="type-row"><div class="meta">h2 · 22 / 650 / -0.3</div><div style="font-size:22px;font-weight:650;color:var(--tx)">区块标题</div></div>
+  <div class="type-row"><div class="meta">h3 · 17 / 600</div><div style="font-size:17px;font-weight:600;color:var(--tx)">面板 / 卡片标题</div></div>
+  <div class="type-row"><div class="meta">body · 15 / 450</div><div style="font-size:15px;color:var(--tx-2)">正文内容，行高 1.6</div></div>
+  <div class="type-row"><div class="meta">caption · 12 / 550</div><div style="font-size:12px;font-weight:550;color:var(--tx-3)">元信息 · 番号 · 时间</div></div>
+
+  <h2>间距 · 圆角 · 材质</h2>
+  <ul>
+    <li><strong>间距</strong>：严格 4/8 阶梯 <code>--s1…--s10</code>（4·8·12·16·20·24·32·44·56·72），杜绝 11/13/19 这种"差一点"。</li>
+    <li><strong>圆角</strong>：海报 <code>14px</code> · 卡片 <code>18px</code> · 大面板/玻璃 <code>24px</code> · 控件胶囊 <code>999px</code>。</li>
+    <li><strong>玻璃材质</strong>：仅 chrome 用 <code>backdrop-filter: blur(40px) saturate(1.6)</code> + 1px specular 高光边。内容卡用实底 + <code>--shadow-card</code>。</li>
+    <li><strong>动效</strong>：标准 <code>--ease</code>，微弹 <code>--spring</code> 仅给浮岛/弹窗/开关。全局 <code>prefers-reduced-motion</code> 兜底。</li>
+  </ul>
+
+  <h2>组件清单</h2>
+  <ul>
+    <li><strong>PosterCard</strong> — 全站主角。封面 + 番号/类型/时长角标 + hover 收藏 + 可选演员订阅条 + 可选多选态。</li>
+    <li><strong>ActRow</strong>（演员订阅条）— 翻译名优先、原名辅助、绿=已订阅/灰=可订阅，对齐你的策展稿。</li>
+    <li><strong>StatCard / Panel</strong> — 仪表盘统一卡面。</li>
+    <li><strong>状态点 + Badge</strong> — ok/warn/bad/info 四档，脉冲圈表示在线。</li>
+    <li><strong>浮动玻璃工具栏</strong>（batch-bar）— 多选时从底部弹出，承载批量操作。</li>
+    <li><strong>iOS Switch / Segmented</strong> — 设置与筛选统一控件。</li>
+    <li><strong>VideoModal</strong> — 沉浸式详情：大封面头图 + ←/→ 翻片 + ESC 关闭 + 相关推荐轨道。</li>
+  </ul>
+
+  <h2>关键页面：改了什么</h2>
+  <div class="ba">
+    <div class="col before"><div class="tag">改之前</div><p>落地页 = 「下载管理」，一进门就是任务队列。</p></div>
+    <div class="col after"><div class="tag">改之后</div><p>落地页 = 「今日」仪表盘：继续观看 → KPI → <strong>待处理行动中心</strong> → 下载中 → 订阅更新。</p></div>
+  </div>
+  <div class="ba">
+    <div class="col before"><div class="tag">改之前</div><p>候选/缺磁力/翻译散落在各页，要逐个去找。</p></div>
+    <div class="col after"><div class="tag">改之后</div><p>首页「待处理」把它们收口成一个行动中心；候选确认页支持批量审核。</p></div>
+  </div>
+  <div class="ba">
+    <div class="col before"><div class="tag">改之前</div><p>收藏与影库是普通灰阶列表。</p></div>
+    <div class="col after"><div class="tag">改之后</div><p>poster-first 网格 + 私人策展（卡片下挂演员订阅）+ 影库批量多选。</p></div>
+  </div>
+
+  <h2>落地回 Vue 的映射</h2>
+  <p>这套原型用 React 演示，但 token 与结构可直接搬进你现有的 <code>main.css</code> 与组件：</p>
+  <table class="map-table">
+    <thead><tr><th>原型</th><th>你的代码</th><th>动作</th></tr></thead>
+    <tbody>
+      <tr><td>token（颜色/字阶/间距）</td><td><code>assets/main.css :root</code></td><td>合并新的 <code>--canvas / --card</code> 实底层 + accent 改非黑色</td></tr>
+      <tr><td>玻璃只给 chrome</td><td><code>App.vue</code> sidebar / 内容区</td><td>内容区 <code>--content-material</code> 提高到接近实底</td></tr>
+      <tr><td>PosterCard</td><td><code>AppleVideoCard.vue</code></td><td>放大封面占比、角标化番号/类型、hover 抬升</td></tr>
+      <tr><td>今日仪表盘</td><td>新建 <code>Today.vue</code> + 改路由首页</td><td>把 Home(下载) 降级为 <code>/downloads</code></td></tr>
+      <tr><td>批量工具栏</td><td><code>Search.vue</code> / 列表页</td><td>新增多选态 + 浮动 batch-bar</td></tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:var(--s8);padding-top:var(--s5);border-top:1px solid var(--hairline);color:var(--tx-3);font-size:var(--t-cap)">这是一份活文档 · 跟随原型同步更新。任何一处不确定"Apple 工程师会不会改"，能答"不会"才算完。</p>
+</div>
+</body>
+</html>

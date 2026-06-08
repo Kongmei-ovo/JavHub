@@ -6,7 +6,8 @@ const supplementPanelRedirect = (tab) => (to) => ({
 })
 
 const routes = [
-  { path: '/', redirect: '/search' },
+  { path: '/', name: 'Today', component: () => import('../views/Today.vue') },
+  { path: '/today', redirect: '/' },
   { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
   { path: '/downloads', component: () => import('../views/Home.vue') },
   { path: '/search', component: () => import('../views/Search.vue') },

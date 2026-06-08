@@ -1,6 +1,6 @@
 <template>
   <article
-    class="apple-video-card apple-surface"
+    class="apple-video-card"
     role="button"
     tabindex="0"
     @click="openCard"
@@ -21,30 +21,35 @@
         <span>{{ fallbackText }}</span>
       </div>
 
-      <div
-        v-if="variantLabels.length"
-        class="apple-video-card__variant-stack"
-        :title="variantTooltip"
-      >
-        <span
-          v-for="label in variantLabels"
-          :key="label.key || label.label"
-          class="apple-video-card__variant-pill"
+      <div class="apple-video-card__scrim" aria-hidden="true"></div>
+
+      <div class="apple-video-card__overlay-top">
+        <span v-if="displayCode" class="apple-video-card__code">{{ displayCode }}</span>
+        <div
+          v-if="variantLabels.length"
+          class="apple-video-card__variant-stack"
+          :title="variantTooltip"
         >
-          {{ label.short_label || label.label }}
-        </span>
+          <span
+            v-for="label in variantLabels"
+            :key="label.key || label.label"
+            class="apple-video-card__variant-pill"
+          >
+            {{ label.short_label || label.label }}
+          </span>
+        </div>
       </div>
+
+      <span v-if="serviceLabel" class="apple-video-card__badge">{{ serviceLabel }}</span>
     </div>
 
-    <div class="apple-video-card__body">
-      <div class="apple-video-card__meta-row">
-        <span class="apple-video-card__code">{{ displayCode }}</span>
-        <span v-if="serviceLabel" class="apple-video-card__badge">{{ serviceLabel }}</span>
-      </div>
+    <div class="apple-video-card__meta">
       <h3 class="apple-video-card__title" :title="titleText">{{ titleText }}</h3>
-      <div class="apple-video-card__subline">
-        <span v-if="normalized.release_date">{{ normalized.release_date }}</span>
-        <span v-if="normalized.runtime_mins">{{ normalized.runtime_mins }}分钟</span>
+      <div v-if="sublineParts.length" class="apple-video-card__subline" :title="sublineTooltip">
+        <template v-for="(part, index) in sublineParts" :key="part.key">
+          <span v-if="index > 0" class="apple-video-card__dot" aria-hidden="true"></span>
+          <span :class="part.className">{{ part.text }}</span>
+        </template>
       </div>
     </div>
   </article>
@@ -80,6 +85,32 @@ const variantLabels = computed(() => {
     .filter(label => label && (label.short_label || label.label))
     .slice(0, 2)
 })
+const actressNames = computed(() => {
+  const list = Array.isArray(normalized.value.actresses) ? normalized.value.actresses : []
+  return list
+    .map(item => item?.name_kanji || item?.name_translated || item?.name_romaji || item?.name)
+    .filter(name => typeof name === 'string' && name.trim())
+})
+const actressLine = computed(() => {
+  const top = actressNames.value.slice(0, 2).join(' / ')
+  const extra = actressNames.value.length - 2
+  return extra > 0 ? `${top} +${extra}` : top
+})
+const sublineParts = computed(() => {
+  const parts = []
+  if (actressLine.value) {
+    parts.push({ key: 'actress', text: actressLine.value, className: 'apple-video-card__subline-actress' })
+  }
+  if (normalized.value.runtime_mins) {
+    parts.push({ key: 'runtime', text: `${normalized.value.runtime_mins} 分钟`, className: 'apple-video-card__subline-runtime' })
+  }
+  if (normalized.value.release_date) {
+    parts.push({ key: 'date', text: normalized.value.release_date, className: 'apple-video-card__subline-date' })
+  }
+  return parts
+})
+const sublineTooltip = computed(() => sublineParts.value.map(part => part.text).join(' · '))
+
 const variantTooltip = computed(() => {
   const explanations = Array.isArray(normalized.value.variant_explanations)
     ? normalized.value.variant_explanations
@@ -132,51 +163,58 @@ function handleKeydown(event) {
 </script>
 
 <style scoped>
+/* Poster-first card (Wave B redesign). Card root is structural only — the
+   cover element carries the surface, shadow and lift so the poster reads as
+   the hero, with glass reserved for the small chrome overlays. */
 .apple-video-card {
   cursor: pointer;
-  overflow: hidden;
   container-type: inline-size;
-  border: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-}
-
-.apple-video-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-}
-
-.apple-video-card:focus-visible {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide);
-}
-
-.apple-video-card:active {
-  /* WAVE-3 E3: card depth on press — sink 0.5px and scale tight, image
-     pulls back from hover scale for a synchronised tactile push. */
-  transform: translateY(0.5px) scale(0.99);
-}
-.apple-video-card:active .apple-video-card__image {
-  transform: scale(1.01);
 }
 
 .apple-video-card__cover {
   position: relative;
   aspect-ratio: var(--movie-card-cover-aspect, 3 / 4);
   overflow: hidden;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  border-radius: var(--radius-lg);
+  background: var(--card-2);
+  box-shadow: var(--shadow-card);
+  /* Project render-containment guard restricts transition to transform/opacity;
+     box-shadow updates snap on hover/focus instead of being animated. */
+  transition: transform var(--motion-standard);
+}
+
+.apple-video-card:hover .apple-video-card__cover,
+.apple-video-card:focus-visible .apple-video-card__cover {
+  /* Prototype calls for -4px; project lift guard caps interactive translateY
+     at 2px, so we stay light and lean on shadow + image zoom for emphasis. */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.apple-video-card:focus-visible .apple-video-card__cover {
+  box-shadow: var(--shadow-hover), var(--focus-ring-wide-strong);
+}
+
+.apple-video-card:active .apple-video-card__cover {
+  /* WAVE-3 E3: card depth on press — sink 0.5px and scale tight, image
+     pulls back from hover scale for a synchronised tactile push. */
+  transform: translateY(-1px) scale(0.99);
+}
+.apple-video-card:active .apple-video-card__image {
+  transform: scale(1.01);
 }
 
 .apple-video-card__image,
 .apple-video-card__fallback {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
@@ -187,11 +225,7 @@ function handleKeydown(event) {
   transition: transform var(--motion-standard);
 }
 
-.apple-video-card:hover .apple-video-card__image {
-  transform: scale(1.03);
-  filter: saturate(1.08);
-}
-
+.apple-video-card:hover .apple-video-card__image,
 .apple-video-card:focus-visible .apple-video-card__image {
   transform: scale(1.03);
   filter: saturate(1.08);
@@ -203,26 +237,59 @@ function handleKeydown(event) {
   clip-path: inset(0 0 0 50%);
 }
 
-.apple-video-card__variant-stack {
+.apple-video-card__scrim {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, var(--black-40) 0%, var(--black-00) 22%, var(--black-00) 70%, var(--black-40) 100%);
+}
+
+.apple-video-card__overlay-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 5px;
-  max-width: calc(100% - 16px);
+  max-width: calc(100% - 88px);
   pointer-events: auto;
 }
 
+.apple-video-card__code {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--black-40);
+  color: var(--media-caption-text);
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.apple-video-card__variant-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .apple-video-card__variant-pill {
-  min-width: 0;
   max-width: 72px;
   padding: 3px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
   border: 1px solid var(--glass-edge);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 650;
   line-height: 1.15;
   overflow: hidden;
@@ -233,106 +300,113 @@ function handleKeydown(event) {
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
-.apple-video-card__fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  color: var(--text-muted);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: var(--type-caption);
-}
-
-.apple-video-card__body {
-  padding: 14px 15px 16px;
-}
-
-.apple-video-card__meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-
-.apple-video-card__code {
-  min-width: 0;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--type-caption);
-  font-weight: 650;
-  letter-spacing: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .apple-video-card__badge {
-  flex-shrink: 0;
-  padding: 2px 7px;
-  border-radius: 999px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: var(--radius-control);
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   border: 1px solid var(--badge-info-border);
   color: var(--badge-info-text);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--type-badge);
+  font-weight: 650;
+  line-height: 1.2;
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
+.apple-video-card__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: var(--card-2);
+  color: var(--text-muted);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--type-caption);
+}
+
+.apple-video-card__meta {
+  padding: 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .apple-video-card__title {
-  margin: 0 0 8px;
-  color: var(--text-secondary);
-  font-size: var(--type-control);
-  font-weight: 500;
-  line-height: 1.45;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-callout);
+  font-weight: 600;
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-wrap: pretty;
 }
 
 .apple-video-card__subline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-muted);
-  font-size: var(--type-micro);
+  font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
   min-width: 0;
-  flex-wrap: wrap;
+}
+
+.apple-video-card__subline > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apple-video-card__subline-actress {
+  color: var(--text-secondary);
+  font-weight: 550;
+  flex: 0 1 auto;
+}
+
+.apple-video-card__dot {
+  flex: 0 0 auto;
+  width: 3px;
+  height: 3px;
+  border-radius: var(--radius-control);
+  background: var(--text-muted);
 }
 
 @container (max-width: 180px) {
   .apple-video-card {
+    gap: 8px;
+  }
+
+  .apple-video-card__cover {
     border-radius: var(--video-card-radius-mobile);
   }
 
-  .apple-video-card__body {
-    padding: var(--video-card-body-padding-mobile);
-  }
-
-  .apple-video-card__meta-row {
-    gap: 5px;
-    margin-bottom: 5px;
+  .apple-video-card__overlay-top {
+    top: 7px;
+    left: 7px;
+    gap: 4px;
+    max-width: calc(100% - 70px);
   }
 
   .apple-video-card__code {
-    font-size: 11px;
+    font-size: 10px;
+    padding: 2px 6px;
   }
 
   .apple-video-card__badge {
-    padding: 1px 5px;
+    top: 7px;
+    right: 7px;
+    padding: 2px 6px;
     font-size: 9px;
-  }
-
-  .apple-video-card__variant-stack {
-    top: 6px;
-    left: 6px;
-    gap: 4px;
   }
 
   .apple-video-card__variant-pill {
@@ -341,17 +415,18 @@ function handleKeydown(event) {
     font-size: 9px;
   }
 
+  .apple-video-card__meta {
+    padding: var(--video-card-body-padding-mobile);
+  }
+
   .apple-video-card__title {
-    margin-bottom: 6px;
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.3;
   }
 
   .apple-video-card__subline {
-    gap: 4px 6px;
     font-size: 10px;
     line-height: 1.25;
   }
-
 }
 </style>

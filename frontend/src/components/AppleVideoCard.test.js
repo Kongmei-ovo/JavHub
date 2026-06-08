@@ -72,7 +72,7 @@ function runSetup(propsOverride = {}) {
     // `props` is injected as a parameter, matching what defineProps() would provide.
     const fn = new Function(
       'computed', 'ref', 'watch', 'normalizeVideo', 'videoCoverCandidates', 'props',
-      `${body}\nreturn { imageError, wideImage, coverIndex, normalized, coverCandidates, coverUrl, titleText, displayCode, fallbackText, serviceLabel, variantLabels, variantTooltip, onImageError, onImageLoad }`
+      `${body}\nreturn { imageError, wideImage, coverIndex, normalized, coverCandidates, coverUrl, titleText, displayCode, fallbackText, serviceLabel, variantLabels, variantTooltip, actressNames, actressLine, sublineParts, sublineTooltip, onImageError, onImageLoad }`
     )
     return { ...fn(computed, ref, watch, normalizeVideo, videoCoverCandidates, props), props }
   })
@@ -236,35 +236,90 @@ test('AppleVideoCard service badge uses semantic layered glass material', () => 
   assert.doesNotMatch(serviceBadge, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
 })
 
-test('AppleVideoCard card shell and cover use shared Apple glass materials', () => {
+test('AppleVideoCard is poster-first: shell is structural, cover carries the surface', () => {
+  // WAVE-B redesign: card root is a flex container only — no glass chrome,
+  // no background, no border. The cover element is the hero surface with a
+  // solid card-2 background, a lift on hover/focus and the shadow ramp.
   const card = cssBlock('.apple-video-card')
-  const cardHover = cssBlock('.apple-video-card:hover')
-  const cardFocus = cssBlock('.apple-video-card:focus-visible')
-  const imageFocus = cssBlock('.apple-video-card:focus-visible .apple-video-card__image')
   const cover = cssBlock('.apple-video-card__cover')
+  const coverLift = cssBlock('.apple-video-card:hover .apple-video-card__cover')
+  const coverFocus = cssBlock('.apple-video-card:focus-visible .apple-video-card__cover')
+  const imageHover = cssBlock('.apple-video-card:hover .apple-video-card__image')
   const fallback = cssBlock('.apple-video-card__fallback')
 
-  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
-  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.doesNotMatch(card, /var\(--surface-card\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
-  assert.match(cardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(cardHover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(cardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.doesNotMatch(cardHover, /var\(--border-light\)|var\(--surface-card-hover\)|var\(--shadow-floating\)|var\(--glass-surface-shadow\)/)
-  assert.match(cardFocus, /outline:\s*none/)
-  assert.match(cardFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(cardFocus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(cardFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
-  assert.match(imageFocus, /transform:\s*scale\(1\.03\)/)
-  assert.match(imageFocus, /filter:\s*saturate\(1\.08\)/)
+  // Card shell is purely structural.
+  assert.match(card, /background:\s*transparent/, 'card root should not paint its own surface')
+  assert.match(card, /border:\s*0/, 'card root should not draw a border')
+  assert.match(card, /display:\s*flex/, 'card root should be a flex column')
+  assert.doesNotMatch(card, /material-glass|surface-specular-edge|backdrop-filter/, 'card root should not carry glass chrome')
 
-  for (const [block, label] of [[cover, 'cover'], [fallback, 'fallback']]) {
-    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${label} should use shared control material`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${label} should use shared control shadow`)
-    assert.doesNotMatch(block, /var\(--surface-control\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
-  }
+  // Cover is the hero: solid card-2 fill, shadow-card resting, hover/focus lift.
+  assert.match(cover, /background:\s*var\(--card-2\)/, 'cover should use the solid card-2 surface')
+  assert.match(cover, /box-shadow:\s*var\(--shadow-card\)/, 'cover should rest with shadow-card')
+  assert.match(cover, /aspect-ratio:\s*var\(--movie-card-cover-aspect,\s*3\s*\/\s*4\)/, 'cover should keep the 3/4 poster ratio')
+  assert.match(coverLift, /transform:\s*translateY\(-2px\)/, 'hover/focus should lift the cover (capped at the 2px project guard, lighter than the prototype 4px)')
+  assert.match(coverLift, /box-shadow:\s*var\(--shadow-hover\)/, 'hover/focus should swap to shadow-hover')
+  assert.match(coverFocus, /var\(--focus-ring-wide-strong\)/, 'focus state should include the wide focus ring')
+  assert.match(imageHover, /transform:\s*scale\(1\.03\)/, 'image should subtly zoom on hover/focus')
+  assert.match(imageHover, /filter:\s*saturate\(1\.08\)/, 'image should saturate on hover/focus')
+
+  // Fallback uses the same solid card-2 layer (no glass, no raw color).
+  assert.match(fallback, /background:\s*var\(--card-2\)/, 'fallback should sit on card-2')
+  assert.doesNotMatch(fallback, /material-glass|surface-specular-edge|#fff|#ffffff|rgba\(255,\s*255,\s*255/i, 'fallback should not reintroduce glass or raw colors')
+})
+
+test('AppleVideoCard renders the prototype overlays on the cover', () => {
+  // WAVE-B redesign: code chip (top-left) + service badge (top-right) sit
+  // on the poster; runtime moves into the meta subline alongside the date
+  // (per user direction) to keep the lower edge of the cover unobstructed.
+  assert.match(source, /class="apple-video-card__overlay-top"/, 'cover should host a top overlay stack')
+  assert.match(source, /class="apple-video-card__code"/, 'cover should overlay the display code')
+  assert.match(source, /class="apple-video-card__scrim"/, 'cover should layer a top/bottom scrim for legibility')
+  assert.doesNotMatch(source, /class="apple-video-card__runtime"/, 'runtime should not paint on the poster anymore')
+
+  const code = cssBlock('.apple-video-card__code')
+  assert.match(code, /font-family:\s*var\(--font-mono\)/, 'code overlay should use the mono stack')
+  assert.match(code, /color:\s*var\(--media-caption-text\)/, 'code overlay should use the shared caption color token')
+  assert.match(code, /background:\s*var\(--black-40\)/, 'code overlay should use the shared black scrim token')
+})
+
+test('AppleVideoCard meta subline composes actress · runtime · date', async () => {
+  const r = await runSetup({
+    video: {
+      content_id: 'MIAA-784',
+      release_date: '2026-05-06',
+      runtime_mins: 120,
+      actresses: [
+        { id: 1, name_kanji: '由愛可奈', name_romaji: 'Kana Yume' },
+        { id: 2, name_translated: '相沢みなみ' },
+        { id: 3, name_romaji: 'Mei Satsuki' },
+      ],
+    },
+  })
+  const parts = r.sublineParts.value
+  assert.equal(parts.length, 3, 'all three subline slots should be populated')
+  assert.equal(parts[0].key, 'actress')
+  assert.equal(parts[0].text, '由愛可奈 / 相沢みなみ +1', 'actress slot shows top two with overflow count')
+  assert.equal(parts[1].key, 'runtime')
+  assert.equal(parts[1].text, '120 分钟')
+  assert.equal(parts[2].key, 'date')
+  assert.equal(parts[2].text, '2026-05-06')
+})
+
+test('AppleVideoCard subline gracefully omits missing fields', async () => {
+  const r = await runSetup({ video: { content_id: 'NOMETA-1' } })
+  assert.deepEqual(r.sublineParts.value, [], 'subline should be empty when nothing else is known')
+})
+
+test('AppleVideoCard meta subline renders separator dots and emphasizes actress', () => {
+  assert.match(source, /class="apple-video-card__dot"/, 'subline should render dot separators between slots')
+  const subline = cssBlock('.apple-video-card__subline')
+  const actress = cssBlock('.apple-video-card__subline-actress')
+  const dot = cssBlock('.apple-video-card__dot')
+  assert.match(subline, /color:\s*var\(--text-muted\)/, 'subline base color comes from the muted text token')
+  assert.match(actress, /color:\s*var\(--text-secondary\)/, 'actress slot lifts to text-secondary for emphasis')
+  assert.match(dot, /background:\s*var\(--text-muted\)/, 'separator dot uses the muted text token')
+  assert.match(dot, /border-radius:\s*var\(--radius-control\)/, 'separator dot uses the shared capsule radius')
 })
 
 test('AppleVideoCard exposes button semantics on the card root', () => {

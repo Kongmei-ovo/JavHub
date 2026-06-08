@@ -103,7 +103,7 @@ test('Production UI styles ratchet raw font sizes toward shared type tokens', ()
   const rawFontSize = /font-size:\s*\d+(?:\.\d+)?px\b/g
   const offenders = []
   const tokenSources = new Set(['src/assets/main.css'])
-  const existingRawFontSizeCount = 435
+  const existingRawFontSizeCount = 433
 
   for (const [name, source] of productionStyleSources()) {
     if (tokenSources.has(name)) continue

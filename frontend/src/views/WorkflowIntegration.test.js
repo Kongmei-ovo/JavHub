@@ -731,7 +731,9 @@ test('legacy saved theme values resolve to Apple light and dark modes', () => {
   for (const key of ['apple-pro-dark', 'midnight', 'oled', 'deep-space', 'graphite-gold', 'forest', 'tokyo', 'aurora', 'rose']) {
     assert.equal(resolveThemeKey(key), 'apple-dark')
   }
-  assert.equal(resolveThemeKey('missing-theme'), 'apple-light')
+  // DEFAULT_THEME_KEY is apple-dark (poster-first design language reads strongest
+   //  on dark). Unknown / never-seen theme keys fall back to it.
+  assert.equal(resolveThemeKey('missing-theme'), 'apple-dark')
   assert.equal(isDarkTheme('apple-dark'), true)
   assert.equal(isDarkTheme('apple-light'), false)
 

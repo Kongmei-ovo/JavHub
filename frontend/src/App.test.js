@@ -45,6 +45,7 @@ test('primary navigation is grouped around daily workflows first', () => {
 
   assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统管理'])
   assert.deepEqual(labels, [
+    '今日',
     '影片检索',
     '随机探索',
     '我的收藏',
@@ -70,7 +71,8 @@ test('mobile more exposes initialization and maintenance entry points', () => {
   const labels = [...mobileBlock.matchAll(/\{ path: '[^']+', label: '([^']+)'/g)].map((match) => match[1])
 
   assert.deepEqual(labels, [
-    '我的收藏',
+    '随机探索',
+    '运营总览',
     '磁链解析',
     '实体目录',
     '订阅演员',
@@ -107,11 +109,15 @@ test('supplement repair workbench has hard routes for direct panels', () => {
   assert.match(routerSource, /query:\s*\{ \.\.\.to\.query, tab \}/)
 })
 
-test('root route redirects to video search as the primary entry page', () => {
-  assert.match(routerSource, /\{\s*path:\s*'\/',\s*redirect:\s*'\/search'\s*\}/)
+test('root route mounts the Today dashboard as the primary entry page', () => {
+  // Wave C redesign: the new home is /views/Today.vue (the dashboard);
+  // the legacy /downloads (Home.vue) keeps its place under the same path
+  // so existing deep links and the bottom-nav route still resolve.
+  assert.match(routerSource, /\{\s*path:\s*'\/',\s*name:\s*'Today',\s*component:\s*\(\) => import\('\.\.\/views\/Today\.vue'\)\s*\}/)
+  assert.match(routerSource, /\{\s*path:\s*'\/today',\s*redirect:\s*'\/'\s*\}/)
+  assert.match(routerSource, /\{\s*path:\s*'\/downloads',\s*component:\s*\(\) => import\('\.\.\/views\/Home\.vue'\)\s*\}/)
   assert.doesNotMatch(routerSource, /\/videos\/:contentId/)
   assert.doesNotMatch(routerSource, /name:\s*'VideoDetail'/)
-  assert.doesNotMatch(routerSource, /\{\s*path:\s*'\/',\s*component:/)
 })
 
 test('query-backed modal routes resume by fullPath and keep list pages alive', () => {
@@ -134,7 +140,9 @@ test('app chrome separates floating liquid navigation from calm content material
   assert.match(source, /\.sidebar::after\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\)[\s\S]*opacity:\s*var\(--surface-overlay-opacity\)[\s\S]*pointer-events:\s*none/)
   assert.match(source, /\.sidebar-header\s*\{[\s\S]*z-index:\s*1/)
   assert.match(source, /\.sidebar-nav\s*\{[\s\S]*z-index:\s*1/)
-  assert.match(source, /\.main-content\s*\{[\s\S]*margin:\s*var\(--app-chrome-inset\)[\s\S]*background:[\s\S]*var\(--surface-specular-edge\),[\s\S]*var\(--surface-noise\),[\s\S]*var\(--content-material\)[\s\S]*border:\s*1px solid var\(--content-material-border\)/)
+  // Content area is the opaque windowpane — glass stays on chrome only.
+  // This is the load-bearing "calm content" assertion: solid canvas + hairline.
+  assert.match(source, /\.main-content\s*\{[\s\S]*margin:\s*var\(--app-chrome-inset\)[\s\S]*background:\s*var\(--canvas\)[\s\S]*border:\s*1px solid var\(--hairline\)/)
   assert.match(source, /\.bottom-nav\s*\{[\s\S]*left:\s*max\(12px,\s*env\(safe-area-inset-left,\s*0px\)\)[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right,\s*0px\)\)[\s\S]*border-radius:\s*var\(--radius-sheet\)[\s\S]*box-shadow:\s*var\(--chrome-floating-shadow\)/)
   assert.match(source, /\.bottom-nav\s*\{[\s\S]*overflow:\s*hidden[\s\S]*isolation:\s*isolate/)
   assert.match(source, /\.bottom-nav::after\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\)[\s\S]*opacity:\s*var\(--surface-overlay-opacity\)[\s\S]*pointer-events:\s*none/)
@@ -242,8 +250,10 @@ test('keyboard entry points expose visible system focus surfaces', () => {
   assert.match(sourceBlock('.skip-link:focus-visible'), /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /transform:\s*translateY\(0\)/)
   assert.match(sourceBlock('.main-content:focus-visible'), /outline:\s*none/)
-  assert.match(sourceBlock('.main-content:focus-visible'), /border-color:\s*var\(--glass-active-border\)/)
-  assert.match(sourceBlock('.main-content:focus-visible'), /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--focus-ring\)/)
+  // Content windowpane is solid now (--canvas + --hairline), so focus border
+  // lifts to --hairline-strong and shadow stays on --shadow-card.
+  assert.match(sourceBlock('.main-content:focus-visible'), /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(sourceBlock('.main-content:focus-visible'), /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
   assert.match(sourceBlock('.mobile-more-sheet:focus-visible'), /outline:\s*none/)
   assert.match(sourceBlock('.mobile-more-sheet:focus-visible'), /border-color:\s*var\(--glass-active-border\)/)
   assert.match(sourceBlock('.mobile-more-sheet:focus-visible'), /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--focus-ring\)/)

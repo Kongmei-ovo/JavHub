@@ -1,8 +1,9 @@
 // Two-mode Apple Liquid Glass theme system.
 // applyTheme() swaps CSS custom properties on :root so the whole app responds.
 
-export const DEFAULT_THEME_KEY = 'apple-light'
+export const LIGHT_THEME_KEY = 'apple-light'
 export const DARK_THEME_KEY = 'apple-dark'
+export const DEFAULT_THEME_KEY = DARK_THEME_KEY
 
 const SYSTEM_DISPLAY_FONT = "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 const SYSTEM_FONT = "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -158,16 +159,24 @@ export const THEMES = {
       '--bg-secondary': '#F2F2F7',
       '--bg-card': 'rgba(255, 255, 255, 0.72)',
       '--bg-card-hover': 'rgba(255, 255, 255, 0.86)',
-      '--accent': '#1D1D1F',
-      '--accent-rgb': '29, 29, 31',
-      '--accent-light': '#000000',
-      '--accent-glow': 'rgba(29, 29, 31, 0.12)',
-      '--accent-bg': 'rgba(29, 29, 31, 0.07)',
+      '--accent': '#7C8CFF',
+      '--accent-rgb': '124, 140, 255',
+      '--accent-light': '#9BA7FF',
+      '--accent-glow': 'rgba(124, 140, 255, 0.32)',
+      '--accent-bg': 'rgba(124, 140, 255, 0.10)',
+      '--text-on-accent-solid': '#FFFFFF',
       '--text-primary': '#1D1D1F',
       '--text-secondary': '#515154',
       '--text-muted': '#77777D',
       '--border': 'rgba(29, 29, 31, 0.10)',
       '--border-light': 'rgba(29, 29, 31, 0.15)',
+      '--canvas': '#FBFBFD',
+      '--card': '#FFFFFF',
+      '--card-2': '#F4F4F7',
+      '--card-hover': '#F0F0F4',
+      '--card-elevated': '#FFFFFF',
+      '--hairline': 'rgba(29, 29, 31, 0.075)',
+      '--hairline-strong': 'rgba(29, 29, 31, 0.13)',
       '--glass-edge': 'rgba(29, 29, 31, 0.10)',
       '--glass-edge-strong': 'rgba(29, 29, 31, 0.16)',
       '--glass-highlight': 'rgba(255, 255, 255, 0.92)',
@@ -239,16 +248,24 @@ export const THEMES = {
       '--bg-secondary': '#101012',
       '--bg-card': 'rgba(28, 28, 30, 0.58)',
       '--bg-card-hover': 'rgba(44, 44, 46, 0.70)',
-      '--accent': '#F5F5F7',
-      '--accent-rgb': '245, 245, 247',
-      '--accent-light': '#FFFFFF',
-      '--accent-glow': 'rgba(245, 245, 247, 0.16)',
-      '--accent-bg': 'rgba(245, 245, 247, 0.10)',
-      '--text-primary': '#F5F5F7',
-      '--text-secondary': '#D1D1D6',
-      '--text-muted': '#8E8E93',
+      '--accent': '#7C8CFF',
+      '--accent-rgb': '124, 140, 255',
+      '--accent-light': '#9BA7FF',
+      '--accent-glow': 'rgba(124, 140, 255, 0.40)',
+      '--accent-bg': 'rgba(124, 140, 255, 0.14)',
+      '--text-on-accent-solid': '#0A0A12',
+      '--text-primary': '#F4F4F7',
+      '--text-secondary': '#9D9DA7',
+      '--text-muted': '#66666F',
       '--border': 'rgba(255, 255, 255, 0.10)',
       '--border-light': 'rgba(255, 255, 255, 0.16)',
+      '--canvas': '#0F0F14',
+      '--card': '#17171E',
+      '--card-2': '#1C1C25',
+      '--card-hover': '#20202B',
+      '--card-elevated': '#24242F',
+      '--hairline': 'rgba(255, 255, 255, 0.075)',
+      '--hairline-strong': 'rgba(255, 255, 255, 0.13)',
       '--glass-edge': 'rgba(255, 255, 255, 0.12)',
       '--glass-edge-strong': 'rgba(255, 255, 255, 0.22)',
       '--glass-highlight': 'rgba(255, 255, 255, 0.24)',
@@ -355,7 +372,7 @@ export function applyTheme(themeKey) {
 }
 
 export function toggleTheme(currentTheme) {
-  return applyTheme(isDarkTheme(currentTheme) ? DEFAULT_THEME_KEY : DARK_THEME_KEY)
+  return applyTheme(isDarkTheme(currentTheme) ? LIGHT_THEME_KEY : DARK_THEME_KEY)
 }
 
 export function restoreTheme() {
