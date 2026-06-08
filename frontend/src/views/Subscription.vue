@@ -560,8 +560,8 @@ async function removeSelectedSubscriptions() {
 
 function viewCandidates(sub) {
   router.push({
-    path: '/downloads',
-    query: { tab: 'candidates', status: 'candidate', source: 'subscription', actress_id: sub.actress_id }
+    path: '/candidates',
+    query: { status: 'candidate', source: 'subscription', actress_id: sub.actress_id }
   })
 }
 

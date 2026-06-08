@@ -29,6 +29,8 @@ const home = [
   downloadCandidatePanel,
   // Wave P1-1: candidate logic lives in the composable; keep it in scope so
   // existing candidate-truth assertions follow the source through the move.
+  // Wave P1-3: Home 收口为纯任务页后,候选工作台搬到 Candidates.vue,候选模板断言跟着挪过来。
+  readFileSync(new URL('./Candidates.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/useDownloadCandidates.js', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/CandidateOverview.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/home/DownloadStatsBar.vue', import.meta.url), 'utf8'),
@@ -489,7 +491,9 @@ test('downloads page summary uses the lightweight candidate summary endpoint', (
     || ''
 
   assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)
-  assert.match(summaryBlock, /candidateStats(?:\.value)?\s*=\s*resp\.data\s*\|\|\s*candidateStats(?:\.value)?/)
+  // Wave P1-3: Home 收口为纯任务页后 loadCandidateSummary 留在 Options API 里直接赋值,
+  // 接受 `this.X` 前缀;真正的候选 list 仍由 useDownloadCandidates 用 ref.value 赋值。
+  assert.match(summaryBlock, /(?:this\.)?candidateStats(?:\.value)?\s*=\s*resp\.data\s*\|\|\s*(?:this\.)?candidateStats(?:\.value)?/)
   assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
   assert.doesNotMatch(listBlock, /resp\.data\.stats/)
   assert.match(listBlock, /params\.include_stats = false/)

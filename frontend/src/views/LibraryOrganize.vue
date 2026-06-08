@@ -279,9 +279,9 @@
         <div class="panel-head">
           <div>
             <h2>库存候选</h2>
-            <p>这里只处理库存发现的下载候选，其他来源仍留在下载任务页。</p>
+            <p>这里只处理库存发现的下载候选，其他来源仍留在候选确认页。</p>
           </div>
-          <button class="btn btn-ghost btn-sm" type="button" @click="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })">打开下载任务页</button>
+          <button class="btn btn-ghost btn-sm" type="button" @click="$router.push({ path: '/candidates', query: { source: 'inventory' } })">打开候选确认</button>
         </div>
         <div class="organize-filters">
           <input v-model.trim="candidateSearch" placeholder="搜索番号、标题、演员" @keyup.enter="loadInventoryCandidates" />
@@ -311,7 +311,7 @@
             </div>
           </article>
         </div>
-        <AppleEmptyState v-else class="empty-inline" title="暂无库存来源下载候选" description="当前筛选下没有库存发现的下载候选。" next-step="可以打开下载任务页查看全部来源，或清除筛选后重新加载库存候选。" action-label="打开下载任务页" secondary-action-label="清除筛选" density="compact" @action="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })" @secondary-action="clearCandidateFilters" />
+        <AppleEmptyState v-else class="empty-inline" title="暂无库存来源下载候选" description="当前筛选下没有库存发现的下载候选。" next-step="可以打开候选确认查看全部来源，或清除筛选后重新加载库存候选。" action-label="打开候选确认" secondary-action-label="清除筛选" density="compact" @action="$router.push({ path: '/candidates', query: { source: 'inventory' } })" @secondary-action="clearCandidateFilters" />
       </section>
       <section v-else-if="activeTab === 'duplicates'" class="workbench-panel apple-reveal">
         <div class="panel-head">

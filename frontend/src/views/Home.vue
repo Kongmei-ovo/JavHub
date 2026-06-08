@@ -2,7 +2,7 @@
   <div class="home page-shell page-shell--workspace">
     <div class="page-header">
       <div class="header-left">
-        <h1>下载管理</h1>
+        <h1>下载任务</h1>
         <p class="header-subtitle">
           <span class="total-tasks">{{ totalTaskCount }} 个任务</span>
           <span v-if="stats.downloading > 0" class="downloading-hint"> · {{ stats.downloading }} 个下载中</span>
@@ -27,70 +27,16 @@
 
     <DownloadStatsBar :stats="stats" :candidate-stats="candidateStats" :stats-loaded="statsLoaded" @select-status="setTaskStatus" @open-preset="openCandidatePreset" />
 
-    <div v-if="candidateFilterLedger.length" class="candidate-filter-ledger" aria-label="当前候选筛选">
-      <span v-for="filter in candidateFilterLedger" :key="filter.key" class="candidate-filter-token">{{ filter.label }}</span>
-    </div>
     <div v-if="filterStatus" class="filter-bar" @click="clearTaskStatus">
       <span class="filter-hint">筛选: <strong>{{ filterStatus }}</strong> (点击清除)</span>
     </div>
     <div class="download-tabs">
-      <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="openTaskTab">真实任务</button>
-      <button class="tab-btn" type="button" :class="{ active: activeTab === 'candidates' }" @click="openCandidateTab">下载候选 <span v-if="candidateStats.candidate" class="tab-badge">{{ candidateStats.candidate }}</span></button>
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="openTaskTab">下载任务</button>
       <button class="tab-btn" type="button" :class="{ active: activeTab === 'downloaders' }" @click="openDownloaderTab">下载源 <span v-if="enabledDownloaderCount" class="tab-badge subtle">{{ enabledDownloaderCount }}</span></button>
     </div>
 
-    <DownloadCandidatePanel
-      v-if="activeTab === 'candidates'"
-      :candidate-filter="candidateFilter"
-      :candidate-stats="candidateStats"
-      :selecting-candidates="selectingCandidates"
-      :selected-candidate-ids="selectedCandidateIds"
-      :candidate-batch-processing="candidateBatchProcessing"
-      :bulk-candidate-loading="bulkCandidateLoading"
-      :candidate-runs="candidateRuns"
-      :candidate-runs-loading="candidateRunsLoading"
-      :candidate-total-pages="candidateTotalPages"
-      :candidate-page="candidatePage"
-      :candidate-total="candidateTotal"
-      :candidate-repair-scope="candidateRepairScope"
-      :filtered-candidates="filteredCandidates"
-      :candidate-mutations="candidateMutations"
-      :magnet-editor="magnetEditor"
-      :candidate-detail="candidateDetail"
-      @update-candidate-search="updateCandidateSearch"
-      @search="submitCandidateSearch"
-      @set-status="setCandidateStatus"
-      @set-needs-magnet="setNeedsMagnet"
-      @set-source="setCandidateSource"
-      @set-latest-event="setCandidateLatestEvent"
-      @toggle-selection="toggleCandidateSelection"
-      @enrich-visible="enrichVisibleCandidateMagnets"
-      @process-visible="processVisibleCandidates"
-      @select-all-visible="selectAllVisibleCandidates"
-      @clear-selection="clearCandidateSelection"
-      @bulk-reject="bulkRejectCandidates"
-      @bulk-restore="bulkRestoreCandidates"
-      @refresh-runs="loadCandidateRuns"
-      @apply-run="applyCandidateRunFilters"
-      @apply-run-failed="applyCandidateRunFilters($event, { status: 'failed' })"
-      @retry-failed-run="retryFailedCandidateRun"
-      @go-page="goCandidatePage"
-      @toggle-selected="toggleCandidateSelected"
-      @open-detail="openCandidateDetail"
-      @go-actor="goCandidateActor"
-      @go-supplement="goCandidateSupplement"
-      @edit-magnet="editCandidateMagnet"
-      @enrich-magnet="enrichCandidateMagnet"
-      @approve="approveCandidate"
-      @process="processCandidate"
-      @reject="rejectCandidate"
-      @close-magnet-editor="closeMagnetEditor"
-      @update-magnet-editor-value="updateMagnetEditorValue"
-      @submit-magnet-editor="submitMagnetEditor"
-      @close-detail="closeCandidateDetail"
-    />
     <DownloaderManagementPanel
-      v-else-if="activeTab === 'downloaders'"
+      v-if="activeTab === 'downloaders'"
       :downloaders="downloaders"
       :downloader-types="downloaderTypes"
       :downloader-clients="downloaderClients"
@@ -139,14 +85,12 @@
 </template>
 
 <script>
-import { computed, defineAsyncComponent, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import DownloadStatsBar from '../features/home/DownloadStatsBar.vue'
 import TaskList from '../features/home/TaskList.vue'
 import * as homePresentation from '../features/home/homePresentation'
 import { requestConfirm } from '../utils/confirmDialog'
-import { useDownloadCandidates } from '../features/candidates/useDownloadCandidates.js'
 import {
   createDefaultDownloaderTypes,
   downloaderAddressPlaceholder as defaultDownloaderAddressPlaceholder,
@@ -156,31 +100,16 @@ import {
   tokenPlaceholder as defaultTokenPlaceholder,
 } from '../features/downloaders/downloaderPresentation'
 
-const DownloadCandidatePanel = defineAsyncComponent(() => import('../features/candidates/DownloadCandidatePanel.vue'))
 const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
 const cleanObject = (target) => { Object.keys(target).forEach(key => { if (target[key] === undefined || target[key] === '' || target[key] === null) delete target[key] }); return target }
 
 export default {
   name: 'Home',
-  components: { DownloadStatsBar, TaskList, DownloadCandidatePanel, DownloaderManagementPanel },
-  setup() {
-    // 候选确认的真相源已下沉到 useDownloadCandidates composable，由 /candidates 独立页
-    // 与 /downloads 旧 tab 共用；这里以「routePath: /downloads + tab=candidates」
-    // 模拟既有路由行为，仅在 activeTab=='candidates' 时同步路由。
-    const route = useRoute()
-    const initialTab = ['candidates', 'downloaders'].includes(route.query.tab) ? route.query.tab : 'tasks'
-    const activeTab = ref(initialTab)
-    const candidateActive = computed(() => activeTab.value === 'candidates')
-    const candidates = useDownloadCandidates({
-      routePath: '/downloads',
-      syncRoute: true,
-      baseQuery: () => ({ tab: 'candidates' }),
-      enabled: candidateActive,
-    })
-    return { activeTab, ...candidates }
-  },
+  components: { DownloadStatsBar, TaskList, DownloaderManagementPanel },
   data() {
     return {
+      activeTab: 'tasks',
+      candidateStats: { candidate: 0, needs_magnet: 0 },
       tasks: [], stats: { pending: 0, downloading: 0, completed: 0, failed: 0 }, statsLoaded: false, filterStatus: null, timer: null, retryingTasks: {},
       downloaders: { default_id: '', clients: [], types: [] }, downloaderTypes: createDefaultDownloaderTypes(), savingDownloaders: false, testingDownloaderId: '', downloaderTestMessages: {}, downloaderEditor: { open: false, mode: 'new', originalId: '', draft: null, previousType: '' }, downloaderIdSeed: 1,
     }
@@ -195,24 +124,64 @@ export default {
     taskEmptyTitle() { return `暂无${this.filterStatus ? this.statusLabel(this.filterStatus) : ''}任务` },
     taskEmptyPrimaryLabel() { if (this.filterStatus) return '清除筛选'; if (this.candidateStats.candidate > 0) return `查看 ${this.candidateStats.candidate} 个候选`; return '搜索影片' },
   },
-  mounted() { this.applyDownloadRoute(this.$route.query); this.loadTasks(); if (this.activeTab === 'candidates') { this.loadCandidates(); this.loadCandidateRuns() } else this.loadCandidateSummary(); if (this.activeTab === 'downloaders') this.loadDownloaders(); this.timer = setInterval(this.loadTasks, 30000) },
+  created() {
+    if (this.$route.query.tab === 'candidates') {
+      this.$router.replace({ path: '/candidates', query: this.candidateRedirectQuery(this.$route.query) }).catch(() => {})
+      return
+    }
+    this.applyDownloadRoute(this.$route.query)
+  },
+  mounted() {
+    if (this.$route.query.tab === 'candidates') return
+    this.loadTasks()
+    this.loadCandidateSummary()
+    if (this.activeTab === 'downloaders') this.loadDownloaders()
+    this.timer = setInterval(this.loadTasks, 30000)
+  },
   beforeUnmount() { if (this.timer) clearInterval(this.timer) },
-  watch: { '$route.query'(query) { if (!this.applyDownloadRoute(query)) return; if (this.activeTab === 'candidates') { this.loadCandidates(); this.loadCandidateRuns() } else if (this.activeTab === 'downloaders') this.loadDownloaders() } },
+  watch: {
+    '$route.query'(query) {
+      if (query.tab === 'candidates') {
+        this.$router.replace({ path: '/candidates', query: this.candidateRedirectQuery(query) }).catch(() => {})
+        return
+      }
+      if (!this.applyDownloadRoute(query)) return
+      if (this.activeTab === 'downloaders') this.loadDownloaders()
+    },
+  },
   methods: {
+    candidateRedirectQuery(query = {}) {
+      const next = { ...query }
+      delete next.tab
+      return cleanObject(next)
+    },
     applyDownloadRoute(query = {}) {
       let changed = false
-      const tab = ['tasks', 'candidates', 'downloaders'].includes(query.tab) ? query.tab : 'tasks'
+      const tab = query.tab === 'downloaders' ? 'downloaders' : 'tasks'
       if (this.activeTab !== tab) { this.activeTab = tab; changed = true }
       const taskStatus = tab === 'tasks' ? (query.task_status || '') : ''
       if ((this.filterStatus || '') !== taskStatus) { this.filterStatus = taskStatus || null; changed = true }
-      if (tab === 'candidates' && this.applyRouteQuery(query)) changed = true
       return changed
     },
     cleanDownloadQuery(query = {}) { return cleanObject({ ...query }) },
     pushDownloadRoute(query = {}) { const next = this.cleanDownloadQuery(query); if (JSON.stringify(next) !== JSON.stringify(this.$route.query || {})) this.$router.push({ path: this.$route.path, query: next }).catch(() => {}) },
     replaceDownloadRoute(query = {}) { const next = this.cleanDownloadQuery(query); if (JSON.stringify(next) !== JSON.stringify(this.$route.query || {})) this.$router.replace({ path: this.$route.path, query: next }).catch(() => {}) },
     async loadTasks() { try { const resp = await api.getDownloads(); this.tasks = resp.data.data || []; this.stats = { pending: this.tasks.filter(t => t.status === 'pending').length, downloading: this.tasks.filter(t => t.status === 'downloading').length, completed: this.tasks.filter(t => t.status === 'completed').length, failed: this.tasks.filter(t => t.status === 'failed').length }; this.statsLoaded = true } catch (e) { console.error('Failed to load tasks:', e) } },
-    openCandidateTab() { this.pushDownloadRoute(this.candidateRouteQuery({ page: 1 })) },
+    async loadCandidateSummary() {
+      try {
+        const resp = await api.getDownloadCandidateSummary({ status: 'candidate', include_sources: true })
+        this.candidateStats = resp.data || this.candidateStats
+      } catch (e) {
+        console.error('Failed to load candidate summary:', e)
+      }
+    },
+    openCandidatePreset(preset = {}) {
+      const query = { status: preset.status || 'candidate' }
+      if (preset.source) query.source = preset.source
+      if (preset.needs_magnet === true) query.needs_magnet = '1'
+      else if (preset.needs_magnet === false) query.needs_magnet = '0'
+      this.$router.push({ path: '/candidates', query: cleanObject(query) }).catch(() => {})
+    },
     openDownloaderTab() { this.pushDownloadRoute({ tab: 'downloaders' }) },
     openTaskTab() { this.pushDownloadRoute({ tab: 'tasks', task_status: this.filterStatus || undefined }) },
     setTaskStatus(status) { this.pushDownloadRoute({ tab: 'tasks', task_status: status }) },

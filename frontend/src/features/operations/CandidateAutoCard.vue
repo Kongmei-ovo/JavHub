@@ -190,7 +190,7 @@ export default {
         { key: 'compare', label: '2', title: '全量对比', hint: '生成缺失与候选', path: '/library-organize', query: { tab: 'check' } },
         { key: 'mapping', label: '3', title: '映射审核', hint: `${this.overview?.mapping?.candidate || 0} 个待审`, path: '/library-organize', query: { tab: 'mapping' } },
         { key: 'sources', label: '4', title: '补全来源诊断', hint: 'Provider smoke 与预算', path: '/supplement', query: { tab: 'sources' } },
-        { key: 'candidates', label: '5', title: '下载候选', hint: `${this.candidates.candidate || 0} 个候选`, path: '/downloads', query: { tab: 'candidates', status: 'candidate' } },
+        { key: 'candidates', label: '5', title: '下载候选', hint: `${this.candidates.candidate || 0} 个候选`, path: '/candidates', query: { status: 'candidate' } },
         { key: 'downloaders', label: '6', title: '下载源', hint: '默认下载器与连通性', path: '/downloads', query: { tab: 'downloaders' } },
         { key: 'activity', label: '7', title: '运行日志', hint: '日志与通知记录', path: '/logs' },
         { key: 'settings', label: '8', title: '初始化设置', hint: 'JavInfo/配置导入', path: '/settings', query: { tab: 'javinfo-import' } },
@@ -297,12 +297,12 @@ export default {
       this.$router.push({ path: action.path, query: action.query || {} })
     },
     goCandidates({ status = 'candidate', source = '', needs_magnet = null } = {}) {
-      const query = { tab: 'candidates' }
+      const query = {}
       if (status) query.status = status
       if (source) query.source = source
       if (needs_magnet === true) query.needs_magnet = '1'
       if (needs_magnet === false) query.needs_magnet = '0'
-      this.$router.push({ path: '/downloads', query })
+      this.$router.push({ path: '/candidates', query })
     },
     goLibraryOrganize(tab = 'inventory') {
       this.$router.push({ path: '/library-organize', query: { tab } })

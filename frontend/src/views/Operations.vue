@@ -113,8 +113,8 @@ export default {
     },
     openStatusMetric(key) {
       const actions = {
-        candidate: () => this.$router.push({ path: '/downloads', query: { tab: 'candidates', status: 'candidate' } }),
-        needs_magnet: () => this.$router.push({ path: '/downloads', query: { tab: 'candidates', status: 'candidate', needs_magnet: '1' } }),
+        candidate: () => this.$router.push({ path: '/candidates', query: { status: 'candidate' } }),
+        needs_magnet: () => this.$router.push({ path: '/candidates', query: { status: 'candidate', needs_magnet: '1' } }),
         missing: () => this.$router.push({ path: '/library-organize', query: { tab: 'inventory' } }),
         data_quality: () => this.setActiveSegment('diagnostics'),
         mapping: () => this.$router.push({ path: '/library-organize', query: { tab: 'mapping' } }),

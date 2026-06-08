@@ -259,7 +259,7 @@ const createCandidate = async (video) => {
 }
 
 const viewInventoryCandidates = () => {
-  router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory', status: 'candidate' } })
+  router.push({ path: '/candidates', query: { source: 'inventory', status: 'candidate' } })
 }
 
 onMounted(async () => {

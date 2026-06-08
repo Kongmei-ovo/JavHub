@@ -80,8 +80,8 @@ test('actor page surfaces download candidate handoff', () => {
   assert.doesNotMatch(source, /api\.listDownloadCandidates/)
   assert.doesNotMatch(source, /limit:\s*100000/)
   assert.match(source, /goDownloadCandidates/)
-  assert.match(source, /path: '\/downloads'/)
-  assert.match(source, /tab: 'candidates'/)
+  assert.match(source, /path: '\/candidates'/)
+  assert.doesNotMatch(source, /tab: 'candidates'/)
 })
 
 test('actor supplement status labels describe source and variant counts clearly', () => {

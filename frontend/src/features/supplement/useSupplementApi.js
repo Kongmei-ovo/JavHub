@@ -251,9 +251,8 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       ElMessage.success(`已生成 ${data.created || 0} 个下载候选，已有 ${data.existing || 0} 个`)
       if (router) {
         await router.push({
-          path: '/downloads',
+          path: '/candidates',
           query: {
-            tab: 'candidates',
             status: 'candidate',
             source: 'supplement',
             ...(actressId ? { actress_id: actressId } : {}),

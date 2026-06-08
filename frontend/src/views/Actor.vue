@@ -798,9 +798,8 @@ export default {
     },
     goDownloadCandidates() {
       this.$router.push({
-        path: '/downloads',
+        path: '/candidates',
         query: {
-          tab: 'candidates',
           status: 'candidate',
           actress_id: this.actressId,
         },

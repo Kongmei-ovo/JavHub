@@ -44,7 +44,7 @@
         · 候选 {{ candidateStats.candidate || 0 }}
       </span>
       <button type="button" class="inline-link" @click="$router.push('/normalize')">处理未映射演员</button>
-      <button type="button" class="inline-link" @click="$router.push({ path: '/downloads', query: { tab: 'candidates', source: 'inventory' } })">查看候选</button>
+      <button type="button" class="inline-link" @click="$router.push({ path: '/candidates', query: { source: 'inventory' } })">查看候选</button>
     </div>
     <div v-else class="snapshot-warn">
       尚未采集 Emby 数据，请先点击「采集Emby数据」
