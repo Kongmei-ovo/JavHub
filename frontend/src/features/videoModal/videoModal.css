@@ -364,6 +364,87 @@
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-name .name-translated { font-size: 11px; color: var(--modal-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-avatar-item:hover .actress-name { color: var(--modal-text-primary); }
+/* P1-2: 头像/名字承担跳转,继续用 .clickable 的悬停色;避免文字下划线干扰头像视觉。 */
+.actress-avatar.clickable,
+.actress-name.clickable { text-decoration: none; text-decoration-color: transparent; }
+
+/* P1-2: 演员就地订阅按钮,复用 ActorPortraitCard 的视觉语言
+   绿=已订阅 (badge-success),灰=可订阅 (modal-chip),禁用态降不透明度,不新造配色。 */
+.actress-sub-btn {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--modal-chip-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--modal-chip-bg);
+  color: var(--modal-chip-color);
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: var(--modal-chip-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  font-size: var(--type-micro);
+  cursor: pointer;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
+}
+.actress-sub-btn:hover {
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--modal-chip-bg-hover);
+  border-color: var(--modal-chip-border-hover);
+  color: var(--modal-text-primary);
+  box-shadow: var(--modal-chip-shadow-hover);
+  transform: translateY(-1px);
+}
+.actress-sub-btn:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--modal-chip-bg-hover);
+  border-color: var(--modal-chip-border-hover);
+  box-shadow: var(--modal-chip-shadow-hover), var(--focus-ring);
+}
+.actress-sub-btn:active { transform: scale(0.97); }
+.actress-sub-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+}
+.actress-sub-btn.is-subscribed {
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+}
+.actress-sub-btn.is-subscribed:hover {
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+}
+.actress-sub-btn.is-subscribed:focus-visible {
+  outline: none;
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+  box-shadow: var(--modal-chip-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-success-text) 18%, transparent);
+}
+
 .actress-tag {
   display: inline-flex;
   align-items: center;

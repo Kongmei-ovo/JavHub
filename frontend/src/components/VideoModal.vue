@@ -152,10 +152,13 @@
               <div
                 v-for="actress in video.actresses"
                 :key="actress.id"
-                class="actress-avatar-item clickable"
-                @click="$emit('navigate', { type: 'actress', item: actress })"
+                class="actress-avatar-item"
+                :class="{ 'is-subscribed': isActressSubscribed(actress.id) }"
               >
-                <div class="actress-avatar">
+                <div
+                  class="actress-avatar clickable"
+                  @click="$emit('navigate', { type: 'actress', item: actress })"
+                >
                   <img
                     v-if="actress.image_url"
                     :src="formatAvatarUrl(actress.image_url)"
@@ -166,7 +169,20 @@
                   />
                   <span v-else class="avatar-placeholder">{{ (displayName(actress, 'name_kanji', 'name_romaji') || '?')[0] }}</span>
                 </div>
-                <div class="actress-name" v-html="actressNameDisplay(actress)"></div>
+                <div
+                  class="actress-name clickable"
+                  @click="$emit('navigate', { type: 'actress', item: actress })"
+                  v-html="actressNameDisplay(actress)"
+                ></div>
+                <button
+                  class="actress-sub-btn"
+                  type="button"
+                  :class="{ 'is-subscribed': isActressSubscribed(actress.id), 'is-busy': isActressSubBusy(actress.id) }"
+                  :disabled="!actress.id || isActressSubBusy(actress.id)"
+                  :aria-pressed="isActressSubscribed(actress.id)"
+                  :title="isActressSubscribed(actress.id) ? '取消订阅' : '订阅该演员'"
+                  @click.stop="toggleActressSub(actress)"
+                >{{ isActressSubscribed(actress.id) ? '已订阅' : '订阅' }}</button>
               </div>
             </div>
           </div>
@@ -293,7 +309,8 @@ import { displayName, displayLang } from '../utils/displayLang.js'
 import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
 import { applyImageFallback } from '../utils/imageFallback.js'
 import favoriteState from '../utils/favoriteState'
-import api from '../api'
+import subscriptionState from '../utils/subscriptionState'
+import api, { formatApiError } from '../api'
 import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
@@ -327,7 +344,13 @@ export default {
       streamM3u8Url: '',
       streamSpeed: 1,
       hlsInstance: null,
+      // P1-2: subBusy is a Set re-assigned on each mutation so Vue re-renders.
+      subBusy: new Set(),
     }
+  },
+  mounted() {
+    // P1-2: 幂等拉一次订阅 registry,失败不致命(按钮显示为未订阅,后续仍可点)。
+    subscriptionState.init().catch(() => {})
   },
   computed: {
     isFavorited() {
@@ -405,6 +428,34 @@ export default {
         })
       } catch (err) {
         console.error('Failed to toggle favorite:', err)
+      }
+    },
+    isActressSubscribed(id) {
+      return id ? subscriptionState.isSubscribed(id) : false
+    },
+    isActressSubBusy(id) {
+      return id ? this.subBusy.has(String(id)) : false
+    },
+    async toggleActressSub(actress) {
+      const id = actress?.id
+      if (!id) return
+      const key = String(id)
+      if (this.subBusy.has(key)) return
+      this.subBusy.add(key)
+      this.subBusy = new Set(this.subBusy)
+      const wasSubscribed = this.isActressSubscribed(id)
+      try {
+        const actressName = this.displayName(actress, 'name_kanji', 'name_romaji') || ''
+        await subscriptionState.toggle(id, actressName)
+        ElMessage.success(wasSubscribed ? '已取消订阅' : '已订阅')
+      } catch (err) {
+        const detail = formatApiError
+          ? formatApiError(err, { service: '订阅', action: '更新', fallback: '订阅操作失败' }).message
+          : '订阅操作失败'
+        ElMessage.error(detail)
+      } finally {
+        this.subBusy.delete(key)
+        this.subBusy = new Set(this.subBusy)
       }
     },
     actressNameDisplay(actress) {

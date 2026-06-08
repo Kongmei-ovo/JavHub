@@ -392,6 +392,54 @@ test('mobile modal taxonomy chips stay in a resilient grid on iOS widths', () =>
   assert.match(source, /\.actress-tag\.clickable\s*\{[\s\S]*text-decoration:\s*none/)
 })
 
+test('modal actress entries expose inline subscribe controlled by shared subscriptionState', () => {
+  // P1-2: 演员区每位演员旁加订阅按钮,消费 utils/subscriptionState 的全局 registry,
+  // 文案/态类/aria-pressed 都跟 isActressSubscribed 走;subBusy 防连点,点按钮 .stop 不触发跳转。
+  assert.match(vueSource, /import subscriptionState from '\.\.\/utils\/subscriptionState'/)
+  assert.match(vueSource, /subscriptionState\.init\(\)\.catch\(\(\) => \{\}\)/)
+  assert.match(vueSource, /isActressSubscribed\(id\)\s*\{[\s\S]*?subscriptionState\.isSubscribed\(id\)/)
+  assert.match(vueSource, /subBusy:\s*new Set\(\)/)
+  assert.match(vueSource, /isActressSubBusy\(id\)\s*\{[\s\S]*?this\.subBusy\.has\(String\(id\)\)/)
+  assert.match(vueSource, /async toggleActressSub\(actress\)\s*\{[\s\S]*?const id = actress\?\.id[\s\S]*?await subscriptionState\.toggle\(id, actressName\)/)
+  // 防连点 + 触发响应式: Set 在 add/delete 后重新赋值。
+  assert.match(vueSource, /if \(this\.subBusy\.has\(key\)\) return[\s\S]*?this\.subBusy\.add\(key\)[\s\S]*?this\.subBusy = new Set\(this\.subBusy\)/)
+  assert.match(vueSource, /this\.subBusy\.delete\(key\)[\s\S]*?this\.subBusy = new Set\(this\.subBusy\)/)
+  // 失败托底用 ElMessage,不抛白页。
+  assert.match(vueSource, /ElMessage\.success\(wasSubscribed \? '已取消订阅' : '已订阅'\)/)
+  assert.match(vueSource, /ElMessage\.error\(detail\)/)
+
+  // 模板:头像/名字承担跳转,订阅按钮 @click.stop,男优区不加。
+  const actressBlock = vueSource.match(/<!-- 演员 -->[\s\S]*?<!-- 男优 -->/)?.[0] || ''
+  assert.ok(actressBlock, 'actress block should exist in template')
+  assert.match(actressBlock, /class="actress-avatar clickable"\s+@click="\$emit\('navigate', \{ type: 'actress', item: actress \}\)"/)
+  assert.match(actressBlock, /class="actress-name clickable"\s+@click="\$emit\('navigate', \{ type: 'actress', item: actress \}\)"/)
+  assert.match(actressBlock, /<button\s+class="actress-sub-btn"/)
+  assert.match(actressBlock, /:class="\{ 'is-subscribed': isActressSubscribed\(actress\.id\), 'is-busy': isActressSubBusy\(actress\.id\) \}"/)
+  assert.match(actressBlock, /:disabled="!actress\.id \|\| isActressSubBusy\(actress\.id\)"/)
+  assert.match(actressBlock, /:aria-pressed="isActressSubscribed\(actress\.id\)"/)
+  assert.match(actressBlock, /@click\.stop="toggleActressSub\(actress\)"/)
+  assert.match(actressBlock, /\{\{ isActressSubscribed\(actress\.id\) \? '已订阅' : '订阅' \}\}/)
+  // 整块原来 .clickable 已被剥离,不再让点空白处触发跳转。
+  assert.doesNotMatch(actressBlock, /class="actress-avatar-item clickable"/)
+
+  // 男优区没有订阅按钮(没对应订阅模型)。
+  const actorBlock = vueSource.match(/<!-- 男优 -->[\s\S]*?<!-- 题材 -->/)?.[0] || ''
+  assert.ok(actorBlock, 'actor (male) block should exist')
+  assert.doesNotMatch(actorBlock, /actress-sub-btn|toggleActressSub|subscriptionState/)
+
+  // 视觉语言复用 ActorPortraitCard 的 token:已订阅用 badge-success,未订阅用 modal-chip,禁用降不透明。
+  const subBaseBlock = sourceBlock(source, '.actress-sub-btn')
+  assert.match(subBaseBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--modal-chip-bg\)/)
+  assert.match(subBaseBlock, /border:\s*1px solid var\(--modal-chip-border\)/)
+  assert.match(subBaseBlock, /box-shadow:\s*var\(--modal-chip-shadow\)/)
+  const subSubscribed = sourceBlock(source, '.actress-sub-btn.is-subscribed')
+  assert.match(subSubscribed, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-success-bg\)/)
+  assert.match(subSubscribed, /border-color:\s*var\(--badge-success-border\)/)
+  assert.match(subSubscribed, /color:\s*var\(--badge-success-text\)/)
+  const subDisabled = sourceBlock(source, '.actress-sub-btn:disabled')
+  assert.match(subDisabled, /opacity:\s*0\.48/)
+})
+
 test('mobile modal sheet uses stable poster sizing and momentum scrolling', () => {
   assert.match(source, /-webkit-overflow-scrolling:\s*touch/)
   assert.match(source, /\.modal-gallery\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9/)
