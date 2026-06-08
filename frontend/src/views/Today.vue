@@ -36,21 +36,17 @@
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            继续浏览
+            最近查看
           </span>
           <h2 class="today-hero__title" :title="heroTitle">{{ heroTitle }}</h2>
           <p class="today-hero__meta">{{ heroMeta }}</p>
-          <div v-if="heroProgress > 0" class="today-hero__progress" aria-hidden="true">
-            <span :style="{ transform: `scaleX(${heroProgress / 100})` }"></span>
-          </div>
           <div class="today-hero__actions">
             <button class="btn today-hero__btn-primary" type="button" @click.stop="openVideo(hero)">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true">
-                <polygon points="6 4 20 12 6 20 6 4" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6" />
               </svg>
-              继续播放
+              查看详情
             </button>
-            <button class="btn today-hero__btn-ghost" type="button" @click.stop="openVideo(hero)">详情</button>
           </div>
         </div>
       </section>
@@ -174,6 +170,7 @@ import { defineComponent } from 'vue'
 import api, { formatApiError } from '../api'
 import AppleVideoCard from '../components/AppleVideoCard.vue'
 import { normalizeVideo } from '../utils/videoNormalize.js'
+import { openVideoModal } from '../utils/modalState.js'
 
 const ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
@@ -191,7 +188,6 @@ export default defineComponent({
   data() {
     return {
       hero: null,
-      heroProgress: 0,
       activeDownloads: [],
       candidateSummary: { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 },
       missingActressesCount: 0,
@@ -223,8 +219,7 @@ export default defineComponent({
       const parts = []
       if (n.display_code) parts.push(n.display_code)
       if (n.maker || n.studio) parts.push(n.maker || n.studio)
-      if (this.heroProgress > 0) parts.push(`上次看到 ${this.heroProgress}%`)
-      else if (n.release_date) parts.push(n.release_date)
+      if (n.release_date) parts.push(n.release_date)
       return parts.join(' · ')
     },
     heroArtStyle() {
@@ -337,12 +332,8 @@ export default defineComponent({
       } catch (err) {
         // localStorage may throw in private mode; non-fatal.
       }
-      const code = video.display_code || video.dvd_id || video.content_id || video.code || video.id
-      if (code) {
-        this.$router.push({ path: '/search', query: { q: String(code) } })
-      } else {
-        this.$router.push('/search')
-      }
+      // 与全站一致：打开全局详情弹窗，而不是把用户甩进搜索页
+      openVideoModal(video, '/')
     },
     async loadAll() {
       if (this.loading) return
