@@ -27,6 +27,7 @@ const NAV = [
     { k: "downloads", label: "下载任务", icon: "download", badge: "3" },
     { k: "subs", label: "演员订阅", icon: "star", badge: "6", badgeMuted: true },
     { k: "candidates", label: "候选确认", icon: "stack", badge: "12" },
+    { k: "supplement", label: "补全管理", icon: "supplement", badge: "4", badgeMuted: true },
     { k: "library-org", label: "片库整理", icon: "inventory" },
   ]},
   { group: "系统", items: [
@@ -95,6 +96,7 @@ function App() {
   else if (screen === "settings") body = <SettingsScreen />;
   else if (screen === "explore") body = <ExploreScreen onOpen={onOpen} />;
   else if (screen === "candidates") body = <CandidatesScreen onOpen={onOpen} />;
+  else if (screen === "supplement") body = <SupplementScreen onOpen={onOpen} />;
   else if (screen === "subs") body = <SubsScreen />;
   else if (screen === "downloads") body = <DownloadsScreen />;
   else body = <ComingSoon label={labelOf(screen)} />;

@@ -114,9 +114,18 @@
   --accent: #7C8CFF;
   --accent-rgb: 124, 140, 255;
   --accent-light: #9BA7FF;
-  --accent-glow: rgba(124, 140, 255, 0.32);
+  --accent-glow: rgba(124, 140, 255, 0.40);
   --accent-bg: rgba(124, 140, 255, 0.10);
   --text-on-accent-solid: #FFFFFF;
+
+  /* Wave A semantic colors (poster-first redesign):
+     used directly by content surfaces (candidate cards, status pills, ledgers)
+     where the existing badge-* tokens are too subdued. Badge tokens above are
+     untouched so legacy badges keep their Apple system tint. */
+  --ok: #34C759;   --ok-rgb: 52, 199, 89;
+  --warn: #FFB02E; --warn-rgb: 255, 176, 46;
+  --bad: #FF5A5A;  --bad-rgb: 255, 90, 90;
+  --info: #62B6FF; --info-rgb: 98, 182, 255;
   
   /* 文字 */
   --text-primary: #1D1D1F;

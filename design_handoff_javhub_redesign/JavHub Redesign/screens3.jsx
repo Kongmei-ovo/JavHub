@@ -57,96 +57,178 @@ function ExploreScreen({ onOpen }) {
 /* ============================================================
    Candidates — real batch review flow
    ============================================================ */
+const CAND_SOURCES = ["全部来源", "订阅", "库存", "补全", "手动"];
+
 function CandidatesScreen({ onOpen }) {
   const { V, A } = window.JH;
   const initial = [
-    { id: 1, code: "MIDV-661", title: "她的房间里，时钟永远停在午夜", art: V[5].art, act: A.kojima, source: "订阅抓取", seeds: 142, magnet: true },
-    { id: 2, code: "FSDSS-712", title: "雨停之前，谁先开口都算输", art: V[6].art, act: A.momono, source: "订阅抓取", seeds: 88, magnet: true },
-    { id: 3, code: "SSIS-902", title: "海边小镇的最后一个夏天", art: V[4].art, act: A.yua, source: "订阅抓取", seeds: 0, magnet: false },
-    { id: 4, code: "CAWD-633", title: "学生时代没说出口的那句话", art: V[8].art, act: A.akari, source: "手动添加", seeds: 211, magnet: true },
-    { id: 5, code: "PRED-540", title: "周末的便利店，凌晨三点的相遇", art: V[7].art, act: A.nanami, source: "订阅抓取", seeds: 0, magnet: false },
-    { id: 6, code: "STARS-841", title: "便签上写着：等你回来一起看完", art: V[10].art, act: A.aoi, source: "订阅抓取", seeds: 56, magnet: true },
+    { id: 1, code: "MIDV-661", title: "她的房间里，时钟永远停在午夜", orig: "彼女の部屋、時計は真夜中", art: V[5].art, act: A.kojima, source: "订阅", date: "2026-03-30", time: "8 分钟前", seeds: 142, magnet: true, status: "candidate" },
+    { id: 2, code: "FSDSS-712", title: "雨停之前，谁先开口都算输", orig: "雨が止むまでに", art: V[6].art, act: A.momono, source: "订阅", date: "2026-01-14", time: "12 分钟前", seeds: 88, magnet: true, status: "candidate" },
+    { id: 3, code: "SSIS-902", title: "海边小镇的最后一个夏天", orig: "海辺の町の最後の夏", art: V[4].art, act: A.yua, source: "库存", date: "2026-05-22", time: "1 小时前", seeds: 0, magnet: false, status: "candidate" },
+    { id: 4, code: "CAWD-633", title: "学生时代没说出口的那句话", orig: "あの頃言えなかった言葉", art: V[8].art, act: A.akari, source: "手动", date: "2026-04-02", time: "2 小时前", seeds: 211, magnet: true, status: "candidate" },
+    { id: 5, code: "PRED-540", title: "周末的便利店，凌晨三点的相遇", orig: "週末のコンビニ、午前三時", art: V[7].art, act: A.nanami, source: "补全", date: "2025-11-08", time: "3 小时前", seeds: 0, magnet: false, status: "candidate" },
+    { id: 6, code: "STARS-841", title: "便签上写着：等你回来一起看完", orig: "付箋のメッセージ", art: V[10].art, act: A.aoi, source: "订阅", date: "2026-02-27", time: "今天 06:12", seeds: 56, magnet: true, status: "candidate" },
+    { id: 7, code: "WAAA-377", title: "末班车上，她靠在陌生人的肩膀睡着了", orig: "終電のなかで", art: V[11].art, act: A.momono, source: "订阅", date: "2025-10-19", time: "今天 04:00", seeds: 30, magnet: true, status: "sent", taskId: 4821 },
+    { id: 8, code: "JUQ-455", title: "搬家那天，旧公寓还留着她的味道", orig: "引っ越しの日", art: V[9].art, act: A.yua, source: "库存", date: "2026-05-15", time: "今天 03:42", seeds: 18, magnet: true, status: "failed", reason: "下载器连接超时 · qBittorrent" },
   ];
-  const [items, setItems] = useState3(initial.map(i => ({ ...i, state: "pending" })));
+  const [items, setItems] = useState3(initial);
   const [sel, setSel] = useState3([]);
   const [filter, setFilter] = useState3("待确认");
+  const [src, setSrc] = useState3("全部来源");
+  const nextTask = React.useRef(4830);
 
-  const counts = {
-    待确认: items.filter(i => i.state === "pending").length,
-    已通过: items.filter(i => i.state === "approved").length,
-    已拒绝: items.filter(i => i.state === "rejected").length,
-    缺磁力: items.filter(i => !i.magnet && i.state === "pending").length,
+  const isCand = i => i.status === "candidate";
+  const FILTERS = {
+    待确认: i => isCand(i),
+    待补磁力: i => isCand(i) && !i.magnet,
+    可批准: i => isCand(i) && i.magnet,
+    已下发: i => i.status === "sent",
+    失败: i => i.status === "failed",
+    已拒绝: i => i.status === "rejected",
   };
-  const map = { 待确认: i => i.state === "pending", 已通过: i => i.state === "approved", 已拒绝: i => i.state === "rejected", 缺磁力: i => !i.magnet && i.state === "pending" };
-  const visible = items.filter(map[filter]);
+  const counts = Object.fromEntries(Object.entries(FILTERS).map(([k, f]) => [k, items.filter(f).length]));
+  const bySource = src === "全部来源" ? items : items.filter(i => i.source === src);
+  const srcCounts = Object.fromEntries(CAND_SOURCES.slice(1).map(s => [s, items.filter(i => i.source === s && isCand(i)).length]));
+  const visible = bySource.filter(FILTERS[filter]);
+  const approvable = visible.filter(i => isCand(i) && i.magnet);
 
-  const setState = (ids, state) => { setItems(its => its.map(i => ids.includes(i.id) ? { ...i, state } : i)); setSel(s => s.filter(x => !ids.includes(x))); };
+  const patch = (ids, fn) => { setItems(its => its.map(i => ids.includes(i.id) ? fn(i) : i)); setSel(s => s.filter(x => !ids.includes(x))); };
+  const approve = ids => patch(ids, i => ({ ...i, status: "sent", taskId: nextTask.current++ }));
+  const reject = ids => patch(ids, i => ({ ...i, status: "rejected" }));
+  const restore = ids => patch(ids, i => ({ ...i, status: "candidate" }));
+  const enrich = id => patch([id], i => ({ ...i, magnet: true, seeds: 40 + (i.id * 17) % 180 }));
   const toggle = id => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
   return (
     <>
-      <div className="topbar solid"><div><h1>候选确认</h1><div className="sub">订阅自动抓取 · 确认后进入下载队列</div></div></div>
+      <div className="topbar solid">
+        <div><h1>候选确认</h1><div className="sub">订阅 / 库存 / 补全自动抓取 · 批准后进入下载队列</div></div>
+        <span className="grow"></span>
+        <button className="btn btn-ghost"><Icon name="download" size={16} /> 下载队列</button>
+      </div>
       <div className="page">
-        <div className="row" style={{ marginBottom: "var(--s5)", flexWrap: "wrap" }}>
+        {/* review summary band */}
+        <div className="cand-summary">
+          <div className="cs-head">
+            <div className="cs-num">{counts.待确认}</div>
+            <div className="cs-cap"><b>个候选等待确认</b><span>批准即生成下载任务，缺磁力的需先补磁力</span></div>
+          </div>
+          <span className="grow"></span>
+          <div className="cs-stats">
+            <div className="cs-stat"><span className="v" style={{ color: counts.可批准 ? "var(--ok)" : "var(--tx-2)" }}>{counts.可批准}</span><span className="l">可批准</span></div>
+            <div className="cs-stat"><span className="v" style={{ color: counts.待补磁力 ? "var(--bad)" : "var(--tx-2)" }}>{counts.待补磁力}</span><span className="l">待补磁力</span></div>
+            <div className="cs-stat"><span className="v">{counts.已下发}</span><span className="l">已下发</span></div>
+          </div>
+        </div>
+
+        <div className="row" style={{ marginBottom: "var(--s3)", flexWrap: "wrap" }}>
           <div className="segmented">
-            {Object.keys(map).map(k => (
+            {Object.keys(FILTERS).map(k => (
               <button key={k} className={filter === k ? "active" : ""} onClick={() => setFilter(k)}>
                 {k} <span className="count">{counts[k]}</span>
               </button>
             ))}
           </div>
+        </div>
+        <div className="row cand-srcrow" style={{ marginBottom: "var(--s5)", flexWrap: "wrap" }}>
+          <div className="src-chips">
+            {CAND_SOURCES.map(s => (
+              <button key={s} className={"chip" + (src === s ? " on" : "")} onClick={() => setSrc(s)}>
+                {s}{s !== "全部来源" && <span className="src-n"> {srcCounts[s]}</span>}
+              </button>
+            ))}
+          </div>
           <span className="grow"></span>
-          {visible.length > 0 && filter === "待确认" && (
-            <button className="btn btn-quiet" onClick={() => setSel(sel.length === visible.length ? [] : visible.map(i => i.id))}>
-              {sel.length === visible.length ? "取消全选" : `全选 ${visible.length} 项`}
+          {approvable.length > 0 && (
+            <button className="btn btn-quiet" onClick={() => setSel(sel.length === approvable.length ? [] : approvable.map(i => i.id))}>
+              {sel.length === approvable.length ? "清空" : `选择当前页 ${approvable.length} 项`}
             </button>
           )}
         </div>
 
         {visible.length === 0 && (
-          <div className="panel" style={{ textAlign: "center", padding: "var(--s10)" }}>
-            <div style={{ color: "var(--tx-3)", marginBottom: "var(--s3)" }}><Icon name="check" size={32} /></div>
-            <div style={{ fontWeight: 600 }}>没有「{filter}」的候选</div>
-            <p className="muted" style={{ fontSize: "var(--t-cap)", marginTop: 6 }}>订阅扫描会持续把新片放到这里。</p>
+          <div className="cand-empty">
+            <div className="ce-ring"><Icon name="download" size={28} /></div>
+            <div style={{ fontWeight: 650, fontSize: "var(--t-h3)" }}>暂无下载候选</div>
+            <p className="muted" style={{ fontSize: "var(--t-cap)", marginTop: 6 }}>订阅检查和库存对比会把缺失影片写到这里。</p>
           </div>
         )}
 
-        {visible.map(i => (
-          <div className={"cand-row" + (i.state !== "pending" ? " resolved" : "")} key={i.id}>
-            {filter === "待确认" && (
-              <button className={"cand-check" + (sel.includes(i.id) ? " on" : "")} onClick={() => toggle(i.id)} aria-label="选择">
-                {sel.includes(i.id) && <Icon name="check" size={13} />}
-              </button>
-            )}
-            <div className="cand-thumb" style={{ background: i.art }} onClick={() => onOpen(V.find(v => v.code === i.code))}></div>
-            <div className="cand-body">
-              <div className="cand-title">{i.title}</div>
-              <div className="cand-meta">
-                <span className="code">{i.code}</span>
-                <span>{i.act.kanji}</span>
-                <span className="chip" style={{ padding: "1px 7px" }}>{i.source}</span>
-                {i.magnet ? <span className="badge ok dot">{i.seeds} 种子</span> : <span className="badge bad dot">缺磁力</span>}
+        {visible.map(i => {
+          const v = V.find(x => x.code === i.code);
+          const pickable = isCand(i) && i.magnet;
+          return (
+            <div className={"cand-card status-" + i.status + (!i.magnet && isCand(i) ? " nomag" : "") + (sel.includes(i.id) ? " picked" : "")} key={i.id}>
+              <div className="cc-poster" style={{ background: i.art }} onClick={() => v && onOpen(v)}>
+                <div className="cc-scrim"></div>
+                <span className="cc-code">{i.code}</span>
+                {pickable && (
+                  <button className={"cc-check" + (sel.includes(i.id) ? " on" : "")} onClick={e => { e.stopPropagation(); toggle(i.id); }} aria-label="选择">
+                    {sel.includes(i.id) && <Icon name="check" size={14} />}
+                  </button>
+                )}
+              </div>
+              <div className="cc-main">
+                <div className="cc-srcline">
+                  <span className="src-pill">{i.source}</span>
+                  <span className={"mag-state" + (i.magnet ? "" : " empty")}>{i.magnet ? "已有 magnet" : "待补磁力"}</span>
+                  <span className="cc-time">{i.time}</span>
+                </div>
+                <div className="cc-title" onClick={() => v && onOpen(v)}>{i.title}</div>
+                <div className="cc-orig">{i.orig}</div>
+                <div className="cc-actor">
+                  <span className="av" style={{ background: i.act.color }}>{i.act.kanji[0]}</span>
+                  <span className="nm">{i.act.kanji}</span>
+                  <span className="rm">· {i.date}</span>
+                </div>
+                {i.status === "failed" && <div className="cc-reason"><Icon name="info" size={12} /> {i.reason}</div>}
+                {i.status === "sent" && <div className="cc-tasklink">已关联任务 #{i.taskId} · 下载中</div>}
+                <div className="cc-links">
+                  <button className="link-btn" onClick={() => v && onOpen(v)}>详情</button>
+                  <button className="link-btn">演员</button>
+                  {i.source === "补全" && <button className="link-btn">补全</button>}
+                </div>
+              </div>
+              <div className="cc-decide">
+                {isCand(i) && i.magnet && (<>
+                  <div className="cc-seed"><span className="status-dot ok" style={{ width: 7, height: 7 }}></span>{i.seeds} 种子 · 可批准</div>
+                  <div className="cc-btn-row">
+                    <button className="btn cc-approve" onClick={() => approve([i.id])}><Icon name="check" size={15} /> 批准</button>
+                    <button className="btn btn-ghost" title="按下载策略自动处理">策略处理</button>
+                  </div>
+                  <div className="cc-quiet"><button className="link-btn">填磁力</button><span>·</span><button className="link-btn danger" onClick={() => reject([i.id])}>拒绝</button></div>
+                </>)}
+                {isCand(i) && !i.magnet && (<>
+                  <div className="cc-warn"><Icon name="info" size={13} /> 待补磁力 · 暂不可批准</div>
+                  <div className="cc-btn-row">
+                    <button className="btn cc-supplement" onClick={() => enrich(i.id)}><Icon name="link" size={15} /> 补磁力</button>
+                    <button className="btn btn-ghost">填磁力</button>
+                  </div>
+                  <div className="cc-quiet"><button className="link-btn danger" onClick={() => reject([i.id])}>拒绝</button></div>
+                </>)}
+                {i.status === "sent" && <span className="badge ok dot">已下发</span>}
+                {i.status === "failed" && (<>
+                  <div className="cc-btn-row">
+                    <button className="btn cc-approve" onClick={() => approve([i.id])}><Icon name="download" size={15} /> 重试</button>
+                  </div>
+                  <div className="cc-quiet"><button className="link-btn danger" onClick={() => reject([i.id])}>拒绝</button></div>
+                </>)}
+                {i.status === "rejected" && (<>
+                  <span className="badge bad dot">已拒绝</span>
+                  <button className="link-btn" onClick={() => restore([i.id])}>恢复</button>
+                </>)}
               </div>
             </div>
-            {i.state === "pending" ? (
-              <div className="cand-actions">
-                {!i.magnet && <button className="icon-act neutral" title="补全磁力"><Icon name="link" size={17} /></button>}
-                <button className="icon-act neutral" title="编辑磁力"><Icon name="parse" size={17} /></button>
-                <button className="icon-act reject" title="拒绝" onClick={() => setState([i.id], "rejected")}><Icon name="close" size={17} /></button>
-                <button className="icon-act approve" title="通过" onClick={() => setState([i.id], "approved")} disabled={!i.magnet} style={!i.magnet ? { opacity: 0.4, cursor: "not-allowed" } : null}><Icon name="check" size={17} /></button>
-              </div>
-            ) : (
-              <span className={"badge " + (i.state === "approved" ? "ok" : "bad")}>{i.state === "approved" ? "已通过" : "已拒绝"}</span>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {sel.length > 0 && (
           <div className="batch-bar">
-            <span className="count-pill">已选 <b>{sel.length}</b> 项</span>
+            <span className="count-pill">已选 <b>{sel.length}</b> 个</span>
             <span className="divider"></span>
-            <button className="btn btn-quiet" style={{ color: "var(--ok)" }} onClick={() => setState(sel, "approved")}><Icon name="check" size={16} /> 全部通过</button>
-            <button className="btn btn-quiet" style={{ color: "var(--bad)" }} onClick={() => setState(sel, "rejected")}><Icon name="close" size={16} /> 全部拒绝</button>
+            <button className="btn btn-quiet" style={{ color: "var(--ok)" }} onClick={() => approve(sel)}><Icon name="check" size={16} /> 批准</button>
+            <button className="btn btn-quiet"><Icon name="settings" size={16} /> 按策略处理</button>
+            <button className="btn btn-quiet" style={{ color: "var(--bad)" }} onClick={() => reject(sel)}><Icon name="close" size={16} /> 批量拒绝</button>
             <span className="divider"></span>
             <button className="btn btn-ghost" onClick={() => setSel([])}>取消</button>
           </div>

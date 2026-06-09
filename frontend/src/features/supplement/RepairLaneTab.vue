@@ -1,8 +1,9 @@
 <template>
-  <section class="workspace-panel apple-surface">
+  <section class="workspace-panel">
     <div class="panel-header">
       <div>
         <h2>来源诊断</h2>
+        <p class="panel-subtitle">launchpad 三卡 → 焦点影片 → 字段来源对话框</p>
       </div>
     </div>
     <div v-if="sourceDiagnosticsOpen" class="diagnostics-inline-state">
@@ -16,20 +17,37 @@
     </div>
     <div v-else class="diagnostics-launchpad">
       <div class="diagnostics-launchpad-grid" aria-label="来源诊断待办概览">
-        <button v-for="row in diagnosticsLaunchpadRows" :key="row.key" type="button" class="diagnostics-launchpad-card" @click="emit('movies-requested')">
+        <button v-for="row in diagnosticsLaunchpadRows" :key="row.key" type="button" class="diagnostics-launchpad-card" :class="`diag-card-${row.key}`" @click="emit('movies-requested')">
+          <div class="diag-card-top">
+            <span class="diag-card-label">{{ row.label }}</span>
+            <span class="diag-card-dot" :class="`diag-card-dot-${row.key}`"></span>
+          </div>
           <strong>{{ row.value }}</strong>
-          <span>{{ row.label }}</span>
           <small>{{ row.hint }}</small>
         </button>
       </div>
+
       <div class="diagnostics-focus-movie">
-        <div>
-          <span class="status-pill">诊断入口</span>
-          <h3>{{ diagnosticsFocusMovie?.dvd_id || diagnosticsFocusMovie?.canonical_number || '等待影片数据' }}</h3>
-          <p>{{ diagnosticsFocusMovie?.title || '先在作品字段列表中载入补全影片，再打开字段来源和候选诊断。' }}</p>
+        <div class="diag-focus-poster" @click="openDiagnosticsFocusMovie">
+          <img
+            v-if="focusMovieCover"
+            :src="focusMovieCover"
+            loading="lazy"
+            decoding="async"
+            referrerpolicy="no-referrer"
+            alt=""
+          />
+          <div v-else class="diag-focus-poster-empty">无封面</div>
+          <div class="diag-focus-scrim"></div>
+          <span class="diag-focus-code">{{ diagnosticsFocusMovie?.dvd_id || diagnosticsFocusMovie?.canonical_number || '—' }}</span>
         </div>
-        <div class="diagnostics-focus-badges">
-          <span v-for="badge in diagnosticsFocusMovieBadges" :key="badge">{{ badge }}</span>
+        <div class="diag-focus-meta">
+          <span class="diag-focus-kicker">诊断入口</span>
+          <h3>{{ diagnosticsFocusMovie ? `${diagnosticsFocusMovie.dvd_id || diagnosticsFocusMovie.canonical_number || ''} · ${diagnosticsFocusMovie.title || ''}` : '等待影片数据' }}</h3>
+          <div v-if="diagnosticsFocusMovie" class="diagnostics-focus-badges">
+            <span v-for="badge in diagnosticsFocusMovieBadges" :key="badge" :class="badgeToneClass(badge)">{{ badge }}</span>
+          </div>
+          <p v-else class="diag-focus-hint">先在作品字段列表中载入补全影片，再打开字段来源和候选诊断。</p>
         </div>
         <div class="diagnostics-focus-actions">
           <button class="btn btn-primary btn-sm" type="button" :disabled="!diagnosticsFocusMovie" @click="openDiagnosticsFocusMovie">打开首个待诊断影片</button>
@@ -111,6 +129,19 @@ export default {
       { key: 'details', value: props.detailTargetCount, label: '可补详情', hint: '可继续抓取详情来源' },
     ])
 
+    const focusMovieCover = computed(() => {
+      const m = diagnosticsFocusMovie.value
+      return m ? supplement.movieCover(m) : ''
+    })
+
+    function badgeToneClass(badge) {
+      if (badge === '候选待确认') return 'badge-warn'
+      if (badge === '可追溯来源') return 'badge-info'
+      if (badge === '字段已齐') return 'badge-ok'
+      if (badge.includes('字段缺口')) return 'badge-bad'
+      return ''
+    }
+
     async function openDiagnosticsFocusMovie() {
       if (!diagnosticsFocusMovie.value) return
       await supplement.openMovieSources(diagnosticsFocusMovie.value)
@@ -152,6 +183,8 @@ export default {
       diagnosticsLaunchpadRows,
       diagnosticsFocusMovie,
       diagnosticsFocusMovieBadges,
+      focusMovieCover,
+      badgeToneClass,
       openDiagnosticsFocusMovie,
       openMovieSources,
       manualMatchMovieAction,

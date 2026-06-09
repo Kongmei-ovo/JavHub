@@ -120,25 +120,26 @@ test('supplement actor picker stays actor-first and avoids raw actor id entry', 
   assert.doesNotMatch(supplementFeatureSource, /placeholder="演员 ID"/)
 })
 
-test('supplement movie panel presents dense field repair cards', () => {
+test('supplement movie panel presents the field-gap ledger and field-chip rows', () => {
+  // Wave A redesign: only the toolbar + 字段缺口 ledger + 影片行 (field-chip grid + 匹配 pill + 补详情/诊断)
+  // remain on screen. The earlier 优先级 / 分拣台 / 修复队列 / 处理线 dense layers are intentionally dropped
+  // until the v2 visual language is finalized.
   assert.match(moviesPanel, /class="movies-panel-toolbar"/)
   assert.match(moviesPanel, /class="movie-field-ledger"/)
-  assert.match(moviesPanel, /class="movie-field-priority-strip"/)
-  assert.match(moviesPanel, /class="movie-repair-queue"/)
-  assert.match(moviesPanel, /class="movie-repair-flow"/)
-  assert.match(moviesPanel, /class="movie-field-triage-board"/)
+  assert.match(moviesPanel, /class="field-card"/)
+  assert.match(moviesPanel, /class="fc-fieldgrid"/)
   assert.match(moviesPanel, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
   assert.match(moviesPanel, /@change="\$emit\('apply-filters'\)"/)
   assert.match(moviesPanel, /@keyup\.enter="\$emit\('apply-filters'\)"/)
   assert.match(moviesPanel, /movieFieldSummaryRows/)
-  assert.match(moviesPanel, /movieFieldTriageLanes/)
-  assert.match(moviesPanel, /movieRepairStages\(movie\)/)
   assert.match(moviesPanel, /movieFieldChips\(movie\)/)
-  assert.match(moviesPanel, /字段分拣/)
-  assert.match(moviesPanel, /当前页修复队列/)
+  assert.match(moviesPanel, /movieMatchLabel\(movie\)/)
+  assert.match(moviesPanel, /当前页字段缺口/)
+  assert.match(moviesPanel, /批量补详情/)
+  assert.match(moviesPanel, /生成下载候选/)
   assert.match(moviesStyle, /\.movie-field-ledger/)
-  assert.match(moviesStyle, /\.field-triage-card/)
-  assert.match(moviesStyle, /\.movie-repair-flow/)
+  assert.match(moviesStyle, /\.field-card/)
+  assert.match(moviesStyle, /\.field-chip/)
 })
 
 test('supplement source health tab exposes diagnostics and gfriends controls', () => {

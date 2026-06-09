@@ -97,76 +97,133 @@
       <button class="page-btn" type="button" :disabled="candidatePage >= candidateTotalPages" @click="$emit('go-page', candidateTotalPages)">»</button>
     </div>
 
-    <div v-if="filteredCandidates.length > 0" class="tasks-grid">
+    <div v-if="filteredCandidates.length > 0" class="cand-list">
       <div
         v-for="candidate in filteredCandidates"
         :key="candidate.id"
-        class="task-card av-card candidate-card"
+        :class="candidateCardClass(candidate)"
       >
-        <label v-if="selectingCandidates" class="candidate-select" @click.stop>
-          <input
-            type="checkbox"
-            :checked="selectedCandidateIds.includes(candidate.id)"
-            @change="$emit('toggle-selected', candidate.id)"
-          />
-        </label>
-        <div class="task-cover">
+        <div class="cc-poster" @click="$emit('open-detail', candidate)">
           <img v-if="candidate.jacket_thumb_url" :src="candidate.jacket_thumb_url" :alt="candidate.title || candidate.content_id" loading="lazy" decoding="async" />
-          <div v-else class="cover-placeholder">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+          <div v-else class="cc-poster-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28">
               <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
               <line x1="7" y1="2" x2="7" y2="22"/>
               <line x1="17" y1="2" x2="17" y2="22"/>
             </svg>
           </div>
-          <div class="cover-overlay">
-            <span class="cover-code">{{ candidate.dvd_id || candidate.content_id }}</span>
-          </div>
+          <div class="cc-scrim"></div>
+          <span class="cc-code">{{ candidate.dvd_id || candidate.content_id }}</span>
+          <button
+            v-if="selectingCandidates && isSelectable(candidate)"
+            type="button"
+            class="cc-check"
+            :class="{ on: selectedCandidateIds.includes(candidate.id) }"
+            :aria-pressed="selectedCandidateIds.includes(candidate.id)"
+            aria-label="选择候选"
+            @click.stop="$emit('toggle-selected', candidate.id)"
+          >
+            <svg v-if="selectedCandidateIds.includes(candidate.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
         </div>
 
-        <div class="task-info">
-          <h3 class="task-title" :title="candidate.title">{{ candidate.title || candidate.content_id }}</h3>
-          <div class="task-meta">
-            <span :class="['badge', candidateBadge(candidate.status)]">{{ candidateStatusLabel(candidate.status) }}</span>
-            <span class="task-time">{{ candidateSourceLabel(candidate.source) }}</span>
+        <div class="cc-main">
+          <div class="cc-srcline">
+            <span class="src-pill">{{ candidateSourceLabel(candidate.source) }}</span>
+            <span class="mag-state" :class="{ empty: !candidate.magnet }">{{ candidate.magnet ? '已有 magnet' : '待补磁力' }}</span>
+            <span v-if="candidate.events?.length" class="cc-time">{{ formatTime(candidate.events[0].created_at) }}</span>
           </div>
-          <div class="candidate-subtitle">{{ candidate.actress_name || '未知演员' }} · {{ candidate.release_date || '日期未知' }}</div>
-          <div class="candidate-magnet" :class="{ empty: !candidate.magnet }">
-            {{ candidate.magnet ? '已有 magnet' : '待补磁力' }}
+          <h3 class="cc-title" :title="candidate.title" @click="$emit('open-detail', candidate)">{{ candidate.title || candidate.content_id }}</h3>
+          <div class="cc-actor">
+            <span class="cc-av" :style="actorAvatarStyle(candidate)">{{ actorInitial(candidate) }}</span>
+            <span class="cc-actor-name">{{ candidate.actress_name || '未知演员' }}</span>
+            <span class="cc-actor-date">· {{ candidate.release_date || '日期未知' }}</span>
           </div>
-          <div v-if="candidate.reason" class="candidate-reason" :title="candidate.reason">
-            {{ candidate.reason }}
+          <div v-if="candidate.status === 'failed' && (candidate.reason || candidate.error_msg)" class="cc-reason" :title="candidate.reason || candidate.error_msg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ candidate.reason || candidate.error_msg }}
           </div>
-          <div v-if="candidate.download_task_id" class="candidate-task-link">
+          <div v-if="candidate.status === 'sent' && candidate.download_task_id" class="cc-tasklink">
             已关联任务 #{{ candidate.download_task_id }}
             <span v-if="candidate.download_task?.status">· {{ statusLabel(candidate.download_task.status) }}</span>
             <span v-if="candidate.download_task?.downloader_name">· {{ candidate.download_task.downloader_name }}</span>
           </div>
-          <div v-if="candidate.error_msg" class="task-error" :title="candidate.error_msg">
-            {{ candidate.error_msg }}
+          <div v-if="candidate.events?.length && candidate.status !== 'sent' && candidate.status !== 'failed'" class="cc-event-note">
+            最近动作 {{ eventActionLabel(candidate.events[0].action) }}
           </div>
-          <div v-if="candidate.events?.length" class="candidate-event">
-            最近动作 {{ candidate.events[0].action }}
-          </div>
-          <div class="candidate-context-actions">
+          <div class="cc-links">
             <button class="link-btn" type="button" @click="$emit('open-detail', candidate)">详情</button>
             <button v-if="candidate.actress_id" class="link-btn" type="button" @click="$emit('go-actor', candidate)">演员</button>
             <button v-if="candidate.source === 'supplement' && candidate.actress_id" class="link-btn" type="button" @click="$emit('go-supplement', candidate)">补全</button>
           </div>
         </div>
 
-        <div class="task-actions">
-          <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('edit-magnet', candidate)">填磁力</button>
-          <button v-if="(candidate.status === 'candidate' || candidate.status === 'failed') && !candidate.magnet" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('enrich-magnet', candidate)">
-            {{ candidateMutations[candidate.id] === 'enrich' ? '查找中...' : '补磁力' }}
-          </button>
-          <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('approve', candidate)">
-            {{ candidateMutations[candidate.id] === 'approve' ? '处理中...' : (candidate.status === 'failed' ? '重试' : '批准') }}
-          </button>
-          <button v-if="candidate.status === 'candidate' || candidate.status === 'failed'" class="btn btn-primary" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('process', candidate)">
-            {{ candidateMutations[candidate.id] === 'process' ? '处理中...' : '策略处理' }}
-          </button>
-          <button v-if="candidate.status === 'candidate'" class="btn btn-ghost" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('reject', candidate)">拒绝</button>
+        <div class="cc-decide">
+          <template v-if="candidate.status === 'candidate' && candidate.magnet">
+            <div class="cc-seed"><span class="cc-dot ok"></span>可批准</div>
+            <div class="cc-btn-row">
+              <button class="btn cc-approve" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('approve', candidate)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ candidateMutations[candidate.id] === 'approve' ? '处理中...' : '批准' }}
+              </button>
+              <button class="btn btn-ghost cc-ghost-btn" type="button" :disabled="isCandidateMutating(candidate.id)" title="按下载策略自动处理" @click="$emit('process', candidate)">
+                {{ candidateMutations[candidate.id] === 'process' ? '处理中...' : '策略处理' }}
+              </button>
+            </div>
+            <div class="cc-quiet">
+              <button class="link-btn quiet" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('edit-magnet', candidate)">填磁力</button>
+              <span class="sep">·</span>
+              <button class="link-btn danger" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('reject', candidate)">拒绝</button>
+            </div>
+          </template>
+
+          <template v-else-if="candidate.status === 'candidate' && !candidate.magnet">
+            <div class="cc-warn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              待补磁力 · 暂不可批准
+            </div>
+            <div class="cc-btn-row">
+              <button class="btn cc-supplement" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('enrich-magnet', candidate)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                {{ candidateMutations[candidate.id] === 'enrich' ? '查找中...' : '补磁力' }}
+              </button>
+              <button class="btn btn-ghost cc-ghost-btn" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('edit-magnet', candidate)">填磁力</button>
+            </div>
+            <div class="cc-quiet">
+              <button class="link-btn danger" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('reject', candidate)">拒绝</button>
+            </div>
+          </template>
+
+          <template v-else-if="candidate.status === 'failed'">
+            <div class="cc-btn-row">
+              <button class="btn cc-approve" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('approve', candidate)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                {{ candidateMutations[candidate.id] === 'approve' ? '处理中...' : '重试' }}
+              </button>
+            </div>
+            <div class="cc-quiet">
+              <button class="link-btn quiet" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('edit-magnet', candidate)">填磁力</button>
+              <span class="sep">·</span>
+              <button class="link-btn danger" type="button" :disabled="isCandidateMutating(candidate.id)" @click="$emit('reject', candidate)">拒绝</button>
+            </div>
+          </template>
+
+          <template v-else-if="candidate.status === 'sent'">
+            <span class="cc-badge ok"><span class="cc-dot ok"></span>已下发</span>
+          </template>
+
+          <template v-else-if="candidate.status === 'rejected'">
+            <span class="cc-badge bad"><span class="cc-dot bad"></span>已拒绝</span>
+            <div class="cc-quiet">
+              <button class="link-btn quiet" type="button" @click="$emit('approve', candidate)">恢复</button>
+            </div>
+          </template>
+
+          <template v-else-if="candidate.status === 'approved'">
+            <span class="cc-badge info"><span class="cc-dot info"></span>已批准</span>
+          </template>
         </div>
       </div>
     </div>
@@ -333,6 +390,26 @@ export default {
   methods: {
     isCandidateMutating(id) {
       return Boolean(this.candidateMutations[id]) || this.bulkCandidateLoading || Boolean(this.candidateBatchProcessing)
+    },
+    isSelectable(candidate) {
+      return candidate.status === 'candidate' && Boolean(candidate.magnet)
+    },
+    candidateCardClass(candidate) {
+      const cls = ['cand-card', `status-${candidate.status}`]
+      if (candidate.status === 'candidate' && !candidate.magnet) cls.push('nomag')
+      if (this.selectedCandidateIds.includes(candidate.id)) cls.push('picked')
+      return cls
+    },
+    actorInitial(candidate) {
+      const name = (candidate.actress_name || '').trim()
+      return name ? name.charAt(0) : '?'
+    },
+    actorAvatarStyle(candidate) {
+      const seed = candidate.actress_id || candidate.actress_name || candidate.dvd_id || candidate.content_id || ''
+      let h = 5381
+      for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) & 0xffffffff
+      const hue = Math.abs(h) % 360
+      return { background: `linear-gradient(135deg, hsl(${hue} 60% 58%), hsl(${(hue + 38) % 360} 55% 46%))` }
     },
     statusLabel(status) {
       const map = { pending: '待处理', downloading: '下载中', completed: '已完成', failed: '失败' }

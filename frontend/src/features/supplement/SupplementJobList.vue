@@ -18,86 +18,68 @@
     @action="$emit('refresh')"
     @secondary-action="$emit('start-supplement')"
   />
-  <div v-else class="ios-list job-list">
-    <div class="job-queue-ledger" aria-label="当前任务状态概览">
-      <div class="job-queue-summary">
-        <strong>{{ jobQueueSummaryTotal }}</strong>
+  <div v-else class="job-list-wrap">
+    <div class="job-ledger" aria-label="任务汇总">
+      <div class="job-ledger-sum">
+        <strong>{{ jobs.length }}</strong>
         <span>当前页任务</span>
-        <small class="job-queue-total-label">{{ jobQueueTotalLabel }}</small>
       </div>
-      <div class="job-queue-cards">
+      <div class="job-ledger-cards">
         <span
-          v-for="row in jobQueueSummaryRows"
+          v-for="row in jobSummaryRows"
           :key="row.key"
-          class="job-queue-card"
-          :class="jobQueueSummaryClass(row)"
+          class="jl-card"
+          :class="`jl-card-${row.key}`"
         >
           <b>{{ row.label }}</b>
           <em>{{ row.count }} 项</em>
-          <small>{{ row.action }}</small>
         </span>
       </div>
     </div>
-    <article v-for="job in jobs" :key="job.id" class="ios-row job-row">
-      <div class="job-main">
-        <div class="job-avatar">{{ jobAvatarLabel(job) }}</div>
+
+    <div class="job-card-list">
+      <article v-for="job in jobs" :key="job.id" class="job-card">
+        <div class="job-avatar" :style="avatarStyle(job)">{{ jobAvatarLabel(job) }}</div>
         <div class="job-copy">
-          <strong>{{ displayJobLabel(job) }}</strong>
-          <span>#{{ job.id }} · {{ job.created_at ? new Date(job.created_at).toLocaleString() : '' }}</span>
-          <small v-if="jobAttemptMeta(job)" class="job-meta">{{ jobAttemptMeta(job) }}</small>
+          <strong class="job-title">{{ displayJobLabel(job) }}</strong>
+          <span class="job-id">#{{ job.id }}<span v-if="job.created_at"> · {{ formatJobTime(job.created_at) }}</span></span>
+          <small v-if="jobAttemptMeta(job)" class="job-attempt">{{ jobAttemptMeta(job) }}</small>
           <small
             v-if="job.last_error"
             :class="job.status === 'failed' ? 'job-error' : 'job-warning'"
             :title="job.last_error"
-          >
-            {{ jobFailureSummary(job) }}
-          </small>
-          <div class="job-repair-lane" aria-label="任务修复状态">
-            <span
-              v-for="item in jobRepairLaneItems(job)"
-              :key="item.label"
-              class="job-repair-lane-item"
-              :class="jobRepairLaneItemClass(item)"
-            >
-              <b>{{ item.label }}</b>
-              <em>{{ item.value }}</em>
-              <small>{{ item.detail }}</small>
-            </span>
-          </div>
+          >{{ jobFailureSummary(job) }}</small>
         </div>
-      </div>
-      <div class="job-actions">
-        <span class="status-pill" :class="`status-${job.status}`">{{ statusLabel(job.status) }}</span>
-        <button
-          v-if="job.local_actress_id && !actorContext"
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="$emit('actor', job)"
-        >查看演员</button>
-        <button
-          v-if="job.status === 'failed'"
-          class="btn btn-primary btn-sm"
-          type="button"
-          @click="$emit('retry', job.id)"
-        >重试</button>
-        <button
-          v-if="job.status === 'queued' || job.status === 'running'"
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="$emit('cancel', job.id)"
-        >取消</button>
-      </div>
-    </article>
+        <div class="job-actions">
+          <span class="status-pill" :class="`status-${job.status}`">{{ statusLabel(job.status) }}</span>
+          <button
+            v-if="job.local_actress_id && !actorContext"
+            class="btn btn-quiet btn-sm"
+            type="button"
+            @click="$emit('actor', job)"
+          >查看演员</button>
+          <button
+            v-if="job.status === 'failed'"
+            class="btn btn-primary btn-sm"
+            type="button"
+            @click="$emit('retry', job.id)"
+          >重试</button>
+          <button
+            v-if="job.status === 'queued' || job.status === 'running'"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            @click="$emit('cancel', job.id)"
+          >取消</button>
+        </div>
+      </article>
+    </div>
   </div>
 </template>
 
 <script>
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
-import {
-  supplementJobFailureDiagnostics,
-  supplementJobFailureSummary,
-} from './supplementJobDiagnostics.js'
+import { supplementJobFailureSummary } from './supplementJobDiagnostics.js'
 
 export default {
   name: 'SupplementJobList',
@@ -115,33 +97,24 @@ export default {
   computed: {
     emptyDescription() {
       if (this.contextLabel) return this.contextLabel
-      return this.actorContext
-        ? '这个演员还没有补全任务记录。'
-        : '当前队列筛选下没有任务记录。'
+      return this.actorContext ? '这个演员还没有补全任务记录。' : '当前队列筛选下没有任务记录。'
     },
     emptyNextStep() {
       return this.actorContext
         ? '可以先启动作品补全，或刷新任务队列等待后端写入新状态。'
         : '刷新队列确认最新状态，或回到演员工作台启动具体演员的补全任务。'
     },
-    jobQueueSummaryTotal() {
-      return this.jobs.length
-    },
-    jobQueueTotalLabel() {
-      const total = this.totalCount || this.jobs.length
-      return `筛选总量 ${total}`
-    },
-    jobQueueSummaryRows() {
-      const counts = this.jobs.reduce((totals, job) => {
-        const status = job?.status || 'unknown'
-        totals[status] = (totals[status] || 0) + 1
-        return totals
+    jobSummaryRows() {
+      const counts = this.jobs.reduce((acc, job) => {
+        const s = job?.status || 'unknown'
+        acc[s] = (acc[s] || 0) + 1
+        return acc
       }, {})
       return [
-        { key: 'failed', label: '失败任务', count: counts.failed || 0, action: '优先重试', tone: 'danger' },
-        { key: 'running', label: '运行中', count: counts.running || 0, action: '观察运行', tone: 'warning' },
-        { key: 'queued', label: '等待执行', count: counts.queued || 0, action: '等待调度', tone: 'warning' },
-        { key: 'succeeded', label: '已完成', count: counts.succeeded || 0, action: '归档完成', tone: 'ready' },
+        { key: 'running', label: '运行中', count: counts.running || 0 },
+        { key: 'queued', label: '排队中', count: counts.queued || 0 },
+        { key: 'succeeded', label: '已完成', count: counts.succeeded || 0 },
+        { key: 'failed', label: '失败', count: counts.failed || 0 },
       ]
     },
   },
@@ -155,7 +128,15 @@ export default {
     },
     jobAvatarLabel(job) {
       if (this.isGfriendsAvatarSyncJob(job)) return 'G'
-      return job.source_actor_name?.slice(0, 1) || String(job.local_actress_id || '?').slice(0, 1)
+      const name = job.source_actor_name || String(job.local_actress_id || job.id || '?')
+      return name.slice(0, 1)
+    },
+    avatarStyle(job) {
+      const seed = String(job.local_actress_id || job.source_actor_name || job.id || 'jh')
+      let h = 5381
+      for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) & 0xffffffff
+      const hue = Math.abs(h) % 360
+      return { background: `linear-gradient(135deg, hsl(${hue} 60% 58%), hsl(${(hue + 38) % 360} 55% 46%))` }
     },
     jobAttemptMeta(job) {
       const pieces = []
@@ -166,397 +147,203 @@ export default {
           pieces.push(`下次 ${next.toLocaleTimeString()}`)
         }
       }
+      if (job.total_found != null && job.status === 'succeeded') pieces.push(`命中 ${job.total_found}`)
       return pieces.join(' · ')
     },
-    jobRepairLaneItems(job) {
-      return [
-        {
-          label: '任务状态',
-          value: this.statusLabel(job.status),
-          detail: this.jobStatusDetail(job),
-          tone: job.status === 'failed' ? 'danger' : ['queued', 'running'].includes(job.status) ? 'warning' : 'ready',
-        },
-        {
-          label: '尝试次数',
-          value: `${job.attempt_count || 0}/3`,
-          detail: job.next_run_at && job.status === 'queued' ? '等待执行' : '当前轮次',
-          tone: (job.attempt_count || 0) >= 3 && job.status === 'failed' ? 'danger' : job.attempt_count ? 'warning' : 'ready',
-        },
-        {
-          label: '错误摘要',
-          value: this.jobErrorSummary(job),
-          detail: job.last_error ? '查看来源' : '暂无错误',
-          tone: job.last_error ? (job.status === 'failed' ? 'danger' : 'warning') : 'ready',
-        },
-        {
-          label: '下一步',
-          value: this.jobNextActionLabel(job),
-          detail: this.jobNextActionDetail(job),
-          tone: job.status === 'failed' ? 'danger' : ['queued', 'running'].includes(job.status) ? 'warning' : 'ready',
-        },
-      ]
-    },
-    jobRepairLaneItemClass(item) {
-      return item.tone || 'warning'
-    },
-    jobQueueSummaryClass(row) {
-      return row.tone || 'warning'
-    },
-    jobStatusDetail(job) {
-      if (job.status === 'failed') return '需要人工处理'
-      if (job.status === 'queued') return '等待执行'
-      if (job.status === 'running') return '正在补全'
-      if (job.status === 'succeeded') return '已完成'
-      return '待观察'
-    },
-    jobErrorSummary(job) {
-      return supplementJobFailureDiagnostics(job).summary
+    formatJobTime(value) {
+      if (!value) return ''
+      const t = new Date(value).getTime()
+      if (Number.isNaN(t)) return ''
+      const m = Math.round((Date.now() - t) / 60000)
+      if (m < 1) return '刚刚'
+      if (m < 60) return `${m} 分钟前`
+      const h = Math.round(m / 60)
+      if (h < 24) return `${h} 小时前`
+      const d = new Date(value)
+      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     },
     jobFailureSummary(job) {
       return supplementJobFailureSummary(job)
-    },
-    jobNextActionLabel(job) {
-      if (job.status === 'failed') return '重试任务'
-      if (job.status === 'queued') return '等待执行'
-      if (job.status === 'running') return '观察进度'
-      if (job.status === 'succeeded') return '归档完成'
-      return '刷新队列'
-    },
-    jobNextActionDetail(job) {
-      if (job.status === 'failed') return supplementJobFailureDiagnostics(job).nextActionDetail
-      if (job.status === 'queued' && job.next_run_at) return this.jobAttemptMeta(job) || '等待执行'
-      if (job.status === 'running') return '避免重复调度'
-      if (job.status === 'succeeded') return '可继续字段修复'
-      return '同步最新状态'
     },
   },
 }
 </script>
 
 <style scoped>
+.panel-state { margin: 14px 0 0; }
 .empty-inline {
   display: grid;
   gap: 4px;
-  padding: 20px;
+  padding: 28px;
   color: var(--text-muted);
   text-align: center;
 }
 
-.ios-list {
-  display: grid;
-  gap: 8px;
+.job-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.job-queue-ledger {
-  display: grid;
-  grid-template-columns: minmax(128px, 0.28fr) minmax(0, 1fr);
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+/* 汇总 ledger */
+.job-ledger {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 18px;
+  border-radius: var(--radius-card);
+  background: var(--card-2);
+  border: 1px solid var(--hairline);
+  flex-wrap: wrap;
 }
 
-.job-queue-summary {
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-width: 0;
-  min-height: 58px;
-  padding: 8px 10px;
-  border: 1px solid var(--badge-info-border);
-  border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-info-bg);
+.job-ledger-sum {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 84px;
 }
 
-.job-queue-summary strong {
-  color: var(--badge-info-text);
-  font-family: var(--font-mono);
-  font-size: 22px;
+.job-ledger-sum strong {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
-.job-queue-summary span {
-  color: var(--text-muted);
+.job-ledger-sum span {
+  margin-top: 4px;
   font-size: 11px;
-}
-
-.job-queue-total-label {
   color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.25;
 }
 
-.job-queue-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  min-width: 0;
+.job-ledger-cards {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.job-queue-card {
-  display: grid;
+.jl-card {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  min-width: 0;
-  min-height: 58px;
-  padding: 8px 9px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  min-width: 76px;
 }
 
-.job-queue-card.danger {
-  border-color: var(--badge-error-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-error-bg);
-}
-
-.job-queue-card.warning {
-  border-color: var(--badge-warning-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-warning-bg);
-}
-
-.job-queue-card.ready {
-  border-color: var(--badge-success-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-success-bg);
-}
-
-.job-queue-card b,
-.job-queue-card em,
-.job-queue-card small {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.job-queue-card b {
-  color: var(--text-muted);
+.jl-card b {
   font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1px;
 }
 
-.job-queue-card em {
-  color: var(--text-primary);
-  font-size: 12px;
+.jl-card em {
+  font-size: 13px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.job-queue-card small {
-  color: var(--text-muted);
-  font-size: 10px;
+.jl-card-running { border-color: rgba(var(--accent-rgb), 0.3); }
+.jl-card-running em { color: var(--accent); }
+.jl-card-queued { border-color: rgba(var(--warn-rgb), 0.3); }
+.jl-card-queued em { color: var(--warn); }
+.jl-card-failed { border-color: rgba(var(--bad-rgb), 0.3); }
+.jl-card-failed em { color: var(--bad); }
+.jl-card-succeeded em { color: var(--ok); }
+
+/* job cards */
+.job-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.ios-row {
+.job-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 76px;
-  padding: 13px 14px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-fast), opacity var(--motion-fast);
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  transition: border-color var(--motion-fast);
 }
 
-.ios-row:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-  transform: translateY(-1px);
-}
-
-.ios-row:focus-within {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
-  transform: translateY(-1px);
-}
-
-.job-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
+.job-card:hover { border-color: var(--hairline-strong); }
 
 .job-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  overflow: hidden;
-  color: var(--text-secondary);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  border-radius: 50%;
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  flex-shrink: 0;
-  font-weight: 800;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .job-copy {
-  display: grid;
-  gap: 4px;
+  flex: 1;
   min-width: 0;
-}
-
-.job-copy strong {
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.job-copy span {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.job-copy small {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.job-copy small.job-error {
-  color: var(--badge-error-text);
-}
-
-.job-copy small.job-warning {
-  color: var(--badge-warning-text);
-}
-
-.job-repair-lane {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.job-repair-lane-item {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  min-width: 0;
-  min-height: 54px;
-  padding: 7px 8px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
 }
 
-.job-repair-lane-item.danger {
-  border-color: var(--badge-error-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-error-bg);
-}
-
-.job-repair-lane-item.warning {
-  border-color: var(--badge-warning-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-warning-bg);
-}
-
-.job-repair-lane-item.ready {
-  border-color: var(--badge-success-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--badge-success-bg);
-}
-
-.job-repair-lane-item b,
-.job-repair-lane-item em,
-.job-repair-lane-item small {
-  min-width: 0;
+.job-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.job-repair-lane-item b {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.job-repair-lane-item em {
-  color: var(--text-primary);
+.job-id {
   font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.job-repair-lane-item small {
-  color: var(--text-muted);
-  font-size: 10px;
+.job-attempt {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
+
+.job-error { color: var(--bad); font-size: 11px; }
+.job-warning { color: var(--warn); font-size: 11px; }
 
 .job-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   flex-wrap: wrap;
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 3px 9px;
+  min-height: 24px;
+  padding: 3px 10px;
   border: 1px solid var(--badge-info-border);
   border-radius: 999px;
   color: var(--badge-info-text);
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -580,27 +367,27 @@ export default {
   border-color: var(--badge-error-border);
 }
 
+.btn-quiet {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.btn-quiet:hover { color: var(--text-primary); background: var(--card-2); }
+
 @media (max-width: 860px) {
-  .job-queue-ledger {
-    grid-template-columns: 1fr;
+  .job-card {
+    flex-wrap: wrap;
+    padding: 12px;
   }
-
-  .job-queue-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ios-row,
-  .job-actions {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .job-actions {
     width: 100%;
-  }
-
-  .job-repair-lane {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: flex-end;
   }
 }
 </style>

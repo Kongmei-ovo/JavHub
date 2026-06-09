@@ -3,6 +3,7 @@
     <header class="supplement-topbar">
       <div>
         <h1>补全演员</h1>
+        <p class="topbar-sub">字段补全工作台 · 实时追踪补全来源、字段缺口与诊断进度</p>
       </div>
       <div class="topbar-actions">
         <button v-if="actorContext" class="btn btn-ghost btn-sm" type="button" @click="clearActorContext">更换演员</button>
@@ -28,37 +29,43 @@
     />
 
     <section v-else class="workspace-view">
-      <div v-if="actorContext" class="actor-workspace-hero apple-surface">
-        <div class="actor-context-card">
-          <div class="workspace-identity">
-            <div class="workspace-avatar">
-              <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
-              <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
-            </div>
-            <div class="workspace-title">
-              <h2>{{ actorContextName }}</h2>
-              <p>编号 {{ actorContext.id }}</p>
+      <div v-if="actorContext" class="actor-workspace-hero" :style="heroAccentStyle">
+        <div class="workspace-identity">
+          <div class="workspace-avatar" :style="actorContextAvatar ? null : heroAvatarStyle">
+            <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
+            <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
+          </div>
+          <div class="workspace-title">
+            <h2>{{ actorContextName }}</h2>
+            <p class="workspace-sub">编号 {{ String(actorContext.id).padStart(5, '0') }}<span v-if="actorContextRomaji"> · {{ actorContextRomaji }}</span></p>
+            <div class="workspace-status-row">
+              <span class="status-pill" :class="`status-${heroStatus}`">{{ statusLabel(heroStatus) }}</span>
+              <span v-if="heroRecent" class="workspace-recent">{{ heroRecent }}</span>
             </div>
           </div>
         </div>
-        <div class="workspace-status">
-          <span class="status-pill" :class="`status-${supplementStatus?.last_job?.status || 'idle'}`">{{ statusLabel(supplementStatus?.last_job?.status) }}</span>
-          <div class="workspace-actions">
-            <button class="btn btn-primary btn-sm" type="button" :disabled="isSupplementRunning" @click="startSupplement">{{ isSupplementRunning ? '补全中...' : '补全作品' }}</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="refreshResolved">刷新版本条目</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="goActorContext">返回演员页</button>
-          </div>
+        <div class="workspace-actions">
+          <button class="btn btn-primary" type="button" :disabled="isSupplementRunning" @click="startSupplement">
+            <span v-if="isSupplementRunning" class="spin-ring" aria-hidden="true"></span>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
+            {{ isSupplementRunning ? '补全中…' : '补全作品' }}
+          </button>
+          <button class="btn btn-ghost" type="button" @click="refreshResolved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            刷新版本条目
+          </button>
+          <button class="btn btn-quiet btn-sm" type="button" @click="goActorContext">返回演员页</button>
         </div>
       </div>
 
       <div v-if="actorContext" class="workspace-metrics">
-        <div v-for="metric in workspaceMetrics" :key="metric.label" class="metric-card apple-surface">
-          <span>{{ metric.value }}</span>
-          <p>{{ metric.label }}</p>
+        <div v-for="metric in workspaceMetrics" :key="metric.label" class="metric-card">
+          <div class="metric-top"><span class="metric-label">{{ metric.label }}</span><span class="metric-dot" :class="`metric-dot-${metric.icon}`"></span></div>
+          <div class="metric-num">{{ metric.value }}</div>
         </div>
       </div>
 
-      <nav class="segmented-control apple-surface" aria-label="补全工作台视图">
+      <nav class="segmented-control" aria-label="补全工作台视图">
         <button v-for="tab in tabItems" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="setActiveTab(tab.key)">
           <span class="segment-label">{{ tab.label }}</span>
           <span class="segment-count">{{ tab.count }}</span>
@@ -112,29 +119,15 @@ const RepairLaneTab = defineAsyncComponent(() => import('../features/supplement/
 export default {
   name: 'SupplementManagement',
   components: { ActorPickerView, JobsTab, MoviesTab, SourcesHealthTab, RepairLaneTab },
-  data() {
-    return {
-      actorContext: null,
-      actorSearchKeyword: '',
-      actorSearchResults: [],
-      actorSearching: false,
-      actorSearched: false,
-      actorPickerError: '',
-      recentJobs: [],
-      recentActors: [],
-      activeTab: 'movies',
-      activeFilters: { status: '', source: '', error_provider: '', error_reason: '', q: '', quality: '' },
-      supplementStatus: null,
-      supplementPolling: null,
-      refreshNonce: 0,
-      diagnosticsFocusMovie: null,
-      movieSummary: { total: 0, movies: [], fieldGapCount: 0, pendingCandidateCount: 0, detailTargetCount: 0 },
-      sourceSummary: { count: 0, degraded: false },
-      hasInitialized: false,
-      wasDeactivated: false,
-      lastAppliedRouteKey: '',
-    }
-  },
+  data: () => ({
+    actorContext: null, actorSearchKeyword: '', actorSearchResults: [], actorSearching: false, actorSearched: false, actorPickerError: '',
+    recentJobs: [], recentActors: [], activeTab: 'movies',
+    activeFilters: { status: '', source: '', error_provider: '', error_reason: '', q: '', quality: '' },
+    supplementStatus: null, supplementPolling: null, refreshNonce: 0, diagnosticsFocusMovie: null,
+    movieSummary: { total: 0, movies: [], fieldGapCount: 0, pendingCandidateCount: 0, detailTargetCount: 0 },
+    sourceSummary: { count: 0, degraded: false },
+    hasInitialized: false, wasDeactivated: false, lastAppliedRouteKey: '',
+  }),
   computed: {
     showActorPicker() { return !this.actorContext && !this.isGlobalTab },
     isGlobalTab() { return ['jobs', 'sourceHealth', 'movies'].includes(this.activeTab) && !this.activeFilters.actress_id },
@@ -149,20 +142,51 @@ export default {
       return { ...this.activeFilters, actress_id: this.actorContext?.id || '' }
     },
     tabItems() {
+      const s = this.supplementStatus, f = this.activeFilters
       return [
-        { key: 'movies', label: '作品字段', count: this.movieSummary.total, status: this.activeFilters.quality || this.activeFilters.q ? '已筛选' : '字段池', nextStep: '先补字段' },
-        { key: 'jobs', label: '任务队列', count: this.supplementStatus?.last_job?.id ? 1 : 0, status: this.statusLabel(this.supplementStatus?.last_job?.status), nextStep: '查看任务' },
+        { key: 'movies', label: '作品字段', count: this.movieSummary.total, status: f.quality || f.q ? '已筛选' : '字段池', nextStep: '先补字段' },
+        { key: 'jobs', label: '任务队列', count: s?.last_job?.id ? 1 : 0, status: this.statusLabel(s?.last_job?.status), nextStep: '查看任务' },
         { key: 'diagnostics', label: '来源诊断', count: this.movieSummary.pendingCandidateCount, status: '待选择', nextStep: '打开诊断' },
         { key: 'sourceHealth', label: '来源状态', count: this.sourceSummary.count, status: this.sourceSummary.degraded ? '来源异常' : '来源池', nextStep: '查看降级来源' },
       ]
     },
     workspaceMetrics() {
+      const s = this.supplementStatus
       return [
-        { label: '补全来源', value: this.supplementStatus?.supplement_movies ?? '-' },
-        { label: '已匹配片库', value: this.supplementStatus?.matched_r18 ?? '-' },
-        { label: '补全新增', value: this.supplementStatus?.supplement_only ?? '-' },
-        { label: '含版本条目', value: this.supplementStatus?.resolved_videos ?? '-' },
+        { label: '补全来源', value: s?.supplement_movies ?? '-', icon: 'stack' },
+        { label: '已匹配片库', value: s?.matched_r18 ?? '-', icon: 'matched' },
+        { label: '补全新增', value: s?.supplement_only ?? '-', icon: 'plus' },
+        { label: '含版本条目', value: s?.resolved_videos ?? '-', icon: 'clock' },
       ]
+    },
+    actorContextRomaji() {
+      const r = this.actorContext?.name_romaji, k = this.actorContext?.name_kanji
+      return r && r !== k ? r : ''
+    },
+    heroStatus() { return this.supplementStatus?.last_job?.status || 'idle' },
+    heroRecent() {
+      const j = this.supplementStatus?.last_job
+      if (!j) return ''
+      if (j.last_error && j.status === 'failed') return j.last_error
+      if (j.status === 'running') return `运行中${j.attempt_count ? ` · 第 ${j.attempt_count} 次尝试` : ''}`
+      if (j.status === 'queued') return '排队中 · 等待空闲来源'
+      if (j.finished_at) return `${this.statusLabel(j.status)} · ${this.formatRelativeTime(j.finished_at)}`
+      return ''
+    },
+    heroAccent() {
+      const seed = String(this.actorContext?.id || this.actorContextName || 'jh')
+      let h = 5381
+      for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) & 0xffffffff
+      const hue = Math.abs(h) % 360
+      return { hue, hue2: (hue + 38) % 360 }
+    },
+    heroAccentStyle() {
+      const { hue, hue2 } = this.heroAccent
+      return { '--hero-accent-1': `hsl(${hue} 62% 60%)`, '--hero-accent-2': `hsl(${hue2} 56% 48%)` }
+    },
+    heroAvatarStyle() {
+      const { hue, hue2 } = this.heroAccent
+      return { background: `linear-gradient(135deg, hsl(${hue} 60% 58%), hsl(${hue2} 55% 46%))` }
     },
     globalQueueStatusLabel() { return this.activeFilters.status ? this.statusLabel(this.activeFilters.status) : '全部状态' },
     globalQueueSourceLabel() {
@@ -175,12 +199,11 @@ export default {
     },
     globalQueueContextLabel() { return `${this.globalQueueStatusLabel} · ${this.globalQueueSourceLabel}` },
     globalQueueContextItems() {
-      return [
-        { label: '状态', value: this.globalQueueStatusLabel },
-        { label: '来源', value: this.globalQueueSourceLabel },
-        ...(this.activeFilters.error_provider ? [{ label: '定位', value: this.activeFilters.error_provider }] : []),
-        ...(this.activeFilters.error_reason ? [{ label: '原因', value: this.activeFilters.error_reason }] : []),
-      ]
+      const f = this.activeFilters
+      const items = [{ label: '状态', value: this.globalQueueStatusLabel }, { label: '来源', value: this.globalQueueSourceLabel }]
+      if (f.error_provider) items.push({ label: '定位', value: f.error_provider })
+      if (f.error_reason) items.push({ label: '原因', value: f.error_reason })
+      return items
     },
   },
   watch: {
@@ -201,15 +224,26 @@ export default {
     this.applyRouteState()
     if (this.isSupplementRunning) this._startSupplementPolling()
   },
-  deactivated() {
-    this.wasDeactivated = true
-    this._stopSupplementPolling()
-  },
+  deactivated() { this.wasDeactivated = true; this._stopSupplementPolling() },
   beforeUnmount() { this._stopSupplementPolling() },
   methods: {
     statusLabel(status) {
       const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
       return map[status] || status || '待开始'
+    },
+    formatRelativeTime(value) {
+      if (!value) return ''
+      const t = new Date(value).getTime()
+      if (Number.isNaN(t)) return ''
+      const m = Math.round((Date.now() - t) / 60000)
+      if (m < 1) return '刚刚'
+      if (m < 60) return `${m} 分钟前`
+      const h = Math.round(m / 60)
+      if (h < 24) return `${h} 小时前`
+      const d = Math.round(h / 24)
+      if (d < 30) return `${d} 天前`
+      const date = new Date(value)
+      return `${date.getMonth() + 1}/${date.getDate()}`
     },
     supplementQueryKey(query = this.$route.query) {
       const field = key => Array.isArray(query[key]) ? String(query[key][0] || '').trim() : String(query[key] || '').trim()
@@ -289,14 +323,11 @@ export default {
     async loadRecentActorJobs() {
       this.actorPickerError = ''
       try {
-        const resp = await api.listSupplementJobs({ page: 1, page_size: 16 })
-        const data = resp.data || resp
+        const data = (await api.listSupplementJobs({ page: 1, page_size: 16 })).data || {}
         this.recentJobs = data.data || []
         const seen = new Set()
-        this.recentActors = this.recentJobs.filter(job => job.local_actress_id && !seen.has(job.local_actress_id) && seen.add(job.local_actress_id)).slice(0, 6).map(this.recentActorFromJob)
-      } catch {
-        this.recentJobs = []; this.recentActors = []; this.actorPickerError = 'load_failed'
-      }
+        this.recentActors = this.recentJobs.filter(j => j.local_actress_id && !seen.has(j.local_actress_id) && seen.add(j.local_actress_id)).slice(0, 6).map(this.recentActorFromJob)
+      } catch { this.recentJobs = []; this.recentActors = []; this.actorPickerError = 'load_failed' }
     },
     async selectActorContext(actor) {
       if (!actor?.id) return
@@ -307,10 +338,8 @@ export default {
     async applyActorContext(actressId) {
       const normalized = String(actressId || '').trim()
       if (!normalized) return
-      try {
-        const resp = await api.getActress(normalized)
-        this.actorContext = resp.data || resp
-      } catch { this.actorContext = { id: normalized } }
+      try { const r = await api.getActress(normalized); this.actorContext = r.data || r }
+      catch { this.actorContext = { id: normalized } }
       await this.loadSupplementStatus()
     },
     async applyJobActorContext(job) {
