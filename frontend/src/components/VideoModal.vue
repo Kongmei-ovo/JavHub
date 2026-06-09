@@ -298,16 +298,16 @@
         :speed="streamSpeed"
         @close="closeStreamPlayer"
         @speed="setStreamSpeed"
-      >
-        <template #extras>
-          <StreamSourcePicker
-            :sources="streamSources"
-            :current="currentSourceName"
-            :scan-done="streamScanDone"
-            @switch="switchStreamSource"
-          />
-        </template>
-      </HlsPlayerOverlay>
+      />
+      <!-- 选源浮层:跟 HlsPlayerOverlay 平级,固定贴底,不依赖 async slot -->
+      <StreamSourcePicker
+        v-if="streamPlayerVisible"
+        class="vp-sources-floating"
+        :sources="streamSources"
+        :current="currentSourceName"
+        :scan-done="streamScanDone"
+        @switch="switchStreamSource"
+      />
     </div>
   </teleport>
 </template>
@@ -327,7 +327,10 @@ import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '.
 
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
-const StreamSourcePicker = defineAsyncComponent(() => import('../features/video/StreamSourcePicker.vue'))
+// StreamSourcePicker 不走 defineAsyncComponent: HlsPlayerOverlay 本身已是 async,
+// 内层 slot 再嵌套异步组件曾经撞 Vue 3 早期 async slot 注入空 patch 的边缘场景,
+// picker 实际未渲染。picker 本体很小,sync import 不影响首屏。
+import StreamSourcePicker from '../features/video/StreamSourcePicker.vue'
 
 function videoFavoriteId(video = {}) {
   const id = video.content_id || video.dvd_id

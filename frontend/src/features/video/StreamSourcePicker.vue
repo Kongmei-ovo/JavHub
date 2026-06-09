@@ -45,6 +45,15 @@ export default {
 </script>
 
 <style scoped>
+/* 浮层模式: 平级于 HlsPlayerOverlay 时贴在视口底部居中。 */
+.vp-sources.vp-sources-floating {
+  position: fixed;
+  bottom: max(var(--space-5), env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--z-modal) + 1);
+  width: min(720px, calc(100vw - var(--space-6)));
+}
 .vp-sources {
   display: flex;
   flex-direction: column;
