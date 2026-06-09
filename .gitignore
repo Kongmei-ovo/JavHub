@@ -58,6 +58,10 @@ docs/*
 !docs/backup-restore.md
 !docs/cloudflare-access-tunnel.md
 
+# Design handoff (prototype JSX/CSS + 交接文档,不进仓库)
+design_handoff_javhub_redesign/
+javhub.zip
+
 # Logs
 *.log
 logs/
