@@ -5,7 +5,8 @@ import httpx
 import json
 import re
 import logging
-from typing import Optional
+import time
+from typing import Optional, Tuple
 from urllib.parse import unquote
 
 from config import Config
@@ -30,19 +31,22 @@ class M3U8Source:
 
     name: str = "m3u8"
 
-    async def search_m3u8(self, content_id: str) -> Optional[dict]:
-        """搜索某番号的 m3u8 播放地址
+    async def search_m3u8(
+        self, content_id: str
+    ) -> Tuple[Optional[dict], list[dict]]:
+        """搜索某番号的 m3u8 播放地址。
 
-        按权重依次尝试多个站点，返回第一个成功的结果。
+        按"速度+命中率"依次尝试多个站点,返回第一个成功的结果 + 全部尝试明细。
+        rou.video 覆盖广且无 CF 几秒就出结果,放最优先;jable/missav 走 FlareSolverr
+        解 CF 比较慢,作 fallback。memo 已移除:get_video_info.php 永久返回
+        success:false/type:deleted,是上游撤掉了按番号入口,代码层无解。
 
         Returns:
-            {"m3u8_url": "...", "title": "...", "source": "..."} or None
+            (result_dict | None, attempts_list)
+            attempts 每条:
+              {"source": str, "status": "ok|no_result|error", "elapsed_ms": int, "detail": str}
         """
         avid = content_id.upper().replace("_", "-")
-        # 按"速度 + 命中率"排序。rou.video 覆盖广且无 CF 几秒就出结果,放最优先;
-        # jable/missav 走 FlareSolverr 解 CF 比较慢,作 fallback。
-        # memo 已移除:get_video_info.php API 永久返回 success:false / type:deleted,
-        # 不是反爬而是上游撤掉了按番号查询入口,代码层无解。
         sites = [
             ("rou_video", self._search_rou_video),
             ("jable", self._search_jable),
@@ -50,17 +54,39 @@ class M3U8Source:
             ("kanav", self._search_kanav),
             ("hohoj", self._search_hohoj),
         ]
+        attempts: list[dict] = []
         for name, search_fn in sites:
+            t0 = time.time()
             try:
                 result = await search_fn(avid)
-                if result:
-                    result["source"] = name
-                    logger.info(f"m3u8 found for {avid} on {name}: {result['m3u8_url'][:80]}...")
-                    return result
             except Exception as e:
+                elapsed_ms = int((time.time() - t0) * 1000)
+                attempts.append({
+                    "source": name,
+                    "status": "error",
+                    "elapsed_ms": elapsed_ms,
+                    "detail": f"{type(e).__name__}: {str(e)[:120]}",
+                })
                 logger.warning(f"m3u8 search failed on {name} for {avid}: {e}")
                 continue
-        return None
+            elapsed_ms = int((time.time() - t0) * 1000)
+            if result:
+                result["source"] = name
+                attempts.append({
+                    "source": name,
+                    "status": "ok",
+                    "elapsed_ms": elapsed_ms,
+                    "detail": "",
+                })
+                logger.info(f"m3u8 found for {avid} on {name}: {result['m3u8_url'][:80]}...")
+                return result, attempts
+            attempts.append({
+                "source": name,
+                "status": "no_result",
+                "elapsed_ms": elapsed_ms,
+                "detail": "未匹配到番号 / 上游未收录",
+            })
+        return None, attempts
 
     # ── Jable (weight 1500) ──────────────────────────────────────
 
@@ -274,28 +300,43 @@ class M3U8Source:
     # ── HohoJ (weight 400) ───────────────────────────────────────
 
     async def _search_hohoj(self, avid: str) -> Optional[dict]:
-        """hohoj.tv — 搜索 → 嵌入页 → videoSrc"""
+        """hohoj.tv — 搜索 → 嵌入页 → videoSrc。
+
+        老实现取了"第一个 [?&]id=(\\d+)"作为视频 id,在 hohoj 没命中番号但返回擦边
+        结果(比如搜 STARS-001 实际得到 020624-001 / IKUNA-001 卡片)时会错播。
+        这里改成必须在 video-item 卡片的 <img alt="..."> 第一个 token 上严格
+        匹配 avid (大小写不敏感、忽略短横线),没有严格命中就视为 NO_RESULT。
+        """
         search_url = f"https://hohoj.tv/search?text={avid.lower()}"
         headers = {**HEADERS, "Referer": "https://hohoj.tv/"}
 
         async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
-            # 搜索
             resp = await client.get(search_url, headers=headers)
             if resp.status_code != 200:
                 return None
+            search_html = resp.text
 
-            m = re.search(r'[?&]id=(\d+)', resp.text)
-            if not m:
-                return None
+        avid_norm = avid.upper().replace("-", "").replace("_", "")
+        # 每个卡片: href="/video?id={vid}"  ... <img ... alt="{番号} {标题}">
+        card_re = re.compile(
+            r'href="/video\?id=(\d+)"[^<]*<img[^>]+alt="([^"]+)"',
+            re.IGNORECASE | re.DOTALL,
+        )
+        video_id: Optional[str] = None
+        title = avid
+        for m in card_re.finditer(search_html):
+            alt = m.group(2).strip()
+            first_token = alt.split()[0] if alt.split() else ""
+            if first_token.upper().replace("-", "").replace("_", "") == avid_norm:
+                video_id = m.group(1)
+                title = alt
+                break
+        if not video_id:
+            return None
 
-            video_id = m.group(1)
-
-            # 嵌入页
-            embed_url = f"https://hohoj.tv/embed?id={video_id}"
-            embed_headers = {
-                **headers,
-                "Referer": f"https://hohoj.tv/video?id={video_id}",
-            }
+        embed_url = f"https://hohoj.tv/embed?id={video_id}"
+        embed_headers = {**headers, "Referer": f"https://hohoj.tv/video?id={video_id}"}
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
             resp2 = await client.get(embed_url, headers=embed_headers)
             if resp2.status_code != 200:
                 return None
@@ -305,4 +346,4 @@ class M3U8Source:
         if not m2:
             return None
 
-        return {"m3u8_url": m2.group(1), "title": avid}
+        return {"m3u8_url": m2.group(1), "title": title}

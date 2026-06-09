@@ -558,11 +558,22 @@ export default {
           ElMessage.info('未找到播放地址')
         }
       } catch (e) {
-        console.error('Get stream URL failed:', e)
-        ElMessage.error('获取播放地址失败')
+        console.error('Get stream URL failed:', e, e.response?.data)
+        ElMessage.error(this.formatStreamFailure(e))
       } finally {
         this.streamLoading = false
       }
+    },
+    formatStreamFailure(e) {
+      const attempts = e?.response?.data?.detail?.attempts
+      if (!Array.isArray(attempts) || attempts.length === 0) return '获取播放地址失败'
+      const counts = { no_result: 0, error: 0 }
+      for (const a of attempts) counts[a.status] = (counts[a.status] || 0) + 1
+      const sources = attempts.map(a => a.source).join('/')
+      if (counts.no_result === attempts.length) return `所有源都未收录该番号(${sources})`
+      if (counts.error === attempts.length) return `所有源都请求失败,请检查 FlareSolverr/网络(${sources})`
+      const errSources = attempts.filter(a => a.status === 'error').map(a => a.source)
+      return `未找到播放地址。失败源: ${errSources.join('/') || '无'};其余未收录`
     },
     async waitForStreamVideoEl() {
       for (let i = 0; i < 20; i += 1) {
@@ -642,8 +653,8 @@ export default {
           ElMessage.info('未找到播放地址')
         }
       } catch (e) {
-        console.error('Get stream URL failed:', e)
-        ElMessage.error('获取播放地址失败')
+        console.error('Get stream URL failed:', e, e.response?.data)
+        ElMessage.error(this.formatStreamFailure(e))
       } finally {
         this.streamLoading = false
       }

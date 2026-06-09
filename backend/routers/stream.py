@@ -181,13 +181,17 @@ async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts U
 
 @router.get("/{content_id}")
 async def get_stream_url(content_id: str) -> dict[str, Any]:
-    """获取影片的 m3u8 播放地址"""
+    """获取影片的 m3u8 播放地址,返回时附带每个源站的尝试明细供前端展示。"""
     from sources.m3u8_source import M3U8Source
     source = M3U8Source()
-    result = await source.search_m3u8(content_id)
+    result, attempts = await source.search_m3u8(content_id)
     if not result:
-        raise HTTPException(status_code=404, detail="未找到播放地址")
-    return {"data": result}
+        # FastAPI 序列化 dict 到 response.detail,前端可读 attempts 给精确提示
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "未找到播放地址", "attempts": attempts},
+        )
+    return {"data": result, "attempts": attempts}
 
 
 class TransferRequest(BaseModel):
