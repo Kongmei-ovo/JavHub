@@ -27,6 +27,7 @@
           >{{ speedOption === 1 ? '1x' : speedOption + 'x' }}</button>
         </div>
       </div>
+      <slot name="extras" />
     </div>
   </div>
 </template>

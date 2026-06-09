@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import httpx
 import json
 import re
 import logging
 import time
-from typing import Optional, Tuple
+from typing import AsyncIterator, Optional, Tuple
 from urllib.parse import unquote
 
 from config import Config
@@ -88,6 +89,68 @@ class M3U8Source:
             })
         return None, attempts
 
+    def _sites(self) -> list[tuple[str, "Callable"]]:
+        # 与 search_m3u8 的"按速度+命中率"顺序保持一致;流式接口靠 as_completed
+        # 调度,顺序仅决定 _create_task 时刻,实际谁先完成谁先冒出来。
+        return [
+            ("rou_video", self._search_rou_video),
+            ("jable", self._search_jable),
+            ("missav", self._search_missav),
+            ("kanav", self._search_kanav),
+            ("hohoj", self._search_hohoj),
+        ]
+
+    async def stream_sources(self, content_id: str) -> AsyncIterator[dict]:
+        """并发跑所有源,谁先出结果谁先 yield。
+
+        每条 yield 一个 dict:
+          {"source", "status": "ok|no_result|error", "elapsed_ms",
+           "m3u8_url"?, "page_url"?, "title"?, "detail"?}
+
+        最后 yield 一条 {"source": "_done", "status": "done"} 标记结束,
+        router 那层用来决定关闭 SSE 流。
+        """
+        avid = content_id.upper().replace("_", "-")
+
+        async def runner(name: str, fn) -> dict:
+            t0 = time.time()
+            try:
+                result = await fn(avid)
+            except Exception as e:
+                return {
+                    "source": name,
+                    "status": "error",
+                    "elapsed_ms": int((time.time() - t0) * 1000),
+                    "detail": f"{type(e).__name__}: {str(e)[:160]}",
+                }
+            elapsed_ms = int((time.time() - t0) * 1000)
+            if not result:
+                return {
+                    "source": name,
+                    "status": "no_result",
+                    "elapsed_ms": elapsed_ms,
+                    "detail": "未匹配到番号 / 上游未收录",
+                }
+            return {
+                "source": name,
+                "status": "ok",
+                "elapsed_ms": elapsed_ms,
+                "m3u8_url": result.get("m3u8_url"),
+                "title": result.get("title") or avid,
+                "page_url": result.get("page_url"),
+            }
+
+        tasks = [asyncio.create_task(runner(name, fn)) for name, fn in self._sites()]
+        try:
+            for coro in asyncio.as_completed(tasks):
+                yield await coro
+            yield {"source": "_done", "status": "done"}
+        finally:
+            # 客户端断开时取消尚未完成的任务,不再浪费 FlareSolverr
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+
     # ── Jable (weight 1500) ──────────────────────────────────────
 
     async def _search_jable(self, avid: str) -> Optional[dict]:
@@ -110,7 +173,7 @@ class M3U8Source:
         title_m = re.search(r"<title>(.*?)</title>", html)
         title = title_m.group(1).strip() if title_m else avid
 
-        return {"m3u8_url": m.group(1), "title": title}
+        return {"m3u8_url": m.group(1), "title": title, "page_url": url}
 
     # ── MissAV (weight 1000) ─────────────────────────────────────
 
@@ -125,10 +188,12 @@ class M3U8Source:
         headers = {**HEADERS, "Referer": "https://missav.ai/"}
 
         html = None
+        page_url: Optional[str] = None
         for url in urls:
             solved = await fetch_with_cf_solver(url, referer="https://missav.ai/")
             if solved and "m3u8" in solved:
                 html = solved
+                page_url = url
                 break
         if html is None:
             async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
@@ -137,6 +202,7 @@ class M3U8Source:
                         resp = await client.get(url, headers=headers)
                         if resp.status_code == 200 and "m3u8" in resp.text:
                             html = resp.text
+                            page_url = url
                             break
                     except Exception:
                         continue
@@ -161,7 +227,7 @@ class M3U8Source:
         title_m = re.search(r"<title>(.*?)</title>", html)
         title = title_m.group(1).strip() if title_m else avid
 
-        return {"m3u8_url": m3u8_url, "title": title}
+        return {"m3u8_url": m3u8_url, "title": title, "page_url": page_url}
 
     async def _get_highest_quality_m3u8(self, master_url: str, headers: dict) -> Optional[str]:
         """解析 master playlist，返回最高画质的 stream URL"""
@@ -251,7 +317,7 @@ class M3U8Source:
         video_url = payload.get("videoUrl")
         if not video_url:
             return None
-        return {"m3u8_url": video_url, "title": title}
+        return {"m3u8_url": video_url, "title": title, "page_url": f"https://rou.video/v/{cuid}"}
 
     # ── KanAV (weight 490) ───────────────────────────────────────
 
@@ -295,7 +361,7 @@ class M3U8Source:
         except Exception:
             return None
 
-        return {"m3u8_url": m3u8_url, "title": avid}
+        return {"m3u8_url": m3u8_url, "title": avid, "page_url": play_url}
 
     # ── HohoJ (weight 400) ───────────────────────────────────────
 
@@ -346,4 +412,4 @@ class M3U8Source:
         if not m2:
             return None
 
-        return {"m3u8_url": m2.group(1), "title": title}
+        return {"m3u8_url": m2.group(1), "title": title, "page_url": f"https://hohoj.tv/video?id={video_id}"}

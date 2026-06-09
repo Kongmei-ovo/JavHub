@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 from urllib.parse import urljoin, quote, urlparse
 import ipaddress
 import httpx
+import json
 import re
 import logging
 import socket
@@ -172,8 +173,15 @@ async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts U
             content_type = resp.headers.get("content-type", "application/octet-stream")
             body = resp.content
 
-            # m3u8: 重写相对路径为代理绝对路径
-            if url.endswith(".m3u8") or "mpegurl" in content_type.lower():
+            # m3u8 识别: 不能只看后缀(rou.video 把 m3u8 命名为 index.jpg 反盗链),
+            # 也不能只信 content-type(rn{N}.xyz 跨站访问会返回 text/plain 甚至
+            # image/jpeg)。直接看 body 是不是以 #EXTM3U 开头 — HLS spec 强制头。
+            looks_like_m3u8 = (
+                body.lstrip()[:7] == b"#EXTM3U"
+                or url.endswith(".m3u8")
+                or "mpegurl" in content_type.lower()
+            )
+            if looks_like_m3u8:
                 content_type = "application/vnd.apple.mpegurl"
                 text = body.decode("utf-8", errors="replace")
                 base_url = url.rsplit("/", 1)[0] + "/"
@@ -214,9 +222,33 @@ async def proxy_stream(url: str = Query(..., description="要代理的 m3u8/ts U
         raise HTTPException(status_code=502, detail="代理请求失败")
 
 
+@router.get("/sources/{content_id}")
+async def stream_sources(content_id: str) -> StreamingResponse:
+    """SSE 流式返回所有源站的搜索结果,谁先出谁先发,前端边收边渲染。
+
+    每条 event: data: {"source", "status", "elapsed_ms", "m3u8_url"?, "title"?, "page_url"?, "detail"?}
+    结束 event: data: {"source": "_done", "status": "done"}
+    """
+    from sources.m3u8_source import M3U8Source
+
+    async def event_stream() -> AsyncIterator[bytes]:
+        source = M3U8Source()
+        async for item in source.stream_sources(content_id):
+            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n".encode("utf-8")
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # 防 nginx 缓冲
+        },
+    )
+
+
 @router.get("/{content_id}")
 async def get_stream_url(content_id: str) -> dict[str, Any]:
-    """获取影片的 m3u8 播放地址,返回时附带每个源站的尝试明细供前端展示。"""
+    """获取影片的 m3u8 播放地址,返回时附带每个源站的尝试明细供前端展示(单源·向后兼容)。"""
     from sources.m3u8_source import M3U8Source
     source = M3U8Source()
     result, attempts = await source.search_m3u8(content_id)

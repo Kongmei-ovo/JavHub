@@ -298,7 +298,16 @@
         :speed="streamSpeed"
         @close="closeStreamPlayer"
         @speed="setStreamSpeed"
-      />
+      >
+        <template #extras>
+          <StreamSourcePicker
+            :sources="streamSources"
+            :current="currentSourceName"
+            :scan-done="streamScanDone"
+            @switch="switchStreamSource"
+          />
+        </template>
+      </HlsPlayerOverlay>
     </div>
   </teleport>
 </template>
@@ -314,9 +323,11 @@ import api, { formatApiError } from '../api'
 import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
+import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '../features/video/streamSourcesHelper.js'
 
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
+const StreamSourcePicker = defineAsyncComponent(() => import('../features/video/StreamSourcePicker.vue'))
 
 function videoFavoriteId(video = {}) {
   const id = video.content_id || video.dvd_id
@@ -326,7 +337,7 @@ function videoFavoriteId(video = {}) {
 
 export default {
   name: 'VideoModal',
-  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
+  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay, StreamSourcePicker },
   emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },
@@ -344,6 +355,10 @@ export default {
       streamM3u8Url: '',
       streamSpeed: 1,
       hlsInstance: null,
+      streamSession: null,
+      streamSources: [],
+      streamScanDone: false,
+      currentSourceName: '',
       // P1-2: subBusy is a Set re-assigned on each mutation so Vue re-renders.
       subBusy: new Set(),
     }
@@ -542,38 +557,33 @@ export default {
     prevGallery() { if (!this.galleryThumbs.length) return; this.currentGalleryIndex = (this.currentGalleryIndex - 1 + this.galleryThumbs.length) % this.galleryThumbs.length },
     nextGallery() { if (!this.galleryThumbs.length) return; this.currentGalleryIndex = (this.currentGalleryIndex + 1) % this.galleryThumbs.length },
     onGalleryKeydown(e) { if (e.key === 'Escape') this.closeGalleryViewer(); if (e.key === 'ArrowLeft') this.prevGallery(); if (e.key === 'ArrowRight') this.nextGallery() },
-    async playStream() {
+    playStream() {
       const code = this.video?.dvd_id || this.video?.content_id
       if (!code) return
+      this.closeStreamSession()
       this.streamLoading = true
-      try {
-        const resp = await api.getStreamUrl(code)
-        const m3u8Url = resp.data?.data?.m3u8_url
-        if (m3u8Url) {
-          // 走后端代理，绕过 CORS
-          this.streamM3u8Url = `/api/v1/stream/proxy?url=${encodeURIComponent(m3u8Url)}`
-          this.streamPlayerVisible = true
-          this.$nextTick(() => this.initHlsPlayer())
-        } else {
-          ElMessage.info('未找到播放地址')
-        }
-      } catch (e) {
-        console.error('Get stream URL failed:', e, e.response?.data)
-        ElMessage.error(this.formatStreamFailure(e))
-      } finally {
-        this.streamLoading = false
-      }
+      this.streamSources = []
+      this.streamScanDone = false
+      this.currentSourceName = ''
+      this.streamM3u8Url = ''
+      this.streamPlayerVisible = true
+      this.streamSession = createStreamSession({
+        code,
+        onItem: (item) => this.streamSources.push(item),
+        onFirstOk: (item) => this.switchStreamSource(item.source),
+        onDone: () => { this.streamScanDone = true; this.streamLoading = false; this.streamSession = null },
+        onAllError: (sources) => { this.streamPlayerVisible = false; ElMessage.error(formatStreamFailure(sources)) },
+      })
     },
-    formatStreamFailure(e) {
-      const attempts = e?.response?.data?.detail?.attempts
-      if (!Array.isArray(attempts) || attempts.length === 0) return '获取播放地址失败'
-      const counts = { no_result: 0, error: 0 }
-      for (const a of attempts) counts[a.status] = (counts[a.status] || 0) + 1
-      const sources = attempts.map(a => a.source).join('/')
-      if (counts.no_result === attempts.length) return `所有源都未收录该番号(${sources})`
-      if (counts.error === attempts.length) return `所有源都请求失败,请检查 FlareSolverr/网络(${sources})`
-      const errSources = attempts.filter(a => a.status === 'error').map(a => a.source)
-      return `未找到播放地址。失败源: ${errSources.join('/') || '无'};其余未收录`
+    switchStreamSource(sourceName) {
+      const item = this.streamSources.find(s => s.source === sourceName && s.status === 'ok')
+      if (!item || !item.m3u8_url) return
+      this.currentSourceName = sourceName
+      this.streamM3u8Url = `/api/v1/stream/proxy?url=${encodeURIComponent(item.m3u8_url)}`
+      this.$nextTick(() => this.initHlsPlayer())
+    },
+    closeStreamSession() {
+      if (this.streamSession) { this.streamSession.close(); this.streamSession = null }
     },
     async waitForStreamVideoEl() {
       for (let i = 0; i < 20; i += 1) {
@@ -622,46 +632,40 @@ export default {
       }
     },
     closeStreamPlayer() {
-      if (this.hlsInstance) {
-        this.hlsInstance.destroy()
-        this.hlsInstance = null
-      }
+      this.closeStreamSession()
+      if (this.hlsInstance) { this.hlsInstance.destroy(); this.hlsInstance = null }
       this.streamPlayerVisible = false
       this.streamM3u8Url = ''
+      this.streamSources = []
+      this.streamScanDone = false
+      this.currentSourceName = ''
+      this.streamLoading = false
     },
     setStreamSpeed(speed) {
       this.streamSpeed = speed
       const video = this.streamVideoEl()
       if (video) video.playbackRate = speed
     },
-    async downloadStream() {
+    downloadStream() {
       const code = this.video?.dvd_id || this.video?.content_id
       if (!code) return
       this.streamLoading = true
-      try {
-        const resp = await api.getStreamUrl(code)
-        const m3u8Url = resp.data?.data?.m3u8_url
-        if (m3u8Url) {
-          const a = document.createElement('a')
-          a.href = m3u8Url
-          a.download = `${this.video.dvd_id || this.video.content_id}.m3u8`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          ElMessage.success('m3u8 下载已开始')
-        } else {
-          ElMessage.info('未找到播放地址')
-        }
-      } catch (e) {
-        console.error('Get stream URL failed:', e, e.response?.data)
-        ElMessage.error(this.formatStreamFailure(e))
-      } finally {
-        this.streamLoading = false
-      }
+      let session
+      session = createStreamSession({
+        code,
+        onFirstOk: (item) => {
+          triggerM3u8Download(item.m3u8_url, code)
+          ElMessage.success(`m3u8 下载已开始 (源: ${item.source})`)
+          this.streamLoading = false
+          session?.close()
+        },
+        onAllError: (sources) => { this.streamLoading = false; ElMessage.error(formatStreamFailure(sources)) },
+      })
     },
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.onGalleryKeydown)
+    this.closeStreamSession()
     if (this.hlsInstance) {
       this.hlsInstance.destroy()
       this.hlsInstance = null
