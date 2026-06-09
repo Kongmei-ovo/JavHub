@@ -209,6 +209,14 @@ automation:
   max_auto_downloads_per_run: 20
   max_auto_downloads_per_24h: 100
 
+stream:
+  # FlareSolverr 服务地址(无头浏览器解 Cloudflare challenge),
+  # 留空则只有 memo/kanav/hohoj 能用,jable/missav 全 403。
+  # 跑法: docker run -d -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+  cf_solver_url: "http://flaresolverr:8191/v1"
+  # 出墙代理(httpx 直连分支用,FlareSolverr 自己走容器网络);留空不走代理。
+  proxy: ""
+
 notification:
   enabled: false
   telegram: true

@@ -165,6 +165,14 @@ class Config:
         return self._config.get('telegram', {})
 
     @property
+    def stream_cf_solver_url(self) -> str:
+        return _env('FLARESOLVERR_URL', self._config.get('stream', {}).get('cf_solver_url', ''))
+
+    @property
+    def stream_proxy(self) -> str:
+        return _first_env(self._config.get('stream', {}).get('proxy', ''), 'STREAM_PROXY', 'HTTPS_PROXY')
+
+    @property
     def openlist(self) -> dict:
         return self._config.get('openlist', {})
 

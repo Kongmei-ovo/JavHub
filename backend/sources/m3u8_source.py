@@ -6,6 +6,9 @@ import logging
 from typing import Optional
 from urllib.parse import unquote
 
+from config import Config
+from services.cf_solver import fetch_with_cf_solver
+
 logger = logging.getLogger(__name__)
 
 HEADERS = {
@@ -13,6 +16,11 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
+
+
+def _proxy() -> Optional[str]:
+    proxy = Config().stream_proxy.strip()
+    return proxy or None
 
 
 class M3U8Source:
@@ -52,15 +60,17 @@ class M3U8Source:
     # ── Jable (weight 1500) ──────────────────────────────────────
 
     async def _search_jable(self, avid: str) -> Optional[dict]:
-        """jable.tv — 直接从页面 JS 提取 hlsUrl"""
+        """jable.tv — Cloudflare 站,优先走 FlareSolverr 解 challenge,失败再 fallback httpx。"""
         url = f"https://jable.tv/videos/{avid.lower()}/"
         headers = {**HEADERS, "Referer": "https://jable.tv/"}
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code != 200:
-                return None
-            html = resp.text
+        html = await fetch_with_cf_solver(url, referer="https://jable.tv/")
+        if html is None:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
+                resp = await client.get(url, headers=headers)
+                if resp.status_code != 200:
+                    return None
+                html = resp.text
 
         m = re.search(r"var hlsUrl\s*=\s*'(https?://[^']+)'", html)
         if not m:
@@ -74,7 +84,7 @@ class M3U8Source:
     # ── MissAV (weight 1000) ─────────────────────────────────────
 
     async def _search_missav(self, avid: str) -> Optional[dict]:
-        """missav.ai — UUID 提取 → surrit.com master playlist → 最高画质"""
+        """missav.ai — Cloudflare 站,优先 FlareSolverr;失败再 fallback httpx。UUID → surrit master → 最高画质。"""
         urls = [
             f"https://missav.ai/cn/{avid.lower()}-chinese-subtitle",
             f"https://missav.ai/cn/{avid.lower()}-uncensored-leak",
@@ -84,15 +94,21 @@ class M3U8Source:
         headers = {**HEADERS, "Referer": "https://missav.ai/"}
 
         html = None
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            for url in urls:
-                try:
-                    resp = await client.get(url, headers=headers)
-                    if resp.status_code == 200 and "m3u8" in resp.text:
-                        html = resp.text
-                        break
-                except Exception:
-                    continue
+        for url in urls:
+            solved = await fetch_with_cf_solver(url, referer="https://missav.ai/")
+            if solved and "m3u8" in solved:
+                html = solved
+                break
+        if html is None:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
+                for url in urls:
+                    try:
+                        resp = await client.get(url, headers=headers)
+                        if resp.status_code == 200 and "m3u8" in resp.text:
+                            html = resp.text
+                            break
+                    except Exception:
+                        continue
 
         if not html:
             return None
@@ -118,7 +134,7 @@ class M3U8Source:
 
     async def _get_highest_quality_m3u8(self, master_url: str, headers: dict) -> Optional[str]:
         """解析 master playlist，返回最高画质的 stream URL"""
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True, proxy=_proxy()) as client:
             resp = await client.get(master_url, headers=headers)
             if resp.status_code != 200:
                 return None
@@ -151,7 +167,7 @@ class M3U8Source:
         url = f"https://memojav.com/hls/get_video_info.php?id={avid.lower()}&sig=NTg1NTczNg&sts=7264825"
         headers = {**HEADERS, "Referer": "https://memojav.com/"}
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code != 200:
                 return None
@@ -173,7 +189,7 @@ class M3U8Source:
         search_url = f"https://kanav.info/index.php/vod/search.html?wd={avid.lower()}&by=time_add"
         headers = {**HEADERS, "Referer": "https://kanav.info/"}
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
             # 搜索
             resp = await client.get(search_url, headers=headers)
             if resp.status_code != 200:
@@ -209,7 +225,7 @@ class M3U8Source:
         search_url = f"https://hohoj.tv/search?text={avid.lower()}"
         headers = {**HEADERS, "Referer": "https://hohoj.tv/"}
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
             # 搜索
             resp = await client.get(search_url, headers=headers)
             if resp.status_code != 200:
