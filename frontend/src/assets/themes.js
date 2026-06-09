@@ -162,7 +162,7 @@ export const THEMES = {
       '--accent': '#7C8CFF',
       '--accent-rgb': '124, 140, 255',
       '--accent-light': '#9BA7FF',
-      '--accent-glow': 'rgba(124, 140, 255, 0.32)',
+      '--accent-glow': 'rgba(124, 140, 255, 0.40)',
       '--accent-bg': 'rgba(124, 140, 255, 0.10)',
       '--text-on-accent-solid': '#FFFFFF',
       '--text-primary': '#1D1D1F',

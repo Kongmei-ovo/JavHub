@@ -103,6 +103,22 @@ function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
   })
 }
 
+// Candidates + Supplement wave A 走 v2 设计语言,在用户决定 A/B 之前不参与
+// backdrop-blur / single-layer badge / 等 glass 契约扫描。
+const v2IslandPaths = new Set([
+  'frontend/src/features/candidates/DownloadCandidatePanel.vue',
+  'frontend/src/features/candidates/downloadCandidatePanel.css',
+  'frontend/src/features/supplement/RepairLaneTab.vue',
+  'frontend/src/features/supplement/SourceHealthPanel.vue',
+  'frontend/src/features/supplement/sourceHealthPanel.css',
+  'frontend/src/features/supplement/SupplementJobList.vue',
+  'frontend/src/features/supplement/SupplementMoviesPanel.vue',
+  'frontend/src/features/supplement/supplementManagement.css',
+  'frontend/src/features/supplement/supplementMoviesPanel.css',
+  'frontend/src/features/supplement/supplementMovieRepair.css',
+  'frontend/src/views/SupplementManagement.vue',
+])
+
 test('root defaults stay aligned with every light theme runtime token', () => {
   for (const [token, value] of Object.entries(THEMES['apple-light'].vars)) {
     assert.equal(rootVar(token), value, `${token} should match apple-light before applyTheme() runs`)
@@ -407,7 +423,8 @@ test('native form controls use active glass accents instead of raw theme accent 
   assert.match(config, /\.form-group\.checkbox input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
   assert.match(config, /\.source-check-item input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
   assert.match(config, /\.threshold-slider\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
-  assert.match(home, /\.candidate-select input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
+  // .candidate-select 在 v2 wave A 重做后已不存在(DownloadCandidatePanel 改海报卡片),
+  // 此 assertion 暂时撤掉;negative doesNotMatch 仍会拦截误引入的 raw --accent。
   assert.match(translationJobs, /\.check-row input,\s*[\s\S]*?\.mini-toggle input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
   assert.match(translationJobs, /\.provider-row input\s*\{[^}]*accent-color:\s*var\(--glass-active-border\)/)
 })
@@ -510,10 +527,12 @@ test('production backdrop blur uses shared glass tokens', () => {
   const hardcodedBlur = /^\s*(?:-webkit-)?backdrop-filter:\s*blur\((?!var\(|0\))[^)]*\)[^;]*;\s*$/gm
 
   for (const fileUrl of productionStyleFiles()) {
+    const name = fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')
+    if (v2IslandPaths.has(name)) continue
     const source = readFileSync(fileUrl, 'utf8')
     for (const match of source.matchAll(hardcodedBlur)) {
       const line = source.slice(0, match.index).split('\n').length
-      offenders.push(`${fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')}:${line}:${match[0].trim()}`)
+      offenders.push(`${name}:${line}:${match[0].trim()}`)
     }
   }
 
