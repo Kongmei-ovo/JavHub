@@ -183,28 +183,34 @@ class M3U8Source:
     # ── KanAV (weight 490) ───────────────────────────────────────
 
     async def _search_kanav(self, avid: str) -> Optional[dict]:
-        """kanav.info — 搜索 → 播放页 → base64+URL 解码 m3u8"""
+        """kanav.info — Cloudflare 站,搜索页与播放页都走 FlareSolverr;失败再 fallback httpx。"""
         import base64
 
         search_url = f"https://kanav.info/index.php/vod/search.html?wd={avid.lower()}&by=time_add"
         headers = {**HEADERS, "Referer": "https://kanav.info/"}
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
-            # 搜索
-            resp = await client.get(search_url, headers=headers)
-            if resp.status_code != 200:
-                return None
+        search_html = await fetch_with_cf_solver(search_url, referer="https://kanav.info/")
+        play_html: Optional[str] = None
+        if search_html is None:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
+                resp = await client.get(search_url, headers=headers)
+                if resp.status_code != 200:
+                    return None
+                search_html = resp.text
 
-            m = re.search(r'href="(/index\.php/vod/play[^"]*\.html)"', resp.text)
-            if not m:
-                return None
+        m = re.search(r'href="(/index\.php/vod/play[^"]*\.html)"', search_html)
+        if not m:
+            return None
 
-            # 播放页
-            play_url = f"https://kanav.info{m.group(1)}"
-            resp2 = await client.get(play_url, headers=headers)
-            if resp2.status_code != 200:
-                return None
-            html = resp2.text
+        play_url = f"https://kanav.info{m.group(1)}"
+        play_html = await fetch_with_cf_solver(play_url, referer=search_url)
+        if play_html is None:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
+                resp2 = await client.get(play_url, headers=headers)
+                if resp2.status_code != 200:
+                    return None
+                play_html = resp2.text
+        html = play_html
 
         m2 = re.search(r'"url":"([A-Za-z0-9+/=]*)"', html)
         if not m2:
