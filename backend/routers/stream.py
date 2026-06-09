@@ -14,16 +14,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/stream", tags=["stream"])
 
 # ── SSRF 防护 ─────────────────────────────────────────────────────
-
+# 源站 + 它们对应的 m3u8 CDN。新加源时要么追加到这个集合(代码里),
+# 要么走 config.stream.extra_allowed_domains(运维不动代码)。
 ALLOWED_STREAM_DOMAINS = {
-    "jable.tv", "missav.ai", "surrit.com", "memojav.com",
-    "kanav.info", "hohoj.tv", "mushroomtrack.com", "ggjav.com",
+    # 源站本身
+    "jable.tv", "missav.ai", "memojav.com", "kanav.info", "hohoj.tv", "rou.video",
+    # m3u8 CDN
+    "surrit.com",          # missav
+    "mushroomtrack.com",   # jable
+    "ggjav.com",           # hohoj
+    "11yun.space",         # kanav
 }
+
+# rou.video 的 m3u8 CDN 是 rn{NNN}.xyz 的滚动域名(rn244 / rn245 / rn246 / rn247 …),
+# 单独枚举挂不住,用正则覆盖整族。新发现的滚动域命名规律也加这里。
+ALLOWED_STREAM_DOMAIN_PATTERNS = (
+    re.compile(r"^(?:[\w-]+\.)?rn\d+\.xyz$"),  # rou.video 系列 CDN
+)
 
 STREAM_REFERER_BY_DOMAIN = {
     "surrit.com": "https://missav.ai/",
     "ggjav.com": "https://hohoj.tv/",
+    "mushroomtrack.com": "https://jable.tv/",
+    "11yun.space": "https://kanav.info/",
 }
+
+# rou.video 的 CDN 滚动域名,Referer 要带回 rou.video
+STREAM_REFERER_BY_PATTERN = (
+    (re.compile(r"^(?:[\w-]+\.)?rn\d+\.xyz$"), "https://rou.video/"),
+)
 
 PROXY_FAKE_IP_NETWORKS = (
     ipaddress.ip_network("198.18.0.0/15"),
@@ -33,10 +52,23 @@ MAX_REDIRECTS = 5
 
 
 def _is_allowed_stream_domain(hostname: str) -> bool:
-    return any(
-        hostname == domain or hostname.endswith(f".{domain}")
-        for domain in ALLOWED_STREAM_DOMAINS
-    )
+    # 1) 内置常量(含子域)
+    for domain in ALLOWED_STREAM_DOMAINS:
+        if hostname == domain or hostname.endswith(f".{domain}"):
+            return True
+    # 2) 内置正则(覆盖 rn\d+.xyz 之类滚动 CDN)
+    for pattern in ALLOWED_STREAM_DOMAIN_PATTERNS:
+        if pattern.match(hostname):
+            return True
+    # 3) config.stream.extra_allowed_domains 追加(运维侧热加,不动代码)
+    try:
+        from config import Config
+        for extra in Config().stream_extra_allowed_domains:
+            if hostname == extra or hostname.endswith(f".{extra}"):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
@@ -101,6 +133,9 @@ def _referer_for_stream_url(url: str) -> str:
     hostname = (parsed.hostname or "").lower().rstrip(".")
     for domain, referer in STREAM_REFERER_BY_DOMAIN.items():
         if hostname == domain or hostname.endswith(f".{domain}"):
+            return referer
+    for pattern, referer in STREAM_REFERER_BY_PATTERN:
+        if pattern.match(hostname):
             return referer
     return "/".join(url.split("/")[:3]) + "/"
 

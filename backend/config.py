@@ -173,6 +173,14 @@ class Config:
         return _first_env(self._config.get('stream', {}).get('proxy', ''), 'STREAM_PROXY', 'HTTPS_PROXY')
 
     @property
+    def stream_extra_allowed_domains(self) -> list[str]:
+        """补充进 /stream/proxy 域名白名单(不会替换内置常量,只追加)。"""
+        raw = self._config.get('stream', {}).get('extra_allowed_domains') or []
+        if isinstance(raw, str):
+            raw = [item.strip() for item in raw.split(',') if item.strip()]
+        return [str(item).lower().strip('.') for item in raw if str(item).strip()]
+
+    @property
     def openlist(self) -> dict:
         return self._config.get('openlist', {})
 

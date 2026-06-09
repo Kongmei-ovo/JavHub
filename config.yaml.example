@@ -211,11 +211,16 @@ automation:
 
 stream:
   # FlareSolverr 服务地址(无头浏览器解 Cloudflare challenge),
-  # 留空则只有 memo/kanav/hohoj 能用,jable/missav 全 403。
+  # 留空则 jable/missav/kanav 直接 403,只有 rou.video 与 hohoj 能用。
   # 跑法: docker run -d -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
   cf_solver_url: "http://flaresolverr:8191/v1"
   # 出墙代理(httpx 直连分支用,FlareSolverr 自己走容器网络);留空不走代理。
   proxy: ""
+  # /stream/proxy 域名白名单的运维侧追加。新发现的 m3u8 CDN 域名可以
+  # 写这里(支持子域,无需 schema),不用动代码;内置列表已覆盖当前所有源站。
+  # extra_allowed_domains:
+  #   - some-new-cdn.example
+  #   - foo.bar.tv
 
 notification:
   enabled: false
