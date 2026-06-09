@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import httpx
+import json
 import re
 import logging
 from typing import Optional
@@ -37,11 +39,14 @@ class M3U8Source:
             {"m3u8_url": "...", "title": "...", "source": "..."} or None
         """
         avid = content_id.upper().replace("_", "-")
-        # 按权重排序的站点列表
+        # 按"速度 + 命中率"排序。rou.video 覆盖广且无 CF 几秒就出结果,放最优先;
+        # jable/missav 走 FlareSolverr 解 CF 比较慢,作 fallback。
+        # memo 已移除:get_video_info.php API 永久返回 success:false / type:deleted,
+        # 不是反爬而是上游撤掉了按番号查询入口,代码层无解。
         sites = [
+            ("rou_video", self._search_rou_video),
             ("jable", self._search_jable),
             ("missav", self._search_missav),
-            ("memo", self._search_memo),
             ("kanav", self._search_kanav),
             ("hohoj", self._search_hohoj),
         ]
@@ -160,25 +165,67 @@ class M3U8Source:
 
         return best_url
 
-    # ── Memo (weight 600) ────────────────────────────────────────
+    # ── rou.video (覆盖之王,实测 4/4) ──────────────────────────────
 
-    async def _search_memo(self, avid: str) -> Optional[dict]:
-        """memojav.com — API 调用，返回 URL-encoded m3u8"""
-        url = f"https://memojav.com/hls/get_video_info.php?id={avid.lower()}&sig=NTg1NTczNg&sts=7264825"
-        headers = {**HEADERS, "Referer": "https://memojav.com/"}
+    async def _search_rou_video(self, avid: str) -> Optional[dict]:
+        """rou.video — Next.js 站,搜索拿 cuid → 详情页 ev 字段 base64+char-shift 解出 videoUrl。
 
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True, proxy=_proxy()) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code != 200:
+        参考 milon4999/test/scrapers/rouvideo/scraper.py。无 CF challenge,直接 httpx 即可。
+        """
+        next_data_re = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.DOTALL)
+        headers = {**HEADERS, "Referer": "https://rou.video/"}
+
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, proxy=_proxy()) as client:
+            r1 = await client.get(f"https://rou.video/search?q={avid.lower()}", headers=headers)
+            if r1.status_code != 200:
                 return None
-            text = resp.text
+            m1 = next_data_re.search(r1.text)
+            if not m1:
+                return None
+            try:
+                data1 = json.loads(m1.group(1))
+            except Exception:
+                return None
+            page1 = data1.get("props", {}).get("pageProps", {})
+            videos = page1.get("videos") or page1.get("results") or []
+            cuid: Optional[str] = None
+            title = avid
+            if videos:
+                first = videos[0]
+                cuid = first.get("id")
+                title = first.get("name") or first.get("nameZh") or avid
+            else:
+                # fallback: 从 JSON 文本里抓第一个 cuid 形态
+                m_id = re.search(r'"id"\s*:\s*"(cm[a-z0-9]{20,})"', r1.text)
+                if m_id:
+                    cuid = m_id.group(1)
+            if not cuid:
+                return None
 
-        m = re.search(r'"url":"(https?%3A%2F%2F[^"]+)"', text)
-        if not m:
+            r2 = await client.get(f"https://rou.video/v/{cuid}", headers=headers)
+            if r2.status_code != 200:
+                return None
+
+        m2 = next_data_re.search(r2.text)
+        if not m2:
             return None
-
-        m3u8_url = unquote(m.group(1))
-        return {"m3u8_url": m3u8_url, "title": avid}
+        try:
+            data2 = json.loads(m2.group(1))
+        except Exception:
+            return None
+        ev = data2.get("props", {}).get("pageProps", {}).get("ev") or {}
+        d, k = ev.get("d"), ev.get("k")
+        if not d or k is None:
+            return None
+        try:
+            raw = base64.b64decode(d)
+            payload = json.loads("".join(chr(b - k) for b in raw))
+        except Exception:
+            return None
+        video_url = payload.get("videoUrl")
+        if not video_url:
+            return None
+        return {"m3u8_url": video_url, "title": title}
 
     # ── KanAV (weight 490) ───────────────────────────────────────
 
