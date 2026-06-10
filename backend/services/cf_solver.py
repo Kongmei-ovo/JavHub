@@ -26,10 +26,11 @@ _SESSION_ID = "javhub-default"
 _session_created = False
 _session_lock = asyncio.Lock()
 
-# 后端启动时预热 + 定时保活的目标:让 jable / missav / kanav 的 CF cookie
-# 一直在 session 里活着,用户首次访问也不碰冷启动。
-_WARMUP_TARGETS = ("https://jable.tv/", "https://missav.ai/", "https://kanav.info/")
-_KEEPALIVE_INTERVAL_SEC = 240  # 每 4 分钟续命一次,FlareSolverr 默认 600s 销毁
+# 后端启动时预热 + 定时保活的目标:只 warmup 命中率最高的 jable / missav。
+# kanav 被排除 — 实测它的 CF challenge 会把 FlareSolverr 单 chrome 实例卡死,
+# 后续所有请求都 60s timeout,代价远大于 warmup 收益(kanav 收录本来就窄)。
+_WARMUP_TARGETS = ("https://jable.tv/", "https://missav.ai/")
+_KEEPALIVE_INTERVAL_SEC = 300  # 每 5 分钟续命一次,FlareSolverr 默认 600s 销毁
 _keepalive_task: Optional[asyncio.Task] = None
 
 
