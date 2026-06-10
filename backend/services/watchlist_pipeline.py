@@ -16,6 +16,7 @@ from modules.code_matcher import (
     normalize_code,
     video_code,
 )
+from services.video_variants import is_non_movie_item
 
 
 __all__ = [
@@ -219,6 +220,9 @@ class WatchlistPipeline:
         emby_aborted = False
 
         for video in videos:
+            if is_non_movie_item(video):
+                stats.skipped += 1
+                continue
             content_id = candidate_content_id(video)
             code = video_code(video)
             if not content_id or not code:

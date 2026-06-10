@@ -29,18 +29,37 @@ MAX_INDEXED_GROUP_ITEMS = 20
 
 
 def scan_derived_video_rows(limit: int | None = None) -> Iterable[dict[str, Any]]:
-    """Stream video rows from the JavInfo import database."""
+    """Stream video rows from the JavInfo import database.
+
+    Includes supplement-only rows from ``resolved_videos`` (data_origin =
+    'supplement') when that table exists, so works that only live in the
+    supplement layer participate in global variant grouping too.
+    """
     conn = _connect_import_db()
     try:
+        base_select = """
+            SELECT content_id, dvd_id, title_ja, title_en, release_date, runtime_mins,
+                   service_code, jacket_thumb_url
+            FROM derived_video
+        """
+        if _has_resolved_videos_table(conn):
+            base_select = f"""
+            SELECT * FROM (
+                {base_select}
+                UNION ALL
+                SELECT rv.resolved_id AS content_id, rv.dvd_id, rv.title_ja, rv.title_en,
+                       rv.release_date, rv.runtime_mins, rv.service_code, rv.jacket_thumb_url
+                FROM resolved_videos rv
+                WHERE rv.data_origin = 'supplement'
+            ) combined
+            """
         cursor = conn.cursor(name="javhub_variant_index_scan")
         cursor.itersize = 10000
         limit_clause = " LIMIT %s" if limit else ""
         params = (int(limit),) if limit else None
         cursor.execute(
             f"""
-            SELECT content_id, dvd_id, title_ja, title_en, release_date, runtime_mins,
-                   service_code, jacket_thumb_url
-            FROM derived_video
+            {base_select}
             ORDER BY content_id
             {limit_clause}
             """,
@@ -53,6 +72,20 @@ def scan_derived_video_rows(limit: int | None = None) -> Iterable[dict[str, Any]
             cursor.close()
     finally:
         conn.close()
+
+
+def _has_resolved_videos_table(conn) -> bool:
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT to_regclass('resolved_videos') AS reg")
+            row = cursor.fetchone()
+            if row is None:
+                return False
+            value = row.get("reg") if isinstance(row, dict) else row[0]
+            return value is not None
+    except Exception as exc:  # noqa: BLE001 - absence must not break the job
+        logger.warning("Could not check resolved_videos table: %s", exc)
+        return False
 
 
 def _connect_import_db():

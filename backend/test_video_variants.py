@@ -426,6 +426,82 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         self.assertEqual(len(grouped), 1)
         self.assertEqual(grouped[0]["canonical_code"], "3DSVR-609")
 
+    def test_rental_disc_count_title_marker_merges_with_retail_code(self):
+        title = "膣奥の最深を貫く！！デカチンの虜になった人妻30人 8時間"
+        rows = [
+            item(content_id="4jums039", dvd_id="4JUMS039", title_ja=title + "（2枚組）", service_code="rental", runtime_mins=480, release_date="2024-04-24"),
+            item(content_id="jums039", dvd_id="JUMS-039", title_ja=title, service_code="mono", runtime_mins=480, release_date="2023-10-10"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "JUMS-39")
+
+    def test_same_dvd_id_and_release_date_merge_despite_runtime_gap(self):
+        rows = [
+            item(content_id="n_650ecr0091", dvd_id="ecr-0091", title_ja="エロキュート/白石茉莉奈", service_code="mono", runtime_mins=60, release_date="2016-05-28"),
+            item(content_id="h_295ecr00091", dvd_id="ECR-0091", title_ja="エロキュート 白石茉莉奈", service_code="digital", runtime_mins=89, release_date="2016-05-28"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_same_dvd_id_different_release_date_and_title_stays_split(self):
+        rows = [
+            item(content_id="a1", dvd_id="ABC-12", title_ja="全く別の作品タイトルです", service_code="mono", runtime_mins=120, release_date="2020-01-01"),
+            item(content_id="b2", dvd_id="ABC-12", title_ja="こちらは違う内容の映画", service_code="digital", runtime_mins=90, release_date="2021-05-05"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_trailing_bd_token_with_bluray_marker_merges_despite_runtime_gap(self):
+        rows = [
+            item(content_id="n_1473gtrp004", dvd_id="GTRP-004", title_ja="Marilyn Holiday 〜ある夜の出来事〜/白石茉莉奈", service_code="mono", runtime_mins=70, release_date="2019-12-28"),
+            item(content_id="h_706gtrp00004b", dvd_id="GTRP-004B", title_ja="Marilyn Holiday ～ある夜の出来事～/白石茉莉奈 BD", service_code="digital", runtime_mins=95, release_date="2019-12-28"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "GTRP-4")
+
+    def test_search_codes_prefer_padded_display_form(self):
+        codes = video_variants.search_codes_for_item(
+            {"content_id": "4jums039", "dvd_id": "4JUMS039", "service_code": "rental", "title_ja": "x"}
+        )
+        self.assertEqual(codes[0], "JUMS-039")
+        self.assertIn("JUMS-39", codes)
+        self.assertIn("4JUMS039", codes)
+
+    def test_search_codes_for_h_bucket_content_id(self):
+        codes = video_variants.search_codes_for_item(
+            {"content_id": "h_706gtrp00004b", "dvd_id": "GTRP-004B", "service_code": "digital", "title_ja": "x BD"}
+        )
+        # The Blu-ray edition marker is stripped for the primary search form
+        # (releases are named after the base code); the raw dvd_id stays as a
+        # fallback alias.
+        self.assertEqual(codes[0], "GTRP-004")
+        self.assertIn("GTRP-004B", codes)
+
+    def test_search_codes_fc2(self):
+        codes = video_variants.search_codes_for_item(
+            {"content_id": "", "dvd_id": "FC2-PPV-1234567", "service_code": "supplement", "title_ja": "x"}
+        )
+        self.assertEqual(codes[0], "FC2-PPV-1234567")
+        self.assertIn("FC2-1234567", codes)
+
+    def test_filter_movie_items_drops_ebooks(self):
+        rows = [
+            item(content_id="k568agotp00164", dvd_id="2-020", service_code="ebook"),
+            item(content_id="jums039", dvd_id="JUMS-039", service_code="mono"),
+        ]
+        kept = video_variants.filter_movie_items(rows)
+        self.assertEqual([row["content_id"] for row in kept], ["jums039"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -76,6 +76,67 @@ LOW_NUMBER_COLLISION_PREFIXES = {
 }
 
 
+# Service codes that are not movies at all (FANZA ebooks such as 月刊FANZA /
+# 月刊SOD carry garbage dvd_ids like "2-020" and pollute filmographies, variant
+# grouping and the Emby-compare pipeline).
+NON_MOVIE_SERVICE_CODES = {"ebook"}
+
+
+def is_non_movie_item(item: dict[str, Any]) -> bool:
+    return str(item.get("service_code") or "").strip().lower() in NON_MOVIE_SERVICE_CODES
+
+
+def filter_movie_items(items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Drop non-movie rows (ebooks etc.) from a video list."""
+    return [item for item in (items or []) if not is_non_movie_item(item)]
+
+
+def search_codes_for_item(item: dict[str, Any]) -> list[str]:
+    """Ordered keyword aliases for magnet/torrent search.
+
+    The raw dvd_id/content_id of a variant row is often unsearchable
+    (``4JUMS039`` rental prefix, ``h_706gtrp00004b`` bucket cid), and the
+    de-padded canonical (``JUMS-39``) doesn't match scene naming either.
+    Resources are conventionally named with the zero-padded display form
+    (``JUMS-039``), so that goes first; raw identifiers come last as a
+    fallback. All values are de-duplicated on their alphanumeric form.
+    """
+    row = dict(item or {})
+    analysis = _analyze_item(row)
+    codes: list[str] = []
+    seen: set[str] = set()
+
+    def add(value: Any) -> None:
+        text = str(value or "").strip()
+        normalized = _normalize(text)
+        if not text or not normalized or normalized in seen:
+            return
+        seen.add(normalized)
+        codes.append(text)
+
+    prefix = str(analysis.get("prefix") or "")
+    digits = str(analysis.get("digits") or "")
+    if prefix == "FC2PPV" and digits:
+        add(f"FC2-PPV-{digits}")
+        add(f"FC2-{digits}")
+    elif prefix and digits:
+        extra = ""
+        canonical_norm = str(analysis.get("canonical_norm") or "")
+        if canonical_norm.startswith(prefix + digits):
+            extra = canonical_norm[len(prefix) + len(digits):]
+        padded = digits.zfill(3) if len(digits) < 3 else digits
+        add(f"{prefix}-{padded}{extra}")
+        add(f"{prefix}-{digits}{extra}")
+        if extra:
+            # The edition letter (e.g. GTRP-004B) often isn't in release names.
+            add(f"{prefix}-{padded}")
+    else:
+        add(analysis.get("canonical_code"))
+    add(row.get("dvd_id"))
+    add(row.get("content_id"))
+    return codes
+
+
 def enrich_video_variants(
     items: list[dict[str, Any]],
     *,
@@ -644,7 +705,24 @@ def _cluster_same_movie_variants(items: list[dict[str, Any]]) -> list[list[dict[
 def _same_movie(left: dict[str, Any], right: dict[str, Any]) -> bool:
     if str(left.get("canonical_code") or "") != str(right.get("canonical_code") or ""):
         return False
+    # Same physical product listed twice (typically mono vs digital storefront):
+    # identical dvd_id plus identical release date is decisive on its own. DMM
+    # runtime figures routinely disagree between the two listings (the mono
+    # page often carries a shorter/rounded figure), so the runtime tolerance
+    # must not veto this case.
+    if _same_release_identity(left, right):
+        return True
     return _safe_group([left, right])
+
+
+def _same_release_identity(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    left_dvd = _normalize(left.get("dvd_id"))
+    right_dvd = _normalize(right.get("dvd_id"))
+    if not left_dvd or left_dvd != right_dvd:
+        return False
+    left_date = str(left.get("release_date") or "").strip()
+    right_date = str(right.get("release_date") or "").strip()
+    return bool(left_date) and left_date == right_date
 
 
 def _safe_group(items: list[dict[str, Any]]) -> bool:
@@ -792,6 +870,16 @@ def _title_key(row: dict[str, Any]) -> str:
     title = re.sub(r"【[^】]*(?:FANZA限定|数量限定|特典版)[^】]*】", "", title, flags=re.IGNORECASE)
     title = re.sub(r"（?(?:BOD|DOD|RDOD|ブルーレイディスク)）?", "", title, flags=re.IGNORECASE)
     title = re.sub(r"(?:生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ).*$", "", title, flags=re.IGNORECASE)
+    # Rental editions append the disc-count marker （2枚組）/（3枚組） to an
+    # otherwise identical mono/digital title; it's packaging, not identity.
+    title = re.sub(r"[（(]\s*\d+\s*枚組\s*[）)]", "", title)
+    # A trailing standalone "BD" token marks the Blu-ray edition of the same
+    # work (e.g. "…/白石茉莉奈 BD"); strip it so the keys align.
+    title = re.sub(r"[\s　]+BD[\s　]*$", "", title, flags=re.IGNORECASE)
+    # DMM mono titles often append "/出演者名" while the digital listing omits
+    # it. Items are only ever compared within the same canonical code, so
+    # dropping the final slash segment is safe and aligns the two forms.
+    title = re.sub(r"[/／][^/／]*$", "", title)
     return re.sub(r"\W+", "", title).lower()
 
 

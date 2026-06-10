@@ -180,6 +180,13 @@ async def _run_subscription_check(
     identity = _subscription_identity(sub)
     scope = identity["scope"]
     if scope == "actress":
+        # Drive the JavInfoApi supplement pipeline before reading the
+        # filmography: without this, an actress whose supplement data never
+        # got fetched silently checks against the bare r18 list forever.
+        # TTL-deduped internally; the job is async upstream, so data lands by
+        # this (or the next) check without blocking here.
+        from services.supplement_autopilot import ensure_actress_supplement
+        await ensure_actress_supplement(identity["target_id"])
         kwargs = {
             "actress_id": identity["target_id"],
             "actress_name": identity["target_label"],

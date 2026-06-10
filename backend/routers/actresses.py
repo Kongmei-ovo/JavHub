@@ -5,7 +5,7 @@ from typing import Any
 import math
 from modules.info_client import get_info_client
 from services import cache
-from services.video_variants import enrich_video_variants
+from services.video_variants import enrich_video_variants, filter_movie_items
 from services.video_variant_index import apply_indexed_variant_groups
 from translations import get_translator_service
 
@@ -143,7 +143,7 @@ async def get_actress_videos(
         client = get_info_client()
         cache_bypass = cache.should_bypass_response_cache(_cache_control)
         if _variant_mode == "grouped":
-            result = await _get_grouped_actress_videos_collection(
+            result = await _get_grouped_actress_videos_collection_with_autopilot(
                 client,
                 actress_id=actress_id,
                 include_supplement=_inc,
@@ -195,6 +195,7 @@ async def get_actress_videos(
                 include_total=_include_total,
             )
         if result.get("data"):
+            result["data"] = filter_movie_items(result["data"])
             result["data"] = await _apply_translation_to_videos(result["data"], allow_network=False)
             result["data"] = enrich_video_variants(
                 result["data"],
@@ -210,6 +211,37 @@ async def get_actress_videos(
         ttl=_VIDEOS_CACHE_TTL,
         bypass=cache.should_bypass_response_cache(_cache_control),
     )
+
+
+async def _get_grouped_actress_videos_collection_with_autopilot(
+    client: Any,
+    *,
+    actress_id: int,
+    include_supplement: str | None,
+    service_code: str | None,
+    year: int | None,
+    sort_by: str | None,
+    include_total: bool | None,
+    include_variant_explanations: bool,
+    cache_bypass: bool,
+) -> dict[str, Any]:
+    result = await _get_grouped_actress_videos_collection(
+        client,
+        actress_id=actress_id,
+        include_supplement=include_supplement,
+        service_code=service_code,
+        year=year,
+        sort_by=sort_by,
+        include_total=include_total,
+        include_variant_explanations=include_variant_explanations,
+        cache_bypass=cache_bypass,
+    )
+    # Resolved view was empty → the supplement pipeline never ran for this
+    # actress. Schedule it in the background so the page heals itself.
+    if isinstance(result, dict) and result.get("supplement_pending"):
+        from services.supplement_autopilot import schedule_actress_supplement
+        schedule_actress_supplement(actress_id)
+    return result
 
 
 async def _get_grouped_actress_videos_collection(
@@ -252,6 +284,8 @@ async def _get_grouped_actress_videos_collection(
             cache_bypass=cache_bypass,
         )
         items = result.get("data", []) if isinstance(result, dict) else []
+        if isinstance(items, list):
+            items = filter_movie_items(items)
         if isinstance(items, list) and items:
             translated = await _apply_translation_to_videos(items, allow_network=False)
             result = dict(result)

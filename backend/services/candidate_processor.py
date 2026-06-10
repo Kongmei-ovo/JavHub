@@ -25,8 +25,9 @@ from database.download_candidate import (
     find_sent_candidate_by_normalized_code,
     promote_download_candidate_magnet_alternative,
 )
-from modules.code_matcher import normalize_code
+from modules.code_matcher import code_matches_any, normalize_code
 from services.downloader import downloader_service
+from services.video_variants import search_codes_for_item
 from sources import register_all_sources
 from sources.registry import SourceRegistry
 
@@ -311,13 +312,16 @@ def _failure_event_detail(message: Any, status: int | str | None = None) -> str:
 
 
 async def find_best_magnet(candidate: dict) -> dict | None:
-    """Search registered sources and select the best available download URI."""
+    """Search registered sources and select the best available download URI.
+
+    Keywords come from ``search_codes_for_item`` — the searchable zero-padded
+    display code first (``JUMS-039``), raw variant identifiers (``4JUMS039``,
+    ``h_706gtrp00004b``) last. Hits whose title actually contains one of the
+    candidate's codes are preferred; unverified hits are only used when no
+    verified hit exists (prevents ABC-123 picking up ABC-1234 releases).
+    """
     register_all_sources()
-    keywords = []
-    for value in (candidate.get("dvd_id"), candidate.get("content_id")):
-        value = str(value or "").strip()
-        if value and value not in keywords:
-            keywords.append(value)
+    keywords = search_codes_for_item(candidate)
 
     scored: list[dict] = []
     for keyword in keywords:
@@ -325,9 +329,16 @@ async def find_best_magnet(candidate: dict) -> dict | None:
         for item in results:
             if not _download_uri(item):
                 continue
-            scored.append({"item": dict(item), "score": _magnet_score(item)})
+            verified = code_matches_any(keyword, [item.get("title"), item.get("name")])
+            scored.append({"item": dict(item), "score": _magnet_score(item), "verified": verified})
+        # The primary display form found verified hits — later raw/cid forms
+        # would only add noise, so stop querying the sources.
+        if any(entry["verified"] for entry in scored):
+            break
     if not scored:
         return None
+    if any(entry["verified"] for entry in scored):
+        scored = [entry for entry in scored if entry["verified"]]
 
     scored.sort(key=lambda result: result["score"]["total"], reverse=True)
     candidates = scored[:5]

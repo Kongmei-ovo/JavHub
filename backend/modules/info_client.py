@@ -664,12 +664,19 @@ class InfoClient:
             params=params,
         )
         if include_supplement and not _has_result_items(result):
+            # The resolved (supplement-merged) view is empty for this actress —
+            # the filmography supplement job has never run (or produced
+            # nothing). Fall back to the plain r18 view so the UI isn't blank,
+            # but SAY SO: callers use supplement_pending to surface the state
+            # and to trigger the supplement autopilot.
             fallback_params = dict(params)
             fallback_params.pop("include_supplement", None)
             result = await self._get(
                 f"/api/v1/actresses/{actress_id}/videos",
                 params=fallback_params,
             )
+            if isinstance(result, dict):
+                result["supplement_pending"] = True
         # 转换图片URL
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
@@ -700,16 +707,23 @@ class InfoClient:
 
         path = f"/api/v1/actresses/{actress_id}/videos"
         items = await self._get_all_pages(path, page_size=100, cache_bypass=cache_bypass, params=params)
+        supplement_pending = False
         if include_supplement and not items:
+            # See get_actress_videos: empty resolved view means the supplement
+            # pipeline never ran for this actress. Fall back loudly.
             fallback_params = dict(params)
             fallback_params.pop("include_supplement", None)
             items = await self._get_all_pages(path, page_size=100, cache_bypass=cache_bypass, params=fallback_params)
+            supplement_pending = True
         transformed = [_transform_video_item(item) for item in items]
-        return {
+        result: dict[str, Any] = {
             "data": transformed,
             "total_count": len(transformed),
             "total_pages": 1 if transformed else 0,
         }
+        if supplement_pending:
+            result["supplement_pending"] = True
+        return result
 
     # === 枚举数据 ===
 
