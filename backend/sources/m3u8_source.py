@@ -11,7 +11,11 @@ from typing import AsyncIterator, Optional, Tuple
 from urllib.parse import unquote
 
 from config import Config
+from services.cache import _get_json_async, _set_json_async
 from services.cf_solver import fetch_with_cf_solver
+
+# 命中过的源 cache 10 分钟,复看秒回;不 cache no_result,免得上游后收录我们还死认空
+_STREAM_CACHE_TTL = 600
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +112,18 @@ class M3U8Source:
         avid = content_id.upper().replace("_", "-")
 
         async def runner(name: str, fn) -> dict:
+            cache_key = f"stream:{avid}:{name}"
+            cached = await _get_json_async(cache_key)
+            if isinstance(cached, dict) and cached.get("m3u8_url"):
+                return {
+                    "source": name,
+                    "status": "ok",
+                    "elapsed_ms": 0,
+                    "m3u8_url": cached["m3u8_url"],
+                    "title": cached.get("title") or avid,
+                    "page_url": cached.get("page_url"),
+                    "cached": True,
+                }
             t0 = time.time()
             try:
                 result = await fn(avid)
@@ -126,6 +142,8 @@ class M3U8Source:
                     "elapsed_ms": elapsed_ms,
                     "detail": "未匹配到番号 / 上游未收录",
                 }
+            # 只 cache 命中的(no_result 不 cache,免得上游补收录后我们死认空)
+            await _set_json_async(cache_key, result, _STREAM_CACHE_TTL)
             return {
                 "source": name,
                 "status": "ok",
