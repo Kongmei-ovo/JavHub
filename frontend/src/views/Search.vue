@@ -85,16 +85,6 @@
             </button>
           </div>
           <div class="sort-strip-right">
-            <GlassSelect
-              v-model="serviceCode"
-              :options="versionOptions"
-              size="compact"
-              placement="right"
-              aria-label="版本筛选"
-              class="version-filter"
-              @change="doSearch"
-            />
-            <div class="bar-divider"></div>
             <button class="filter-item toggle" type="button" :class="{ active: showMoreFilters }" @click="showMoreFilters = !showMoreFilters">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
                 <path d="M20 7h-9m14 10h-9M5 7h14M5 17h14"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>
@@ -323,15 +313,13 @@ import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleErrorState from '../components/AppleErrorState.vue'
-import GlassSelect from '../components/GlassSelect.vue'
-
 function sortStateFromPreference(defaultSort = 'random') {
   return sortStateFromSortValue(defaultSort === 'none' ? 'random' : defaultSort)
 }
 
 export default {
   name: 'Search',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState, GlassSelect },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState },
   data() {
     return {
       keyword: '',
@@ -350,13 +338,6 @@ export default {
       seriesName: '',
       actressName: '',
       year: null,
-      serviceCode: '',
-      serviceCodeOptions: [
-        { value: 'digital', label: '数字版' },
-        { value: 'mono', label: '单体版' },
-        { value: 'rental', label: '租赁版' },
-        { value: 'ebook', label: '写真' },
-      ],
 
       // 折叠更多筛选
       showMoreFilters: false,
@@ -394,7 +375,6 @@ export default {
       return {
         contentId: this.contentId,
         keyword: this.keyword,
-        serviceCode: this.serviceCode,
         year: this.year,
         makerName: this.makerName,
         actressName: this.actressName,
@@ -405,16 +385,13 @@ export default {
       }
     },
     hasFilters() {
-      return Boolean(this.categoryTags.length || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName || this.year || this.serviceCode || this.hasSort)
+      return Boolean(this.categoryTags.length || this.keyword || this.contentId || this.makerName || this.seriesName || this.actressName || this.year || this.hasSort)
     },
     hasSort() {
       return Object.values(this.sortState).some(v => v !== null && v !== false)
     },
     activeFilterChips() {
       return filterChipsFromSearchState(this.searchState)
-    },
-    versionOptions() {
-      return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     },
     totalLabel() {
       if (this.sortState.random) return '随机探索结果'
@@ -471,7 +448,6 @@ export default {
       if (!force && prefsKey === this.appliedSearchPrefsKey) return false
       if (!Object.keys(this.$route?.query || {}).length) {
         this.sortState = sortStateFromPreference(prefs.defaultSort)
-        this.serviceCode = prefs.defaultServiceCode
       }
       this.appliedSearchPrefsKey = prefsKey
       return true
@@ -500,7 +476,6 @@ export default {
       }
       assign('contentId', next.contentId)
       assign('keyword', next.keyword)
-      assign('serviceCode', next.serviceCode)
       assign('year', next.year)
       assign('makerName', next.makerName)
       assign('actressName', next.actressName)
@@ -530,7 +505,6 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.serviceCode = ''
       this.sortState = sortStateFromSortValue('random')
       this.results = []
       this.total = 0
@@ -550,7 +524,6 @@ export default {
       this.categoryTags = []
       this.categoryInput = ''
       this.year = null
-      this.serviceCode = ''
       this.sortState = sortStateFromSortValue('random')
       this.page = 1
       this.jumpPage = null

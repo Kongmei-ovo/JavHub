@@ -81,7 +81,6 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   const sortLabelBlock = sourceBlock('.sort-strip-label')
   const panelLabelBlock = sourceBlock('.panel-field label')
   const sortResultCountBlock = sourceBlock('.sort-result-count')
-  const barDividerBlock = sourceBlock('.bar-divider')
   const sortPillBlock = sourceBlock('.sort-pill')
   const sortPillHoverBlock = sourceBlock('.sort-pill:hover')
   const sortPillActiveBlock = sourceBlock('.sort-pill.active')
@@ -109,8 +108,7 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   assert.doesNotMatch(panelLabelBlock, /text-transform:\s*uppercase/)
   assert.match(capsuleDividerBlock, /background:\s*var\(--glass-control-border\)/)
   assert.match(sortResultCountBlock, /border-right:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(barDividerBlock, /background:\s*var\(--glass-control-border\)/)
-  for (const block of [capsuleDividerBlock, sortResultCountBlock, barDividerBlock]) {
+  for (const block of [capsuleDividerBlock, sortResultCountBlock]) {
     assert.doesNotMatch(block, /var\(--border\)/)
   }
 

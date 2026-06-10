@@ -629,21 +629,6 @@
                       />
                     </div>
                   </div>
-                  <div class="settings-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">默认版本筛选</span>
-                      <span class="setting-note">{{ searchServiceLabel }}</span>
-                    </div>
-                    <div class="settings-control">
-                      <GlassSelect
-                        v-model="searchPrefs.defaultServiceCode"
-                        :options="searchServiceOptions"
-                        class="glass-select-control glass-select-control--wide"
-                        placement="right"
-                        aria-label="影片检索默认版本筛选"
-                      />
-                    </div>
-                  </div>
                 </div>
               </section>
               <section class="settings-group appearance-discovery-group">
@@ -818,7 +803,7 @@ import AppleSkeleton from '../components/AppleSkeleton.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { AdvancedSettingsPanel } from '../features/config/advancedSettingsAsync.js'
 import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG } from '../features/config/configDefaults.js'
-import { actressPageSizeOptions, avatarSizeOptions, candidateSourceOptions, defaultTabOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchServiceOptions, searchSortOptions, seriesPageSizeOptions, tagTuningControls } from '../features/config/configOptions.js'
+import { actressPageSizeOptions, avatarSizeOptions, candidateSourceOptions, defaultTabOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchSortOptions, seriesPageSizeOptions, tagTuningControls } from '../features/config/configOptions.js'
 const BUBBLE_CFG_KEYS = Object.keys(DEFAULT_BUBBLE_CFG)
 const AI_PROVIDER_KEYS = ['openai_compatible', 'gemini', 'ollama']
 export default {
@@ -862,7 +847,6 @@ export default {
       defaultTabOptions,
       displayLangOptions,
       searchSortOptions,
-      searchServiceOptions,
       downloadPolicyOptions,
       candidateSourceOptions,
       tagTuningControls,
@@ -971,9 +955,6 @@ export default {
     },
     searchSortLabel() {
       return this.searchSortOptions.find(option => option.value === this.searchPrefs.defaultSort)?.label || '随机'
-    },
-    searchServiceLabel() {
-      return this.searchServiceOptions.find(option => option.value === this.searchPrefs.defaultServiceCode)?.label || '全部版本'
     },
     displayLangLabel() {
       return this.displayLangOptions.find(option => option.value === this.displayLangVal)?.label || '日文'

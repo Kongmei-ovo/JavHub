@@ -31,14 +31,6 @@ export const searchSortOptions = [
   { value: 'runtime_mins_asc', label: '时长短到长' },
 ]
 
-export const searchServiceOptions = [
-  { value: '', label: '全部版本' },
-  { value: 'digital', label: '数字版' },
-  { value: 'mono', label: '单体版' },
-  { value: 'rental', label: '租赁版' },
-  { value: 'ebook', label: '写真' },
-]
-
 export const downloadPolicyOptions = [
   { value: 'manual', label: '人工批准', hint: '只生成候选，下载必须手动批准。' },
   { value: 'rules', label: '规则自动', hint: '自动处理允许来源中符合规则的候选。' },

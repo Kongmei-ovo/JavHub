@@ -1291,7 +1291,7 @@ test('appearance settings are grouped by scope and persist discovery preferences
   assert.match(globalSection, /<span class="setting-title">显示语言<\/span>/)
   assert.match(searchSection, /<span class="setting-title">检索页数量<\/span>/)
   assert.match(searchSection, /<span class="setting-title">默认排序<\/span>/)
-  assert.match(searchSection, /<span class="setting-title">默认版本筛选<\/span>/)
+  assert.doesNotMatch(searchSection, /默认版本筛选/, 'version preset is removed after variants are merged')
   assert.match(discoverySection, /<span class="setting-title">演员头像<\/span>/)
   assert.match(discoverySection, /<span class="setting-title">演员每批数量<\/span>/)
   assert.match(discoverySection, /<span class="setting-title">系列每批数量<\/span>/)
@@ -1322,7 +1322,7 @@ test('global dropdowns use the unified glass select control', () => {
 
   const searchSection = config.slice(config.indexOf('<h2>影片检索</h2>'), config.indexOf('<h2>随机探索</h2>'))
   assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultSort"/)
-  assert.match(searchSection, /<GlassSelect[\s\S]*v-model="searchPrefs\.defaultServiceCode"/)
+  assert.doesNotMatch(searchSection, /searchPrefs\.defaultServiceCode/)
   assert.doesNotMatch(config, /v-model="bubbleCfg\.palette"/)
 
   assert.match(inventory, /import GlassSelect/)
@@ -1335,10 +1335,9 @@ test('global dropdowns use the unified glass select control', () => {
   // the composable export form.
   assert.match(supplement, /providerSourceOptions/)
   assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)
-  assert.match(search, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
-  assert.match(discoveryDetail, /<GlassSelect[\s\S]*class="version-filter"[\s\S]*@change="doSearch"/)
+  assert.doesNotMatch(search, /version-filter|aria-label="版本筛选"|this\.serviceCode|v-model="serviceCode"/, 'search page no longer offers a version filter')
+  assert.doesNotMatch(discoveryDetail, /version-filter|aria-label="版本筛选"|this\.serviceCode|v-model="serviceCode"/, 'discovery detail no longer offers a version filter')
   assert.match(search, /\.sort-strip[\s\S]*--filter-control-height: 32px/)
-  assert.match(search, /\.version-filter[\s\S]*--glass-select-height: var\(--filter-control-height\)/)
   assert.match(search, /\.sort-strip[\s\S]*--filter-control-height: 44px/)
   assert.match(discoveryDetail, /\.chronicle-btn[\s\S]*width: var\(--filter-control-width\)/)
 
@@ -1360,7 +1359,7 @@ test('global dropdowns use the unified glass select control', () => {
 test('search preferences drive initial search params', () => {
   assert.match(searchPreferences, /SEARCH_PREFERENCES_KEY = 'javhub_search_preferences'/)
   assert.match(searchPreferences, /defaultSort: 'random'/)
-  assert.match(searchPreferences, /defaultServiceCode: ''/)
+  assert.doesNotMatch(searchPreferences, /defaultServiceCode/)
   assert.match(searchPreferences, /normalizeSearchPreferences/)
   assert.match(config, /loadSearchPreferences/)
   assert.match(config, /saveSearchPreferences/)

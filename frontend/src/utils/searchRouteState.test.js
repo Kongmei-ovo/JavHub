@@ -17,7 +17,6 @@ test('parseSearchQuery restores every canonical search field', () => {
   assert.deepEqual(parseSearchQuery({
     content_id: 'cme-001',
     q: '制服',
-    service_code: 'digital',
     year: '2024',
     maker: 'MOODYZ',
     actress: '小湊よつ葉',
@@ -28,7 +27,6 @@ test('parseSearchQuery restores every canonical search field', () => {
   }), {
     contentId: 'CME-001',
     keyword: '制服',
-    serviceCode: 'digital',
     year: 2024,
     makerName: 'MOODYZ',
     actressName: '小湊よつ葉',
@@ -39,11 +37,15 @@ test('parseSearchQuery restores every canonical search field', () => {
   })
 })
 
+test('parseSearchQuery ignores legacy service_code query params', () => {
+  const parsed = parseSearchQuery({ content_id: 'cme-001', service_code: 'digital', sort: 'random', page: '1' })
+  assert.equal('serviceCode' in parsed, false)
+})
+
 test('searchQueryFromState serializes a canonical refreshable URL query', () => {
   assert.deepEqual(searchQueryFromState({
     contentId: 'CME-001',
     keyword: '',
-    serviceCode: 'rental',
     year: 2023,
     makerName: '',
     actressName: '演员',
@@ -53,7 +55,6 @@ test('searchQueryFromState serializes a canonical refreshable URL query', () => 
     page: 5,
   }), {
     content_id: 'CME-001',
-    service_code: 'rental',
     year: '2023',
     actress: '演员',
     category_name: '剧情 4K',
@@ -62,14 +63,19 @@ test('searchQueryFromState serializes a canonical refreshable URL query', () => 
   })
 })
 
+test('searchQueryFromState drops any leftover serviceCode hint', () => {
+  const query = searchQueryFromState({ contentId: 'X', serviceCode: 'digital', sort: 'random', page: 1 })
+  assert.equal('service_code' in query, false)
+})
+
 test('searchQueryEquals ignores query key order but not value changes', () => {
   assert.equal(searchQueryEquals(
-    { page: '1', sort: 'random', service_code: 'mono' },
-    { service_code: 'mono', sort: 'random', page: '1' },
+    { page: '1', sort: 'random', maker: 'MOODYZ' },
+    { maker: 'MOODYZ', sort: 'random', page: '1' },
   ), true)
   assert.equal(searchQueryEquals(
-    { page: '1', sort: 'random', service_code: 'mono' },
-    { page: '1', sort: 'random', service_code: 'digital' },
+    { page: '1', sort: 'random', maker: 'MOODYZ' },
+    { page: '1', sort: 'random', maker: 'SOD' },
   ), false)
   assert.equal(searchQueryEquals(
     { page: '1', sort: 'random' },
@@ -133,7 +139,6 @@ test('filterChipsFromSearchState describes removable user conditions', () => {
   assert.deepEqual(filterChipsFromSearchState({
     contentId: 'CME-001',
     keyword: '制服',
-    serviceCode: 'digital',
     year: 2025,
     makerName: 'Maker',
     actressName: '',
@@ -144,7 +149,6 @@ test('filterChipsFromSearchState describes removable user conditions', () => {
   }).map(chip => chip.label), [
     '番号: CME-001',
     '关键词: 制服',
-    '版本: 数字',
     '年份: 2025',
     '工作室: Maker',
     '题材: 剧情',

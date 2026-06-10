@@ -41,7 +41,7 @@
       </div>
     </div>
 
-    <!-- 排序 + 版本筛选栏 -->
+    <!-- 排序栏 -->
     <div class="result-bar page-rail page-rail--gallery">
       <div class="result-bar-left">
         <span class="result-count">{{ loading ? '加载中...' : totalLabel }}</span>
@@ -68,16 +68,6 @@
         </div>
       </div>
       <div class="result-bar-right">
-        <GlassSelect
-          v-model="serviceCode"
-          :options="versionOptions"
-          size="compact"
-          placement="right"
-          aria-label="版本筛选"
-          class="version-filter"
-          @change="doSearch"
-        />
-        <div class="bar-divider"></div>
         <button class="chronicle-btn" type="button" :class="{ active: chronicleMode }" @click="toggleChronicle" title="年份编年视图">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -203,7 +193,6 @@ import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleErrorState from '../components/AppleErrorState.vue'
-import GlassSelect from '../components/GlassSelect.vue'
 import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
 import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
 
@@ -211,7 +200,7 @@ const PAGE_SIZE = 30
 
 export default {
   name: 'DiscoveryDetail',
-  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState, GlassSelect, VariantGroupDisclosure },
+  components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState, VariantGroupDisclosure },
   data() {
     return {
       metadata: [], // 缓存列表数据用于显示显示名
@@ -228,13 +217,6 @@ export default {
         { key: 'runtime_mins', label: '时长' },
       ],
       chronicleMode: false,
-      serviceCode: '',
-      serviceCodeOptions: [
-        { value: 'digital', label: '数字版' },
-        { value: 'mono', label: '单体版' },
-        { value: 'rental', label: '租赁版' },
-        { value: 'ebook', label: '写真' },
-      ],
       results: [],
       loading: false,
       searched: false,
@@ -265,9 +247,6 @@ export default {
       }
       // 其他类型直接显示 value (名称)
       return this.value
-    },
-    versionOptions() {
-      return [{ value: '', label: '全部版本' }, ...this.serviceCodeOptions]
     },
     totalLabel() {
       if (this.total < 0) return '结果'
@@ -386,7 +365,6 @@ export default {
     resetFilters() {
       this.sortState = { release_date: null, title_ja: null, runtime_mins: null, random: true }
       this.chronicleMode = false
-      this.serviceCode = ''
       this.page = 1
     },
     buildParams() {
@@ -397,7 +375,6 @@ export default {
         variant_scope: 'indexed',
         include_variant_explanations: 1,
       }
-      if (this.serviceCode) params.service_code = this.serviceCode
 
       // 根据类型填充参数：支持 ID (数字) 和名称 (字符串)
       const v = this.value
@@ -580,7 +557,6 @@ export default {
 }
 .result-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .result-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
-.bar-divider { width: 1px; height: 20px; background: var(--glass-control-border); flex-shrink: 0; }
 .sort-pills { display: flex; gap: 8px; }
 .sort-pill {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
@@ -615,14 +591,6 @@ export default {
 .chronicle-btn.active:hover { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); }
 .chronicle-btn:active { transform: translateY(0) scale(0.99); }
 .result-count { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
-.version-filter {
-  width: var(--filter-control-width);
-  min-width: var(--filter-control-width);
-  --glass-select-height: var(--filter-control-height);
-  --glass-select-padding: 0 12px;
-  --glass-select-font: 12px;
-  --glass-select-radius: var(--filter-control-radius);
-}
 .pagination-bar {
   display: flex;
   justify-content: center;
@@ -747,10 +715,6 @@ export default {
   .sort-pills {
     flex-wrap: wrap;
     justify-content: center;
-  }
-  .result-bar-right .version-filter {
-    width: var(--filter-control-width);
-    min-width: var(--filter-control-width);
   }
   .results-grid,
   .skeleton-grid {

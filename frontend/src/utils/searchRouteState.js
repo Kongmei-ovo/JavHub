@@ -9,13 +9,6 @@ const SORT_VALUES = new Set([
   'runtime_mins_asc',
 ])
 
-const SERVICE_LABELS = {
-  digital: '数字',
-  mono: 'DVD',
-  rental: '租赁',
-  ebook: '写真',
-}
-
 function firstValue(value) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -78,7 +71,6 @@ export function parseSearchQuery(query = {}) {
   return {
     contentId: stringValue(query.content_id).toUpperCase(),
     keyword: stringValue(query.q || query.keyword),
-    serviceCode: stringValue(query.service_code),
     year: numberValue(query.year, null),
     makerName: stringValue(query.maker),
     actressName: stringValue(query.actress),
@@ -93,7 +85,6 @@ export function searchQueryFromState(state = {}) {
   const query = {}
   const contentId = stringValue(state.contentId).toUpperCase()
   const keyword = stringValue(state.keyword)
-  const serviceCode = stringValue(state.serviceCode)
   const makerName = stringValue(state.makerName)
   const actressName = stringValue(state.actressName)
   const seriesName = stringValue(state.seriesName)
@@ -106,7 +97,6 @@ export function searchQueryFromState(state = {}) {
 
   if (contentId) query.content_id = contentId
   if (keyword) query.q = keyword
-  if (serviceCode) query.service_code = serviceCode
   if (year) query.year = String(year)
   if (makerName) query.maker = makerName
   if (actressName) query.actress = actressName
@@ -131,7 +121,7 @@ export function searchQueryEquals(a = {}, b = {}) {
 
 export function searchHasUserConditions(state = {}) {
   const query = searchQueryFromState({ ...state, sort: 'random', page: 1 })
-  return ['content_id', 'q', 'service_code', 'year', 'maker', 'actress', 'series', 'category_name']
+  return ['content_id', 'q', 'year', 'maker', 'actress', 'series', 'category_name']
     .some(key => Boolean(query[key]))
 }
 
@@ -155,7 +145,6 @@ export function buildSearchApiParams(state = {}, { pageSize = 30 } = {}) {
   }
   if (normalized.contentId) params.content_id = normalized.contentId
   if (normalized.keyword) params.q = normalized.keyword
-  if (normalized.serviceCode) params.service_code = normalized.serviceCode
   if (normalized.year) params.year = normalized.year
   if (normalized.makerName) params.maker_name = normalized.makerName
   if (normalized.actressName) params.actress_name = normalized.actressName
@@ -181,9 +170,6 @@ export function filterChipsFromSearchState(state = {}) {
   }
   add('contentId', '番号', state.contentId)
   add('keyword', '关键词', state.keyword)
-  if (state.serviceCode) {
-    chips.push({ key: 'serviceCode', label: `版本: ${SERVICE_LABELS[state.serviceCode] || state.serviceCode}` })
-  }
   if (state.year) chips.push({ key: 'year', label: `年份: ${state.year}` })
   add('makerName', '工作室', state.makerName)
   add('actressName', '演员', state.actressName)

@@ -27,12 +27,17 @@ function withLocalStorage(storage, run) {
 
 test('search preferences normalize unknown values to safe defaults', () => {
   assert.deepEqual(
-    normalizeSearchPreferences({ defaultSort: 'bad', defaultServiceCode: 'other' }),
+    normalizeSearchPreferences({ defaultSort: 'bad' }),
     DEFAULT_SEARCH_PREFERENCES,
   )
   assert.deepEqual(
-    normalizeSearchPreferences({ defaultSort: 'release_date_desc', defaultServiceCode: 'digital' }),
-    { defaultSort: 'release_date_desc', defaultServiceCode: 'digital' },
+    normalizeSearchPreferences({ defaultSort: 'release_date_desc' }),
+    { defaultSort: 'release_date_desc' },
+  )
+  assert.deepEqual(
+    normalizeSearchPreferences({ defaultSort: 'random', defaultServiceCode: 'digital' }),
+    DEFAULT_SEARCH_PREFERENCES,
+    'legacy defaultServiceCode is dropped',
   )
 })
 
@@ -44,8 +49,8 @@ test('search preferences load and save localStorage values', () => {
   }
 
   withLocalStorage(storage, () => {
-    const saved = saveSearchPreferences({ defaultSort: 'runtime_mins_asc', defaultServiceCode: 'ebook' })
-    assert.deepEqual(saved, { defaultSort: 'runtime_mins_asc', defaultServiceCode: 'ebook' })
+    const saved = saveSearchPreferences({ defaultSort: 'runtime_mins_asc' })
+    assert.deepEqual(saved, { defaultSort: 'runtime_mins_asc' })
     assert.equal(writes.get(SEARCH_PREFERENCES_KEY), JSON.stringify(saved))
     assert.deepEqual(loadSearchPreferences(), saved)
   })

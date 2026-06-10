@@ -241,13 +241,6 @@
   margin-right: 4px;
 }
 
-.bar-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--glass-control-border);
-  flex-shrink: 0;
-}
-
 .sort-pills {
   display: flex;
   gap: 8px;
@@ -428,15 +421,6 @@
   border-color: var(--glass-active-border);
   color: var(--text-primary);
   box-shadow: var(--glass-active-shadow);
-}
-
-.version-filter {
-  width: var(--filter-control-width);
-  min-width: var(--filter-control-width);
-  --glass-select-height: var(--filter-control-height);
-  --glass-select-padding: 0 12px;
-  --glass-select-font: 12px;
-  --glass-select-radius: var(--filter-control-radius);
 }
 
 .applied-filter-row {
@@ -1124,11 +1108,6 @@
   .sort-strip-left, .sort-strip-right {
     justify-content: center;
     min-width: 0;
-  }
-  .sort-strip-right .version-filter {
-    width: var(--filter-control-width);
-    min-width: var(--filter-control-width);
-    --glass-select-padding: 0 12px;
   }
   .sort-strip-left {
     align-items: center;

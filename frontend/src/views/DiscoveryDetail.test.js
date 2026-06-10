@@ -207,15 +207,13 @@ test('discovery detail glass controls use layered backgrounds across base hover 
 
 test('discovery detail chronicle headings use shared glass border tokens', () => {
   const toolbarBlock = cssBlock('.toolbar')
-  const barDividerBlock = cssBlock('.bar-divider')
   const paginationBottomBlock = cssBlock('.pagination-bar.bottom')
   const yearHeaderBlock = cssBlock('.year-header')
 
   assert.match(toolbarBlock, /border-bottom:\s*1px solid var\(--glass-edge\)/)
-  assert.match(barDividerBlock, /background:\s*var\(--glass-control-border\)/)
   assert.match(paginationBottomBlock, /border-top:\s*1px solid var\(--glass-edge\)/)
   assert.match(yearHeaderBlock, /border-left:\s*3px solid var\(--glass-control-border\)/)
-  for (const block of [toolbarBlock, barDividerBlock, paginationBottomBlock, yearHeaderBlock]) {
+  for (const block of [toolbarBlock, paginationBottomBlock, yearHeaderBlock]) {
     assert.doesNotMatch(block, /var\(--border\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#[0-9a-f]{3,6}/i)
   }
 })
