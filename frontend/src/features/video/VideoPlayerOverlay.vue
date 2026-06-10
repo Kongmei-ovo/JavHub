@@ -28,15 +28,6 @@
       </div>
       <div class="vp-info">
         <span class="vp-title">{{ title }}</span>
-        <div class="vp-speed-ctrl">
-          <button
-            v-for="speedOption in speedOptions"
-            :key="speedOption"
-            type="button"
-            :class="['vp-speed-btn', { active: speed === speedOption }]"
-            @click="$emit('speed', speedOption)"
-          >{{ speedOption === 1 ? '1x' : speedOption + 'x' }}</button>
-        </div>
       </div>
     </div>
   </div>
@@ -49,14 +40,8 @@ export default {
     visible: { type: Boolean, default: false },
     src: { type: String, default: '' },
     title: { type: String, default: '' },
-    speed: { type: Number, default: 1 },
   },
-  emits: ['close', 'speed', 'seek-forward', 'seek-backward'],
-  data() {
-    return {
-      speedOptions: [0.5, 0.75, 1, 1.25, 1.5, 2],
-    }
-  },
+  emits: ['close', 'seek-forward', 'seek-backward'],
   methods: {
     mediaElement() {
       return this.$refs.videoEl
@@ -126,32 +111,4 @@ export default {
 .vp-video { display: block; width: 100%; border-radius: 20px; background: var(--vp-player-bg); }
 .vp-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--vp-control-bg); border: 1px solid var(--vp-control-border); border-radius: var(--radius-lg); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
 .vp-title { min-width: 0; font-size: 14px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vp-speed-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.vp-speed-btn {
-  font-size: 13px;
-  padding: 5px 14px;
-  background: var(--vp-control-bg);
-  border: var(--stroke-pro) solid var(--vp-control-border);
-  border-radius: 40px;
-  color: var(--text-secondary);
-  box-shadow: var(--vp-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  cursor: pointer;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
-}
-.vp-speed-btn:hover {
-  background: var(--vp-control-bg-hover);
-  border-color: var(--vp-control-border-hover);
-  box-shadow: var(--vp-control-shadow-hover);
-  color: var(--text-primary);
-}
-.vp-speed-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--vp-control-shadow-hover), var(--focus-ring-wide);
-}
-.vp-speed-btn:active {
-  transform: translateY(0) scale(0.97);
-}
-.vp-speed-btn.active { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material); border-color: var(--glass-active-border); box-shadow: var(--glass-active-shadow); color: var(--text-primary); font-weight: 700; }
 </style>

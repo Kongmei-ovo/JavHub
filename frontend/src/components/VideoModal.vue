@@ -283,9 +283,7 @@
         :visible="videoPlayerVisible"
         :src="video.sample_url"
         :title="video.dvd_id || video.content_id"
-        :speed="videoSpeed"
         @close="closeVideoPlayer"
-        @speed="setSpeed"
         @seek-backward="seekBackward"
         @seek-forward="seekForward"
       />
@@ -295,12 +293,10 @@
         ref="streamPlayer"
         :visible="streamPlayerVisible"
         :title="video.dvd_id || video.content_id"
-        :speed="streamSpeed"
         :sources="streamSources"
         :current-source="currentSourceName"
         :scan-done="streamScanDone"
         @close="closeStreamPlayer"
-        @speed="setStreamSpeed"
         @switch-source="switchStreamSource"
       />
     </div>
@@ -343,11 +339,9 @@ export default {
       galleryViewerVisible: false,
       currentGalleryIndex: 0,
       videoPlayerVisible: false,
-      videoSpeed: 1,
       streamLoading: false,
       streamPlayerVisible: false,
       streamM3u8Url: '',
-      streamSpeed: 1,
       hlsInstance: null,
       streamSession: null,
       streamSources: [],
@@ -537,7 +531,6 @@ export default {
     streamVideoEl() {
       return this.$refs.streamPlayer?.mediaElement?.()
     },
-    setSpeed(speed) { this.videoSpeed = speed; const video = this.previewVideoEl(); if (video) video.playbackRate = speed },
     seekForward() { const video = this.previewVideoEl(); if (video) video.currentTime += 10 },
     seekBackward() { const video = this.previewVideoEl(); if (video) video.currentTime -= 10 },
     async copyMagnet(mag) {
@@ -634,11 +627,6 @@ export default {
       this.streamScanDone = false
       this.currentSourceName = ''
       this.streamLoading = false
-    },
-    setStreamSpeed(speed) {
-      this.streamSpeed = speed
-      const video = this.streamVideoEl()
-      if (video) video.playbackRate = speed
     },
     downloadStream() {
       const code = this.video?.dvd_id || this.video?.content_id

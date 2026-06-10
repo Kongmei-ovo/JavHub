@@ -14,11 +14,6 @@ function cssBlock(source, selector) {
   return match[1]
 }
 
-function backgroundIncludes(block, token) {
-  const match = block.match(/background:\s*([^;]+);/)
-  return Boolean(match && match[1].includes(token))
-}
-
 function customPropertyIncludes(block, property, token) {
   const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const match = block.match(new RegExp(`${escaped}:\\s*([^;]+);`))
@@ -35,12 +30,8 @@ for (const [name, source] of overlaySources) {
     const playerBlock = cssBlock(source, '.vp-player-wrap')
     const infoBlock = cssBlock(source, '.vp-info')
     const titleBlock = cssBlock(source, '.vp-title')
-    const speedBlock = cssBlock(source, '.vp-speed-btn')
-    const speedHoverBlock = cssBlock(source, '.vp-speed-btn:hover')
-    const speedFocusBlock = cssBlock(source, '.vp-speed-btn:focus-visible')
-    const speedActiveBlock = cssBlock(source, '.vp-speed-btn:active')
-    const activeBlock = cssBlock(source, '.vp-speed-btn.active')
 
+    assert.doesNotMatch(source, /vp-speed-btn|vp-speed-ctrl/, 'speed controls should be removed in favour of native player UI')
     assert.ok(customPropertyIncludes(overlayBlock, '--vp-control-bg', '--material-glass-control'))
     assert.match(overlayBlock, /--vp-control-bg:[^;]*var\(--surface-specular-edge\)[^;]*var\(--surface-noise\)[^;]*var\(--material-glass-control\)/)
     assert.ok(customPropertyIncludes(overlayBlock, '--vp-control-bg-hover', '--material-glass-control-hover'))
@@ -57,7 +48,7 @@ for (const [name, source] of overlaySources) {
     assert.doesNotMatch(overlayBlock, /--vp-control-bg-hover:\s*var\(--material-glass-control-hover\);/)
     assert.doesNotMatch(source, /--vp-player-bg:\s*#000|#000000/)
 
-    for (const block of [closeBlock, infoBlock, speedBlock]) {
+    for (const block of [closeBlock, infoBlock]) {
       assert.match(block, /background:\s*var\(--vp-control-bg\)/)
       assert.match(block, /border:\s*var\(--stroke-pro\) solid var\(--vp-control-border\)|border:\s*1px solid var\(--vp-control-border\)/)
       assert.match(block, /box-shadow:\s*var\(--vp-control-shadow\)/)
@@ -65,19 +56,14 @@ for (const [name, source] of overlaySources) {
       assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255,\s*0\.(?:07|08|1|12|15|2)\)|transition:\s*var\(--transition-pro\)/)
     }
 
-    for (const block of [closeHoverBlock, speedHoverBlock]) {
-      assert.match(block, /background:\s*var\(--vp-control-bg-hover\)/)
-      assert.match(block, /border-color:\s*var\(--vp-control-border-hover\)/)
-      assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\)/)
-    }
+    assert.match(closeHoverBlock, /background:\s*var\(--vp-control-bg-hover\)/)
+    assert.match(closeHoverBlock, /border-color:\s*var\(--vp-control-border-hover\)/)
+    assert.match(closeHoverBlock, /box-shadow:\s*var\(--vp-control-shadow-hover\)/)
 
-    for (const block of [closeFocusBlock, speedFocusBlock]) {
-      assert.match(block, /outline:\s*none/)
-      assert.match(block, /box-shadow:\s*var\(--vp-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
-    }
+    assert.match(closeFocusBlock, /outline:\s*none/)
+    assert.match(closeFocusBlock, /box-shadow:\s*var\(--vp-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 
     assert.match(closeActiveBlock, /transform:\s*rotate\(90deg\)\s*scale\(0\.96\)/)
-    assert.match(speedActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.97\)/)
 
     assert.match(playerBlock, /background:\s*var\(--vp-player-bg\)/)
     assert.match(playerBlock, /border:\s*var\(--stroke-pro\) solid var\(--vp-sheet-border\)/)
@@ -87,12 +73,5 @@ for (const [name, source] of overlaySources) {
     assert.match(titleBlock, /color:\s*var\(--text-secondary\)/)
     assert.match(titleBlock, /letter-spacing:\s*0/)
     assert.doesNotMatch(titleBlock, /text-transform:\s*uppercase/)
-
-    assert.ok(backgroundIncludes(activeBlock, '--glass-active-material'))
-    assert.match(activeBlock, /var\(--surface-specular-edge-strong\)/)
-    assert.match(activeBlock, /var\(--surface-noise\)/)
-    assert.match(activeBlock, /border-color:\s*var\(--glass-active-border\)/)
-    assert.match(activeBlock, /box-shadow:\s*var\(--glass-active-shadow\)/)
-    assert.doesNotMatch(source, /^\.vp-speed-btn\.active\s*\{\s*background:\s*var\(--glass-active-material\);/m)
   })
 }
