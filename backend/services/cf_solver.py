@@ -26,6 +26,12 @@ _SESSION_ID = "javhub-default"
 _session_created = False
 _session_lock = asyncio.Lock()
 
+# 后端启动时预热 + 定时保活的目标:让 jable / missav / kanav 的 CF cookie
+# 一直在 session 里活着,用户首次访问也不碰冷启动。
+_WARMUP_TARGETS = ("https://jable.tv/", "https://missav.ai/", "https://kanav.info/")
+_KEEPALIVE_INTERVAL_SEC = 240  # 每 4 分钟续命一次,FlareSolverr 默认 600s 销毁
+_keepalive_task: Optional[asyncio.Task] = None
+
 
 async def _ensure_session(client: httpx.AsyncClient, solver_url: str) -> bool:
     """幂等地保证 FlareSolverr 上存在我们的 long-lived session。"""
@@ -55,6 +61,43 @@ async def _ensure_session(client: httpx.AsyncClient, solver_url: str) -> bool:
 def _reset_session() -> None:
     global _session_created
     _session_created = False
+
+
+async def warmup_and_keepalive() -> None:
+    """后端启动 fire-and-forget:把 jable/missav/kanav 主页都先解一次,
+    把 CF cookie 装进 session;之后每 4 分钟续命防 session 过期。
+
+    这样用户首次访问任何番号都不再碰"chrome 冷启 + 解 challenge"的 30s 头
+    付,只需做单页 fetch ≈ 5~10s。"""
+    if not Config().stream_cf_solver_url.strip():
+        return
+    # 第一轮串行 warmup,把每个域的 CF cookie 都种到 session
+    for url in _WARMUP_TARGETS:
+        try:
+            await fetch_with_cf_solver(url, timeout_ms=90_000)
+            logger.info("CF warmup done: %s", url)
+        except Exception as exc:
+            logger.warning("CF warmup failed %s: %s", url, exc)
+    # 周期保活
+    while True:
+        await asyncio.sleep(_KEEPALIVE_INTERVAL_SEC)
+        for url in _WARMUP_TARGETS:
+            try:
+                await fetch_with_cf_solver(url, timeout_ms=45_000)
+            except Exception:
+                pass
+
+
+def start_warmup_background() -> None:
+    """在 FastAPI startup 里调用,返回后立刻不阻塞。"""
+    global _keepalive_task
+    if _keepalive_task and not _keepalive_task.done():
+        return
+    try:
+        loop = asyncio.get_event_loop()
+        _keepalive_task = loop.create_task(warmup_and_keepalive())
+    except RuntimeError:
+        pass
 
 
 async def fetch_with_cf_solver(

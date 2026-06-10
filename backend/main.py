@@ -192,6 +192,14 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Failed to register sources: {e}")
 
+    # 后端启动后立刻 fire-and-forget 预热 FlareSolverr session,
+    # 让用户首次开播跳过"chrome 冷启 + CF challenge"的 30s 头付。
+    try:
+        from services.cf_solver import start_warmup_background
+        start_warmup_background()
+    except Exception as e:
+        logging.warning(f"Failed to start CF solver warmup: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
