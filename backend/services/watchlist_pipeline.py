@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -12,28 +11,21 @@ from database import (
     is_video_exempt,
     upsert_candidate_from_video,
 )
+from modules.code_matcher import (
+    code_matches_text as _code_matches_haystack,
+    normalize_code,
+    video_code,
+)
 
 
-def normalize_code(value: str | None) -> str:
-    return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
-
-
-def video_code(video: dict) -> str:
-    return str(video.get("dvd_id") or video.get("content_id") or video.get("canonical_number") or "").strip()
-
-
-def _code_matches_haystack(code: str, haystack: str) -> bool:
-    compact = normalize_code(code)
-    if not compact:
-        return False
-    match = re.match(r"^([A-Z]+)(\d+)([A-Z]*)$", compact)
-    if match:
-        prefix, number, suffix = match.groups()
-        suffix_pattern = rf"[-_\s]*{re.escape(suffix)}" if suffix else r"(?:[-_\s]*(?=[A-Z])[A-Z]+)?"
-        pattern = rf"(?<![A-Z0-9]){re.escape(prefix)}[-_\s]*{re.escape(number)}{suffix_pattern}(?![A-Z0-9])"
-        if re.search(pattern, haystack.upper()):
-            return True
-    return compact in normalize_code(haystack)
+__all__ = [
+    "WatchlistPipeline",
+    "normalize_code",
+    "video_code",
+    "video_in_snapshot",
+    "video_in_snapshot_match",
+    "video_in_existing_codes",
+]
 
 
 def video_in_snapshot_match(video: dict, snapshot_items: Iterable[dict] | None) -> dict | None:
@@ -215,9 +207,16 @@ class WatchlistPipeline:
         emby_snapshot: list[dict] | None,
         existing_codes: set[str] | None = None,
     ) -> dict:
+        from modules.emby_client import EmbyUnavailableError
+
         stats = PipelineStats()
         existing_candidates = download_candidate_content_keys(actress_id=actress_id, source=trigger_source)
         emby = None if emby_snapshot is not None or existing_codes is not None else await self._emby()
+        # When we have to query Emby live, bail out the moment it starts erroring —
+        # the alternative is mass-flagging the actor as "all missing" and queueing
+        # thousands of false candidates.
+        emby_failure_streak = 0
+        emby_aborted = False
 
         for video in videos:
             content_id = candidate_content_id(video)
@@ -237,7 +236,16 @@ class WatchlistPipeline:
             elif emby_snapshot is not None:
                 exists = video_in_snapshot_match(video, emby_snapshot) is not None
             else:
-                exists = await emby.check_exists(code)
+                try:
+                    exists = await emby.check_exists(code)
+                    emby_failure_streak = 0
+                except EmbyUnavailableError:
+                    emby_failure_streak += 1
+                    if emby_failure_streak >= 3:
+                        emby_aborted = True
+                        break
+                    stats.skipped += 1
+                    continue
 
             if exists:
                 stats.in_library += 1
@@ -258,7 +266,10 @@ class WatchlistPipeline:
                 stats.created += 1
                 existing_candidates.add((content_id, trigger_source))
 
-        return stats.as_dict()
+        result = stats.as_dict()
+        if emby_aborted:
+            result["emby_unavailable"] = True
+        return result
 
     async def generate_candidates_for_actress(
         self,

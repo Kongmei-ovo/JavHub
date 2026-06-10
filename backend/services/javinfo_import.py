@@ -4,6 +4,7 @@ import asyncio
 import gzip
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable
 
 from services.javinfo_import_settings import normalize_javinfo_import_db_settings
+
+logger = logging.getLogger(__name__)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -1163,6 +1166,7 @@ class JavInfoImportManager:
         if self.post_import_migrator is not None:
             await self.post_import_migrator(job)
             self._log(job, "JavInfoApi migrations completed")
+            self._invalidate_javhub_caches(job)
             return
 
         from modules.info_client import get_info_client
@@ -1174,6 +1178,7 @@ class JavInfoImportManager:
             try:
                 await client.run_migrations()
                 self._log(job, "JavInfoApi migrations completed")
+                self._invalidate_javhub_caches(job)
                 return
             except Exception as exc:
                 last_error = exc
@@ -1182,6 +1187,32 @@ class JavInfoImportManager:
                 self._log(job, f"JavInfoApi migration attempt {attempt} failed; retrying")
                 await asyncio.sleep(min(attempt, 5))
         raise JavInfoImportError(f"JavInfoApi migrations failed: {last_error}")
+
+    def _invalidate_javhub_caches(self, job: dict[str, Any]) -> None:
+        """Drop every JavHub cache that's now serving stale post-import data.
+
+        After a dump restore, ``video`` / ``search`` / ``enum`` / ``response``
+        caches all still point at the previous database — "imported but UI
+        hasn't changed" was a direct consequence. ``reset_info_client``
+        rebuilds the HTTP client so any per-process state goes too.
+        """
+        try:
+            from services import cache as response_cache
+
+            response_cache.purge_all()
+        except Exception:
+            logger.exception("failed to purge JavHub response cache after import")
+            self._log(job, "warning: JavHub cache purge failed (continuing)")
+
+        try:
+            from modules.info_client import reset_info_client
+
+            reset_info_client()
+        except Exception:
+            logger.exception("failed to reset info client after import")
+            self._log(job, "warning: info client reset failed (continuing)")
+
+        self._log(job, "JavHub caches invalidated")
 
     async def _cleanup_old_backups(self, settings: dict[str, Any], target_db: str, keep: int) -> None:
         keep = max(0, int(keep or 0))

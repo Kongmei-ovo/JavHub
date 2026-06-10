@@ -188,6 +188,23 @@ class Config:
     def scheduler_check_hour(self) -> Optional[int]:
         return self._config.get('scheduler', {}).get('subscription_check_hour', 2)
 
+    @property
+    def inventory(self) -> dict:
+        defaults = {
+            'snapshot_retention': 5,
+            'sent_audit_interval_minutes': 60,
+        }
+        cfg = self._config.get('inventory', {}) or {}
+        return {**defaults, **cfg}
+
+    @property
+    def inventory_snapshot_retention(self) -> int:
+        return self._clamp_int(self.inventory.get('snapshot_retention', 5), 5, 1, 100)
+
+    @property
+    def inventory_sent_audit_interval_minutes(self) -> int:
+        return self._clamp_int(self.inventory.get('sent_audit_interval_minutes', 60), 60, 0, 1440)
+
     # Automation policy settings
     @property
     def automation(self) -> dict:

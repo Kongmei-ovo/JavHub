@@ -376,6 +376,46 @@ def list_missing_videos_page(limit: int = 80, offset: int = 0) -> dict:
         rows = cursor.fetchall()
     return {"data": [dict(row) for row in rows], "total": total, "limit": page_size, "offset": start}
 
+def list_missing_actresses_from_inventory(limit: int = 200) -> list[dict]:
+    """Aggregate ``missing_videos`` by actress for the ``/api/v1/missing`` API.
+
+    Replaces the legacy two-step path (subscriptions → ``check_exists`` →
+    actress_missing_summary cache) which double-counted, capped at the first
+    100 works per actress, and turned every Emby blip into "everything is
+    missing". This reads the same table ``run_compare_job`` writes into, so
+    the numbers match the inventory module by construction.
+    """
+    page_size = max(1, min(int(limit or 200), 1000))
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT m.actress_id,
+                   COALESCE(i.primary_name, i.actress_name, MIN(m.title), '') AS actress_name,
+                   COUNT(*) AS missing_count,
+                   i.total_videos AS total_in_javinfo,
+                   MAX(m.created_at) AS last_updated
+            FROM missing_videos m
+            LEFT JOIN inventory_actors i ON i.actress_id = m.actress_id
+            GROUP BY m.actress_id, i.primary_name, i.actress_name, i.total_videos
+            ORDER BY missing_count DESC, actress_name ASC
+            LIMIT ?
+            """,
+            (page_size,),
+        )
+        rows = cursor.fetchall()
+    return [
+        {
+            "actress_id": row["actress_id"],
+            "actress_name": row.get("actress_name") or "",
+            "missing_count": int(row.get("missing_count") or 0),
+            "total_in_javinfo": int(row.get("total_in_javinfo") or 0),
+            "last_updated": row.get("last_updated"),
+        }
+        for row in rows
+    ]
+
+
 def missing_videos_summary(limit: int = 8) -> dict:
     page_size = max(1, min(int(limit or 8), 50))
     with get_db() as conn:

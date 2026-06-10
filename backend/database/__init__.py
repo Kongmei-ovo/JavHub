@@ -139,6 +139,7 @@ from database.inventory import (
     save_missing_summary,
     get_all_missing_summaries,
     list_missing_summary_index,
+    list_missing_actresses_from_inventory,
     get_missing_summary,
 )
 from database.snapshot import (

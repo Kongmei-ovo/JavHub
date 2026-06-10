@@ -11,16 +11,15 @@ class MissingRouteTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_list_missing_actresses_uses_short_response_cache_with_bypass(self):
         from routers import missing
 
-        with patch.object(missing, "list_missing_summary_index", side_effect=[
+        with patch.object(missing, "list_missing_actresses_from_inventory", side_effect=[
             [{"actress_id": 1, "missing_count": 2}],
             [{"actress_id": 2, "missing_count": 3}],
-        ]) as summaries, patch.object(missing, "get_all_missing_summaries") as full_summaries:
+        ]) as summaries:
             first = await missing.list_missing_actresses()
             second = await missing.list_missing_actresses()
             bypassed = await missing.list_missing_actresses(cache_control="0")
 
         self.assertEqual(summaries.call_count, 2)
-        full_summaries.assert_not_called()
         self.assertEqual(first["data"][0]["actress_id"], 1)
         self.assertNotIn("missing_videos_json", first["data"][0])
         self.assertEqual(second["data"][0]["actress_id"], 1)

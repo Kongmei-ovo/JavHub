@@ -21,7 +21,11 @@ from database import (
     set_download_candidate_status,
     update_download_candidate_magnet,
 )
-from database.download_candidate import promote_download_candidate_magnet_alternative
+from database.download_candidate import (
+    find_sent_candidate_by_normalized_code,
+    promote_download_candidate_magnet_alternative,
+)
+from modules.code_matcher import normalize_code
 from services.downloader import downloader_service
 from sources import register_all_sources
 from sources.registry import SourceRegistry
@@ -400,6 +404,45 @@ async def process_candidate(
         add_download_candidate_event(candidate_id, "policy_skipped", plan["reason"], operator)
         return _response(planned_action, candidate, policy=chosen_policy)
 
+    # Cross-source dedup: a single movie can show up as candidates in multiple
+    # sources (inventory + subscription + supplement). Without this check the
+    # automatic processor would send the same file to the downloader N times.
+    if not force:
+        normalized = normalize_code(candidate.get("dvd_id") or candidate.get("content_id"))
+        if normalized:
+            sibling = find_sent_candidate_by_normalized_code(
+                normalized,
+                exclude_candidate_id=candidate_id,
+            )
+            if sibling:
+                add_download_candidate_event(
+                    candidate_id,
+                    "skipped_duplicate",
+                    json.dumps(
+                        {
+                            "sibling_id": sibling.get("id"),
+                            "sibling_source": sibling.get("source"),
+                            "sibling_status": sibling.get("status"),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    operator,
+                )
+                # Promote this row's status so the queue UI / automation
+                # doesn't keep retrying it.
+                updated = set_download_candidate_status(
+                    candidate_id,
+                    sibling.get("status") or "sent",
+                    download_task_id=sibling.get("download_task_id"),
+                )
+                return _response(
+                    "skipped_duplicate",
+                    updated or candidate,
+                    policy=chosen_policy,
+                    sibling_id=sibling.get("id"),
+                    sibling_source=sibling.get("source"),
+                )
+
     if enrich and not _download_uri(candidate):
         enrich_result = await enrich_candidate_magnet(candidate_id, operator=operator)
         candidate = get_download_candidate(candidate_id) or candidate
@@ -528,6 +571,33 @@ async def process_candidates(
     force: bool = False,
     operator: str = "manual",
 ) -> dict:
+    # Lock is held for the entire batch so manual API calls, scheduler auto
+    # runs, and the supplement pipeline can't process the same candidate row
+    # twice. ``run_automatic_candidate_processing`` no longer acquires its own
+    # lock — the mutex lives here, at the single chokepoint.
+    if not _PROCESSING_LOCK.acquire(blocking=False):
+        return _busy_response()
+    try:
+        return await _process_candidates_locked(
+            filters=filters,
+            policy=policy,
+            enrich=enrich,
+            limit=limit,
+            force=force,
+            operator=operator,
+        )
+    finally:
+        _PROCESSING_LOCK.release()
+
+
+async def _process_candidates_locked(
+    filters: dict[str, Any] | None,
+    policy: str | None,
+    enrich: bool,
+    limit: int,
+    force: bool,
+    operator: str,
+) -> dict:
     filters = filters or {}
     chosen_policy = _normalize_policy(policy)
     policy_cfg = AutomationPolicy.from_config()
@@ -560,11 +630,13 @@ async def process_candidates(
     for result in results:
         action = result.get("action") or "unknown"
         counts[action] = counts.get(action, 0) + 1
+    truncated = len(results) >= limit
     result = {
         "status": "ok",
         "total": len(results),
         "counts": counts,
         "limits": limit_state,
+        "truncated": truncated,
         "results": results,
     }
     result["run_id"] = add_candidate_process_run(
@@ -683,38 +755,39 @@ async def retry_failed_candidates_from_run(
 
 
 async def run_automatic_candidate_processing(limit: int = 50, operator: str = "system") -> dict:
-    if not _PROCESSING_LOCK.acquire(blocking=False):
+    # The mutex now lives in ``process_candidates`` (the single chokepoint for
+    # candidate writes). Peek at the lock so the manual-policy early-return
+    # path still reports busy when another batch is in flight — matches the
+    # pre-shift behaviour callers/UI rely on.
+    if _PROCESSING_LOCK.locked():
         return _busy_response()
     policy = config.automation_download_policy
     policy_cfg = AutomationPolicy.from_config()
     effective_limit = limit
     if policy_cfg.max_auto_downloads_per_run > 0:
         effective_limit = min(limit, policy_cfg.max_auto_downloads_per_run)
-    try:
-        if policy == "manual":
-            result = {
-                "status": "ok",
-                "action": "manual_policy",
-                "skipped": True,
-                "reason": "manual policy",
-                "total": 0,
-                "counts": {},
-                "results": [],
-            }
-            result["run_id"] = add_candidate_process_run(
-                trigger_source=operator,
-                policy=policy,
-                filters={"status": "candidate", "limit": effective_limit},
-                result=result,
-            )
-            return result
-        return await process_candidates(
-            filters={"status": "candidate"},
+    if policy == "manual":
+        result = {
+            "status": "ok",
+            "action": "manual_policy",
+            "skipped": True,
+            "reason": "manual policy",
+            "total": 0,
+            "counts": {},
+            "results": [],
+        }
+        result["run_id"] = add_candidate_process_run(
+            trigger_source=operator,
             policy=policy,
-            enrich=True,
-            limit=effective_limit,
-            force=False,
-            operator=operator,
+            filters={"status": "candidate", "limit": effective_limit},
+            result=result,
         )
-    finally:
-        _PROCESSING_LOCK.release()
+        return result
+    return await process_candidates(
+        filters={"status": "candidate"},
+        policy=policy,
+        enrich=True,
+        limit=effective_limit,
+        force=False,
+        operator=operator,
+    )

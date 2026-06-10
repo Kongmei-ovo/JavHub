@@ -12,7 +12,14 @@ from database import (
     get_latest_snapshot_key, get_snapshot_actors, get_snapshot_videos,
     get_confirmed_actor_mapping
 )
-from database.snapshot import clone_snapshot, get_snapshot_created_at, upsert_emvy_snapshot
+from database.snapshot import (
+    clone_snapshot,
+    delete_emby_snapshot_rows,
+    get_emby_item_ids_for_snapshot,
+    get_snapshot_created_at,
+    prune_old_snapshots,
+    upsert_emvy_snapshot,
+)
 from config import config
 from modules.emby_client import get_emby_client
 from services.watchlist_pipeline import WatchlistPipeline, video_code, video_in_snapshot_match
@@ -22,9 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 def is_exempt(content_id: str) -> bool:
-    """检查影片是否被豁免"""
+    """检查影片是否被豁免（保留旧 API；内部循环请改用 ``_load_exempt_set``）。"""
     exempt_list = get_exempt_videos()
     return any(v["content_id"] == content_id for v in exempt_list)
+
+
+def _load_exempt_set() -> set[str]:
+    """Snapshot exempt list once per job — avoids the N+1 full-table scan."""
+    return {row["content_id"] for row in get_exempt_videos() if row.get("content_id")}
 
 
 def _video_content_id(video: dict) -> str:
@@ -220,6 +232,42 @@ async def _run_full_collect_job(job_id: int, emby) -> None:
     logger.info("[Inventory] Collection job %s completed. Snapshot: %s", job_id, snapshot_key)
 
 
+async def _reconcile_deleted_emby_items(
+    emby,
+    snapshot_key: str,
+    actors_data: list[dict],
+) -> tuple[int, set[int]]:
+    """Drop snapshot rows whose Emby item no longer exists.
+
+    Returns (deleted_row_count, set_of_actor_ids_with_changes).
+    """
+    try:
+        live_ids = set(await emby.iter_item_ids())
+    except Exception:
+        logger.exception("[Inventory] Failed to fetch live Emby item ids; skipping delete sync")
+        return 0, set()
+
+    if not live_ids:
+        # Treat an empty live list as "Emby probably broken" rather than
+        # "everything is gone" — bail rather than wiping the snapshot.
+        logger.warning("[Inventory] Emby returned no items; skipping delete sync")
+        return 0, set()
+
+    snapshot_ids = get_emby_item_ids_for_snapshot(snapshot_key)
+    stale = [item_id for item_id in snapshot_ids if item_id not in live_ids]
+    if not stale:
+        return 0, set()
+
+    deleted = delete_emby_snapshot_rows(snapshot_key, stale)
+    affected_actor_ids = {actor["actress_id"] for actor in actors_data}
+    logger.info(
+        "[Inventory] Pruned %s stale snapshot rows (key=%s)",
+        deleted,
+        snapshot_key,
+    )
+    return deleted, affected_actor_ids
+
+
 async def _run_incremental_collect_job(job_id: int, emby) -> None:
     previous_key = get_latest_snapshot_key()
     if not previous_key:
@@ -247,11 +295,23 @@ async def _run_incremental_collect_job(job_id: int, emby) -> None:
     )
 
     processed = _save_actors_videos(snapshot_key, actors_data, upsert=True)
+
+    # Reconcile deletions: anything still in our cloned snapshot but missing
+    # from Emby's current item-id roster has been removed upstream. Without
+    # this step the snapshot grows monotonically and removed items get
+    # silently counted as "still in the library" forever.
+    deleted_count, removed_actor_ids = await _reconcile_deleted_emby_items(
+        emby, snapshot_key, actors_data
+    )
+
     save_emby_actors_snapshot(snapshot_key, _actors_with_snapshot_counts(snapshot_key, actors_data))
     _sync_inventory_actors(actors_data)
     update_inventory_progress(job_id, 90)
 
     actor_mapping_result = await _run_actor_auto_match(snapshot_key)
+    # Bound table growth — old snapshot keys are no longer referenced once a
+    # newer one exists, so dropping them is safe.
+    pruned_keys = prune_old_snapshots(config.inventory_snapshot_retention)
     update_inventory_progress(job_id, 95)
     update_inventory_job(
         job_id,
@@ -265,6 +325,8 @@ async def _run_incremental_collect_job(job_id: int, emby) -> None:
             "actors": len(actors_data),
             "videos": total,
             "upserted": processed,
+            "deleted_from_snapshot": deleted_count,
+            "pruned_snapshot_keys": pruned_keys,
             "actor_mapping": actor_mapping_result,
         },
     )
@@ -304,9 +366,11 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             update_inventory_job(job_id, "failed", "No snapshot available. Please run collect first.")
             return
 
+        exempt_set = _load_exempt_set()
         scanned = 0
         missing_total = 0
         unmapped = 0
+        unmapped_actor_ids: list[int] = []
         failed = 0
         mapped = 0
         actor_total = 0
@@ -323,7 +387,11 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
                 mapping = get_confirmed_actor_mapping(emby_actor_id)
                 if not mapping:
                     unmapped += 1
-                    update_inventory_actor_stats(emby_actor_id, 0, 0)
+                    unmapped_actor_ids.append(emby_actor_id)
+                    # Intentionally do NOT zero out previous stats — they may
+                    # have been computed when a mapping existed earlier, and
+                    # writing 0/0 here would silently hide them. Leave the row
+                    # untouched so the UI shows "unmapped" instead of "0".
                     continue
                 pending.append((
                     actor,
@@ -381,7 +449,7 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
                     total += 1
                     scanned += 1
 
-                    if is_exempt(content_id) or is_exempt(code):
+                    if content_id in exempt_set or code in exempt_set:
                         continue
 
                     matched = video_in_snapshot_match(video, snapshot_videos)
@@ -419,6 +487,9 @@ async def run_compare_job(job_id: int, snapshot_key: Optional[str] = None):
             "actors": actor_total,
             "mapped": mapped,
             "unmapped": unmapped,
+            # First 500 unmapped actor IDs — enough to drive a "fix mappings"
+            # CTA in the UI without bloating the job result blob.
+            "unmapped_actor_ids": unmapped_actor_ids[:500],
             "failed": failed,
             "scanned": scanned,
             "missing": missing_total,
@@ -453,7 +524,8 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
 
         mapping = get_confirmed_actor_mapping(actress_id)
         if not mapping:
-            update_inventory_actor_stats(actress_id, 0, 0)
+            # Preserve prior stats — see ``run_compare_job`` for why we no
+            # longer overwrite with 0/0 on unmapped.
             update_inventory_job(
                 job_id,
                 "completed",
@@ -463,6 +535,7 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
                     "actors": 1,
                     "mapped": 0,
                     "unmapped": 1,
+                    "unmapped_actor_ids": [actress_id],
                     "failed": 0,
                     "scanned": 0,
                     "missing": 0,
@@ -481,6 +554,7 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
 
         # 查 Emby 快照
         snapshot_videos = get_snapshot_videos(snapshot_key, actress_id)
+        exempt_set = _load_exempt_set()
 
         total = len(javinfo_videos)
         missing = 0
@@ -490,7 +564,7 @@ async def run_actor_compare_job(job_id: int, actress_id: int, snapshot_key: Opti
             if not content_id:
                 continue
 
-            if is_exempt(content_id):
+            if content_id in exempt_set:
                 continue
 
             matched = video_in_snapshot_match(video, snapshot_videos)

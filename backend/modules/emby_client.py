@@ -1,10 +1,22 @@
 from __future__ import annotations
 import asyncio
 import httpx
-import re
+import logging
 import time
 from typing import Any
 from difflib import SequenceMatcher
+
+from modules.code_matcher import code_matches_text, extract_code, normalize_code
+
+logger = logging.getLogger(__name__)
+
+
+class EmbyUnavailableError(RuntimeError):
+    """Raised when Emby cannot be reached or rejects the request.
+
+    Distinct from "lookup succeeded but the item is not in the library" — the
+    caller must not treat this as confirmation that an item is missing.
+    """
 
 
 class EmbyClient:
@@ -26,11 +38,23 @@ class EmbyClient:
         # was closed) to avoid cross-loop hangs / "Event loop is closed".
         loop = asyncio.get_running_loop()
         if self._client is None or self._client.is_closed or self._client_loop is not loop:
+            previous = self._client
+            previous_loop = self._client_loop
             self._client = httpx.AsyncClient(
                 headers={"X-Emby-Token": self.api_key},
                 timeout=30,
             )
             self._client_loop = loop
+            if previous is not None and not previous.is_closed:
+                # Best-effort cleanup of the old loop's client; if its loop is
+                # already gone we can't await close from here, so just log.
+                if previous_loop is not None and not previous_loop.is_closed():
+                    try:
+                        previous_loop.call_soon_threadsafe(
+                            lambda: asyncio.ensure_future(previous.aclose(), loop=previous_loop)
+                        )
+                    except RuntimeError:
+                        logger.debug("Could not schedule aclose on previous emby client")
         return self._client
 
     async def close(self):
@@ -51,20 +75,19 @@ class EmbyClient:
 
     def _item_matches_content_id(self, item: dict, code_upper: str) -> bool:
         name = item.get("Name", "") or item.get("FileName", "")
-        name_upper = name.upper()
-        # 精确匹配：content_id 作为独立词组出现（前后是分隔符或边界）
-        # 匹配: ABC-123, ABC-123-c, ABC-123.hack 等
-        # 不匹配: XABC-123, ABC-123-456, ABC-1234
-        return bool(re.search(
-            r'(?<![A-Z0-9])' + re.escape(code_upper) + r'(?:-(?=[A-Za-z])[A-Za-z]*)?(?=\s|[().,!]|$)',
-            name_upper
-        ))
+        return code_matches_text(code_upper, name)
 
     def clear_exists_cache(self):
         self._exists_cache.clear()
 
     async def lookup(self, content_id: str) -> dict | None:
-        """查找影片是否在 Emby 库中，并返回首个匹配 item 的来源信息。"""
+        """Return Emby match info for ``content_id`` or ``None`` if not present.
+
+        Raises :class:`EmbyUnavailableError` when Emby cannot be queried — the
+        caller must NOT interpret an exception as "missing". Successful "not
+        present" results are cached; failures are not, so the next request
+        will re-attempt instead of poisoning the cache.
+        """
         code_upper = self._normalize_content_id(content_id)
         if not code_upper:
             return None
@@ -86,39 +109,35 @@ class EmbyClient:
                     "searchTerm": code_upper,
                 }
             )
-            items = result.get("Items", result.get("items", []))
-            for item in items:
-                if self._item_matches_content_id(item, code_upper):
-                    match = {
-                        "exists": True,
-                        "emby_item_id": item.get("Id"),
-                        "name": item.get("Name") or item.get("FileName"),
-                    }
-                    self._exists_cache[code_upper] = (now, match)
-                    return match
-            self._exists_cache[code_upper] = (now, None)
-            return None
-        except Exception:
-            self._exists_cache[code_upper] = (now, None)
-            return None
+        except Exception as exc:
+            # Do NOT cache failures — otherwise a single Emby blip mass-floods
+            # missing/candidate pipelines with false negatives.
+            logger.warning("Emby lookup failed for %s: %s", code_upper, exc)
+            raise EmbyUnavailableError(str(exc)) from exc
+
+        items = result.get("Items", result.get("items", []))
+        for item in items:
+            if self._item_matches_content_id(item, code_upper):
+                match = {
+                    "exists": True,
+                    "emby_item_id": item.get("Id"),
+                    "name": item.get("Name") or item.get("FileName"),
+                }
+                self._exists_cache[code_upper] = (now, match)
+                return match
+        self._exists_cache[code_upper] = (now, None)
+        return None
 
     async def check_exists(self, content_id: str) -> bool:
-        """检查影片是否在库中（使用 Emby 查询接口，替代遍历全量数据）"""
-        try:
-            return await self.lookup(content_id) is not None
-        except Exception:
-            return False
+        """Return True iff Emby confirms the item is present.
 
-    async def get_all_movies(self) -> list[dict]:
-        """获取所有影片库项"""
-        try:
-            result = await self._get("/Library/MediaCounts")
-            return result.get("Items", [])
-        except Exception:
-            return []
+        Propagates :class:`EmbyUnavailableError` so callers can distinguish
+        "Emby says no" from "Emby could not answer".
+        """
+        return await self.lookup(content_id) is not None
 
     async def get_items(self, limit: int = 200, include_people: bool = False) -> list[dict]:
-        """获取媒体库中的所有项目"""
+        """获取媒体库中的所有项目（单页，无分页）"""
         try:
             params = {
                 "limit": limit,
@@ -137,16 +156,20 @@ class EmbyClient:
         limit: int = 500,
         start: int = 0,
         min_date_last_saved: str | None = None,
+        include_people: bool = True,
     ) -> dict:
-        """分页获取影片（含People演员信息），返回 {items, totalCount}"""
+        """分页获取影片（可选含 People 演员信息），返回 {items, totalCount}"""
         try:
             params = {
                 "limit": limit,
                 "startIndex": start,
                 "includeItemTypes": "Movie",
                 "recursive": "true",
-                "fields": "People,PremiereDate,ProductionYear",
             }
+            fields = ["PremiereDate", "ProductionYear"]
+            if include_people:
+                fields.insert(0, "People")
+            params["fields"] = ",".join(fields)
             if min_date_last_saved:
                 params["MinDateLastSaved"] = min_date_last_saved
             result = await self._get(
@@ -162,6 +185,44 @@ class EmbyClient:
             return {"items": [], "totalCount": 0}
         except Exception:
             return {"items": [], "totalCount": 0}
+
+    async def iter_item_ids(self, min_date_last_saved: str | None = None) -> list[str]:
+        """Stream every Movie ``Id`` from Emby — cheap (no People, no fields).
+
+        Used by incremental snapshot reconciliation to detect items that were
+        deleted on the Emby side so the snapshot can drop them.
+        """
+        ids: list[str] = []
+        start = 0
+        page_size = 1000
+        while True:
+            try:
+                params: dict[str, Any] = {
+                    "limit": page_size,
+                    "startIndex": start,
+                    "includeItemTypes": "Movie",
+                    "recursive": "true",
+                    "fields": "",
+                }
+                if min_date_last_saved:
+                    params["MinDateLastSaved"] = min_date_last_saved
+                result = await self._get("/Items", params=params)
+            except Exception:
+                return ids
+            items = result.get("Items", result.get("items", [])) if isinstance(result, dict) else []
+            if not items:
+                break
+            for item in items:
+                item_id = item.get("Id")
+                if item_id:
+                    ids.append(str(item_id))
+            total = result.get("TotalRecordCount", result.get("totalCount", 0)) if isinstance(result, dict) else 0
+            start += len(items)
+            if total and start >= total:
+                break
+            if len(items) < page_size:
+                break
+        return ids
 
     async def collect_all_movies_with_actors(self) -> tuple[list[dict], int]:
         """采集所有影片及其演员信息，返回 (actors_map, total_items)
@@ -225,76 +286,131 @@ class EmbyClient:
         return list(all_actors.values()), total
 
     async def get_all_actresses(self) -> list[dict]:
-        """获取所有演员及其在Emby的影片数"""
-        actors_map: dict[int, dict] = {}
-        page_size = 500
-        start = 0
+        """List every Person in Emby tagged as Actor with their movie count.
 
+        Uses ``/Persons`` (server-side) instead of scanning every Movie — both
+        much faster and far less RAM on big libraries.
+        """
+        actors: list[dict] = []
+        start = 0
+        page_size = 500
         while True:
-            result = await self.get_items_with_people(limit=page_size, start=start)
-            items = result.get("items", [])
+            try:
+                result = await self._get(
+                    "/Persons",
+                    params={
+                        "limit": page_size,
+                        "startIndex": start,
+                        "includeItemTypes": "Movie",
+                        "personTypes": "Actor",
+                        "recursive": "true",
+                        "fields": "PrimaryImageTag",
+                    },
+                )
+            except Exception:
+                break
+            items = result.get("Items", result.get("items", [])) if isinstance(result, dict) else []
             if not items:
                 break
             for item in items:
-                people = item.get("People", [])
-                for person in people:
-                    if person.get("Type") != "Actor":
-                        continue
-                    actress_id = int(person.get("Id"))
-                    name = person.get("Name", "Unknown")
-                    if actress_id not in actors_map:
-                        actors_map[actress_id] = {
-                            "actress_id": actress_id,
-                            "actress_name": name,
-                            "video_count": 0,
-                        }
-                    actors_map[actress_id]["video_count"] += 1
+                actor_id = item.get("Id")
+                if actor_id is None:
+                    continue
+                try:
+                    actor_id_int = int(actor_id)
+                except (TypeError, ValueError):
+                    continue
+                actors.append({
+                    "actress_id": actor_id_int,
+                    "actress_name": item.get("Name", "Unknown"),
+                    "video_count": int(item.get("MovieCount") or 0),
+                    "image_tag": item.get("PrimaryImageTag"),
+                })
+            total = result.get("TotalRecordCount", result.get("totalCount", 0)) if isinstance(result, dict) else 0
             start += len(items)
-            total = result.get("totalCount", 0)
-            if start >= total:
+            if total and start >= total:
                 break
-        return list(actors_map.values())
+            if len(items) < page_size:
+                break
+        return actors
 
     async def get_actress_videos(self, actress_id: int) -> list[dict]:
-        """获取指定演员在Emby中的影片（支持自动分页）"""
-        all_items = []
-        page_size = 500
+        """Server-side filtered fetch of all Movies for one Person."""
+        videos: list[dict] = []
         start = 0
+        page_size = 500
         while True:
-            result = await self.get_items_with_people(limit=page_size, start=start)
-            items = result.get("items", [])
+            try:
+                result = await self._get(
+                    "/Items",
+                    params={
+                        "limit": page_size,
+                        "startIndex": start,
+                        "PersonIds": str(actress_id),
+                        "includeItemTypes": "Movie",
+                        "recursive": "true",
+                        "fields": "People,PremiereDate,ProductionYear",
+                    },
+                )
+            except Exception:
+                break
+            items = result.get("Items", result.get("items", [])) if isinstance(result, dict) else []
             if not items:
                 break
-            for item in items:
-                people = item.get("People", [])
-                for person in people:
-                    if person.get("Type") == "Actor" and str(person.get("Id")) == str(actress_id):
-                        all_items.append(item)
-                        break
+            videos.extend(items)
+            total = result.get("TotalRecordCount", result.get("totalCount", 0)) if isinstance(result, dict) else 0
             start += len(items)
-            total = result.get("totalCount", 0)
-            if start >= total:
+            if total and start >= total:
                 break
-        return all_items
+            if len(items) < page_size:
+                break
+        return videos
 
     # === 去重相关 ===
 
     def _extract_code_from_name(self, name: str) -> str | None:
-        """从 Emby 影片名称中提取番号"""
-        # 匹配格式如 ABC-123, ABC-001, etc.
-        match = re.search(r'([A-Z]+-\d+)', name.upper())
-        return match.group(1) if match else None
+        return extract_code(name)
 
     def _calculate_similarity(self, str1: str, str2: str) -> float:
         """计算两个字符串的相似度"""
         return SequenceMatcher(None, str1.upper(), str2.upper()).ratio()
 
+    async def _iter_movies_no_people(self) -> list[dict]:
+        """Pull every Movie (id+name+filename only) using normal pagination."""
+        items: list[dict] = []
+        start = 0
+        page_size = 500
+        while True:
+            try:
+                result = await self._get(
+                    "/Items",
+                    params={
+                        "limit": page_size,
+                        "startIndex": start,
+                        "includeItemTypes": "Movie",
+                        "recursive": "true",
+                    },
+                )
+            except Exception:
+                break
+            page = result.get("Items", result.get("items", [])) if isinstance(result, dict) else []
+            if not page:
+                break
+            items.extend(page)
+            total = result.get("TotalRecordCount", result.get("totalCount", 0)) if isinstance(result, dict) else 0
+            start += len(page)
+            if total and start >= total:
+                break
+            if len(page) < page_size:
+                break
+        return items
+
     async def find_duplicates(self, info_client) -> list[dict]:
-        """查找可疑重复（Emby名称 ↔ JavInfoApi匹配），使用批量接口"""
+        """Find Emby ↔ JavInfo dup candidates across the whole library."""
         from database import is_duplicate_ignored
 
         duplicates = []
-        embys = await self.get_items()
+        embys = await self._iter_movies_no_people()
 
         # 收集需要查询的番号及其对应的 emby 信息
         code_to_items: dict[str, list[dict]] = {}
@@ -347,19 +463,22 @@ class EmbyClient:
         return duplicates
 
     async def delete_item(self, item_id: str) -> bool:
-        """删除 Emby 媒体库条目"""
+        """Delete an Emby item. Returns True only when Emby confirms removal."""
         try:
             client = await self._get_client()
-            await client.delete(f"{self.api_url}/Items/{item_id}")
+            response = await client.delete(f"{self.api_url}/Items/{item_id}")
+            response.raise_for_status()
             return True
-        except Exception:
+        except Exception as exc:
+            logger.warning("Emby delete failed for item %s: %s", item_id, exc)
             return False
 
     # === 缺失检测 ===
 
     async def get_missing_actresses_summary(self, info_client) -> list[dict]:
-        """获取缺失演员统计"""
-        from database import save_missing_summary, get_all_missing_summaries
+        """获取缺失演员统计（保留作为兜底；主路径已改为读 inventory 的
+        missing_videos 表，请参考 routers/missing.py）。"""
+        from database import save_missing_summary
         from services.subscription import get_all_subscriptions
 
         summaries = []
@@ -373,9 +492,11 @@ class EmbyClient:
                 continue
 
             try:
-                # 获取 JavInfoApi 中该演员的所有作品
-                javinfo_result = await info_client.get_actress_videos(actress_id, page_size=100)
-                javinfo_videos = javinfo_result.get("data", [])
+                # Pull every JavInfo work for this actress (not just the first 100).
+                from services.watchlist_pipeline import WatchlistPipeline
+
+                pipeline = WatchlistPipeline(info_client=info_client, emby_client=self)
+                javinfo_videos = await pipeline.fetch_actress_videos(int(actress_id))
                 total = len(javinfo_videos)
 
                 if total == 0:
@@ -385,15 +506,30 @@ class EmbyClient:
                 missing = []
                 for video in javinfo_videos:
                     code = video.get("dvd_id") or video.get("content_id")
-                    if code:
+                    if not code:
+                        continue
+                    try:
                         exists = await self.check_exists(code)
-                        if not exists:
-                            missing.append({
-                                "content_id": code,
-                                "title": video.get("title_en"),
-                                "release_date": video.get("release_date"),
-                                "jacket_thumb_url": video.get("jacket_thumb_url"),
-                            })
+                    except EmbyUnavailableError:
+                        # Aborting this actress on Emby failure is safer than
+                        # mass-flagging everything as missing.
+                        logger.warning(
+                            "Emby unavailable while summarising missing for %s; skipping",
+                            actress_name,
+                        )
+                        missing = []
+                        total = 0
+                        break
+                    if not exists:
+                        missing.append({
+                            "content_id": code,
+                            "title": video.get("title_en"),
+                            "release_date": video.get("release_date"),
+                            "jacket_thumb_url": video.get("jacket_thumb_url"),
+                        })
+
+                if total == 0:
+                    continue
 
                 missing_count = len(missing)
 

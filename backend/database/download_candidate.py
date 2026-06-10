@@ -9,13 +9,14 @@ from typing import Any, Optional
 from database.base import get_db
 
 
-VALID_CANDIDATE_STATUSES = {"candidate", "approved", "rejected", "sent", "failed"}
+VALID_CANDIDATE_STATUSES = {"candidate", "approved", "rejected", "sent", "failed", "completed"}
 _DOWNLOAD_CANDIDATE_ORDER_TERMS = """
     CASE status
         WHEN 'candidate' THEN 0
         WHEN 'approved' THEN 1
         WHEN 'failed' THEN 2
         WHEN 'sent' THEN 3
+        WHEN 'completed' THEN 5
         ELSE 4
     END,
     release_date DESC,
@@ -358,6 +359,42 @@ def list_download_candidates(
         )
         rows = [_candidate_row(row) for row in cursor.fetchall()]
     return _enrich_candidate_rows(rows)
+
+
+def find_sent_candidate_by_normalized_code(
+    normalized_code: str,
+    exclude_candidate_id: int | None = None,
+) -> Optional[dict]:
+    """Find any candidate (in any source) already ``sent``/``completed`` for ``normalized_code``.
+
+    Used by ``process_candidate`` to dedupe across sources — without this, a
+    movie that landed in both ``inventory`` and ``subscription`` (or
+    ``supplement``) would get sent to the downloader twice.
+
+    ``normalized_code`` is the compact upper-case form produced by
+    :func:`modules.code_matcher.normalize_code`.
+    """
+    code = (normalized_code or "").strip()
+    if not code:
+        return None
+    with get_db() as conn:
+        cursor = conn.cursor()
+        sql = (
+            "SELECT * FROM download_candidates "
+            "WHERE status IN ('sent', 'completed') "
+            "AND ("
+            "  UPPER(REGEXP_REPLACE(COALESCE(content_id, ''), '[^A-Za-z0-9]', '', 'g')) = ? "
+            "  OR UPPER(REGEXP_REPLACE(COALESCE(dvd_id, ''), '[^A-Za-z0-9]', '', 'g')) = ?"
+            ")"
+        )
+        params: list = [code, code]
+        if exclude_candidate_id is not None:
+            sql += " AND id != ?"
+            params.append(int(exclude_candidate_id))
+        sql += " ORDER BY updated_at DESC LIMIT 1"
+        cursor.execute(sql, params)
+        row = cursor.fetchone()
+        return _candidate_row(row) if row else None
 
 
 def download_candidate_content_keys(

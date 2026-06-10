@@ -86,6 +86,74 @@ def get_latest_snapshot_key() -> Optional[str]:
         row = cursor.fetchone()
         return row["snapshot_key"] if row else None
 
+
+def list_snapshot_keys() -> list[str]:
+    """All known snapshot keys, newest-first."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT snapshot_key, MAX(updated_at) AS updated_at
+            FROM emby_actors
+            GROUP BY snapshot_key
+            ORDER BY updated_at DESC NULLS LAST, snapshot_key DESC
+            """,
+        )
+        return [row["snapshot_key"] for row in cursor.fetchall() if row.get("snapshot_key")]
+
+
+def delete_emby_snapshot_rows(snapshot_key: str, emby_item_ids: list[str]) -> int:
+    """Delete specific rows from ``emby_snapshots`` for a snapshot key.
+
+    Used by the incremental collector to drop items that no longer exist in
+    Emby — otherwise the snapshot grows monotonically and every removed item
+    is silently treated as "still in the library" by subsequent compares.
+    Returns the number of rows deleted.
+    """
+    ids = [str(item_id) for item_id in emby_item_ids if str(item_id or "").strip()]
+    if not ids:
+        return 0
+    deleted = 0
+    with get_db() as conn:
+        cursor = conn.cursor()
+        chunk = 500
+        for start in range(0, len(ids), chunk):
+            batch = ids[start:start + chunk]
+            placeholders = ",".join("?" for _ in batch)
+            cursor.execute(
+                f"DELETE FROM emby_snapshots WHERE snapshot_key = ? AND emby_item_id IN ({placeholders})",
+                [snapshot_key, *batch],
+            )
+            deleted += getattr(cursor, "rowcount", 0) or 0
+    return deleted
+
+
+def get_emby_item_ids_for_snapshot(snapshot_key: str) -> list[str]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT emby_item_id FROM emby_snapshots WHERE snapshot_key = ?",
+            (snapshot_key,),
+        )
+        return [row["emby_item_id"] for row in cursor.fetchall() if row.get("emby_item_id")]
+
+
+def prune_old_snapshots(keep: int = 5) -> list[str]:
+    """Drop every snapshot beyond the most recent ``keep`` keys.
+
+    Without this, ``clone_snapshot`` causes the ``emby_snapshots`` table to
+    grow by ~one library worth of rows per incremental run. Returns the list
+    of keys that were dropped.
+    """
+    keep = max(1, int(keep or 1))
+    keys = list_snapshot_keys()
+    if len(keys) <= keep:
+        return []
+    drop_keys = keys[keep:]
+    for snapshot_key in drop_keys:
+        clear_snapshot(snapshot_key)
+    return drop_keys
+
 def get_snapshot_created_at(snapshot_key: str) -> Optional[str]:
     with get_db() as conn:
         cursor = conn.cursor()
