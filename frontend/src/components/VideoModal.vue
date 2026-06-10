@@ -290,23 +290,18 @@
         @seek-forward="seekForward"
       />
 
-      <!-- m3u8 在线播放弹窗 -->
+      <!-- m3u8 在线播放弹窗:选源 picker 通过 props 内嵌进 toolbar,不走 slot -->
       <HlsPlayerOverlay
         ref="streamPlayer"
         :visible="streamPlayerVisible"
         :title="video.dvd_id || video.content_id"
         :speed="streamSpeed"
+        :sources="streamSources"
+        :current-source="currentSourceName"
+        :scan-done="streamScanDone"
         @close="closeStreamPlayer"
         @speed="setStreamSpeed"
-      />
-      <!-- 选源浮层:跟 HlsPlayerOverlay 平级,固定贴底,不依赖 async slot -->
-      <StreamSourcePicker
-        v-if="streamPlayerVisible"
-        class="vp-sources-floating"
-        :sources="streamSources"
-        :current="currentSourceName"
-        :scan-done="streamScanDone"
-        @switch="switchStreamSource"
+        @switch-source="switchStreamSource"
       />
     </div>
   </teleport>
@@ -327,10 +322,6 @@ import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '.
 
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
-// StreamSourcePicker 不走 defineAsyncComponent: HlsPlayerOverlay 本身已是 async,
-// 内层 slot 再嵌套异步组件曾经撞 Vue 3 早期 async slot 注入空 patch 的边缘场景,
-// picker 实际未渲染。picker 本体很小,sync import 不影响首屏。
-import StreamSourcePicker from '../features/video/StreamSourcePicker.vue'
 
 function videoFavoriteId(video = {}) {
   const id = video.content_id || video.dvd_id
@@ -340,7 +331,7 @@ function videoFavoriteId(video = {}) {
 
 export default {
   name: 'VideoModal',
-  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay, StreamSourcePicker },
+  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
   emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },

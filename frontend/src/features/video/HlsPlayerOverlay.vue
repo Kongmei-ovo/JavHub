@@ -27,20 +27,32 @@
           >{{ speedOption === 1 ? '1x' : speedOption + 'x' }}</button>
         </div>
       </div>
-      <slot name="extras" />
+      <StreamSourcePicker
+        v-if="sources.length || !scanDone"
+        :sources="sources"
+        :current="currentSource"
+        :scan-done="scanDone"
+        @switch="(s) => $emit('switch-source', s)"
+      />
     </div>
   </div>
 </template>
 
 <script>
+import StreamSourcePicker from './StreamSourcePicker.vue'
+
 export default {
   name: 'HlsPlayerOverlay',
+  components: { StreamSourcePicker },
   props: {
     visible: { type: Boolean, default: false },
     title: { type: String, default: '' },
     speed: { type: Number, default: 1 },
+    sources: { type: Array, default: () => [] },
+    currentSource: { type: String, default: '' },
+    scanDone: { type: Boolean, default: false },
   },
-  emits: ['close', 'speed'],
+  emits: ['close', 'speed', 'switch-source'],
   data() {
     return {
       speedOptions: [0.5, 0.75, 1, 1.25, 1.5, 2],

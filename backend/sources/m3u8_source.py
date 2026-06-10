@@ -48,13 +48,7 @@ class M3U8Source:
               {"source": str, "status": "ok|no_result|error", "elapsed_ms": int, "detail": str}
         """
         avid = content_id.upper().replace("_", "-")
-        sites = [
-            ("rou_video", self._search_rou_video),
-            ("jable", self._search_jable),
-            ("missav", self._search_missav),
-            ("kanav", self._search_kanav),
-            ("hohoj", self._search_hohoj),
-        ]
+        sites = self._sites()
         attempts: list[dict] = []
         for name, search_fn in sites:
             t0 = time.time()
@@ -90,10 +84,11 @@ class M3U8Source:
         return None, attempts
 
     def _sites(self) -> list[tuple[str, "Callable"]]:
-        # 与 search_m3u8 的"按速度+命中率"顺序保持一致;流式接口靠 as_completed
-        # 调度,顺序仅决定 _create_task 时刻,实际谁先完成谁先冒出来。
+        # rou.video 移除:实测番号 → cuid 映射不可信,首条搜索结果常是题材近似的
+        # 另一部片(搜 STARS-001 拿到 START-588 之类),内嵌 player 播出来跟用户
+        # 搜的不是同一部。jable / missav / kanav / hohoj 都是按番号入口的硬命中,
+        # 不存在这个错配问题。
         return [
-            ("rou_video", self._search_rou_video),
             ("jable", self._search_jable),
             ("missav", self._search_missav),
             ("kanav", self._search_kanav),
