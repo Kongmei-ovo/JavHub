@@ -234,6 +234,9 @@ async def stream_sources(content_id: str) -> StreamingResponse:
     async def event_stream() -> AsyncIterator[bytes]:
         source = M3U8Source()
         async for item in source.stream_sources(content_id):
+            if item.get("_keepalive"):
+                yield b": keep-alive\n\n"
+                continue
             yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n".encode("utf-8")
 
     return StreamingResponse(

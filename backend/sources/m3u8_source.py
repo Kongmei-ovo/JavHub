@@ -137,11 +137,21 @@ class M3U8Source:
 
         tasks = [asyncio.create_task(runner(name, fn)) for name, fn in self._sites()]
         try:
-            for coro in asyncio.as_completed(tasks):
-                yield await coro
+            pending: set = set(tasks)
+            while pending:
+                # 10s 没新事件就 yield 一条 keep-alive 哨兵,router 那层翻成
+                # SSE 注释行(": keep-alive"),防 nginx 等反代按 idle 超时
+                # 把流切了。FlareSolverr 解 CF 单源能 20~60s,没这条反代会断。
+                done, pending = await asyncio.wait(
+                    pending, timeout=10, return_when=asyncio.FIRST_COMPLETED,
+                )
+                if not done:
+                    yield {"_keepalive": True}
+                    continue
+                for t in done:
+                    yield await t
             yield {"source": "_done", "status": "done"}
         finally:
-            # 客户端断开时取消尚未完成的任务,不再浪费 FlareSolverr
             for t in tasks:
                 if not t.done():
                     t.cancel()
