@@ -85,9 +85,7 @@
           <h2>番号版本索引</h2>
           <p>{{ variantIndexJobSummary }}</p>
         </div>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="rebuildingVariantIndex" @click="rebuildVariantIndex">
-          {{ rebuildingVariantIndex ? '启动中...' : '重建索引' }}
-        </button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$router.push({ path: '/operations', query: { tab: 'system' } })">在数据管道中重建</button>
       </div>
       <div class="mini-stats">
         <div><strong>{{ overview?.variant_index?.group_count || 0 }}</strong><span>作品组</span></div>
@@ -115,7 +113,6 @@ export default {
       cacheStatsError: '',
       loading: false,
       error: '',
-      rebuildingVariantIndex: false,
     }
   },
   computed: {
@@ -204,19 +201,6 @@ export default {
         if (!this.error) this.error = softErrors[0] || ''
       } finally {
         this.loading = false
-      }
-    },
-    async rebuildVariantIndex() {
-      if (this.rebuildingVariantIndex) return
-      this.rebuildingVariantIndex = true
-      try {
-        await api.startVideoVariantIndexJob()
-        this.$message?.success?.('番号版本索引已开始重建')
-        await this.loadOverview()
-      } catch (e) {
-        console.error('Rebuild variant index failed:', e)
-      } finally {
-        this.rebuildingVariantIndex = false
       }
     },
     formatHitRate(metrics = {}) {

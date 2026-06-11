@@ -16,7 +16,7 @@ from modules.code_matcher import (
     normalize_code,
     video_code,
 )
-from services.video_variants import is_non_movie_item
+from services.video_variants import is_non_movie_item, search_codes_for_item
 
 
 __all__ = [
@@ -30,9 +30,15 @@ __all__ = [
 
 
 def video_in_snapshot_match(video: dict, snapshot_items: Iterable[dict] | None) -> dict | None:
-    """Return the matching Emby snapshot row for a JavInfo video, if any."""
-    code = video_code(video)
-    if not normalize_code(code):
+    """Return the matching Emby snapshot row for a JavInfo video, if any.
+
+    Matches against ALL code aliases of the row, not just its raw dvd_id —
+    a rental variant row (dvd_id ``4JUMS039``) is in the library when the
+    Emby file is named ``JUMS-039``; matching only the raw code would flag it
+    missing and queue a duplicate download candidate.
+    """
+    codes = [code for code in search_codes_for_item(video) if normalize_code(code)]
+    if not codes:
         return None
     for item in snapshot_items or []:
         haystack = " ".join([
@@ -41,7 +47,7 @@ def video_in_snapshot_match(video: dict, snapshot_items: Iterable[dict] | None) 
             str(item.get("Name") or ""),
             str(item.get("FileName") or ""),
         ])
-        if _code_matches_haystack(code, haystack):
+        if any(_code_matches_haystack(code, haystack) for code in codes):
             return item
     return None
 
@@ -52,8 +58,13 @@ def video_in_snapshot(video: dict, snapshot_items: Iterable[dict] | None) -> boo
 
 
 def video_in_existing_codes(video: dict, existing_codes: set[str] | None) -> bool:
-    normalized = normalize_code(video_code(video))
-    return bool(normalized and existing_codes is not None and normalized in existing_codes)
+    if existing_codes is None:
+        return False
+    for code in search_codes_for_item(video):
+        normalized = normalize_code(code)
+        if normalized and normalized in existing_codes:
+            return True
+    return False
 
 
 @dataclass

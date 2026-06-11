@@ -189,6 +189,22 @@ class Config:
         return self._config.get('scheduler', {}).get('subscription_check_hour', 2)
 
     @property
+    def scheduler_variant_index_rebuild_hour(self) -> Optional[int]:
+        """每日变体索引重建的整点（0-23）；配置为 null/负数则关闭。
+
+        默认 4:00 —— 排在 3:00 的日常库存 pipeline 之后，保证 videos/收藏页
+        跨页变体注入和整组收藏用到的物化索引每天跟上数据与规则变化。
+        """
+        value = self._config.get('scheduler', {}).get('variant_index_rebuild_hour', 4)
+        if value is None:
+            return None
+        try:
+            hour = int(value)
+        except (TypeError, ValueError):
+            return 4
+        return hour if 0 <= hour <= 23 else None
+
+    @property
     def inventory(self) -> dict:
         defaults = {
             'snapshot_retention': 5,

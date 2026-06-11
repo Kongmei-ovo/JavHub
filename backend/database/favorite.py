@@ -129,6 +129,44 @@ def toggle_favorite(entity_type: str, entity_id: str, metadata: Optional[Dict] =
     return is_favorited
 
 
+def set_favorite(
+    entity_type: str,
+    entity_id: str,
+    metadata: Optional[Dict] = None,
+    favorited: bool = True,
+) -> bool:
+    """Idempotently add/remove one favorite row. Returns True when changed.
+
+    Used by the variant-group toggle: favoriting a video favorites EVERY
+    version of the work, so the router needs explicit set semantics instead
+    of per-row toggling (which would flip already-favorited siblings off).
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if favorited:
+            cursor.execute(
+                "SELECT 1 FROM favorites WHERE entity_type = ? AND entity_id = ?",
+                (entity_type, entity_id)
+            )
+            if cursor.fetchone():
+                changed = False
+            else:
+                cursor.execute(
+                    "INSERT INTO favorites (entity_type, entity_id, metadata_json) VALUES (?, ?, ?)",
+                    (entity_type, entity_id, json.dumps(metadata or {}))
+                )
+                changed = True
+        else:
+            cursor.execute(
+                "DELETE FROM favorites WHERE entity_type = ? AND entity_id = ?",
+                (entity_type, entity_id)
+            )
+            changed = cursor.rowcount > 0
+    if changed:
+        _bump_favorites_generation()
+    return changed
+
+
 def is_favorite(entity_type: str, entity_id: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()

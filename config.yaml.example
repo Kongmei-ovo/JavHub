@@ -154,6 +154,8 @@ crawler:
 
 scheduler:
   subscription_check_hour: 2
+  # 每日变体索引重建整点（0-23），null 关闭；默认 4（排在 3:00 库存 pipeline 之后）
+  variant_index_rebuild_hour: 4
 
 ai:
   openai_compatible:

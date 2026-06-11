@@ -40,6 +40,8 @@ const home = [
 ].join('\n')
 const operations = [
   readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/PipelineCard.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/operations/CacheCard.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/operations/SchedulerCard.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/operations/DataQualityCard.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/operations/CandidateAutoCard.vue', import.meta.url), 'utf8'),
@@ -954,7 +956,7 @@ test('operations overview uses a restrained Apple operations layout', () => {
 test('operations overview splits daily work, system status, and diagnostics into internal views', () => {
   assert.match(operations, /operationsSegments/)
   assert.match(operations, /key:\s*'workbench'[\s\S]*label:\s*'处理'/)
-  assert.match(operations, /key:\s*'system'[\s\S]*label:\s*'系统状态'/)
+  assert.match(operations, /key:\s*'system'[\s\S]*label:\s*'数据管道'/)
   assert.match(operations, /key:\s*'diagnostics'[\s\S]*label:\s*'诊断记录'/)
   assert.match(operations, /<section v-if="activeSegment === 'workbench'" class="operations-workbench priority-board"/)
   assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"/)
@@ -984,7 +986,8 @@ test('operations overview surfaces initialization health and setup entry points'
   assert.match(operations, /\$router\.push\('\/settings'\)/)
   assert.match(operations, /\$router\.push\('\/logs'\)/)
   assert.match(operations, /query: \{ tab: 'javinfo-import' \}/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"[\s\S]*<SnapshotCard/)
+  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"[\s\S]*<SnapshotCard/)
+  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"[\s\S]*<DataQualityCard/)
   assert.match(operations, /缓存诊断/)
   assert.match(operations, /响应命中率/)
   assert.match(operations, /热门响应命名空间/)

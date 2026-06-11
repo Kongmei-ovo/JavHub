@@ -502,6 +502,250 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         kept = video_variants.filter_movie_items(rows)
         self.assertEqual([row["content_id"] for row in kept], ["jums039"])
 
+    def test_storefront_runtime_discrepancy_merges_within_week(self):
+        # mono vs digital list the same product number with diverging runtimes
+        # and a few days' gap (DMDG-060: 130 vs 118 mins, 3 days apart).
+        rows = [
+            item(content_id="dmdg060", dvd_id="DMDG-060", title_ja="マゾ乳中出し Iカップ 田中ねね", service_code="mono", runtime_mins=130, release_date="2025-04-15"),
+            item(content_id="dmdg00060", dvd_id="", title_ja="マゾ乳中出し Iカップ 田中ねね", service_code="digital", runtime_mins=118, release_date="2025-04-12"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_same_storefront_runtime_divergence_still_splits(self):
+        # Same storefront (mono+mono), same title, big runtime gap → keep the
+        # strict runtime veto (DOD re-pressings, multi-part discs).
+        rows = [
+            item(content_id="miaa00784", dvd_id="MIAA-784", title_ja="Same Title", service_code="mono", runtime_mins=170, release_date="2023-02-21"),
+            item(content_id="miaa00784dod", dvd_id="MIAA-784DOD", title_ja="Same Title （DOD）", service_code="mono", runtime_mins=220, release_date="2023-02-21"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_identical_date_cross_storefront_relaxes_low_number_threshold(self):
+        # GRACE-023: mono "/女優名" vs digital " 女優名" drops similarity below
+        # the strict low-number bar, but same-day cross-storefront is decisive.
+        rows = [
+            item(content_id="n_1535grace023", dvd_id="GRACE-023", title_ja="爆乳プリンセス/田中ねね", service_code="mono", runtime_mins=128, release_date="2025-04-30"),
+            item(content_id="h_1714grace00023", dvd_id="", title_ja="爆乳プリンセス 田中ねね", service_code="digital", runtime_mins=129, release_date="2025-04-30"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_bonus_tail_with_donor_name_is_stripped(self):
+        # 【FANZA限定】 + "吉根ゆりあさんのパンティと生写真付き" tail must key
+        # identically to the base title (USBA-071 vs TKUSBA-071).
+        rows = [
+            item(content_id="usba071", dvd_id="USBA-071", title_ja="露出マゾ 爆乳豊満W肉便器野外調教", service_code="mono", runtime_mins=108, release_date="2023-12-26"),
+            item(content_id="tkusba071", dvd_id="TKUSBA-071", title_ja="【FANZA限定】露出マゾ 爆乳豊満W肉便器野外調教 吉根ゆりあさんのパンティと生写真付き", service_code="mono", runtime_mins=108, release_date="2023-12-27"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "USBA-71")
+
+    def test_title_level_bluray_evidence_bypasses_runtime_veto(self):
+        # 数量限定 Blu-ray チェキ edition keeps the base code; Blu-ray evidence
+        # only exists in the title (SS-127BTK, 94 vs 84 mins).
+        rows = [
+            item(content_id="n_1428ss127", dvd_id="SS-127", title_ja="Curvaceous/田中ねね", service_code="mono", runtime_mins=84, release_date="2025-02-01"),
+            item(content_id="n_1428ss127btk", dvd_id="SS-127BTK", title_ja="【数量限定】Curvaceous/田中ねね （ブルーレイディスク） チェキ付き", service_code="mono", runtime_mins=94, release_date="2025-02-01"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_junk_dvd_id_falls_back_to_content_id(self):
+        # Compilation rows carry garbage dvd_ids like "2-023" while the
+        # content_id parses cleanly (7xvsr701 → XVSR-701).
+        rows = [
+            item(content_id="7xvsr701", dvd_id="2-023", title_ja="【ベストヒッツ】MGC ACT.2", service_code="mono", runtime_mins=280, release_date="2026-04-20"),
+        ]
+
+        flat = video_variants.enrich_video_variants(rows, variant_mode="flat")
+
+        self.assertEqual(flat[0]["canonical_code"], "XVSR-701")
+
+    def test_two_year_rerelease_merges_across_storefronts(self):
+        # Identical title, same code, storefront listings two years apart
+        # (GHOV-51): a re-listed product is still the same work — the date
+        # window was dropped deliberately (round 3, 篠田ゆう audit).
+        rows = [
+            item(content_id="h_173ghov00051", dvd_id="", title_ja="女幹部ガーベラ ヒーロー逆NTR", service_code="digital", runtime_mins=131, release_date="2024-08-01"),
+            item(content_id="h_173ghov51", dvd_id="", title_ja="女幹部ガーベラ ヒーロー逆NTR", service_code="mono", runtime_mins=120, release_date="2022-07-22"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_rental_cut_with_shorter_runtime_merges(self):
+        # Rental discs are trimmed cuts of the retail product (JUC-602: 90 vs
+        # 120 mins, identical title).
+        title = "若妻羞恥バス痴● 篠田ゆう〜工場に勤める若妻の通勤凌●〜"
+        rows = [
+            item(content_id="5juc602", dvd_id="5JUC602", title_ja=title, service_code="rental", runtime_mins=90, release_date="2012-02-24"),
+            item(content_id="juc602", dvd_id="JUC-602", title_ja=title, service_code="mono", runtime_mins=120, release_date="2011-08-07"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_rental_subtitle_swap_merges_with_loose_gate(self):
+        # SCF-008: the rental listing swaps the subtitle for "4時間"; rental ↔
+        # retail with the same code is the same product, so the loose 0.5 gate
+        # applies.
+        rows = [
+            item(content_id="832scf008", dvd_id="2SCF008", title_ja="対面オナニー＆相互愛撫 4時間", service_code="rental", runtime_mins=240, release_date="2013-05-24"),
+            item(content_id="83scf008", dvd_id="SCF-008", title_ja="対面オナニー＆相互愛撫 厳選淫乱女優24名！！", service_code="mono", runtime_mins=240, release_date="2013-01-13"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_rental_pair_with_unrelated_title_stays_split(self):
+        rows = [
+            item(content_id="r1", dvd_id="ABC-12", title_ja="全く別の作品タイトルです", service_code="rental", runtime_mins=120, release_date="2010-01-01"),
+            item(content_id="r2", dvd_id="ABC-12", title_ja="こちらは違う内容の映画", service_code="mono", runtime_mins=90, release_date="2013-05-05"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_reedited_digital_with_embedded_code_paren_merges(self):
+        # NACX-066: the 2024 digital re-edit embeds its own code in the title
+        # （NACX-066SA1jo01） and drops one performer (14人→13人).
+        rows = [
+            item(content_id="h_237nacx00066sa1jo1", dvd_id="NACX-066", title_ja="くねらす絶品ボディ中出し13人VOL.02（NACX-066SA1jo01）", service_code="digital", runtime_mins=226, release_date="2024-01-23"),
+            item(content_id="h_237nacx066", dvd_id="NACX-066", title_ja="くねらす絶品ボディ中出し14人VOL.02", service_code="mono", runtime_mins=243, release_date="2020-11-01"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_outlet_reissue_with_truncated_title_merges(self):
+        # GVG-299: アウトレット re-release truncates the title; runtime equal.
+        rows = [
+            item(content_id="7gvg299", dvd_id="5GVG-299", title_ja="【アウトレット】母子姦 篠田あゆみ", service_code="mono", runtime_mins=120, release_date="2018-09-20"),
+            item(content_id="13gvg299", dvd_id="GVG-299", title_ja="母子姦 息子の巨根に欲情した巨乳母 篠田あゆみ", service_code="mono", runtime_mins=120, release_date="2016-05-05"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_cross_language_titles_fall_back_to_code_and_runtime(self):
+        # BUG-020: digital row only has title_en, mono only title_ja — a JA/EN
+        # similarity comparison is meaningless and must not veto the merge.
+        rows = [
+            item(content_id="h_918bug00020", dvd_id="BUG-020", title_ja=None, title_en="Gold Dust S***e Soapland Ayumi Shinoda", service_code="digital", runtime_mins=137, release_date="2016-05-31"),
+            item(content_id="h_918bug020", dvd_id="BUG-020", title_ja="金粉奴●ソープ 篠田あゆみ", service_code="mono", runtime_mins=136, release_date="2015-11-20"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_parseable_junk_dvd_id_yields_to_content_id_identity(self):
+        # r18 dump rows where dvd_id is title-derived garbage ("BEST-480" from
+        # 神乳BEST480分) while the content_id is the real code (bf767/bf00767).
+        rows = [
+            item(content_id="bf767", dvd_id="BEST-480", title_ja="神乳BEST480分", service_code="mono", runtime_mins=480, release_date="2026-07-07"),
+            item(content_id="bf00767", dvd_id="BEST-480", title_ja="神乳BEST480分", service_code="digital", runtime_mins=480, release_date="2026-07-03"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "BF-767")
+        self.assertEqual(video_variants.search_codes_for_item(rows[0])[0], "BF-767")
+
+    def test_content_id_identity_override_guards_hold(self):
+        # Bonus TK prefix, n_/h_ bucket cids and rental digit prefixes must NOT
+        # trigger the override — their dvd_id is authoritative.
+        keep_dvd = [
+            ({"content_id": "tkusba071", "dvd_id": "TKUSBA-071", "service_code": "mono", "title_ja": "【FANZA限定】露出マゾ パンティと生写真付き"}, "USBA-71"),
+            ({"content_id": "n_1428ss127btk", "dvd_id": "SS-127BTK", "service_code": "mono", "title_ja": "【数量限定】Curvaceous （ブルーレイディスク） チェキ付き"}, "SS-127"),
+            ({"content_id": "1rsshn002r", "dvd_id": "RSSHN002", "service_code": "rental", "title_ja": "x（2枚組）"}, "SSHN-2"),
+        ]
+        for row, want in keep_dvd:
+            flat = video_variants.enrich_video_variants([item(**row)], variant_mode="flat")
+            self.assertEqual(flat[0]["canonical_code"], want, row["content_id"])
+
+    def test_store_digit_prefixed_group_folds_into_base_group(self):
+        # 7net editions keep the digit in BOTH dvd_id and content_id
+        # (7usba071 / 7USBA-071), so only group-level adoption can fold them
+        # into the base USBA-071 group.
+        title = "露出マゾ 爆乳豊満W肉便器野外調教"
+        rows = [
+            item(content_id="usba071", dvd_id="USBA-071", title_ja=title, service_code="mono", runtime_mins=108, release_date="2023-12-26"),
+            item(content_id="7usba071", dvd_id="7USBA-071", title_ja=title, service_code="mono", runtime_mins=108, release_date="2023-12-26"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "USBA-71")
+        self.assertEqual(grouped[0]["variant_group_count"], 2)
+
+    def test_digit_prefixed_group_with_different_title_stays_split(self):
+        rows = [
+            item(content_id="umso533", dvd_id="UMSO-533", title_ja="完全に別の作品タイトルA", service_code="mono", runtime_mins=120, release_date="2024-01-01"),
+            item(content_id="7umso533", dvd_id="7UMSO-533", title_ja="別内容の格安版コンピレーション", service_code="mono", runtime_mins=240, release_date="2020-05-05"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 2)
+
+    def test_rental_with_retitled_listing_merges(self):
+        # FCDC-090: the rental listing prepends extra copy and the mono row
+        # appends performer names; rental ↔ retail same code = same product.
+        rows = [
+            item(content_id="h_114fcdc090r", dvd_id="FCDC090", title_ja="社内の営業部はパツパツマイクロミニスカートで社員を挑発するヤリマンドスケベ巨乳OL", service_code="rental", runtime_mins=110, release_date="2017-12-21"),
+            item(content_id="fcdc090", dvd_id="FCDC-090", title_ja="マイクロミニスカートで社員を挑発するヤリマンドスケベ巨乳OL 羽生ありさ 西村ニーナ", service_code="mono", runtime_mins=110, release_date="2017-10-25"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_bromide_bonus_edition_merges(self):
+        # AEGE-012TK: 数量限定 + ブロマイド3種付き store bonus.
+        rows = [
+            item(content_id="1aege012", dvd_id="AEGE-012", title_ja="黒人覚醒 巨乳VSデカチン 吉根ゆりあ", service_code="mono", runtime_mins=125, release_date="2023-08-24"),
+            item(content_id="1aege012tk", dvd_id="AEGE-012TK", title_ja="【数量限定】黒人覚醒 巨乳VSデカチン 吉根ゆりあ ブロマイド3種付き", service_code="mono", runtime_mins=125, release_date="2023-08-24"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["canonical_code"], "AEGE-12")
+
+    def test_short_title_with_name_suffix_merges_same_day_cross_storefront(self):
+        # GRACE-008: "Mの世界/吉根ゆりあ" vs "Mの世界 吉根ゆりあ" — prefix
+        # containment on the same day across storefronts.
+        rows = [
+            item(content_id="n_1535grace008", dvd_id="GRACE-008", title_ja="Mの世界/吉根ゆりあ", service_code="mono", runtime_mins=90, release_date="2023-04-21"),
+            item(content_id="h_1714grace00008", dvd_id="", title_ja="Mの世界 吉根ゆりあ", service_code="digital", runtime_mins=91, release_date="2023-04-21"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

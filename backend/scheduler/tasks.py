@@ -144,6 +144,39 @@ def candidate_auto_process_job():
         raise
 
 
+_variant_index_rebuild_lock = threading.Lock()
+
+
+def variant_index_rebuild_job():
+    """Rebuild the materialized variant group index.
+
+    The index backs cross-page variant injection (videos/favorites pages) and
+    whole-group favoriting; it must follow data imports, supplement growth and
+    grouping-rule changes, hence the daily rebuild.
+    """
+    if not _variant_index_rebuild_lock.acquire(blocking=False):
+        add_log("WARNING", "变体索引重建正在执行，跳过本次触发（防重入）")
+        return
+    try:
+        from database.video_variant_index import add_variant_group_job
+        from services.video_variant_index import run_variant_index_job
+
+        add_log("INFO", "开始重建变体索引...")
+        job_id = add_variant_group_job("queued")
+        result = run_variant_index_job(job_id)
+        status = result.get("status")
+        summary = (result.get("result") or {}) if isinstance(result, dict) else {}
+        if status == "completed":
+            add_log("INFO", f"变体索引重建完成: {summary}")
+        else:
+            add_log("ERROR", f"变体索引重建失败: {result.get('error')}")
+    except Exception as e:
+        add_log("ERROR", f"变体索引重建失败: {e}")
+        raise
+    finally:
+        _variant_index_rebuild_lock.release()
+
+
 def inventory_comparison_job(job_type: str = "full"):
     """Run the async inventory comparison job on the shared scheduler loop."""
     from scheduler.worker_loop import run as run_on_loop
@@ -288,6 +321,17 @@ def start_scheduler():
         name='日常库存 Pipeline',
         replace_existing=True,
     )
+
+    # 每日变体索引重建（默认 4:00，排在 3:00 日常库存 pipeline 之后）。
+    variant_index_hour = config.scheduler_variant_index_rebuild_hour
+    if variant_index_hour is not None:
+        scheduler.add_job(
+            scheduler_job_wrapper('variant_index_rebuild', variant_index_rebuild_job),
+            CronTrigger(hour=variant_index_hour, minute=0),
+            id='variant_index_rebuild',
+            name='变体索引重建',
+            replace_existing=True,
+        )
 
     configure_candidate_auto_process_job()
     configure_candidate_sent_audit_job()

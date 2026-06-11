@@ -6,11 +6,9 @@ import getpass
 import hashlib
 import logging
 import os
+import re
 from collections import defaultdict
 from typing import Any, Iterable
-
-import psycopg2
-from psycopg2.extras import RealDictCursor
 
 from config import config
 from database.video_variant_index import (
@@ -89,6 +87,11 @@ def _has_resolved_videos_table(conn) -> bool:
 
 
 def _connect_import_db():
+    # Imported lazily so the pure grouping logic (build_variant_index_groups)
+    # stays importable/testable without the postgres driver.
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+
     settings = config.javinfo_import_db
     attempts = [settings]
     current_user = getpass.getuser()
@@ -115,7 +118,14 @@ def _connect_import_db():
 
 
 def build_variant_index_groups(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Build conservative multi-version groups from raw JavInfo rows."""
+    """Build conservative multi-version groups from raw JavInfo rows.
+
+    Bucketing uses the digit-stripped BASE canonical: store-digit editions
+    (7UMSO-533 = 7net edition of UMSO-533) must land in the same bucket as the
+    base code, otherwise the group-level adoption inside
+    ``enrich_video_variants`` never sees both sides and the index would split
+    what the actress page (which groups over the full collection) merges.
+    """
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         enriched = enrich_video_variants([row], variant_mode="flat", include_explanations=False)
@@ -123,10 +133,10 @@ def build_variant_index_groups(rows: Iterable[dict[str, Any]]) -> list[dict[str,
             continue
         canonical = str(enriched[0].get("canonical_code") or "").strip()
         if canonical:
-            buckets[canonical].append(row)
+            buckets[_bucket_key(canonical)].append(row)
 
     groups: list[dict[str, Any]] = []
-    for canonical_code, bucket in buckets.items():
+    for bucket in buckets.values():
         if len(bucket) < 2:
             continue
         grouped = enrich_video_variants(bucket, variant_mode="grouped", include_explanations=False)
@@ -135,9 +145,21 @@ def build_variant_index_groups(rows: Iterable[dict[str, Any]]) -> list[dict[str,
             group_items = item.get("variant_group_items") if isinstance(item.get("variant_group_items"), list) else []
             if group_count < 2 or len(group_items) < 2:
                 continue
+            # Use the (re-computed) canonical of the merged card, not the
+            # bucket key — adoption may have rewritten digit-prefixed members
+            # onto the base code.
+            canonical_code = str(item.get("canonical_code") or "").strip() or "unknown"
             groups.append(_index_group_from_item(canonical_code, item, group_items))
     groups.sort(key=lambda group: str(group.get("group_id") or ""))
     return groups
+
+
+_DIGIT_PREFIX_BUCKET_RE = re.compile(r"^\d([A-Z]{2,}-\d+[A-Z]*)$")
+
+
+def _bucket_key(canonical: str) -> str:
+    match = _DIGIT_PREFIX_BUCKET_RE.match(canonical)
+    return match.group(1) if match else canonical
 
 
 def hydrate_rows_with_actresses(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -6,6 +6,8 @@ const vueSource = readFileSync(new URL('./Operations.vue', import.meta.url), 'ut
 const externalStyle = readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8')
 const source = `${vueSource}\n${externalStyle}`
 const operationsCardPaths = [
+  '../features/operations/PipelineCard.vue',
+  '../features/operations/CacheCard.vue',
   '../features/operations/SchedulerCard.vue',
   '../features/operations/DataQualityCard.vue',
   '../features/operations/CandidateAutoCard.vue',
@@ -66,7 +68,7 @@ test('operations page is split into self-loading feature cards', () => {
     assert.match(cardSource, /<style scoped src="\.\/operations\.css"><\/style>/, `${path} should reuse operations styles`)
   }
 
-  for (const component of ['SchedulerCard', 'DataQualityCard', 'CandidateAutoCard', 'SnapshotCard', 'MappingCard']) {
+  for (const component of ['PipelineCard', 'CacheCard', 'SchedulerCard', 'DataQualityCard', 'CandidateAutoCard', 'SnapshotCard', 'MappingCard']) {
     assert.match(vueSource, new RegExp(`import ${component} from ['"]\\.\\.\\/features\\/operations\\/${component}\\.vue['"]`))
     assert.match(vueSource, new RegExp(`<${component}\\b`))
   }
@@ -86,7 +88,8 @@ test('operations cards use focused APIs so one failed overview does not blank ev
 
   assert.doesNotMatch(sourcesByName.SchedulerCard, /getOperationsOverview/)
   assert.match(sourcesByName.SchedulerCard, /api\.readiness\(\)/)
-  assert.match(sourcesByName.SchedulerCard, /api\.getCacheStats\(\)/)
+  assert.match(sourcesByName.CacheCard, /api\.getCacheStats\(\)/)
+  assert.match(sourcesByName.CacheCard, /api\.purgeCache\(this\.selectedCachePurgeScope\)/)
 
   assert.doesNotMatch(sourcesByName.CandidateAutoCard, /getOperationsOverview/)
   assert.match(sourcesByName.CandidateAutoCard, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)

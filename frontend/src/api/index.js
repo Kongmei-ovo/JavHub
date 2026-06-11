@@ -786,5 +786,17 @@ export default {
 
   runCandidateProcessingNow() {
     return api.post('/v1/operations/candidate-processing/run')
+  },
+
+  getSchedulerJobs() {
+    return api.get('/v1/scheduler/jobs', { silentError: true })
+  },
+
+  ensureSubscribedSupplement() {
+    return api.post('/v1/supplement/actresses/ensure_subscribed')
+  },
+
+  runInventoryPipeline(data = {}) {
+    return api.post('/inventory/pipeline/run', data)
   }
 }

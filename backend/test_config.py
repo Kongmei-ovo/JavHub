@@ -57,6 +57,21 @@ class SourceConfigTests(unittest.TestCase):
         self.assertEqual(cfg.translation_source_page_size, 1000)
         self.assertEqual(cfg.translation_scan_pages_per_batch, 1)
 
+    def test_variant_index_rebuild_hour_parsing(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {"scheduler": {}}
+        self.assertEqual(cfg.scheduler_variant_index_rebuild_hour, 4)
+        cfg._config = {"scheduler": {"variant_index_rebuild_hour": 6}}
+        self.assertEqual(cfg.scheduler_variant_index_rebuild_hour, 6)
+        cfg._config = {"scheduler": {"variant_index_rebuild_hour": None}}
+        self.assertIsNone(cfg.scheduler_variant_index_rebuild_hour)
+        cfg._config = {"scheduler": {"variant_index_rebuild_hour": -1}}
+        self.assertIsNone(cfg.scheduler_variant_index_rebuild_hour)
+        cfg._config = {"scheduler": {"variant_index_rebuild_hour": "bad"}}
+        self.assertEqual(cfg.scheduler_variant_index_rebuild_hour, 4)
+
     def test_javhub_database_uses_dedicated_env_without_polluting_javinfo_import(self):
         from config import Config
 

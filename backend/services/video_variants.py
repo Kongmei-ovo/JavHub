@@ -3,12 +3,13 @@ from __future__ import annotations
 import copy
 import re
 from collections import defaultdict
+from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
 
 
 BONUS_EVIDENCE_RE = re.compile(
-    r"FANZA限定|数量限定|特典版|生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ",
+    r"FANZA限定|数量限定|特典版|生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ|ブロマイド|ポストカード|トレカ|クリアファイル",
     re.IGNORECASE,
 )
 FC2_RE = re.compile(r"(?i)\bFC2(?:[-_\s]*PPV)?[-_\s]*([0-9]{3,})\b")
@@ -58,7 +59,12 @@ BLURAY_MARKERS = {
     "bluray_bd_infix",
     "bluray_b_prefix",
     "bluray_b_suffix",
+    "title_bluray",
 }
+# Blu-ray evidence carried by the TITLE rather than the code: store-limited
+# Blu-ray editions (（ブルーレイディスク）, "… BD") keep the base dvd_id, so
+# the code alone can't tell them apart from the DVD listing.
+TITLE_BLURAY_RE = re.compile(r"ブルーレイディスク|BLU-?RAY|(?<![A-Za-z0-9])BD(?![A-Za-z0-9])", re.IGNORECASE)
 RENTAL_R_STRIPPABLE_PREFIXES = {"DANDY", "NHDTA", "SSHN", "STAR", "STARS"}
 LOW_NUMBER_COLLISION_PREFIXES = {
     "DIC",
@@ -301,6 +307,17 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
             evidence=analysis["bonus_evidence"],
         )
 
+    if "アウトレット" in analysis["title"]:
+        add_label(
+            "outlet",
+            "アウトレット再販",
+            "再販",
+            source="title",
+            confidence="high",
+            meaning="DMM アウトレット（特价再贩）条目，与基础番号为同一作品",
+            evidence="标题含アウトレット",
+        )
+
     row["canonical_code"] = analysis["canonical_code"]
     row["display_code"] = _display_code(row, analysis)
     row["variant_labels"] = labels
@@ -310,6 +327,8 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
     row["_variant_sort_rank"] = _variant_sort_rank(row, labels)
     row["_variant_groupable"] = _is_groupable(analysis)
     row["_variant_title_key"] = _title_key(row)
+    row["_variant_title_lang"] = _title_lang(row)
+    row["_variant_outlet"] = "アウトレット" in analysis["title"]
     row["_variant_markers"] = analysis["markers"]
     return row
 
@@ -342,11 +361,69 @@ def _analyze_item(row: dict[str, Any]) -> dict[str, Any]:
                 dict.fromkeys((*content_analysis["markers"], "digital_content_id_source"))
             )
             analysis = content_analysis
+    # Junk dvd_id handling for ANY service. The r18 dump's dvd_id column
+    # sometimes carries garbage derived from disc specs or the title ("2-023",
+    # "8-0", "BEST-480" from 神乳BEST480分, "K-300") while the content_id is
+    # the real product code (7xvsr701 → XVSR-701, bf00767 → BF-767). Two tiers:
+    #   1. dvd analysis ungroupable → fall back to a parseable content_id.
+    #   2. dvd analysis groupable but its letter-prefix disagrees with a
+    #      cleanly-parsing content_id (no underscore buckets, pure-alpha
+    #      prefix) → trust the content_id identity. Display still shows the
+    #      dvd_id; only grouping/search identity changes.
+    # Supplement rows carry synthetic content_ids ("supp586", "supp:735") that
+    # would hijack the identity — only real storefront rows participate.
+    if content_norm and _normalize(raw_code) != content_norm and not _is_supplement_origin(row):
+        content_analysis = _analyze_code(
+            row.get("content_id"),
+            allow_title_tk=bool(bonus_evidence),
+            allow_rental_r_prefix=service == "rental",
+            allow_service_digit_prefix=True,
+            allow_bluray_markers=True,
+        )
+        if not _is_groupable(analysis):
+            if _is_groupable(content_analysis):
+                content_analysis["markers"] = tuple(
+                    dict.fromkeys((*content_analysis["markers"], "content_id_fallback"))
+                )
+                analysis = content_analysis
+        elif _should_prefer_content_id_identity(analysis, content_analysis, row.get("content_id")):
+            content_analysis["markers"] = tuple(
+                dict.fromkeys((*content_analysis["markers"], "content_id_identity_override"))
+            )
+            analysis = content_analysis
     analysis["raw_code"] = raw_code
     analysis["content_id_padded"] = bool(content_norm and not dvd_norm and "padded_digits" in analysis["markers"])
     analysis["title"] = title
     analysis["bonus_evidence"] = bonus_evidence
+    if TITLE_BLURAY_RE.search(title):
+        analysis["markers"] = tuple(dict.fromkeys((*analysis["markers"], "title_bluray")))
     return analysis
+
+
+def _should_prefer_content_id_identity(
+    raw_analysis: dict[str, Any],
+    content_analysis: dict[str, Any],
+    content_id: Any,
+) -> bool:
+    """True when a parseable-but-wrong dvd_id should yield to the content_id.
+
+    Guards (all must hold) keep legit divergences intact:
+    - content_id has no underscore (n_/h_ bucket cids keep their dvd_id);
+    - the content analysis is groupable with a pure-alpha prefix of 2-6
+      letters (rejects residual site/bucket digits like 300MAAN);
+    - the letter prefixes genuinely disagree (TKUSBA→USBA-style bonus strips
+      agree after analysis, so they don't trigger).
+    """
+    content_text = str(content_id or "")
+    if "_" in content_text:
+        return False
+    if not _is_groupable(content_analysis):
+        return False
+    content_prefix = str(content_analysis.get("prefix") or "")
+    if not (2 <= len(content_prefix) <= 6 and content_prefix.isalpha()):
+        return False
+    raw_prefix = str(raw_analysis.get("prefix") or "")
+    return bool(raw_prefix) and raw_prefix != content_prefix
 
 
 def _should_prefer_digital_content_id(
@@ -592,6 +669,8 @@ def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             ungroupable.append(orphan)
 
+    _adopt_digit_prefixed_groups(groups)
+
     result: list[tuple[int, dict[str, Any]]] = [
         (_input_index(item), item) for item in ungroupable
     ]
@@ -608,6 +687,42 @@ def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             primary["variant_group_items"] = visible_items
             result.append((min(_input_index(item) for item in cluster), primary))
     return [_strip_internal_fields(item) for _, item in sorted(result, key=lambda entry: entry[0])]
+
+
+DIGIT_PREFIX_CANON_RE = re.compile(r"^(\d)([A-Z]{2,}-\d+[A-Z]*)$")
+
+
+def _adopt_digit_prefixed_groups(groups: dict[str, list[dict[str, Any]]]) -> None:
+    """Fold store-digit-prefixed canon groups into their base-code group.
+
+    DMM storefront editions sometimes keep the digit prefix in BOTH dvd_id and
+    content_id (``7umso533`` / ``7UMSO-533`` = 7net edition of UMSO-533), so
+    neither the per-item digit strip nor the content_id identity override can
+    fire. At group level the intent is unambiguous: if the digit-stripped
+    canonical exists as its own group AND the items agree on title/runtime
+    (the standard `_safe_group` gate), they're the same work. Genuine
+    digit-prefixed families (3DSVR-609) have no base-code sibling group and
+    are left untouched.
+    """
+    for key in list(groups.keys()):
+        match = DIGIT_PREFIX_CANON_RE.match(key)
+        if not match:
+            continue
+        base_key = match.group(2)
+        target = groups.get(base_key)
+        if not target:
+            continue
+        remaining: list[dict[str, Any]] = []
+        for item in groups[key]:
+            if any(_safe_group([item, anchor]) for anchor in target):
+                item["canonical_code"] = base_key
+                target.append(item)
+            else:
+                remaining.append(item)
+        if remaining:
+            groups[key] = remaining
+        else:
+            del groups[key]
 
 
 def _find_title_runtime_match(
@@ -726,14 +841,42 @@ def _same_release_identity(left: dict[str, Any], right: dict[str, Any]) -> bool:
 
 
 def _safe_group(items: list[dict[str, Any]]) -> bool:
-    titles = [str(item.get("_variant_title_key") or "") for item in items]
-    non_empty_titles = [title for title in titles if title]
-    if len(non_empty_titles) < 2:
+    comparable = _comparable_title_keys(items)
+    if not comparable:
+        # No two items share a title language (e.g. the digital listing only
+        # carries title_en while mono only has title_ja) — a JA/EN comparison
+        # would always score ~0, so fall back to the canonical+runtime gates.
         titles_match = True
     else:
-        base = max(non_empty_titles, key=len)
         threshold = 0.9 if any(_needs_stronger_title_evidence(item) for item in items) else 0.56
-        titles_match = all(_title_similarity(base, title) >= threshold for title in non_empty_titles)
+        # Identical release dates ACROSS STOREFRONTS (mono vs digital) are
+        # evidence at least as strong as a title: two DIFFERENT works reusing
+        # one low-number code on the same day on different storefronts don't
+        # happen, while the mono listing appending "/女優名" (or digital
+        # appending " 女優名") routinely drags the title similarity below the
+        # strict low-number threshold. Same-storefront pairs keep the strict
+        # rule (reused codes, multi-part releases).
+        same_day_cross_storefront = _identical_release_dates(items) and _spans_multiple_storefronts(items)
+        if threshold > 0.56 and same_day_cross_storefront:
+            threshold = 0.56
+        titles_match = _titles_match_per_language(comparable, threshold)
+        if not titles_match and same_day_cross_storefront and _prefix_containment_per_language(comparable):
+            # Same day, same code, different storefronts, and one title is a
+            # strict prefix of the other ("Mの世界" vs "Mの世界 吉根ゆりあ"):
+            # the digital listing appends the performer name to a short title,
+            # which tanks the similarity ratio below any sane threshold.
+            titles_match = True
+    if not titles_match and _outlet_reissue_evidence(items):
+        # DMM アウトレット reissues re-list the same product with a truncated
+        # title ("母子姦 篠田あゆみ" for GVG-299). Same canonical + outlet
+        # marker is decisive; the runtime gate below still applies.
+        titles_match = True
+    if not titles_match and _rental_retail_pair(items):
+        # A rental listing with the same canonical code IS the retail disc by
+        # definition (rental stores list the same product, sometimes with a
+        # swapped subtitle: "…相互愛撫 4時間" vs "…相互愛撫 厳選淫乱女優24名").
+        # Require loose title compatibility so reused codes stay safe.
+        titles_match = _titles_match_per_language(comparable, 0.5) if comparable else True
     if not titles_match:
         return False
 
@@ -748,7 +891,7 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
     ]
     runtimes = [value for value in runtimes if value]
     if len(runtimes) >= 2:
-        if not _can_ignore_runtime_divergence_for_bluray(items):
+        if not _can_ignore_runtime_divergence(items):
             tolerance = max(3, round(max(runtimes) * 0.05))
             if max(runtimes) - min(runtimes) > tolerance:
                 return False
@@ -756,22 +899,108 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _comparable_title_keys(items: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Title keys grouped by language, keeping only languages with ≥2 keys."""
+    by_lang: dict[str, list[str]] = defaultdict(list)
+    for item in items:
+        key = str(item.get("_variant_title_key") or "")
+        if not key:
+            continue
+        lang = str(item.get("_variant_title_lang") or "ja")
+        by_lang[lang].append(key)
+    return {lang: keys for lang, keys in by_lang.items() if len(keys) >= 2}
+
+
+def _titles_match_per_language(comparable: dict[str, list[str]], threshold: float) -> bool:
+    for keys in comparable.values():
+        base = max(keys, key=len)
+        if not all(_title_similarity(base, key) >= threshold for key in keys):
+            return False
+    return True
+
+
+def _prefix_containment_per_language(comparable: dict[str, list[str]]) -> bool:
+    for keys in comparable.values():
+        base = max(keys, key=len)
+        for key in keys:
+            if len(key) < 4 or not base.startswith(key):
+                return False
+    return bool(comparable)
+
+
+def _outlet_reissue_evidence(items: list[dict[str, Any]]) -> bool:
+    return any(item.get("_variant_outlet") for item in items)
+
+
+def _rental_retail_pair(items: list[dict[str, Any]]) -> bool:
+    services = {
+        str(item.get("service_code") or "").strip().lower()
+        for item in items
+        if str(item.get("service_code") or "").strip()
+    }
+    return "rental" in services and bool(services - {"rental"})
+
+
+def _identical_release_dates(items: list[dict[str, Any]]) -> bool:
+    dates = {str(item.get("release_date") or "").strip() for item in items}
+    return len(dates) == 1 and "" not in dates
+
+
+def _spans_multiple_storefronts(items: list[dict[str, Any]]) -> bool:
+    services = {
+        str(item.get("service_code") or "").strip().lower()
+        for item in items
+        if str(item.get("service_code") or "").strip()
+    }
+    return len(services) >= 2
+
+
+def _release_dates_within(items: list[dict[str, Any]], days: int) -> bool:
+    parsed = []
+    for item in items:
+        raw = str(item.get("release_date") or "").strip()[:10]
+        if not raw:
+            return False
+        try:
+            parsed.append(date.fromisoformat(raw))
+        except ValueError:
+            return False
+    if len(parsed) < 2:
+        return False
+    return (max(parsed) - min(parsed)).days <= days
+
+
+def _can_ignore_runtime_divergence(items: list[dict[str, Any]]) -> bool:
+    """Runtime tolerance bypass for two known-benign cases.
+
+    1. A Blu-ray edition (code marker or title evidence) of the same title —
+       BD pressings routinely carry extra minutes.
+    2. Storefront discrepancy: mono/digital/rental list the SAME work (same
+       canonical code, near-identical title) with diverging runtimes — DMM's
+       mono figures are rounded, digital re-releases carry re-edited cuts
+       (NACX-066 削除版), rental discs are trimmed (JUC-602: 90 vs 120).
+       Same product number + near-identical title across storefronts is
+       decisive regardless of the release-date gap (GHOV-51 was re-listed two
+       years later).
+    Near-identical title keys (≥ 0.95, per language) keep genuinely different
+    works sharing a reused code apart; rental↔retail pairs get the looser
+    0.5 gate because a rental row of the same code IS the retail product.
+    """
+    comparable = _comparable_title_keys(items)
+    if _rental_retail_pair(items):
+        return _titles_match_per_language(comparable, 0.5) if comparable else True
+    if not comparable:
+        return False
+    if not _titles_match_per_language(comparable, 0.95):
+        return False
+    return any(_has_bluray_marker(item) for item in items) or _spans_multiple_storefronts(items)
+
+
 def _is_supplement_origin(item: dict[str, Any]) -> bool:
     return (
         str(item.get("service_code") or "").lower() == "supplement"
         or str(item.get("data_origin") or "").lower() == "supplement"
     )
-
-
-def _can_ignore_runtime_divergence_for_bluray(items: list[dict[str, Any]]) -> bool:
-    if not any(_has_bluray_marker(item) for item in items):
-        return False
-    titles = [str(item.get("_variant_title_key") or "") for item in items]
-    non_empty_titles = [title for title in titles if title]
-    if len(non_empty_titles) < 2:
-        return False
-    base = max(non_empty_titles, key=len)
-    return all(_title_similarity(base, title) >= 0.95 for title in non_empty_titles)
 
 
 def _has_bluray_marker(item: dict[str, Any]) -> bool:
@@ -867,9 +1096,23 @@ def _bonus_evidence(title: str) -> str:
 
 def _title_key(row: dict[str, Any]) -> str:
     title = str(row.get("title_ja") or row.get("title_en") or row.get("title") or "")
-    title = re.sub(r"【[^】]*(?:FANZA限定|数量限定|特典版)[^】]*】", "", title, flags=re.IGNORECASE)
+    # Items are only ever compared within the same canonical code, so the
+    # 【...】 lead tags (【FANZA限定】【4K】【ベストヒッツ】【配信限定●●版】…)
+    # are edition decoration, not identity — strip them all (MDCx does the
+    # same in its number parser).
+    title = re.sub(r"【[^】]*】", "", title)
     title = re.sub(r"（?(?:BOD|DOD|RDOD|ブルーレイディスク)）?", "", title, flags=re.IGNORECASE)
-    title = re.sub(r"(?:生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ).*$", "", title, flags=re.IGNORECASE)
+    # Bonus tail: also swallow the donor's name in "吉根ゆりあさんのパンティと
+    # 生写真付き" so the FANZA限定 listing keys identically to the base title.
+    title = re.sub(r"(?:[^\s/／]*さんの)?(?:生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ|ブロマイド|ポストカード|トレカ|クリアファイル).*$", "", title, flags=re.IGNORECASE)
+    # Part/edition markers: within one canonical code, 前半戦/完全版 etc. are
+    # edition decoration (the digital 完全版 of BBTU-040 drops 前半戦 from the
+    # mono title). Distinct parts of a series always carry distinct codes, so
+    # this never bridges different works.
+    title = re.sub(r"(?:前|後)半(?:戦)?|(?:前|中|後)編|完全版", "", title)
+    # Self-referencing code in parentheses: re-edited digital releases embed
+    # their own product code in the title （NACX-066SA1jo01）.
+    title = re.sub(r"[（(][^（）()]*[A-Za-z]{2,}-?\d{2,}[^（）()]*[）)]", "", title)
     # Rental editions append the disc-count marker （2枚組）/（3枚組） to an
     # otherwise identical mono/digital title; it's packaging, not identity.
     title = re.sub(r"[（(]\s*\d+\s*枚組\s*[）)]", "", title)
@@ -881,6 +1124,14 @@ def _title_key(row: dict[str, Any]) -> str:
     # dropping the final slash segment is safe and aligns the two forms.
     title = re.sub(r"[/／][^/／]*$", "", title)
     return re.sub(r"\W+", "", title).lower()
+
+
+def _title_lang(row: dict[str, Any]) -> str:
+    if str(row.get("title_ja") or "").strip():
+        return "ja"
+    if str(row.get("title_en") or "").strip():
+        return "en"
+    return "other"
 
 
 def _title_similarity(a: str, b: str) -> float:

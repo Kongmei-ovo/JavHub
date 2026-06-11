@@ -160,13 +160,81 @@ async def _favorite_videos_payload(items=None):
             return await fetch_one(item)
     results = await asyncio.gather(*[limited_fetch(item) for item in items])
     results.sort(key=lambda x: x.get("_created_at", ""), reverse=True)
-    results = enrich_video_variants(results, variant_mode="flat", include_explanations=True)
+    # Group-favorites store one row per storefront version; collapse them to
+    # one card per work so the favorites page mirrors the actress page.
+    results = enrich_video_variants(results, variant_mode="grouped", include_explanations=True)
     results = apply_indexed_variant_groups(results, include_explanations=True)
     return results
 
+def _video_group_members(entity_id: str, metadata: Optional[Dict]) -> list[tuple[str, Dict]] | None:
+    """Resolve every storefront version of the work behind a video entity_id.
+
+    Uses the materialized variant index. Returns [(entity_id, metadata), ...]
+    for the whole group, or None when the video has no indexed group (single
+    version, or index not built yet) — caller falls back to single-row toggle.
+    """
+    content_id = str(entity_id or "").split("::", 1)[0].strip()
+    if not content_id:
+        return None
+    try:
+        from database.video_variant_index import get_variant_group_by_content_ids
+        indexed = get_variant_group_by_content_ids([content_id]) or {}
+    except Exception:
+        return None
+    group = indexed.get(content_id)
+    if not group:
+        return None
+    members: list[tuple[str, Dict]] = []
+    for item in group.get("items") or []:
+        cid = str(item.get("content_id") or "").strip()
+        if not cid:
+            continue
+        svc = str(item.get("service_code") or "").strip()
+        member_id = f"{cid}::{svc}" if svc else cid
+        members.append((
+            member_id,
+            {
+                "content_id": cid,
+                "dvd_id": item.get("dvd_id") or "",
+                "service_code": svc,
+                "variant_group_id": group.get("group_id"),
+                "canonical_code": group.get("canonical_code"),
+                "variant_group_size": group.get("group_count"),
+            },
+        ))
+    return members or None
+
+
 @router.post("/toggle")
 def toggle_favorite(req: ToggleFavoriteRequest):
-    """切换收藏状态"""
+    """切换收藏状态。
+
+    video 类型按整个变体组（同一作品的全部版本）一起收藏/取消：点击任何一个
+    版本，组内所有版本统一进入/退出收藏，这样无论页面展示哪个版本红心状态
+    都一致，收藏页也只出现一张卡。
+    """
+    if req.entity_type == "video":
+        members = _video_group_members(req.entity_id, req.metadata)
+        if members:
+            member_ids = {member_id for member_id, _ in members}
+            if req.entity_id not in member_ids:
+                members.append((req.entity_id, dict(req.metadata or {})))
+            currently = any(
+                favorite.is_favorite("video", member_id) for member_id, _ in members
+            )
+            target = not currently
+            entity_ids = []
+            for member_id, member_meta in members:
+                meta = dict(member_meta)
+                if member_id == req.entity_id and req.metadata:
+                    meta.update(req.metadata)
+                favorite.set_favorite("video", member_id, meta, favorited=target)
+                entity_ids.append(member_id)
+            return {
+                "is_favorited": target,
+                "group_size": len(entity_ids),
+                "entity_ids": entity_ids,
+            }
     is_favorited = favorite.toggle_favorite(req.entity_type, req.entity_id, req.metadata)
     return {"is_favorited": is_favorited}
 

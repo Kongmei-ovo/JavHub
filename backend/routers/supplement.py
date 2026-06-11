@@ -28,6 +28,38 @@ async def supplement_actress_status(
     )
 
 
+@router.post("/actresses/ensure_subscribed")
+async def ensure_subscribed_actresses() -> dict[str, Any]:
+    """为所有启用的演员订阅触发补全（filmography job + resolved refresh）。
+
+    后台逐个调用 supplement autopilot（自带 TTL 去重，JavInfoApi 侧还有
+    active-job 去重），立即返回排期数量。供运营总览数据管道卡使用。
+    """
+    import asyncio
+
+    from database import get_subscriptions
+    from services.supplement_autopilot import ensure_actress_supplement
+
+    actress_ids: list[int] = []
+    for sub in get_subscriptions():
+        if not sub.get("enabled"):
+            continue
+        scope = str(sub.get("scope") or "actress").strip().lower()
+        if scope != "actress":
+            continue
+        target = sub.get("target_id") or sub.get("actress_id")
+        if target:
+            actress_ids.append(int(target))
+
+    async def run() -> None:
+        for actress_id in actress_ids:
+            await ensure_actress_supplement(actress_id)
+
+    if actress_ids:
+        asyncio.get_running_loop().create_task(run())
+    return {"scheduled": len(actress_ids)}
+
+
 @router.post("/actresses/{actress_id}/filmography/jobs")
 async def create_filmography_job(
     actress_id: int,

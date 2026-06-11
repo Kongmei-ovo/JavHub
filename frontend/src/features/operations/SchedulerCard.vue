@@ -43,27 +43,6 @@
       <div class="state-item"><span>确认策略</span><strong>保守唯一</strong></div>
     </div>
 
-    <div class="cache-cleanup">
-      <div class="block-head">
-        <h3>缓存清理</h3>
-        <span>{{ selectedCachePurgeLabel }}</span>
-      </div>
-      <div class="cache-scope-group" role="group" aria-label="缓存清理范围">
-        <button
-          v-for="scope in cachePurgeScopes"
-          :key="scope.value"
-          class="scope-chip"
-          type="button"
-          :class="{ active: selectedCachePurgeScope === scope.value }"
-          @click="selectedCachePurgeScope = scope.value"
-        >
-          {{ scope.label }}
-        </button>
-      </div>
-      <button class="btn btn-ghost btn-sm cache-purge-btn" type="button" :disabled="purgingCache" @click="purgeSelectedCache">
-        {{ purgingCache ? '清理中...' : '清理缓存' }}
-      </button>
-    </div>
     <p v-if="healthError || cacheStatsError" class="muted cache-error">{{ healthError || cacheStatsError }}</p>
     </template>
   </article>
@@ -71,8 +50,6 @@
 
 <script>
 import api from '../../api'
-import { requestConfirm } from '../../utils/confirmDialog'
-import { CACHE_PURGE_SCOPES } from './operationsOptions'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
 import AppleErrorState from '../../components/AppleErrorState.vue'
@@ -88,9 +65,6 @@ export default {
       cacheStatsError: '',
       healthError: '',
       loading: false,
-      purgingCache: false,
-      selectedCachePurgeScope: 'video',
-      cachePurgeScopes: CACHE_PURGE_SCOPES,
     }
   },
   computed: {
@@ -167,9 +141,6 @@ export default {
       if (this.candidateSchedule.enabled) return '已配置未生效'
       return '未启用'
     },
-    selectedCachePurgeLabel() {
-      return this.cachePurgeScopes.find(scope => scope.value === this.selectedCachePurgeScope)?.label || this.selectedCachePurgeScope
-    },
   },
   mounted() {
     this.loadOverview()
@@ -206,27 +177,6 @@ export default {
         this.cacheStats = resp.data
       } catch (e) {
         this.cacheStatsError = e.response?.data?.detail || e.message || '加载失败'
-      }
-    },
-    async purgeSelectedCache() {
-      if (this.purgingCache) return
-      const confirmed = await requestConfirm({
-        title: '缓存清理',
-        message: `确认清理${this.selectedCachePurgeLabel}？`,
-        details: '清理后会重新拉取相关数据，短时间内接口可能变慢。',
-        confirmText: '清理',
-        tone: this.selectedCachePurgeScope === 'all' ? 'danger' : 'default',
-      })
-      if (!confirmed) return
-      this.purgingCache = true
-      try {
-        await api.purgeCache(this.selectedCachePurgeScope)
-        this.$message?.success?.('缓存已清理')
-        await this.loadCacheStats()
-      } catch (e) {
-        console.error('Purge cache failed:', e)
-      } finally {
-        this.purgingCache = false
       }
     },
     policyLabel(policy) {
