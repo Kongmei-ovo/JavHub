@@ -238,13 +238,17 @@ test('inventory controls use shared Apple glass materials', () => {
   const dialogHeader = cssBlock(source, '.dialog-header')
   const closeButton = cssBlock(source, '.close-btn')
 
-  const controlBlocks = [searchBox, searchClear, inlineLink, pageButton, jumpInput, jumpButton, jobItem, closeButton]
+  const controlBlocks = [searchBox, searchClear, inlineLink, pageButton, jumpInput, jumpButton, closeButton]
   for (const block of controlBlocks) {
     assertLayeredBackground(block, '--material-glass-control', 'inventory control')
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
   }
   assert.doesNotMatch(controlBlocks.join('\n'), /^.*background:\s*var\(--material-glass-control\);.*$/gm)
+  assert.match(jobItem, /background:\s*var\(--card-2\)/)
+  assert.match(jobItem, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(jobItem, /box-shadow:\s*none/)
+  assert.doesNotMatch(jobItem, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(searchBox, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
   assert.match(searchFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
@@ -276,20 +280,21 @@ test('inventory controls use shared Apple glass materials', () => {
   }
 })
 
-test('inventory actor cards and skeletons use shared Apple glass surfaces', () => {
+test('inventory actor cards and skeletons use solid content surfaces', () => {
   const actorCard = cssBlock(source, '.actor-card')
   const actorCardHover = cssBlock(source, '.actor-card:hover')
   const actorCover = cssBlock(source, '.actor-cover')
   const skeletonCover = cssBlock(source, '.skeleton-cover')
   const skeletonLine = cssBlock(source, '.skeleton-line')
 
-  assertLayeredBackground(actorCard, '--material-glass-control', 'inventory actor card')
-  assert.match(actorCard, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(actorCard, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(actorCard, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assertLayeredBackground(actorCardHover, '--material-glass-control-hover', 'inventory hovered actor card')
-  assert.match(actorCardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(actorCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(actorCard, /background:\s*var\(--card\)/)
+  assert.match(actorCard, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(actorCard, /box-shadow:\s*none/)
+  assert.doesNotMatch(actorCard, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(actorCardHover, /background:\s*var\(--card-hover,\s*var\(--card\)\)/)
+  assert.match(actorCardHover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(actorCardHover, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(actorCardHover, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(actorCover, /background:\s*var\(--card\)/, 'inventory actor cover should be solid --card')
   // WAVE-4 D3: hairline divider via inset box-shadow avoids double-borders.
@@ -303,7 +308,7 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
   assert.doesNotMatch([actorCard, actorCardHover, actorCover, skeletonCover, skeletonLine].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-subtle)\);.*$/gm)
 
   for (const block of [actorCard, actorCardHover, actorCover]) {
-    assert.doesNotMatch(block, /var\(--bg-card\)|var\(--bg-secondary\)|var\(--shadow-card\)/)
+    assert.doesNotMatch(block, /var\(--bg-card\)|var\(--bg-secondary\)/)
   }
 })
 
@@ -340,11 +345,17 @@ test('inventory interactive controls expose Apple glass keyboard focus states', 
     [closeButtonFocus, 'inventory close button focus'],
   ]) {
     assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    if (label === 'inventory actor card focus') continue
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
     assertLayeredBackground(block, '--material-glass-control-hover', label)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should expose a subtle focus ring`)
   }
 
+  assert.match(actorFocus, /outline:\s*none/)
+  assert.match(actorFocus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(actorFocus, /background:\s*var\(--card-hover,\s*var\(--card\)\)/)
+  assert.match(actorFocus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide\)/)
+  assert.doesNotMatch(actorFocus, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(actorFocus, /transform:\s*translateY\(-2px\)/)
   assert.match(pageButtonFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(jumpButtonFocus, /transform:\s*translateY\(-1px\)/)

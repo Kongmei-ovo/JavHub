@@ -187,7 +187,7 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
   assert.doesNotMatch(source, /\.variant-inline-item\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.04\)/)
 })
 
-test('search inline variant controls use shared glass materials and explicit motion', () => {
+test('search inline variant controls separate glass toggles from solid rows', () => {
   const variantButtonBlock = sourceBlock('.variant-expand-btn')
   const variantButtonHoverBlock = sourceBlock('.variant-expand-btn:hover')
   const variantButtonActiveBlock = sourceBlock('.variant-expand-btn:active')
@@ -195,21 +195,25 @@ test('search inline variant controls use shared glass materials and explicit mot
   const variantRowHoverBlock = sourceBlock('.variant-inline-item:hover')
   const variantLabelBlock = sourceBlock('.variant-inline-labels span')
 
-  for (const [block, name] of [[variantButtonBlock, 'variant button'], [variantRowBlock, 'variant row']]) {
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
-    assert.match(block, backgroundIncludes('material-glass-control'), `${name} should use shared glass material`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
-    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
-    assertMotionOnlyTransition(block, name)
-    assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat controls`)
-  }
+  assert.match(variantButtonBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(variantButtonBlock, backgroundIncludes('material-glass-control'))
+  assert.match(variantButtonBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantButtonBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assertMotionOnlyTransition(variantButtonBlock, 'variant button')
 
-  for (const [block, name] of [[variantButtonHoverBlock, 'variant button hover'], [variantRowHoverBlock, 'variant row hover']]) {
-    assert.match(block, backgroundIncludes('material-glass-control-hover'), `${name} should use shared hover material`)
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
-    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lightly lift`)
-  }
+  assert.match(variantButtonHoverBlock, backgroundIncludes('material-glass-control-hover'))
+  assert.match(variantButtonHoverBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(variantButtonHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  assert.match(variantRowBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(variantRowBlock, /background:\s*var\(--card-2\)/)
+  assert.match(variantRowBlock, /box-shadow:\s*none/)
+  assert.doesNotMatch(variantRowBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assertMotionOnlyTransition(variantRowBlock, 'variant row')
+  assert.match(variantRowHoverBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(variantRowHoverBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(variantRowHoverBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(variantRowHoverBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(variantButtonActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(variantLabelBlock, layeredSemanticBackground('badge-info-bg'))
@@ -341,8 +345,8 @@ test('search command and result controls use layered liquid glass backgrounds', 
   assert.match(sourceBlock('.panel-input:focus'), layeredActive)
   assert.match(sourceBlock('.variant-expand-btn'), layeredControl)
   assert.match(sourceBlock('.variant-expand-btn:hover'), layeredControlHover)
-  assert.match(sourceBlock('.variant-inline-item'), layeredControl)
-  assert.match(sourceBlock('.variant-inline-item:hover'), layeredControlHover)
+  assert.match(sourceBlock('.variant-inline-item'), /background:\s*var\(--card-2\)/)
+  assert.match(sourceBlock('.variant-inline-item:hover'), /background:\s*var\(--card-hover\)/)
   assert.match(sourceBlock('.page-btn'), layeredControl)
   assert.match(sourceBlock('.page-btn:hover:not(:disabled)'), layeredControlHover)
   assert.match(sourceBlock('.jump-input'), layeredControl)
@@ -410,7 +414,8 @@ test('search controls include pressed and focused glass microinteractions', () =
   const sortPillActiveBlock = sourceBlock('.sort-pill:active')
   const filterItemActiveBlock = sourceBlock('.filter-item:active')
   const appliedChipActiveBlock = sourceBlock('.applied-chip:active')
-  const variantFocusBlock = sourceBlock('.variant-expand-btn:focus-visible,\n.variant-inline-item:focus-visible')
+  const variantToggleFocusBlock = sourceBlock('.variant-expand-btn:focus-visible')
+  const variantRowFocusBlock = sourceBlock('.variant-inline-item:focus-visible')
   const panelInputFocusBlock = sourceBlock('.panel-input:focus')
 
   for (const [block, name] of [
@@ -421,9 +426,12 @@ test('search controls include pressed and focused glass microinteractions', () =
     assert.match(block, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/, `${name} should provide pressed feedback`)
   }
 
-  assert.match(variantFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(variantFocusBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(variantFocusBlock, /color:\s*var\(--text-primary\)/)
-  assert.match(variantFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.match(variantToggleFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(variantToggleFocusBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(variantToggleFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.match(variantRowFocusBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(variantRowFocusBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(variantRowFocusBlock, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.doesNotMatch(variantRowFocusBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(panelInputFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring-wide\)/)
 })

@@ -404,13 +404,13 @@ test('active states resolve to refractive glass rather than flat rgba tint', () 
   assert.match(cssBlock('.glass-select__option.is-selected'), /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 })
 
-test('segmented controls and settings rows use shared glass materials', () => {
+test('segmented controls stay glass while settings rows use solid content surfaces', () => {
   assert.match(genres, /\.shuffle-btn\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
   assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 
   assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--card-2\)[\s\S]*box-shadow:\s*none/)
   assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
 })
 
@@ -591,7 +591,7 @@ test('home dashboard metrics use shared liquid glass controls', () => {
   assert.match(mobileBlock, /\.candidate-metric\s*\{[\s\S]*min-width:\s*0/)
 })
 
-test('translation jobs workbench surfaces use shared Apple glass controls', () => {
+test('translation jobs workbench separates solid content surfaces from glass controls', () => {
   const segmentedBlock = sourceBlock(translationJobs, '.segmented-control')
   const segmentedActiveBlock = sourceBlock(translationJobs, '.segmented-control button.active')
   const overviewSurfaceBlock = translationJobs.match(/\.coverage-hero,\n\.metadata-overview,\n\.signal-card,\n\.job-control-card\s*\{([\s\S]*?)\n\}/)?.[1] || ''
@@ -613,15 +613,13 @@ test('translation jobs workbench surfaces use shared Apple glass controls', () =
   assert.doesNotMatch(segmentedBlock, /rgba\(255,\s*255,\s*255,\s*0\.045\)/)
   assert.doesNotMatch(segmentedActiveBlock, /rgba\(255,\s*255,\s*255,\s*0\.12\)/)
 
-  assert.match(overviewSurfaceBlock, backgroundIncludes('material-glass-control'))
-  assert.match(overviewSurfaceBlock, /var\(--surface-specular-edge\)/)
-  assert.match(overviewSurfaceBlock, /var\(--surface-noise\)/)
-  assert.match(overviewSurfaceBlock, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(overviewSurfaceBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(overviewSurfaceBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
+  assert.match(overviewSurfaceBlock, /background:\s*var\(--card\)/)
+  assert.match(overviewSurfaceBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(overviewSurfaceBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(overviewSurfaceBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.doesNotMatch(overviewSurfaceBlock, /var\(--surface-control\)|var\(--border\)|rgba\(255,\s*255,\s*255,\s*0\.035\)/)
 
-  for (const block of [inputBlock, noticeBlock, reviewStatsBlock]) {
+  for (const block of [inputBlock]) {
     assert.match(block, backgroundIncludes('material-glass-control'))
     assert.match(block, /var\(--surface-specular-edge\)/)
     assert.match(block, /var\(--surface-noise\)/)

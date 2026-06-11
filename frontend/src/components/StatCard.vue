@@ -28,21 +28,19 @@ const handleClick = () => {
 .stat-card {
   display: flex;
   align-items: center;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
   padding: 24px 32px;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: var(--shadow-card);
   transition: transform var(--motion-standard);
 }
 .stat-card:hover {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  background: var(--card-hover);
   transform: translateY(-2px);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card);
 }
 .stat-icon {
   font-size: var(--type-display-mobile);

@@ -15,7 +15,7 @@ function sourceBlock(selector) {
     .join('\n')
 }
 
-test('StatCard uses shared Apple glass materials and a single props binding', () => {
+test('StatCard uses a solid content surface and a single props binding', () => {
   const card = sourceBlock('.stat-card')
   const hover = sourceBlock('.stat-card:hover')
   const arrow = sourceBlock('.stat-arrow')
@@ -24,17 +24,18 @@ test('StatCard uses shared Apple glass materials and a single props binding', ()
   assert.equal((source.match(/defineProps\(/g) || []).length, 1)
   assert.match(source, /if \(props\.link\)/)
 
-  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
-  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(card, /background:\s*var\(--card\)/)
+  assert.match(card, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(card, /box-shadow:\s*var\(--shadow-card\)/)
   assert.match(card, /transition:\s*transform var\(--motion-standard\)/)
   assert.doesNotMatch(card, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/)
-  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(card, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--border-light\)|var\(--shadow-hover\)|var\(--transition-pro\)/)
 
-  assert.match(hover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(hover, /background:\s*var\(--card-hover\)/)
+  assert.match(hover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(hover, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(hover, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.doesNotMatch(hover, /var\(--shadow-hover\)|var\(--border-light\)/)
 
   assert.match(arrow, /transition:\s*transform var\(--motion-standard\)/)

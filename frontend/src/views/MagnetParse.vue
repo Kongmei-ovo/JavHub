@@ -446,20 +446,18 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2);
+  box-shadow: none;
   transition: transform var(--motion-fast), opacity var(--motion-fast);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
-.magnet-row:nth-child(even) { background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control); }
+.magnet-row:nth-child(even) { background: var(--card-2); }
 .magnet-row:hover {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 
@@ -469,9 +467,9 @@ export default {
 }
 
 .magnet-row:focus-within {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 

@@ -124,14 +124,12 @@ export default {
 .exists { color: var(--badge-success-text); }
 .not-exists { color: var(--text-secondary); }
 .item {
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card-2);
+  border: 1px solid var(--hairline);
   padding: 12px;
   margin-top: 10px;
   border-radius: var(--radius-sm);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
 }
 .item p + p {
   margin-top: 6px;

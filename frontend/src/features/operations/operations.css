@@ -1,6 +1,6 @@
 .operations-page {
-  --operations-line: var(--glass-control-border);
-  --operations-soft-line: var(--glass-control-border);
+  --operations-line: var(--hairline-strong);
+  --operations-soft-line: var(--hairline);
   --operations-warning-material: var(--surface-specular-edge), var(--surface-noise), linear-gradient(145deg, var(--badge-warning-bg), color-mix(in srgb, var(--badge-warning-bg) 58%, var(--material-glass-subtle)));
 }
 
@@ -79,10 +79,7 @@
   padding: 9px 10px;
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -90,23 +87,17 @@
 }
 
 .action-card:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 
 .action-card:focus-visible {
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -224,10 +215,7 @@
   padding: 9px 12px;
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -236,7 +224,12 @@
 
 .queue-focus:hover,
 .compact-row:hover,
-.state-item:is(button):hover,
+.state-item:is(button):hover {
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
+}
+
 .block-head button:hover {
   border-color: var(--glass-control-border-hover);
   background:
@@ -248,7 +241,14 @@
 
 .queue-focus:focus-visible,
 .compact-row:focus-visible,
-.state-item:is(button):focus-visible,
+.state-item:is(button):focus-visible {
+  outline: none;
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
+  color: var(--text-primary);
+}
+
 .block-head button:focus-visible {
   outline: none;
   border-color: var(--glass-control-border-hover);
@@ -362,10 +362,7 @@
   overflow: hidden;
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card);
   padding: 4px;
 }
 
@@ -381,14 +378,11 @@
   contain-intrinsic-size: 1px 54px;
   padding: 6px 8px;
   border: 1px solid var(--operations-soft-line);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 
 .compact-row:last-child,
@@ -513,16 +507,11 @@
   padding: 8px 10px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
 }
 
 button.state-item {
@@ -552,13 +541,8 @@ button.state-item {
   padding: 8px 10px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .mini-stats strong {
@@ -590,19 +574,14 @@ button.state-item {
   padding: 4px 8px;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--type-caption-2, 11px);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
 }
 
 .cache-entry-stats {
@@ -728,12 +707,9 @@ button.state-item {
 .state-ledger {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px;
   border: 1px solid var(--operations-soft-line); border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-muted); font-family: var(--font-mono); font-size: var(--type-caption-2, 11px); font-variant-numeric: tabular-nums;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 
 .state-ledger span {
@@ -747,8 +723,8 @@ button.state-item {
 }
 
 .operations-page {
-  --operations-line: var(--glass-control-border);
-  --operations-soft-line: var(--glass-control-border);
+  --operations-line: var(--hairline-strong);
+  --operations-soft-line: var(--hairline);
   --operations-panel-gap: clamp(12px, 1.4vw, 18px);
   --operations-panel-pad: clamp(14px, 1.45vw, 20px);
 }
@@ -932,22 +908,17 @@ button.state-item {
 }
 
 .hero-stat:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 
 .hero-stat:focus-visible {
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 
@@ -1062,19 +1033,20 @@ button.state-item {
 .state-item,
 .mini-stats > div,
 .queue-focus,
-.action-card,
-.compact-list,
-.run-list {
+.action-card {
   border-color: var(--operations-soft-line);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
 }
 
 .state-item,
 .mini-stats > div {
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
+}
+
+.compact-list,
+.run-list {
+  border-color: var(--operations-soft-line);
+  background: var(--card);
 }
 
 .state-item.warning {
@@ -1144,29 +1116,21 @@ button.state-item {
 }
 
 .scope-chip {
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card);
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .scope-chip:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
 }
 
 .scope-chip:focus-visible {
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 

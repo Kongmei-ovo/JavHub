@@ -13,6 +13,17 @@ const composable = existsSync(composableUrl) ? readFileSync(composableUrl, 'utf8
 const router = readFileSync(new URL('../router/index.js', import.meta.url), 'utf8')
 const navigation = readFileSync(new URL('../appNavigation.js', import.meta.url), 'utf8')
 const panel = readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8')
+const panelStyle = readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8')
+
+function cssBlock(selector) {
+  const blocks = [...panelStyle.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  const match = blocks.find(([, selectors]) => selectors
+    .split(',')
+    .map(part => part.trim())
+    .includes(selector))
+  assert.ok(match, `${selector} block should exist`)
+  return match[2]
+}
 
 test('Candidates view mounts the shared candidate workspace', () => {
   assert.match(candidatesView, /class="candidates-page page-shell page-shell--workspace"/)
@@ -75,6 +86,19 @@ test('Candidates route is registered and reachable from navigation', () => {
   assert.match(router, /path:\s*'\/candidates',\s*name:\s*'Candidates',\s*component:\s*\(\) => import\('\.\.\/views\/Candidates\.vue'\)/)
   assert.match(navigation, /path:\s*'\/candidates',\s*label:\s*'候选确认'/)
   assert.match(navigation, /'\/candidates':\s*\['\/candidates'\]/)
+})
+
+test('candidate detail data uses solid content surfaces', () => {
+  for (const selector of [
+    '.candidate-repair-scope-grid span',
+    '.candidate-detail-grid > div',
+    '.candidate-detail-magnet',
+  ]) {
+    const block = cssBlock(selector)
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/)
+    assert.match(block, /background:\s*var\(--card-2\)/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  }
 })
 
 test('useDownloadCandidates composable preserves all candidate API endpoints', () => {

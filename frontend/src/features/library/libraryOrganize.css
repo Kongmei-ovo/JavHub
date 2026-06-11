@@ -323,13 +323,10 @@
   min-width: 0;
   content-visibility: auto;
   contain-intrinsic-size: 1px 104px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card-2);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .priority-row,
@@ -352,23 +349,17 @@
 }
 .priority-row:hover,
 .flow-steps button:hover {
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 .priority-row:focus-visible,
 .flow-steps button:focus-visible {
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 .priority-row:active,
@@ -382,12 +373,9 @@
 .check-item:hover,
 .inventory-candidate:hover,
 .missing-video:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 .mapping-item:focus-within,
@@ -398,12 +386,9 @@
 .inventory-candidate:focus-within,
 .missing-video:focus-within {
   outline: none;
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 .priority-row strong,
@@ -797,13 +782,10 @@
   gap: 12px;
   margin-bottom: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 .auto-match-panel span {
   color: var(--text-secondary);
@@ -856,7 +838,7 @@
 .duplicate-entry:has(button:active),
 .inventory-candidate:has(button:active),
 .missing-video:has(button:active) {
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   transform: translateY(0) scale(0.995);
 }
 :global(:root[data-theme="dark"] .organize-header) {
@@ -879,7 +861,6 @@
   background: var(--card);
   box-shadow: var(--shadow-card);
 }
-:global(:root[data-theme="dark"] .status-cell),
 :global(:root[data-theme="dark"] .priority-row),
 :global(:root[data-theme="dark"] .flow-steps button),
 :global(:root[data-theme="dark"] .mapping-item),
@@ -889,8 +870,13 @@
 :global(:root[data-theme="dark"] .check-item),
 :global(:root[data-theme="dark"] .inventory-candidate),
 :global(:root[data-theme="dark"] .missing-video),
+:global(:root[data-theme="dark"] .auto-match-panel) {
+  border-color: var(--hairline);
+  background: var(--card-2);
+  box-shadow: none;
+}
+:global(:root[data-theme="dark"] .status-cell),
 :global(:root[data-theme="dark"] .actor-detail-head),
-:global(:root[data-theme="dark"] .auto-match-panel),
 :global(:root[data-theme="dark"] .candidate-pills button),
 :global(:root[data-theme="dark"] .chip),
 :global(:root[data-theme="dark"] .status-pill),
@@ -906,7 +892,6 @@
     var(--surface-noise),
     var(--material-glass-control);
 }
-:global(:root[data-theme="dark"] .status-cell:hover),
 :global(:root[data-theme="dark"] .priority-row:hover),
 :global(:root[data-theme="dark"] .flow-steps button:hover),
 :global(:root[data-theme="dark"] .mapping-item:hover),
@@ -915,7 +900,12 @@
 :global(:root[data-theme="dark"] .duplicate-entry:hover),
 :global(:root[data-theme="dark"] .check-item:hover),
 :global(:root[data-theme="dark"] .inventory-candidate:hover),
-:global(:root[data-theme="dark"] .missing-video:hover),
+:global(:root[data-theme="dark"] .missing-video:hover) {
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
+}
+:global(:root[data-theme="dark"] .status-cell:hover),
 :global(:root[data-theme="dark"] .candidate-pills button:hover),
 :global(:root[data-theme="dark"] .chip:hover),
 :global(:root[data-theme="dark"] .filter-reset:hover),
@@ -934,12 +924,9 @@
 :global(:root[data-theme="dark"] .check-item:focus-within),
 :global(:root[data-theme="dark"] .inventory-candidate:focus-within),
 :global(:root[data-theme="dark"] .missing-video:focus-within) {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 :global(:root[data-theme="dark"] .mini-check-form input:focus),

@@ -229,37 +229,26 @@
 .actor-card {
   content-visibility: auto;
   contain-intrinsic-size: 1px 238px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .actor-card:hover {
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--card-hover, var(--card));
+  border-color: var(--hairline-strong);
   transform: translateY(-2px);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--shadow-card);
 }
 .actor-card:focus-visible {
   outline: none;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--card-hover, var(--card));
+  border-color: var(--hairline-strong);
   transform: translateY(-2px);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  box-shadow: var(--shadow-card), var(--focus-ring-wide);
 }
 .actor-cover {
   position: relative;
@@ -480,13 +469,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card-2);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
 }
 .job-type { font-weight: bold; }
 .job-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 12px; }

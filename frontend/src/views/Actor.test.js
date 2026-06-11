@@ -177,7 +177,7 @@ test('actor variant count hint expands only the current movie group inline', () 
   assert.doesNotMatch(`${variantButton}\n${variantRow}`, /position:\s*absolute|pointer-events:\s*none/)
 })
 
-test('actor page version and year controls use shared Apple glass materials', () => {
+test('actor page keeps version controls glass and variant rows solid', () => {
   const variantSwitch = cssBlock('.variant-switch')
   const switchButton = cssBlock('.switch-btn')
   const switchButtonHover = cssBlock('.switch-btn:hover')
@@ -185,6 +185,8 @@ test('actor page version and year controls use shared Apple glass materials', ()
   const variantBadge = cssBlock('.variant-badge')
   const variantButton = cssBlock('.variant-expand-btn')
   const variantRow = cssBlock('.variant-inline-item')
+  const variantRowHover = cssBlock('.variant-inline-item:hover')
+  const variantRowFocus = cssBlock('.variant-inline-item:focus-visible')
   const variantInlineLabel = cssBlock('.variant-inline-labels span')
   const yearNav = cssBlock('.year-nav')
   const yearNavItem = cssBlock('.year-nav-item')
@@ -208,12 +210,21 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.ok(backgroundIncludes(variantBadge, '--material-glass-control'))
   assert.match(variantBadge, /border:\s*1px solid var\(--glass-control-border\)/)
 
-  for (const [block, name] of [[variantButton, 'variant button'], [variantRow, 'variant row']]) {
-    assert.ok(backgroundIncludes(block, '--material-glass-control'), `${name} should use shared material`)
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared shadow`)
-    assert.doesNotMatch(block, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
-  }
+  assert.ok(backgroundIncludes(variantButton, '--material-glass-control'))
+  assert.match(variantButton, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(variantButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
+
+  assert.match(variantRow, /background:\s*var\(--card-2\)/)
+  assert.match(variantRow, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(variantRow, /box-shadow:\s*none/)
+  assert.doesNotMatch(variantRow, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(variantRowHover, /background:\s*var\(--card-hover\)/)
+  assert.match(variantRowHover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(variantRowHover, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.match(variantRowFocus, /background:\s*var\(--card-hover\)/)
+  assert.match(variantRowFocus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(variantRowFocus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.doesNotMatch(`${variantRowHover}\n${variantRowFocus}`, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.ok(backgroundIncludes(variantInlineLabel, '--badge-info-bg'))
   assert.match(variantInlineLabel, /border:\s*1px solid var\(--badge-info-border\)/)
   assert.match(variantInlineLabel, /color:\s*var\(--badge-info-text\)/)
@@ -281,12 +292,17 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   assert.match(actorAvatar, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(actorAvatar, /var\(--bg-card\)|rgba\(255,\s*255,\s*255/)
 
-  for (const block of [actionButton, metaFavorite, metaSubscribed, supplementCard]) {
+  for (const block of [actionButton, metaFavorite, metaSubscribed]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.ok(backgroundIncludes(block, '--material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-card-hover\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
   }
+
+  assert.match(supplementCard, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(supplementCard, /background:\s*var\(--card\)/)
+  assert.match(supplementCard, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(supplementCard, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.ok(backgroundIncludes(actionButtonHover, '--material-glass-control-hover'))
   assert.match(actionButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)

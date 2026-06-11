@@ -36,6 +36,18 @@ function cssBlock(content, selector) {
   return match[2]
 }
 
+function cssBlockWith(content, selector, token) {
+  const blocks = [...content.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => selectors
+      .split(',')
+      .map(part => part.trim())
+      .includes(selector))
+    .map(([, , block]) => block)
+  const match = blocks.find(block => block.includes(token))
+  assert.ok(match, `${selector} block should include ${token}`)
+  return match
+}
+
 function backgroundIncludes(block, token) {
   const match = block.match(/background:\s*([^;]+);/)
   return Boolean(match && match[1].includes(token))
@@ -233,5 +245,36 @@ test('supplement status and source badges use semantic layered glass tokens', ()
   }
   for (const [block, label] of [[failed, 'failed']]) {
     assertLayeredBackground(block, '--badge-error-bg', label)
+  }
+})
+
+test('supplement diagnostics keep neutral data surfaces solid', () => {
+  const outerSurfaces = ['.manual-match-panel', '.diagnostics-table', '.diagnostics-field-source-matrix']
+  const nestedSurfaces = [
+    '.triage-card',
+    '.candidate-decision-card',
+    '.diagnostics-row',
+    '.identity-chip',
+    '.detail-source-item',
+    '.manual-action-item',
+    '.diagnostics-command-summary',
+    '.diagnostics-command-lane',
+    '.field-command-summary',
+    '.field-source-row',
+  ]
+
+  for (const selector of outerSurfaces) {
+    const block = cssBlockWith(diagnosticsStyle, selector, 'border:')
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/, `${selector} should use content hairline`)
+    assert.match(block, /background:\s*var\(--card\)/, `${selector} should use solid card material`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  }
+
+  for (const selector of nestedSurfaces) {
+    const block = cssBlock(diagnosticsStyle, selector)
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/, `${selector} should use content hairline`)
+    assert.match(block, /background:\s*var\(--card-2\)/, `${selector} should use nested solid material`)
+    assert.match(block, /box-shadow:\s*none/, `${selector} should not use control depth`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 })

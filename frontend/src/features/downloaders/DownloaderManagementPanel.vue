@@ -367,27 +367,25 @@ export default {
   gap: 14px;
   min-height: 86px;
   padding: 14px 16px;
-  border: 1px solid var(--glass-control-border);
-  border-bottom-color: var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  border: 1px solid var(--hairline);
+  border-bottom-color: var(--hairline);
+  background: var(--card-2);
+  box-shadow: none;
   cursor: pointer;
   transition: opacity var(--motion-fast);
 }
 .downloader-row:last-child {
-  border-bottom-color: var(--glass-control-border);
+  border-bottom-color: var(--hairline);
 }
 .downloader-row:hover {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
 }
 .downloader-row:focus-visible {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
   outline: none;
 }

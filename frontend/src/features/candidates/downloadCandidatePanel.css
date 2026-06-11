@@ -171,13 +171,10 @@
   min-width: 0;
   min-height: 44px;
   padding: 7px 8px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .candidate-repair-scope-grid b,
@@ -859,16 +856,11 @@
 }
 
 .candidate-detail-grid > div {
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   padding: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .candidate-detail-grid span {
@@ -900,18 +892,13 @@
 .candidate-detail-magnet {
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
   overflow-wrap: anywhere;
 }
 

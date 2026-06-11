@@ -42,7 +42,7 @@ test('genres tab state is restored from and written to the route query', () => {
   assert.match(source, /switchTab\(tab\) \{[\s\S]*this\.\$router\.push\(\{ path: this\.\$route\.path, query: \{ \.\.\.this\.\$route\.query, tab \} \}\)/)
 })
 
-test('genres actress cards use shared Apple glass pressable media chrome', () => {
+test('genres actress cards use solid pressable media surfaces', () => {
   const card = cssBlock('.actress-card')
   assert.match(card, /background:\s*var\(--card\)/)
   assert.match(card, /border:\s*1px solid var\(--hairline\)/)
@@ -53,14 +53,16 @@ test('genres actress cards use shared Apple glass pressable media chrome', () =>
   assert.doesNotMatch(card, /background:\s*transparent|border:\s*0|transition:\s*all/)
 
   const hover = cssBlock('.actress-card:hover')
-  assert.ok(backgroundIncludes(hover, '--material-glass-control-hover'))
-  assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(hover, /background:\s*var\(--card-hover\)/)
+  assert.match(hover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(hover, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(hover, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   const focus = cssBlock('.actress-card:focus-visible')
-  assert.ok(backgroundIncludes(focus, '--material-glass-control-hover'))
-  assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
+  assert.match(focus, /background:\s*var\(--card-hover\)/)
+  assert.match(focus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(focus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide\)/)
+  assert.doesNotMatch(focus, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   const avatar = cssBlock('.actress-avatar')
   assert.ok(backgroundIncludes(avatar, '--material-glass-control'))

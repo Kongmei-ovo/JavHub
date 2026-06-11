@@ -772,8 +772,7 @@
   transform: translateY(0) scale(0.99);
 }
 
-.variant-expand-btn:focus-visible,
-.variant-inline-item:focus-visible {
+.variant-expand-btn:focus-visible {
   outline: none;
   border-color: var(--glass-control-border-hover);
   background:
@@ -782,6 +781,14 @@
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide-strong);
+}
+
+.variant-inline-item:focus-visible {
+  outline: none;
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card), var(--focus-ring-wide-strong);
 }
 
 .variant-inline-list {
@@ -797,29 +804,21 @@
   gap: 8px;
   min-height: 34px;
   padding: 6px 8px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-secondary);
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .variant-inline-item:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
   color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--shadow-card);
 }
 
 .variant-inline-item:active {

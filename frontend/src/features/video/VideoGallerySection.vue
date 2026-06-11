@@ -54,26 +54,24 @@ export default {
   overflow: hidden;
   border-radius: var(--radius-lg);
   appearance: none;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  background: var(--card-2);
   cursor: pointer;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   transition: transform var(--motion-standard);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: var(--shadow-card);
 }
 .gallery-item:hover {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
   transform: translateY(-2px) scale(1.01);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--shadow-card);
 }
 .gallery-item:focus-visible {
   outline: none;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
   transform: translateY(-2px) scale(1.01);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  box-shadow: var(--shadow-card), var(--focus-ring);
 }
 .gallery-item:active { transform: translateY(0) scale(0.99); }
 .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--motion-standard), opacity var(--motion-fast); }

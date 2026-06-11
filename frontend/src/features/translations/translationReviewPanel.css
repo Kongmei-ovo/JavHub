@@ -19,15 +19,10 @@
 .review-stats div {
   min-height: 50px;
   padding: 9px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .review-stats strong {
@@ -73,17 +68,12 @@
 .review-row {
   min-height: 74px;
   padding: 10px 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2);
+  box-shadow: none;
   content-visibility: auto;
   contain-intrinsic-size: 1px 74px;
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .review-source {

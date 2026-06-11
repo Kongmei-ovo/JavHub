@@ -223,13 +223,10 @@
   display: grid;
   gap: var(--space-2, 8px);
   padding: var(--space-3, 12px);
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .activity-job-main,

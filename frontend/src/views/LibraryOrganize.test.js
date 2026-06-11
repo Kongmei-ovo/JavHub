@@ -119,7 +119,7 @@ test('library organize tab controls use shared liquid glass tokens', () => {
   assert.doesNotMatch(tabRule, /background:\s*transparent/)
 })
 
-test('library organize keyboard focus mirrors hover glass control treatment', () => {
+test('library organize keyboard focus distinguishes controls from content rows', () => {
   const statusFocusRule = cssRule('.status-cell:focus-visible')
   const tabFocusRule = cssRule('.tab-btn:focus-visible')
   const workflowFocusRule = cssGroupedRule('.priority-row:focus-visible,')
@@ -128,7 +128,6 @@ test('library organize keyboard focus mirrors hover glass control treatment', ()
   for (const [rule, label] of [
     [statusFocusRule, 'status metric focus'],
     [tabFocusRule, 'organize tab focus'],
-    [workflowFocusRule, 'workflow action focus'],
     [chipFocusRule, 'candidate chip focus'],
   ]) {
     assert.match(rule, /outline:\s*none/, `${label} should replace the default outline`)
@@ -139,10 +138,16 @@ test('library organize keyboard focus mirrors hover glass control treatment', ()
 
   assert.match(statusFocusRule, /transform:\s*translateY\(-1px\)/)
   assert.match(tabFocusRule, /color:\s*var\(--text-primary\)/)
+
+  assert.match(workflowFocusRule, /outline:\s*none/)
+  assert.match(workflowFocusRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(workflowFocusRule, /background:\s*var\(--card-hover\)/)
+  assert.match(workflowFocusRule, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(workflowFocusRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
   assert.match(workflowFocusRule, /transform:\s*translateY\(-1px\)/)
 })
 
-test('library organize workbench cards use liquid glass depth instead of flat white cards', () => {
+test('library organize workbench cards keep solid nested content rows', () => {
   const panelRule = cssGroupedRule('.workbench-panel,')
   const rowRule = cssGroupedRule('.priority-row,')
   const inputRule = cssGroupedRule('.mini-check-form input,')
@@ -150,7 +155,10 @@ test('library organize workbench cards use liquid glass depth instead of flat wh
   assert.match(panelRule, /border: 1px solid var\(--glass-edge\)/)
   assert.match(panelRule, /background:\s*var\(--card\)/)
   assert.doesNotMatch(panelRule, /backdrop-filter/)
-  assert.match(rowRule, /box-shadow: var\(--glass-inner-shadow\)/)
+  assert.match(rowRule, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(rowRule, /background:\s*var\(--card-2\)/)
+  assert.match(rowRule, /box-shadow:\s*none/)
+  assert.doesNotMatch(rowRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
   assert.match(rowRule, /transition:/)
   assert.match(inputRule, backgroundIncludes('material-glass-control'))
   assert.match(inputRule, /box-shadow: var\(--glass-control-shadow\)/)
@@ -192,7 +200,7 @@ test('library organize dense controls keep stable numerals and pressed feedback'
   assert.match(rowActiveRule, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)
   assert.match(chipActiveRule, /transform:\s*scale\(0\.985\)/)
   assert.match(nestedActionRule, /transform:\s*translateY\(0\)\s*scale\(0\.995\)/)
-  assert.match(nestedActionRule, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(nestedActionRule, /box-shadow:\s*none/)
 })
 
 test('library organize queue rows stay compact and table-scannable', () => {
@@ -330,7 +338,7 @@ test('library organize exposes active filter ledgers for operational views', () 
   assert.match(source, /@media \(max-width: 640px\)[\s\S]*\.organize-filter-ledger\s*\{[\s\S]*align-items:\s*stretch/)
 })
 
-test('library organize nested list rows mirror Apple glass hover while child actions are focused', () => {
+test('library organize nested list rows use solid hover while child actions are focused', () => {
   const nestedHoverRule = cssGroupedRule('.mapping-item:hover,')
   const nestedFocusRule = cssGroupedRule('.mapping-item:focus-within,')
   const darkNestedHoverRule = cssGroupedRule(':global(:root[data-theme="dark"] .mapping-item:hover),')
@@ -339,27 +347,31 @@ test('library organize nested list rows mirror Apple glass hover while child act
   assert.match(source, /\.mapping-item:hover,\s*\.duplicate-group:hover,\s*\.job-row:hover,\s*\.duplicate-entry:hover,\s*\.check-item:hover,\s*\.inventory-candidate:hover,\s*\.missing-video:hover\s*\{/)
   assert.match(source, /\.mapping-item:focus-within,\s*\.duplicate-group:focus-within,\s*\.job-row:focus-within,\s*\.duplicate-entry:focus-within,\s*\.check-item:focus-within,\s*\.inventory-candidate:focus-within,\s*\.missing-video:focus-within\s*\{/)
 
-  assert.match(nestedHoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(nestedHoverRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(nestedHoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(nestedHoverRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(nestedHoverRule, /background:\s*var\(--card-hover\)/)
+  assert.match(nestedHoverRule, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(nestedHoverRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
   assert.match(nestedHoverRule, /transform:\s*translateY\(-1px\)/)
 
   assert.match(nestedFocusRule, /outline:\s*none/)
-  assert.match(nestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(nestedFocusRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(nestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(nestedFocusRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(nestedFocusRule, /background:\s*var\(--card-hover\)/)
+  assert.match(nestedFocusRule, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(nestedFocusRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
   assert.match(nestedFocusRule, /transform:\s*translateY\(-1px\)/)
 
-  assert.match(darkNestedHoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(darkNestedHoverRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(darkNestedHoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.match(darkNestedFocusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(darkNestedFocusRule, backgroundIncludes('material-glass-control-hover'))
-  assert.match(darkNestedFocusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(darkNestedHoverRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(darkNestedHoverRule, /background:\s*var\(--card-hover\)/)
+  assert.match(darkNestedHoverRule, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(darkNestedHoverRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
+  assert.match(darkNestedFocusRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(darkNestedFocusRule, /background:\s*var\(--card-hover\)/)
+  assert.match(darkNestedFocusRule, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(darkNestedFocusRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
   assert.match(darkNestedFocusRule, /transform:\s*translateY\(-1px\)/)
 })
 
-test('library organize nested controls keep glass treatment across light and dark themes', () => {
+test('library organize nested controls keep glass while summary content stays solid', () => {
   const detailRule = cssRule('.actor-detail-head')
   const chipRule = cssGroupedRule('.candidate-pills button,')
   const chipActiveRule = cssRule('.chip.active')
@@ -369,7 +381,10 @@ test('library organize nested controls keep glass treatment across light and dar
   assert.match(detailRule, backgroundIncludes('material-glass-control'))
   assert.match(chipRule, /box-shadow: var\(--glass-inner-shadow\)/)
   assert.match(chipActiveRule, backgroundIncludes('glass-active-material'))
-  assert.match(autoMatchRule, backgroundIncludes('material-glass-control'))
+  assert.match(autoMatchRule, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(autoMatchRule, /background:\s*var\(--card-2\)/)
+  assert.match(autoMatchRule, /box-shadow:\s*none/)
+  assert.doesNotMatch(autoMatchRule, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-header\)/)
   assert.match(source, /:global\(:root\[data-theme="dark"\] \.organize-status\)/)
   assert.doesNotMatch(externalStyle, /\.btn\.danger\s*\{/, 'danger buttons should use the global glass button treatment')
@@ -392,6 +407,7 @@ test('library organize dark theme overlays defer to shared material tokens', () 
   const headerBeforeRule = darkRule('.organize-header::before)')
   const surfaceRule = darkRule('.organize-status),')
   const controlRule = darkRule('.status-cell),')
+  const rowRule = darkRule('.priority-row),')
   const hoverRule = darkRule('.status-cell:hover),')
   const focusRule = darkRule('.mini-check-form input:focus),')
 
@@ -412,6 +428,11 @@ test('library organize dark theme overlays defer to shared material tokens', () 
   assert.match(controlRule, backgroundIncludes('material-glass-control'))
   assert.doesNotMatch(controlRule, /rgba\(255,255,255/)
   assert.doesNotMatch(controlRule, /linear-gradient\(145deg/)
+
+  assert.match(rowRule, /border-color:\s*var\(--hairline\)/)
+  assert.match(rowRule, /background:\s*var\(--card-2\)/)
+  assert.match(rowRule, /box-shadow:\s*none/)
+  assert.doesNotMatch(rowRule, /material-glass|glass-specular|glass-noise|backdrop-filter/)
 
   assert.match(hoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(hoverRule, backgroundIncludes('material-glass-control-hover'))

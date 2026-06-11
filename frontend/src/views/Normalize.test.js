@@ -30,7 +30,7 @@ test('normalize page keeps large scoped styles in a feature stylesheet', () => {
   assert.ok(externalStyle.split('\n').length > 350, 'external stylesheet should contain the moved normalize styles')
 })
 
-test('normalize actor mapping workbench uses shared Apple glass controls', () => {
+test('normalize actor mapping workbench separates content summary from glass controls', () => {
   const autoMatchPanel = cssRule('.auto-match-panel')
   const tabBar = cssRule('.tab-bar')
   const tabButton = cssRule('.tab-btn')
@@ -40,7 +40,6 @@ test('normalize actor mapping workbench uses shared Apple glass controls', () =>
   const searchInput = cssRule('.search-input')
 
   for (const [block, name] of [
-    [autoMatchPanel, 'auto match panel'],
     [tabBar, 'tab bar'],
     [tabButton, 'tab button'],
     [filterChip, 'filter chip'],
@@ -53,6 +52,11 @@ test('normalize actor mapping workbench uses shared Apple glass controls', () =>
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use glass shadow`)
     assert.doesNotMatch(block, /background:\s*transparent|background:\s*var\(--bg-card\)|border:\s*0|border-bottom:\s*2px solid transparent/)
   }
+
+  assert.match(autoMatchPanel, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(autoMatchPanel, /background:\s*var\(--card-2\)/)
+  assert.match(autoMatchPanel, /box-shadow:\s*none/)
+  assert.doesNotMatch(autoMatchPanel, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   for (const [block, name] of [
     [tabActive, 'active tab'],
@@ -145,7 +149,7 @@ test('normalize glass backgrounds are layered with specular and noise surfaces',
 
   for (const [selector, token] of [
     ['.summary-card', '--card'],
-    ['.auto-match-panel', '--material-glass-control'],
+    ['.auto-match-panel', '--card-2'],
     ['.tab-bar', '--material-glass-control'],
     ['.tab-btn', '--material-glass-control'],
     ['.tab-btn:hover', '--material-glass-control-hover'],
@@ -164,7 +168,7 @@ test('normalize glass backgrounds are layered with specular and noise surfaces',
   ]) {
     const block = cssRule(selector)
     assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
-    if (token === '--card') continue // v2 实底块没有玻璃分层
+    if (token.startsWith('--card')) continue // v2 实底块没有玻璃分层
     assertLayeredBackground(block, token, selector)
   }
 })

@@ -603,16 +603,16 @@ export default {
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .actress-card:hover {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card);
   transform: translateY(-2px);
 }
 .actress-card:focus-visible {
   outline: none;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card), var(--focus-ring-wide);
 }
 .actress-card:active { transform: translateY(-1px) scale(0.985); }
 .actress-avatar {

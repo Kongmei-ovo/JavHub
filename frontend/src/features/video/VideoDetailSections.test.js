@@ -27,7 +27,7 @@ function assertLayeredBackground(block, token, label) {
   assert.match(block, /var\(--surface-noise\)/, `${label} should include the shared noise layer`)
 }
 
-test('video gallery section uses shared liquid glass media surfaces', () => {
+test('video gallery section uses solid media surfaces', () => {
   const titleBlock = gallerySource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = gallerySource.match(/\.gallery-item\s*\{[^}]*\}/)?.[0] || ''
   const hoverBlock = gallerySource.match(/\.gallery-item:hover\s*\{[^}]*\}/)?.[0] || ''
@@ -43,19 +43,19 @@ test('video gallery section uses shared liquid glass media surfaces', () => {
   assert.match(titleBlock, /color:\s*var\(--modal-text-muted,\s*var\(--text-muted\)\)/)
   assert.match(titleBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(titleBlock, /text-transform:\s*uppercase/)
-  assert.ok(backgroundIncludes(itemBlock, '--material-glass-control'))
-  assert.match(itemBlock, /var\(--surface-specular-edge\)/)
-  assert.match(itemBlock, /var\(--surface-noise\)/)
-  assert.match(itemBlock, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(itemBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(itemBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.ok(backgroundIncludes(hoverBlock, '--material-glass-control-hover'))
-  assert.match(hoverBlock, /var\(--surface-specular-edge-strong\)/)
-  assert.match(hoverBlock, /var\(--surface-noise\)/)
-  assert.match(hoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
-  assert.ok(backgroundIncludes(focusBlock, '--material-glass-control-hover'))
+  assert.match(itemBlock, /background:\s*var\(--card-2\)/)
+  assert.match(itemBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(itemBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(itemBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(hoverBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(hoverBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(hoverBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(hoverBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(focusBlock, /background:\s*var\(--card-hover\)/)
   assert.match(focusBlock, /outline:\s*none/)
-  assert.match(focusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(focusBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(focusBlock, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(focusBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(itemBlock, /appearance:\s*none/)
   assert.match(itemBlock, /padding:\s*0/)
   assert.match(imageBlock, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
@@ -75,29 +75,33 @@ test('video gallery grid prefers lightweight thumbnails over full lightbox image
   assert.doesNotMatch(gallerySource, /return galleryFullUrl\(path\) \|\| galleryThumbUrl\(path\)/)
 })
 
-test('video magnet section uses shared glass controls and mobile-safe rows', () => {
+test('video magnet section separates solid rows from glass controls', () => {
   const titleBlock = magnetSource.match(/\.section-title\s*\{[^}]*\}/)?.[0] || ''
   const itemBlock = magnetSource.match(/\.magnet-item\s*\{[^}]*\}/)?.[0] || ''
+  const itemHoverBlock = magnetSource.match(/\.magnet-item:hover\s*\{[^}]*\}/)?.[0] || ''
   const itemFocusBlock = magnetSource.match(/\.magnet-item:focus-within\s*\{[^}]*\}/)?.[0] || ''
   const actionBlock = magnetSource.match(/\.btn-copy,\s*\n\.btn-download\s*\{[\s\S]*?\n\}/)?.[0] || ''
   const copyFocusBlock = magnetSource.match(/\.btn-copy:focus-visible\s*\{[^}]*\}/)?.[0] || ''
   const downloadBlock = cssBlockWith(magnetSource, '.btn-download', '--glass-active-material')
   const downloadFocusBlock = magnetSource.match(/\.btn-download:focus-visible\s*\{[^}]*\}/)?.[0] || ''
   const skeletonBlock = magnetSource.match(/\.skeleton\s*\{[^}]*\}/)?.[0] || ''
+  const emptyBlock = magnetSource.match(/\.no-magnets\s*\{[^}]*\}/)?.[0] || ''
   const mediaBlock = magnetSource.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
 
   assert.match(titleBlock, /color:\s*var\(--modal-text-muted,\s*var\(--text-muted\)\)/)
   assert.match(titleBlock, /letter-spacing:\s*0/)
   assert.doesNotMatch(titleBlock, /text-transform:\s*uppercase/)
-  assert.ok(backgroundIncludes(itemBlock, '--material-glass-control'))
-  assert.match(itemBlock, /var\(--surface-specular-edge\)/)
-  assert.match(itemBlock, /var\(--surface-noise\)/)
-  assert.match(itemBlock, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(itemBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(itemBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
-  assert.ok(backgroundIncludes(itemFocusBlock, '--material-glass-control-hover'))
-  assert.match(itemFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(itemFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(itemBlock, /background:\s*var\(--card-2\)/)
+  assert.match(itemBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(itemBlock, /box-shadow:\s*none/)
+  assert.doesNotMatch(itemBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(itemHoverBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(itemHoverBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(itemHoverBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.match(itemFocusBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(itemFocusBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(itemFocusBlock, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(`${itemHoverBlock}\n${itemFocusBlock}`, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(itemFocusBlock, /transform:\s*translateY\(-1px\)/)
   assert.ok(backgroundIncludes(actionBlock, '--material-glass-control'))
   assert.match(actionBlock, /var\(--surface-specular-edge\)/)
@@ -117,6 +121,10 @@ test('video magnet section uses shared glass controls and mobile-safe rows', () 
   assert.match(downloadFocusBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring-strong\)/)
   assert.match(skeletonBlock, /cursor:\s*default/)
   assert.match(skeletonBlock, /pointer-events:\s*none/)
+  assert.match(emptyBlock, /border:\s*1px dashed var\(--hairline\)/)
+  assert.match(emptyBlock, /background:\s*var\(--card-2\)/)
+  assert.match(emptyBlock, /box-shadow:\s*none/)
+  assert.doesNotMatch(emptyBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(mediaBlock, /\.magnet-item\s*\{[\s\S]*flex-direction:\s*column/)
   assert.match(mediaBlock, /\.magnet-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
   assert.doesNotMatch(magnetSource, /var\(--active-border\)/)
@@ -148,19 +156,12 @@ test('video detail sections layer glass with specular and noise surfaces', () =>
   assert.deepEqual([...magnetSource.matchAll(singleLayerGlass)].map(match => match[0]), [], 'magnet controls should not use single-layer glass backgrounds')
 
   for (const [source, selector, token] of [
-    [gallerySource, '.gallery-item', '--material-glass-control'],
-    [gallerySource, '.gallery-item:hover', '--material-glass-control-hover'],
-    [gallerySource, '.gallery-item:focus-visible', '--material-glass-control-hover'],
-    [magnetSource, '.magnet-item', '--material-glass-control'],
-    [magnetSource, '.magnet-item:hover', '--material-glass-control-hover'],
-    [magnetSource, '.magnet-item:focus-within', '--material-glass-control-hover'],
     [magnetSource, '.btn-copy,\n.btn-download', '--material-glass-control'],
     [magnetSource, '.btn-copy:hover,\n.btn-download:hover', '--material-glass-control-hover'],
     [magnetSource, '.btn-copy:focus-visible', '--material-glass-control-hover'],
     [magnetSource, '.btn-download', '--glass-active-material'],
     [magnetSource, '.btn-download:hover', '--glass-active-material'],
     [magnetSource, '.btn-download:focus-visible', '--glass-active-material'],
-    [magnetSource, '.no-magnets', '--material-glass-control'],
   ]) {
     const block = cssBlockWith(source, selector, token)
 

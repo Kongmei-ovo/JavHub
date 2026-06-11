@@ -209,15 +209,10 @@ onMounted(fetchDuplicates)
   display: flex;
   gap: 16px;
   padding: 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: var(--shadow-card);
   margin-bottom: 12px;
   min-width: 0;
 }
@@ -266,25 +261,17 @@ onMounted(fetchDuplicates)
   gap: 12px;
   align-items: center;
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card-2);
+  box-shadow: none;
   transition: transform var(--motion-standard);
 }
 .duplicate-entry:focus-within {
   transform: translateY(-1px);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--focus-ring);
 }
 .duplicate-entry-main {
   min-width: 0;
@@ -375,15 +362,10 @@ onMounted(fetchDuplicates)
 .loading, .error, .empty {
   text-align: center;
   padding: 40px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .error {
   color: var(--badge-error-text);

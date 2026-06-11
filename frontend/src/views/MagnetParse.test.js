@@ -67,15 +67,16 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.match(magnetsHeader, /border-bottom:\s*1px solid var\(--glass-edge\)/)
   assert.match(magnetsList, /gap:\s*8px/)
 
-  assert.ok(backgroundIncludes(magnetRow, '--material-glass-control'))
-  assert.match(magnetRow, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(magnetRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(magnetRow, /background:\s*var\(--card-2\)/)
+  assert.match(magnetRow, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(magnetRow, /box-shadow:\s*none/)
+  assert.doesNotMatch(magnetRow, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(magnetRow, /transition:\s*transform var\(--motion-fast\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(magnetRow, /transition:[^;]*(?:background|border-color|box-shadow|color|filter|backdrop-filter)/)
-  assert.ok(backgroundIncludes(magnetRowEven, '--material-glass-control'))
-  assert.ok(backgroundIncludes(magnetRowHover, '--material-glass-control-hover'))
-  assert.match(magnetRowHover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(magnetRowHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(magnetRowEven, /background:\s*var\(--card-2\)/)
+  assert.match(magnetRowHover, /background:\s*var\(--card-hover\)/)
+  assert.match(magnetRowHover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(magnetRowHover, /box-shadow:\s*var\(--shadow-card\)/)
 
   assertLayeredSubtle(magnetIndex)
   assert.match(magnetIndex, /border:\s*1px solid var\(--hairline\)/)
@@ -92,12 +93,13 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.match(source, /secondary-action-label="清空输入"/)
 })
 
-test('magnet rows mirror hover glass treatment while child actions are focused', () => {
+test('magnet rows keep solid hover treatment while child actions are focused', () => {
   const magnetRowFocus = cssBlock(source, '.magnet-row:focus-within')
 
-  assert.ok(backgroundIncludes(magnetRowFocus, '--material-glass-control-hover'))
-  assert.match(magnetRowFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(magnetRowFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(magnetRowFocus, /background:\s*var\(--card-hover\)/)
+  assert.match(magnetRowFocus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(magnetRowFocus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(magnetRowFocus, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(magnetRowFocus, /transform:\s*translateY\(-1px\)/)
 })
 
@@ -140,9 +142,6 @@ test('magnet parser glass backgrounds are layered with specular and noise surfac
     cssBlock(source, '.parse-console'),
     cssBlock(source, '.summary-item'),
     cssBlock(source, '.magnets-card'),
-    cssBlock(source, '.magnet-row'),
-    cssBlock(source, '.magnet-row:nth-child(even)'),
-    cssBlock(source, '.magnet-row:hover'),
     cssBlock(source, '.magnet-index'),
     cssBlock(source, '.status-pill'),
     cssBlock(source, '.issue-panel'),
@@ -157,5 +156,10 @@ test('magnet parser glass backgrounds are layered with specular and noise surfac
       assert.match(block, /var\(--surface-specular-edge/)
       assert.match(block, /var\(--surface-noise\)/)
     }
+  }
+
+  for (const selector of ['.magnet-row', '.magnet-row:nth-child(even)', '.magnet-row:hover', '.magnet-row:focus-within']) {
+    const block = cssBlock(source, selector)
+    assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)|var\(--material-glass|backdrop-filter/)
   }
 })

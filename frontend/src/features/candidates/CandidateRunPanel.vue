@@ -107,21 +107,21 @@ export default {
   justify-content: space-between;
   padding: 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  border: 1px solid var(--hairline);
+  background: var(--card-2);
+  box-shadow: none;
   transition: transform var(--motion-standard);
 }
 .candidate-run-row:hover {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 .candidate-run-row:focus-within {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 .candidate-run-main {

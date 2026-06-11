@@ -105,7 +105,7 @@ test('operations cards use focused APIs so one failed overview does not blank ev
   assert.match(sourcesByName.MappingCard, /api\.getActorMappingSummary\(\)/)
 })
 
-test('operations workbench controls use shared Apple glass tokens', () => {
+test('operations workbench separates glass chrome from solid diagnostic content', () => {
   const segmentButton = lastCssBlock(source, '.operations-segments button')
   const segmentHover = lastCssBlock(source, '.operations-segments button:hover')
   const segmentActive = lastCssBlock(source, '.operations-segments button.active')
@@ -126,8 +126,8 @@ test('operations workbench controls use shared Apple glass tokens', () => {
 
   assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-card-hover\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--border\)|var\(--border-light\)/)
 
-  assert.match(operationsPage, /--operations-line:\s*var\(--glass-control-border\)/)
-  assert.match(operationsPage, /--operations-soft-line:\s*var\(--glass-control-border\)/)
+  assert.match(operationsPage, /--operations-line:\s*var\(--hairline-strong\)/)
+  assert.match(operationsPage, /--operations-soft-line:\s*var\(--hairline\)/)
 
   assert.match(segmentButton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(segmentButton, backgroundIncludes('material-glass-control'))
@@ -142,25 +142,33 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   assert.match(blockHeadButton, backgroundIncludes('material-glass-control'))
   assert.match(blockHeadButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
-  for (const block of [actionCard, queueFocus, compactList, runList, compactRow, runRow]) {
+  for (const block of [actionCard, queueFocus, compactRow, runRow]) {
     assert.match(block, /border:\s*1px solid var\(--operations-soft-line\)/)
-    assert.match(block, backgroundIncludes('material-glass-control'))
+    assert.match(block, /background:\s*var\(--card-2\)/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
-  for (const block of [compactRow, runRow]) {
-    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  for (const block of [compactList, runList]) {
+    assert.match(block, /border:\s*1px solid var\(--operations-soft-line\)/)
+    assert.match(block, /background:\s*var\(--card\)/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  }
+
+  for (const block of [compactRow, runRow, stateItem, miniStat, backendPill]) {
+    assert.match(block, /box-shadow:\s*none/)
   }
 
   for (const block of [stateItem, miniStat, backendPill]) {
     assert.match(block, /border:\s*1px solid var\(--operations-line\)/)
-    assert.match(block, backgroundIncludes('material-glass-control'))
-    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/)
-    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+    assert.match(block, /background:\s*var\(--card-2\)/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
   for (const block of [actionCardHover, sharedHover]) {
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
-    assert.match(block, backgroundIncludes('material-glass-control-hover'))
+    assert.match(block, /border-color:\s*var\(--hairline-strong\)/)
+    assert.match(block, /background:\s*var\(--card-hover\)/)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\)/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
   for (const block of warningBlocks) {
@@ -175,7 +183,7 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   }
 })
 
-test('operations keyboard focus mirrors hover glass control treatment', () => {
+test('operations keyboard focus preserves glass chrome and solid content depth', () => {
   const segmentFocus = lastCssBlock(source, '.operations-segments button:focus-visible')
   const heroFocus = lastCssBlock(source, '.hero-stat:focus-visible')
   const actionFocus = cssBlocks(source, '.action-card:focus-visible').join('\n')
@@ -187,18 +195,27 @@ test('operations keyboard focus mirrors hover glass control treatment', () => {
 
   for (const [block, label] of [
     [segmentFocus, 'operations segment focus'],
-    [heroFocus, 'operations hero metric focus'],
-    [actionFocus, 'operations action card focus'],
-    [queueFocus, 'operations queue focus'],
-    [compactFocus, 'operations compact row focus'],
-    [stateFocus, 'operations state item focus'],
     [blockHeadFocus, 'operations block head focus'],
-    [scopeFocus, 'operations scope chip focus'],
   ]) {
     assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${label} should use hover border`)
     assert.match(block, backgroundIncludes('material-glass-control-hover'), `${label} should use hover glass material`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should expose a subtle focus ring`)
+  }
+
+  for (const [block, label] of [
+    [heroFocus, 'operations hero metric focus'],
+    [actionFocus, 'operations action card focus'],
+    [queueFocus, 'operations queue focus'],
+    [compactFocus, 'operations compact row focus'],
+    [stateFocus, 'operations state item focus'],
+    [scopeFocus, 'operations scope chip focus'],
+  ]) {
+    assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
+    assert.match(block, /border-color:\s*var\(--hairline-strong\)/, `${label} should use the strong content hairline`)
+    assert.match(block, /background:\s*var\(--card-hover\)/, `${label} should use solid hover material`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/, `${label} should expose solid depth and focus`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
   for (const block of [heroFocus, actionFocus, queueFocus, compactFocus, stateFocus, scopeFocus]) {
@@ -412,7 +429,10 @@ test('operations layout leaves loading error and empty states to self-loading ca
   assert.match(ledger, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
   assert.match(ledger, /font-family:\s*var\(--font-mono\)/)
   assert.match(ledger, /font-variant-numeric:\s*tabular-nums/)
-  assert.match(ledger, backgroundIncludes('material-glass-control'))
+  assert.match(ledger, /border:\s*1px solid var\(--operations-soft-line\)/)
+  assert.match(ledger, /background:\s*var\(--card-2\)/)
+  assert.match(ledger, /box-shadow:\s*none/)
+  assert.doesNotMatch(ledger, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(ledgerSpan, /overflow:\s*hidden/)
   assert.match(ledgerSpan, /text-overflow:\s*ellipsis/)
   assert.match(consoleState, /max-width:\s*none/)

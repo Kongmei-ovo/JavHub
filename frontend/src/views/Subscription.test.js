@@ -50,7 +50,6 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
   for (const selector of [
     '.hero-metrics span',
     '.search-bar',
-    '.skel-card',
     '.pill-btn',
     '.top-action-btn',
     '.name-pill',
@@ -64,6 +63,12 @@ test('subscription chrome and sheets use shared Apple glass controls', () => {
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${selector} should use shared control blur`)
     assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255,\s*0\.(?:03|04|05|06|08|1|12)\)|blur\((?:40|80)px\)/, `${selector} should not keep legacy flat white glass`)
   }
+
+  const skeletonCard = cssBlock('.skel-card')
+  assert.match(skeletonCard, /background:\s*var\(--card\)/)
+  assert.match(skeletonCard, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(skeletonCard, /box-shadow:\s*none/)
+  assert.doesNotMatch(skeletonCard, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   for (const selector of ['.pill-btn', '.top-action-btn', '.toggle-pill', '.action-btn']) {
     const block = cssBlock(selector)
@@ -201,7 +206,6 @@ test('subscription liquid glass controls keep inner edge highlights and compact 
     ['.inline-badge', 'subscription-control-shadow'],
     ['.search-bar', 'subscription-control-shadow'],
     ['.clear-btn', 'subscription-control-shadow'],
-    ['.skel-card', 'subscription-control-shadow'],
     ['.pill-btn', 'subscription-control-shadow'],
     ['.sheet', 'shadow-sheet'],
     ['.sheet-top-bar', 'subscription-control-shadow'],

@@ -42,7 +42,7 @@ function singleLayerGlassBackgrounds(css) {
   return [...css.matchAll(singleLayerGlass)].map(match => match[0])
 }
 
-test('translation donut and compact rows use semantic Apple glass tokens', () => {
+test('translation donut and compact rows use semantic solid content tokens', () => {
   const donut = cssBlock(source, '.coverage-donut')
   const donutHole = cssBlock(source, '.coverage-donut div')
   const darkTokens = source.match(/:global\(:root\[data-theme='dark'\]\)\s*\{([^}]*)\}/)?.[1] || ''
@@ -75,12 +75,15 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   assert.match(overviewTrack, /box-shadow:\s*none/)
   assert.doesNotMatch(overviewTrack, /rgba\(var\(--accent-rgb\)/)
 
-  for (const block of [segmentedButton, compactJob, historyRow]) {
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
-    assert.ok(backgroundIncludes(block, '--material-glass-control'))
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
-    assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
-    assert.doesNotMatch(block, /background:\s*(?:transparent|none)/)
+  assert.match(segmentedButton, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.ok(backgroundIncludes(segmentedButton, '--material-glass-control'))
+  assert.match(segmentedButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
+
+  for (const block of [compactJob, historyRow]) {
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/)
+    assert.match(block, /background:\s*var\(--card-2\)/)
+    assert.match(block, /box-shadow:\s*none/)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
   assert.ok(backgroundIncludes(segmentedHover, '--material-glass-control-hover'))
@@ -100,13 +103,21 @@ test('translation controls mirror Apple glass hover treatment for keyboard focus
   for (const [block, name] of [
     [segmentedHover, 'segmented hover'],
     [segmentedFocus, 'segmented focus'],
-    [providerFocus, 'provider focus'],
-    [historyFocus, 'history focus'],
   ]) {
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'), `${name} should use hover glass material`)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)(?:,\s*var\(--focus-ring\))?/, `${name} should use shared hover shadow`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
+  }
+
+  for (const [block, name] of [
+    [providerFocus, 'provider focus'],
+    [historyFocus, 'history focus'],
+  ]) {
+    assert.match(block, /background:\s*var\(--card-hover\)/, `${name} should use the solid hover surface`)
+    assert.match(block, /border-color:\s*var\(--hairline-strong\)/, `${name} should use the strong hairline`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/, `${name} should use solid content depth`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
 
   for (const [block, name] of [
@@ -149,17 +160,19 @@ test('translation review and source workspaces avoid legacy flat separators', ()
 
   assert.match(providerList, /display:\s*grid/)
   assert.match(providerList, /gap:\s*8px/)
-  assert.match(providerRow, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(providerRow, '--material-glass-control'))
-  assert.match(providerRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(providerRow, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(providerRow, /background:\s*var\(--card-2\)/)
+  assert.match(providerRow, /box-shadow:\s*none/)
+  assert.doesNotMatch(providerRow, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(reviewTable, /display:\s*grid/)
   assert.match(reviewTable, /gap:\s*8px/)
   assert.match(reviewHead, /border:\s*1px solid var\(--hairline\)/)
   assert.match(reviewHead, /background:\s*var\(--card\)/)
-  assert.match(reviewRow, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(reviewRow, '--material-glass-control'))
-  assert.match(reviewRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(reviewRow, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(reviewRow, /background:\s*var\(--card-2\)/)
+  assert.match(reviewRow, /box-shadow:\s*none/)
+  assert.doesNotMatch(reviewRow, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   for (const block of [reviewHistoryPanel, resultSummary, sourceDivider]) {
     assert.match(block, /border-(?:top|left):\s*1px solid var\(--glass-edge\)/)
@@ -168,26 +181,40 @@ test('translation review and source workspaces avoid legacy flat separators', ()
   assert.match(emptyPanel, /background:\s*var\(--card\)/)
 })
 
-test('translation form and status surfaces use shared glass and badge tokens', () => {
-  const sharedControlSelectors = [
+test('translation form controls stay glass while content cards use solid surfaces', () => {
+  const solidCardSelectors = [
     '.coverage-hero',
     '.metadata-overview',
     '.signal-card',
     '.job-control-card',
+  ]
+  const solidInsetSelectors = [
     '.notice-row',
-    '.input',
     '.boxed',
     '.review-stats div',
     '.message-line',
   ]
 
-  for (const selector of sharedControlSelectors) {
+  for (const selector of solidCardSelectors) {
     const block = cssBlock(source, selector)
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${selector} should use the shared glass border`)
-    assert.ok(backgroundIncludes(block, '--material-glass-control'), `${selector} should use the shared glass material`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${selector} should use the shared glass shadow`)
-    assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-input-focus\)/, `${selector} should not depend on legacy surface aliases`)
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/, `${selector} should use a content hairline`)
+    assert.match(block, /background:\s*var\(--card\)/, `${selector} should use the solid card surface`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\)/, `${selector} should use card depth`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   }
+
+  for (const selector of solidInsetSelectors) {
+    const block = cssBlock(source, selector)
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/, `${selector} should use a content hairline`)
+    assert.match(block, /background:\s*var\(--card-2\)/, `${selector} should use the inset content surface`)
+    assert.match(block, /box-shadow:\s*none/, `${selector} should avoid glass depth`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  }
+
+  const input = cssBlock(source, '.input')
+  assert.match(input, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.ok(backgroundIncludes(input, '--material-glass-control'))
+  assert.match(input, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
   const inputFocus = cssBlock(source, '.input:focus')
   assert.ok(backgroundIncludes(inputFocus, '--material-glass-control-hover'))
@@ -260,23 +287,29 @@ test('translation long lists skip unnecessary row rendering work', () => {
   }
 })
 
-test('translation glass backgrounds are layered with specular and noise surfaces', () => {
+test('translation glass controls stay layered while content surfaces stay solid', () => {
   assert.deepEqual(singleLayerGlassBackgrounds(externalStyle), [])
 
   for (const selector of [
     '.segmented-control',
     '.segmented-control button',
+    '.input',
+  ]) {
+    const block = cssBlock(source, selector)
+    assert.match(block, /var\(--surface-specular-edge/)
+    assert.match(block, /var\(--surface-noise\)/)
+  }
+
+  for (const selector of [
     '.coverage-hero',
     '.compact-job-row',
     '.notice-row',
-    '.input',
     '.provider-row',
     '.review-row',
     '.message-line',
   ]) {
     const block = cssBlock(source, selector)
-    assert.match(block, /var\(--surface-specular-edge/)
-    assert.match(block, /var\(--surface-noise\)/)
+    assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)|var\(--material-glass|backdrop-filter/)
   }
 })
 

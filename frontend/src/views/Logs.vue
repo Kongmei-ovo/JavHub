@@ -485,12 +485,12 @@ export default {
   grid-template-columns: 168px 76px minmax(0, 1fr);
   gap: 10px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--card-2);
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 650;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 .log-list { max-height: 500px; overflow-y: auto; }
 .log-list.is-loading-more { position: relative; padding-bottom: 36px; }
@@ -518,7 +518,7 @@ export default {
   align-items: center;
   min-height: 34px;
   padding: 7px 12px;
-  border-bottom: 1px solid var(--glass-control-border);
+  border-bottom: 1px solid var(--hairline);
   font-family: var(--font-mono);
   font-size: var(--type-control);
   min-width: 0;
@@ -533,10 +533,10 @@ export default {
   grid-row: 1;
   width: 2px;
   border-radius: 999px;
-  background: var(--glass-control-border);
+  background: var(--hairline-strong);
 }
 .log-item:hover {
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control-hover);
+  background: var(--card-hover);
   box-shadow: inset 2px 0 0 var(--glass-active-border);
 }
 .log-item:last-child { border-bottom: none; }

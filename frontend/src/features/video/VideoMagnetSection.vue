@@ -48,25 +48,23 @@ export default {
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  background: var(--card-2);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   transition: transform var(--motion-standard);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
 }
 .magnet-item:hover {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
   transform: translateY(-1px);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--shadow-card);
 }
 .magnet-item:focus-within {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
   transform: translateY(-1px);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  box-shadow: var(--shadow-card), var(--focus-ring);
 }
 .magnet-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .magnet-badge { padding: 4px 10px; background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid var(--badge-info-border); font-size: var(--type-micro); font-weight: 650; border-radius: var(--radius-sm); }
@@ -128,12 +126,10 @@ export default {
   padding: 28px;
   color: var(--text-muted);
   font-size: var(--type-body);
-  border: 1px dashed var(--glass-control-border);
+  border: 1px dashed var(--hairline);
   border-radius: var(--radius-lg);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card-2);
+  box-shadow: none;
 }
 .skeleton { background: var(--skeleton-base); position: relative; overflow: hidden; border-radius: var(--radius-lg); cursor: default; pointer-events: none; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; opacity: 0.42; }

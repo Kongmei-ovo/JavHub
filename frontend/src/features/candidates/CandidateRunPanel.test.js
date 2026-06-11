@@ -20,7 +20,7 @@ function assertLayeredBackground(block, token, name) {
   assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
 }
 
-test('candidate run panel uses shared Apple glass surfaces instead of legacy cards', () => {
+test('candidate run panel uses solid content surfaces', () => {
   const panel = cssBlock('.candidate-run-panel')
   // v2 内容层去玻璃：面板 = 实底
   assert.ok(backgroundIncludes(panel, '--card'), 'candidate run panel should be solid --card')
@@ -30,9 +30,10 @@ test('candidate run panel uses shared Apple glass surfaces instead of legacy car
   assert.doesNotMatch(panel, /var\(--bg-card\)|var\(--border\)/)
 
   const row = cssBlock('.candidate-run-row')
-  assertLayeredBackground(row, '--material-glass-control', 'candidate run row')
-  assert.match(row, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(row, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(row, /background:\s*var\(--card-2\)/)
+  assert.match(row, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(row, /box-shadow:\s*none/)
+  assert.doesNotMatch(row, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   const stat = cssBlock('.candidate-run-stats span')
   assert.ok(backgroundIncludes(stat, '--card'), 'candidate run stat should be solid --card')
@@ -40,7 +41,7 @@ test('candidate run panel uses shared Apple glass surfaces instead of legacy car
   assert.match(stat, /box-shadow:\s*none/)
 })
 
-test('candidate run rows mirror Apple glass hover while actions are focused', () => {
+test('candidate run rows use solid hover while actions are focused', () => {
   const row = cssBlock('.candidate-run-row')
   const hover = cssBlock('.candidate-run-row:hover')
   const focusWithin = cssBlock('.candidate-run-row:focus-within')
@@ -52,9 +53,10 @@ test('candidate run rows mirror Apple glass hover while actions are focused', ()
     [hover, 'candidate run row hover'],
     [focusWithin, 'candidate run row focus-within'],
   ]) {
-    assertLayeredBackground(block, '--material-glass-control-hover', name)
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
+    assert.match(block, /background:\s*var\(--card-hover\)/, `${name} should use solid hover material`)
+    assert.match(block, /border-color:\s*var\(--hairline-strong\)/, `${name} should use strong content border`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\)/, `${name} should use content depth`)
+    assert.doesNotMatch(block, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
   }
 

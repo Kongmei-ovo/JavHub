@@ -817,16 +817,13 @@
   align-items: center;
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
 }
 .import-job-state-dot {
   width: 8px;
@@ -848,16 +845,13 @@
 }
 .import-job-empty {
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.45;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
 }
 .import-job-row {
   display: grid;
@@ -866,13 +860,10 @@
   align-items: center;
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 .import-job-row span {
   display: grid;

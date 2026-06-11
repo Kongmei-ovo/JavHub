@@ -48,7 +48,7 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   const candidateButtonHover = cssBlock(source, '.candidate-btn:hover')
   const emptyState = cssBlock(source, '.loading')
 
-  for (const block of [backButton, mappingLink, tabButton, videoCard, candidateButton]) {
+  for (const block of [backButton, mappingLink, tabButton, candidateButton]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.ok(backgroundIncludes(block, '--material-glass-control'))
     assert.match(block, /var\(--surface-specular-edge\)/)
@@ -59,19 +59,29 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
     assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
   }
 
+  assert.match(videoCard, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(videoCard, /background:\s*var\(--card\)/)
+  assert.match(videoCard, /box-shadow:\s*none/)
+  assert.doesNotMatch(videoCard, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+
   assert.match(tabBar, /border:\s*1px solid var\(--hairline\)/)
   assert.match(tabBar, /background:\s*var\(--card\)/)
   assert.doesNotMatch(tabBar, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.doesNotMatch(tabBar, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.match(tabBar, /box-shadow:\s*none/)
 
-  for (const block of [tabHover, videoCardHover, candidateButtonHover]) {
+  for (const block of [tabHover, candidateButtonHover]) {
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
     assert.match(block, /var\(--surface-specular-edge-strong\)/)
     assert.match(block, /var\(--surface-noise\)/)
     assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
   }
+
+  assert.match(videoCardHover, /background:\s*var\(--card-hover,\s*var\(--card\)\)/)
+  assert.match(videoCardHover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(videoCardHover, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(videoCardHover, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.ok(backgroundIncludes(tabActive, '--glass-active-material'))
   assert.match(tabActive, /var\(--surface-specular-edge-strong\)/)
@@ -125,7 +135,6 @@ test('inventory actor controls mirror hover glass treatment for keyboard focus',
     [backFocus, 'inventory actor back focus'],
     [mappingFocus, 'inventory actor mapping focus'],
     [tabFocus, 'inventory actor tab focus'],
-    [videoFocus, 'inventory actor video card focus'],
     [candidateFocus, 'inventory actor candidate focus'],
   ]) {
     assert.match(block, /outline:\s*none/, `${label} should replace the default outline`)
@@ -133,6 +142,12 @@ test('inventory actor controls mirror hover glass treatment for keyboard focus',
     assertLayeredBackground(block, '--material-glass-control-hover', label)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/, `${label} should expose a subtle focus ring`)
   }
+
+  assert.match(videoFocus, /outline:\s*none/)
+  assert.match(videoFocus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(videoFocus, /background:\s*var\(--card-hover,\s*var\(--card\)\)/)
+  assert.match(videoFocus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide\)/)
+  assert.doesNotMatch(videoFocus, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(backFocus, /transform:\s*translateY\(-1px\)/)
   assert.match(tabFocus, /transform:\s*translateY\(-1px\)/)
@@ -158,8 +173,8 @@ test('inventory actor glass backgrounds are layered with specular and noise surf
     ['.tab-btn', '--material-glass-control'],
     ['.tab-btn:hover', '--material-glass-control-hover'],
     ['.tab-btn.active', '--glass-active-material'],
-    ['.video-card', '--material-glass-control'],
-    ['.video-card:hover', '--material-glass-control-hover'],
+    ['.video-card', '--card'],
+    ['.video-card:hover', '--card-hover'],
     ['.video-cover', '--card'],
     ['.candidate-btn', '--material-glass-control'],
     ['.candidate-btn:hover', '--material-glass-control-hover'],
@@ -168,6 +183,10 @@ test('inventory actor glass backgrounds are layered with specular and noise surf
     const block = cssBlock(source, selector)
     if (token === '--card') {
       assert.match(block, /background:\s*var\(--card\)/, `${selector} should be solid --card`)
+      continue
+    }
+    if (token === '--card-hover') {
+      assert.match(block, /background:\s*var\(--card-hover,\s*var\(--card\)\)/, `${selector} should use solid hover material`)
       continue
     }
     assertLayeredBackground(block, token, selector)

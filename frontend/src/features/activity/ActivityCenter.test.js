@@ -298,3 +298,12 @@ test('ActivityCenter CSS defines a tokenized island morph without guarded transi
   assert.match(mobileBlock, /z-index:\s*calc\(var\(--z-nav\) \+ 2\)/)
   assert.match(mobileBlock, /bottom:\s*calc\(var\(--mobile-bottom-nav-reserve,\s*94px\) \+ var\(--space-2,\s*8px\)\)/)
 })
+
+test('ActivityCenter job cards use solid nested content surfaces', () => {
+  const jobBlock = cssBlock('.activity-job')
+
+  assert.match(jobBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(jobBlock, /background:\s*var\(--card-2\)/)
+  assert.match(jobBlock, /box-shadow:\s*none/)
+  assert.doesNotMatch(jobBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+})

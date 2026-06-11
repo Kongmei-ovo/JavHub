@@ -678,10 +678,10 @@ export default {
 }
 
 .genre-detail-page :deep(.variant-group-disclosure__row:focus-visible) {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
+  background: var(--card-hover);
+  border-color: var(--hairline-strong);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring-wide-strong);
+  box-shadow: var(--shadow-card), var(--focus-ring-wide-strong);
 }
 
 .genre-detail-page :deep(.variant-group-disclosure__labels span) {

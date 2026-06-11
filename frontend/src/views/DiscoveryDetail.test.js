@@ -261,12 +261,14 @@ test('discovery detail page polishes variant disclosure focus without editing sh
   const rowFocusBlock = cssBlock('.genre-detail-page :deep(.variant-group-disclosure__row:focus-visible)')
   const labelBlock = cssBlock('.genre-detail-page :deep(.variant-group-disclosure__labels span)')
 
-  for (const [block, name] of [[toggleFocusBlock, 'variant toggle focus'], [rowFocusBlock, 'variant row focus']]) {
-    assertLayeredBackground(block, '--material-glass-control-hover', name)
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /color:\s*var\(--text-primary\)/, `${name} should keep readable focus text`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/, `${name} should use page-level focus depth`)
-  }
+  assertLayeredBackground(toggleFocusBlock, '--material-glass-control-hover', 'variant toggle focus')
+  assert.match(toggleFocusBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(toggleFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.match(rowFocusBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(rowFocusBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(rowFocusBlock, /color:\s*var\(--text-primary\)/)
+  assert.match(rowFocusBlock, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide-strong\)/)
+  assert.doesNotMatch(rowFocusBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assertLayeredBackground(labelBlock, '--badge-info-bg', 'variant label')
   assert.match(labelBlock, /box-shadow:\s*var\(--glass-inner-shadow\)/)

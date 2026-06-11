@@ -29,7 +29,7 @@ function singleLayerGlassBackgrounds(css) {
   return [...css.matchAll(singleLayerGlass)].map(match => match[0])
 }
 
-test('duplicates page uses shared Apple glass surfaces and actions', () => {
+test('duplicates page keeps glass actions over solid duplicate content', () => {
   const rescanButton = cssBlock('.rescan-btn')
   const duplicateItem = cssBlock('.duplicate-item')
   const duplicateEntry = cssBlock('.duplicate-entry')
@@ -40,13 +40,28 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
   const stateBlock = cssBlock('.loading')
   const errorBlock = cssBlock('.error')
 
-  for (const block of [rescanButton, duplicateItem, duplicateEntry, actionButton, ignoreButton, stateBlock]) {
+  for (const block of [rescanButton, actionButton, ignoreButton]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
     assert.ok(backgroundIncludes(block, '--material-glass-control'))
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
     assert.doesNotMatch(block, /border:\s*(?:0|none)|background:\s*(?:none|transparent)/)
   }
+
+  assert.match(duplicateItem, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(duplicateItem, /background:\s*var\(--card\)/)
+  assert.match(duplicateItem, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(duplicateItem, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+
+  assert.match(duplicateEntry, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(duplicateEntry, /background:\s*var\(--card-2\)/)
+  assert.match(duplicateEntry, /box-shadow:\s*none/)
+  assert.doesNotMatch(duplicateEntry, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+
+  assert.match(stateBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(stateBlock, /background:\s*var\(--card\)/)
+  assert.match(stateBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(stateBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.match(deleteButton, /border-color:\s*var\(--badge-error-border\)/)
   assert.ok(backgroundIncludes(deleteButton, '--badge-error-bg'))
@@ -63,7 +78,7 @@ test('duplicates page uses shared Apple glass surfaces and actions', () => {
   assert.doesNotMatch(errorBlock, /#ff4d4f/i)
 })
 
-test('duplicates keyboard focus mirrors hover glass treatment', () => {
+test('duplicates keyboard focus keeps content rows solid and actions glassy', () => {
   const rescanFocus = cssBlock('.rescan-btn:focus-visible')
   const actionFocus = cssBlock('.action-btn:focus-visible')
   const deleteFocus = cssBlock('.action-btn.delete:focus-visible')
@@ -85,9 +100,10 @@ test('duplicates keyboard focus mirrors hover glass treatment', () => {
   assert.match(deleteFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*0 0 0 3px color-mix\(in srgb,\s*var\(--badge-error-text\) 18%,\s*transparent\)/)
   assert.doesNotMatch(deleteFocus, /rgba\(var\(--error-rgb\)/)
 
-  assert.ok(backgroundIncludes(entryFocus, '--material-glass-control-hover'))
-  assert.match(entryFocus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(entryFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(entryFocus, /background:\s*var\(--card-hover\)/)
+  assert.match(entryFocus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(entryFocus, /box-shadow:\s*var\(--focus-ring\)/)
+  assert.doesNotMatch(entryFocus, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   assert.match(entryFocus, /transform:\s*translateY\(-1px\)/)
 })
 
@@ -97,18 +113,20 @@ test('duplicates glass backgrounds are layered with specular and noise surfaces'
   for (const selector of [
     '.rescan-btn',
     '.rescan-btn:hover',
-    '.duplicate-item',
-    '.duplicate-entry',
     '.action-btn',
     '.action-btn:hover',
     '.action-btn.delete',
     '.action-btn.delete:hover',
     '.action-btn.delete:focus-visible',
     '.action-btn.ignore',
-    '.loading',
   ]) {
     const block = cssBlock(selector)
     assert.match(block, /var\(--surface-specular-edge/)
     assert.match(block, /var\(--surface-noise\)/)
+  }
+
+  for (const selector of ['.duplicate-item', '.duplicate-entry', '.loading']) {
+    const block = cssBlock(selector)
+    assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)|var\(--material-glass|backdrop-filter/)
   }
 })

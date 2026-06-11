@@ -22,7 +22,7 @@ function singleLayerGlassBackgrounds(css) {
     .filter(line => /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-sheet|glass-active-material)\);$/.test(line))
 }
 
-test('legacy library checker keeps shared glass surfaces while it redirects users to organizer flow', () => {
+test('legacy library checker keeps glass controls over solid result content', () => {
   const input = cssBlock('.check-form input')
   const inputFocus = cssBlock('.check-form input:focus')
   const button = cssBlock('.check-form button')
@@ -30,7 +30,7 @@ test('legacy library checker keeps shared glass surfaces while it redirects user
   const result = cssBlock('.result')
   const item = cssBlock('.item')
 
-  for (const [block, name] of [[input, 'input'], [button, 'button'], [item, 'item']]) {
+  for (const [block, name] of [[input, 'input'], [button, 'button']]) {
     assert.match(block, layeredBackground('material-glass-control'), `${name} should use layered glass control material`)
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use glass control border`)
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use glass control shadow`)
@@ -48,6 +48,11 @@ test('legacy library checker keeps shared glass surfaces while it redirects user
   assert.match(result, /background:\s*var\(--card\)/)
   assert.match(result, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(result, /box-shadow:\s*var\(--shadow-card\)/)
+
+  assert.match(item, /background:\s*var\(--card-2\)/)
+  assert.match(item, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(item, /box-shadow:\s*none/)
+  assert.doesNotMatch(item, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.doesNotMatch(source, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|var\(--bg-card\)|var\(--bg-card-hover\)|var\(--border\)|var\(--border-light\)|background:\s*var\(--accent\)/)
 })

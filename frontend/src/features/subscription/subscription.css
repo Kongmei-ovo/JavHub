@@ -272,11 +272,9 @@
 /* ===== Skeleton ===== */
 .skel-card {
   border-radius: 16px; overflow: hidden;
-  background: var(--subscription-control-bg);
-  border: 1px solid var(--subscription-control-border);
-  box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
 }
 
 .skel-cover {

@@ -16,13 +16,10 @@
   gap: 3px;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 11px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .diagnostics-command-summary strong,
@@ -57,13 +54,10 @@
   align-content: center;
   padding: 9px 10px;
   overflow-wrap: anywhere;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .diagnostics-command-lane.danger {
@@ -138,13 +132,10 @@
   gap: 3px;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 11px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card-2);
+  box-shadow: none;
 }
 
 .field-command-summary strong,
@@ -429,13 +420,10 @@
   gap: 1px;
   overflow: hidden;
   margin-bottom: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .field-source-row {
@@ -445,11 +433,9 @@
   align-items: center;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  border: 1px solid var(--hairline);
+  background: var(--card-2);
+  box-shadow: none;
   color: var(--text-muted);
   font-size: 11px;
 }

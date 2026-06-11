@@ -42,7 +42,7 @@ test('VariantGroupDisclosure renders backend-provided variant rows without fetch
   assert.doesNotMatch(source, /openVideoModal/)
 })
 
-test('VariantGroupDisclosure uses shared glass control materials and explicit motion', () => {
+test('VariantGroupDisclosure separates glass toggle chrome from solid variant rows', () => {
   const toggleBlock = sourceBlock('.variant-group-disclosure__toggle')
   const toggleHoverBlock = sourceBlock('.variant-group-disclosure__toggle:hover')
   const toggleActiveBlock = sourceBlock('.variant-group-disclosure__toggle:active')
@@ -50,21 +50,27 @@ test('VariantGroupDisclosure uses shared glass control materials and explicit mo
   const rowHoverBlock = sourceBlock('.variant-group-disclosure__row:hover')
   const labelBlock = sourceBlock('.variant-group-disclosure__labels span')
 
+  assert.match(toggleBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(toggleBlock, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
+  assert.match(toggleBlock, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(toggleBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+
+  assert.match(toggleHoverBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
+  assert.match(toggleHoverBlock, /border-color:\s*var\(--glass-control-border-hover\)/)
+  assert.match(toggleHoverBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+
+  assert.match(rowBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(rowBlock, /background:\s*var\(--card-2\)/)
+  assert.match(rowBlock, /box-shadow:\s*none/)
+  assert.doesNotMatch(rowBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+  assert.match(rowHoverBlock, /background:\s*var\(--card-hover\)/)
+  assert.match(rowHoverBlock, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(rowHoverBlock, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(rowHoverBlock, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
+
   for (const [block, name] of [[toggleBlock, 'toggle'], [rowBlock, 'row']]) {
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/, `${name} should use shared glass border`)
-    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/, `${name} should use shared glass material`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/, `${name} should use shared glass shadow`)
-    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/, `${name} should use control blur`)
     assert.match(block, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/, `${name} should use lightweight motion tokens`)
     assert.doesNotMatch(block, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/, `${name} should keep material changes out of transitions`)
-    assert.doesNotMatch(block, /transition:\s*var\(--transition-pro\)|rgba\(255,\s*255,\s*255,\s*0\.04\)|background:\s*var\(--surface-control\)/, `${name} should not keep legacy flat surfaces`)
-  }
-
-  for (const [block, name] of [[toggleHoverBlock, 'toggle hover'], [rowHoverBlock, 'row hover']]) {
-    assert.match(block, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/, `${name} should use shared hover material`)
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should use shared hover border`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\)/, `${name} should use shared hover shadow`)
-    assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should add light lift`)
   }
 
   assert.match(toggleActiveBlock, /transform:\s*translateY\(0\)\s*scale\(0\.99\)/)

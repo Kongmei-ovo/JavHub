@@ -97,10 +97,17 @@ function variantKey(variant) {
   transform: translateY(0) scale(0.99);
 }
 
-.variant-group-disclosure__toggle:focus-visible,
-.variant-group-disclosure__row:focus-visible {
+.variant-group-disclosure__toggle:focus-visible {
   outline: none;
   box-shadow: var(--glass-control-shadow), var(--focus-ring-wide-strong);
+}
+
+.variant-group-disclosure__row:focus-visible {
+  outline: none;
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card), var(--focus-ring-wide-strong);
 }
 
 .variant-group-disclosure__list {
@@ -116,23 +123,21 @@ function variantKey(variant) {
   gap: 8px;
   min-height: 34px;
   padding: 6px 8px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 8px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  background: var(--card-2);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .variant-group-disclosure__row:hover {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover);
   color: var(--text-primary);
-  box-shadow: var(--glass-control-shadow-hover);
+  box-shadow: var(--shadow-card);
   transform: translateY(-1px);
 }
 

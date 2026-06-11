@@ -207,7 +207,6 @@ test('favorites liquid glass surfaces keep inner edge highlights and pressed fee
   for (const [selector, shadowToken] of [
     ['.collection-form input', 'glass-control-shadow'],
     ['.btn-mini', 'glass-control-shadow'],
-    ['.collection-row', 'glass-control-shadow'],
     ['.segmented-control', 'glass-control-shadow'],
     ['.segment-item', 'glass-control-shadow'],
     ['.entity-bubble', 'glass-control-shadow'],
@@ -217,6 +216,11 @@ test('favorites liquid glass surfaces keep inner edge highlights and pressed fee
     const block = cssBlock(selector)
     assert.match(block, new RegExp(`box-shadow:\\s*var\\(--${shadowToken}\\),\\s*var\\(--glass-inner-shadow\\)`), `${selector} should keep an inner glass edge`)
   }
+  const collectionRow = cssBlock('.collection-row')
+  assert.match(collectionRow, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(collectionRow, /background:\s*var\(--card-2\)/)
+  assert.match(collectionRow, /box-shadow:\s*none/)
+  assert.doesNotMatch(collectionRow, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
   for (const selector of ['.collection-manager', '.skeleton-card']) {
     const block = cssBlock(selector)
     assert.match(block, /background:\s*var\(--card\)/, `${selector} should be solid --card`)
