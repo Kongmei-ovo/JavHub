@@ -26,6 +26,19 @@ def ensure_data_quality_history_schema() -> None:
             """
         )
         cursor.execute(
+            """
+            SELECT indexdef FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND indexname = 'idx_data_quality_snapshots_captured_day'
+            """
+        )
+        existing = cursor.fetchone()
+        existing_def = ""
+        if existing:
+            existing_def = str(existing.get("indexdef") if isinstance(existing, dict) else existing[0] or "")
+        if existing and "Asia/Shanghai" not in existing_def:
+            cursor.execute("DROP INDEX IF EXISTS idx_data_quality_snapshots_captured_day")
+        cursor.execute(
             f"""
             CREATE UNIQUE INDEX IF NOT EXISTS idx_data_quality_snapshots_captured_day
             ON data_quality_snapshots ({_CAPTURED_DAY_EXPR})

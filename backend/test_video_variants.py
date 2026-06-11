@@ -685,7 +685,7 @@ class VideoVariantAnalysisTest(unittest.TestCase):
             self.assertEqual(flat[0]["canonical_code"], want, row["content_id"])
 
     def test_store_digit_prefixed_group_folds_into_base_group(self):
-        # 7net editions keep the digit in BOTH dvd_id and content_id
+        # Store-digit reissue rows keep the digit in BOTH dvd_id and content_id
         # (7usba071 / 7USBA-071), so only group-level adoption can fold them
         # into the base USBA-071 group.
         title = "露出マゾ 爆乳豊満W肉便器野外調教"
@@ -740,6 +740,66 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         rows = [
             item(content_id="n_1535grace008", dvd_id="GRACE-008", title_ja="Mの世界/吉根ゆりあ", service_code="mono", runtime_mins=90, release_date="2023-04-21"),
             item(content_id="h_1714grace00008", dvd_id="", title_ja="Mの世界 吉根ゆりあ", service_code="digital", runtime_mins=91, release_date="2023-04-21"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_rental_truncated_title_prefix_merges(self):
+        # SET-020: the rental listing truncates the long mono title; prefix
+        # containment counts for rental↔retail pairs.
+        long_title = "kira★kira STREET GAL＆おやじっち 中年の俺が家事代行サービスを頼んだら、とびきり可愛いギャル2人がやってきた。家事は完璧にこなしエロサービスは満点で…"
+        rows = [
+            item(content_id="4set020", dvd_id="4SET020", title_ja=long_title[:58], service_code="rental", runtime_mins=150, release_date="2015-02-24"),
+            item(content_id="set020", dvd_id="SET-020", title_ja=long_title, service_code="mono", runtime_mins=150, release_date="2014-11-19"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_prefix_containment_within_week_cross_storefront_merges(self):
+        # ACHJ-084: digital appends the performer name, releases 4 days apart.
+        rows = [
+            item(content_id="achj084", dvd_id="", title_ja="人権無視の見下し淫語×張りパイ暴力でM男を徹底的に躾けるブラック保育園", service_code="mono", runtime_mins=170, release_date="2026-05-12"),
+            item(content_id="achj00084", dvd_id="", title_ja="人権無視の見下し淫語×張りパイ暴力でM男を徹底的に躾けるブラック保育園 風間ゆみ", service_code="digital", runtime_mins=175, release_date="2026-05-08"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_own_code_embedded_in_title_is_stripped_symmetrically(self):
+        # TSX-19: the mono title starts with its own product code.
+        rows = [
+            item(content_id="h_1311tsx19", dvd_id="TSX-19", title_ja="TSX-19 美尻痴女 Fetishist19 蓮実クレア", service_code="mono", runtime_mins=150, release_date="2018-06-04"),
+            item(content_id="h_1072tsx00019", dvd_id="TSX-19", title_ja="美尻痴女 Fetishist19 蓮実クレア", service_code="digital", runtime_mins=154, release_date="2018-05-28"),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+
+    def test_reissue_paren_and_hivision_edition_markers_are_stripped(self):
+        # AVOP-372 （2017AVOPEN参加作品再販） and MXBD-005 Hi-Vision特別編.
+        avop = video_variants.enrich_video_variants([
+            item(content_id="2avop372ta", dvd_id="AVOP-372", title_ja="熟シャッ！！ W SEXとスペレズと美熟女 （2017AVOPEN参加作品再販）", service_code="mono", runtime_mins=180, release_date="2018-05-04"),
+            item(content_id="2avop00372", dvd_id="AVOP-372", title_ja="熟シャッ！！ W SEXとスペレズと美熟女", service_code="digital", runtime_mins=184, release_date="2017-09-01"),
+        ], variant_mode="grouped")
+        self.assertEqual(len(avop), 1)
+
+        mxbd = video_variants.enrich_video_variants([
+            item(content_id="h_068mxbd00005", dvd_id="MXBD-005", title_ja="美熟女 Venus Port 翔田千里＆風間ゆみ", service_code="digital", runtime_mins=119, release_date="2009-10-03"),
+            item(content_id="h_068mxbd005", dvd_id="MXBD-005", title_ja="美熟女 Venus Port 翔田千里＆風間ゆみ Hi-Vision特別編（ブルーレイディスク）", service_code="mono", runtime_mins=120, release_date="2008-04-25"),
+        ], variant_mode="grouped")
+        self.assertEqual(len(mxbd), 1)
+
+    def test_prefix_containment_runtime_bypass_same_day(self):
+        # SAN-342: same-day mono/digital, 120 vs 129 mins, name-suffix title.
+        rows = [
+            item(content_id="h_796san342", dvd_id="SAN-342", title_ja="義理の息子の若チンを味わったら止まらなくなった義母 / 翔田千里", service_code="mono", runtime_mins=120, release_date="2025-04-29"),
+            item(content_id="h_796san00342", dvd_id="", title_ja="義理の息子の若チンを味わったら止まらなくなった義母 翔田千里", service_code="digital", runtime_mins=129, release_date="2025-04-29"),
         ]
 
         grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")

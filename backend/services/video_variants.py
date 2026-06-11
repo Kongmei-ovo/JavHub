@@ -326,7 +326,10 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
     row["variant_group_items"] = []
     row["_variant_sort_rank"] = _variant_sort_rank(row, labels)
     row["_variant_groupable"] = _is_groupable(analysis)
-    row["_variant_title_key"] = _title_key(row)
+    code_hint = None
+    if analysis.get("prefix") and str(analysis.get("digits") or "").isdigit():
+        code_hint = (str(analysis["prefix"]), str(analysis["digits"]))
+    row["_variant_title_key"] = _title_key(row, code_hint)
     row["_variant_title_lang"] = _title_lang(row)
     row["_variant_outlet"] = "アウトレット" in analysis["title"]
     row["_variant_markers"] = analysis["markers"]
@@ -695,14 +698,14 @@ DIGIT_PREFIX_CANON_RE = re.compile(r"^(\d)([A-Z]{2,}-\d+[A-Z]*)$")
 def _adopt_digit_prefixed_groups(groups: dict[str, list[dict[str, Any]]]) -> None:
     """Fold store-digit-prefixed canon groups into their base-code group.
 
-    DMM storefront editions sometimes keep the digit prefix in BOTH dvd_id and
-    content_id (``7umso533`` / ``7UMSO-533`` = 7net edition of UMSO-533), so
-    neither the per-item digit strip nor the content_id identity override can
-    fire. At group level the intent is unambiguous: if the digit-stripped
-    canonical exists as its own group AND the items agree on title/runtime
-    (the standard `_safe_group` gate), they're the same work. Genuine
-    digit-prefixed families (3DSVR-609) have no base-code sibling group and
-    are left untouched.
+    DMM storefront re-listings sometimes keep a digit prefix in BOTH dvd_id
+    and content_id (``7umso533`` / ``7UMSO-533``). The digit's exact meaning
+    is not officially documented — observed rows correlate with アウトレット/
+    ベストヒッツ-style cheap reissues — so this rule deliberately does NOT
+    depend on its semantics: if the digit-stripped canonical exists as its own
+    group AND the items agree on title/runtime (the standard `_safe_group`
+    gate), they're the same work. Genuine digit-prefixed families (3DSVR-609)
+    have no base-code sibling group and are left untouched.
     """
     for key in list(groups.keys()):
         match = DIGIT_PREFIX_CANON_RE.match(key)
@@ -860,10 +863,16 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
         if threshold > 0.56 and same_day_cross_storefront:
             threshold = 0.56
         titles_match = _titles_match_per_language(comparable, threshold)
-        if not titles_match and same_day_cross_storefront and _prefix_containment_per_language(comparable):
-            # Same day, same code, different storefronts, and one title is a
-            # strict prefix of the other ("Mの世界" vs "Mの世界 吉根ゆりあ"):
-            # the digital listing appends the performer name to a short title,
+        if (
+            not titles_match
+            and _spans_multiple_storefronts(items)
+            and _release_dates_within(items, 7)
+            and _prefix_containment_per_language(comparable)
+        ):
+            # Same code, different storefronts, released within a week, and
+            # one title is a strict prefix of the other ("Mの世界" vs
+            # "Mの世界 吉根ゆりあ", "…ブラック保育園" vs "…ブラック保育園 風間ゆみ"):
+            # the digital listing appends the performer name to the title,
             # which tanks the similarity ratio below any sane threshold.
             titles_match = True
     if not titles_match and _outlet_reissue_evidence(items):
@@ -874,9 +883,17 @@ def _safe_group(items: list[dict[str, Any]]) -> bool:
     if not titles_match and _rental_retail_pair(items):
         # A rental listing with the same canonical code IS the retail disc by
         # definition (rental stores list the same product, sometimes with a
-        # swapped subtitle: "…相互愛撫 4時間" vs "…相互愛撫 厳選淫乱女優24名").
+        # swapped subtitle: "…相互愛撫 4時間" vs "…相互愛撫 厳選淫乱女優24名",
+        # often a TRUNCATED title: rental "TEN GAL’S WET 2" vs the full mono
+        # title — hence prefix containment also counts).
         # Require loose title compatibility so reused codes stay safe.
-        titles_match = _titles_match_per_language(comparable, 0.5) if comparable else True
+        if comparable:
+            titles_match = (
+                _titles_match_per_language(comparable, 0.5)
+                or _prefix_containment_per_language(comparable)
+            )
+        else:
+            titles_match = True
     if not titles_match:
         return False
 
@@ -917,6 +934,17 @@ def _titles_match_per_language(comparable: dict[str, list[str]], threshold: floa
         if not all(_title_similarity(base, key) >= threshold for key in keys):
             return False
     return True
+
+
+def _parse_compact_code(value: Any) -> tuple[str, str] | None:
+    """Parse a dvd_id-ish value into (alpha_prefix, digits) or None."""
+    compact = _normalize(value)
+    if not compact:
+        return None
+    match = re.match(r"^([A-Z]{2,6})0*(\d{1,5})[A-Z]?$", compact)
+    if not match:
+        return None
+    return match.group(1), match.group(2)
 
 
 def _prefix_containment_per_language(comparable: dict[str, list[str]]) -> bool:
@@ -988,10 +1016,21 @@ def _can_ignore_runtime_divergence(items: list[dict[str, Any]]) -> bool:
     """
     comparable = _comparable_title_keys(items)
     if _rental_retail_pair(items):
-        return _titles_match_per_language(comparable, 0.5) if comparable else True
+        if not comparable:
+            return True
+        return (
+            _titles_match_per_language(comparable, 0.5)
+            or _prefix_containment_per_language(comparable)
+        )
     if not comparable:
         return False
-    if not _titles_match_per_language(comparable, 0.95):
+    # Prefix containment counts as near-identical: the only difference is the
+    # appended performer-name/edition tail (SAN-342: same-day mono/digital,
+    # 120 vs 129 mins, "…義母" vs "…義母 翔田千里").
+    if not (
+        _titles_match_per_language(comparable, 0.95)
+        or _prefix_containment_per_language(comparable)
+    ):
         return False
     return any(_has_bluray_marker(item) for item in items) or _spans_multiple_storefronts(items)
 
@@ -1094,7 +1133,7 @@ def _bonus_evidence(title: str) -> str:
     return " / ".join(matches[:4])
 
 
-def _title_key(row: dict[str, Any]) -> str:
+def _title_key(row: dict[str, Any], code_hint: tuple[str, str] | None = None) -> str:
     title = str(row.get("title_ja") or row.get("title_en") or row.get("title") or "")
     # Items are only ever compared within the same canonical code, so the
     # 【...】 lead tags (【FANZA限定】【4K】【ベストヒッツ】【配信限定●●版】…)
@@ -1107,12 +1146,27 @@ def _title_key(row: dict[str, Any]) -> str:
     title = re.sub(r"(?:[^\s/／]*さんの)?(?:生写真|チェキ|パンティ|ランジェリー|写真セット|生ポラ|ブロマイド|ポストカード|トレカ|クリアファイル).*$", "", title, flags=re.IGNORECASE)
     # Part/edition markers: within one canonical code, 前半戦/完全版 etc. are
     # edition decoration (the digital 完全版 of BBTU-040 drops 前半戦 from the
-    # mono title). Distinct parts of a series always carry distinct codes, so
-    # this never bridges different works.
-    title = re.sub(r"(?:前|後)半(?:戦)?|(?:前|中|後)編|完全版", "", title)
+    # mono title; MXBD-005 mono carries "Hi-Vision特別編"). Distinct parts of
+    # a series always carry distinct codes, so this never bridges works.
+    title = re.sub(r"(?:前|後)半(?:戦)?|(?:前|中|後)編|完全版|特別[編版]|Hi-?Vision", "", title, flags=re.IGNORECASE)
     # Self-referencing code in parentheses: re-edited digital releases embed
     # their own product code in the title （NACX-066SA1jo01）.
     title = re.sub(r"[（(][^（）()]*[A-Za-z]{2,}-?\d{2,}[^（）()]*[）)]", "", title)
+    # Reissue markers in parentheses: （2017AVOPEN参加作品再販） and similar.
+    title = re.sub(r"[（(][^（）()]*(?:再販|再発売|復刻|廉価)[^（）()]*[）)]", "", title)
+    # The row's OWN code embedded in the title ("TSX-19 美尻痴女 …" on the
+    # mono listing) is identity noise relative to the code-less digital title.
+    # Use the canonical identity (works for h_-bucket cids too, keeping the
+    # strip symmetric across variants), falling back to the dvd_id parse.
+    own_code = code_hint or _parse_compact_code(row.get("dvd_id"))
+    if own_code:
+        prefix, digits = own_code
+        if prefix and str(digits).isdigit():
+            title = re.sub(
+                rf"(?i)(?<![A-Za-z0-9]){re.escape(prefix)}[-_ ]?0*{int(digits)}[A-Za-z]?(?![0-9A-Za-z])",
+                "",
+                title,
+            )
     # Rental editions append the disc-count marker （2枚組）/（3枚組） to an
     # otherwise identical mono/digital title; it's packaging, not identity.
     title = re.sub(r"[（(]\s*\d+\s*枚組\s*[）)]", "", title)
