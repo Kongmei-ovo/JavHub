@@ -54,8 +54,8 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   const historyRow = cssBlock(source, '.history-row')
 
   assert.match(donut, /--translation-donut-track-base:\s*color-mix\(in srgb,\s*var\(--text-primary\) 13%,\s*transparent\)/)
-  assert.match(donut, /--translation-donut-hole-bg-base:\s*var\(--material-glass-sheet\)/)
-  assert.match(donut, /--translation-donut-hole-border-base:\s*var\(--glass-control-border\)/)
+  assert.match(donut, /--translation-donut-hole-bg-base:\s*var\(--card-2\)/)
+  assert.match(donut, /--translation-donut-hole-border-base:\s*var\(--hairline\)/)
   assert.match(donut, /--translation-donut-edge-base:\s*var\(--glass-edge\)/)
   assert.match(donut, /--translation-donut-glow-base:\s*color-mix\(in srgb,\s*var\(--accent\) 12%,\s*transparent\)/)
   assert.match(donut, /--translation-donut-ring-highlight:\s*color-mix\(in srgb,\s*var\(--text-primary\) 24%,\s*transparent\)/)
@@ -71,8 +71,8 @@ test('translation donut and compact rows use semantic Apple glass tokens', () =>
   assert.ok(backgroundIncludes(overviewTrackFill, '--glass-active-material'))
   assert.match(overviewTrackFill, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(overviewTrackFill, /background:\s*var\(--accent\)/)
-  assert.match(overviewTrack, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
-  assert.match(overviewTrack, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(overviewTrack, /background:\s*var\(--card\)/)
+  assert.match(overviewTrack, /box-shadow:\s*none/)
   assert.doesNotMatch(overviewTrack, /rgba\(var\(--accent-rgb\)/)
 
   for (const block of [segmentedButton, compactJob, historyRow]) {
@@ -155,8 +155,8 @@ test('translation review and source workspaces avoid legacy flat separators', ()
 
   assert.match(reviewTable, /display:\s*grid/)
   assert.match(reviewTable, /gap:\s*8px/)
-  assert.match(reviewHead, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(reviewHead, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
+  assert.match(reviewHead, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(reviewHead, /background:\s*var\(--card\)/)
   assert.match(reviewRow, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.ok(backgroundIncludes(reviewRow, '--material-glass-control'))
   assert.match(reviewRow, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -165,7 +165,7 @@ test('translation review and source workspaces avoid legacy flat separators', ()
     assert.match(block, /border-(?:top|left):\s*1px solid var\(--glass-edge\)/)
   }
   assert.match(emptyPanel, /border:\s*1px dashed var\(--glass-control-border\)/)
-  assert.match(emptyPanel, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
+  assert.match(emptyPanel, /background:\s*var\(--card\)/)
 })
 
 test('translation form and status surfaces use shared glass and badge tokens', () => {

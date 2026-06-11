@@ -245,10 +245,8 @@ export default {
   padding: 12px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .logs h1 { margin: 0; font-size: var(--type-workbench-title); line-height: 1.16; letter-spacing: 0; }
@@ -261,10 +259,8 @@ export default {
   padding: 10px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .log-window-meta {
@@ -310,8 +306,8 @@ export default {
   display: inline-flex;
   align-items: center;
   overflow: hidden;
-  border: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  border: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--type-micro);
@@ -437,12 +433,10 @@ export default {
 .activity-summary-strip > div {
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .activity-summary-strip strong {
@@ -459,12 +453,10 @@ export default {
 }
 
 .logs-container {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -555,14 +547,14 @@ export default {
   justify-content: center;
   min-height: 22px;
   padding: 0 7px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-xs);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   font-weight: bold;
 }
 .log-level.level-info,
 .level-info {
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
 }
 .log-level.level-warning,
@@ -586,12 +578,9 @@ export default {
   padding: 40px;
   text-align: center;
   color: var(--text-secondary);
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 .pagination { margin-top: 20px; text-align: center; }
 .pagination button {

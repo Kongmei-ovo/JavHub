@@ -112,17 +112,17 @@ test('search filter chrome uses shared liquid glass controls without uppercase m
     assert.doesNotMatch(block, /var\(--border\)/)
   }
 
-  assert.match(commandCapsuleBlock, backgroundIncludes('material-glass-sheet'))
-  assert.match(commandCapsuleBlock, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(commandCapsuleBlock, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(commandCapsuleBlock, /background:\s*var\(--card\)/)
+  assert.match(commandCapsuleBlock, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(commandCapsuleBlock, /box-shadow:\s*var\(--shadow-card\)/)
   assert.doesNotMatch(commandCapsuleBlock, /var\(--shadow-floating\)/)
   assert.match(commandCapsuleFocusedBlock, backgroundIncludes('glass-active-material'))
   assert.match(commandCapsuleFocusedBlock, /border-color:\s*var\(--glass-active-border\)/)
   assert.match(commandCapsuleFocusedBlock, /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--glass-surface-shadow\)/)
   assert.doesNotMatch(commandCapsuleFocusedBlock, /var\(--shadow-floating\)/)
 
-  assert.match(advancedPanelBlock, backgroundIncludes('material-glass-sheet'))
-  assert.match(advancedPanelBlock, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(advancedPanelBlock, /background:\s*var\(--card\)/)
+  assert.match(advancedPanelBlock, /border:\s*1px solid var\(--hairline\)/)
   assert.match(advancedPanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
   assert.match(panelFooterBlock, /border-top:\s*1px solid var\(--glass-edge\)/)
   assert.doesNotMatch(panelFooterBlock, /var\(--border\)/)
@@ -322,7 +322,7 @@ test('search command and result controls use layered liquid glass backgrounds', 
   const layeredControl = /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/
   const layeredControlHover = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/
   const layeredActive = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/
-  const layeredSheet = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/
+  const layeredSheet = /background:\s*var\(--card\)/
 
   assert.match(sourceBlock('.command-capsule'), layeredSheet)
   assert.match(sourceBlock('.command-capsule.focused'), layeredActive)
@@ -373,10 +373,10 @@ test('search page owns back toolbar and state panels with liquid glass depth', (
   assert.match(backButtonFocusBlock, /outline:\s*none/)
   assert.match(backButtonFocusBlock, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
 
-  assert.match(statePanelBlock, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
+  assert.match(statePanelBlock, /background:\s*var\(--card\)/)
   assert.match(statePanelBlock, /border:\s*1px solid var\(--glass-edge-strong\)/)
-  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
-  assert.match(statePanelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
+  assert.doesNotMatch(statePanelBlock, /backdrop-filter/)
 })
 
 test('search filter and pagination rails use compact glass trays', () => {
@@ -388,10 +388,9 @@ test('search filter and pagination rails use compact glass trays', () => {
   const skeletonGridBlock = sourceBlock('.skeleton-grid')
 
   for (const [block, name] of [[sortStripBlock, 'sort strip'], [paginationBarBlock, 'pagination bar']]) {
-    assert.match(block, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/, `${name} should use a sheet material tray`)
+    assert.match(block, /background:\s*var\(--card\)/, `${name} should use a sheet material tray`)
     assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use shared glass edge`)
-    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/, `${name} should keep an inner refractive edge`)
-    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/, `${name} should use surface blur`)
+    assert.doesNotMatch(block, /backdrop-filter/, `${name} should not blur`)
   }
 
   assert.match(sortStripBlock, /padding:\s*6px/)

@@ -9,22 +9,16 @@
   display: grid;
   gap: 18px;
   padding: 20px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 .preference-section {
   padding: 18px;
   border-radius: 22px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   box-shadow: var(--glass-control-shadow);
 }
 .preference-section-header,
@@ -109,12 +103,9 @@
 .appearance-chip {
   min-height: 26px;
   padding: 4px 9px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-control);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
@@ -170,13 +161,10 @@
   margin-bottom: 10px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .preview-bubble {
   display: inline-flex;
@@ -209,12 +197,9 @@
 .tuning-control {
   min-width: 0;
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 .tuning-copy {
   display: flex;

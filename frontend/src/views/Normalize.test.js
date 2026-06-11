@@ -83,10 +83,9 @@ test('normalize candidate and mapping rows avoid flat translucent cards', () => 
     [mappingRow, 'mapping row'],
   ]) {
     assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use glass edge`)
-    assert.ok(backgroundIncludes(block, '--material-glass-elevated'), `${name} should use elevated material`)
-    assert.match(block, /var\(--surface-specular-edge-strong\)/, `${name} should include a stronger elevated edge`)
-    assert.match(block, /var\(--surface-noise\)/, `${name} should include the shared noise layer`)
-    assert.match(block, /box-shadow:\s*var\(--glass-surface-shadow\)/, `${name} should use surface shadow`)
+    assert.match(block, /background:\s*var\(--card\)/, `${name} should be solid card material`)
+    assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/, `${name} solid block should not keep glass layers`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\)/, `${name} should use surface shadow`)
     assert.doesNotMatch(block, /rgba\(255,\s*255,\s*255|background:\s*var\(--bg-card\)/)
   }
 
@@ -131,9 +130,9 @@ test('normalize keyboard focus mirrors Apple glass control depth', () => {
     [candidateFocus, 'candidate card focus'],
     [mappingFocus, 'mapping row focus'],
   ]) {
-    assert.ok(backgroundIncludes(block, '--material-glass-elevated'), `${name} should keep elevated glass material`)
-    assert.match(block, /border-color:\s*var\(--glass-control-border-hover\)/, `${name} should lift its edge when focused inside`)
-    assert.match(block, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--glass-surface-shadow\),\s*var\(--focus-ring\)/, `${name} should layer surface depth with focus halo`)
+    assert.match(block, /background:\s*var\(--card\)/, `${name} should keep solid card material`)
+    assert.match(block, /border-color:\s*var\(--hairline-strong\)/, `${name} should lift its edge when focused inside`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring\)/, `${name} should layer card depth with focus halo`)
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should rise when an inner action is focused`)
   }
 })
@@ -145,7 +144,7 @@ test('normalize glass backgrounds are layered with specular and noise surfaces',
   assert.deepEqual(offenders, [], 'normalize primary glass surfaces should not use single-layer glass backgrounds')
 
   for (const [selector, token] of [
-    ['.summary-card', '--material-glass-elevated'],
+    ['.summary-card', '--card'],
     ['.auto-match-panel', '--material-glass-control'],
     ['.tab-bar', '--material-glass-control'],
     ['.tab-btn', '--material-glass-control'],
@@ -156,15 +155,16 @@ test('normalize glass backgrounds are layered with specular and noise surfaces',
     ['.filter-chip.active', '--glass-active-material'],
     ['.search-input', '--material-glass-control'],
     ['.search-input:focus', '--material-glass-control-hover'],
-    ['.mapping-card', '--material-glass-elevated'],
-    ['.candidate-card', '--material-glass-elevated'],
+    ['.mapping-card', '--card'],
+    ['.candidate-card', '--card'],
     ['.confidence-badge', '--material-glass-control'],
-    ['.mapping-row', '--material-glass-elevated'],
+    ['.mapping-row', '--card'],
     ['.status-pill', '--material-glass-control'],
     ['.reason-pill', '--material-glass-control'],
   ]) {
     const block = cssRule(selector)
     assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
+    if (token === '--card') continue // v2 实底块没有玻璃分层
     assertLayeredBackground(block, token, selector)
   }
 })

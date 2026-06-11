@@ -843,15 +843,11 @@ a:hover {
 .apple-surface {
   position: relative;
   isolation: isolate;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--surface-card);
+  /* v2 内容层去玻璃：共享内容面板 = 实底（纹理由 ::after 低透明度提供） */
+  background: var(--card);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
 }
 
 .apple-surface::after {
@@ -875,12 +871,10 @@ a:hover {
 .apple-surface-elevated {
   position: relative;
   isolation: isolate;
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-elevated);
+  /* v2 内容层去玻璃：抬升面板 = 实底 */
+  background: var(--card-elevated, var(--card));
   border: 1px solid var(--glass-edge-strong);
-  box-shadow: var(--shadow-floating), var(--glass-surface-shadow);
+  box-shadow: var(--shadow-floating);
 }
 
 .apple-surface-elevated::after {
@@ -906,12 +900,10 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-inner-shadow);
+  /* v2 内容层去玻璃：媒体占位 = 实底 */
+  background: var(--card-2, var(--card));
+  border: 1px solid var(--hairline);
+  box-shadow: none;
   color: var(--text-muted);
 }
 

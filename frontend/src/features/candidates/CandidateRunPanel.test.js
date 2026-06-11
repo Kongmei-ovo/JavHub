@@ -22,10 +22,11 @@ function assertLayeredBackground(block, token, name) {
 
 test('candidate run panel uses shared Apple glass surfaces instead of legacy cards', () => {
   const panel = cssBlock('.candidate-run-panel')
-  assertLayeredBackground(panel, '--material-glass-sheet', 'candidate run panel')
+  // v2 内容层去玻璃：面板 = 实底
+  assert.ok(backgroundIncludes(panel, '--card'), 'candidate run panel should be solid --card')
   assert.match(panel, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(panel, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(panel, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(panel, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(panel, /backdrop-filter/)
   assert.doesNotMatch(panel, /var\(--bg-card\)|var\(--border\)/)
 
   const row = cssBlock('.candidate-run-row')
@@ -34,9 +35,9 @@ test('candidate run panel uses shared Apple glass surfaces instead of legacy car
   assert.match(row, /box-shadow:\s*var\(--glass-control-shadow\)/)
 
   const stat = cssBlock('.candidate-run-stats span')
-  assertLayeredBackground(stat, '--material-glass-subtle', 'candidate run stat')
-  assert.match(stat, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(stat, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.ok(backgroundIncludes(stat, '--card'), 'candidate run stat should be solid --card')
+  assert.match(stat, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(stat, /box-shadow:\s*none/)
 })
 
 test('candidate run rows mirror Apple glass hover while actions are focused', () => {

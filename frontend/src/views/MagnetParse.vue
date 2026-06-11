@@ -317,12 +317,10 @@ export default {
 .parse-console {
   width: 100%;
   padding: clamp(18px, 2.5vw, 24px);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
 }
 
 .console-head,
@@ -383,10 +381,10 @@ export default {
 .summary-item {
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .summary-item strong {
@@ -426,10 +424,8 @@ export default {
   padding: 0;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .magnets-header {
@@ -485,13 +481,13 @@ export default {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 
 .magnet-left {
@@ -529,9 +525,9 @@ export default {
 .status-pill {
   flex: 0 0 auto;
   padding: 3px 7px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-xs);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-muted);
   font-size: var(--type-micro);
   font-weight: 700;
@@ -550,10 +546,8 @@ export default {
   padding: 18px 20px;
   border: 1px solid var(--badge-warning-border);
   border-radius: var(--radius-card);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .issue-head {
@@ -578,10 +572,10 @@ export default {
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
   color: var(--text-secondary);
   font-size: var(--type-caption);
 }

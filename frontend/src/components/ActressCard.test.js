@@ -26,28 +26,25 @@ test('ActressCard uses shared Apple glass materials instead of legacy dark fog',
   const imageFocus = cssRule('.actress-card:focus-visible .cover-img')
   const media = cssRule('.card-cover')
 
-  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
-  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  // v2 内容层去玻璃：内容卡片 = 实底（--card + --hairline），无 backdrop-filter
+  assert.match(card, /background:\s*var\(--card\)/)
+  assert.match(card, /border:\s*1px solid var\(--hairline\)/)
+  assert.doesNotMatch(card, /backdrop-filter/)
   assert.match(card, /transition:\s*transform var\(--motion-standard\)/)
   assert.doesNotMatch(card, /transition:[^;]*(?:background|border-color|box-shadow|filter|backdrop-filter)/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--glass-surface-shadow\)|var\(--glass-blur-surface\)|transition:\s*all|blur\(80px\)|rgba\(255,\s*255,\s*255,\s*0\.04\)/)
 
-  assert.match(hover, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(hover, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(hover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(hover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(hover, /box-shadow:\s*var\(--shadow-card\)/)
   assert.doesNotMatch(hover, /var\(--surface-card-hover\)|var\(--shadow-floating\)|rgba\(0,\s*0,\s*0,\s*0\.4\)/)
 
-  assert.match(focus, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(focus, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(focus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\),\s*var\(--glass-inner-shadow\)/)
+  assert.match(focus, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(focus, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide\)/)
   assert.doesNotMatch(focus, /var\(--shadow-floating\)/)
   assert.match(imageFocus, /transform:\s*scale\(1\.03\)/)
 
-  assert.match(media, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
-  assert.match(media, /box-shadow:\s*var\(--glass-inner-shadow\)/)
-  assert.doesNotMatch(media, /background:\s*var\(--material-glass-subtle\);/)
+  assert.match(media, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(media, /backdrop-filter|var\(--material-glass/)
   assert.doesNotMatch(media, /rgba\(255,\s*255,\s*255,\s*0\.03\)/)
 })
 

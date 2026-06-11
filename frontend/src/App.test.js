@@ -178,11 +178,19 @@ test('app navigation controls use layered liquid glass materials', () => {
 
 test('app shell navigation marks current route semantically across desktop mobile and more menu', () => {
   // P2: '/library' 从 library-organize 桶移到 search 桶,让"影库"导航在 /library 时也高亮。
-  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/actor', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/library-organize': \['\/library-organize', '\/inventory', '\/duplicates', '\/normalize'\]/)
+  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\][\s\S]*'\/library-organize': \['\/library-organize', '\/inventory', '\/duplicates', '\/normalize'\]/)
   assert.match(source, /const isNavItemActive = \(path\) => \{[\s\S]*const currentPath = normalizedRoutePath\.value[\s\S]*const activePaths = navActivePaths\[path\] \|\| \[path\][\s\S]*currentPath === activePath \|\| currentPath\.startsWith\(`\$\{activePath\}\/`\)/)
   assert.match(source, /:class="\{ active: isNavItemActive\(item\.path\) \}"/)
   assert.match(source, /:aria-current="isNavItemActive\(item\.path\) \? 'page' : undefined"/)
   assert.match(source, /const isMoreRoute = computed\(\(\) => mobileMoreItems\.some\(item => isNavItemActive\(item\.path\)\)\)/)
+})
+
+test('actor detail route belongs to entity navigation instead of search', () => {
+  const navBlock = navigationSource.match(/export const navActivePaths = \{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(navBlock, /'\/search':\s*\['\/search', '\/library'\]/)
+  assert.match(navBlock, /'\/entities':\s*\['\/entities', '\/entity', '\/actor'\]/)
+  assert.doesNotMatch(navBlock, /'\/search':\s*\[[^\]]*'\/actor'/)
 })
 
 test('app shell chrome keeps scroll layers stable and focus states glassy', () => {
@@ -460,9 +468,9 @@ test('app shell route families keep system navigation active on related pages', 
   const navBlock = navigationSource.slice(navStart)
 
   // P2: '/library' 已被并入"影库" (= /search) 桶,让深链落到浏览而不是维护台。
-  assert.match(navBlock, /'\/search':\s*\['\/search', '\/actor', '\/library'\]/)
+  assert.match(navBlock, /'\/search':\s*\['\/search', '\/library'\]/)
+  assert.match(navBlock, /'\/entities':\s*\['\/entities', '\/entity', '\/actor'\]/)
   assert.match(navBlock, /'\/downloads':\s*\['\/downloads', '\/tasks'\]/)
-  assert.match(navBlock, /'\/entities':\s*\['\/entities', '\/entity'\]/)
   assert.match(navBlock, /'\/subscription':\s*\['\/subscription', '\/subscriptions'\]/)
   assert.match(navBlock, /'\/supplement':\s*\['\/supplement', '\/supplement\/actor', '\/supplement\/movies', '\/supplement\/jobs', '\/supplement\/sources', '\/supplement\/stats'\]/)
   assert.match(navBlock, /'\/settings':\s*\['\/settings', '\/config'\]/)

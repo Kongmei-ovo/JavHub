@@ -115,13 +115,11 @@ export default {
   cursor: not-allowed;
 }
 .result {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
   padding: 20px;
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
 }
 .exists { color: var(--badge-success-text); }
 .not-exists { color: var(--text-secondary); }

@@ -160,11 +160,8 @@
 .empty-panel {
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .workbench-panel {
@@ -642,12 +639,9 @@ button.state-item {
 .scope-chip {
   min-height: 30px;
   padding: 5px 9px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-control);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: var(--type-caption-2, 11px);
   cursor: pointer;
@@ -772,13 +766,8 @@ button.state-item {
   overflow: hidden;
   border: 1px solid var(--operations-line);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .operations-hero::before {
@@ -927,10 +916,7 @@ button.state-item {
   border: 1px solid var(--operations-soft-line);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-primary);
   font-family: inherit;
   text-align: left;
@@ -1020,13 +1006,8 @@ button.state-item {
   overflow: hidden;
   border-color: var(--operations-line);
   border-radius: var(--radius-xl);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 
 .workbench-panel {
@@ -1142,10 +1123,7 @@ button.state-item {
 }
 
 .action-card span {
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 
 .compact-row,

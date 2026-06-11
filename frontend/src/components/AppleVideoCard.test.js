@@ -217,11 +217,11 @@ test('AppleVideoCard renders variant labels on the cover', () => {
 test('AppleVideoCard variant labels use shared Apple glass material', () => {
   const variantPill = cssBlock('.apple-video-card__variant-pill')
 
-  assert.match(variantPill, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
+  assert.match(variantPill, /background:\s*var\(--card\)/)
   assert.match(variantPill, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(variantPill, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(variantPill, /box-shadow:\s*(?:none|var\(--shadow-card\))/)
   assert.match(variantPill, /color:\s*var\(--text-primary\)/)
-  assert.match(variantPill, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.doesNotMatch(variantPill, /backdrop-filter/)
   assert.doesNotMatch(variantPill, /#fff|#ffffff|rgba\(255,\s*255,\s*255/i)
 })
 

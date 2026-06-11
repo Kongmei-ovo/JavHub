@@ -71,10 +71,8 @@ export default {
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
   padding: 16px;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .candidate-run-head,
 .candidate-run-row,
@@ -137,10 +135,10 @@ export default {
   align-items: center;
   min-height: 26px;
   padding: 3px 9px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .candidate-run-actions {
   margin-left: auto;

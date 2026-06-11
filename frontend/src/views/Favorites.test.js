@@ -50,10 +50,10 @@ test('favorites curation chrome uses shared Apple glass materials', () => {
 
   assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--bg-secondary\)|var\(--transition\)/)
 
-  assert.match(collectionManager, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(collectionManager, backgroundIncludes('material-glass-sheet'))
-  assert.match(collectionManager, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(collectionManager, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(collectionManager, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(collectionManager, /background:\s*var\(--card\)/)
+  assert.match(collectionManager, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(collectionManager, /backdrop-filter/)
 
   assert.match(miniButton, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(miniButton, backgroundIncludes('material-glass-control'))
@@ -127,8 +127,8 @@ test('favorites entity and empty states avoid legacy flat card styling', () => {
   assert.match(selectedDot, /box-shadow:\s*var\(--glass-active-shadow\)/)
   assert.doesNotMatch(selectedDot, /#fff|rgba\(255,255,255/)
 
-  assert.match(entityTypeTag, backgroundIncludes('material-glass-subtle'))
-  assert.match(entityTypeTag, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(entityTypeTag, /background:\s*var\(--card\)/)
+  assert.match(entityTypeTag, /border:\s*1px solid var\(--hairline\)/)
   assert.match(entityFavButton, /border:\s*1px solid var\(--badge-error-border\)/)
   assert.match(entityFavButton, backgroundIncludes('badge-error-bg'))
   assert.match(entityFavButton, /var\(--surface-specular-edge\)/)
@@ -144,11 +144,11 @@ test('favorites entity and empty states avoid legacy flat card styling', () => {
   assert.match(emptyIcon, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(exploreButton, backgroundIncludes('glass-active-material'))
   assert.match(exploreButton, /box-shadow:\s*var\(--glass-active-shadow\)/)
-  assert.match(skeletonCard, backgroundIncludes('material-glass-sheet'))
-  assert.match(skeletonCard, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(skeletonCard, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(skeletonCover, backgroundIncludes('material-glass-subtle'))
-  assert.match(skeletonLine, backgroundIncludes('material-glass-subtle'))
+  assert.match(skeletonCard, /background:\s*var\(--card\)/)
+  assert.match(skeletonCard, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(skeletonCard, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.match(skeletonCover, /background:\s*var\(--card\)/)
+  assert.match(skeletonLine, /background:\s*var\(--card\)/)
 })
 
 test('favorites keyboard focus mirrors hover glass treatment', () => {
@@ -203,8 +203,8 @@ test('favorites glass backgrounds are layered with specular and noise surfaces',
 })
 
 test('favorites liquid glass surfaces keep inner edge highlights and pressed feedback', () => {
+  // v2 内容层去玻璃：实底面板用 --shadow-card，玻璃 inner edge 只留控件
   for (const [selector, shadowToken] of [
-    ['.collection-manager', 'glass-surface-shadow'],
     ['.collection-form input', 'glass-control-shadow'],
     ['.btn-mini', 'glass-control-shadow'],
     ['.collection-row', 'glass-control-shadow'],
@@ -213,10 +213,14 @@ test('favorites liquid glass surfaces keep inner edge highlights and pressed fee
     ['.entity-bubble', 'glass-control-shadow'],
     ['.select-check', 'glass-control-shadow'],
     ['.empty-icon', 'glass-control-shadow'],
-    ['.skeleton-card', 'glass-surface-shadow'],
   ]) {
     const block = cssBlock(selector)
     assert.match(block, new RegExp(`box-shadow:\\s*var\\(--${shadowToken}\\),\\s*var\\(--glass-inner-shadow\\)`), `${selector} should keep an inner glass edge`)
+  }
+  for (const selector of ['.collection-manager', '.skeleton-card']) {
+    const block = cssBlock(selector)
+    assert.match(block, /background:\s*var\(--card\)/, `${selector} should be solid --card`)
+    assert.match(block, /box-shadow:\s*var\(--shadow-card\)/, `${selector} should use the solid card shadow`)
   }
 
   for (const selector of [
@@ -241,10 +245,10 @@ test('favorites empty and loading states are composed glass surfaces', () => {
   const skeletonLineShine = cssBlock('.skeleton-line::after')
 
   assert.match(emptyState, /max-width:\s*min\(520px,\s*100%\)/)
-  assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(emptyState, backgroundIncludes('material-glass-sheet'))
-  assert.match(emptyState, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
-  assert.match(emptyState, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(emptyState, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(emptyState, /background:\s*var\(--card\)/)
+  assert.match(emptyState, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(emptyState, /backdrop-filter/)
 
   for (const block of [skeletonCover, skeletonLine]) {
     assert.match(block, /position:\s*relative/)
@@ -276,10 +280,10 @@ test('favorites edit mode exposes a Photos-style selection bar for batch curatio
   assert.match(selectionBar, /display:\s*flex/)
   assert.match(selectionBar, /align-items:\s*center/)
   assert.match(selectionBar, /justify-content:\s*space-between/)
-  assert.match(selectionBar, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(selectionBar, backgroundIncludes('material-glass-sheet'))
-  assert.match(selectionBar, /box-shadow:\s*var\(--glass-surface-shadow\),\s*var\(--glass-inner-shadow\)/)
-  assert.match(selectionBar, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(selectionBar, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(selectionBar, /background:\s*var\(--card\)/)
+  assert.match(selectionBar, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(selectionBar, /backdrop-filter/)
 
   assert.match(selectionSummary, /display:\s*grid/)
   assert.match(selectionSummaryStrong, /font-variant-numeric:\s*tabular-nums/)

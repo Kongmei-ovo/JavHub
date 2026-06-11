@@ -45,11 +45,11 @@ test('legacy library checker keeps shared glass surfaces while it redirects user
   assert.match(buttonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(buttonHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
-  assert.match(result, layeredBackground('material-glass-sheet'))
+  assert.match(result, /background:\s*var\(--card\)/)
   assert.match(result, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(result, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(result, /box-shadow:\s*var\(--shadow-card\)/)
 
-  assert.doesNotMatch(source, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|var\(--bg-card\)|var\(--bg-card-hover\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|background:\s*var\(--accent\)/)
+  assert.doesNotMatch(source, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|var\(--bg-card\)|var\(--bg-card-hover\)|var\(--border\)|var\(--border-light\)|background:\s*var\(--accent\)/)
 })
 
 test('legacy library checker glass backgrounds are layered with specular and noise surfaces', () => {

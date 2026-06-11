@@ -45,18 +45,15 @@
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
   color: var(--text-secondary);
   font-size: var(--type-body);
   font-weight: 650;
   cursor: pointer;
   position: relative;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .tab-item:hover {
@@ -123,13 +120,8 @@
   padding: 8px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .settings-sidebar-list .tab-item {
   width: 100%;
@@ -158,22 +150,16 @@
   overflow: hidden;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .advanced-settings-error {
   min-height: 320px;
   overflow: hidden;
   border: 1px solid var(--badge-warning-border);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .config-status-banner {
   display: flex;
@@ -229,24 +215,16 @@
   padding: 18px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .settings-list {
   display: grid;
   overflow: hidden;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .settings-row {
   display: grid;
@@ -646,13 +624,10 @@
   margin-top: 4px;
   margin-bottom: 12px;
   padding: 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .javinfo-runtime-row {
   display: grid;
@@ -878,17 +853,14 @@
   min-width: 38px;
   min-height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: var(--type-caption-1, 12px);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .segmented-mini button:hover {

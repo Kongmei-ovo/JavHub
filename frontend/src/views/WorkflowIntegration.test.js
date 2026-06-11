@@ -363,13 +363,14 @@ test('subscription routes missing movies into download candidates', () => {
   assert.doesNotMatch(subscription, /api\.createDownload\(\{ code:/)
 })
 
-test('subscription page defers actor metadata loading until a subscription is opened', () => {
+test('subscription page preloads lightweight actor metadata without loading filmography', () => {
   const loadSubsBlock = subscription.match(/async function loadSubs\(\) \{[\s\S]*?\n\}/)?.[0] || ''
   const openSubSheetBlock = subscription.match(/async function openSubSheet\(sub\) \{[\s\S]*?\n\}/)?.[0] || ''
 
   assert.match(loadSubsBlock, /api\.getSubscriptions\(\)/)
-  assert.doesNotMatch(loadSubsBlock, /enrichActressMeta|api\.getActress/)
-  assert.doesNotMatch(subscription, /Promise\.all\(ids\.map\(fetchOne\)\)/)
+  assert.match(subscription, /hydrateSubscriptionActorMeta/)
+  assert.match(loadSubsBlock, /loadSubscriptionActorMetaForSubs\(items\)/)
+  assert.doesNotMatch(loadSubsBlock, /api\.getActressVideos/)
 
   assert.match(subscription, /async function loadSubscriptionActorMeta\(sub\)/)
   assert.match(subscription, /api\.getActress\(sub\.actress_id\)/)
@@ -676,8 +677,8 @@ test('appearance controls keep compact state without discovery material parsing'
   assert.doesNotMatch(config, /class="theme-option"/)
   assert.doesNotMatch(config, /<span class="setting-title">全局主题<\/span>/)
   assert.doesNotMatch(config, /class="preference-section apple-surface"/)
-  assert.match(config, /\.preference-stack\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
-  assert.match(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--glass-control-border\)/)
+  assert.match(config, /\.preference-stack\s*\{[\s\S]*background:\s*var\(--card\)/)
+  assert.match(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--hairline\)/)
   assert.doesNotMatch(config, /\.preference-stack\s*\{[\s\S]*background: var\(--bg-secondary\)/)
   assert.doesNotMatch(config, /\.preference-stack\s*\{[\s\S]*border: 1px solid var\(--border-light\)/)
   assert.doesNotMatch(configDefaults, /parseGradientList|customGradients|colorMode|rarityThresholds|rarityColors/)
@@ -712,24 +713,24 @@ test('theme presets are reduced to Apple light and dark glass modes', () => {
   assert.doesNotMatch(mainCss, /\.el-input__wrapper, \.input\s*\{[\s\S]*?border: 1px solid transparent !important/)
 
   const genresTabBaseBlock = genres.match(/\.tab-btn\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(genresTabBaseBlock, layeredBackground('material-glass-subtle'))
-  assert.match(genresTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+  assert.match(genresTabBaseBlock, /background:\s*var\(--card\)/)
+  assert.match(genresTabBaseBlock, /border: 1px solid var\(--hairline\)/)
 
   const genresTabBlock = genres.match(/\.tab-btn\.active\s*\{[^}]*\}/)?.[0] || ''
   assert.doesNotMatch(genresTabBlock, /inset 0 -2px/)
   assert.match(genresTabBlock, /var\(--glass-active-shadow\)/)
 
   const segmentedBaseBlock = config.match(/\.segmented-mini button\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(segmentedBaseBlock, layeredBackground('material-glass-subtle'))
-  assert.match(segmentedBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+  assert.match(segmentedBaseBlock, /background:\s*var\(--card\)/)
+  assert.match(segmentedBaseBlock, /border: 1px solid var\(--hairline\)/)
 
   const segmentedActiveBlock = config.match(/\.segmented-mini button\.active\s*\{[^}]*\}/)?.[0] || ''
   assert.doesNotMatch(segmentedActiveBlock, /inset 0 -2px/)
   assert.match(segmentedActiveBlock, /var\(--glass-active-shadow\)/)
 
   const settingsTabBaseBlock = config.match(/\.tab-item\s*\{[^}]*\}/)?.[0] || ''
-  assert.match(settingsTabBaseBlock, layeredBackground('material-glass-subtle'))
-  assert.match(settingsTabBaseBlock, /border: 1px solid var\(--glass-control-border\)/)
+  assert.match(settingsTabBaseBlock, /background:\s*var\(--card\)/)
+  assert.match(settingsTabBaseBlock, /border: 1px solid var\(--hairline\)/)
 
   const settingsTabActiveBlock = config.match(/\.tab-item\.active\s*\{[^}]*\}/)?.[0] || ''
   assert.match(settingsTabActiveBlock, /var\(--glass-active-shadow\)/)
@@ -947,7 +948,7 @@ test('operations overview uses a restrained Apple operations layout', () => {
   assert.match(operations, /diagnostic-grid/)
   assert.match(operations, /hero-stat-grid/)
   assert.match(operations, /--operations-panel-gap:\s*clamp\(12px,\s*1\.4vw,\s*18px\)/)
-  assert.match(operations, /\.workbench-panel[\s\S]*background:[\s\S]*var\(--material-glass-sheet\)/)
+  assert.match(operations, /\.workbench-panel[\s\S]*background:\s*var\(--card\)/)
   assert.match(operations, /\.hero-stat-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(108px,\s*1fr\)\)/)
   assert.doesNotMatch(operations, /status-cell\.urgent/)
   assert.doesNotMatch(operations, /title:\s*'活动中心'/)

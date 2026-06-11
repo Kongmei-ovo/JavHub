@@ -124,7 +124,7 @@ test('operations workbench controls use shared Apple glass tokens', () => {
   const backendPill = lastCssBlock(source, '.backend-pill')
   const warningBlocks = cssBlocks(source, '.state-item.warning')
 
-  assert.doesNotMatch(source, /var\(--surface-card\)|var\(--shadow-card\)|var\(--surface-card-hover\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--border\)|var\(--border-light\)/)
+  assert.doesNotMatch(source, /var\(--surface-card\)|var\(--surface-card-hover\)|var\(--surface-control\)|var\(--surface-control-hover\)|var\(--surface-input-focus\)|var\(--border\)|var\(--border-light\)/)
 
   assert.match(operationsPage, /--operations-line:\s*var\(--glass-control-border\)/)
   assert.match(operationsPage, /--operations-soft-line:\s*var\(--glass-control-border\)/)

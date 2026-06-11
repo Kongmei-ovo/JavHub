@@ -78,14 +78,9 @@ const gridVars = computed(() => ({ '--skeleton-grid-columns': props.columns }))
 .apple-skeleton--card {
   border-radius: var(--radius-card);
   overflow: hidden;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
 }
 
 .apple-skeleton-row {
@@ -95,14 +90,9 @@ const gridVars = computed(() => ({ '--skeleton-grid-columns': props.columns }))
   align-items: center;
   padding: 12px;
   border-radius: var(--radius-card);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
 }
 
 .apple-skeleton-thumb {

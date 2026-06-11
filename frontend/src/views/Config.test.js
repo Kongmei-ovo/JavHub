@@ -156,15 +156,17 @@ test('settings workspace panels use shared Apple glass materials instead of lega
 
   for (const block of [runtimePanel, sourceCheck, appearanceStack, sharedGroup, sharedList, importFileControl, importProgress, importLogTail, importJobRow]) {
     assert.ok(block, 'expected settings workspace block to exist')
-    assert.doesNotMatch(block, /var\(--bg-card\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|var\(--surface-card\)/)
+    assert.doesNotMatch(block, /var\(--bg-card\)|var\(--border\)|var\(--border-light\)|var\(--surface-card\)/)
   }
 
-  for (const block of [runtimePanel, sharedList, importProgress, importJobRow]) {
-    assert.match(block, /background:[\s\S]*var\(--material-glass-(?:subtle|control)\)/)
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+  // v2 内容层去玻璃：设置面板 = 实底
+  for (const block of [runtimePanel, sharedList, importProgress]) {
+    assert.match(block, /background:\s*var\(--card\)/)
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/)
   }
+  assert.match(importJobRow, /border:\s*1px solid var\(--glass-control-border\)/)
 
-  assert.match(sharedGroup, backgroundIncludes('material-glass-sheet'))
+  assert.match(sharedGroup, /background:\s*var\(--card\)/)
   assert.match(sharedGroup, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(sourceCheck, backgroundIncludes('material-glass-control'))
   assert.match(sourceCheck, /box-shadow:\s*var\(--glass-control-shadow\)/)
@@ -184,9 +186,9 @@ test('advanced import flow owns a grouped process container instead of legacy fo
 
   assert.match(importPanel, /display:\s*grid/)
   assert.match(importPanel, /gap:\s*14px/)
-  assert.match(importPanel, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(importPanel, backgroundIncludes('material-glass-subtle'))
-  assert.match(importPanel, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(importPanel, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(importPanel, /background:\s*var\(--card\)/)
+  assert.match(importPanel, /box-shadow:\s*none/)
 })
 
 test('automation source picker reads like a System Settings multi-select list', () => {
@@ -290,8 +292,8 @@ test('settings visual preview and loading states avoid hardcoded white glass fra
   assert.doesNotMatch(baseStyle, /\.spinner-large\b/)
   assert.match(baseStyle, /\.save-spinner\s*\{[\s\S]*width:\s*16px/)
 
-  assert.match(auraPreview, backgroundIncludes('material-glass-subtle'))
-  assert.match(auraPreview, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(auraPreview, /background:\s*var\(--card\)/)
+  assert.match(auraPreview, /box-shadow:\s*none/)
   assert.doesNotMatch(auraPreview, /radial-gradient|rgba\(255,\s*255,\s*255|rgba\(255,255,255/)
 
   assert.match(previewBubble, /box-shadow:\s*var\(--glass-inner-shadow\)/)
@@ -340,8 +342,8 @@ test('advanced lazy chunk shows a System Settings skeleton while loading', () =>
   assert.match(skeleton, /min-height:\s*320px/)
   assert.match(skeleton, /padding:\s*18px/)
   assert.match(skeleton, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(skeleton, backgroundIncludes('material-glass-sheet'))
-  assert.match(skeleton, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(skeleton, /background:\s*var\(--card\)/)
+  assert.match(skeleton, /box-shadow:\s*var\(--shadow-card\)/)
   assert.match(skeleton, /overflow:\s*hidden/)
 })
 
@@ -359,8 +361,8 @@ test('advanced lazy chunk shows an inline System Settings error state if loading
   const error = cssBlock('.advanced-settings-error')
   assert.match(error, /min-height:\s*320px/)
   assert.match(error, /border:\s*1px solid var\(--badge-warning-border\)/)
-  assert.match(error, backgroundIncludes('material-glass-sheet'))
-  assert.match(error, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(error, /background:\s*var\(--card\)/)
+  assert.match(error, /box-shadow:\s*var\(--shadow-card\)/)
   assert.match(error, /overflow:\s*hidden/)
 })
 
@@ -405,7 +407,7 @@ test('settings page exposes macOS-style grouped lists and row controls', () => {
 
   assert.match(shell, /display:\s*grid/)
   assert.match(shell, /grid-template-columns:\s*minmax\(190px,\s*240px\)\s+minmax\(0,\s*1fr\)/)
-  assert.match(sidebar, backgroundIncludes('material-glass-sheet'))
+  assert.match(sidebar, /background:\s*var\(--card\)/)
   assert.match(pane, /max-width:\s*920px/)
   assert.match(group, /border-radius:\s*var\(--radius-lg\)/)
   assert.match(row, /grid-template-columns:\s*minmax\(180px,\s*0\.42fr\)\s+minmax\(0,\s*1fr\)/)
@@ -432,7 +434,8 @@ test('settings save footer exposes a System Settings-style status area', () => {
   const actions = cssBlock('.settings-save-actions')
   const mobile = baseStyle.slice(baseStyle.indexOf('@media (max-width: 768px)'))
 
-  assert.match(footer, backgroundIncludes('material-glass-sheet'))
+  // settings-footer 是 fixed 底部 chrome，保留玻璃
+  assert.match(footer, /background:[\s\S]*var\(--material-glass-sheet\)/)
   assert.match(footer, /border-top:\s*1px solid var\(--glass-edge\)/)
   assert.match(content, /display:\s*grid/)
   assert.match(content, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/)
@@ -478,7 +481,7 @@ test('advanced import flow marks dangerous and busy states explicitly', () => {
   const busyPanel = cssBlock('.javinfo-import-panel[aria-busy="true"]')
 
   assert.match(stack, /display:\s*grid/)
-  assert.match(group, backgroundIncludes('material-glass-sheet'))
+  assert.match(group, /background:\s*var\(--card\)/)
   assert.match(dangerZone, /border-color:\s*var\(--badge-error-border\)/)
   assert.match(stepList, /counter-reset:\s*import-step/)
   assert.match(step, /grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)/)
@@ -497,7 +500,7 @@ test('advanced settings chunk keeps every panel in grouped settings rows', () =>
   const control = cssBlock('.advanced-settings-group .settings-control')
   const list = cssBlock('.advanced-settings-group .settings-list')
 
-  assert.match(list, backgroundIncludes('material-glass-subtle'))
+  assert.match(list, /background:\s*var\(--card\)/)
   assert.match(row, /grid-template-columns:\s*minmax\(180px,\s*0\.42fr\)\s+minmax\(0,\s*1fr\)/)
   assert.match(control, /justify-self:\s*end/)
 })
@@ -592,8 +595,8 @@ test('advanced import exposes a macOS-style readiness summary before danger acti
   const pending = cssBlock('.readiness-row.pending')
   const note = cssBlock('.danger-action-note')
 
-  assert.match(summary, backgroundIncludes('material-glass-subtle'))
-  assert.match(summary, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(summary, /background:\s*var\(--card\)/)
+  assert.match(summary, /border:\s*1px solid var\(--hairline\)/)
   assert.match(row, /grid-template-columns:\s*16px\s+minmax\(0,\s*1fr\)/)
   assert.match(ready, /color:\s*var\(--badge-success-text\)/)
   assert.match(pending, /color:\s*var\(--text-muted\)/)
@@ -700,8 +703,8 @@ test('advanced export flow exposes readiness and busy status before download act
   const note = cssBlock('.export-action-note')
 
   assert.match(group, /cursor:\s*progress/)
-  assert.match(summary, backgroundIncludes('material-glass-subtle'))
-  assert.match(summary, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(summary, /background:\s*var\(--card\)/)
+  assert.match(summary, /border:\s*1px solid var\(--hairline\)/)
   assert.match(row, /grid-template-columns:\s*16px\s+minmax\(0,\s*1fr\)/)
   assert.match(ready, /color:\s*var\(--badge-success-text\)/)
   assert.match(pending, /color:\s*var\(--text-muted\)/)
@@ -809,7 +812,7 @@ test('advanced import file and confirmation controls use row-native settings str
 
   assert.match(fileRow, /align-items:\s*start/)
   assert.match(fileControl, /border:\s*1px dashed var\(--glass-control-border\)/)
-  assert.match(fileControl, backgroundIncludes('material-glass-subtle'))
+  assert.match(fileControl, /background:\s*var\(--card\)/)
   assert.match(confirmRow, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/)
   assert.match(confirmRow, /cursor:\s*pointer/)
 })

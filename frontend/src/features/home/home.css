@@ -26,14 +26,10 @@
 }
 
 .stat-card {
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  /* v2 内容层去玻璃：统计卡 = 实底（对齐 Today 仪表盘 stat 卡） */
+  border: 1px solid var(--hairline);
+  background: var(--card);
+  box-shadow: none;
   border-radius: var(--radius-lg);
   padding: 20px;
   display: flex;
@@ -54,12 +50,9 @@
 }
 .stat-card:hover {
   transform: translateY(-2px);
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover, var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .stat-icon {
@@ -70,12 +63,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card-2, var(--card));
+  border: 1px solid var(--hairline);
+  box-shadow: none;
   color: var(--text-secondary);
 }
 .stat-icon svg { width: 24px; height: 24px; }
@@ -110,29 +100,21 @@
   margin: -8px 0 18px;
 }
 .candidate-metric {
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
+  background: var(--card);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   min-width: 0;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .candidate-metric:hover {
-  border-color: var(--glass-control-border-hover);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover, var(--card));
+  box-shadow: var(--shadow-card);
   transform: translateY(-2px);
 }
 /* WAVE-3 D1: A1 ramp — callout for chip value, caption-1 for chip label,
@@ -178,12 +160,9 @@
   max-width: 100%;
   overflow: hidden;
   padding: 5px 9px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: 12px;
   white-space: nowrap;
@@ -223,15 +202,10 @@
   gap: 4px;
   padding: 4px;
   margin-bottom: 16px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  box-shadow: none;
 }
 .tab-btn {
   display: inline-flex;

@@ -550,10 +550,8 @@ export default {
   z-index: var(--z-raised);
   border: 1px solid var(--glass-edge);
   border-radius: 22px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: none;
 }
 .result-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .result-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
@@ -601,10 +599,8 @@ export default {
   padding: 6px;
   border: 1px solid var(--glass-edge);
   border-radius: 22px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: none;
 }
 .pagination-bar.bottom { border-top: 1px solid var(--glass-edge); }
 .page-btn {
@@ -669,11 +665,9 @@ export default {
 
 .genre-detail-page :deep(.apple-empty-state),
 .genre-detail-page :deep(.apple-error-state) {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   border: 1px solid var(--glass-edge-strong);
   box-shadow: var(--shadow-sheet), var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
 }
 
 .genre-detail-page :deep(.variant-group-disclosure__toggle:focus-visible) {

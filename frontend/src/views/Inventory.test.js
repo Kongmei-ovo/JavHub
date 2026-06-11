@@ -258,10 +258,11 @@ test('inventory controls use shared Apple glass materials', () => {
   }
   assert.doesNotMatch([searchFocus, pageButtonHover, jumpButtonHover].join('\n'), /^.*background:\s*var\(--material-glass-control-hover\);.*$/gm)
 
-  assertLayeredBackground(jobsDialog, '--material-glass-sheet', 'inventory jobs dialog')
+  // v2 内容层去玻璃：对话框面板 = 实底
+  assert.match(jobsDialog, /background:\s*var\(--card\)/, 'inventory jobs dialog should be solid --card')
   assert.match(jobsDialog, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(jobsDialog, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
-  assert.match(jobsDialog, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(jobsDialog, /box-shadow:\s*var\(--shadow-sheet\)/)
+  assert.doesNotMatch(jobsDialog, /backdrop-filter/)
   assert.match(dialogOverlay, /background:\s*var\(--surface-scrim\)/)
   assert.match(dialogOverlay, /z-index:\s*var\(--z-modal\)/)
   assert.match(dialogOverlay, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
@@ -290,13 +291,13 @@ test('inventory actor cards and skeletons use shared Apple glass surfaces', () =
   assert.match(actorCardHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(actorCardHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
-  assertLayeredBackground(actorCover, '--material-glass-subtle', 'inventory actor cover')
+  assert.match(actorCover, /background:\s*var\(--card\)/, 'inventory actor cover should be solid --card')
   // WAVE-4 D3: hairline divider via inset box-shadow avoids double-borders.
   assert.match(actorCover, /(?:border-bottom:\s*1px solid var\(--glass-control-border\)|box-shadow:\s*inset 0 -1px 0 var\(--glass-control-border\))/)
 
   for (const block of [skeletonCover, skeletonLine]) {
-    assertLayeredBackground(block, '--material-glass-subtle', 'inventory skeleton')
-    assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
+    assert.match(block, /background:\s*var\(--card\)/, 'inventory skeleton should be solid --card')
+    assert.match(block, /border:\s*1px solid var\(--hairline\)/)
     assert.doesNotMatch(block, /var\(--bg-card-hover\)|var\(--surface-card-hover\)|rgba\(255,\s*255,\s*255/)
   }
   assert.doesNotMatch([actorCard, actorCardHover, actorCover, skeletonCover, skeletonLine].join('\n'), /^.*background:\s*var\(--(?:material-glass-control|material-glass-control-hover|material-glass-subtle)\);.*$/gm)

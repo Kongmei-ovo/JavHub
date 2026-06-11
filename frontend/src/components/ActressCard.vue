@@ -72,12 +72,11 @@ const handleImgError = (e) => {
 
 <style scoped>
 .actress-card {
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  border: 1px solid var(--glass-control-border);
+  /* v2 内容层去玻璃：内容卡片 = 实底 */
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   overflow: hidden;
   cursor: pointer;
   color: var(--text-primary);
@@ -87,18 +86,17 @@ const handleImgError = (e) => {
 
 .actress-card:hover {
   transform: translateY(-2px);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  background: var(--card-hover, var(--card));
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-card);
 }
 
 .actress-card:focus-visible {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover, var(--card));
   box-shadow:
-    var(--glass-control-shadow-hover),
-    var(--focus-ring-wide),
-    var(--glass-inner-shadow);
+    var(--shadow-card),
+    var(--focus-ring-wide);
 }
 
 .actress-card:active {
@@ -111,11 +109,8 @@ const handleImgError = (e) => {
   width: 100%;
   aspect-ratio: 3/4;
   overflow: hidden;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .cover-img {

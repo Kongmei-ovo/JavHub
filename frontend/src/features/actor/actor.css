@@ -10,13 +10,8 @@
   padding: 28px 30px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-xl);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
   gap: 24px;
 }
 
@@ -270,16 +265,13 @@
   gap: 6px;
   min-height: 44px;
   padding: 6px 14px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
@@ -492,11 +484,8 @@
   border-radius: 8px;
   color: var(--text-muted);
   font-size: 13px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .load-more-wrap {
@@ -532,18 +521,15 @@
 }
 
 .year-nav-item {
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  border: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
   text-align: center;
   min-width: 32px;

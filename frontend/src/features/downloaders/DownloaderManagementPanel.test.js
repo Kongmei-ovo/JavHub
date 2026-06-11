@@ -92,9 +92,9 @@ test('downloader panel controls use shared Apple glass materials', () => {
     assert.match(block, /transform:\s*translateY\(-1px\)/, `${name} should lift lightly`)
   }
 
-  assert.ok(backgroundIncludes(downloaderAvatarMuted, '--material-glass-subtle'))
-  assert.match(downloaderAvatarMuted, /var\(--surface-specular-edge\)/)
-  assert.match(downloaderAvatarMuted, /var\(--surface-noise\)/)
+  assert.match(downloaderAvatarMuted, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(downloaderAvatarMuted, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(downloaderAvatarMuted, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.match(switchTrackChecked, /border-color:\s*var\(--badge-success-border\)/)
   assert.ok(backgroundIncludes(switchTrackChecked, '--badge-success-bg'))
   assert.match(switchTrackChecked, /var\(--surface-specular-edge-strong\)/)
@@ -126,9 +126,9 @@ test('downloader panel controls use shared Apple glass materials', () => {
   assert.doesNotMatch(iconActionDangerFocus, /rgba\(var\(--accent-rgb\)|rgba\(var\(--error-rgb\)/)
   assert.match(inlineDialogOverlay, /background:\s*var\(--surface-scrim\)/)
   assert.match(inlineDialogOverlay, /z-index:\s*var\(--z-modal\)/)
-  assert.ok(backgroundIncludes(inlineDialog, '--material-glass-sheet'))
-  assert.match(inlineDialog, /var\(--surface-specular-edge-strong\)/)
-  assert.match(inlineDialog, /var\(--surface-noise\)/)
+  assert.match(inlineDialog, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(inlineDialog, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(inlineDialog, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.match(inlineDialog, /box-shadow:\s*var\(--shadow-sheet\)/)
 
   assert.doesNotMatch(downloaderRow, /var\(--border\)/)
@@ -158,15 +158,16 @@ test('downloader panel glass backgrounds are layered with specular and noise sur
     ['.downloader-row', '--material-glass-control'],
     ['.downloader-row:hover', '--material-glass-control-hover'],
     ['.downloader-avatar', '--material-glass-control'],
-    ['.downloader-avatar.muted', '--material-glass-subtle'],
+    ['.downloader-avatar.muted', '--card'], // v2 实底
     ['.switch-mini span', '--material-glass-control'],
     ['.switch-mini input:checked + span', '--badge-success-bg'],
-    ['.inline-dialog', '--material-glass-sheet'],
+    ['.inline-dialog', '--card'], // v2 实底
     ['.dialog-close-btn', '--material-glass-control'],
     ['.downloader-sheet-section', '--material-glass-control'],
   ]) {
     const block = cssBlock(source, selector)
     assert.ok(backgroundIncludes(block, token), `${selector} should include ${token}`)
+    if (token === '--card') continue // v2 实底块没有玻璃分层
     assert.match(block, /var\(--surface-specular-edge/, `${selector} should include a specular edge layer`)
     assert.match(block, /var\(--surface-noise\)/, `${selector} should include the shared noise layer`)
   }

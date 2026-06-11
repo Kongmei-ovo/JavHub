@@ -196,10 +196,10 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.match(variantSwitch, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.doesNotMatch(variantSwitch, /rgba\(255,\s*255,\s*255/)
 
-  assert.match(switchButton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(switchButton, '--material-glass-subtle'))
-  assert.match(switchButton, /var\(--surface-specular-edge/)
-  assert.match(switchButton, /var\(--surface-noise\)/)
+  assert.match(switchButton, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(switchButton, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(switchButton, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(switchButton, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.ok(backgroundIncludes(switchButtonHover, '--material-glass-control-hover'))
   assert.match(switchButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.ok(backgroundIncludes(switchButtonActive, '--glass-active-material'))
@@ -218,13 +218,12 @@ test('actor page version and year controls use shared Apple glass materials', ()
   assert.match(variantInlineLabel, /border:\s*1px solid var\(--badge-info-border\)/)
   assert.match(variantInlineLabel, /color:\s*var\(--badge-info-text\)/)
 
+  // year-nav 是 fixed 浮动 chrome，保留玻璃；item 为实底
   assert.match(yearNav, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(yearNav, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(yearNavItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(yearNavItem, '--material-glass-subtle'))
-  assert.match(yearNavItem, /var\(--surface-specular-edge/)
-  assert.match(yearNavItem, /var\(--surface-noise\)/)
-  assert.match(yearNavItem, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(yearNavItem, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(yearNavItem, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(yearNavItem, /var\(--surface-specular-edge|var\(--surface-noise\)/)
   assert.doesNotMatch(yearNavItem, /transparent/)
   assert.ok(backgroundIncludes(yearNavItemHover, '--material-glass-control-hover'))
   assert.match(yearNavItemHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
@@ -249,10 +248,10 @@ test('actor page loading and year empty states use shared subtle materials', () 
   assert.doesNotMatch(yearHeader, /rgba\(255,\s*255,\s*255/)
 
   assert.match(yearEmpty, /border:\s*1px dashed var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(yearEmpty, '--material-glass-subtle'))
-  assert.match(yearEmpty, /var\(--surface-specular-edge/)
-  assert.match(yearEmpty, /var\(--surface-noise\)/)
-  assert.match(yearEmpty, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(yearEmpty, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(yearEmpty, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(yearEmpty, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.match(yearEmpty, /box-shadow:\s*none/)
   assert.doesNotMatch(yearEmpty, /rgba\(255,\s*255,\s*255/)
 })
 
@@ -272,9 +271,9 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   const sectionHeader = cssBlock('.section-header')
   const supplementCard = cssBlock('.supplement-card')
 
-  assert.ok(backgroundIncludes(actorHero, '--material-glass-sheet'))
+  assert.match(actorHero, /background:\s*var\(--card\)/)
   assert.match(actorHero, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(actorHero, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(actorHero, /box-shadow:\s*var\(--shadow-card\)/)
   assert.doesNotMatch(actorHero, /var\(--bg-secondary\)|var\(--bg-primary\)/)
 
   assert.ok(backgroundIncludes(actorAvatar, '--material-glass-control'))
@@ -353,7 +352,12 @@ test('actor glass backgrounds are layered with specular and noise surfaces', () 
     '.supplement-card',
   ]) {
     const block = cssBlock(selector)
-    assert.match(block, /var\(--surface-specular-edge/)
-    assert.match(block, /var\(--surface-noise\)/)
+    // v2：实底块不得有玻璃分层；仍是玻璃的块（chrome/控件态）必须分层完整
+    if (/background:\s*var\(--card\b/.test(block)) {
+      assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/, `${selector} solid block should not keep glass layers`)
+    } else if (/var\(--material-glass|var\(--glass-active-material\)|var\(--badge-\w+-bg\)/.test(block)) {
+      assert.match(block, /var\(--surface-specular-edge/, `${selector} glass block should keep a specular edge layer`)
+      assert.match(block, /var\(--surface-noise\)/, `${selector} glass block should keep the shared noise layer`)
+    }
   }
 })

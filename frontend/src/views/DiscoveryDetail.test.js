@@ -238,20 +238,20 @@ test('discovery detail bars and state panels use compact glass trays', () => {
   const statePanelBlock = cssBlock('.genre-detail-page :deep(.apple-empty-state),\n.genre-detail-page :deep(.apple-error-state)')
   const skeletonGridBlock = cssBlock('.skeleton-grid')
 
+  // v2 内容层去玻璃：result/pagination 工具条与状态面板 = 实底
   for (const [block, name] of [[resultBarBlock, 'result bar'], [paginationBarBlock, 'pagination bar']]) {
-    assertLayeredBackground(block, '--material-glass-sheet', name)
+    assert.match(block, /background:\s*var\(--card\)/, `${name} should be solid --card`)
     assert.match(block, /border:\s*1px solid var\(--glass-edge\)/, `${name} should use shared glass edge`)
-    assert.match(block, /box-shadow:\s*var\(--glass-inner-shadow\)/, `${name} should keep an inner refractive edge`)
-    assert.match(block, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/, `${name} should use surface blur`)
+    assert.doesNotMatch(block, /backdrop-filter/, `${name} should not blur`)
   }
 
   assert.match(resultBarBlock, /padding:\s*6px/)
   assert.match(paginationBarBlock, /width:\s*fit-content/)
   assert.match(paginationBarBlock, /max-width:\s*calc\(100% - var\(--page-gutter\) - var\(--page-gutter\)\)/)
-  assertLayeredBackground(statePanelBlock, '--material-glass-sheet', 'state panel')
+  assert.match(statePanelBlock, /background:\s*var\(--card\)/)
   assert.match(statePanelBlock, /border:\s*1px solid var\(--glass-edge-strong\)/)
-  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\),\s*var\(--glass-surface-shadow\)/)
-  assert.match(statePanelBlock, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)\s*saturate\(var\(--glass-saturate-surface\)\)/)
+  assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
+  assert.doesNotMatch(statePanelBlock, /backdrop-filter/)
   assert.match(skeletonGridBlock, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(180px,\s*1fr\)\)/)
   assert.match(skeletonGridBlock, /align-items:\s*start/)
 })

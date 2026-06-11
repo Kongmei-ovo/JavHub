@@ -19,10 +19,10 @@ function cssBlock(selector) {
 test('AppleSkeleton card loading state uses layered subtle glass material', () => {
   const card = cssBlock('.apple-skeleton--card')
 
-  assert.match(card, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
-  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(card, /background:\s*var\(--card\)/)
+  assert.match(card, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(card, /box-shadow:\s*(?:none|var\(--shadow-card\))/)
+  assert.doesNotMatch(card, /backdrop-filter/)
   assert.doesNotMatch(card, /background:\s*var\(--material-glass-subtle\);/)
   assert.doesNotMatch(card, /var\(--surface-card\)|var\(--border\)|var\(--glass-surface-shadow\)|var\(--glass-blur-surface\)/)
 })

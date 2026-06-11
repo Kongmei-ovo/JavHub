@@ -62,29 +62,24 @@ test('ActorPortraitCard renders accessible lazy portrait media and fallback', ()
 })
 
 test('ActorPortraitCard shell and portrait well use shared Apple glass surfaces', () => {
+  // v2 内容层去玻璃：内容卡片实底（--card + --hairline），玻璃只留海报上的浮层控件
   const cardRule = cssRule('.actor-portrait-card')
   const hoverRule = cssRule('.actor-portrait-card:hover')
-  const focusRule = cssRule('.actor-portrait-card:focus-visible')
   const mediaRule = cssRule('.actor-portrait-card__media')
 
-  assert.match(cardRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
-  assert.match(cardRule, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(cardRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(cardRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(cardRule, /background:\s*var\(--card\)/)
+  assert.match(cardRule, /border:\s*1px solid var\(--hairline\)/)
+  assert.doesNotMatch(cardRule, /backdrop-filter/)
 
-  assert.match(hoverRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(hoverRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(hoverRule, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
+  assert.match(hoverRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(hoverRule, /box-shadow:\s*var\(--shadow-card\)/)
 
-  assert.match(focusRule, /var\(--glass-active-shadow\)/)
-
-  assert.match(mediaRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
-  assert.match(mediaRule, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(mediaRule, /box-shadow:\s*var\(--glass-inner-shadow\)/)
-  assert.doesNotMatch(mediaRule, /background:\s*var\(--material-glass-subtle\);/)
+  assert.match(mediaRule, /background:\s*var\(--card\)/)
+  assert.match(mediaRule, /border:\s*1px solid var\(--hairline\)/)
+  assert.doesNotMatch(mediaRule, /backdrop-filter|var\(--material-glass/)
 
   for (const rule of [cardRule, hoverRule, mediaRule]) {
-    assert.doesNotMatch(rule, /var\(--surface-card\)|var\(--surface-card-hover\)|var\(--shadow-card\)|rgba\(255,\s*255,\s*255/)
+    assert.doesNotMatch(rule, /var\(--surface-card\)|var\(--surface-card-hover\)|rgba\(255,\s*255,\s*255/)
   }
 
   assert.doesNotMatch(source, /@media \(prefers-color-scheme:\s*dark\)[\s\S]*var\(--surface-card\)/)
@@ -96,9 +91,8 @@ test('ActorPortraitCard mirrors glass hover motion for keyboard focus and action
   const actionFocusRule = cssRule('.actor-portrait-card__favorite:focus-visible,\n.actor-portrait-card__subscribe:focus-visible')
   const actionActiveRule = cssRule('.actor-portrait-card__favorite:active,\n.actor-portrait-card__subscribe:active')
 
-  assert.match(focusRule, /border-color:\s*var\(--glass-control-border-hover\)/)
-  assert.match(focusRule, /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-control-hover\)/)
-  assert.match(focusRule, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring-wide\)/)
+  assert.match(focusRule, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(focusRule, /box-shadow:\s*var\(--shadow-card\),\s*var\(--focus-ring-wide\)/)
   assert.match(imageFocusRule, /transform:\s*scale\(1\.03\)/)
 
   assert.match(actionFocusRule, /outline:\s*none/)
@@ -200,7 +194,7 @@ test('ActorPortraitCard keeps unfavorited heart neutral and reserves red for act
 
   assert.match(source, /:fill="favorited \? 'currentColor' : 'none'"/)
   assert.match(source, /class="actor-portrait-card__favorite"[\s\S]*stroke="currentColor"/)
-  assert.match(sharedActionRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/)
+  assert.match(sharedActionRule, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(sharedActionRule, /border:\s*1px solid var\(--glass-edge\)/)
   assert.match(sharedActionRule, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(sharedActionRule, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)

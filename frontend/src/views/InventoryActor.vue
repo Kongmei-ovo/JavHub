@@ -357,12 +357,10 @@ onMounted(async () => {
   display: inline-flex;
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  box-shadow: none;
   margin-bottom: 20px;
 }
 .tab-btn {
@@ -439,8 +437,8 @@ onMounted(async () => {
 }
 .video-cover {
   aspect-ratio: 3/4;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
   overflow: hidden;
 }
 .video-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -493,9 +491,9 @@ onMounted(async () => {
 .loading, .empty {
   text-align: center;
   padding: 40px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
 }
 

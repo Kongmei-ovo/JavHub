@@ -420,7 +420,7 @@ export default {
 }
 .downloader-avatar.muted {
   color: var(--text-muted);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
 }
 .downloader-copy {
   min-width: 0;
@@ -592,12 +592,10 @@ export default {
 }
 .inline-dialog {
   width: min(560px, 100%);
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 20px;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   box-shadow: var(--shadow-sheet);
-  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   padding: 18px;
 }
 .inline-dialog-header {

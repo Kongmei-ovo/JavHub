@@ -66,19 +66,19 @@ test('logs summary and list surfaces avoid legacy flat cards', () => {
   const warningLevel = cssBlock('.level-warning')
   const errorLevel = cssBlock('.level-error')
 
-  assert.match(summaryItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(summaryItem, '--material-glass-control'))
-  assert.match(summaryItem, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(summaryItem, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
+  assert.match(summaryItem, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(summaryItem, /background:\s*var\(--card\)/)
+  assert.match(summaryItem, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(summaryItem, /backdrop-filter/)
 
-  assert.ok(backgroundIncludes(container, '--material-glass-sheet'))
-  assert.match(container, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(container, /box-shadow:\s*var\(--glass-surface-shadow\)/)
-  assert.match(container, /backdrop-filter:\s*blur\(var\(--glass-blur-surface\)\)/)
-  assert.doesNotMatch(`${summaryItem}\n${container}`, /var\(--surface-card\)|var\(--bg-card\)|var\(--border\)|var\(--shadow-card\)/)
+  assert.match(container, /background:\s*var\(--card\)/)
+  assert.match(container, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(container, /box-shadow:\s*var\(--shadow-card\)/)
+  assert.doesNotMatch(container, /backdrop-filter/)
+  assert.doesNotMatch(`${summaryItem}\n${container}`, /var\(--surface-card\)|var\(--bg-card\)|var\(--border\)/)
 
   assert.match(logItem, /border-bottom:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(empty, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
+  assert.match(empty, /background:\s*var\(--card\)/)
 
   assert.ok(backgroundIncludes(paginationButton, '--material-glass-control'))
   assert.match(paginationButton, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -165,9 +165,9 @@ test('logs console rows expose calm status badges and scan states', () => {
   assert.match(logItemLevel, /width:\s*2px/)
   assert.match(logItemLevel, /background:\s*var\(--glass-control-border\)/)
   assert.match(logLevel, /min-height:\s*22px/)
-  assert.match(logLevel, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(logLevel, /border:\s*1px solid var\(--hairline\)/)
   assert.match(logLevel, /border-radius:\s*var\(--radius-xs\)/)
-  assert.match(infoLevel, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
+  assert.match(infoLevel, /background:\s*var\(--card\)/)
   assert.match(warningLevel, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-warning-bg\)/)
   assert.match(errorLevel, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--badge-error-bg\)/)
   assert.match(source, /@media \(max-width: 768px\)[\s\S]*\.log-table-head\s*\{\s*display:\s*none/)
@@ -234,7 +234,7 @@ test('logs active filters are visible as compact console tokens', () => {
   assert.match(ledger, /border-top:\s*1px solid var\(--glass-control-border\)/)
   assert.match(token, /font-family:\s*var\(--font-mono\)/)
   assert.match(token, /font-variant-numeric:\s*tabular-nums/)
-  assert.match(token, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-subtle\)/)
+  assert.match(token, /background:\s*var\(--card\)/)
   assert.match(reset, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(reset, /background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)/)
   assert.match(resetFocus, /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
@@ -295,7 +295,12 @@ test('logs glass backgrounds are layered with specular and noise surfaces', () =
   ]
 
   for (const block of layeredBlocks) {
-    assert.match(block, /var\(--surface-specular-edge/)
-    assert.match(block, /var\(--surface-noise\)/)
+    // v2：实底块不得有玻璃分层；仍是玻璃的块必须分层完整
+    if (/background:\s*var\(--card\b/.test(block)) {
+      assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+    } else if (/var\(--material-glass|var\(--glass-active-material\)/.test(block)) {
+      assert.match(block, /var\(--surface-specular-edge/)
+      assert.match(block, /var\(--surface-noise\)/)
+    }
   }
 })

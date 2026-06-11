@@ -14,20 +14,12 @@
   overflow: hidden;
   border: 1px solid var(--glass-edge-strong);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .organize-header::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.42;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   --organize-header-mask-start: var(--media-edge-mask-strong);
   --organize-header-mask-end: var(--media-edge-mask-clear);
   mask-image: linear-gradient(90deg, var(--organize-header-mask-start), var(--organize-header-mask-end) 74%);
@@ -74,12 +66,7 @@
 .organize-status {
   display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;
   margin-bottom: 10px; padding: 6px; overflow: hidden; border-color: var(--glass-edge);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
 }
 .status-cell {
   position: relative; min-width: 0; min-height: 54px; padding: 8px 10px;
@@ -151,13 +138,8 @@
   padding: 14px 16px;
   border: 1px solid var(--glass-edge-strong);
   border-radius: var(--radius-card);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .setup-banner strong,
 .setup-banner span {
@@ -170,10 +152,7 @@
   padding: 6px;
   overflow-x: auto;
   border-radius: var(--radius-card);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
+  background: var(--card);
 }
 .tab-btn {
   display: inline-flex;
@@ -232,8 +211,8 @@
 }
 .tab-count {
   display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px;
-  padding: 0 6px; border: 1px solid var(--glass-control-border); border-radius: var(--radius-sm);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  padding: 0 6px; border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+  background: var(--card);
   color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums;
 }
 .tab-btn.active .tab-count { border-color: var(--glass-active-border);
@@ -253,13 +232,8 @@
   overflow: hidden;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .workbench-panel {
   padding: 14px;
@@ -572,12 +546,9 @@
   min-height: 28px;
   overflow: hidden;
   padding: 5px 9px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--type-micro);
@@ -659,13 +630,10 @@
   width: 72px;
   height: 92px;
   overflow: hidden;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .actor-avatar.small {
   width: 48px;
@@ -735,14 +703,11 @@
 .poster-fallback {
   width: 58px;
   aspect-ratio: 3 / 4;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-xs);
   object-fit: cover;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .poster-fallback {
   display: flex;
@@ -896,17 +861,11 @@
 }
 :global(:root[data-theme="dark"] .organize-header) {
   border-color: var(--glass-edge-strong);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-elevated);
+  background: var(--card);
 }
 :global(:root[data-theme="dark"] .organize-header::before) {
   opacity: 0.22;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 :global(:root[data-theme="dark"] .workbench-panel::before) {
   opacity: 0.28;
@@ -917,11 +876,8 @@
 :global(:root[data-theme="dark"] .loading-panel),
 :global(:root[data-theme="dark"] .empty-panel) {
   border-color: var(--glass-edge);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 :global(:root[data-theme="dark"] .status-cell),
 :global(:root[data-theme="dark"] .priority-row),

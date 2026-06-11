@@ -209,8 +209,8 @@
 .coverage-donut {
   --coverage-angle: 0deg;
   --translation-donut-track-base: color-mix(in srgb, var(--text-primary) 13%, transparent);
-  --translation-donut-hole-bg-base: var(--material-glass-sheet);
-  --translation-donut-hole-border-base: var(--glass-control-border);
+  --translation-donut-hole-bg-base: var(--card-2);
+  --translation-donut-hole-border-base: var(--hairline);
   --translation-donut-edge-base: var(--glass-edge);
   --translation-donut-ring-highlight: color-mix(in srgb, var(--text-primary) 24%, transparent);
   --translation-donut-glow-base: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -240,13 +240,13 @@
   border-radius: 50%;
   background: var(--donut-hole-bg);
   border: 1px solid var(--donut-hole-border);
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
 }
 
 :global(:root[data-theme='dark']) {
   --translation-donut-track: color-mix(in srgb, var(--text-primary) 13%, transparent);
-  --translation-donut-hole-bg: var(--material-glass-sheet);
-  --translation-donut-hole-border: var(--glass-control-border);
+  --translation-donut-hole-bg: var(--card-2);
+  --translation-donut-hole-border: var(--hairline);
   --translation-donut-edge: var(--glass-edge);
   --translation-donut-glow-depth: color-mix(in srgb, var(--bg-primary) 82%, transparent);
   --translation-donut-glow: var(--translation-donut-glow-depth);
@@ -353,11 +353,8 @@
   height: 10px;
   overflow: hidden;
   border-radius: var(--radius-control);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .overview-track.compact {
@@ -478,10 +475,7 @@
 }
 
 .job-control-card.empty {
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 
 .job-control-head,
@@ -529,13 +523,10 @@
   display: grid;
   align-content: center;
   gap: 5px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .job-control-metrics span,
@@ -576,7 +567,7 @@
   border-color: var(--badge-error-border);
   border-radius: var(--radius-md);
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
@@ -852,15 +843,12 @@
   min-height: 26px;
   padding: 4px 9px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  border: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   white-space: nowrap;
 }
 
@@ -910,10 +898,7 @@
 
 .status-invalid {
   color: var(--text-secondary);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
 }
 
 .panel-footer-actions {
@@ -981,11 +966,8 @@
   color: var(--text-secondary);
   border: 1px dashed var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .empty-panel.compact {

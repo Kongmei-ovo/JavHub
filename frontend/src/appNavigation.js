@@ -71,10 +71,10 @@ export const mobileMoreItems = [
 export const navActivePaths = {
   '/': ['/', '/today'],
   '/candidates': ['/candidates'],
-  '/search': ['/search', '/actor', '/library'],
+  '/search': ['/search', '/library'],
   '/genres': ['/genres', '/discovery'],
   '/downloads': ['/downloads', '/tasks'],
-  '/entities': ['/entities', '/entity'],
+  '/entities': ['/entities', '/entity', '/actor'],
   '/subscription': ['/subscription', '/subscriptions'],
   '/library-organize': ['/library-organize', '/inventory', '/duplicates', '/normalize'],
   '/supplement': ['/supplement', '/supplement/actor', '/supplement/movies', '/supplement/jobs', '/supplement/sources', '/supplement/stats'],

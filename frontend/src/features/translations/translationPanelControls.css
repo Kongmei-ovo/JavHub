@@ -120,15 +120,12 @@
   min-height: 26px;
   padding: 4px 9px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  border: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
-  box-shadow: var(--glass-inner-shadow);
+  box-shadow: none;
   white-space: nowrap;
 }
 
@@ -198,11 +195,8 @@
   color: var(--text-secondary);
   border: 1px dashed var(--glass-control-border);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .empty-panel.compact {

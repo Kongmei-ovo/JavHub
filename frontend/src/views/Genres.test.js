@@ -44,10 +44,10 @@ test('genres tab state is restored from and written to the route query', () => {
 
 test('genres actress cards use shared Apple glass pressable media chrome', () => {
   const card = cssBlock('.actress-card')
-  assert.ok(backgroundIncludes(card, '--material-glass-subtle'))
-  assert.match(card, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(card, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(card, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(card, /background:\s*var\(--card\)/)
+  assert.match(card, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(card, /box-shadow:\s*(?:none|var\(--shadow-card\))/)
+  assert.doesNotMatch(card, /backdrop-filter/)
   assert.match(card, /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(card, /transition:[^;]*background/)
   assert.doesNotMatch(card, /background:\s*transparent|border:\s*0|transition:\s*all/)
@@ -107,12 +107,12 @@ test('genres loading and actress skeletons use shared Apple glass materials', ()
   assert.match(source, /<AppleSkeleton\s+v-if="seriesLoading"[\s\S]*label="系列加载中"/)
   assert.doesNotMatch(source, /<div class="spinner-large"><\/div>/)
 
-  assert.ok(backgroundIncludes(skeleton, '--material-glass-subtle'))
-  assert.match(skeleton, /var\(--surface-specular-edge/)
-  assert.match(skeleton, /var\(--surface-noise\)/)
-  assert.match(skeleton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(skeleton, /box-shadow:\s*var\(--glass-inner-shadow\)/)
-  assert.match(skeleton, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  assert.match(skeleton, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(skeleton, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(skeleton, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.match(skeleton, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(skeleton, /box-shadow:\s*none/)
+  assert.doesNotMatch(skeleton, /backdrop-filter/)
   assert.doesNotMatch(skeleton, /var\(--surface-control\)|var\(--border-light\)|rgba\(255,\s*255,\s*255/)
 
   assert.match(shimmer, /background:\s*linear-gradient\(100deg,\s*transparent 0%,\s*var\(--material-glass-control-hover\) 46%,\s*transparent 72%\)/)
@@ -141,7 +141,12 @@ test('genres glass backgrounds are layered with specular and noise surfaces', ()
   ]
 
   for (const block of layeredBlocks) {
-    assert.match(block, /var\(--surface-specular-edge/)
-    assert.match(block, /var\(--surface-noise\)/)
+    // v2：实底块不得有玻璃分层；仍是玻璃的块必须分层完整
+    if (/background:\s*var\(--card\b/.test(block)) {
+      assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+    } else if (/var\(--material-glass|var\(--glass-active-material\)/.test(block)) {
+      assert.match(block, /var\(--surface-specular-edge/)
+      assert.match(block, /var\(--surface-noise\)/)
+    }
   }
 })

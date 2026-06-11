@@ -24,9 +24,9 @@ function backgroundIncludes(block, token) {
 }
 
 function assertLayeredSubtle(block) {
-  assert.ok(backgroundIncludes(block, '--material-glass-subtle'))
-  assert.match(block, /var\(--surface-specular-edge/)
-  assert.match(block, /var\(--surface-noise\)/)
+  assert.match(block, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/)
 }
 
 function assertLayeredBackground(block, token, label) {
@@ -50,20 +50,20 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   const issueRow = cssBlock(source, '.issue-row')
 
   for (const block of [parseConsole, summaryItem, magnetsCard, magnetsHeader, magnetsList, magnetRow, magnetRowEven, magnetRowHover, magnetIndex, statusPill, issuePanel, issueRow]) {
-    assert.doesNotMatch(block, /var\(--surface-card\)|var\(--bg-card\)|var\(--bg-secondary\)|var\(--border\)|var\(--border-light\)|var\(--shadow-card\)|var\(--transition\)/)
+    assert.doesNotMatch(block, /var\(--surface-card\)|var\(--bg-card\)|var\(--bg-secondary\)|var\(--border\)|var\(--border-light\)|var\(--transition\)/)
   }
 
-  assert.ok(backgroundIncludes(parseConsole, '--material-glass-sheet'))
+  assert.match(parseConsole, /background:\s*var\(--card\)/)
   assert.match(parseConsole, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(parseConsole, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(parseConsole, /box-shadow:\s*var\(--shadow-card\)/)
 
   assertLayeredSubtle(summaryItem)
-  assert.match(summaryItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(summaryItem, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(summaryItem, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(summaryItem, /box-shadow:\s*none/)
 
-  assert.ok(backgroundIncludes(magnetsCard, '--material-glass-sheet'))
+  assert.match(magnetsCard, /background:\s*var\(--card\)/)
   assert.match(magnetsCard, /border:\s*1px solid var\(--glass-edge\)/)
-  assert.match(magnetsCard, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(magnetsCard, /box-shadow:\s*var\(--shadow-card\)/)
   assert.match(magnetsHeader, /border-bottom:\s*1px solid var\(--glass-edge\)/)
   assert.match(magnetsList, /gap:\s*8px/)
 
@@ -78,14 +78,14 @@ test('magnet parser workspace uses shared Apple glass surfaces', () => {
   assert.match(magnetRowHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
 
   assertLayeredSubtle(magnetIndex)
-  assert.match(magnetIndex, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(statusPill, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(magnetIndex, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(statusPill, /border:\s*1px solid var\(--hairline\)/)
   assertLayeredSubtle(statusPill)
-  assert.ok(backgroundIncludes(issuePanel, '--material-glass-sheet'))
+  assert.match(issuePanel, /background:\s*var\(--card\)/)
   assert.match(issuePanel, /border:\s*1px solid var\(--badge-warning-border\)/)
-  assert.match(issuePanel, /box-shadow:\s*var\(--glass-surface-shadow\)/)
+  assert.match(issuePanel, /box-shadow:\s*var\(--shadow-card\)/)
   assertLayeredSubtle(issueRow)
-  assert.match(issueRow, /border:\s*1px solid var\(--glass-control-border\)/)
+  assert.match(issueRow, /border:\s*1px solid var\(--hairline\)/)
   assert.match(source, /<AppleEmptyState/)
   assert.match(source, /class="parse-empty-state"/)
   assert.match(source, /action-label="重新解析"/)
@@ -150,7 +150,12 @@ test('magnet parser glass backgrounds are layered with specular and noise surfac
   ]
 
   for (const block of layeredBlocks) {
-    assert.match(block, /var\(--surface-specular-edge/)
-    assert.match(block, /var\(--surface-noise\)/)
+    // v2：实底块不得有玻璃分层；仍是玻璃的块必须分层完整
+    if (/background:\s*var\(--card\b/.test(block)) {
+      assert.doesNotMatch(block, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+    } else if (/var\(--material-glass|var\(--glass-active-material\)/.test(block)) {
+      assert.match(block, /var\(--surface-specular-edge/)
+      assert.match(block, /var\(--surface-noise\)/)
+    }
   }
 })

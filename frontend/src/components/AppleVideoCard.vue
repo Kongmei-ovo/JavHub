@@ -286,7 +286,7 @@ function handleKeydown(event) {
   max-width: 72px;
   padding: 3px 7px;
   border-radius: var(--radius-control);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   border: 1px solid var(--glass-edge);
   color: var(--text-primary);
   font-size: var(--type-badge);
@@ -295,9 +295,7 @@ function handleKeydown(event) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
 }
 
 .apple-video-card__badge {

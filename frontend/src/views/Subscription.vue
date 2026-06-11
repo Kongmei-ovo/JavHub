@@ -227,6 +227,7 @@ import { openVideoModal as openVideoModalFn } from '../utils/modalState.js'
 import { displayName } from '../utils/displayLang.js'
 import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import subscriptionState from '../utils/subscriptionState'
+import { hydrateSubscriptionActorMeta } from '../utils/subscriptionActorMeta.js'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
@@ -426,7 +427,9 @@ async function loadSubs() {
   loading.value = true
   try {
     const r = await api.getSubscriptions()
-    subs.value = mergeSinceLastReport(r.data?.data || r.data || [])
+    const items = mergeSinceLastReport(r.data?.data || r.data || [])
+    subs.value = items
+    await loadSubscriptionActorMetaForSubs(items)
   }
   catch (e) { console.error(e) } finally { loading.value = false }
 }
@@ -466,6 +469,14 @@ async function loadSubscriptionActorMeta(sub) {
     console.error(e)
   }
   return null
+}
+
+async function loadSubscriptionActorMetaForSubs(items) {
+  actressMetaMap.value = await hydrateSubscriptionActorMeta(
+    items,
+    actressMetaMap.value,
+    (actressId) => api.getActress(actressId),
+  )
 }
 
 async function checkAllNow() {

@@ -148,33 +148,31 @@ function emitSubscribe() {
   gap: 12px;
   width: 100%;
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  /* v2 内容层去玻璃：内容卡片 = 实底，玻璃只留 chrome 与浮层控件 */
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+  background: var(--card);
+  box-shadow: none;
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   transition: transform var(--motion-standard);
   outline: none;
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .actor-portrait-card:hover {
   transform: translateY(-2px);
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover, var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .actor-portrait-card:focus-visible {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
+  border-color: var(--hairline-strong);
+  background: var(--card-hover, var(--card));
   box-shadow:
-    var(--glass-control-shadow-hover),
-    var(--focus-ring-wide),
-    var(--glass-active-shadow);
+    var(--shadow-card),
+    var(--focus-ring-wide);
 }
 
 .actor-portrait-card:active {
@@ -187,13 +185,10 @@ function emitSubscribe() {
   position: relative;
   overflow: hidden;
   aspect-ratio: 3 / 4;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: calc(var(--radius-card) - 8px);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 
 .actor-portrait-card__media img,
@@ -236,7 +231,8 @@ function emitSubscribe() {
   padding: 0;
   border: 1px solid var(--glass-edge);
   border-radius: 50%;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-sheet);
+  /* 海报上的浮层控件保留玻璃材质（需要 backdrop 折射封面色彩） */
+  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-muted);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

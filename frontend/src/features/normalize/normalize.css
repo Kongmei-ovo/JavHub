@@ -23,8 +23,8 @@
   padding: 16px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .summary-card strong { display: block; font-size: var(--type-workbench-title); color: var(--text-primary); }
 .summary-card span { color: var(--text-secondary); font-size: var(--type-control); }
@@ -167,8 +167,8 @@
   padding: 14px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .actor-side { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
 .actor-copy { min-width: 0; }
@@ -230,16 +230,16 @@
   padding: 10px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .candidate-card.high { border-color: var(--badge-success-border); }
 .candidate-card.risky { border-color: var(--badge-warning-border); }
 .candidate-card:focus-within {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 .candidate-compare {
@@ -360,14 +360,14 @@
   margin-bottom: 8px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-sm);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-surface-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .mapping-row:focus-within {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-elevated);
-  box-shadow: var(--glass-control-shadow-hover), var(--glass-surface-shadow), var(--focus-ring);
+  border-color: var(--hairline-strong);
+  background: var(--card);
+  box-shadow: var(--shadow-card), var(--focus-ring);
   transform: translateY(-1px);
 }
 .mapping-target {

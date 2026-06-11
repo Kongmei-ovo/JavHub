@@ -46,7 +46,7 @@ function assertGlassControlHover(block, label) {
 }
 
 function assertGlassSubtle(block, label) {
-  assert.match(block, backgroundIncludes('material-glass-subtle'), `${label} should use the shared subtle material`)
+  assert.match(block, /background:\s*var\(--card\)/, `${label} should use the shared subtle material`)
   assert.match(block, /var\(--surface-specular-edge/, `${label} should include a specular edge layer`)
   assert.match(block, /var\(--surface-noise\)/, `${label} should include the shared noise layer`)
 }
@@ -126,9 +126,9 @@ test('home tab controls use shared Apple glass tokens', () => {
   const tabBadge = cssBlock(source, '.tab-badge')
   const tabBadgeSubtle = cssBlock(source, '.tab-badge.subtle')
 
-  assert.match(downloadTabs, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(downloadTabs, backgroundIncludes('material-glass-sheet'))
-  assert.match(downloadTabs, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(downloadTabs, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(downloadTabs, /background:\s*var\(--card\)/)
+  assert.match(downloadTabs, /box-shadow:\s*none/)
 
   for (const block of [tabButton]) {
     assert.match(block, /border:\s*1px solid var\(--glass-control-border\)/)
@@ -196,7 +196,6 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
   const taskError = cssBlock(source, '.task-error')
 
   for (const [block, label] of [
-    [statCard, 'stat cards'],
     [filterBar, 'filter bar'],
     [taskCover, 'task covers'],
     [coverPlaceholder, 'cover placeholders'],
@@ -205,17 +204,23 @@ test('home dashboard and task surfaces use shared Apple glass materials', () => 
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--bg-card\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
   }
 
+  // v2 内容层去玻璃：统计卡 = 实底（对齐 Today 仪表盘）
+  assert.match(statCard, /background:\s*var\(--card\)/, 'stat cards should be solid --card')
+  assert.match(statCard, /border:\s*1px solid var\(--hairline\)/, 'stat cards should use the hairline border')
+  assert.doesNotMatch(statCard, /backdrop-filter/, 'solid stat cards should not blur')
+  assert.match(statCardHover, /border-color:\s*var\(--hairline-strong\)/)
+  assert.match(statCardHover, /box-shadow:\s*var\(--shadow-card\)/)
+
   for (const [block, label] of [
-    [statCardHover, 'stat card hover'],
     [filterBarHover, 'filter bar hover'],
   ]) {
     assertGlassControlHover(block, label)
     assert.doesNotMatch(block, /var\(--surface-control-hover\)|var\(--border-light\)/)
   }
 
-  assertGlassSubtle(statIcon, 'stat icon')
-  assert.match(statIcon, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(statIcon, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(statIcon, /background:\s*var\(--card-2, var\(--card\)\)/, 'stat icon should sit on the secondary solid tone')
+  assert.match(statIcon, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(statIcon, /box-shadow:\s*none/)
 
   assert.match(coverOverlay, /--home-cover-scrim-clear:\s*var\(--media-caption-scrim-clear\)/)
   assert.match(coverOverlay, /--home-cover-scrim-strong:\s*var\(--media-caption-scrim-strong\)/)

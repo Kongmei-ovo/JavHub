@@ -551,14 +551,14 @@ export default {
 }
 .tab-btn {
   padding: 7px 20px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   color: var(--text-secondary);
   font-size: var(--type-body);
   font-weight: 650;
   cursor: pointer;
   border-radius: 999px;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
   display: inline-flex;
   align-items: center;
@@ -593,15 +593,13 @@ export default {
   gap: 9px;
   min-width: calc(var(--actress-avatar-size, 80px) + 22px);
   padding: 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: calc(var(--radius-card) - 2px);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
+  background: var(--card);
   color: inherit;
   font: inherit;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .actress-card:hover {
@@ -645,11 +643,9 @@ export default {
 .actress-skeleton-line {
   position: relative;
   overflow: hidden;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-subtle);
-  border: 1px solid var(--glass-control-border);
-  box-shadow: var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
 }
 .actress-skeleton-avatar {
   width: var(--actress-avatar-size, 80px);
@@ -685,12 +681,10 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 24px 18px;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-sheet);
+  background: var(--card);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
   gap: 12px;
 }
 

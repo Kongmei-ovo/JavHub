@@ -39,13 +39,8 @@
   padding: 18px;
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-lg);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-sheet);
-  box-shadow: var(--glass-surface-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 .advanced-settings-group .advanced-settings-header {
   margin-bottom: 16px;
@@ -56,13 +51,10 @@
 .advanced-settings-group .settings-list {
   display: grid;
   overflow: hidden;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .advanced-settings-group .settings-row {
   display: grid;
@@ -241,17 +233,14 @@
   min-width: 38px;
   min-height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
+  background: var(--card);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
+  box-shadow: none;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .segmented-mini button:hover {
@@ -302,13 +291,10 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .export-readiness-row {
   display: grid;
@@ -357,13 +343,10 @@
   display: grid;
   gap: 14px;
   padding: 16px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .javinfo-import-panel[aria-busy="true"] {
   cursor: progress;
@@ -499,13 +482,10 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .readiness-row {
   display: grid;
@@ -550,11 +530,8 @@
   padding: 10px;
   border: 1px dashed var(--glass-control-border);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .import-file-control[aria-disabled="true"] {
   cursor: progress;
@@ -762,13 +739,10 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--glass-control-border);
+  border: 1px solid var(--hairline);
   border-radius: 12px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-subtle);
-  box-shadow: var(--glass-inner-shadow);
+  background: var(--card);
+  box-shadow: none;
 }
 .import-progress-head,
 .import-job-row {

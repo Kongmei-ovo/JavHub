@@ -59,11 +59,11 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
     assert.doesNotMatch(block, /border:\s*(?:0|none|1px solid transparent)/)
   }
 
-  assert.match(tabBar, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(tabBar, '--material-glass-sheet'))
-  assert.match(tabBar, /var\(--surface-specular-edge-strong\)/)
-  assert.match(tabBar, /var\(--surface-noise\)/)
-  assert.match(tabBar, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(tabBar, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(tabBar, /background:\s*var\(--card\)/)
+  assert.doesNotMatch(tabBar, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.doesNotMatch(tabBar, /var\(--surface-specular-edge|var\(--surface-noise\)/)
+  assert.match(tabBar, /box-shadow:\s*none/)
 
   for (const block of [tabHover, videoCardHover, candidateButtonHover]) {
     assert.ok(backgroundIncludes(block, '--material-glass-control-hover'))
@@ -86,12 +86,11 @@ test('inventory actor workspace uses shared Apple glass controls', () => {
   assertLayeredBackground(mappingBannerUnmapped, '--badge-warning-bg', 'inventory actor unmapped banner')
   assert.match(mappingBannerUnmapped, /color:\s*var\(--badge-warning-text\)/)
 
-  assert.match(emptyState, /border:\s*1px solid var\(--glass-control-border\)/)
-  assertLayeredBackground(emptyState, '--material-glass-subtle', 'inventory actor empty state')
+  assert.match(emptyState, /border:\s*1px solid var\(--hairline\)/)
+  assert.match(emptyState, /background:\s*var\(--card\)/, 'inventory actor empty state should be solid --card')
   assert.match(yearTitle, /border-bottom:\s*1px solid var\(--glass-edge\)/)
   assert.doesNotMatch(yearTitle, /var\(--border\)/)
-  assertLayeredBackground(videoCover, '--material-glass-subtle', 'inventory actor video cover')
-  assert.match(videoCover, /box-shadow:\s*var\(--glass-inner-shadow\)/)
+  assert.match(videoCover, /background:\s*var\(--card\)/, 'inventory actor video cover should be solid --card')
 
   for (const block of [
     backButton,
@@ -155,18 +154,22 @@ test('inventory actor glass backgrounds are layered with specular and noise surf
     ['.back-btn:hover', '--material-glass-control-hover'],
     ['.mapping-link', '--material-glass-control'],
     ['.mapping-link:hover', '--material-glass-control-hover'],
-    ['.tab-bar', '--material-glass-sheet'],
+    ['.tab-bar', '--card'],
     ['.tab-btn', '--material-glass-control'],
     ['.tab-btn:hover', '--material-glass-control-hover'],
     ['.tab-btn.active', '--glass-active-material'],
     ['.video-card', '--material-glass-control'],
     ['.video-card:hover', '--material-glass-control-hover'],
-    ['.video-cover', '--material-glass-subtle'],
+    ['.video-cover', '--card'],
     ['.candidate-btn', '--material-glass-control'],
     ['.candidate-btn:hover', '--material-glass-control-hover'],
-    ['.loading', '--material-glass-subtle'],
+    ['.loading', '--card'],
   ]) {
     const block = cssBlock(source, selector)
+    if (token === '--card') {
+      assert.match(block, /background:\s*var\(--card\)/, `${selector} should be solid --card`)
+      continue
+    }
     assertLayeredBackground(block, token, selector)
   }
 })

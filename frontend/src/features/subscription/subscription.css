@@ -106,9 +106,7 @@
   border: 1px solid var(--subscription-control-border);
   border-radius: var(--radius-md);
   background: var(--subscription-sheet-bg);
-  box-shadow: var(--glass-surface-shadow), var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
 }
 
 .subscription-management-summary {
@@ -370,9 +368,7 @@
   border: 1px solid var(--subscription-control-border);
   border-radius: var(--radius-xl);
   background: var(--subscription-sheet-bg);
-  box-shadow: var(--glass-surface-shadow), var(--glass-inner-shadow);
-  backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
-  -webkit-backdrop-filter: blur(var(--glass-blur-surface)) saturate(var(--glass-saturate-surface));
+  box-shadow: var(--shadow-card);
 }
 
 .empty-state svg {
