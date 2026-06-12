@@ -132,6 +132,19 @@ class Config:
     def openlist_default_path(self) -> str:
         return self._config.get('openlist', {}).get('default_path', '/115/AV')
 
+    @property
+    def open115(self) -> dict:
+        value = self._config.get('open115', {})
+        return value if isinstance(value, dict) else {}
+
+    @property
+    def open115_app_id(self) -> str:
+        return _env('OPEN115_APP_ID', self.open115.get('app_id', ''))
+
+    @property
+    def open115_root_path(self) -> str:
+        return self.open115.get('root_path', '/JavHub')
+
     # ── library（自有云盘文件索引）──────────────────────────────
     @property
     def library_enabled(self) -> bool:

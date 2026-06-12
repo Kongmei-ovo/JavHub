@@ -17,6 +17,12 @@ openlist:
   password: ""
   default_path: "/115/AV"
 
+open115:
+  app_id: ""
+  root_path: "/JavHub"
+  # access_token / refresh_token are written by the dedicated binding API.
+  # They are intentionally omitted from config responses and exports.
+
 # 自有云盘文件索引（去 Emby 化，详见 docs/library-player.md）
 library:
   enabled: true
