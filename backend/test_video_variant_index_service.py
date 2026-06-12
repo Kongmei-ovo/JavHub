@@ -15,6 +15,7 @@ class VideoVariantIndexServiceTest(TempPostgresMixin, unittest.TestCase):
             {"content_id": "miaa00784", "dvd_id": None, "title_ja": "Title", "service_code": "digital", "release_date": "2023-02-17", "runtime_mins": 171},
             {"content_id": "miaa784bod", "dvd_id": "MIAA-784BOD", "title_ja": "Title （BOD）", "service_code": "mono", "release_date": "2023-02-21", "runtime_mins": 170},
             {"content_id": "tkmiaa784", "dvd_id": "TKMIAA-784", "title_ja": "【FANZA限定】Title 生写真付き", "service_code": "mono", "release_date": "2023-02-22", "runtime_mins": 170},
+            {"content_id": "ebook-miaa784", "dvd_id": "MIAA-784", "title_ja": "Title 写真集", "service_code": "ebook", "release_date": "2023-02-23", "runtime_mins": 120},
             {"content_id": "jkd001", "dvd_id": "JKD-01", "title_ja": "Low One", "service_code": "mono"},
             {"content_id": "jkd00001", "dvd_id": None, "title_ja": "Different Low", "service_code": "digital"},
         ]

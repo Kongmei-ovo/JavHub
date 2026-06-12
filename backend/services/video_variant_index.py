@@ -19,7 +19,7 @@ from database.video_variant_index import (
     update_variant_group_job,
 )
 from services import cache
-from services.video_variants import enrich_video_variants
+from services.video_variants import enrich_video_variants, is_non_movie_item
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ def scan_derived_video_rows(limit: int | None = None) -> Iterable[dict[str, Any]
             SELECT content_id, dvd_id, title_ja, title_en, release_date, runtime_mins,
                    service_code, jacket_thumb_url
             FROM derived_video
+            WHERE service_code IS NULL OR service_code <> 'ebook'
         """
         if _has_resolved_videos_table(conn):
             base_select = f"""
@@ -128,6 +129,8 @@ def build_variant_index_groups(rows: Iterable[dict[str, Any]]) -> list[dict[str,
     """
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
+        if is_non_movie_item(row):
+            continue
         enriched = enrich_video_variants([row], variant_mode="flat", include_explanations=False)
         if not enriched:
             continue

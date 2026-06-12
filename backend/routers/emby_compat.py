@@ -14,10 +14,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import secrets
 import uuid
 from typing import Any, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -27,7 +29,6 @@ from database import (
     get_library_files_by_content_id,
     get_progress,
     list_continue_watching,
-    list_matched_library_files,
     save_progress,
 )
 from services.emby_mapper import (
@@ -35,9 +36,11 @@ from services.emby_mapper import (
     empty_result,
     library_view_dto,
     media_source_dto,
+    online_media_source_dto,
     ticks_to_seconds,
     to_base_item_dto,
 )
+from services.openlist import ResolvedLink
 from services.storage_resolver import get_resolver
 
 logger = logging.getLogger(__name__)
@@ -117,13 +120,84 @@ async def _metadata_for(codes: list[str]) -> dict[str, Optional[dict]]:
     return dict(results)
 
 
-def _grouped_library() -> list[dict]:
-    """matched 文件按番号归并，保持 first_seen_at desc 顺序。"""
-    groups: dict[str, dict] = {}
-    for row in list_matched_library_files():
-        group = groups.setdefault(row["content_id"], {"content_id": row["content_id"], "files": []})
-        group["files"].append(row)
-    return list(groups.values())
+async def _catalog_page(
+    *,
+    start_index: int,
+    limit: int,
+    search_term: Optional[str] = None,
+    sort_by: str = "release_date:desc",
+    random_seed: Optional[str] = None,
+) -> dict:
+    from modules.info_client import get_info_client
+
+    client = get_info_client()
+    page_size = min(limit, 100)
+    page = (start_index // page_size) + 1
+    offset = start_index % page_size
+    items: list[dict] = []
+    total_count = 0
+    needed = offset + limit
+    first_request = True
+    while len(items) < needed:
+        result = await client.list_catalog_videos(
+            page=page,
+            page_size=page_size,
+            q=search_term,
+            sort_by=sort_by,
+            random_seed=random_seed,
+            include_total=first_request,
+        )
+        if first_request:
+            total_count = int(result.get("total_count") or 0)
+            first_request = False
+        batch = list(result.get("data") or [])
+        items.extend(batch)
+        if len(batch) < page_size:
+            break
+        page += 1
+    return {
+        "data": items[offset:offset + limit],
+        "total_count": total_count,
+    }
+
+
+EMBY_CATALOG_SORT_FIELDS = {
+    "datecreated": "release_date",
+    "premieredate": "release_date",
+    "productionyear": "release_date",
+    "sortname": "title",
+    "name": "title",
+    "communityrating": "score",
+    "criticrating": "score",
+    "runtime": "runtime_mins",
+    "random": "random",
+}
+
+
+def _catalog_sort_spec(sort_by: str, sort_order: str) -> str:
+    fields = [value.strip() for value in str(sort_by or "DateCreated").split(",") if value.strip()]
+    directions = [
+        value.strip().lower()
+        for value in str(sort_order or "Descending").split(",")
+        if value.strip()
+    ]
+    if not directions:
+        directions = ["descending"]
+    if len(directions) == 1:
+        directions *= len(fields)
+    elif len(directions) != len(fields):
+        raise HTTPException(status_code=400, detail="SortOrder must match SortBy")
+
+    result = []
+    for field, direction in zip(fields, directions):
+        catalog_field = EMBY_CATALOG_SORT_FIELDS.get(field.lower())
+        if not catalog_field:
+            raise HTTPException(status_code=400, detail=f"Unsupported SortBy field: {field}")
+        if direction not in {"ascending", "descending", "asc", "desc"}:
+            raise HTTPException(status_code=400, detail=f"Unsupported SortOrder: {direction}")
+        catalog_direction = "desc" if direction.startswith("desc") else "asc"
+        result.append(f"{catalog_field}:{catalog_direction}")
+    return ",".join(result) or "release_date:desc"
 
 
 # ── 认证与系统信息 ───────────────────────────────────────────────
@@ -206,8 +280,6 @@ async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
     items = []
     for row in rows:
         files = get_library_files_by_content_id(row["content_id"])
-        if not files:
-            continue
         items.append(to_base_item_dto(
             row["content_id"], metadata.get(row["content_id"]), files,
             progress=row, token=token,
@@ -218,22 +290,28 @@ async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
 @router.get("/Users/{user_id}/Items/Latest")
 async def items_latest(user_id: str, request: Request, Limit: int = Query(16)):
     token = _require_auth(request)
-    groups = _grouped_library()[:Limit]
-    metadata = await _metadata_for([g["content_id"] for g in groups]) if groups else {}
+    page = await _catalog_page(start_index=0, limit=Limit)
     # Latest 返回裸数组（无 Items 包装）
     return [
-        to_base_item_dto(g["content_id"], metadata.get(g["content_id"]), g["files"], token=token)
-        for g in groups
+        to_base_item_dto(
+            str(metadata.get("content_id") or metadata.get("dvd_id") or ""),
+            metadata,
+            token=token,
+        )
+        for metadata in page["data"]
     ]
 
 
 @router.get("/Users/{user_id}/Items/{item_id}")
 async def item_detail(user_id: str, item_id: str, request: Request):
     token = _require_auth(request)
-    files = get_library_files_by_content_id(item_id)
-    if not files:
+    from modules.info_client import get_info_client
+
+    try:
+        metadata = await get_info_client().get_catalog_video(item_id)
+    except Exception:
         raise HTTPException(status_code=404, detail="Item not found")
-    metadata = (await _metadata_for([item_id])).get(item_id)
+    files = get_library_files_by_content_id(item_id)
     progress = get_progress(item_id, source="library")
     return to_base_item_dto(item_id, metadata, files, progress=progress, token=token, detailed=True)
 
@@ -250,32 +328,26 @@ async def items_browse(
     SearchTerm: Optional[str] = Query(None),
 ):
     token = _require_auth(request)
-    groups = _grouped_library()
-
-    if SearchTerm:
-        needle = SearchTerm.strip().upper()
-        groups = [
-            g for g in groups
-            if needle in g["content_id"].upper()
-            or any(needle in str(f.get("name", "")).upper() for f in g["files"])
-        ]
-
-    primary_sort = SortBy.split(",")[0].strip()
-    if primary_sort == "SortName":
-        groups.sort(key=lambda g: g["content_id"])
-        if SortOrder.startswith("Desc"):
-            groups.reverse()
-    elif SortOrder.startswith("Asc"):
-        groups.reverse()  # 默认序是 first_seen desc
-
-    total = len(groups)
-    page = groups[StartIndex:StartIndex + Limit]
-    metadata = await _metadata_for([g["content_id"] for g in page]) if page else {}
+    catalog_sort = _catalog_sort_spec(SortBy, SortOrder)
+    random_seed = None
+    if any(part.startswith("random:") for part in catalog_sort.split(",")):
+        random_seed = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+    page = await _catalog_page(
+        start_index=StartIndex,
+        limit=Limit,
+        search_term=SearchTerm,
+        sort_by=catalog_sort,
+        random_seed=random_seed,
+    )
     items = [
-        to_base_item_dto(g["content_id"], metadata.get(g["content_id"]), g["files"], token=token)
-        for g in page
+        to_base_item_dto(
+            str(metadata.get("content_id") or metadata.get("dvd_id") or ""),
+            metadata,
+            token=token,
+        )
+        for metadata in page["data"]
     ]
-    return {"Items": items, "TotalRecordCount": total, "StartIndex": StartIndex}
+    return {"Items": items, "TotalRecordCount": page["total_count"], "StartIndex": StartIndex}
 
 
 @router.get("/Items/{item_id}/Images/Primary")
@@ -283,7 +355,12 @@ async def items_browse(
 async def item_primary_image(item_id: str, request: Request, index: int = 0):
     # 海报：302 到元数据封面（图片端点不少客户端不带 token，放宽鉴权只查 enabled）
     _ensure_enabled()
-    metadata = (await _metadata_for([item_id])).get(item_id) or {}
+    from modules.info_client import get_info_client
+
+    try:
+        metadata = await get_info_client().get_catalog_video(item_id)
+    except Exception:
+        metadata = {}
     url = str(metadata.get("jacket_full_url") or metadata.get("jacket_thumb_url") or "")
     if not url:
         raise HTTPException(status_code=404, detail="No image")
@@ -298,15 +375,35 @@ async def item_primary_image(item_id: str, request: Request, index: int = 0):
 async def playback_info(item_id: str, request: Request):
     token = _require_auth(request)
     files = get_library_files_by_content_id(item_id)
-    if not files:
-        raise HTTPException(status_code=404, detail="Item not found")
+    sources = [media_source_dto(f, token=token) for f in files]
+    sources.append(online_media_source_dto(item_id, token=token))
     return {
-        "MediaSources": [media_source_dto(f, token=token) for f in files],
+        "MediaSources": sources,
         "PlaySessionId": uuid.uuid4().hex,
     }
 
 
 async def _resolve_stream(item_id: str, media_source_id: Optional[str]):
+    if media_source_id == "online:auto":
+        from modules.info_client import get_info_client
+        from sources.m3u8_source import M3U8Source
+
+        try:
+            metadata = await get_info_client().get_catalog_video(item_id)
+        except Exception:
+            raise HTTPException(status_code=404, detail="Item not found")
+        search_code = str(
+            metadata.get("dvd_id")
+            or metadata.get("canonical_number")
+            or metadata.get("content_id")
+            or item_id
+        )
+        result, _attempts = await M3U8Source().search_m3u8(search_code)
+        if not result or not result.get("m3u8_url"):
+            raise HTTPException(status_code=404, detail="No online playback source")
+        proxy_url = f"/api/v1/stream/proxy?url={quote(str(result['m3u8_url']), safe='')}"
+        return ResolvedLink(url=proxy_url, kind="hls_proxy")
+
     files = get_library_files_by_content_id(item_id)
     if not files:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -336,6 +433,8 @@ async def video_stream(
     """核心视频出口：实时换链 → 302。Range 由 302 目标（115/Alist）原生处理。"""
     _require_auth(request)
     link = await _resolve_stream(item_id, MediaSourceId)
+    if link.kind == "hls_proxy":
+        return RedirectResponse(url=link.url, status_code=302)
     if config.emby_compat_proxy_stream:
         # 兜底：客户端不跟随 302 时流式转发（默认关闭，吃服务器带宽）
         import httpx

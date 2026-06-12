@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -18,6 +19,7 @@ FILE_ROW = {
 }
 
 METADATA = {
+    "content_id": "ABC-123",
     "title_ja": "テスト", "dvd_id": "ABC-123", "release_date": "2026-01-02",
     "runtime_mins": 120, "score": 4.5, "summary": "概要",
     "actresses": [{"id": 11, "name_kanji": "演员A"}],
@@ -90,11 +92,18 @@ class BrowseTests(unittest.TestCase):
 
         self.token = _login()["AccessToken"]
         self.auth_req = FakeRequest(headers={"X-Emby-Token": self.token})
+        self.info_client = AsyncMock()
+        self.info_client.list_catalog_videos.return_value = {
+            "data": [METADATA],
+            "total_count": 1,
+            "page": 1,
+            "page_size": 50,
+        }
+        self.info_client.get_catalog_video.return_value = METADATA
         self.patches = [
             patch("routers.emby_compat.config._config", EMBY_CONFIG),
-            patch("routers.emby_compat.list_matched_library_files", return_value=[FILE_ROW]),
             patch("routers.emby_compat.get_library_files_by_content_id", return_value=[FILE_ROW]),
-            patch("routers.emby_compat._metadata_for", new=AsyncMock(return_value={"ABC-123": METADATA})),
+            patch("modules.info_client.get_info_client", return_value=self.info_client),
             patch("routers.emby_compat.get_progress", return_value=None),
         ]
         for p in self.patches:
@@ -108,7 +117,7 @@ class BrowseTests(unittest.TestCase):
         self.assertEqual(resp["TotalRecordCount"], 1)
         self.assertEqual(resp["Items"][0]["CollectionType"], "movies")
 
-    def test_items_browse_returns_base_item_dto(self):
+    def test_items_browse_returns_catalog_movie_without_library_file(self):
         from routers.emby_compat import items_browse
 
         resp = asyncio.run(items_browse("u", self.auth_req, ParentId="library",
@@ -121,24 +130,168 @@ class BrowseTests(unittest.TestCase):
         self.assertEqual(item["ProductionYear"], 2026)
         self.assertEqual(item["RunTimeTicks"], 120 * 60 * 10_000_000)
         self.assertEqual(item["People"][0]["Name"], "演员A")
+        self.info_client.list_catalog_videos.assert_awaited_once_with(
+            page=1,
+            page_size=50,
+            q=None,
+            sort_by="release_date:desc",
+            random_seed=None,
+            include_total=True,
+        )
 
-    def test_items_browse_search_filters(self):
+    def test_items_browse_delegates_search_to_catalog(self):
         from routers.emby_compat import items_browse
 
+        self.info_client.list_catalog_videos.return_value = {
+            "data": [],
+            "total_count": 0,
+            "page": 1,
+            "page_size": 50,
+        }
         resp = asyncio.run(items_browse("u", self.auth_req, ParentId=None,
                                         StartIndex=0, Limit=50, SortBy="DateCreated",
                                         SortOrder="Descending", SearchTerm="zzz"))
         self.assertEqual(resp["TotalRecordCount"], 0)
+        self.info_client.list_catalog_videos.assert_awaited_once_with(
+            page=1,
+            page_size=50,
+            q="zzz",
+            sort_by="release_date:desc",
+            random_seed=None,
+            include_total=True,
+        )
+
+    def test_items_browse_translates_emby_sort_fields_and_directions(self):
+        from routers.emby_compat import items_browse
+
+        cases = (
+            ("ProductionYear", "Ascending", "release_date:asc"),
+            ("SortName", "Descending", "title:desc"),
+            ("CommunityRating", "Descending", "score:desc"),
+            ("Runtime", "Ascending", "runtime_mins:asc"),
+            (
+                "SortName,ProductionYear",
+                "Ascending,Descending",
+                "title:asc,release_date:desc",
+            ),
+        )
+        for sort_by, sort_order, expected in cases:
+            with self.subTest(sort_by=sort_by, sort_order=sort_order):
+                self.info_client.list_catalog_videos.reset_mock()
+                asyncio.run(items_browse(
+                    "u",
+                    self.auth_req,
+                    ParentId="library",
+                    StartIndex=0,
+                    Limit=50,
+                    SortBy=sort_by,
+                    SortOrder=sort_order,
+                    SearchTerm=None,
+                ))
+                kwargs = self.info_client.list_catalog_videos.await_args.kwargs
+                self.assertEqual(kwargs["sort_by"], expected)
+                self.assertNotIn("sort_order", kwargs)
+
+    def test_items_browse_uses_stable_session_seed_for_random_sort(self):
+        from routers.emby_compat import items_browse
+
+        asyncio.run(items_browse(
+            "u",
+            self.auth_req,
+            ParentId="library",
+            StartIndex=0,
+            Limit=50,
+            SortBy="Random",
+            SortOrder="Ascending",
+            SearchTerm=None,
+        ))
+
+        kwargs = self.info_client.list_catalog_videos.await_args.kwargs
+        self.assertEqual(kwargs["sort_by"], "random:asc")
+        self.assertEqual(
+            kwargs["random_seed"],
+            hashlib.sha256(self.token.encode("utf-8")).hexdigest()[:16],
+        )
+
+    def test_items_browse_rejects_unknown_emby_sort_field(self):
+        from routers.emby_compat import items_browse
+
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(items_browse(
+                "u",
+                self.auth_req,
+                ParentId="library",
+                StartIndex=0,
+                Limit=50,
+                SortBy="UnsupportedField",
+                SortOrder="Ascending",
+                SearchTerm=None,
+            ))
+
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_catalog_page_spans_api_pages_for_unaligned_start_index(self):
+        from routers.emby_compat import _catalog_page
+
+        self.info_client.list_catalog_videos.side_effect = [
+            {
+                "data": [{"content_id": f"item-{i}"} for i in range(50, 100)],
+                "total_count": 200,
+            },
+            {
+                "data": [{"content_id": f"item-{i}"} for i in range(100, 150)],
+                "total_count": -1,
+            },
+        ]
+
+        page = asyncio.run(_catalog_page(start_index=75, limit=50))
+
+        self.assertEqual(
+            [item["content_id"] for item in page["data"]],
+            [f"item-{i}" for i in range(75, 125)],
+        )
+        self.assertEqual(page["total_count"], 200)
+        calls = self.info_client.list_catalog_videos.await_args_list
+        self.assertEqual(calls[0].kwargs["page"], 2)
+        self.assertEqual(calls[0].kwargs["page_size"], 50)
+        self.assertTrue(calls[0].kwargs["include_total"])
+        self.assertEqual(calls[1].kwargs["page"], 3)
+        self.assertFalse(calls[1].kwargs["include_total"])
+
+    def test_item_detail_exists_without_library_file(self):
+        from routers.emby_compat import item_detail
+
+        with patch("routers.emby_compat.get_library_files_by_content_id", return_value=[]):
+            item = asyncio.run(item_detail("u", "ABC-123", self.auth_req))
+
+        self.assertEqual(item["Id"], "ABC-123")
+        self.assertEqual(item["Type"], "Movie")
+        self.assertEqual(item["SortName"], "テスト")
+        self.assertEqual(item["DateCreated"], "2026-01-02T00:00:00.0000000Z")
+        self.assertNotIn("MediaSources", item)
 
     def test_playback_info_marks_direct_play_without_transcoding(self):
         from routers.emby_compat import playback_info
 
         resp = asyncio.run(playback_info("ABC-123", self.auth_req))
-        source = resp["MediaSources"][0]
+        source = next(item for item in resp["MediaSources"] if item["Id"] == "lib:7")
         self.assertEqual(source["Id"], "lib:7")
         self.assertTrue(source["SupportsDirectPlay"])
         self.assertFalse(source["SupportsTranscoding"])
         self.assertIn("/Videos/ABC-123/stream.mp4", source["DirectStreamUrl"])
+
+    def test_playback_info_offers_online_source_without_library_file(self):
+        from routers.emby_compat import playback_info
+
+        with patch("routers.emby_compat.get_library_files_by_content_id", return_value=[]):
+            resp = asyncio.run(playback_info("ABC-123", self.auth_req))
+
+        self.assertEqual(len(resp["MediaSources"]), 1)
+        source = resp["MediaSources"][0]
+        self.assertEqual(source["Id"], "online:auto")
+        self.assertEqual(source["Container"], "m3u8")
+        self.assertTrue(source["IsRemote"])
+        self.assertIn("/Videos/ABC-123/stream.m3u8", source["DirectStreamUrl"])
 
     def test_stream_redirects_to_freshly_resolved_link(self):
         from routers.emby_compat import video_stream
@@ -150,6 +303,22 @@ class BrowseTests(unittest.TestCase):
             resp = asyncio.run(video_stream("ABC-123", self.auth_req, ext="mp4", MediaSourceId="lib:7"))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.headers["location"], "https://cdn.example/v.mp4?sig=t")
+
+    def test_online_stream_resolves_by_catalog_dvd_id_and_uses_safe_proxy(self):
+        from routers.emby_compat import video_stream
+
+        result = {"m3u8_url": "https://cdn.jable.tv/ABC-123/index.m3u8", "source": "jable"}
+        with patch(
+            "sources.m3u8_source.M3U8Source.search_m3u8",
+            new=AsyncMock(return_value=(result, [])),
+        ) as search_mock:
+            resp = asyncio.run(
+                video_stream("ABC-123", self.auth_req, ext="m3u8", MediaSourceId="online:auto")
+            )
+
+        search_mock.assert_awaited_once_with("ABC-123")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.headers["location"].startswith("/api/v1/stream/proxy?url="))
 
 
 class SessionProgressTests(unittest.TestCase):

@@ -10,6 +10,96 @@ from test_support.cache import fake_redis_backend
 
 
 class InfoClientVideoDetailTest(unittest.IsolatedAsyncioTestCase):
+    async def test_list_catalog_videos_uses_unified_catalog_endpoint(self):
+        client = InfoClient()
+        result = {
+            "data": [{"content_id": "supp:99", "dvd_id": "NEW-999"}],
+            "total_count": 1875511,
+        }
+
+        with patch("services.cache.get_response", return_value=None), \
+             patch("services.cache.set_response") as set_cache, \
+             patch.object(client, "_get", AsyncMock(return_value=result)) as get_mock:
+            data = await client.list_catalog_videos(
+                page=3,
+                page_size=50,
+                q="NEW",
+                sort_by="release_date",
+                sort_order="desc",
+                include_total=True,
+            )
+
+        get_mock.assert_awaited_once_with(
+            "/api/v1/catalog/videos",
+            params={
+                "page": 3,
+                "page_size": 50,
+                "q": "NEW",
+                "sort_by": "release_date:desc",
+                "include_total": True,
+            },
+        )
+        self.assertEqual(data["data"][0]["content_id"], "supp:99")
+        set_cache.assert_called_once()
+
+    async def test_list_catalog_videos_reuses_cached_total_count(self):
+        client = InfoClient()
+        result = {
+            "data": [{"content_id": "item-51"}],
+            "total_count": -1,
+        }
+
+        with patch("services.cache.get_response", return_value=1875511), \
+             patch("services.cache.set_response") as set_cache, \
+             patch.object(client, "_get", AsyncMock(return_value=result)) as get_mock:
+            data = await client.list_catalog_videos(page=2, page_size=50, include_total=True)
+
+        get_mock.assert_awaited_once_with(
+            "/api/v1/catalog/videos",
+            params={
+                "page": 2,
+                "page_size": 50,
+                "sort_by": "release_date:desc",
+                "include_total": False,
+            },
+        )
+        self.assertEqual(data["total_count"], 1875511)
+        set_cache.assert_not_called()
+
+    async def test_list_catalog_videos_forwards_multi_sort_and_random_seed(self):
+        client = InfoClient()
+        result = {"data": [], "total_count": -1}
+
+        with patch.object(client, "_get", AsyncMock(return_value=result)) as get_mock:
+            await client.list_catalog_videos(
+                page=4,
+                page_size=25,
+                sort_by="title:asc,release_date:desc",
+                random_seed="session-seed",
+                include_total=False,
+            )
+
+        get_mock.assert_awaited_once_with(
+            "/api/v1/catalog/videos",
+            params={
+                "page": 4,
+                "page_size": 25,
+                "sort_by": "title:asc,release_date:desc",
+                "random_seed": "session-seed",
+                "include_total": False,
+            },
+        )
+
+    async def test_get_catalog_video_preserves_supplement_catalog_id(self):
+        client = InfoClient()
+        detail = {"content_id": "supp:99", "dvd_id": "NEW-999", "title_ja": "补全影片"}
+
+        with patch.object(client, "_get", AsyncMock(return_value=detail)) as get_mock:
+            data = await client.get_catalog_video("supp:99")
+
+        get_mock.assert_awaited_once_with("/api/v1/catalog/videos/supp:99")
+        self.assertEqual(data["content_id"], "supp:99")
+
     async def test_get_video_returns_javinfo_detail_without_metatube(self):
         client = InfoClient()
         javinfo_detail = {

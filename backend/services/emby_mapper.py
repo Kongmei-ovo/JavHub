@@ -52,6 +52,27 @@ def media_source_dto(file: dict, token: str = "") -> dict:
     }
 
 
+def online_media_source_dto(item_id: str, token: str = "") -> dict:
+    """按需解析的在线 HLS 版本；这里只暴露稳定入口，不缓存上游直链。"""
+    stream_url = f"/Videos/{item_id}/stream.m3u8?MediaSourceId=online:auto&Static=true"
+    if token:
+        stream_url += f"&api_key={token}"
+    return {
+        "Id": "online:auto",
+        "Protocol": "Http",
+        "Container": "m3u8",
+        "Name": "在线源（按需检测）",
+        "Path": "online:auto",
+        "IsRemote": True,
+        "SupportsDirectPlay": True,
+        "SupportsDirectStream": True,
+        "SupportsTranscoding": False,
+        "DirectStreamUrl": stream_url,
+        "MediaStreams": [],
+        "RequiredHttpHeaders": {},
+    }
+
+
 def to_base_item_dto(
     content_id: str,
     metadata: Optional[dict],
@@ -79,13 +100,14 @@ def to_base_item_dto(
         "ServerId": SERVER_ID,
         "Name": title,
         "OriginalTitle": str(metadata.get("title_ja") or title),
-        "SortName": content_id,
+        "SortName": title,
         "Type": "Movie",
         "MediaType": "Video",
         "IsFolder": False,
         "LocationType": "Remote",
         "ProductionYear": year,
         "PremiereDate": f"{release_date}T00:00:00.0000000Z" if release_date else None,
+        "DateCreated": f"{release_date}T00:00:00.0000000Z" if release_date else None,
         "RunTimeTicks": seconds_to_ticks(runtime_mins * 60) if runtime_mins else None,
         "CommunityRating": float(metadata.get("score") or 0) or None,
         "Overview": str(metadata.get("summary_translated") or metadata.get("summary") or ""),
@@ -129,7 +151,7 @@ def library_view_dto() -> dict:
     return {
         "Id": LIBRARY_VIEW_ID,
         "ServerId": SERVER_ID,
-        "Name": "云盘库",
+        "Name": "JavHub 影片库",
         "Type": "CollectionFolder",
         "CollectionType": "movies",
         "IsFolder": True,

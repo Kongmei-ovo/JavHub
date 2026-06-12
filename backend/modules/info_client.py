@@ -16,6 +16,7 @@ PENDING_METADATA_VIDEO_TTL = 300
 MAX_UPSTREAM_MESSAGE_LENGTH = 200
 TOTAL_COUNT_CACHE_NAMESPACE = "javinfo_total_count"
 TOTAL_COUNT_CACHE_TTL = 300
+CATALOG_TOTAL_COUNT_CACHE_NAMESPACE = "javinfo_catalog_total_count"
 
 
 class JavInfoError(Exception):
@@ -506,6 +507,60 @@ class InfoClient:
         if "data" in result and isinstance(result["data"], list):
             result["data"] = [_transform_video_item(item) for item in result["data"]]
         return result
+
+    async def list_catalog_videos(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        q: str | None = None,
+        sort_by: str = "release_date",
+        sort_order: str | None = "desc",
+        random_seed: str | None = None,
+        include_total: bool = True,
+    ) -> dict[str, Any]:
+        total_cache_params = {"q": q or ""}
+        cached_total = None
+        upstream_include_total = include_total
+        if include_total:
+            cached_total = cache.get_response(
+                CATALOG_TOTAL_COUNT_CACHE_NAMESPACE,
+                total_cache_params,
+            )
+            upstream_include_total = cached_total is None
+        sort_spec = sort_by
+        if ":" not in sort_spec and "," not in sort_spec:
+            sort_spec = f"{sort_spec}:{sort_order or 'asc'}"
+        params = {
+            "page": page,
+            "page_size": page_size,
+            "q": q,
+            "sort_by": sort_spec,
+            "random_seed": random_seed,
+            "include_total": upstream_include_total,
+        }
+        result = await self._get(
+            "/api/v1/catalog/videos",
+            params={key: value for key, value in params.items() if value is not None},
+        )
+        if include_total:
+            if cached_total is not None:
+                result["total_count"] = int(cached_total)
+            else:
+                total_count = result.get("total_count")
+                if total_count is not None and int(total_count) >= 0:
+                    cache.set_response(
+                        CATALOG_TOTAL_COUNT_CACHE_NAMESPACE,
+                        total_cache_params,
+                        int(total_count),
+                        ttl=TOTAL_COUNT_CACHE_TTL,
+                    )
+        if isinstance(result.get("data"), list):
+            result["data"] = [_transform_video_item(item) for item in result["data"]]
+        return result
+
+    async def get_catalog_video(self, catalog_id: str) -> dict[str, Any]:
+        result = await self._get(f"/api/v1/catalog/videos/{catalog_id}")
+        return _strip_metadata_fields(_transform_video_item(result))
 
     async def get_maker_videos(
         self,
