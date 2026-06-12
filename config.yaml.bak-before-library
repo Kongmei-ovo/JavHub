@@ -1,0 +1,137 @@
+actor_mapping:
+  auto_confirm_confidence: 0.98
+  auto_confirm_gap: 0.08
+  auto_confirm_policy: conservative
+  auto_match_after_collect: true
+  candidate_min_confidence: 0.55
+  candidate_per_actor: 3
+ai:
+  gemini:
+    api_key: AIzaSyBCAFKECJ1OJgf6Wck0ZSz5s2XJj4BuSqQ
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    model: gemini-3-flash-preview
+    timeout: 30
+  ollama:
+    base_url: http://localhost:11434
+    model: ''
+    timeout: 30
+  openai_compatible:
+    base_url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    timeout: 30
+  provider: gemini
+automation:
+  auto_process_interval_minutes: 30
+  candidate_sources:
+  - subscription
+  - inventory
+  - supplement
+  download_policy: manual
+  max_auto_downloads_per_24h: 100
+  max_auto_downloads_per_run: 20
+  rules_require_magnet: true
+crawler:
+  request_interval: 3
+database:
+  database: javhub
+  host: postgres
+  maintenance_database: postgres
+  port: 5432
+  user: javhub
+emby:
+  api_key: 36c382ab98254251b420a56c13dcd24a
+  api_url: https://emby.kongmei.cloud
+frontend_origin: http://localhost:3000
+javinfo:
+  api_url: http://127.0.0.1:8080
+  import_db:
+    database: r18
+    host: localhost
+    keep_previous_databases: 1
+    maintenance_database: postgres
+    max_parallel_jobs: 2
+    port: 5432
+    user: kongmei
+  page_size: 30
+  timeout: 30
+metatube:
+  host: 154.23.255.204
+  port: 8081
+  token: ''
+notification:
+  auto_download_notify: true
+  download_complete_notify: true
+  enabled: false
+  new_movie_notify: true
+  telegram: true
+openlist:
+  api_url: https://alist.kongmei.cloud
+  default_path: /115/AV
+  password: ''
+  username: kongmei
+proxy:
+  enabled: true
+  http_url: http://127.0.0.1:1082
+  https_url: ''
+rate_limit:
+  burst: 10
+  enabled: false
+  requests_per_minute: 60
+scheduler:
+  subscription_check_hour: 2
+server:
+  frontend_origin: http://localhost:5173
+  port: 18090
+sources:
+  torznab:
+    base_url: ''
+    categories: ''
+    enabled: false
+    indexer: all
+    limit: 20
+    name: torznab
+    timeout: 15
+stream:
+  cf_solver_url: http://127.0.0.1:8191/v1
+  proxy: ''
+telegram:
+  allowed_user_ids:
+  - '586027334'
+  bot_token: ''
+translation:
+  baidu:
+    app_id: ''
+    enabled: false
+    endpoint: https://fanyi-api.baidu.com/api/trans/vip/translate
+    qps: 1
+    timeout: 15
+  batch_char_limit: 24000
+  batch_concurrency: 32
+  batch_provider_order:
+  - cache
+  - mapping
+  - google_free
+  batch_size: 200
+  deepl:
+    enabled: false
+    free_api: true
+    timeout: 15
+  enabled: true
+  google_free:
+    base_url: https://translate.googleapis.com/translate_a/single
+    enabled: true
+    timeout: 10
+  microsoft:
+    enabled: false
+    endpoint: https://api.cognitive.microsofttranslator.com
+    region: ''
+    timeout: 15
+  provider: google_free
+  provider_order:
+  - cache
+  - mapping
+  - google_free
+  realtime_mode: cache_only
+  scan_pages_per_batch: 32
+  source_page_size: 100
+  target_language: zh-CN
