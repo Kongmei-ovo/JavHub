@@ -67,6 +67,16 @@ from database.playback import (
     list_continue_watching,
     delete_progress,
 )
+from database.movie_resource import (
+    delete_movie_resource,
+    get_movie_resource,
+    get_movie_resource_by_remote_id,
+    list_movie_resources,
+    list_ready_movie_videos,
+    set_default_movie_resource,
+    set_movie_resource_status,
+    upsert_movie_resource,
+)
 from database.download_candidate import (
     upsert_download_candidate,
     upsert_candidate_from_video,
@@ -271,6 +281,14 @@ __all__ = [
     "get_download_tasks",
     "update_task_status",
     "delete_download_task",
+    "delete_movie_resource",
+    "get_movie_resource",
+    "get_movie_resource_by_remote_id",
+    "list_movie_resources",
+    "list_ready_movie_videos",
+    "set_default_movie_resource",
+    "set_movie_resource_status",
+    "upsert_movie_resource",
     "upsert_download_candidate",
     "upsert_candidate_from_video",
     "list_download_candidates",
