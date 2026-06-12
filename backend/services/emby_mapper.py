@@ -1,4 +1,4 @@
-"""library_files + JavInfo 元数据 → Emby BaseItemDto 映射。
+"""JavInfo metadata plus ItemId-bound resources to Emby DTOs.
 
 字段依据 Jellyfin OpenAPI（https://api.jellyfin.org）/ Emby 公开协议；
 不参考任何 GPL 实现。只输出 Infuse/VidHub 实际消费的最小字段集。
@@ -27,29 +27,36 @@ def _container_of(name: str) -> str:
     return lowered.rsplit(".", 1)[-1] if "." in lowered else "mp4"
 
 
-def media_source_dto(file: dict, token: str = "") -> dict:
-    """library_files 行 → MediaSource。DirectStreamUrl 指向本服务的 302 出口。"""
-    source_id = f"lib:{file['id']}"
-    container = _container_of(file.get("name"))
-    item_id = str(file.get("content_id") or "")
+def media_source_dto(resource: dict, item_id: str, token: str = "") -> dict:
+    """A real 115 file becomes one selectable Emby media source."""
+    source_id = f"open115:{resource['id']}"
+    container = str(resource.get("extension") or _container_of(resource.get("name"))).lower().lstrip(".")
     stream_url = f"/Videos/{item_id}/stream.{container}?MediaSourceId={source_id}&Static=true"
     if token:
         stream_url += f"&api_key={token}"
-    return {
+    source = {
         "Id": source_id,
         "Protocol": "Http",
         "Container": container,
-        "Size": int(file.get("size") or 0),
-        "Name": file.get("name") or "",
-        "Path": file.get("name") or "",
-        "IsRemote": False,
+        "Size": int(resource.get("size") or 0),
+        "Name": resource.get("name") or "",
+        "Path": resource.get("name") or "",
+        "IsRemote": True,
         "SupportsDirectPlay": True,
         "SupportsDirectStream": True,
-        "SupportsTranscoding": False,
+        "SupportsTranscoding": container not in {"mp4", "webm"},
         "DirectStreamUrl": stream_url,
         "MediaStreams": [],
         "RequiredHttpHeaders": {},
     }
+    if source["SupportsTranscoding"]:
+        hls_url = f"/Videos/{item_id}/stream.m3u8?MediaSourceId={source_id}&mode=hls&Static=true"
+        if token:
+            hls_url += f"&api_key={token}"
+        source["TranscodingUrl"] = hls_url
+        source["TranscodingContainer"] = "m3u8"
+        source["TranscodingSubProtocol"] = "hls"
+    return source
 
 
 def online_media_source_dto(item_id: str, token: str = "") -> dict:
@@ -76,7 +83,7 @@ def online_media_source_dto(item_id: str, token: str = "") -> dict:
 def to_base_item_dto(
     content_id: str,
     metadata: Optional[dict],
-    files: Optional[list[dict]] = None,
+    resources: Optional[list[dict]] = None,
     progress: Optional[dict] = None,
     token: str = "",
     detailed: bool = False,
@@ -129,9 +136,18 @@ def to_base_item_dto(
         if (cat.get("name_ja") or cat.get("name_en"))
     ]
 
-    if detailed and files:
-        dto["MediaSources"] = [media_source_dto(f, token=token) for f in files]
-        dto["Container"] = _container_of(files[0].get("name"))
+    ready_videos = [
+        resource for resource in (resources or [])
+        if resource.get("resource_type") == "video" and resource.get("status") == "ready"
+    ]
+    if detailed and ready_videos:
+        dto["MediaSources"] = [
+            media_source_dto(resource, content_id, token=token)
+            for resource in ready_videos
+        ]
+        dto["Container"] = str(
+            ready_videos[0].get("extension") or _container_of(ready_videos[0].get("name"))
+        ).lower().lstrip(".")
 
     return dto
 

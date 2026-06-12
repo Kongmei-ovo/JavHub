@@ -774,11 +774,27 @@ export default {
     return api.post(`/v1/stream/${contentId}/transfer`, data)
   },
 
-  // ========== 云盘库播放（直链实时换链，前端不得缓存 url） ==========
+  // ========== 115 影片资源（只暴露稳定 JavHub 播放入口） ==========
 
-  getLibraryPlay(contentId, fileId = null) {
-    const params = fileId ? { file_id: fileId } : undefined
-    return api.get(`/v1/playback/library/${contentId}`, { params })
+  getMovieResources(movieId) {
+    return api.get(`/v1/movies/${pathSegment(movieId, 'movieId')}/resources`)
+  },
+
+  setDefaultMovieResource(movieId, resourceId) {
+    return api.post(
+      `/v1/movies/${pathSegment(movieId, 'movieId')}/resources/${numericPathSegment(resourceId, 'resourceId')}/default`,
+    )
+  },
+
+  deleteMovieResource(movieId, resourceId) {
+    return api.delete(
+      `/v1/movies/${pathSegment(movieId, 'movieId')}/resources/${numericPathSegment(resourceId, 'resourceId')}`,
+    )
+  },
+
+  movieResourceStreamUrl(resourceId, mode = 'auto') {
+    const normalizedMode = ['auto', 'original', 'hls'].includes(mode) ? mode : 'auto'
+    return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/stream?mode=${normalizedMode}`
   },
 
   savePlaybackProgress(contentId, data) {

@@ -7,21 +7,23 @@ const modalSource = readFileSync(new URL('../../components/VideoModal.vue', impo
 const apiSource = readFileSync(new URL('../../api/index.js', import.meta.url), 'utf8')
 const todaySource = readFileSync(new URL('../../views/Today.vue', import.meta.url), 'utf8')
 
-test('video modal mounts the library playback mixin and exposes the cloud play button', () => {
+test('video modal mounts the resource playback mixin and exposes the 115 play button', () => {
   assert.match(modalSource, /import libraryPlaybackMixin from '\.\.\/features\/video\/libraryPlaybackMixin\.js'/)
   assert.match(modalSource, /mixins: \[libraryPlaybackMixin\]/)
   assert.match(modalSource, /v-if="libraryPlayInfo" class="stream-btn library-play-btn"/)
-  assert.match(modalSource, /library-badge/)
+  assert.match(modalSource, /115 播放/)
+  assert.doesNotMatch(modalSource, />已入库</)
 })
 
-test('library play info never persists the resolved direct url', () => {
-  // checkLibraryStatus 只保留 file/files/progress；play(直链)必须丢弃
+test('resource play info keeps durable refs and never persists a 115 direct url', () => {
   const match = mixinSource.match(/this\.libraryPlayInfo = \{([^}]*)\}/)
   assert.ok(match, 'checkLibraryStatus should assign libraryPlayInfo')
   assert.ok(!match[1].includes('play'), 'libraryPlayInfo must not retain the resolved play url')
-  // 复制直链/外部播放器在使用前必须重新换链
   const copyBlock = mixinSource.slice(mixinSource.indexOf('async copyLibraryLink'))
-  assert.match(copyBlock, /getLibraryPlay\(code\)/)
+  assert.match(copyBlock, /stableResourceUrl/)
+  assert.doesNotMatch(copyBlock, /getLibraryPlay/)
+  assert.match(copyBlock, /navigator\.clipboard\.writeText/)
+  assert.match(mixinSource, /movieResourceStreamUrl/)
 })
 
 test('progress reporting is throttled and shared between library and online playback', () => {
@@ -34,16 +36,16 @@ test('progress reporting is throttled and shared between library and online play
   assert.match(closeBlock, /this\.reportProgress\(video\)/)
 })
 
-test('library play error path retries the link exactly once', () => {
+test('115 play error path retries the stable entry exactly once', () => {
   assert.match(mixinSource, /libraryRetryUsed/)
   const errBlock = mixinSource.slice(mixinSource.indexOf('async onLibraryPlayError'))
   assert.match(errBlock, /this\.libraryRetryUsed = true/)
 })
 
-test('api client exposes playback and library index endpoints', () => {
+test('api client exposes movie resources and stable playback endpoints', () => {
   for (const needle of [
-    "/v1/playback/library/", "/v1/playback/progress/", "/v1/playback/continue",
-    "/v1/library/summary", "/v1/library/scan", "/v1/library/files",
+    "/v1/movies/", "/resources", "/v1/playback/resources/",
+    "/v1/playback/progress/", "/v1/playback/continue",
   ]) {
     assert.ok(apiSource.includes(needle), `api/index.js should call ${needle}`)
   }

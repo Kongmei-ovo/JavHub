@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
-from services.openlist import ResolvedLink
-
 EMBY_CONFIG = {"emby_compat": {"enabled": True, "username": "javhub", "password": "secret"}}
 
-FILE_ROW = {
-    "id": 7, "backend": "openlist", "path": "/115/AV/ABC-123.mp4",
-    "name": "ABC-123.mp4", "size": 1234, "content_id": "ABC-123",
-    "match_status": "matched", "first_seen_at": "2026-06-01",
+RESOURCE_ROW = {
+    "id": 7, "provider": "open115", "remote_file_id": "file-7",
+    "parent_id": "folder-1", "pick_code": "pick-7",
+    "name": "ABC-123.mp4", "extension": "mp4", "size": 1234,
+    "duration": 7200, "movie_id": "ABC-123", "resource_type": "video",
+    "status": "ready", "is_default": 1,
 }
 
 METADATA = {
@@ -102,7 +102,7 @@ class BrowseTests(unittest.TestCase):
         self.info_client.get_catalog_video.return_value = METADATA
         self.patches = [
             patch("routers.emby_compat.config._config", EMBY_CONFIG),
-            patch("routers.emby_compat.get_library_files_by_content_id", return_value=[FILE_ROW]),
+            patch("routers.emby_compat.list_movie_resources", return_value=[RESOURCE_ROW]),
             patch("modules.info_client.get_info_client", return_value=self.info_client),
             patch("routers.emby_compat.get_progress", return_value=None),
         ]
@@ -261,7 +261,7 @@ class BrowseTests(unittest.TestCase):
     def test_item_detail_exists_without_library_file(self):
         from routers.emby_compat import item_detail
 
-        with patch("routers.emby_compat.get_library_files_by_content_id", return_value=[]):
+        with patch("routers.emby_compat.list_movie_resources", return_value=[]):
             item = asyncio.run(item_detail("u", "ABC-123", self.auth_req))
 
         self.assertEqual(item["Id"], "ABC-123")
@@ -274,8 +274,8 @@ class BrowseTests(unittest.TestCase):
         from routers.emby_compat import playback_info
 
         resp = asyncio.run(playback_info("ABC-123", self.auth_req))
-        source = next(item for item in resp["MediaSources"] if item["Id"] == "lib:7")
-        self.assertEqual(source["Id"], "lib:7")
+        source = next(item for item in resp["MediaSources"] if item["Id"] == "open115:7")
+        self.assertEqual(source["Id"], "open115:7")
         self.assertTrue(source["SupportsDirectPlay"])
         self.assertFalse(source["SupportsTranscoding"])
         self.assertIn("/Videos/ABC-123/stream.mp4", source["DirectStreamUrl"])
@@ -283,7 +283,7 @@ class BrowseTests(unittest.TestCase):
     def test_playback_info_offers_online_source_without_library_file(self):
         from routers.emby_compat import playback_info
 
-        with patch("routers.emby_compat.get_library_files_by_content_id", return_value=[]):
+        with patch("routers.emby_compat.list_movie_resources", return_value=[]):
             resp = asyncio.run(playback_info("ABC-123", self.auth_req))
 
         self.assertEqual(len(resp["MediaSources"]), 1)
@@ -296,11 +296,15 @@ class BrowseTests(unittest.TestCase):
     def test_stream_redirects_to_freshly_resolved_link(self):
         from routers.emby_compat import video_stream
 
-        resolver = AsyncMock(resolve_play_url=AsyncMock(
-            return_value=ResolvedLink(url="https://cdn.example/v.mp4?sig=t")
-        ))
-        with patch("routers.emby_compat.get_resolver", return_value=resolver):
-            resp = asyncio.run(video_stream("ABC-123", self.auth_req, ext="mp4", MediaSourceId="lib:7"))
+        gateway = AsyncMock(return_value=type("R", (), {
+            "status_code": 302,
+            "headers": {"location": "https://cdn.example/v.mp4?sig=t"},
+        })())
+        with patch("routers.emby_compat.get_movie_resource", return_value=RESOURCE_ROW), \
+             patch("routers.playback.stream_movie_resource", new=gateway):
+            resp = asyncio.run(video_stream(
+                "ABC-123", self.auth_req, ext="mp4", MediaSourceId="open115:7"
+            ))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.headers["location"], "https://cdn.example/v.mp4?sig=t")
 

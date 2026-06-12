@@ -26,8 +26,9 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from config import config
 from database import (
-    get_library_files_by_content_id,
+    get_movie_resource,
     get_progress,
+    list_movie_resources,
     list_continue_watching,
     save_progress,
 )
@@ -40,8 +41,6 @@ from services.emby_mapper import (
     ticks_to_seconds,
     to_base_item_dto,
 )
-from services.openlist import ResolvedLink
-from services.storage_resolver import get_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -279,9 +278,9 @@ async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
     metadata = await _metadata_for(codes) if codes else {}
     items = []
     for row in rows:
-        files = get_library_files_by_content_id(row["content_id"])
+        resources = list_movie_resources(row["content_id"])
         items.append(to_base_item_dto(
-            row["content_id"], metadata.get(row["content_id"]), files,
+            row["content_id"], metadata.get(row["content_id"]), resources,
             progress=row, token=token,
         ))
     return {"Items": items, "TotalRecordCount": len(items), "StartIndex": 0}
@@ -311,9 +310,9 @@ async def item_detail(user_id: str, item_id: str, request: Request):
         metadata = await get_info_client().get_catalog_video(item_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Item not found")
-    files = get_library_files_by_content_id(item_id)
+    resources = list_movie_resources(item_id)
     progress = get_progress(item_id, source="library")
-    return to_base_item_dto(item_id, metadata, files, progress=progress, token=token, detailed=True)
+    return to_base_item_dto(item_id, metadata, resources, progress=progress, token=token, detailed=True)
 
 
 @router.get("/Users/{user_id}/Items")
@@ -374,8 +373,11 @@ async def item_primary_image(item_id: str, request: Request, index: int = 0):
 @router.post("/Items/{item_id}/PlaybackInfo")
 async def playback_info(item_id: str, request: Request):
     token = _require_auth(request)
-    files = get_library_files_by_content_id(item_id)
-    sources = [media_source_dto(f, token=token) for f in files]
+    resources = [
+        resource for resource in list_movie_resources(item_id)
+        if resource.get("resource_type") == "video" and resource.get("status") == "ready"
+    ]
+    sources = [media_source_dto(resource, item_id, token=token) for resource in resources]
     sources.append(online_media_source_dto(item_id, token=token))
     return {
         "MediaSources": sources,
@@ -383,43 +385,24 @@ async def playback_info(item_id: str, request: Request):
     }
 
 
-async def _resolve_stream(item_id: str, media_source_id: Optional[str]):
-    if media_source_id == "online:auto":
-        from modules.info_client import get_info_client
-        from sources.m3u8_source import M3U8Source
+async def _resolve_online_stream(item_id: str) -> str:
+    from modules.info_client import get_info_client
+    from sources.m3u8_source import M3U8Source
 
-        try:
-            metadata = await get_info_client().get_catalog_video(item_id)
-        except Exception:
-            raise HTTPException(status_code=404, detail="Item not found")
-        search_code = str(
-            metadata.get("dvd_id")
-            or metadata.get("canonical_number")
-            or metadata.get("content_id")
-            or item_id
-        )
-        result, _attempts = await M3U8Source().search_m3u8(search_code)
-        if not result or not result.get("m3u8_url"):
-            raise HTTPException(status_code=404, detail="No online playback source")
-        proxy_url = f"/api/v1/stream/proxy?url={quote(str(result['m3u8_url']), safe='')}"
-        return ResolvedLink(url=proxy_url, kind="hls_proxy")
-
-    files = get_library_files_by_content_id(item_id)
-    if not files:
-        raise HTTPException(status_code=404, detail="Item not found")
-    chosen = files[0]
-    if media_source_id and media_source_id.startswith("lib:"):
-        try:
-            file_id = int(media_source_id.split(":", 1)[1])
-            chosen = next((f for f in files if f["id"] == file_id), chosen)
-        except ValueError:
-            pass
     try:
-        resolver = get_resolver(chosen["backend"])
-        return await resolver.resolve_play_url(chosen)
-    except Exception as exc:
-        logger.error("emby stream resolve failed for %s: %s", item_id, type(exc).__name__)
-        raise HTTPException(status_code=502, detail="link resolve failed")
+        metadata = await get_info_client().get_catalog_video(item_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Item not found")
+    search_code = str(
+        metadata.get("dvd_id")
+        or metadata.get("canonical_number")
+        or metadata.get("content_id")
+        or item_id
+    )
+    result, _attempts = await M3U8Source().search_m3u8(search_code)
+    if not result or not result.get("m3u8_url"):
+        raise HTTPException(status_code=404, detail="No online playback source")
+    return f"/api/v1/stream/proxy?url={quote(str(result['m3u8_url']), safe='')}"
 
 
 @router.get("/Videos/{item_id}/stream")
@@ -429,39 +412,40 @@ async def video_stream(
     request: Request,
     ext: str = "",
     MediaSourceId: Optional[str] = Query(None),
+    mode: str = Query(""),
 ):
-    """核心视频出口：实时换链 → 302。Range 由 302 目标（115/Alist）原生处理。"""
+    """Emby stream entry; 115 resolution happens only for this final request."""
     _require_auth(request)
-    link = await _resolve_stream(item_id, MediaSourceId)
-    if link.kind == "hls_proxy":
-        return RedirectResponse(url=link.url, status_code=302)
-    if config.emby_compat_proxy_stream:
-        # 兜底：客户端不跟随 302 时流式转发（默认关闭，吃服务器带宽）
-        import httpx
-        from fastapi.responses import StreamingResponse
+    if MediaSourceId == "online:auto":
+        return RedirectResponse(url=await _resolve_online_stream(item_id), status_code=302)
 
-        upstream_headers = dict(link.headers)
-        if request.headers.get("range"):
-            upstream_headers["Range"] = request.headers["range"]
-        client = httpx.AsyncClient(timeout=None, follow_redirects=True)
-        upstream = await client.send(
-            client.build_request("GET", link.url, headers=upstream_headers), stream=True
-        )
+    resource = None
+    if MediaSourceId and MediaSourceId.startswith("open115:"):
+        try:
+            resource_id = int(MediaSourceId.split(":", 1)[1])
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Media source not found") from exc
+        resource = get_movie_resource(resource_id)
+    else:
+        resources = [
+            item for item in list_movie_resources(item_id)
+            if item.get("resource_type") == "video" and item.get("status") == "ready"
+        ]
+        resource = next((item for item in resources if item.get("is_default")), None)
+        resource = resource or (resources[0] if resources else None)
 
-        async def body():
-            try:
-                async for chunk in upstream.aiter_bytes():
-                    yield chunk
-            finally:
-                await upstream.aclose()
-                await client.aclose()
+    if not resource or str(resource.get("movie_id")) != item_id:
+        raise HTTPException(status_code=404, detail="Media source not found")
 
-        passthrough = {
-            k: v for k, v in upstream.headers.items()
-            if k.lower() in ("content-type", "content-length", "content-range", "accept-ranges")
-        }
-        return StreamingResponse(body(), status_code=upstream.status_code, headers=passthrough)
-    return RedirectResponse(url=link.url, status_code=302)
+    requested_mode = mode or ("hls" if ext.lower() == "m3u8" else "original")
+    from routers.playback import stream_movie_resource
+
+    return await stream_movie_resource(
+        int(resource["id"]),
+        request,
+        mode=requested_mode,
+        caller="emby",
+    )
 
 
 # ── 进度回写（与 Web 端共表）─────────────────────────────────────

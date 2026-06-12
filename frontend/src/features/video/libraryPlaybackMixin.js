@@ -1,11 +1,13 @@
 /**
- * 云盘库播放 mixin（依附 VideoModal）。
+ * ItemId-bound 115 playback for VideoModal.
  *
- * 铁律：libraryPlayInfo 只保留文件/进度信息；直链每次播放前实时换链，
- * 前端不缓存、不持久化（115 直链有时效且可能绑 UA/IP）。
+ * The browser only keeps durable resource metadata and JavHub stable playback
+ * entries. 115 signed URLs are created after the final player request arrives.
  */
 import api, { formatApiError } from '../../api'
 import { ElMessage } from '../../utils/message.js'
+
+const WEB_ORIGINAL_EXTENSIONS = new Set(['mp4', 'webm'])
 
 export default {
   data() {
@@ -16,42 +18,71 @@ export default {
       progressReportHandler: null,
       lastProgressReport: 0,
       libraryRetryUsed: false,
+      activeLibraryResourceId: null,
     }
   },
   methods: {
     libraryCode() {
       return this.video?.content_id || this.video?.dvd_id || ''
     },
+    readyVideoResources(items = []) {
+      return items.filter(item => item.resource_type === 'video' && item.status === 'ready')
+    },
+    defaultLibraryResource() {
+      const files = this.libraryPlayInfo?.files || []
+      return files.find(item => item.is_default) || files[0] || null
+    },
+    resourceById(resourceId) {
+      const files = this.libraryPlayInfo?.files || []
+      return files.find(item => Number(item.id) === Number(resourceId)) || null
+    },
     async checkLibraryStatus() {
       this.libraryPlayInfo = null
-      const code = this.libraryCode()
-      if (!code) return
+      const movieId = this.libraryCode()
+      if (!movieId) return
       try {
-        const resp = await api.getLibraryPlay(code)
-        // 只保留文件与进度信息；直链丢弃，播放时重新换链
-        this.libraryPlayInfo = { file: resp.data.file, files: resp.data.files, progress: resp.data.progress }
+        const [resourceResp, progressResp] = await Promise.all([
+          api.getMovieResources(movieId),
+          api.getPlaybackProgress(movieId, 'library').catch(() => ({ data: null })),
+        ])
+        const files = this.readyVideoResources(resourceResp.data?.items || [])
+        if (!files.length) return
+        const file = files.find(item => item.is_default) || files[0]
+        this.libraryPlayInfo = { file, files, progress: progressResp.data || null }
       } catch (e) {
-        this.libraryPlayInfo = null // 404 = 不在库中，静默
+        this.libraryPlayInfo = null
       }
     },
-    async playLibrary(fileId = null) {
-      const code = this.libraryCode()
-      if (!code || this.libraryPlayLoading) return
+    resourcePlayDescriptor(resource) {
+      const extension = String(resource?.extension || '').toLowerCase().replace(/^\./, '')
+      return {
+        url: api.movieResourceStreamUrl(resource.id, 'auto'),
+        kind: WEB_ORIGINAL_EXTENSIONS.has(extension) ? 'original' : 'hls',
+      }
+    },
+    async playLibrary(resourceId = null) {
+      if (this.libraryPlayLoading) return
+      const resource = resourceId == null
+        ? this.defaultLibraryResource()
+        : this.resourceById(resourceId)
+      if (!resource) return
       this.libraryPlayLoading = true
       this.libraryRetryUsed = false
+      this.activeLibraryResourceId = resource.id
       try {
-        const resp = await api.getLibraryPlay(code, typeof fileId === 'number' ? fileId : null)
-        const { play, progress } = resp.data
         this.playbackMode = 'library'
         this.streamSources = []
-        this.streamScanDone = true // 隐藏选源 picker
+        this.streamScanDone = true
         this.currentSourceName = ''
         this.streamPlayerVisible = true
-        await this.attachLibrarySource(play, progress)
+        await this.attachLibrarySource(
+          this.resourcePlayDescriptor(resource),
+          this.libraryPlayInfo?.progress,
+        )
       } catch (e) {
         ElMessage.error(formatApiError
-          ? formatApiError(e, { service: '云盘播放', action: '换链', fallback: '云盘播放失败' }).message
-          : '云盘播放失败')
+          ? formatApiError(e, { service: '115 播放', action: '打开', fallback: '115 播放失败' }).message
+          : '115 播放失败')
         this.streamPlayerVisible = false
         this.playbackMode = ''
       } finally {
@@ -62,7 +93,7 @@ export default {
       const video = await this.waitForStreamVideoEl()
       if (!video) return
       if (this.hlsInstance) { this.hlsInstance.destroy(); this.hlsInstance = null }
-      const isHls = play.kind === 'hls' || /\.m3u8($|\?)/.test(play.url)
+      const isHls = play.kind === 'hls'
       if (isHls) {
         const { default: Hls } = await import('hls.js/dist/hls.light.mjs')
         if (Hls.isSupported()) {
@@ -90,21 +121,22 @@ export default {
       this.setupProgressReporting(video)
     },
     async onLibraryPlayError() {
-      // 直链 403/过期：重新换链一次再试，仍失败提示
       if (this.playbackMode !== 'library' || this.libraryRetryUsed) {
-        if (this.playbackMode === 'library') ElMessage.error('云盘直链播放失败，可尝试外部播放器')
+        if (this.playbackMode === 'library') ElMessage.error('115 播放失败，可尝试外部播放器')
         return
       }
       this.libraryRetryUsed = true
-      const code = this.libraryCode()
+      const resource = this.resourceById(this.activeLibraryResourceId) || this.defaultLibraryResource()
+      if (!resource) return
       try {
-        const resp = await api.getLibraryPlay(code)
-        await this.attachLibrarySource(resp.data.play, resp.data.progress)
+        await this.attachLibrarySource(
+          this.resourcePlayDescriptor(resource),
+          this.libraryPlayInfo?.progress,
+        )
       } catch (e) {
-        ElMessage.error('云盘直链已失效且换链失败')
+        ElMessage.error('115 播放入口重试失败')
       }
     },
-    // ── 播放进度上报（library 与 online 通用）────────────────
     setupProgressReporting(video) {
       this.teardownProgressReporting()
       const handler = () => {
@@ -125,10 +157,10 @@ export default {
       }
     },
     reportProgress(video) {
-      const code = this.libraryCode()
-      if (!code || !video || !video.duration || !isFinite(video.duration)) return
+      const movieId = this.libraryCode()
+      if (!movieId || !video || !video.duration || !isFinite(video.duration)) return
       const source = this.playbackMode === 'library' ? 'library' : 'online'
-      api.savePlaybackProgress(code, {
+      api.savePlaybackProgress(movieId, {
         source,
         position_seconds: video.currentTime,
         duration_seconds: video.duration,
@@ -142,27 +174,47 @@ export default {
       const ss = String(s).padStart(2, '0')
       return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
     },
-    async copyLibraryLink() {
-      const code = this.libraryCode()
-      if (!code) return
+    formatResourceSize(size) {
+      const value = Number(size || 0)
+      if (value <= 0) return '未知大小'
+      const units = ['B', 'KB', 'MB', 'GB', 'TB']
+      const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
+      return `${(value / (1024 ** index)).toFixed(index >= 3 ? 2 : 0)} ${units[index]}`
+    },
+    stableResourceUrl(resource = null) {
+      const selected = resource || this.defaultLibraryResource()
+      if (!selected) return ''
+      return new URL(api.movieResourceStreamUrl(selected.id, 'auto'), window.location.origin).toString()
+    },
+    async makeDefaultLibraryResource(resource) {
+      const movieId = this.libraryCode()
+      if (!movieId || !resource || resource.is_default) return
       try {
-        // 直链有时效，复制前重新换链
-        const resp = await api.getLibraryPlay(code)
-        await navigator.clipboard.writeText(resp.data.play.url)
-        ElMessage.success('直链已复制（有时效，请尽快使用）')
+        await api.setDefaultMovieResource(movieId, resource.id)
+        const files = (this.libraryPlayInfo?.files || []).map(item => ({
+          ...item,
+          is_default: Number(item.id) === Number(resource.id) ? 1 : 0,
+        }))
+        this.libraryPlayInfo = { ...this.libraryPlayInfo, file: resource, files }
+        ElMessage.success('默认 115 资源已更新')
       } catch (e) {
-        ElMessage.error('获取直链失败')
+        ElMessage.error('设置默认资源失败')
+      }
+    },
+    async copyLibraryLink() {
+      const url = this.stableResourceUrl()
+      if (!url) return
+      try {
+        await navigator.clipboard.writeText(url)
+        ElMessage.success('JavHub 稳定播放链接已复制')
+      } catch (e) {
+        ElMessage.error('复制播放链接失败')
       }
     },
     async openInExternalPlayer() {
-      const code = this.libraryCode()
-      if (!code) return
-      try {
-        const resp = await api.getLibraryPlay(code)
-        window.location.href = `iina://weblink?url=${encodeURIComponent(resp.data.play.url)}`
-      } catch (e) {
-        ElMessage.error('获取直链失败')
-      }
+      const url = this.stableResourceUrl()
+      if (!url) return
+      window.location.href = `iina://weblink?url=${encodeURIComponent(url)}`
     },
   },
 }

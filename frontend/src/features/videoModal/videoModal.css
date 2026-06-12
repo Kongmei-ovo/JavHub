@@ -866,7 +866,7 @@
   .lightbox-next { right: 8px; }
 }
 
-/* ── 云盘库播放（library index player）─────────────────────── */
+/* ── 115 资源播放 ─────────────────────────────────────────── */
 .library-badge {
   flex-shrink: 0;
   font-size: var(--type-caption-1);

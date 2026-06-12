@@ -22,7 +22,9 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
-            <span v-if="libraryPlayInfo" class="library-badge" title="云盘库中已有此片">已入库</span>
+            <span v-if="libraryPlayInfo" class="library-badge" title="已绑定 115 播放资源">
+              115 · {{ libraryPlayInfo.files.length }} 个文件
+            </span>
 
             <div class="modal-actions">
               <button
@@ -37,10 +39,10 @@
                 预览
               </button>
 
-              <button v-if="libraryPlayInfo" class="stream-btn library-play-btn" @click="playLibrary" :disabled="libraryPlayLoading" title="播放云盘库内文件">
+              <button v-if="libraryPlayInfo" class="stream-btn library-play-btn" @click="playLibrary()" :disabled="libraryPlayLoading" title="播放默认 115 资源">
                 <span v-if="libraryPlayLoading" class="spinner"></span>
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                <span>云盘播放</span>
+                <span>115 播放</span>
               </button>
 
               <button
@@ -251,7 +253,8 @@
             @download="$emit('download', $event)"
           />
 
-          <!-- m3u8 下载 / 云盘直链兜底 -->
+          <VideoResourcePanel v-if="libraryPlayInfo" :resources="libraryPlayInfo.files"
+            @play="playLibrary" @make-default="makeDefaultLibraryResource" />
           <div class="stream-actions" v-if="video">
             <button class="btn btn-primary stream-download-btn" @click="downloadStream" :disabled="streamLoading">
               <span v-if="streamLoading" class="spinner"></span>
@@ -261,9 +264,9 @@
               <span>m3u8 下载</span>
             </button>
             <template v-if="libraryPlayInfo">
-              <button class="btn stream-download-btn" @click="copyLibraryLink" title="复制云盘文件直链（有时效）">
+              <button class="btn stream-download-btn" @click="copyLibraryLink" title="复制 JavHub 稳定播放链接">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                <span>复制直链</span>
+                <span>复制稳定链接</span>
               </button>
               <button class="btn stream-download-btn" @click="openInExternalPlayer" title="用外部播放器打开（IINA）">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -319,7 +322,6 @@
     </div>
   </teleport>
 </template>
-
 <script>
 import { defineAsyncComponent } from 'vue'
 import { displayName, displayLang } from '../utils/displayLang.js'
@@ -331,12 +333,11 @@ import api, { formatApiError } from '../api'
 import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
+import VideoResourcePanel from '../features/video/VideoResourcePanel.vue'
 import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '../features/video/streamSourcesHelper.js'
 import libraryPlaybackMixin from '../features/video/libraryPlaybackMixin.js'
-
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
-
 function videoFavoriteId(video = {}) {
   const id = video.content_id || video.dvd_id
   const serviceCode = String(video.service_code || '').trim()
@@ -346,7 +347,7 @@ function videoFavoriteId(video = {}) {
 export default {
   name: 'VideoModal',
   mixins: [libraryPlaybackMixin],
-  components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
+  components: { VideoGallerySection, VideoMagnetSection, VideoResourcePanel, VideoPlayerOverlay, HlsPlayerOverlay },
   emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },
