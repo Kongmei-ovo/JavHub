@@ -177,6 +177,27 @@ def variant_index_rebuild_job():
         _variant_index_rebuild_lock.release()
 
 
+def library_scan_job():
+    """每日云盘索引全量扫描（去 Emby 化的索引基础）。"""
+    from scheduler.worker_loop import run as run_on_loop
+
+    from services.library_scanner import run_scan
+
+    add_log("INFO", "开始云盘索引全量扫描...")
+    try:
+        result = run_on_loop(run_scan(mode="full"))
+        add_log(
+            "INFO",
+            "云盘索引扫描完成: 文件 {seen}，新增 {added}，匹配 {matched}，移除 {removed}".format(**result),
+        )
+        return result
+    except RuntimeError as exc:
+        add_log("WARNING", f"云盘索引扫描跳过: {exc}")
+    except Exception as exc:
+        add_log("ERROR", f"云盘索引扫描失败: {exc}")
+        raise
+
+
 def inventory_comparison_job(job_type: str = "full"):
     """Run the async inventory comparison job on the shared scheduler loop."""
     from scheduler.worker_loop import run as run_on_loop
@@ -331,6 +352,17 @@ def start_scheduler():
             id='variant_index_rebuild',
             name='变体索引重建',
             replace_existing=True,
+        )
+
+    # 每日云盘索引全量扫描（默认 5:00，排在变体索引之后）。
+    if config.library_enabled:
+        scheduler.add_job(
+            scheduler_job_wrapper('library_scan', library_scan_job),
+            CronTrigger(hour=config.library_scan_hour, minute=0),
+            id='library_scan',
+            name='云盘索引扫描',
+            replace_existing=True,
+            max_instances=1,
         )
 
     configure_candidate_auto_process_job()

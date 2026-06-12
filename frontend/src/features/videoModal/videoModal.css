@@ -865,3 +865,24 @@
   .lightbox-prev { left: 8px; }
   .lightbox-next { right: 8px; }
 }
+
+/* ── 云盘库播放（library index player）─────────────────────── */
+.library-badge {
+  flex-shrink: 0;
+  font-size: var(--type-caption-1);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  background: var(--accent-bg);
+  letter-spacing: 0.02em;
+}
+
+.library-play-btn {
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--modal-action-primary-bg);
+  border-color: var(--glass-active-border);
+}

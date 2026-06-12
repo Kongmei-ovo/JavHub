@@ -22,6 +22,7 @@
           <!-- 番号 -->
           <div class="modal-code-block">
             <span class="modal-code">{{ video.dvd_id || video.content_id }}</span>
+            <span v-if="libraryPlayInfo" class="library-badge" title="云盘库中已有此片">已入库</span>
 
             <div class="modal-actions">
               <button
@@ -34,6 +35,12 @@
                   <path d="M8 5v14l11-7z"/>
                 </svg>
                 预览
+              </button>
+
+              <button v-if="libraryPlayInfo" class="stream-btn library-play-btn" @click="playLibrary" :disabled="libraryPlayLoading" title="播放云盘库内文件">
+                <span v-if="libraryPlayLoading" class="spinner"></span>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <span>云盘播放</span>
               </button>
 
               <button
@@ -244,7 +251,7 @@
             @download="$emit('download', $event)"
           />
 
-          <!-- m3u8 下载 -->
+          <!-- m3u8 下载 / 云盘直链兜底 -->
           <div class="stream-actions" v-if="video">
             <button class="btn btn-primary stream-download-btn" @click="downloadStream" :disabled="streamLoading">
               <span v-if="streamLoading" class="spinner"></span>
@@ -253,6 +260,16 @@
               </svg>
               <span>m3u8 下载</span>
             </button>
+            <template v-if="libraryPlayInfo">
+              <button class="btn stream-download-btn" @click="copyLibraryLink" title="复制云盘文件直链（有时效）">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>复制直链</span>
+              </button>
+              <button class="btn stream-download-btn" @click="openInExternalPlayer" title="用外部播放器打开（IINA）">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                <span>外部播放器</span>
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -315,6 +332,7 @@ import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
 import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '../features/video/streamSourcesHelper.js'
+import libraryPlaybackMixin from '../features/video/libraryPlaybackMixin.js'
 
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
@@ -327,6 +345,7 @@ function videoFavoriteId(video = {}) {
 
 export default {
   name: 'VideoModal',
+  mixins: [libraryPlaybackMixin],
   components: { VideoGallerySection, VideoMagnetSection, VideoPlayerOverlay, HlsPlayerOverlay },
   emits: ['close', 'download', 'navigate'],
   props: {
@@ -416,8 +435,13 @@ export default {
         this.closeStreamPlayer()
         this.closeVideoPlayer()
         this.galleryViewerVisible = false
+      } else {
+        this.checkLibraryStatus()
       }
-    }
+    },
+    'video.content_id'() {
+      if (this.visible) this.checkLibraryStatus()
+    },
   },
   methods: {
     async toggleFavorite() {
@@ -548,6 +572,7 @@ export default {
       const code = this.video?.dvd_id || this.video?.content_id
       if (!code) return
       this.closeStreamSession()
+      this.playbackMode = 'online'
       this.streamLoading = true
       this.streamSources = []
       this.streamScanDone = false
@@ -613,12 +638,21 @@ export default {
           }
         })
         this.hlsInstance = hls
+        this.setupProgressReporting(video)
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = this.streamM3u8Url
         video.addEventListener('loadedmetadata', () => { video.play() })
+        this.setupProgressReporting(video)
       }
     },
     closeStreamPlayer() {
+      // 关闭前上报最终进度
+      const video = this.streamVideoEl()
+      if (video) {
+        this.reportProgress(video)
+        try { video.removeEventListener('error', this.onLibraryPlayError) } catch (e) {}
+      }
+      this.teardownProgressReporting()
       this.closeStreamSession()
       if (this.hlsInstance) { this.hlsInstance.destroy(); this.hlsInstance = null }
       this.streamPlayerVisible = false
@@ -627,6 +661,10 @@ export default {
       this.streamScanDone = false
       this.currentSourceName = ''
       this.streamLoading = false
+      this.playbackMode = ''
+      this.libraryRetryUsed = false
+      // 进度可能变化，刷新入库状态里的 progress
+      if (this.visible) this.checkLibraryStatus()
     },
     downloadStream() {
       const code = this.video?.dvd_id || this.video?.content_id

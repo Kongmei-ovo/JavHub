@@ -62,6 +62,38 @@
         @retry="loadHero"
       />
 
+      <section v-if="continueItems.length" class="today-section">
+        <header class="today-section__head">
+          <h2>继续观看</h2>
+          <span class="today-section__count">{{ continueItems.length }} 部</span>
+        </header>
+        <div class="today-sub-grid">
+          <div
+            v-for="item in continueItems"
+            :key="`cw-${item.content_id}`"
+            class="today-continue"
+          >
+            <AppleVideoCard
+              v-if="item.video"
+              :video="item.video"
+              @open="openVideo($event)"
+            />
+            <div
+              v-else
+              class="today-continue__fallback"
+              role="button"
+              tabindex="0"
+              @click="openVideo({ content_id: item.content_id })"
+            >
+              <span class="today-continue__code">{{ item.content_id }}</span>
+            </div>
+            <div class="today-continue__bar" aria-hidden="true">
+              <span :style="{ transform: `scaleX(${continueRatio(item)})` }"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="today-section">
         <div class="today-stat-strip">
           <component
@@ -256,6 +288,7 @@ export default defineComponent({
   data() {
     return {
       hero: null,
+      continueItems: [],
       activeDownloads: [],
       candidateSummary: { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 },
       missingActressesCount: 0,
@@ -431,6 +464,7 @@ export default defineComponent({
       try {
         await Promise.allSettled([
           this.loadHero(),
+          this.loadContinueWatching(),
           this.loadDownloads(),
           this.loadCandidateSummary(),
           this.loadMissingActresses(),
@@ -544,6 +578,24 @@ export default defineComponent({
         this.missingActressesCount = 0
         this.missingActressesError = formatErrorMessage(err, '加载缺失演员')
       }
+    },
+    async loadContinueWatching() {
+      // 失败静默：继续观看是增强区块，没有数据/接口失败时整块隐藏
+      try {
+        const res = await api.getContinueWatching(6)
+        const items = res?.data?.items || []
+        this.continueItems = items.map(item => ({
+          ...item,
+          video: item.video ? normalizeVideo(item.video) : null,
+        }))
+      } catch (err) {
+        this.continueItems = []
+      }
+    },
+    continueRatio(item) {
+      const duration = Number(item.duration_seconds || 0)
+      if (!duration) return 0
+      return Math.min(Math.max(Number(item.position_seconds || 0) / duration, 0), 1)
     },
     async loadSubscriptionUpdates() {
       this.subscriptionUpdatesError = ''

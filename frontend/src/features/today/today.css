@@ -675,3 +675,42 @@
     gap: var(--space-3);
   }
 }
+
+/* ── 继续观看 ───────────────────────────────────────────── */
+.today-continue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.today-continue__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  overflow: hidden;
+}
+
+.today-continue__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--motion-standard);
+}
+
+.today-continue__fallback {
+  aspect-ratio: 2 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-light);
+  cursor: pointer;
+}
+
+.today-continue__code {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-secondary);
+}

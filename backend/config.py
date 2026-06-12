@@ -132,6 +132,61 @@ class Config:
     def openlist_default_path(self) -> str:
         return self._config.get('openlist', {}).get('default_path', '/115/AV')
 
+    # ── library（自有云盘文件索引）──────────────────────────────
+    @property
+    def library_enabled(self) -> bool:
+        return bool(self._config.get('library', {}).get('enabled', True))
+
+    @property
+    def library_backend(self) -> str:
+        return self._config.get('library', {}).get('backend', 'openlist')
+
+    @property
+    def library_root_paths(self) -> list:
+        paths = self._config.get('library', {}).get('root_paths')
+        if paths:
+            return [str(p) for p in paths if str(p).strip()]
+        default = self.openlist_default_path
+        return [default] if default else []
+
+    @property
+    def library_scan_interval_ms(self) -> int:
+        return int(self._config.get('library', {}).get('scan_interval_ms', 200))
+
+    @property
+    def library_video_exts(self) -> list:
+        exts = self._config.get('library', {}).get('video_exts')
+        if exts:
+            return [str(e).lower() for e in exts]
+        return ['.mp4', '.mkv', '.avi', '.wmv', '.ts', '.m2ts', '.iso']
+
+    @property
+    def library_scan_hour(self) -> int:
+        return int(self._config.get('scheduler', {}).get('library_scan_hour', 5))
+
+    @property
+    def inventory_baseline(self) -> str:
+        """inventory 对比基准：emby（现状默认）| library（自有索引）"""
+        value = str(self._config.get('inventory', {}).get('baseline', 'emby')).lower()
+        return value if value in ('emby', 'library') else 'emby'
+
+    # ── emby_compat（Emby 兼容 API）────────────────────────────
+    @property
+    def emby_compat_enabled(self) -> bool:
+        return bool(self._config.get('emby_compat', {}).get('enabled', False))
+
+    @property
+    def emby_compat_username(self) -> str:
+        return self._config.get('emby_compat', {}).get('username', 'javhub')
+
+    @property
+    def emby_compat_password(self) -> str:
+        return _env('EMBY_COMPAT_PASSWORD', self._config.get('emby_compat', {}).get('password', ''))
+
+    @property
+    def emby_compat_proxy_stream(self) -> bool:
+        return bool(self._config.get('emby_compat', {}).get('proxy_stream', False))
+
     @property
     def crawler_request_interval(self) -> int:
         return self._config.get('crawler', {}).get('request_interval', 3)

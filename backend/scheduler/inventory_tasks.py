@@ -334,13 +334,41 @@ async def _run_incremental_collect_job(job_id: int, emby) -> None:
     logger.info("[Inventory] Incremental collection job %s completed. Snapshot: %s", job_id, snapshot_key)
 
 
+async def _run_library_collect_job(job_id: int) -> None:
+    """library 基准采集：从自有云盘索引构建快照（去 Emby 化）。"""
+    from services.library_snapshot import build_library_snapshot
+
+    stats = await build_library_snapshot(
+        progress_cb=lambda pct: update_inventory_progress(job_id, min(pct, 95))
+    )
+    update_inventory_job(
+        job_id,
+        "completed",
+        snapshot_key=stats["snapshot_key"],
+        result=stats,
+    )
+    update_inventory_progress(job_id, 100)
+    logger.info(
+        "[Inventory] Library collection job %s completed. Snapshot: %s", job_id, stats["snapshot_key"]
+    )
+
+
 async def run_collect_job(job_id: int, mode: str = "full"):
-    """采集阶段：从 Emby 拉取数据存到快照表"""
+    """采集阶段：按 inventory.baseline 从 Emby 或自有云盘索引存快照"""
     update_inventory_job(job_id, "running")
     normalized_mode = mode if mode in {"full", "incremental"} else "full"
-    logger.info("[Inventory] Starting collection job %s, mode: %s", job_id, normalized_mode)
+    baseline = config.inventory_baseline
+    logger.info(
+        "[Inventory] Starting collection job %s, mode: %s, baseline: %s",
+        job_id, normalized_mode, baseline,
+    )
 
     try:
+        if baseline == "library":
+            # library 基准没有增量语义（索引本身就是全量真相），统一全量构建
+            await _run_library_collect_job(job_id)
+            return
+
         emby = get_emby_client()
         if normalized_mode == "incremental":
             await _run_incremental_collect_job(job_id, emby)

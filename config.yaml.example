@@ -17,6 +17,26 @@ openlist:
   password: ""
   default_path: "/115/AV"
 
+# 自有云盘文件索引（去 Emby 化，详见 docs/library-player.md）
+library:
+  enabled: true
+  backend: "openlist"
+  root_paths:
+    - "/115/AV"
+  scan_interval_ms: 200
+  # video_exts: [".mp4", ".mkv", ".avi", ".wmv", ".ts", ".m2ts", ".iso"]
+
+# inventory 对比基准：emby（默认，现状）| library（自有索引，验证后切换）
+inventory:
+  baseline: "emby"
+
+# Emby 兼容 API（Infuse/VidHub 直连），默认关闭
+emby_compat:
+  enabled: false
+  username: "javhub"
+  password: "change-me"
+  # proxy_stream: false   # 客户端不跟随 302 时改为 true（流量走本服务转发）
+
 downloaders:
   default_id: "openlist"
   clients:

@@ -21,6 +21,7 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
     monkeypatch.setattr(base, "_init_download_candidate_tables", record_call("_init_download_candidate_tables", calls))
     monkeypatch.setattr(base, "_init_video_variant_tables", record_call("_init_video_variant_tables", calls))
     monkeypatch.setattr(base, "_init_emby_snapshot_tables", record_call("_init_emby_snapshot_tables", calls))
+    monkeypatch.setattr(base, "_init_library_tables", record_call("_init_library_tables", calls))
     monkeypatch.setattr(base, "_migrate_subscriptions", record_call("_migrate_subscriptions", calls))
     monkeypatch.setattr(base, "_create_indexes", record_call("_create_indexes", calls))
 
@@ -36,6 +37,7 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
         ("_init_download_candidate_tables", (cursor,)),
         ("_init_video_variant_tables", (cursor,)),
         ("_init_emby_snapshot_tables", (cursor,)),
+        ("_init_library_tables", (cursor,)),
         ("commit", ()),
         ("close", ()),
         ("_migrate_subscriptions", ()),

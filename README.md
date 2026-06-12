@@ -14,6 +14,8 @@ connectors, and optional notifications.
 - Saved watches and scheduled refresh tasks
 - Optional integrations with user-managed external services
 - Local library status checks
+- Self-owned cloud library index with in-app playback, resume, and continue watching (see [docs/library-player.md](docs/library-player.md))
+- Optional Emby-compatible API subset so clients like Infuse can browse and play directly
 - Web dashboard for search, imports, logs, and settings
 - Optional chat-based commands and notifications
 - One Docker image for the frontend and backend

@@ -1,13 +1,43 @@
 import asyncio
 import httpx
 import logging
+from dataclasses import dataclass, field
 from typing import Optional, List
+from urllib.parse import quote
 from config import config
 
 logger = logging.getLogger(__name__)
 
 OPENLIST_TIMEOUT = 30
 OPENLIST_MAX_ATTEMPTS = 3
+FS_LIST_PER_PAGE = 200
+
+
+@dataclass
+class FsEntry:
+    """单个 fs/list 条目（标准化后）。sign 仅内存使用，严禁入库。"""
+    name: str
+    path: str
+    is_dir: bool
+    size: int
+    modified: str
+    sign: str | None = None
+
+
+@dataclass
+class ResolvedLink:
+    """播放直链。时效短且可能绑 UA/IP——任何持久化（表/日志/缓存）都不允许。"""
+    url: str
+    headers: dict = field(default_factory=dict)
+    kind: str = "direct"
+
+
+class OpenListFsError(RuntimeError):
+    """fs 接口失败，携带出错 path 供 scanner 决策（跳过或中止）。"""
+
+    def __init__(self, path: str, message: str):
+        super().__init__(f"OpenList fs error at {path!r}: {message}")
+        self.path = path
 
 class OpenListClient:
     def __init__(self):
@@ -138,6 +168,81 @@ class OpenListClient:
         except (httpx.HTTPError, ValueError) as e:
             logger.error(f"Mkdir failed: {e}")
         return False
+
+    async def _fs_post(self, endpoint: str, payload: dict, path: str) -> dict:
+        """POST 到 fs 接口，统一处理 token 过期（401 自动刷新并重试一次）。"""
+        if not self.token and not await self._refresh_token():
+            raise OpenListFsError(path, "no token and refresh failed")
+        for attempt in range(2):
+            resp = await self._request_with_retry(
+                "POST",
+                f"{self.api_url}{endpoint}",
+                json=payload,
+                headers=self._get_headers(),
+            )
+            if resp.status_code != 200:
+                raise OpenListFsError(path, f"HTTP {resp.status_code}")
+            data = resp.json()
+            code = data.get("code")
+            if code == 401 and attempt == 0:
+                logger.info("OpenList token expired, refreshing...")
+                if not await self._refresh_token():
+                    raise OpenListFsError(path, "token refresh failed")
+                continue
+            if code != 200:
+                raise OpenListFsError(path, f"code={code} message={data.get('message', '')}")
+            return data.get("data") or {}
+        raise OpenListFsError(path, "unreachable")
+
+    async def fs_list(self, path: str, per_page: int = FS_LIST_PER_PAGE) -> List[FsEntry]:
+        """列出目录全部条目（自动翻页）。单目录失败抛 OpenListFsError。"""
+        normalized = self._normalize_path(path)
+        entries: List[FsEntry] = []
+        page = 1
+        while True:
+            data = await self._fs_post(
+                "/api/fs/list",
+                {"path": normalized, "page": page, "per_page": per_page, "refresh": False},
+                normalized,
+            )
+            content = data.get("content") or []
+            for item in content:
+                name = str(item.get("name") or "")
+                entries.append(FsEntry(
+                    name=name,
+                    path=f"{normalized.rstrip('/')}/{name}",
+                    is_dir=bool(item.get("is_dir")),
+                    size=int(item.get("size") or 0),
+                    modified=str(item.get("modified") or ""),
+                    sign=item.get("sign") or None,
+                ))
+            total = int(data.get("total") or 0)
+            if len(entries) >= total or not content:
+                break
+            page += 1
+        return entries
+
+    async def fs_get(self, path: str) -> dict:
+        """单文件信息，含 raw_url / sign。"""
+        normalized = self._normalize_path(path)
+        return await self._fs_post("/api/fs/get", {"path": normalized}, normalized)
+
+    async def resolve_link(self, path: str) -> ResolvedLink:
+        """播放时实时换链。优先 raw_url，缺失时回退 /d/{path}?sign=。
+
+        返回值生命周期 = 单次请求。调用方严禁缓存或持久化。
+        """
+        normalized = self._normalize_path(path)
+        info = await self.fs_get(normalized)
+        raw_url = str(info.get("raw_url") or "").strip()
+        if raw_url:
+            return ResolvedLink(url=raw_url)
+        sign = str(info.get("sign") or "").strip()
+        encoded = quote(normalized)
+        url = f"{self.api_url}/d{encoded}"
+        if sign:
+            url += f"?sign={sign}"
+        return ResolvedLink(url=url)
 
     async def get_offline_tasks(self) -> List[dict]:
         if not self.token and not await self._refresh_token():

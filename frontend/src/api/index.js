@@ -774,6 +774,51 @@ export default {
     return api.post(`/v1/stream/${contentId}/transfer`, data)
   },
 
+  // ========== 云盘库播放（直链实时换链，前端不得缓存 url） ==========
+
+  getLibraryPlay(contentId, fileId = null) {
+    const params = fileId ? { file_id: fileId } : undefined
+    return api.get(`/v1/playback/library/${contentId}`, { params })
+  },
+
+  savePlaybackProgress(contentId, data) {
+    return api.put(`/v1/playback/progress/${contentId}`, data)
+  },
+
+  getPlaybackProgress(contentId, source = null) {
+    return api.get(`/v1/playback/progress/${contentId}`, { params: source ? { source } : undefined })
+  },
+
+  getContinueWatching(limit = 12) {
+    return api.get('/v1/playback/continue', { params: { limit } })
+  },
+
+  // ========== 云盘文件索引 ==========
+
+  getLibrarySummary() {
+    return api.get('/v1/library/summary')
+  },
+
+  triggerLibraryScan(data = { mode: 'full' }) {
+    return api.post('/v1/library/scan', data)
+  },
+
+  getLibraryScanStatus() {
+    return api.get('/v1/library/scan/status')
+  },
+
+  getLibraryFiles(params = {}) {
+    return api.get('/v1/library/files', { params })
+  },
+
+  matchLibraryFile(fileId, contentId) {
+    return api.post(`/v1/library/files/${fileId}/match`, { content_id: contentId })
+  },
+
+  ignoreLibraryFile(fileId) {
+    return api.post(`/v1/library/files/${fileId}/ignore`)
+  },
+
   // ========== 运营总览 ==========
 
   getOperationsOverview() {
