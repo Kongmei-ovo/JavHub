@@ -27,10 +27,10 @@
         :key="client.id"
         class="downloader-row"
         :class="{ disabled: !client.enabled, default: client.id === downloaders.default_id }"
-        role="button"
-        tabindex="0"
-        @click="$emit('edit', client)"
-        @keyup.enter="$emit('edit', client)"
+        :role="client.type !== 'open115' ? 'button' : undefined"
+        :tabindex="client.type !== 'open115' ? 0 : undefined"
+        @click="client.type !== 'open115' && $emit('edit', client)"
+        @keyup.enter="client.type !== 'open115' && $emit('edit', client)"
       >
         <div class="downloader-row-main">
           <div class="downloader-avatar" :class="{ muted: !client.enabled }">
@@ -42,7 +42,8 @@
               <span>{{ downloaderTypeLabel(client.type) }}</span>
             </div>
             <div class="downloader-summary">
-              <span :title="client.address || ''">{{ shortDownloaderAddress(client.address) || '未配置地址' }}</span>
+              <span v-if="client.type === 'open115'">115 授权由配置中心管理</span>
+              <span v-else :title="client.address || ''">{{ shortDownloaderAddress(client.address) || '未配置地址' }}</span>
               <span :title="client.default_path || ''">{{ downloaderPathSummary(client) }}</span>
             </div>
           </div>
@@ -61,7 +62,7 @@
           </span>
         </div>
 
-        <label class="switch-mini switch-apple" title="启用下载源" @click.stop>
+        <label v-if="client.type !== 'open115'" class="switch-mini switch-apple" title="启用下载源" @click.stop>
           <input type="checkbox" v-model="client.enabled" />
           <span></span>
         </label>
@@ -80,13 +81,13 @@
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
           </button>
-          <button class="icon-action compact" type="button" title="编辑" aria-label="编辑" @click="$emit('edit', client)">
+          <button v-if="client.type !== 'open115'" class="icon-action compact" type="button" title="编辑" aria-label="编辑" @click="$emit('edit', client)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
               <path d="M12 20h9"/>
               <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/>
             </svg>
           </button>
-          <button class="icon-action compact danger" type="button" :disabled="downloaderClients.length <= 1" title="删除" aria-label="删除" @click="$emit('remove', client.id)">
+          <button v-if="client.type !== 'open115'" class="icon-action compact danger" type="button" :disabled="downloaderClients.length <= 1" title="删除" aria-label="删除" @click="$emit('remove', client.id)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
@@ -133,7 +134,7 @@
               <label>
                 类型
                 <select class="input" v-model="downloaderEditor.draft.type" @change="$emit('sync-draft-defaults')">
-                  <option v-for="type in downloaderTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
+                  <option v-for="type in editableDownloaderTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
                 </select>
               </label>
               <label class="wide-field">
@@ -161,7 +162,7 @@
                 密码
                 <input class="input" type="password" v-model="downloaderEditor.draft.password" autocomplete="new-password" :placeholder="downloaderEditor.draft.password_configured ? '留空不覆盖已有密码' : ''" />
               </label>
-              <label v-if="downloaderEditor.draft.type === 'openlist' || downloaderEditor.draft.type === 'aria2'">
+              <label v-if="downloaderEditor.draft.type === 'aria2'">
                 Token
                 <input class="input" type="password" v-model="downloaderEditor.draft.token" autocomplete="new-password" :placeholder="downloaderEditor.draft.token_configured ? '留空不覆盖已有 Token' : tokenPlaceholder(downloaderEditor.draft.type)" />
               </label>
@@ -234,6 +235,11 @@ export default {
     'sync-draft-defaults',
     'apply-editor',
   ],
+  computed: {
+    editableDownloaderTypes() {
+      return this.downloaderTypes.filter(type => type.value !== 'open115')
+    },
+  },
 }
 </script>
 

@@ -1,5 +1,5 @@
 export const DEFAULT_CONFIG = {
-  openlist: { api_url: '', username: '', password: '', default_path: '/115/AV' },
+  open115: { app_id: '', root_path: '/JavHub' },
   database: {
     host: 'postgres',
     port: 5432,
@@ -8,7 +8,7 @@ export const DEFAULT_CONFIG = {
     user: 'javhub',
     password: '',
   },
-  downloaders: { default_id: 'openlist', clients: [] },
+  downloaders: { default_id: 'open115', clients: [] },
   emby: { api_url: '', api_key: '' },
   telegram: { bot_token: '', allowed_user_ids: [] },
   crawler: { request_interval: 3 },

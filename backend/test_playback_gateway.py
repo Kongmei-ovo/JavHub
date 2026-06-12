@@ -203,6 +203,42 @@ class HLSProxyTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 410)
 
+    def test_segment_proxy_preserves_partial_content_status_and_range_headers(self):
+        from services.playback_gateway import hls_sessions
+
+        session_id = hls_sessions.create(
+            resource_id=9,
+            root_url="https://hls.115.test/path/master.m3u8?sig=secret",
+            user_agent="IINA/1.4",
+        )
+        session = hls_sessions.get(session_id, 9)
+        target_token = hls_sessions.register_target(
+            session,
+            "https://hls.115.test/path/segment.ts?sig=secret",
+        )
+        upstream = SimpleNamespace(
+            status_code=206,
+            content=b"partial-segment",
+            headers={
+                "content-type": "video/mp2t",
+                "content-range": "bytes 0-14/100",
+                "accept-ranges": "bytes",
+            },
+        )
+        upstream_get = AsyncMock(return_value=upstream)
+
+        with patch("routers.playback.playback_hls_client.get", new=upstream_get):
+            response = self._client().get(
+                f"/api/v1/playback/resources/9/hls/{session_id}/{target_token}",
+                headers={"Range": "bytes=0-14"},
+            )
+
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.headers["content-range"], "bytes 0-14/100")
+        self.assertEqual(response.headers["accept-ranges"], "bytes")
+        upstream_get.assert_awaited_once()
+        self.assertEqual(upstream_get.await_args.kwargs["headers"]["Range"], "bytes=0-14")
+
 
 if __name__ == "__main__":
     unittest.main()

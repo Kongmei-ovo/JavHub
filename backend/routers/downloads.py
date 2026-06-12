@@ -48,7 +48,7 @@ class CreateDownloadRequest(BaseModel):
 
 class DownloaderClientRequest(BaseModel):
     id: Optional[str] = None
-    type: str = "openlist"
+    type: str = "open115"
     name: Optional[str] = None
     enabled: bool = True
     address: Optional[str] = None

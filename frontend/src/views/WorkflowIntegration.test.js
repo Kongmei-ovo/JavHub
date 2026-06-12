@@ -157,10 +157,11 @@ function loadConfigOptions() {
     'AppleSkeleton',
     'GlassSelect',
     'AdvancedSettingsPanel',
+    'Open115SettingsPanel',
     'DEFAULT_BUBBLE_CFG',
     'DEFAULT_CONFIG',
     `${script}`
-  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {}, {}, {})
+  )({}, async () => {}, { value: 'ja' }, () => ({}), {}, () => {}, () => {}, {}, {}, {}, {}, {}, {}, {})
 }
 
 test('sidebar displays the package version without a hardcoded release string', () => {
@@ -1192,7 +1193,7 @@ test('settings page keeps downloaders out and gives Telegram its own section', (
   assert.match(config, /label: 'Telegram 通知'/)
   assert.match(config, /<h2>Bot 连接<\/h2>/)
   assert.match(config, /<h2>通知事件<\/h2>/)
-  assert.match(config, /const \{ downloaders, openlist, server, rate_limit, \.\.\.configPayload \} = this\.config/)
+  assert.match(config, /const \{ downloaders, server, rate_limit, \.\.\.configPayload \} = this\.config/)
   assert.doesNotMatch(config, /OpenList \/ 115云盘/)
   assert.doesNotMatch(config, /管理下载源/)
   assert.doesNotMatch(config, /config\.openlist/)

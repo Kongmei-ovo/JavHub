@@ -59,5 +59,8 @@ async def test_connection():
 
 @router.post("/unbind")
 async def unbind():
-    open115_client.unbind()
+    try:
+        open115_client.unbind()
+    except Open115Error as exc:
+        raise HTTPException(status_code=409, detail=exc.api_message) from exc
     return {"bound": False}

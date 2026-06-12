@@ -17,14 +17,12 @@ from pydantic import BaseModel
 
 from database import (
     get_movie_resource,
-    get_library_files_by_content_id,
     get_progress,
     list_continue_watching,
     save_progress,
 )
 from services.open115 import Open115Error, open115_client
 from services.playback_gateway import PlaybackContext, hls_sessions
-from services.storage_resolver import get_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +202,12 @@ async def _proxy_hls_target(
         for header in ("content-range", "accept-ranges"):
             if upstream.headers.get(header):
                 response_headers[header.title()] = upstream.headers[header]
-    return Response(content=content, media_type=content_type, headers=response_headers)
+    return Response(
+        content=content,
+        status_code=upstream.status_code,
+        media_type=content_type,
+        headers=response_headers,
+    )
 
 
 @router.get("/resources/{resource_id}/hls/{session_id}/master.m3u8")
@@ -230,50 +233,6 @@ async def proxy_open115_hls_target(
         target_token=target_token,
         request=request,
     )
-
-
-def _public_file(row: dict) -> dict:
-    return {
-        "id": row.get("id"),
-        "name": row.get("name"),
-        "path": row.get("path"),
-        "size": row.get("size"),
-        "backend": row.get("backend"),
-        "modified_at": row.get("modified_at"),
-    }
-
-
-@router.get("/library/{content_id}")
-async def library_play(content_id: str, file_id: Optional[int] = Query(None)) -> dict[str, Any]:
-    """换链播放入口。直链实时获取，永不缓存/落库。"""
-    files = get_library_files_by_content_id(content_id)
-    if not files:
-        raise HTTPException(status_code=404, detail={"message": "番号不在云盘库中"})
-    chosen = files[0]
-    if file_id is not None:
-        chosen = next((f for f in files if f["id"] == file_id), None)
-        if chosen is None:
-            raise HTTPException(status_code=404, detail={"message": "指定文件不存在或已删除"})
-    try:
-        resolver = get_resolver(chosen["backend"])
-        link = await resolver.resolve_play_url(chosen)
-    except KeyError:
-        raise HTTPException(status_code=500, detail={"message": f"不支持的存储后端: {chosen['backend']}"})
-    except Exception as exc:
-        logger.error("resolve play url failed for %s: %s", content_id, type(exc).__name__)
-        raise HTTPException(status_code=502, detail={"message": "换链失败，请稍后重试"})
-
-    progress = get_progress(content_id, source="library")
-    return {
-        "file": _public_file(chosen),
-        "files": [_public_file(f) for f in files],
-        "play": {"url": link.url, "kind": link.kind, "headers": link.headers},
-        "progress": {
-            "position_seconds": progress["position_seconds"] if progress else 0,
-            "duration_seconds": progress["duration_seconds"] if progress else 0,
-            "completed": bool(progress and progress.get("completed")),
-        },
-    }
 
 
 class ProgressRequest(BaseModel):

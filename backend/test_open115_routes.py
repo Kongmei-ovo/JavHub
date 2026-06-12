@@ -84,6 +84,33 @@ class Open115RoutesTests(unittest.TestCase):
         self.assertEqual(response.json(), {"bound": False})
         client.unbind.assert_called_once_with()
 
+    def test_unbind_reports_environment_managed_binding(self):
+        from services.open115 import Open115Error
+
+        client = AsyncMock()
+        client.unbind = Mock(side_effect=Open115Error(None, "授权由环境变量管理"))
+
+        with patch("routers.open115.open115_client", client):
+            response = self._client().post("/api/v1/open115/unbind")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("环境变量", response.json()["detail"])
+
+    def test_status_exposes_verification_without_exposing_tokens(self):
+        client = AsyncMock()
+        client.status = Mock(return_value={
+            "configured": True,
+            "bound": True,
+            "verified": True,
+            "refresh_token_configured": True,
+        })
+
+        with patch("routers.open115.open115_client", client):
+            response = self._client().get("/api/v1/open115/status")
+
+        self.assertTrue(response.json()["verified"])
+        self.assertNotIn("refresh_token", response.json())
+
 
 if __name__ == "__main__":
     unittest.main()

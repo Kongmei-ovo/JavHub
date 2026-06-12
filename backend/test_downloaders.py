@@ -8,16 +8,52 @@ from test_support.postgres import TempPostgresMixin
 
 
 class DownloaderConfigTests(unittest.TestCase):
-    def test_legacy_openlist_becomes_downloaders_config(self):
+    def test_legacy_openlist_is_ignored_and_native_open115_requires_verified_binding(self):
         from services.downloaders import get_downloaders_config
 
-        with patch("services.downloaders.config._config", {"openlist": {"api_url": "http://openlist", "default_path": "/115/AV"}}):
+        legacy = {
+            "openlist": {"api_url": "http://openlist", "token": "legacy-secret"},
+            "open115": {"refresh_token": "refresh", "verified": False, "root_path": "/JavHub"},
+            "downloaders": {
+                "default_id": "openlist",
+                "clients": [{"id": "openlist", "type": "openlist", "address": "http://openlist"}],
+            },
+        }
+        with patch("services.downloaders.config._config", legacy):
             cfg = get_downloaders_config()
 
-        self.assertEqual(cfg["default_id"], "openlist")
-        self.assertEqual(cfg["clients"][0]["type"], "openlist")
-        self.assertEqual(cfg["clients"][0]["address"], "http://openlist")
-        self.assertEqual(cfg["clients"][0]["password"], "")
+        self.assertEqual(cfg["default_id"], "")
+        self.assertEqual(cfg["clients"][0]["id"], "open115")
+        self.assertEqual(cfg["clients"][0]["type"], "open115")
+        self.assertFalse(cfg["clients"][0]["enabled"])
+        self.assertNotIn("openlist", {item["value"] for item in cfg["types"]})
+        self.assertNotIn("legacy-secret", repr(cfg))
+
+    def test_verified_open115_is_the_default_native_downloader(self):
+        from services.downloaders import get_downloaders_config
+
+        with patch("services.downloaders.config._config", {
+            "open115": {"refresh_token": "refresh", "verified": True, "root_path": "/JavHub"},
+            "downloaders": {"default_id": "open115", "clients": []},
+        }):
+            cfg = get_downloaders_config()
+
+        self.assertEqual(cfg["default_id"], "open115")
+        self.assertTrue(cfg["clients"][0]["enabled"])
+        self.assertEqual(cfg["clients"][0]["default_path"], "/JavHub")
+
+    def test_verified_environment_binding_enables_native_open115(self):
+        from services.downloaders import get_downloaders_config
+
+        with patch.dict("os.environ", {"OPEN115_REFRESH_TOKEN": "environment-refresh"}), \
+            patch("services.downloaders.config._config", {
+                "open115": {"verified": True, "root_path": "/JavHub"},
+                "downloaders": {"default_id": "open115", "clients": []},
+            }):
+            cfg = get_downloaders_config()
+
+        self.assertEqual(cfg["default_id"], "open115")
+        self.assertTrue(cfg["clients"][0]["enabled"])
 
     def test_blank_secret_preserves_existing_downloader_secret(self):
         from services.downloaders import merge_downloaders_payload
@@ -119,8 +155,8 @@ class DownloaderDuplicateAwareClientTests(unittest.IsolatedAsyncioTestCase):
             async def list_tasks(self):
                 return [{"id": "existing-task", "hash": info_hash, "status": "downloading"}]
 
-        with patch("services.downloaders.OpenListDownloaderClient", FakeDownloaderClient):
-            client = create_downloader_client({"type": "openlist"})
+        with patch("services.downloaders.QBittorrentDownloaderClient", FakeDownloaderClient):
+            client = create_downloader_client({"type": "qbittorrent"})
             result = await client.add_magnet(f"magnet:?xt=urn:btih:{info_hash}", "/media", "Title")
 
         self.assertFalse(result.success)
@@ -144,8 +180,8 @@ class DownloaderDuplicateAwareClientTests(unittest.IsolatedAsyncioTestCase):
             async def list_tasks(self):
                 return []
 
-        with patch("services.downloaders.OpenListDownloaderClient", FakeDownloaderClient):
-            client = create_downloader_client({"type": "openlist"})
+        with patch("services.downloaders.QBittorrentDownloaderClient", FakeDownloaderClient):
+            client = create_downloader_client({"type": "qbittorrent"})
             result = await client.add_magnet(
                 "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12",
                 "/media",
@@ -199,7 +235,7 @@ class DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         cfg = {
             "id": "qb",
-            "type": "openlist",
+            "type": "qbittorrent",
             "name": "QB",
             "enabled": True,
             "address": "http://qb",
@@ -220,7 +256,7 @@ class DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
                 return [{"id": "existing-task", "hash": info_hash, "status": "downloading"}]
 
         with patch("services.downloader.get_downloader_config", return_value=cfg):
-            with patch("services.downloaders.OpenListDownloaderClient", FakeClient):
+            with patch("services.downloaders.QBittorrentDownloaderClient", FakeClient):
                 task_id = await downloader_service.create_download_task(
                     "SIVR-438",
                     "Title",
@@ -236,6 +272,12 @@ class DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
 
 class DownloaderClientProtocolTests(unittest.IsolatedAsyncioTestCase):
+    async def test_factory_rejects_retired_openlist_type(self):
+        from services.downloaders import create_downloader_client
+
+        with self.assertRaisesRegex(ValueError, "OpenList"):
+            create_downloader_client({"type": "openlist"})
+
     async def test_factory_accepts_remaining_pt_depiler_downloaders(self):
         from services.downloaders import (
             DelugeDownloaderClient,

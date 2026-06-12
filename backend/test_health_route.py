@@ -118,7 +118,7 @@ class HealthRouteTest(unittest.TestCase):
                 "downloaders": {
                     "default_id": "qb",
                     "default_available": True,
-                    "registered": 2,
+                    "registered": 3,
                     "available": 1,
                     "error": "",
                 },
@@ -236,6 +236,23 @@ class HealthRouteTest(unittest.TestCase):
         self.assertEqual(result["latest_attempt_error"], "TimeoutError: slow")
         self.assertEqual(result["latest_attempt_source"], "torznab")
         self.assertEqual(result["latest_attempt_keyword"], "ABC-123")
+
+    def test_downloader_health_accepts_verified_environment_open115_binding(self):
+        from routers.health import _downloader_summary
+
+        cfg = SimpleNamespace(
+            _config={
+                "open115": {"verified": True},
+                "downloaders": {"default_id": "open115", "clients": []},
+            }
+        )
+        with patch.dict("os.environ", {"OPEN115_REFRESH_TOKEN": "environment-refresh"}), \
+            patch("routers.health.config", cfg):
+            summary = _downloader_summary()
+
+        self.assertEqual(summary["default_id"], "open115")
+        self.assertTrue(summary["default_available"])
+        self.assertEqual(summary["available"], 1)
 
     def test_local_launchagent_javinfo_url_is_not_marked_legacy(self):
         cfg = SimpleNamespace(

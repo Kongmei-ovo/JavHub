@@ -453,6 +453,30 @@ export default {
     return api.put('/v1/config', config)
   },
 
+  getOpen115Status() {
+    return api.get('/v1/open115/status', { silentError: true })
+  },
+
+  startOpen115Auth() {
+    return api.post('/v1/open115/auth/start')
+  },
+
+  pollOpen115Auth(uid) {
+    return api.get(`/v1/open115/auth/${pathSegment(uid, 'uid')}`, { silentError: true })
+  },
+
+  importOpen115Token(refreshToken) {
+    return api.post('/v1/open115/auth/import', { refresh_token: refreshToken })
+  },
+
+  testOpen115() {
+    return api.post('/v1/open115/test')
+  },
+
+  unbindOpen115() {
+    return api.post('/v1/open115/unbind')
+  },
+
   exportConfig() {
     return api.get('/v1/config/export', { responseType: 'blob' })
   },
@@ -807,32 +831,6 @@ export default {
 
   getContinueWatching(limit = 12) {
     return api.get('/v1/playback/continue', { params: { limit } })
-  },
-
-  // ========== 云盘文件索引 ==========
-
-  getLibrarySummary() {
-    return api.get('/v1/library/summary')
-  },
-
-  triggerLibraryScan(data = { mode: 'full' }) {
-    return api.post('/v1/library/scan', data)
-  },
-
-  getLibraryScanStatus() {
-    return api.get('/v1/library/scan/status')
-  },
-
-  getLibraryFiles(params = {}) {
-    return api.get('/v1/library/files', { params })
-  },
-
-  matchLibraryFile(fileId, contentId) {
-    return api.post(`/v1/library/files/${fileId}/match`, { content_id: contentId })
-  },
-
-  ignoreLibraryFile(fileId) {
-    return api.post(`/v1/library/files/${fileId}/ignore`)
   },
 
   // ========== 运营总览 ==========

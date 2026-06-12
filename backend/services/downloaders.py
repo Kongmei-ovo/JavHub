@@ -15,7 +15,7 @@ DOWNLOADER_TIMEOUT = 30
 SENSITIVE_FIELDS = {"password", "token", "secret", "api_key"}
 
 DOWNLOADER_TYPES = [
-    {"value": "openlist", "label": "OpenList / 115"},
+    {"value": "open115", "label": "115 Open（原生）"},
     {"value": "qbittorrent", "label": "qBittorrent"},
     {"value": "transmission", "label": "Transmission"},
     {"value": "synology", "label": "Synology Download Station"},
@@ -29,7 +29,8 @@ DOWNLOADER_TYPES = [
 TYPE_ALIASES = {
     "openlist": "openlist",
     "alist": "openlist",
-    "115": "openlist",
+    "115": "open115",
+    "open115": "open115",
     "qb": "qbittorrent",
     "qbt": "qbittorrent",
     "qbit": "qbittorrent",
@@ -73,7 +74,7 @@ def _as_bool(value: Any, default: bool = False) -> bool:
 
 def _clean_type(value: Any) -> str:
     normalized = re.sub(r"[\s_\-.]", "", str(value or "").strip().lower())
-    return TYPE_ALIASES.get(normalized, str(value or "openlist").strip().lower())
+    return TYPE_ALIASES.get(normalized, str(value or "").strip().lower())
 
 
 def _join_url(base: str, path: str) -> str:
@@ -109,7 +110,7 @@ def _safe_client_id(value: Any, fallback: str) -> str:
 
 def _normalize_client(raw: dict[str, Any] | None, index: int = 0) -> dict[str, Any]:
     raw = raw or {}
-    client_type = _clean_type(raw.get("type") or raw.get("client_type") or "openlist")
+    client_type = _clean_type(raw.get("type") or raw.get("client_type"))
     fallback_id = f"{client_type}-{index + 1}"
     default_name = next((item["label"] for item in DOWNLOADER_TYPES if item["value"] == client_type), client_type)
     return {
@@ -129,21 +130,20 @@ def _normalize_client(raw: dict[str, Any] | None, index: int = 0) -> dict[str, A
     }
 
 
-def _legacy_openlist_client() -> dict[str, Any]:
-    return _normalize_client(
-        {
-            "id": "openlist",
-            "type": "openlist",
-            "name": "OpenList / 115",
-            "enabled": bool(config.openlist_api_url),
-            "address": config.openlist_api_url,
-            "username": config.openlist_username,
-            "password": config.openlist_password,
-            "token": config.openlist_token,
-            "default_path": config.openlist_default_path,
-        },
-        0,
-    )
+def _native_open115_client() -> dict[str, Any]:
+    from services.open115 import open115_binding_status
+
+    settings = config._config.get("open115", {}) if isinstance(config._config, dict) else {}
+    if not isinstance(settings, dict):
+        settings = {}
+    binding = open115_binding_status(settings)
+    return _normalize_client({
+        "id": "open115",
+        "type": "open115",
+        "name": "115 Open（原生）",
+        "enabled": binding["verified"],
+        "default_path": settings.get("root_path") or "/JavHub",
+    })
 
 
 def _public_client(client: dict[str, Any]) -> dict[str, Any]:
@@ -160,13 +160,19 @@ def get_downloaders_config(include_sensitive: bool = False) -> dict[str, Any]:
     clients = raw.get("clients") if isinstance(raw, dict) else None
     if not isinstance(clients, list):
         clients = []
-    normalized = [_normalize_client(item, index) for index, item in enumerate(clients) if isinstance(item, dict)]
-    if not normalized:
-        normalized = [_legacy_openlist_client()]
+    normalized = [
+        _normalize_client(item, index)
+        for index, item in enumerate(clients)
+        if isinstance(item, dict) and _clean_type(item.get("type")) not in {"openlist", "open115"}
+    ]
+    normalized.insert(0, _native_open115_client())
 
     default_id = str(raw.get("default_id") or "").strip() if isinstance(raw, dict) else ""
-    if not default_id or not any(item["id"] == default_id for item in normalized):
-        default = next((item for item in normalized if item.get("enabled")), normalized[0] if normalized else None)
+    if default_id == "openlist":
+        default_id = "open115"
+    selected = next((item for item in normalized if item["id"] == default_id), None)
+    if not selected or not selected.get("enabled"):
+        default = next((item for item in normalized if item.get("enabled")), None)
         default_id = default["id"] if default else ""
 
     public_clients = normalized if include_sensitive else [_public_client(item) for item in normalized]
@@ -189,6 +195,8 @@ def merge_downloaders_payload(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(item, dict):
             continue
         client = _normalize_client(item, index)
+        if client["type"] in {"openlist", "open115"}:
+            continue
         old = current_by_id.get(client["id"], {})
         for key in SENSITIVE_FIELDS:
             if not client.get(key) and old.get(key):
@@ -196,7 +204,15 @@ def merge_downloaders_payload(payload: dict[str, Any]) -> dict[str, Any]:
         merged_clients.append(client)
 
     default_id = str(payload.get("default_id") or "").strip()
-    if not default_id or not any(item["id"] == default_id for item in merged_clients):
+    if default_id == "openlist":
+        default_id = "open115"
+    native_enabled = _native_open115_client()["enabled"]
+    valid_default_ids = {item["id"] for item in merged_clients}
+    if native_enabled:
+        valid_default_ids.add("open115")
+    if not default_id or default_id not in valid_default_ids:
+        if native_enabled:
+            return {"default_id": "open115", "clients": merged_clients}
         default = next((item for item in merged_clients if item.get("enabled")), merged_clients[0] if merged_clients else None)
         default_id = default["id"] if default else ""
 
@@ -205,19 +221,7 @@ def merge_downloaders_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 def save_downloaders_config(payload: dict[str, Any]) -> dict[str, Any]:
     merged = merge_downloaders_payload(payload)
-    update_payload: dict[str, Any] = {"downloaders": merged}
-
-    openlist = next((item for item in merged["clients"] if item["type"] == "openlist"), None)
-    if openlist:
-        update_payload["openlist"] = {
-            "api_url": openlist.get("address", ""),
-            "username": openlist.get("username", ""),
-            "password": openlist.get("password", ""),
-            "token": openlist.get("token", ""),
-            "default_path": openlist.get("default_path") or config.openlist_default_path,
-        }
-
-    config.update(update_payload)
+    config.update({"downloaders": merged})
     return get_downloaders_config(include_sensitive=False)
 
 
@@ -228,7 +232,7 @@ def get_downloader_config(downloader_id: str | None = None) -> Optional[dict[str
     selected = next((item for item in clients if item["id"] == selected_id), None)
     if selected and selected.get("enabled"):
         return selected
-    return next((item for item in clients if item.get("enabled")), selected)
+    return next((item for item in clients if item.get("enabled")), None)
 
 
 class BaseDownloaderClient:
@@ -247,114 +251,18 @@ class BaseDownloaderClient:
         return []
 
 
-class OpenListDownloaderClient(BaseDownloaderClient):
-    def __init__(self, client_config: dict[str, Any]):
-        super().__init__(client_config)
-        self.token = str(client_config.get("token") or "")
-
-    def _headers(self) -> dict[str, str]:
-        return {
-            "Authorization": self.token,
-            "Content-Type": "application/json;charset=UTF-8",
-            "Accept": "application/json, text/plain, */*",
-        }
-
-    def _normalize_path(self, path: str) -> str:
-        path = path or self.config.get("default_path") or "/"
-        if path.startswith("/dav/"):
-            path = path[4:]
-        if not path.startswith("/"):
-            path = "/" + path
-        return path
-
-    async def _refresh_token(self) -> bool:
-        username = self.config.get("username") or ""
-        password = self.config.get("password") or ""
-        if not self.address or not username or not password:
-            return False
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(
-                _join_url(self.address, "/api/auth/login"),
-                json={"username": username, "password": password},
-            )
-        if resp.status_code != 200:
-            return False
-        data = resp.json()
-        token = data.get("data", {}).get("token") if data.get("code") == 200 else ""
-        if token:
-            self.token = token
-            return True
-        return False
-
+class NativeOpen115DownloaderClient(BaseDownloaderClient):
     async def test(self) -> DownloadActionResult:
-        if not self.address:
-            return DownloadActionResult(False, message="OpenList API 地址为空")
-        if not self.token and not await self._refresh_token():
-            return DownloadActionResult(False, message="OpenList 登录失败")
+        from services.open115 import Open115Error, open115_client
+
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.get(_join_url(self.address, "/api/me"), headers=self._headers())
-            if resp.status_code == 200 and resp.json().get("code") == 200:
-                return DownloadActionResult(True, message="连接正常")
-            return DownloadActionResult(False, message=f"OpenList 返回 {resp.status_code}")
-        except Exception as exc:
-            return DownloadActionResult(False, message=str(exc))
+            await open115_client.test_connection()
+            return DownloadActionResult(True, message="连接正常")
+        except Open115Error as exc:
+            return DownloadActionResult(False, message=exc.api_message)
 
     async def add_magnet(self, magnet: str, path: str = "", title: str = "") -> DownloadActionResult:
-        if not self.token and not await self._refresh_token():
-            return DownloadActionResult(False, message="OpenList 登录失败")
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(
-                    _join_url(self.address, "/api/fs/add_offline_download"),
-                    json={
-                        "path": self._normalize_path(path),
-                        "urls": [magnet],
-                        "tool": "115 Open",
-                        "delete_policy": "upload_download_stream",
-                    },
-                    headers=self._headers(),
-                )
-            data = resp.json()
-            if resp.status_code == 200 and data.get("code") == 401 and await self._refresh_token():
-                return await self.add_magnet(magnet, path, title)
-            if resp.status_code == 200 and data.get("code") == 200:
-                return DownloadActionResult(True, remote_task_id=str(data.get("message") or ""), message="success")
-            return DownloadActionResult(False, message=str(data.get("message") or data))
-        except Exception as exc:
-            return DownloadActionResult(False, message=str(exc))
-
-    async def list_tasks(self) -> list[dict[str, Any]]:
-        if not self.token and not await self._refresh_token():
-            return []
-        tasks: list[dict[str, Any]] = []
-        for endpoint in ("/api/task/offline_download/undone", "/api/task/offline_download/done"):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    resp = await client.get(_join_url(self.address, endpoint), headers=self._headers())
-                data = resp.json()
-                if resp.status_code == 200 and data.get("code") == 200:
-                    tasks.extend(data.get("data") or [])
-            except Exception as exc:
-                logger.warning("OpenList task list failed: %s", exc)
-        return [
-            {
-                "id": str(item.get("id") or item.get("name") or item.get("hash") or ""),
-                "hash": str(item.get("hash") or "").lower(),
-                "status": self._status_from_state(item.get("state")),
-                "raw": item,
-            }
-            for item in tasks
-        ]
-
-    def _status_from_state(self, state: Any) -> str:
-        if state == 2:
-            return "completed"
-        if state == 7:
-            return "failed"
-        if state in (0, 1):
-            return "downloading"
-        return "unknown"
+        return DownloadActionResult(False, message="115 离线任务必须绑定稳定 movie_id")
 
 
 class QBittorrentDownloaderClient(BaseDownloaderClient):
@@ -1145,6 +1053,10 @@ class UTorrentDownloaderClient(BaseDownloaderClient):
 
 def create_downloader_client(client_config: dict[str, Any]) -> BaseDownloaderClient:
     client_type = _clean_type(client_config.get("type"))
+    if client_type == "openlist":
+        raise ValueError("OpenList 下载器已下线，请绑定 115 Open")
+    if client_type == "open115":
+        return NativeOpen115DownloaderClient(client_config)
     if client_type == "qbittorrent":
         client = QBittorrentDownloaderClient(client_config)
     elif client_type == "transmission":
@@ -1162,7 +1074,7 @@ def create_downloader_client(client_config: dict[str, Any]) -> BaseDownloaderCli
     elif client_type == "utorrent":
         client = UTorrentDownloaderClient(client_config)
     else:
-        client = OpenListDownloaderClient(client_config)
+        raise ValueError(f"不支持的下载器类型: {client_type or 'empty'}")
     return _with_duplicate_preflight(client)
 
 

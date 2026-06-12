@@ -1,5 +1,5 @@
 export const DEFAULT_DOWNLOADER_TYPES = [
-  { value: 'openlist', label: 'OpenList / 115' },
+  { value: 'open115', label: '115 Open（原生）' },
   { value: 'qbittorrent', label: 'qBittorrent' },
   { value: 'transmission', label: 'Transmission' },
   { value: 'synology', label: 'Synology Download Station' },
@@ -11,7 +11,7 @@ export const DEFAULT_DOWNLOADER_TYPES = [
 ]
 
 const DOWNLOADER_TYPE_MARKS = {
-  openlist: '115',
+  open115: '115',
   qbittorrent: 'QB',
   transmission: 'TR',
   synology: 'SY',
@@ -23,7 +23,7 @@ const DOWNLOADER_TYPE_MARKS = {
 }
 
 const DOWNLOADER_ADDRESS_PLACEHOLDERS = {
-  openlist: 'https://fox.oplist.org',
+  open115: '',
   qbittorrent: 'http://localhost:8080',
   transmission: 'http://localhost:9091',
   synology: 'http://nas:5000',
@@ -58,7 +58,7 @@ export function downloaderAddressPlaceholder(type) {
 export function downloaderPathPlaceholder(type) {
   if (type === 'synology') return 'video/downloads'
   if (type === 'qbittorrent') return '/downloads 或 category:Movies'
-  if (type === 'openlist') return '/115/AV'
+  if (type === 'open115') return '/JavHub'
   if (type === 'utorrent') return 'movie\\ 或留空'
   return '/downloads'
 }

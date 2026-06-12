@@ -339,7 +339,7 @@ test('advanced lazy chunk shows a System Settings skeleton while loading', () =>
   assert.match(advancedAsyncSource, /loadingComponent:\s*AdvancedSettingsSkeleton/)
   assert.match(advancedAsyncSource, /delay:\s*120/)
   assert.match(advancedAsyncSource, /suspensible:\s*false/)
-  assert.match(vueSource, /components:\s*\{ AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect \}/)
+  assert.match(vueSource, /components:\s*\{ AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect, Open115SettingsPanel \}/)
 
   const skeleton = cssBlock('.advanced-settings-skeleton')
   assert.match(skeleton, /min-height:\s*320px/)

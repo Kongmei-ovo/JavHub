@@ -46,21 +46,6 @@ from database.download import (
     update_task_status,
     delete_download_task,
 )
-from database.library_index import (
-    upsert_library_file,
-    mark_files_deleted,
-    get_library_file,
-    get_library_files_by_content_id,
-    list_library_files_page,
-    list_matched_library_files,
-    set_file_match,
-    ignore_file,
-    library_summary,
-    create_scan_run,
-    update_scan_run,
-    get_latest_scan_run,
-    is_scan_running,
-)
 from database.playback import (
     save_progress,
     get_progress,

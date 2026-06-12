@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from config import LEGACY_JAVINFO_API_URLS, config
 from database.base import get_db_orig
 from services import cache
+from services.open115 import open115_binding_status
 
 router = APIRouter(tags=["health"])
 
@@ -110,15 +111,26 @@ def _downloader_summary() -> dict[str, Any]:
         clients = raw.get("clients") if isinstance(raw, dict) else []
         if not isinstance(clients, list):
             clients = []
-        clients = [item for item in clients if isinstance(item, dict)]
-        if not clients:
-            clients = [{
-                "id": "openlist",
-                "enabled": bool(getattr(config, "openlist_api_url", "")),
-            }]
+        clients = [
+            item for item in clients
+            if isinstance(item, dict)
+            and str(item.get("type") or "").lower() not in {"openlist", "open115"}
+        ]
+        open115 = config._config.get("open115", {}) if isinstance(config._config, dict) else {}
+        if not isinstance(open115, dict):
+            open115 = {}
+        binding = open115_binding_status(open115)
+        clients.insert(0, {
+            "id": "open115",
+            "type": "open115",
+            "enabled": binding["verified"],
+        })
         default_id = str(raw.get("default_id") or "") if isinstance(raw, dict) else ""
-        if not default_id or not any(str(item.get("id") or "") == default_id for item in clients):
-            default = next((item for item in clients if bool(item.get("enabled"))), clients[0] if clients else None)
+        if default_id == "openlist":
+            default_id = "open115"
+        selected = next((item for item in clients if str(item.get("id") or "") == default_id), None)
+        if not selected or not bool(selected.get("enabled")):
+            default = next((item for item in clients if bool(item.get("enabled"))), None)
             default_id = str(default.get("id") or "") if default else ""
         default = next((item for item in clients if isinstance(item, dict) and item.get("id") == default_id), None)
         available = [item for item in clients if isinstance(item, dict) and bool(item.get("enabled"))]

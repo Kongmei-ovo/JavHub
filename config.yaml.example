@@ -11,30 +11,11 @@ database:
   user: "javhub"
   password: "change-me"
 
-openlist:
-  api_url: "https://fox.oplist.org"
-  username: ""
-  password: ""
-  default_path: "/115/AV"
-
 open115:
   app_id: ""
   root_path: "/JavHub"
   # access_token / refresh_token are written by the dedicated binding API.
   # They are intentionally omitted from config responses and exports.
-
-# 自有云盘文件索引（去 Emby 化，详见 docs/library-player.md）
-library:
-  enabled: true
-  backend: "openlist"
-  root_paths:
-    - "/115/AV"
-  scan_interval_ms: 200
-  # video_exts: [".mp4", ".mkv", ".avi", ".wmv", ".ts", ".m2ts", ".iso"]
-
-# inventory 对比基准：emby（默认，现状）| library（自有索引，验证后切换）
-inventory:
-  baseline: "emby"
 
 # Emby 兼容 API（Infuse/VidHub 直连），默认关闭
 emby_compat:
@@ -44,17 +25,10 @@ emby_compat:
   # proxy_stream: false   # 客户端不跟随 302 时改为 true（流量走本服务转发）
 
 downloaders:
-  default_id: "openlist"
+  # 115 Open is built in and becomes available after binding plus a
+  # successful connection test. It is not duplicated in clients.
+  default_id: "open115"
   clients:
-    - id: "openlist"
-      type: "openlist" # openlist | qbittorrent | transmission | synology | aria2 | deluge | flood | rutorrent | utorrent
-      name: "OpenList / 115"
-      enabled: true
-      address: "https://fox.oplist.org"
-      username: ""
-      password: ""
-      token: ""
-      default_path: "/115/AV"
     - id: "qb"
       type: "qbittorrent"
       name: "qBittorrent"

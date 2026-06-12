@@ -64,8 +64,7 @@ class Open115FinalizerTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
         fake = FakeClient()
         downloader = Open115DownloaderClient(client=fake)
 
-        with patch("services.library_scanner.trigger_incremental_scan", create=True) as scanner, \
-             patch("modules.info_client.get_info_client", create=True) as info_client:
+        with patch("modules.info_client.get_info_client", create=True) as info_client:
             first = await downloader.finalize(
                 task_id=77,
                 movie_id="stable:item-1",
@@ -91,7 +90,6 @@ class Open115FinalizerTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
             row["id"] for row in videos if row["remote_file_id"] == "video-large"
         ))
         self.assertEqual(fake.walked_file_id, "result-folder")
-        scanner.assert_not_called()
         info_client.assert_not_called()
 
     async def test_video_without_pick_code_is_recorded_missing_not_default(self):
@@ -176,8 +174,7 @@ class Open115DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioT
         }
 
         with patch("services.downloader.open115_downloader.find_task", new=AsyncMock(return_value=remote)), \
-             patch("services.downloader.open115_downloader.finalize", new=AsyncMock(return_value={"video_count": 1})) as finalize, \
-             patch("services.library_scanner.trigger_incremental_scan", create=True) as scanner:
+             patch("services.downloader.open115_downloader.finalize", new=AsyncMock(return_value={"video_count": 1})) as finalize:
             result = await downloader_service.poll_task_status(task_id)
 
         task = get_download_task(task_id)
@@ -189,7 +186,6 @@ class Open115DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioT
             movie_id="stable:item-1",
             result_file_id="result-folder",
         )
-        scanner.assert_not_called()
 
 
 if __name__ == "__main__":

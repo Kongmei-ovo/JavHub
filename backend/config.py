@@ -113,26 +113,6 @@ class Config:
         return self._config.get('server', {}).get('frontend_origin', 'http://localhost:5174')
 
     @property
-    def openlist_api_url(self) -> str:
-        return self._config.get('openlist', {}).get('api_url', '')
-
-    @property
-    def openlist_username(self) -> str:
-        return _env('OPENLIST_USERNAME', self._config.get('openlist', {}).get('username', ''))
-
-    @property
-    def openlist_password(self) -> str:
-        return _env('OPENLIST_PASSWORD', self._config.get('openlist', {}).get('password', ''))
-
-    @property
-    def openlist_token(self) -> str:
-        return self._config.get('openlist', {}).get('token', '')
-
-    @property
-    def openlist_default_path(self) -> str:
-        return self._config.get('openlist', {}).get('default_path', '/115/AV')
-
-    @property
     def open115(self) -> dict:
         value = self._config.get('open115', {})
         return value if isinstance(value, dict) else {}
@@ -144,44 +124,6 @@ class Config:
     @property
     def open115_root_path(self) -> str:
         return self.open115.get('root_path', '/JavHub')
-
-    # ── library（自有云盘文件索引）──────────────────────────────
-    @property
-    def library_enabled(self) -> bool:
-        return bool(self._config.get('library', {}).get('enabled', True))
-
-    @property
-    def library_backend(self) -> str:
-        return self._config.get('library', {}).get('backend', 'openlist')
-
-    @property
-    def library_root_paths(self) -> list:
-        paths = self._config.get('library', {}).get('root_paths')
-        if paths:
-            return [str(p) for p in paths if str(p).strip()]
-        default = self.openlist_default_path
-        return [default] if default else []
-
-    @property
-    def library_scan_interval_ms(self) -> int:
-        return int(self._config.get('library', {}).get('scan_interval_ms', 200))
-
-    @property
-    def library_video_exts(self) -> list:
-        exts = self._config.get('library', {}).get('video_exts')
-        if exts:
-            return [str(e).lower() for e in exts]
-        return ['.mp4', '.mkv', '.avi', '.wmv', '.ts', '.m2ts', '.iso']
-
-    @property
-    def library_scan_hour(self) -> int:
-        return int(self._config.get('scheduler', {}).get('library_scan_hour', 5))
-
-    @property
-    def inventory_baseline(self) -> str:
-        """inventory 对比基准：emby（现状默认）| library（自有索引）"""
-        value = str(self._config.get('inventory', {}).get('baseline', 'emby')).lower()
-        return value if value in ('emby', 'library') else 'emby'
 
     # ── emby_compat（Emby 兼容 API）────────────────────────────
     @property
@@ -247,10 +189,6 @@ class Config:
         if isinstance(raw, str):
             raw = [item.strip() for item in raw.split(',') if item.strip()]
         return [str(item).lower().strip('.') for item in raw if str(item).strip()]
-
-    @property
-    def openlist(self) -> dict:
-        return self._config.get('openlist', {})
 
     @property
     def scheduler_check_hour(self) -> Optional[int]:

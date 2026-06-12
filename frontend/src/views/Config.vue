@@ -106,6 +106,10 @@
                 </div>
               </div>
             </section>
+            <Open115SettingsPanel
+              v-model:app-id="config.open115.app_id"
+              v-model:root-path="config.open115.root_path"
+            />
             <!-- JavInfoApi -->
             <section class="settings-group">
               <div class="settings-group-header">
@@ -802,13 +806,14 @@ import AppleErrorState from '../components/AppleErrorState.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { AdvancedSettingsPanel } from '../features/config/advancedSettingsAsync.js'
+import Open115SettingsPanel from '../features/config/Open115SettingsPanel.vue'
 import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG } from '../features/config/configDefaults.js'
 import { actressPageSizeOptions, avatarSizeOptions, candidateSourceOptions, defaultTabOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchSortOptions, seriesPageSizeOptions, tagTuningControls } from '../features/config/configOptions.js'
 const BUBBLE_CFG_KEYS = Object.keys(DEFAULT_BUBBLE_CFG)
 const AI_PROVIDER_KEYS = ['openai_compatible', 'gemini', 'ollama']
 export default {
   name: 'Config',
-  components: { AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect },
+  components: { AdvancedSettingsPanel, AppleErrorState, AppleSkeleton, GlassSelect, Open115SettingsPanel },
   data() {
     return {
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
@@ -1044,7 +1049,7 @@ export default {
       this.saving = true
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
-        const { downloaders, openlist, server, rate_limit, ...configPayload } = this.config
+        const { downloaders, server, rate_limit, ...configPayload } = this.config
         await api.updateConfig(configPayload)
         this.saveBubbleCfg()
         this.saveSearchPrefs()

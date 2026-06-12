@@ -51,7 +51,7 @@ class DownloaderService:
                 add_log("ERROR", f"115 离线任务创建失败: {code}")
             return task_id
         if not path:
-            path = downloader_config.get("default_path") or config.openlist_default_path
+            path = downloader_config.get("default_path") or ""
 
         task_id = create_download_task(
             code,
@@ -153,21 +153,7 @@ class DownloaderService:
 
         status = matched.get("status") or "unknown"
 
-        previous_status = db_task.get("status")
         update_task_status(task_id, status)
-
-        # 下载完成 → 触发目标目录增量索引扫描（带防抖），让 missing/candidate 自动闭环
-        if status == "completed" and previous_status != "completed":
-            target_path = db_task.get("path") or config.openlist_default_path
-            if target_path:
-                try:
-                    from services.library_scanner import trigger_incremental_scan
-
-                    asyncio.get_running_loop().create_task(trigger_incremental_scan(target_path))
-                except RuntimeError:
-                    logger.debug("No running event loop for incremental library scan")
-                except Exception as e:
-                    logger.warning(f"触发增量索引扫描失败: {e}")
 
         return {"task_id": task_id, "status": status}
 

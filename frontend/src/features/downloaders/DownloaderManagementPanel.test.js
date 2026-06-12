@@ -37,6 +37,12 @@ test('downloader panel is isolated behind a component contract', () => {
   assert.match(source, /class="downloaders-panel apple-reveal"/)
 })
 
+test('native 115 target is managed only by the dedicated settings panel', () => {
+  assert.match(source, /client\.type !== 'open115'/)
+  assert.match(source, /type\.value !== 'open115'/)
+  assert.match(source, /115 授权由配置中心管理/)
+})
+
 test('downloader panel controls use shared Apple glass materials', () => {
   const toolbar = cssBlock(source, '.downloader-toolbar')
   const iconAction = cssBlock(source, '.icon-action')

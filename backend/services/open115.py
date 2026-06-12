@@ -38,6 +38,15 @@ DEFAULT_ROOT_PATH = "/JavHub"
 DEFAULT_UA = "JavHub/1.0"
 
 
+def open115_binding_status(settings: dict[str, Any] | None) -> dict[str, bool]:
+    settings = settings if isinstance(settings, dict) else {}
+    bound = bool(os.getenv("OPEN115_REFRESH_TOKEN") or settings.get("refresh_token"))
+    return {
+        "bound": bound,
+        "verified": bound and bool(settings.get("verified")),
+    }
+
+
 class Open115Error(RuntimeError):
     def __init__(self, code: int | str | None, message: str):
         self.code = code
@@ -160,11 +169,12 @@ class Open115Client:
         return str(self.settings.get("user_agent") or DEFAULT_UA).strip()
 
     def status(self) -> dict[str, Any]:
+        binding = open115_binding_status(self.settings)
         return {
             "configured": bool(self.app_id),
-            "bound": bool(self.refresh_token),
+            **binding,
             "access_token_configured": bool(self.access_token),
-            "refresh_token_configured": bool(self.refresh_token),
+            "refresh_token_configured": binding["bound"],
             "token_expires_at": _as_int(self.settings.get("token_expires_at")),
             "root_path": self.root_path,
         }
@@ -320,7 +330,7 @@ class Open115Client:
             f"{PASSPORT_BASE}/open/deviceCodeToToken",
             data={"uid": pending.uid, "code_verifier": pending.code_verifier},
         )
-        self._persist_tokens(tokens)
+        self._persist_tokens(tokens, verified=False)
         self._pending_auth.pop(uid, None)
         return {"status": "confirmed", "bound": True}
 
@@ -355,31 +365,38 @@ class Open115Client:
             "access_token": "",
             "refresh_token": normalized,
             "token_expires_at": 0,
+            "verified": False,
         })
         if not await self.refresh_access_token(expected_access_token=""):
             raise Open115AuthRequired(None, "refresh token 无效")
         return {"bound": True}
 
     def unbind(self) -> None:
+        if os.getenv("OPEN115_REFRESH_TOKEN"):
+            raise Open115Error(None, "115 授权由环境变量管理，无法通过设置页解绑")
         self._persist_settings({
             "access_token": "",
             "refresh_token": "",
             "token_expires_at": 0,
+            "verified": False,
         })
         self._pending_auth.clear()
         self._folder_cache = {"/": "0"}
 
-    def _persist_tokens(self, token_data: dict[str, Any]) -> None:
+    def _persist_tokens(self, token_data: dict[str, Any], *, verified: bool | None = None) -> None:
         access_token = str(token_data.get("access_token") or "").strip()
         refresh_token = str(token_data.get("refresh_token") or "").strip()
         if not access_token or not refresh_token:
             raise Open115Error(None, "115 授权响应缺少 token")
         expires_in = _as_int(token_data.get("expires_in"))
-        self._persist_settings({
+        updates = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_expires_at": int(time.time()) + expires_in if expires_in > 0 else 0,
-        })
+        }
+        if verified is not None:
+            updates["verified"] = verified
+        self._persist_settings(updates)
 
     def _persist_settings(self, updates: dict[str, Any]) -> None:
         config_path = Path(self._config.config_path)
@@ -418,7 +435,12 @@ class Open115Client:
                 raise Open115Error(None, "无法保存 115 授权配置") from exc
 
     async def test_connection(self) -> dict[str, Any]:
-        user = await self.user_info()
+        try:
+            user = await self.user_info()
+        except Open115Error:
+            self._persist_settings({"verified": False})
+            raise
+        self._persist_settings({"verified": True})
         return {
             "ok": True,
             "user_id": str(user.get("user_id") or ""),

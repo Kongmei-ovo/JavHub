@@ -49,7 +49,6 @@ from routers.video_variant_index import router as video_variant_index_router
 from routers.source_health import router as source_health_router
 from routers.jobs import router as jobs_router
 from routers.scheduler import router as scheduler_router
-from routers.library_index import router as library_index_router
 from routers.playback import router as playback_router
 from routers.emby_compat import router as emby_compat_router
 from routers.open115 import router as open115_router
@@ -172,7 +171,6 @@ app.include_router(video_variant_index_router)
 app.include_router(source_health_router)
 app.include_router(jobs_router)
 app.include_router(scheduler_router)
-app.include_router(library_index_router)
 app.include_router(playback_router)
 app.include_router(open115_router)
 app.include_router(movie_resources_router)

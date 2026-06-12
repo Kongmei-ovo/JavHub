@@ -186,9 +186,69 @@ class Open115ClientTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, {"bound": True})
         self.assertTrue(status["bound"])
+        self.assertFalse(status["verified"])
         self.assertNotIn("access_token", status)
         self.assertNotIn("refresh_token", status)
         self.assertNotIn("imported-secret", repr(status))
+
+    async def test_connection_success_marks_current_binding_verified(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {
+                "access_token": "access",
+                "refresh_token": "refresh",
+                "verified": False,
+            })
+            http = SequenceHTTPClient([
+                response({"state": True, "data": {"user_id": "42", "user_name": "JavHub"}}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            result = await client.test_connection()
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(client.status()["verified"])
+
+    async def test_connection_failure_clears_previous_verification(self):
+        from services.open115 import Open115Client, Open115Error
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {
+                "access_token": "access",
+                "refresh_token": "refresh",
+                "verified": True,
+            })
+            http = SequenceHTTPClient([
+                response({"state": False, "code": 500, "message": "offline"}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            with self.assertRaises(Open115Error):
+                await client.test_connection()
+
+        self.assertFalse(client.status()["verified"])
+
+    async def test_environment_managed_refresh_token_cannot_be_unbound_by_config(self):
+        from services.open115 import Open115Client, Open115Error
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {
+                "refresh_token": "config-refresh",
+                "verified": True,
+            })
+            client = Open115Client(
+                config_obj=cfg,
+                http_client=SequenceHTTPClient([]),
+                min_request_interval=0,
+            )
+
+            with patch.dict("os.environ", {"OPEN115_REFRESH_TOKEN": "environment-refresh"}):
+                with self.assertRaisesRegex(Open115Error, "环境变量"):
+                    client.unbind()
+
+            stored = yaml.safe_load(cfg.config_path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["open115"]["refresh_token"], "config-refresh")
 
     async def test_downurl_forwards_exact_final_player_user_agent(self):
         from services.open115 import Open115Client

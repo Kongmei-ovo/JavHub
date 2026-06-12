@@ -39,7 +39,7 @@ async def _push_proxy_to_javinfo():
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
-_WRITABLE_KEYS = {'emby', 'telegram', 'openlist', 'open115', 'notification', 'scheduler',
+_WRITABLE_KEYS = {'emby', 'telegram', 'open115', 'notification', 'scheduler',
                   'database',
                   'ai',
                   'automation', 'actor_mapping', 'translation',

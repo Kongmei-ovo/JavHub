@@ -18,7 +18,7 @@ def test_config_singleton():
 
 def test_config_defaults():
     c = fresh_config()
-    assert c.openlist_default_path == '/115/AV'
+    assert c.open115_root_path == '/JavHub'
     assert c.crawler_request_interval == 3
     assert c.scheduler_check_hour == 2
 
