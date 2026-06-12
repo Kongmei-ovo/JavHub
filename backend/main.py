@@ -240,3 +240,9 @@ async def shutdown_event():
         await open115_client.close()
     except Exception as e:
         logging.debug("Failed to close 115 Open client: %s", e)
+
+    try:
+        from routers.playback import playback_hls_client
+        await playback_hls_client.aclose()
+    except Exception as e:
+        logging.debug("Failed to close 115 HLS proxy client: %s", e)
