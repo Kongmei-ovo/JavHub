@@ -4,6 +4,7 @@ from config import config
 from database import create_download_task, update_task_status, get_download_task, get_download_tasks, add_log
 from services.downloaders import create_downloader_client, get_downloader_config, match_remote_task
 from services.notification import notification_service
+from services.open115_downloader import Open115FinalizationError, open115_downloader
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,34 @@ class DownloaderService:
         downloader_config = get_downloader_config(downloader_id)
         if not downloader_config:
             raise RuntimeError("未配置可用下载器")
+        downloader_type = str(downloader_config.get("type") or "")
+        if downloader_type == "open115":
+            task_id = create_download_task(
+                code,
+                title,
+                magnet,
+                "",
+                downloader_id=downloader_config.get("id"),
+                downloader_name=downloader_config.get("name"),
+                downloader_type="open115",
+                movie_id=code,
+            )
+            try:
+                submission = await open115_downloader.submit(code, magnet)
+                update_task_status(
+                    task_id,
+                    "downloading",
+                    remote_task_id=submission.info_hash,
+                    info_hash=submission.info_hash,
+                    target_folder_id=submission.folder_id,
+                    open115_task_id=submission.info_hash,
+                    path=submission.path,
+                )
+                add_log("INFO", f"115 离线任务已创建: {code}")
+            except Exception as exc:
+                update_task_status(task_id, "failed", str(exc))
+                add_log("ERROR", f"115 离线任务创建失败: {code}")
+            return task_id
         if not path:
             path = downloader_config.get("default_path") or config.openlist_default_path
 
@@ -68,6 +97,46 @@ class DownloaderService:
         if not magnet:
             return {"task_id": task_id, "status": "unknown"}
 
+        if db_task.get("downloader_type") == "open115":
+            info_hash = (
+                db_task.get("info_hash")
+                or db_task.get("open115_task_id")
+                or db_task.get("remote_task_id")
+            )
+            matched = await open115_downloader.find_task(info_hash)
+            if not matched:
+                return {"task_id": task_id, "status": db_task.get("status", "unknown")}
+            remote_status = int(matched.get("status") or 0)
+            status = {
+                -1: "failed",
+                0: "pending",
+                1: "downloading",
+                2: "completed",
+            }.get(remote_status, "unknown")
+            if status == "failed":
+                update_task_status(task_id, "failed", "115 离线任务失败")
+                return {"task_id": task_id, "status": "failed"}
+            if status != "completed":
+                update_task_status(task_id, status)
+                return {"task_id": task_id, "status": status}
+
+            result_file_id = str(matched.get("file_id") or "")
+            if not result_file_id:
+                update_task_status(task_id, "failed", "115 完成任务未返回 file_id")
+                return {"task_id": task_id, "status": "failed"}
+            update_task_status(task_id, "finalizing", result_file_id=result_file_id)
+            try:
+                await open115_downloader.finalize(
+                    task_id=task_id,
+                    movie_id=str(db_task.get("movie_id") or db_task.get("content_id") or ""),
+                    result_file_id=result_file_id,
+                )
+            except Open115FinalizationError as exc:
+                update_task_status(task_id, "failed", str(exc), result_file_id=result_file_id)
+                return {"task_id": task_id, "status": "failed"}
+            update_task_status(task_id, "completed", error_msg="", result_file_id=result_file_id)
+            return {"task_id": task_id, "status": "completed"}
+
         import re
         hash_match = re.search(r'btih:([a-fA-F0-9]{40}|[a-zA-Z0-9]{32})', magnet)
         info_hash = hash_match.group(1).lower() if hash_match else None
@@ -105,7 +174,7 @@ class DownloaderService:
     async def update_all_task_statuses(self):
         tasks = get_download_tasks()
         for task in tasks:
-            if task['status'] == 'downloading':
+            if task['status'] in {'pending', 'downloading', 'finalizing'}:
                 try:
                     await self.poll_task_status(task['id'])
                 except Exception as e:

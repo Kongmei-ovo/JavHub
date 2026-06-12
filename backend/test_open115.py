@@ -217,6 +217,59 @@ class Open115ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(url, "https://download.115.test/file?sig=secret")
         self.assertEqual(http.calls[0]["kwargs"]["headers"]["User-Agent"], player_ua)
 
+    async def test_offline_submission_uses_newline_urls_and_target_folder(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {
+                "access_token": "access",
+                "refresh_token": "refresh",
+            })
+            http = SequenceHTTPClient([
+                response({
+                    "state": True,
+                    "data": [
+                        {"state": True, "info_hash": "hash-a"},
+                        {"state": True, "info_hash": "hash-b"},
+                    ],
+                })
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            hashes = await client.add_offline_task(["magnet:a", "magnet:b"], "folder-1")
+
+        self.assertEqual(hashes, ["hash-a", "hash-b"])
+        self.assertEqual(http.calls[0]["kwargs"]["data"], {
+            "urls": "magnet:a\nmagnet:b",
+            "wp_path_id": "folder-1",
+        })
+
+    async def test_transcode_urls_are_sorted_by_definition(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {
+                "access_token": "access",
+                "refresh_token": "refresh",
+            })
+            http = SequenceHTTPClient([
+                response({
+                    "state": True,
+                    "data": {
+                        "video_url": [
+                            {"url": "https://hls/720.m3u8", "definition": 3, "desc": "720p"},
+                            {"url": "https://hls/4k.m3u8", "definition": 5, "desc": "4k"},
+                        ]
+                    },
+                })
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            urls = await client.video_transcode_urls("pick")
+
+        self.assertEqual([item.definition for item in urls], [5, 3])
+        self.assertEqual(http.calls[0]["kwargs"]["params"], {"pick_code": "pick"})
+
 
 if __name__ == "__main__":
     unittest.main()

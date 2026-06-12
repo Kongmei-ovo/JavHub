@@ -450,6 +450,30 @@ class Open115Client:
             raise Open115Error(None, "115 创建目录未返回 file_id")
         return folder_id
 
+    async def ensure_folder_path(self, path: str) -> str:
+        normalized = "/" + str(path or "").strip("/")
+        if normalized == "/":
+            return "0"
+        cached = self._folder_cache.get(normalized)
+        if cached:
+            return cached
+        parent_id = "0"
+        current_path = ""
+        for name in [part for part in normalized.split("/") if part]:
+            current_path += f"/{name}"
+            cached = self._folder_cache.get(current_path)
+            if cached:
+                parent_id = cached
+                continue
+            existing_id = ""
+            async for item in self.iter_files(parent_id):
+                if item.is_dir and item.name == name:
+                    existing_id = item.file_id
+                    break
+            parent_id = existing_id or await self.mkdir(parent_id, name)
+            self._folder_cache[current_path] = parent_id
+        return parent_id
+
     async def list_files(
         self,
         folder_id: str,

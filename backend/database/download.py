@@ -21,17 +21,38 @@ def create_download_task(
     downloader_id: Optional[str] = None,
     downloader_name: Optional[str] = None,
     downloader_type: Optional[str] = None,
+    movie_id: Optional[str] = None,
+    info_hash: Optional[str] = None,
+    target_folder_id: Optional[str] = None,
+    open115_task_id: Optional[str] = None,
+    result_file_id: Optional[str] = None,
 ) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
             INSERT INTO download_tasks (
-                content_id, title, magnet, path, downloader_id, downloader_name, downloader_type, status, created_at
+                content_id, movie_id, title, magnet, path,
+                downloader_id, downloader_name, downloader_type,
+                info_hash, target_folder_id, open115_task_id, result_file_id,
+                status, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
             """,
-            (content_id, title, magnet, path, downloader_id, downloader_name, downloader_type)
+            (
+                content_id,
+                movie_id or content_id,
+                title,
+                magnet,
+                path,
+                downloader_id,
+                downloader_name,
+                downloader_type,
+                info_hash,
+                target_folder_id,
+                open115_task_id,
+                result_file_id,
+            )
         )
         task_id = cursor.lastrowid
         _bump_download_task_generation()
@@ -54,7 +75,18 @@ def get_download_task(task_id: int) -> Optional[dict]:
         return dict(row) if row else None
 
 
-def update_task_status(task_id: int, status: str, error_msg: Optional[str] = None, remote_task_id: Optional[str] = None):
+def update_task_status(
+    task_id: int,
+    status: str,
+    error_msg: Optional[str] = None,
+    remote_task_id: Optional[str] = None,
+    *,
+    info_hash: Optional[str] = None,
+    target_folder_id: Optional[str] = None,
+    open115_task_id: Optional[str] = None,
+    result_file_id: Optional[str] = None,
+    path: Optional[str] = None,
+):
     with get_db() as conn:
         cursor = conn.cursor()
         fields = ["status = ?", "updated_at = CURRENT_TIMESTAMP"]
@@ -65,6 +97,16 @@ def update_task_status(task_id: int, status: str, error_msg: Optional[str] = Non
         if remote_task_id is not None:
             fields.append("remote_task_id = ?")
             params.append(remote_task_id)
+        for field, value in (
+            ("info_hash", info_hash),
+            ("target_folder_id", target_folder_id),
+            ("open115_task_id", open115_task_id),
+            ("result_file_id", result_file_id),
+            ("path", path),
+        ):
+            if value is not None:
+                fields.append(f"{field} = ?")
+                params.append(value)
         params.append(task_id)
         cursor.execute(
             f"UPDATE download_tasks SET {', '.join(fields)} WHERE id = ?",
