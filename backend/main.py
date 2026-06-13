@@ -8,6 +8,7 @@ from database import init_db
 from config import config as _cfg
 from middlewares.performance import RequestTimingMiddleware
 from middlewares.trace import TraceIdMiddleware
+from services.log_redaction import install_sensitive_log_filter
 
 # 配置日志
 logging.basicConfig(
@@ -15,6 +16,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+install_sensitive_log_filter()
 
 # 导入新模块化路由
 from routers.videos import router as videos_router
@@ -50,9 +52,11 @@ from routers.source_health import router as source_health_router
 from routers.jobs import router as jobs_router
 from routers.scheduler import router as scheduler_router
 from routers.playback import router as playback_router
+from routers.emby_compat import discovery_router as emby_discovery_router
 from routers.emby_compat import router as emby_compat_router
 from routers.open115 import router as open115_router
 from routers.movie_resources import router as movie_resources_router
+from services.emby_auth import EmbyHTTPException
 
 app = FastAPI(title="AV Downloader API")
 
@@ -68,6 +72,14 @@ class ApiResponse:
     ERR_INTERNAL = "ERR_INTERNAL"
     ERR_UNAUTHORIZED = "ERR_UNAUTHORIZED"
     ERR_FORBIDDEN = "ERR_FORBIDDEN"
+
+
+@app.exception_handler(EmbyHTTPException)
+async def emby_http_exception_handler(request: Request, exc: EmbyHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"Code": exc.emby_code, "Message": str(exc.detail)},
+    )
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -104,8 +116,19 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[_frontend_origin],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Emby-Authorization",
+        "X-Emby-Token",
+        "X-Emby-Client",
+        "X-Emby-Device-Id",
+        "X-Emby-Device-Name",
+        "X-Emby-Client-Version",
+        "X-MediaBrowser-Authorization",
+        "X-MediaBrowser-Token",
+    ],
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -176,11 +199,13 @@ app.include_router(open115_router)
 app.include_router(movie_resources_router)
 # Emby 兼容层挂根路径与 /emby 双前缀（不同客户端拼法不同）
 app.include_router(emby_compat_router)
+app.include_router(emby_discovery_router, prefix="/emby")
 app.include_router(emby_compat_router, prefix="/emby")
 
 
 @app.on_event("startup")
 async def startup_event():
+    install_sensitive_log_filter()
     """启动时运行"""
     try:
         from scheduler.tasks import start_scheduler

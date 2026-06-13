@@ -49,6 +49,8 @@ from database.download import (
 from database.playback import (
     save_progress,
     get_progress,
+    get_progress_map,
+    list_playback_progress,
     list_continue_watching,
     delete_progress,
 )

@@ -13,9 +13,9 @@ connectors, and optional notifications.
 - Query and detail views backed by the companion API
 - Saved watches and scheduled refresh tasks
 - Optional integrations with user-managed external services
-- Local library status checks
-- Self-owned cloud library index with in-app playback, resume, and continue watching (see [docs/library-player.md](docs/library-player.md))
-- Optional Emby-compatible API subset so clients like Infuse can browse and play directly
+- A unified JavInfo catalog where movies exist independently of downloaded files
+- ItemId-bound 115 Open and online playback resources, resume, and continue watching
+- An optional movie-focused Emby compatibility API for Emby, Infuse, VidHub, and SenPlayer (see [docs/emby-compat.md](docs/emby-compat.md))
 - Web dashboard for search, imports, logs, and settings
 - Optional chat-based commands and notifications
 - One Docker image for the frontend and backend
@@ -250,15 +250,16 @@ Most settings live in `config.yaml`.
 server:
   frontend_origin: "http://localhost:5174"
 
-openlist:
-  api_url: "https://your-openlist.example"
-  username: ""
-  password: ""
-  default_path: "/115/AV"
+open115:
+  app_id: ""
+  root_path: "/JavHub"
+  # Bind the account in Settings. Access and refresh tokens are managed by
+  # the dedicated API and are never returned by normal configuration APIs.
 
-emby:
-  api_url: "http://your-emby:8096"
-  api_key: ""
+emby_compat:
+  enabled: false
+  username: "javhub"
+  password: "change-me"
 
 javinfo:
   api_url: "http://localhost:18080"

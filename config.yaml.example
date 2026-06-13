@@ -17,12 +17,12 @@ open115:
   # access_token / refresh_token are written by the dedicated binding API.
   # They are intentionally omitted from config responses and exports.
 
-# Emby 兼容 API（Infuse/VidHub 直连），默认关闭
+# 电影目录 Emby 兼容 API（Emby/Infuse/VidHub/SenPlayer），默认关闭
+# 目录直接来自 JavHub catalog；115 与在线源只提供播放内容，不参与建库或刮削。
 emby_compat:
   enabled: false
   username: "javhub"
   password: "change-me"
-  # proxy_stream: false   # 客户端不跟随 302 时改为 true（流量走本服务转发）
 
 downloaders:
   # 115 Open is built in and becomes available after binding plus a

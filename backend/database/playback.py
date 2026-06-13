@@ -82,6 +82,60 @@ def get_progress(content_id: str, source: str | None = None) -> Optional[dict]:
         return dict(row) if row else None
 
 
+def get_progress_map(content_ids: list[str], source: str | None = None) -> dict[str, dict]:
+    """Batch-load the newest progress row for each requested content ID."""
+    ids = list(dict.fromkeys(str(content_id) for content_id in content_ids if content_id))
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    params: list[object] = list(ids)
+    source_clause = ""
+    if source:
+        source_clause = " AND source = ?"
+        params.append(source)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"""
+            SELECT * FROM playback_progress
+            WHERE user_id IS NULL
+              AND content_id IN ({placeholders})
+              {source_clause}
+            ORDER BY updated_at DESC
+            """,
+            params,
+        )
+        result: dict[str, dict] = {}
+        for row in cursor.fetchall():
+            item = dict(row)
+            result.setdefault(str(item["content_id"]), item)
+        return result
+
+
+def list_playback_progress(source: str | None = None) -> list[dict]:
+    """Return the single-user playback index in most-recently-played order."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if source:
+            cursor.execute(
+                """
+                SELECT * FROM playback_progress
+                WHERE user_id IS NULL AND source = ?
+                ORDER BY updated_at DESC
+                """,
+                (source,),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT * FROM playback_progress
+                WHERE user_id IS NULL
+                ORDER BY updated_at DESC
+                """
+            )
+        return [dict(row) for row in cursor.fetchall()]
+
+
 def list_continue_watching(limit: int = 12) -> list[dict]:
     """继续观看：未看完、位置超过 MIN_RESUME_SECONDS，按最近播放排序，番号去重。"""
     with get_db() as conn:
