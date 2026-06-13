@@ -1039,7 +1039,7 @@ test('docker smoke and backup restore docs cover deploy validation', () => {
   assert.match(dockerSmokeWorkflow, /docker compose config/)
   assert.match(dockerSmokeWorkflow, /\/health/)
   assert.match(dockerSmokeWorkflow, /\/health\/readiness/)
-  assert.match(dockerSmokeWorkflow, /payload\.get\("status"\) == "ok"/)
+  assert.match(dockerSmokeWorkflow, /scripts\/validate_docker_readiness\.py/)
   assert.match(dockerSmokeWorkflow, /\/api\/v1\/cache\/stats/)
   assert.match(dockerSmokeWorkflow, /docker compose down -v/)
   assert.match(backupRestoreDoc, /config\.yaml/)
