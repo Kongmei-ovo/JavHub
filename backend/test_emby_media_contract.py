@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
+from test_support.client import load_main_app_without_db
 
 
 EMBY_CONFIG = {
@@ -42,9 +43,7 @@ RESOURCE = {
 class EmbyMediaContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from main import app
-
-        cls.client = TestClient(app)
+        cls.client = TestClient(load_main_app_without_db())
 
     def setUp(self):
         self.config_patch = patch("config.config._config", EMBY_CONFIG)

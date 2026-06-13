@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 from typing import Any
+from unittest.mock import patch
 
 import anyio
 import httpx
@@ -61,3 +63,9 @@ def create_router_test_client(router: Any, **kwargs: Any) -> ASGIClient:
     app = FastAPI()
     app.include_router(router)
     return create_test_client(app, **kwargs)
+
+
+def load_main_app_without_db() -> FastAPI:
+    """Import the assembled app without running production database setup."""
+    with patch("database.init_db"):
+        return importlib.import_module("main").app

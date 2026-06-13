@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
+from test_support.client import load_main_app_without_db
 
 
 EMBY_CONFIG = {
@@ -18,7 +19,6 @@ EMBY_CONFIG = {
 
 class EmbyProtocolTests(unittest.TestCase):
     def setUp(self):
-        from main import app
         from services.emby_auth import clear_compat_sessions
 
         clear_compat_sessions()
@@ -28,7 +28,15 @@ class EmbyProtocolTests(unittest.TestCase):
         self.router_config_patch.start()
         self.addCleanup(self.config_patch.stop)
         self.addCleanup(self.router_config_patch.stop)
-        self.client = TestClient(app)
+        self.state_patches = [
+            patch("routers.emby_compat.list_continue_watching", return_value=[]),
+            patch("routers.emby_compat.get_progress_map", return_value={}),
+            patch("routers.emby_compat.movie_favorite_flags", return_value={}),
+        ]
+        for state_patch in self.state_patches:
+            state_patch.start()
+            self.addCleanup(state_patch.stop)
+        self.client = TestClient(load_main_app_without_db())
 
     def login(self) -> str:
         response = self.client.post(

@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
+from test_support.client import load_main_app_without_db
 
 
 EMBY_CONFIG = {
@@ -36,9 +37,7 @@ MOVIE = {
 class EmbyCatalogStateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from main import app
-
-        cls.client = TestClient(app)
+        cls.client = TestClient(load_main_app_without_db())
 
     def setUp(self):
         self.config_patch = patch("config.config._config", EMBY_CONFIG)
@@ -47,6 +46,15 @@ class EmbyCatalogStateTests(unittest.TestCase):
         self.router_config_patch.start()
         self.addCleanup(self.config_patch.stop)
         self.addCleanup(self.router_config_patch.stop)
+        self.state_patches = [
+            patch("routers.emby_compat.get_progress", return_value=None),
+            patch("routers.emby_compat.get_progress_map", return_value={}),
+            patch("routers.emby_compat.movie_favorite_flags", return_value={}),
+            patch("routers.emby_compat.is_movie_favorite", return_value=False),
+        ]
+        for state_patch in self.state_patches:
+            state_patch.start()
+            self.addCleanup(state_patch.stop)
         login = self.client.post(
             "/Users/AuthenticateByName",
             json={"Username": "javhub", "Pw": "secret"},
@@ -61,7 +69,7 @@ class EmbyCatalogStateTests(unittest.TestCase):
         with patch("modules.info_client.get_info_client", return_value=info), patch(
             "routers.emby_compat.list_movie_resources",
             return_value=[],
-        ), patch("routers.emby_compat.get_progress", return_value=None):
+        ):
             for path in (
                 "/Items?ParentId=library&IncludeItemTypes=Movie&Recursive=true&Limit=20",
                 "/items?parentid=library&includeitemtypes=Movie&recursive=true&limit=20",

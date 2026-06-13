@@ -105,6 +105,9 @@ class BrowseTests(unittest.TestCase):
             patch("routers.emby_compat.list_movie_resources", return_value=[RESOURCE_ROW]),
             patch("modules.info_client.get_info_client", return_value=self.info_client),
             patch("routers.emby_compat.get_progress", return_value=None),
+            patch("routers.emby_compat.get_progress_map", return_value={}),
+            patch("routers.emby_compat.movie_favorite_flags", return_value={}),
+            patch("routers.emby_compat.is_movie_favorite", return_value=False),
         ]
         for p in self.patches:
             p.start()

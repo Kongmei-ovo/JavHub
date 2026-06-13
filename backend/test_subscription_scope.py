@@ -140,7 +140,8 @@ class SubscriptionScopeServiceTest(unittest.IsolatedAsyncioTestCase):
                 "cadence_minutes": 0,
             }
         ]), patch("services.subscription.WatchlistPipeline") as pipeline_cls, \
-            patch("services.subscription.update_last_check") as update_last_check:
+            patch("services.subscription.update_last_check") as update_last_check, \
+            patch("services.subscription._load_latest_existing_codes", return_value=None):
             pipeline = pipeline_cls.return_value
             pipeline.generate_candidates_for_maker = AsyncMock(return_value={
                 "checked": 1,

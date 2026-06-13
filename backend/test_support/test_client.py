@@ -5,7 +5,11 @@ import warnings
 from fastapi import FastAPI
 from fastapi import APIRouter
 
-from test_support.client import create_router_test_client, create_test_client
+from test_support.client import (
+    create_router_test_client,
+    create_test_client,
+    load_main_app_without_db,
+)
 
 
 def test_create_test_client_sends_requests_without_httpx_app_shortcut_warning():
@@ -38,3 +42,14 @@ def test_create_router_test_client_wraps_an_isolated_router():
 
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_load_main_app_without_db_skips_production_database_initialization():
+    import sys
+    from unittest.mock import patch
+
+    sys.modules.pop("main", None)
+    with patch("database.init_db", side_effect=AssertionError("init_db must not run")):
+        app = load_main_app_without_db()
+
+    assert isinstance(app, FastAPI)
