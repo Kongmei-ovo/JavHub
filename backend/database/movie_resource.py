@@ -240,7 +240,7 @@ def list_movie_resources(movie_id: str) -> list[dict[str, Any]]:
                 is_default DESC,
                 CASE status WHEN 'ready' THEN 0 WHEN 'pending' THEN 1
                             WHEN 'missing' THEN 2 ELSE 3 END,
-                size DESC,
+                part_index ASC NULLS FIRST,
                 id ASC
             """,
             (str(movie_id),),
@@ -335,7 +335,7 @@ def delete_movie_resource(movie_id: str, resource_id: int) -> dict[str, Any] | N
                 SELECT id FROM movie_resources
                 WHERE movie_id = ? AND provider = ?
                   AND resource_type = 'video' AND status = 'ready'
-                ORDER BY size DESC, id ASC
+                ORDER BY is_default DESC, part_index ASC NULLS FIRST, id ASC
                 LIMIT 1
                 """,
                 (str(movie_id), target["provider"]),

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 import threading
 from dataclasses import dataclass
@@ -163,30 +162,103 @@ def _size_to_mb(value: str | None) -> float:
     return number
 
 
-def _magnet_score(item: dict) -> dict:
+def _resolution_rank(item: dict) -> int:
+    """Resolution preference for first-party acquisition: 1080p is the sweet
+    spot, then 720p, then unknown, then 2160p/4K last (oversized for JAV)."""
+    haystack = " ".join(
+        str(item.get(key) or "").lower() for key in ("title", "resolution", "quality")
+    )
+    if "2160" in haystack or "4k" in haystack:
+        return 1
+    if "1080" in haystack:
+        return 4
+    if "720" in haystack:
+        return 3
+    return 2
+
+
+# Reasonable per-title bitrate band (Mbps) when the runtime is known.
+_MIN_REASONABLE_MBPS = 1.5
+_MAX_REASONABLE_MBPS = 12.0
+# Fallback hard size window (MB) when no runtime is available.
+_MIN_REASONABLE_MB = 800.0
+_MAX_REASONABLE_MB = 12.0 * 1024.0
+
+
+def _size_fit(size_mb: float, duration_seconds: float) -> float:
+    """1.0 when the size sits in the reasonable band, decaying toward 0 outside
+    it. Replaces the old "bigger file = higher score" reward."""
+    size_mb = float(size_mb or 0)
+    if size_mb <= 0:
+        return 0.5  # unknown size: neutral, neither rewarded nor punished
+    if duration_seconds and duration_seconds > 0:
+        mbps = (size_mb * 8.0) / float(duration_seconds)
+        if _MIN_REASONABLE_MBPS <= mbps <= _MAX_REASONABLE_MBPS:
+            return 1.0
+        if mbps < _MIN_REASONABLE_MBPS:
+            return max(0.0, mbps / _MIN_REASONABLE_MBPS)
+        return max(0.0, _MAX_REASONABLE_MBPS / mbps)
+    if _MIN_REASONABLE_MB <= size_mb <= _MAX_REASONABLE_MB:
+        return 1.0
+    if size_mb < _MIN_REASONABLE_MB:
+        return max(0.0, size_mb / _MIN_REASONABLE_MB)
+    return max(0.0, _MAX_REASONABLE_MB / size_mb)
+
+
+def _source_health_score(item: dict, source_health: dict | None) -> float:
+    """Source success rate in [0, 1]; neutral 0.5 when unknown."""
+    if not source_health:
+        return 0.5
+    source = str(item.get("source") or item.get("name") or "").strip()
+    rate = source_health.get(source)
+    if rate is None:
+        return 0.5
+    try:
+        return max(0.0, min(1.0, float(rate)))
+    except (TypeError, ValueError):
+        return 0.5
+
+
+def _magnet_score(
+    item: dict, *, duration_seconds: float = 0, source_health: dict | None = None
+) -> dict:
     title = str(item.get("title") or "").lower()
     quality = str(item.get("quality") or "").lower()
-    resolution = str(item.get("resolution") or "").lower()
-    subtitle = bool(item.get("subtitle")) or any(token in title for token in ("字幕", "subtitle", "sub"))
+    subtitle = bool(item.get("subtitle")) or any(
+        token in title for token in ("字幕", "subtitle", "sub")
+    )
     hd = bool(item.get("hd")) or "1080" in title or "2160" in title or "4k" in title or "hd" in quality
-    res_score = 0
-    if "2160" in resolution or "2160" in title or "4k" in title:
-        res_score = 4
-    elif "1080" in resolution or "1080" in title:
-        res_score = 3
-    elif "720" in resolution or "720" in title:
-        res_score = 2
-    size_score = _size_to_mb(item.get("size"))
+    resolution_rank = _resolution_rank(item)
+    size_mb = _size_to_mb(item.get("size"))
+    health = _source_health_score(item, source_health)
+    fit = _size_fit(size_mb, duration_seconds)
     subtitle_score = 1 if subtitle else 0
-    hd_score = 1 if hd else 0
-    total = subtitle_score * 1000 + hd_score * 100 + res_score * 10 + math.log2(1 + size_score)
+    # Ranked priority: subtitle > resolution > source health > size fit.
+    # Size is a *fit* term now — never "bigger is better".
+    total = subtitle_score * 1000 + resolution_rank * 100 + health * 10 + fit * 1
     return {
         "subtitle": subtitle_score,
-        "hd": hd_score,
-        "resolution": res_score,
-        "size_mb": size_score,
+        "hd": 1 if hd else 0,
+        "resolution": resolution_rank,
+        "size_mb": size_mb,
+        "health": health,
+        "size_fit": fit,
         "total": total,
     }
+
+
+def rank_acquisition_options(
+    items, *, duration_seconds: float = 0, source_health: dict | None = None
+) -> list[dict]:
+    """Order acquisition options best-first by the unified ranking
+    (subtitle > 1080p > source health > reasonable size). Stable on ties."""
+    return sorted(
+        items,
+        key=lambda item: _magnet_score(
+            item, duration_seconds=duration_seconds, source_health=source_health
+        )["total"],
+        reverse=True,
+    )
 
 
 def _download_uri(item: dict) -> str:
