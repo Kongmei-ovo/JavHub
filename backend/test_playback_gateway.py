@@ -91,6 +91,39 @@ class PlaybackResourceRouteTests(unittest.TestCase):
         self.assertEqual(response.headers["cache-control"], "no-store")
         downurl.assert_awaited_once_with("pick-1", player_ua)
 
+    def test_expired_direct_link_transparently_relinks(self):
+        from routers.playback import relink_limiter
+        from services.open115 import Open115Error
+
+        relink_limiter.reset()
+        # request 1 → link-a; request 2 → first downurl expired, relink → link-b
+        downurl = AsyncMock(side_effect=["http://link-a", Open115Error(None, "expired"), "http://link-b"])
+        with patch("routers.playback.get_movie_resource", return_value=RESOURCE), \
+             patch("routers.playback.open115_client.downurl", new=downurl):
+            first = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+            second = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(first.headers["location"], "http://link-a")
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(second.headers["location"], "http://link-b")  # relinked, not an error
+        self.assertEqual(downurl.await_count, 3)
+
+    def test_relink_is_capped_and_marks_resource_missing(self):
+        from routers.playback import _RELINK_CAP, relink_limiter
+        from services.open115 import Open115Error
+
+        relink_limiter.reset()
+        downurl = AsyncMock(side_effect=Open115Error(None, "gone"))
+        with patch("routers.playback.get_movie_resource", return_value=RESOURCE), \
+             patch("routers.playback.open115_client.downurl", new=downurl), \
+             patch("routers.playback.set_movie_resource_status") as set_status:
+            response = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertLessEqual(downurl.await_count, _RELINK_CAP + 1)  # bounded, no infinite loop
+        set_status.assert_called_once_with(9, "missing")
+
     def test_web_mkv_gets_same_origin_hls_redirect_without_upstream_url(self):
         from services.open115 import TranscodeURL
 

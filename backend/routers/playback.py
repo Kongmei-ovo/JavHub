@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 from typing import Any, Optional
 from urllib.parse import urljoin
 
@@ -20,6 +21,7 @@ from database import (
     get_progress,
     list_continue_watching,
     save_progress,
+    set_movie_resource_status,
 )
 from services.emby_auth import extract_token, require_app_token
 from services.open115 import Open115Error, open115_client
@@ -40,6 +42,52 @@ router = APIRouter(
 def _token_suffix(request: Request) -> str:
     token = extract_token(request)
     return f"?token={token}" if token else ""
+
+
+_RELINK_CAP = 5
+_RELINK_WINDOW_SECONDS = 60.0
+
+
+class _RelinkLimiter:
+    """Per-resource sliding-window cap on direct-link relinks. A genuinely dead
+    115 file would otherwise spin downurl forever; the cap bounds retries so a
+    real failure surfaces as a 502 instead of an infinite relink loop."""
+
+    def __init__(self, cap: int, window_seconds: float):
+        self._cap = cap
+        self._window = window_seconds
+        self._hits: dict[int, list[float]] = {}
+
+    def allow(self, resource_id: int) -> bool:
+        now = time.monotonic()
+        hits = [t for t in self._hits.get(resource_id, []) if now - t < self._window]
+        if len(hits) >= self._cap:
+            self._hits[resource_id] = hits
+            return False
+        hits.append(now)
+        self._hits[resource_id] = hits
+        return True
+
+    def reset(self) -> None:
+        self._hits.clear()
+
+
+relink_limiter = _RelinkLimiter(_RELINK_CAP, _RELINK_WINDOW_SECONDS)
+
+
+async def _resolve_direct_url(resource: dict, user_agent: str) -> str:
+    """downurl with transparent relink: every direct link is short-lived, so on
+    expiry we re-fetch a fresh one instead of failing. Each failure consumes one
+    relink budget for the resource; once the per-resource cap is hit the error
+    propagates so the caller can fall back to HLS or report the resource gone."""
+    pick_code = str(resource["pick_code"])
+    resource_id = int(resource["id"])
+    while True:
+        try:
+            return await open115_client.downurl(pick_code, user_agent)
+        except Open115Error:
+            if not relink_limiter.allow(resource_id):
+                raise
 
 VALID_SOURCES = ("library", "online")
 
@@ -115,19 +163,22 @@ async def stream_movie_resource(
         )
 
     try:
-        direct_url = await open115_client.downurl(
-            str(resource["pick_code"]),
-            context.user_agent,
-        )
+        direct_url = await _resolve_direct_url(resource, context.user_agent)
     except Open115Error as exc:
-        if context.requested_mode != "auto" or not context.accepts_hls:
-            raise HTTPException(status_code=502, detail="115 原画换链失败") from exc
-        session_id = await _create_hls_session(resource, context.user_agent)
-        return RedirectResponse(
-            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
-            status_code=307,
-            headers={"Cache-Control": "no-store"},
-        )
+        # Relink exhausted (or a hard 115 error). Prefer HLS when the client can
+        # take it; otherwise treat the resource as gone so the UI offers re-acquire.
+        if context.requested_mode == "auto" and context.accepts_hls:
+            session_id = await _create_hls_session(resource, context.user_agent)
+            return RedirectResponse(
+                url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
+                status_code=307,
+                headers={"Cache-Control": "no-store"},
+            )
+        set_movie_resource_status(int(resource["id"]), "missing")
+        raise HTTPException(
+            status_code=502,
+            detail="115 原画换链多次失败，资源可能已失效，可重新获取",
+        ) from exc
     return RedirectResponse(
         url=direct_url,
         status_code=302,
