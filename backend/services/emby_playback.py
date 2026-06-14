@@ -5,8 +5,46 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 
 from services.emby_mapper import seconds_to_ticks
+from services.subtitles import subtitle_language
 
 PlaybackKind = Literal["open115", "online"]
+
+
+def _subtitles_for_video(video: dict, videos: list[dict], subtitles: list[dict]) -> list[dict]:
+    """Subtitles explicitly linked to this video (related_resource_id), plus any
+    unlinked ones — which ride along the default (first) video only, so they show
+    up exactly once rather than on every source."""
+    video_id = video.get("id")
+    linked = [s for s in subtitles if s.get("related_resource_id") == video_id]
+    is_primary = bool(videos) and videos[0].get("id") == video_id
+    if is_primary:
+        linked += [s for s in subtitles if not s.get("related_resource_id")]
+    return linked
+
+
+def _subtitle_streams(item_id: str, subtitles: list[dict], token: str, start_index: int) -> list[dict]:
+    """External (separate-file) subtitle tracks delivered as WebVTT. JavHub stores
+    them as their own movie_resources, so they ride along the video MediaSource."""
+    streams = []
+    for offset, sub in enumerate(subtitles):
+        delivery = f"/Videos/{item_id}/subtitles/{sub['id']}/stream.vtt"
+        if token:
+            delivery += f"?api_key={token}"
+        streams.append(
+            {
+                "Codec": "webvtt",
+                "Type": "Subtitle",
+                "Index": start_index + offset,
+                "IsDefault": offset == 0,
+                "IsForced": False,
+                "IsExternal": True,
+                "DeliveryMethod": "External",
+                "DeliveryUrl": delivery,
+                "Language": subtitle_language(sub.get("name")),
+                "DisplayTitle": str(sub.get("name") or "字幕"),
+            }
+        )
+    return streams
 
 
 def _container_of(name: str) -> str:
@@ -14,7 +52,9 @@ def _container_of(name: str) -> str:
     return lowered.rsplit(".", 1)[-1] if "." in lowered else "mp4"
 
 
-def _media_source_dto(resource: dict, item_id: str, token: str = "") -> dict:
+def _media_source_dto(
+    resource: dict, item_id: str, token: str = "", subtitles: list[dict] | None = None
+) -> dict:
     source_id = f"open115:{resource['id']}"
     container = str(
         resource.get("extension") or _container_of(resource.get("name"))
@@ -55,6 +95,9 @@ def _media_source_dto(resource: dict, item_id: str, token: str = "") -> dict:
         ],
         "RequiredHttpHeaders": {},
     }
+    source["MediaStreams"].extend(
+        _subtitle_streams(item_id, subtitles or [], token, start_index=len(source["MediaStreams"]))
+    )
     if source["SupportsTranscoding"]:
         hls_url = (
             f"/Videos/{item_id}/stream.m3u8"
@@ -127,8 +170,20 @@ class EmbyPlaybackBroker:
                 -int(resource.get("size") or 0),
             )
         )
+        ready_subtitles = [
+            resource
+            for resource in resources
+            if resource.get("resource_type") == "subtitle"
+            and resource.get("status") == "ready"
+            and resource.get("pick_code")
+        ]
         sources = [
-            _media_source_dto(resource, item_id, token=token)
+            _media_source_dto(
+                resource,
+                item_id,
+                token=token,
+                subtitles=_subtitles_for_video(resource, ready_videos, ready_subtitles),
+            )
             for resource in ready_videos
         ]
         sources.append(_online_media_source_dto(item_id, token=token))

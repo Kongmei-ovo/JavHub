@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import unittest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
@@ -346,6 +347,73 @@ class SessionProgressTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 204)
         # Emby reports round-trip into the movie-level record as last_source='emby'.
         mock_save.assert_called_once_with("ABC-123", "emby", 1230.0, 7200.0)
+
+
+class SubtitleExposureTests(unittest.TestCase):
+    def test_describe_exposes_linked_subtitles_as_external_vtt_streams(self):
+        from services.emby_playback import emby_playback_broker
+
+        resources = [
+            {"id": 1, "resource_type": "video", "status": "ready", "is_default": 1,
+             "movie_id": "ABC-123", "extension": "mp4", "name": "ABC-123.mp4",
+             "size": 100, "duration": 60, "pick_code": "v"},
+            {"id": 2, "resource_type": "subtitle", "status": "ready",
+             "movie_id": "ABC-123", "name": "ABC-123.中文.srt", "extension": "srt",
+             "pick_code": "s", "related_resource_id": 1},
+        ]
+        sources = emby_playback_broker.describe("ABC-123", "tok", resources)
+        video_source = sources[0]
+        subs = [s for s in video_source["MediaStreams"] if s["Type"] == "Subtitle"]
+        self.assertEqual(len(subs), 1)
+        self.assertTrue(subs[0]["IsExternal"])
+        self.assertEqual(subs[0]["Language"], "chi")
+        self.assertIn("/Videos/ABC-123/subtitles/2/stream.vtt", subs[0]["DeliveryUrl"])
+        self.assertIn("api_key=tok", subs[0]["DeliveryUrl"])
+
+    def test_unready_subtitle_is_not_exposed(self):
+        from services.emby_playback import emby_playback_broker
+
+        resources = [
+            {"id": 1, "resource_type": "video", "status": "ready", "is_default": 1,
+             "movie_id": "ABC-123", "extension": "mp4", "name": "v.mp4", "pick_code": "v"},
+            {"id": 2, "resource_type": "subtitle", "status": "missing",
+             "movie_id": "ABC-123", "name": "x.srt", "pick_code": "", "related_resource_id": 1},
+        ]
+        sources = emby_playback_broker.describe("ABC-123", "", resources)
+        subs = [s for s in sources[0]["MediaStreams"] if s["Type"] == "Subtitle"]
+        self.assertEqual(subs, [])
+
+    def test_subtitle_endpoint_serves_converted_vtt(self):
+        from routers import emby_compat
+
+        token = _login()["AccessToken"]
+        req = FakeRequest(headers={"X-Emby-Token": token, "user-agent": "Infuse"})
+        sub = {"id": 5, "resource_type": "subtitle", "movie_id": "ABC-123",
+               "pick_code": "pc", "extension": "srt", "name": "ABC-123.srt"}
+        upstream = SimpleNamespace(status_code=200, text="1\n00:00:01,000 --> 00:00:02,000\nHi\n")
+        with patch("routers.emby_compat.config._config", EMBY_CONFIG), \
+             patch("routers.emby_compat.get_movie_resource", return_value=sub), \
+             patch("services.open115.open115_client.downurl", new=AsyncMock(return_value="http://115/x.srt")), \
+             patch("routers.playback.playback_hls_client.get", new=AsyncMock(return_value=upstream)):
+            resp = asyncio.run(emby_compat.video_subtitle_stream("ABC-123", 5, req, ext="vtt"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.media_type, "text/vtt")
+        body = resp.body.decode() if isinstance(resp.body, bytes) else resp.body
+        self.assertTrue(body.startswith("WEBVTT"))
+        self.assertIn("00:00:01.000 --> 00:00:02.000", body)
+
+    def test_subtitle_endpoint_404_for_wrong_movie(self):
+        from fastapi import HTTPException
+        from routers import emby_compat
+
+        token = _login()["AccessToken"]
+        req = FakeRequest(headers={"X-Emby-Token": token})
+        sub = {"id": 5, "resource_type": "subtitle", "movie_id": "OTHER-1", "pick_code": "pc", "extension": "srt"}
+        with patch("routers.emby_compat.config._config", EMBY_CONFIG), \
+             patch("routers.emby_compat.get_movie_resource", return_value=sub):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(emby_compat.video_subtitle_stream("ABC-123", 5, req, ext="vtt"))
+        self.assertEqual(ctx.exception.status_code, 404)
 
 
 class EmptyFallbackTests(unittest.TestCase):

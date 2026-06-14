@@ -1123,6 +1123,48 @@ async def video_stream(
     )
 
 
+@router.api_route("/Videos/{item_id}/subtitles/{resource_id}/stream.{ext}", methods=["GET", "HEAD"])
+@router.api_route("/Videos/{item_id}/subtitles/{resource_id}/stream", methods=["GET", "HEAD"])
+@router.api_route(
+    "/videos/{item_id}/subtitles/{resource_id}/stream.{ext}",
+    methods=["GET", "HEAD"],
+    include_in_schema=False,
+)
+async def video_subtitle_stream(item_id: str, resource_id: int, request: Request, ext: str = ""):
+    """Serve a downloaded subtitle resource as WebVTT (ass/ssa converted)."""
+    _require_auth(request)
+    resource = get_movie_resource(resource_id)
+    if (
+        not resource
+        or resource.get("resource_type") != "subtitle"
+        or str(resource.get("movie_id")) != item_id
+    ):
+        raise HTTPException(status_code=404, detail="Subtitle not found")
+    if getattr(request, "method", "GET").upper() == "HEAD":
+        return Response(status_code=200, media_type="text/vtt", headers={"Cache-Control": "no-store"})
+    pick_code = str(resource.get("pick_code") or "")
+    if not pick_code:
+        raise HTTPException(status_code=409, detail="Subtitle not available")
+
+    from routers.playback import playback_hls_client
+    from services.open115 import Open115Error, open115_client
+    from services.subtitles import to_webvtt
+
+    ua = request.headers.get("user-agent", "")
+    try:
+        url = await open115_client.downurl(pick_code, ua)
+        upstream = await playback_hls_client.get(url, headers={"User-Agent": ua} if ua else {})
+    except Open115Error as exc:
+        raise HTTPException(status_code=502, detail="115 字幕换链失败") from exc
+    except Exception as exc:  # network/transport failure
+        raise HTTPException(status_code=502, detail="字幕下载失败") from exc
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="字幕上游不可用")
+
+    vtt = to_webvtt(upstream.text, str(resource.get("extension") or ""))
+    return PlainTextResponse(vtt, media_type="text/vtt", headers={"Cache-Control": "no-store"})
+
+
 @router.api_route("/Videos/{item_id}/original", methods=["GET", "HEAD"])
 @router.api_route("/Videos/{item_id}/original.{ext}", methods=["GET", "HEAD"])
 @router.api_route(
