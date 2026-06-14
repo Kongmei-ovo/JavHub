@@ -30,7 +30,15 @@ MOVIE = {
         {"id": 11, "name_kanji": "演员甲", "image_url": "https://img.example/a.jpg"}
     ],
     "categories": [{"id": 21, "name_ja": "剧情"}],
+    "directors": [{"id": 31, "name_kanji": "导演甲"}],
+    "actors": [{"id": 41, "name_kanji": "男演员甲"}],
+    "authors": [{"id": 51, "name_kanji": "作者甲"}],
+    "jacket_thumb_url": "https://pics.dmm.co.jp/mono/movie/abc123/abc123ps.jpg",
     "jacket_full_url": "https://pics.dmm.co.jp/mono/movie/abc123/abc123pl.jpg",
+    "sample_image_urls": [
+        "https://pics.dmm.co.jp/mono/movie/abc123/abc123jp-1.jpg",
+        "https://pics.dmm.co.jp/mono/movie/abc123/abc123jp-2.jpg",
+    ],
 }
 
 
@@ -101,6 +109,41 @@ class EmbyCatalogStateTests(unittest.TestCase):
             random_seed=None,
             include_total=True,
         )
+
+    def test_requested_detail_fields_are_filled_from_catalog_detail(self):
+        compact = {
+            key: value
+            for key, value in MOVIE.items()
+            if key not in {
+                "summary",
+                "maker",
+                "series",
+                "label",
+                "actresses",
+                "categories",
+                "directors",
+                "actors",
+                "authors",
+                "sample_image_urls",
+            }
+        }
+        info = AsyncMock()
+        info.list_catalog_videos.return_value = {"data": [compact], "total_count": 1}
+        info.get_catalog_video.return_value = MOVIE
+        with patch("modules.info_client.get_info_client", return_value=info):
+            response = self.client.get(
+                "/Items?IncludeItemTypes=Movie&Limit=20"
+                "&Fields=Overview,People,Genres,Studios,BackdropImageTags",
+                headers=self.auth,
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        item = response.json()["Items"][0]
+        self.assertEqual(item["Overview"], "简介")
+        self.assertEqual(item["People"][0]["Name"], "演员甲")
+        self.assertEqual(item["Genres"], ["剧情"])
+        self.assertEqual(item["Studios"][0]["Name"], "片商")
+        self.assertEqual(len(item["BackdropImageTags"]), 2)
+        info.get_catalog_video.assert_awaited_once_with("ABC-123")
 
     def test_items_counts_uses_catalog_total_and_static_route_wins(self):
         info = AsyncMock()
@@ -182,6 +225,33 @@ class EmbyCatalogStateTests(unittest.TestCase):
         self.assertEqual(len(response.json()), 1)
         group.assert_called_once()
 
+    def test_resume_refresh_never_reads_playback_resources(self):
+        info = AsyncMock()
+        info.get_catalog_video.return_value = MOVIE
+        progress = {
+            "content_id": "ABC-123",
+            "source": "library",
+            "position_seconds": 120,
+            "duration_seconds": 6000,
+            "completed": 0,
+        }
+        with patch("modules.info_client.get_info_client", return_value=info), patch(
+            "routers.emby_compat.list_continue_watching",
+            return_value=[progress],
+        ), patch(
+            "routers.emby_compat.movie_favorite_flags",
+            return_value={},
+        ), patch(
+            "routers.emby_compat.list_movie_resources",
+            side_effect=AssertionError("resume refresh must not enter playback domain"),
+        ):
+            response = self.client.get(
+                "/Items/Resume?Fields=MediaSources,MediaStreams&Limit=20",
+                headers=self.auth,
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("MediaSources", response.json()["Items"][0])
+
     def test_person_filter_combines_multiple_actor_ids(self):
         info = AsyncMock()
         info.get_all_actress_videos.side_effect = [
@@ -255,7 +325,19 @@ class EmbyCatalogStateTests(unittest.TestCase):
             is_favorite=True,
         )
         self.assertEqual(dto["People"][0]["Id"], "person:11")
-        self.assertEqual(dto["People"][0]["PrimaryImageTag"], "avatar")
+        self.assertTrue(dto["People"][0]["PrimaryImageTag"])
+        self.assertEqual(
+            [(person["Name"], person["Type"]) for person in dto["People"]],
+            [
+                ("演员甲", "Actor"),
+                ("男演员甲", "Actor"),
+                ("导演甲", "Director"),
+                ("作者甲", "Writer"),
+            ],
+        )
+        self.assertEqual(dto["CommunityRating"], 8.4)
+        self.assertEqual(len(dto["BackdropImageTags"]), 2)
+        self.assertNotEqual(dto["BackdropImageTags"][0], dto["BackdropImageTags"][1])
         self.assertEqual(dto["Studios"][0]["Name"], "片商")
         self.assertEqual(dto["SeriesName"], "系列")
         self.assertIn("DvdId", dto["ProviderIds"])

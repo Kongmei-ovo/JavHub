@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from services.emby_images import actress_image_url, image_tag
 from services.video_variant_index import apply_indexed_variant_groups
 from services.video_variants import enrich_video_variants, filter_movie_items
 
@@ -34,24 +35,16 @@ def actress_name(item: dict) -> str:
     ).strip()
 
 
-def actress_image_url(item: dict) -> str:
-    return str(
-        item.get("image_url")
-        or item.get("avatar_url")
-        or item.get("javinfo_avatar_url")
-        or ""
-    ).strip()
-
-
 def person_dto(item: dict, *, detailed: bool = False) -> dict:
     actress_id = str(item.get("id") or "").strip()
+    avatar = actress_image_url(item)
     dto = {
         "Id": f"{PERSON_PREFIX}{actress_id}",
         "Name": actress_name(item),
         "Type": "Person",
         "IsFolder": False,
         "MediaType": "Unknown",
-        "ImageTags": {"Primary": "avatar"} if actress_image_url(item) else {},
+        "ImageTags": {"Primary": image_tag(avatar)} if avatar else {},
         "ProviderIds": {"JavInfoActress": actress_id},
         "RecursiveItemCount": int(item.get("movie_count") or item.get("video_count") or 0),
         "ChildCount": 0,

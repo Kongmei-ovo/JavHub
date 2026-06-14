@@ -261,10 +261,13 @@ class BrowseTests(unittest.TestCase):
         self.assertEqual(calls[1].kwargs["page"], 3)
         self.assertFalse(calls[1].kwargs["include_total"])
 
-    def test_item_detail_exists_without_library_file(self):
+    def test_item_detail_never_reads_playback_resources(self):
         from routers.emby_compat import item_detail
 
-        with patch("routers.emby_compat.list_movie_resources", return_value=[]):
+        with patch(
+            "routers.emby_compat.list_movie_resources",
+            side_effect=AssertionError("catalog detail must not enter playback domain"),
+        ):
             item = asyncio.run(item_detail("u", "ABC-123", self.auth_req))
 
         self.assertEqual(item["Id"], "ABC-123")

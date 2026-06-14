@@ -9,6 +9,13 @@ from __future__ import annotations
 
 from typing import Optional
 
+from services.emby_images import (
+    actress_image_url,
+    image_tag,
+    movie_backdrop_image_urls,
+    movie_primary_image_url,
+)
+
 TICKS_PER_SECOND = 10_000_000
 SERVER_ID = "javhub-emby-compat"
 LIBRARY_VIEW_ID = "library"
@@ -22,100 +29,35 @@ def ticks_to_seconds(ticks: float | int | None) -> float:
     return float(ticks or 0) / TICKS_PER_SECOND
 
 
-def _container_of(name: str) -> str:
-    lowered = str(name or "").lower()
-    return lowered.rsplit(".", 1)[-1] if "." in lowered else "mp4"
+def _community_rating(score: object) -> float | None:
+    try:
+        value = float(score or 0)
+    except (TypeError, ValueError):
+        return None
+    if value <= 0:
+        return None
+    # JavInfo providers expose five-star review scores. Emby displays a
+    # ten-point CommunityRating.
+    return min(value * 2, 10.0)
 
 
-def media_source_dto(resource: dict, item_id: str, token: str = "") -> dict:
-    """A real 115 file becomes one selectable Emby media source."""
-    source_id = f"open115:{resource['id']}"
-    container = str(resource.get("extension") or _container_of(resource.get("name"))).lower().lstrip(".")
-    stream_url = f"/Videos/{item_id}/stream.{container}?MediaSourceId={source_id}&Static=true"
-    if token:
-        stream_url += f"&api_key={token}"
-    source = {
-        "Id": source_id,
-        "Protocol": "Http",
-        "Container": container,
-        "Size": int(resource.get("size") or 0),
-        "Name": resource.get("name") or "",
-        "Path": stream_url,
-        "IsRemote": True,
-        "SupportsDirectPlay": True,
-        "SupportsDirectStream": True,
-        "SupportsTranscoding": container not in {"mp4", "webm"},
-        "Type": "Default",
-        "RunTimeTicks": seconds_to_ticks(resource.get("duration")),
-        "RequiresOpening": False,
-        "RequiresClosing": False,
-        "SupportsProbing": False,
-        "DirectStreamUrl": stream_url,
-        "MediaStreams": [
-            {
-                "Codec": "unknown",
-                "Type": "Video",
-                "Index": 0,
-                "IsDefault": True,
-                "IsForced": False,
-                "IsExternal": False,
-                "DisplayTitle": container.upper() or "Video",
-            }
-        ],
-        "RequiredHttpHeaders": {},
-    }
-    if source["SupportsTranscoding"]:
-        hls_url = f"/Videos/{item_id}/stream.m3u8?MediaSourceId={source_id}&mode=hls&Static=true"
-        if token:
-            hls_url += f"&api_key={token}"
-        source["TranscodingUrl"] = hls_url
-        source["TranscodingContainer"] = "m3u8"
-        source["TranscodingSubProtocol"] = "hls"
-    return source
-
-
-def online_media_source_dto(item_id: str, token: str = "") -> dict:
-    """按需解析的在线 HLS 版本；这里只暴露稳定入口，不缓存上游直链。"""
-    stream_url = f"/Videos/{item_id}/stream.m3u8?MediaSourceId=online:auto&Static=true"
-    if token:
-        stream_url += f"&api_key={token}"
-    return {
-        "Id": "online:auto",
-        "Protocol": "Http",
-        "Container": "m3u8",
-        "Name": "在线源（按需检测）",
-        "Path": stream_url,
-        "IsRemote": True,
-        "SupportsDirectPlay": True,
-        "SupportsDirectStream": True,
-        "SupportsTranscoding": False,
-        "Type": "Default",
-        "RequiresOpening": False,
-        "RequiresClosing": False,
-        "DirectStreamUrl": stream_url,
-        "MediaStreams": [
-            {
-                "Codec": "h264",
-                "Type": "Video",
-                "Index": 0,
-                "IsDefault": True,
-                "IsForced": False,
-                "IsExternal": False,
-                "DisplayTitle": "Online HLS",
-            }
-        ],
-        "RequiredHttpHeaders": {},
-    }
+def _person_name(item: dict) -> str:
+    return str(
+        item.get("name_kanji_translated")
+        or item.get("name_kanji")
+        or item.get("name_romaji_translated")
+        or item.get("name_romaji")
+        or item.get("name_kana")
+        or item.get("name")
+        or ""
+    ).strip()
 
 
 def to_base_item_dto(
     content_id: str,
     metadata: Optional[dict],
-    resources: Optional[list[dict]] = None,
     progress: Optional[dict] = None,
     is_favorite: bool = False,
-    token: str = "",
-    detailed: bool = False,
 ) -> dict:
     """组装 Movie 类型的 BaseItemDto。metadata 缺失时退化为番号占位。"""
     metadata = metadata or {}
@@ -130,6 +72,8 @@ def to_base_item_dto(
     year = None
     if len(release_date) >= 4 and release_date[:4].isdigit():
         year = int(release_date[:4])
+    primary_image = movie_primary_image_url(metadata)
+    backdrop_images = movie_backdrop_image_urls(metadata)
 
     dto: dict = {
         "Id": content_id,
@@ -145,22 +89,14 @@ def to_base_item_dto(
         "PremiereDate": f"{release_date}T00:00:00.0000000Z" if release_date else None,
         "DateCreated": f"{release_date}T00:00:00.0000000Z" if release_date else None,
         "RunTimeTicks": seconds_to_ticks(runtime_mins * 60) if runtime_mins else None,
-        "CommunityRating": float(metadata.get("score") or 0) or None,
+        "CommunityRating": _community_rating(metadata.get("score")),
         "Overview": str(metadata.get("summary_translated") or metadata.get("summary") or ""),
         "ProviderIds": {
             "JavHub": content_id,
             "DvdId": str(metadata.get("dvd_id") or content_id),
         },
-        "ImageTags": (
-            {"Primary": "jacket"}
-            if metadata.get("jacket_full_url") or metadata.get("jacket_thumb_url")
-            else {}
-        ),
-        "BackdropImageTags": (
-            ["backdrop"]
-            if metadata.get("backdrop_url") or metadata.get("sample_image_urls")
-            else []
-        ),
+        "ImageTags": {"Primary": image_tag(primary_image)} if primary_image else {},
+        "BackdropImageTags": [image_tag(url) for url in backdrop_images],
         "UserData": _user_data(progress, is_favorite=is_favorite),
         "CanDelete": False,
         "CanDownload": False,
@@ -175,15 +111,25 @@ def to_base_item_dto(
 
     people = []
     for actress in metadata.get("actresses") or []:
-        name = str(actress.get("name_kanji") or actress.get("name_romaji") or "").strip()
+        name = _person_name(actress)
         if name:
             actress_id = str(actress.get("id") or "").strip()
             person = {"Name": name, "Type": "Actor", "Role": ""}
             if actress_id:
                 person["Id"] = f"person:{actress_id}"
-            if actress.get("image_url") or actress.get("avatar_url"):
-                person["PrimaryImageTag"] = "avatar"
+            avatar = actress_image_url(actress)
+            if avatar:
+                person["PrimaryImageTag"] = image_tag(avatar)
             people.append(person)
+    for field, person_type in (
+        ("actors", "Actor"),
+        ("directors", "Director"),
+        ("authors", "Writer"),
+    ):
+        for item in metadata.get(field) or []:
+            name = _person_name(item)
+            if name:
+                people.append({"Name": name, "Type": person_type, "Role": ""})
     dto["People"] = people
     genres = []
     genre_items = []
@@ -227,25 +173,6 @@ def to_base_item_dto(
         if series_name:
             dto["SeriesName"] = series_name
             dto["SeriesId"] = f"series:{series.get('id') or series_name}"
-
-    ready_videos = [
-        resource for resource in (resources or [])
-        if resource.get("resource_type") == "video" and resource.get("status") == "ready"
-    ]
-    ready_videos.sort(
-        key=lambda resource: (
-            not bool(resource.get("is_default")),
-            -int(resource.get("size") or 0),
-        )
-    )
-    if detailed and ready_videos:
-        dto["MediaSources"] = [
-            media_source_dto(resource, content_id, token=token)
-            for resource in ready_videos
-        ]
-        dto["Container"] = str(
-            ready_videos[0].get("extension") or _container_of(ready_videos[0].get("name"))
-        ).lower().lstrip(".")
 
     return dto
 
