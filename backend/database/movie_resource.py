@@ -186,6 +186,20 @@ def code_has_ready_resource(code: str) -> bool:
         return cursor.fetchone() is not None
 
 
+def list_ready_video_movie_ids() -> list[str]:
+    """All movie_ids with a ready video resource. Scans only the sparse resource
+    library (never the 1.8M metadata set) — intended for migration/parity tools."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT movie_id FROM movie_resources
+            WHERE resource_type = 'video' AND status = 'ready'
+            """
+        )
+        return [str(row["movie_id"]) for row in cursor.fetchall()]
+
+
 def codes_with_ready_resource(codes: list[str]) -> set[str]:
     movie_ids = list(dict.fromkeys(str(code or "").strip() for code in codes))
     movie_ids = [movie_id for movie_id in movie_ids if movie_id]
