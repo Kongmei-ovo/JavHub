@@ -21,9 +21,15 @@ class ProgressEndpointTests(unittest.TestCase):
 
         with patch("routers.playback.save_progress", return_value={"content_id": "ABC-123"}) as mock_save:
             asyncio.run(put_progress("ABC-123", ProgressRequest(
-                source="library", position_seconds=120, duration_seconds=7200,
+                source="library", resource_id=7, position_seconds=120, duration_seconds=7200,
             )))
-        mock_save.assert_called_once_with("ABC-123", "library", 120, 7200)
+        mock_save.assert_called_once_with(
+            "ABC-123",
+            source="library",
+            resource_id=7,
+            position_seconds=120,
+            duration_seconds=7200,
+        )
 
 
 if __name__ == "__main__":

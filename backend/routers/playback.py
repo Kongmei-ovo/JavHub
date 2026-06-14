@@ -237,6 +237,7 @@ async def proxy_open115_hls_target(
 
 class ProgressRequest(BaseModel):
     source: str = "library"
+    resource_id: int | None = None
     position_seconds: float
     duration_seconds: float = 0
 
@@ -245,7 +246,13 @@ class ProgressRequest(BaseModel):
 async def put_progress(content_id: str, req: ProgressRequest):
     if req.source not in VALID_SOURCES:
         raise HTTPException(status_code=400, detail="source 必须是 library 或 online")
-    return save_progress(content_id, req.source, req.position_seconds, req.duration_seconds)
+    return save_progress(
+        content_id,
+        source=req.source,
+        resource_id=req.resource_id,
+        position_seconds=req.position_seconds,
+        duration_seconds=req.duration_seconds,
+    )
 
 
 @router.get("/progress/{content_id}")
@@ -268,9 +275,12 @@ async def continue_watching(limit: int = Query(12, ge=1, le=50)):
     client = get_info_client()
 
     async def enrich(row: dict) -> dict:
+        last_source = row.get("last_source") or row.get("source")
         item = {
             "content_id": row["content_id"],
-            "source": row["source"],
+            "source": last_source,
+            "last_source": last_source,
+            "last_resource_id": row.get("last_resource_id"),
             "position_seconds": row["position_seconds"],
             "duration_seconds": row["duration_seconds"],
             "updated_at": row.get("updated_at"),
