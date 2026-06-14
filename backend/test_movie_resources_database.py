@@ -6,6 +6,111 @@ from test_support.postgres import TempPostgresMixin
 
 
 class MovieResourcesDatabaseTests(TempPostgresMixin, unittest.TestCase):
+    def test_code_has_ready_resource(self):
+        from database import code_has_ready_resource, upsert_movie_resource
+
+        self.assertFalse(code_has_ready_resource("NOPE-000"))
+
+        upsert_movie_resource(
+            movie_id="HAVE-1",
+            provider="open115",
+            remote_file_id="ready-video",
+            name="HAVE-1.mp4",
+            resource_type="video",
+            status="ready",
+        )
+        upsert_movie_resource(
+            movie_id="PEND-1",
+            provider="open115",
+            remote_file_id="pending-video",
+            name="PEND-1.mp4",
+            resource_type="video",
+            status="pending",
+        )
+        upsert_movie_resource(
+            movie_id="SUB-1",
+            provider="open115",
+            remote_file_id="ready-subtitle",
+            name="SUB-1.srt",
+            resource_type="subtitle",
+            status="ready",
+        )
+
+        self.assertTrue(code_has_ready_resource("HAVE-1"))
+        self.assertFalse(code_has_ready_resource("PEND-1"))
+        self.assertFalse(code_has_ready_resource("SUB-1"))
+
+    def test_codes_with_ready_resource_only_returns_requested_ready_videos(self):
+        from database import codes_with_ready_resource, upsert_movie_resource
+
+        resources = [
+            ("READY-1", "ready-video", "READY-1.mp4", "video", "ready"),
+            ("PENDING-1", "pending-video", "PENDING-1.mp4", "video", "pending"),
+            ("SUBTITLE-1", "ready-subtitle", "SUBTITLE-1.srt", "subtitle", "ready"),
+            ("OUTSIDE-1", "outside-video", "OUTSIDE-1.mp4", "video", "ready"),
+            ("ODD-?'()", "special-video", "ODD.mp4", "video", "ready"),
+        ]
+        for movie_id, remote_file_id, name, resource_type, status in resources:
+            upsert_movie_resource(
+                movie_id=movie_id,
+                provider="open115",
+                remote_file_id=remote_file_id,
+                name=name,
+                resource_type=resource_type,
+                status=status,
+            )
+
+        result = codes_with_ready_resource(
+            [
+                "READY-1",
+                "PENDING-1",
+                "SUBTITLE-1",
+                "ODD-?'()",
+                "READY-1",
+                "",
+                "   ",
+                None,
+            ]
+        )
+
+        self.assertEqual(result, {"READY-1", "ODD-?'()"})
+        self.assertEqual(codes_with_ready_resource(["", " ", None]), set())
+
+    def test_codes_with_ready_resource_queries_in_batches_of_500(self):
+        from unittest.mock import patch
+
+        from database import movie_resource
+
+        executions = []
+
+        class RecordingCursor:
+            def execute(self, sql, params):
+                executions.append((sql, params))
+
+            def fetchall(self):
+                return []
+
+        class RecordingConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def cursor(self):
+                return RecordingCursor()
+
+        codes = [f"CODE-{index}" for index in range(501)]
+        with patch.object(movie_resource, "get_db", return_value=RecordingConnection()):
+            self.assertEqual(movie_resource.codes_with_ready_resource(codes), set())
+
+        self.assertEqual(len(executions), 2)
+        for sql, params in executions:
+            self.assertIn("movie_id IN", sql)
+            self.assertIn("resource_type = 'video'", sql)
+            self.assertIn("status = 'ready'", sql)
+            self.assertLessEqual(len(params), 500)
+
     def test_version_label_part_index_group_key_persist(self):
         from database import get_movie_resource, upsert_movie_resource
 

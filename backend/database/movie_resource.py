@@ -169,6 +169,46 @@ def upsert_movie_resource(
         return resource_id, created
 
 
+def code_has_ready_resource(code: str) -> bool:
+    movie_id = str(code or "").strip()
+    if not movie_id:
+        return False
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 1 FROM movie_resources
+            WHERE movie_id = ? AND resource_type = 'video' AND status = 'ready'
+            LIMIT 1
+            """,
+            (movie_id,),
+        )
+        return cursor.fetchone() is not None
+
+
+def codes_with_ready_resource(codes: list[str]) -> set[str]:
+    movie_ids = list(dict.fromkeys(str(code or "").strip() for code in codes))
+    movie_ids = [movie_id for movie_id in movie_ids if movie_id]
+    if not movie_ids:
+        return set()
+    ready_movie_ids: set[str] = set()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for offset in range(0, len(movie_ids), 500):
+            batch = movie_ids[offset : offset + 500]
+            placeholders = ", ".join("?" for _ in batch)
+            cursor.execute(
+                f"""
+                SELECT DISTINCT movie_id FROM movie_resources
+                WHERE movie_id IN ({placeholders})
+                  AND resource_type = 'video' AND status = 'ready'
+                """,
+                tuple(batch),
+            )
+            ready_movie_ids.update(str(row["movie_id"]) for row in cursor.fetchall())
+    return ready_movie_ids
+
+
 def get_movie_resource(resource_id: int) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()

@@ -55,6 +55,8 @@ from database.playback import (
     delete_progress,
 )
 from database.movie_resource import (
+    code_has_ready_resource,
+    codes_with_ready_resource,
     delete_movie_resource,
     get_movie_resource,
     get_movie_resource_by_remote_id,
@@ -268,6 +270,8 @@ __all__ = [
     "get_download_tasks",
     "update_task_status",
     "delete_download_task",
+    "code_has_ready_resource",
+    "codes_with_ready_resource",
     "delete_movie_resource",
     "get_movie_resource",
     "get_movie_resource_by_remote_id",
