@@ -1191,7 +1191,10 @@ async def _record_session_progress(request: Request) -> Response:
     if item_id:
         position = ticks_to_seconds(body.get("PositionTicks"))
         duration = await _duration_seconds_for(item_id, body)
-        save_progress(item_id, "library", position, duration)
+        # Round-trip Emby (Infuse/VidHub) playback position into the shared
+        # movie-level record so web ↔ Emby continue-watching truly converge;
+        # last_source='emby' marks where it came from.
+        save_progress(item_id, "emby", position, duration)
     return Response(status_code=204)
 
 

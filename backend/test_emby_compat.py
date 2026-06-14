@@ -344,7 +344,8 @@ class SessionProgressTests(unittest.TestCase):
              patch("routers.emby_compat.save_progress") as mock_save:
             resp = asyncio.run(emby_compat.session_progress(req))
         self.assertEqual(resp.status_code, 204)
-        mock_save.assert_called_once_with("ABC-123", "library", 1230.0, 7200.0)
+        # Emby reports round-trip into the movie-level record as last_source='emby'.
+        mock_save.assert_called_once_with("ABC-123", "emby", 1230.0, 7200.0)
 
 
 class EmptyFallbackTests(unittest.TestCase):
