@@ -6,6 +6,26 @@ from test_support.postgres import TempPostgresMixin
 
 
 class MovieResourcesDatabaseTests(TempPostgresMixin, unittest.TestCase):
+    def test_version_label_part_index_group_key_persist(self):
+        from database import get_movie_resource, upsert_movie_resource
+
+        resource_id, _ = upsert_movie_resource(
+            movie_id="ABC-123",
+            provider="open115",
+            remote_file_id="f1",
+            name="ABC-123-cd1.mp4",
+            status="ready",
+            is_default=True,
+            version_label="1080p-中字",
+            part_index=1,
+            group_key="ABC-123:g1",
+        )
+        row = get_movie_resource(resource_id)
+
+        self.assertEqual(row["version_label"], "1080p-中字")
+        self.assertEqual(row["part_index"], 1)
+        self.assertEqual(row["group_key"], "ABC-123:g1")
+
     def test_upsert_is_idempotent_by_provider_and_remote_file_id(self):
         from database import get_movie_resource, upsert_movie_resource
 

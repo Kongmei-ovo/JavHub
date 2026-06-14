@@ -68,6 +68,9 @@ def upsert_movie_resource(
     is_default: bool = False,
     download_task_id: int | None = None,
     related_resource_id: int | None = None,
+    version_label: str | None = None,
+    part_index: int | None = None,
+    group_key: str | None = None,
 ) -> tuple[int, bool]:
     movie_id, provider, remote_file_id, name, status, resource_type = _validated_values(
         movie_id=movie_id,
@@ -102,9 +105,10 @@ def upsert_movie_resource(
                     movie_id, provider, remote_file_id, parent_id, pick_code,
                     name, extension, size, duration, resource_type, status,
                     is_default, download_task_id, related_resource_id,
+                    version_label, part_index, group_key,
                     created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 (
@@ -122,6 +126,9 @@ def upsert_movie_resource(
                     can_be_default,
                     download_task_id,
                     related_resource_id,
+                    str(version_label or ""),
+                    int(part_index) if part_index is not None else None,
+                    str(group_key or ""),
                 ),
             )
             resource_id = int(cursor.lastrowid)
@@ -134,7 +141,8 @@ def upsert_movie_resource(
                 SET movie_id = ?, parent_id = ?, pick_code = ?, name = ?,
                     extension = ?, size = ?, duration = ?, resource_type = ?,
                     status = ?, is_default = ?, download_task_id = ?,
-                    related_resource_id = ?, updated_at = CURRENT_TIMESTAMP
+                    related_resource_id = ?, version_label = ?, part_index = ?,
+                    group_key = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
                 (
@@ -150,6 +158,9 @@ def upsert_movie_resource(
                     can_be_default,
                     download_task_id,
                     related_resource_id,
+                    str(version_label or ""),
+                    int(part_index) if part_index is not None else None,
+                    str(group_key or ""),
                     resource_id,
                 ),
             )

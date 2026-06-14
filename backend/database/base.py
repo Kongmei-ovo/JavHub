@@ -818,6 +818,12 @@ def _init_movie_resource_tables(cursor) -> None:
             CHECK (status IN ('pending', 'ready', 'missing', 'failed'))
         )
     ''')
+    for sql_text in (
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS version_label TEXT",
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS part_index INTEGER",
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS group_key TEXT",
+    ):
+        _add_column_if_missing(cursor, sql_text)
 
 
 def _create_indexes():
