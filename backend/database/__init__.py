@@ -76,6 +76,13 @@ from database.acquisition_session import (
     mark_session_detached,
     update_acquisition_session,
 )
+from database.subscription_baseline import (
+    add_to_baseline,
+    establish_baseline,
+    filter_new_against_baseline,
+    get_baseline_at,
+    is_in_baseline,
+)
 from database.download_candidate import (
     upsert_download_candidate,
     upsert_candidate_from_video,
@@ -290,6 +297,11 @@ __all__ = [
     "get_session_by_download_task",
     "mark_session_detached",
     "update_acquisition_session",
+    "add_to_baseline",
+    "establish_baseline",
+    "filter_new_against_baseline",
+    "get_baseline_at",
+    "is_in_baseline",
     "delete_movie_resource",
     "get_movie_resource",
     "get_movie_resource_by_remote_id",

@@ -406,6 +406,7 @@ def init_db():
         _init_playback_tables(cursor)
         _init_movie_resource_tables(cursor)
         _init_acquisition_tables(cursor)
+        _init_subscription_baseline_tables(cursor)
         conn.commit()
     finally:
         conn.close()
@@ -826,6 +827,23 @@ def _init_movie_resource_tables(cursor) -> None:
         "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS group_key TEXT",
     ):
         _add_column_if_missing(cursor, sql_text)
+
+
+def _init_subscription_baseline_tables(cursor) -> None:
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_baselines (
+            subscription_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            established_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (subscription_id, code)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_baseline_meta (
+            subscription_id INTEGER PRIMARY KEY,
+            baseline_at TIMESTAMPTZ NOT NULL
+        )
+    ''')
 
 
 def _init_acquisition_tables(cursor) -> None:
