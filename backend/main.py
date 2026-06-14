@@ -56,6 +56,7 @@ from routers.emby_compat import discovery_router as emby_discovery_router
 from routers.emby_compat import router as emby_compat_router
 from routers.open115 import router as open115_router
 from routers.movie_resources import router as movie_resources_router
+from routers.acquisitions import router as acquisitions_router
 from services.emby_auth import EmbyHTTPException
 
 app = FastAPI(title="AV Downloader API")
@@ -197,6 +198,7 @@ app.include_router(scheduler_router)
 app.include_router(playback_router)
 app.include_router(open115_router)
 app.include_router(movie_resources_router)
+app.include_router(acquisitions_router)
 # Emby 兼容层挂根路径与 /emby 双前缀（不同客户端拼法不同）
 app.include_router(emby_compat_router)
 app.include_router(emby_discovery_router, prefix="/emby")
