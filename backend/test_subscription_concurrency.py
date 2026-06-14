@@ -5,9 +5,11 @@ import time
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
+from test_support.postgres import TempPostgresMixin
 
-class SubscriptionConcurrencyTest(unittest.IsolatedAsyncioTestCase):
-    async def test_check_report_runs_subscriptions_concurrently_with_shared_snapshot_codes(self):
+
+class SubscriptionConcurrencyTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_check_report_runs_subscriptions_concurrently(self):
         from services.subscription import check_all_subscriptions_report
 
         subscriptions = [
@@ -28,7 +30,7 @@ class SubscriptionConcurrencyTest(unittest.IsolatedAsyncioTestCase):
         active = 0
         lock = asyncio.Lock()
 
-        async def generate_candidates_for_actress(**kwargs):
+        async def fetch_actress_videos(target_id, info_semaphore=None):
             nonlocal active, max_active
             async with lock:
                 active += 1
@@ -36,31 +38,15 @@ class SubscriptionConcurrencyTest(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.05)
             async with lock:
                 active -= 1
-            code = f"TEST-{kwargs['actress_id']:03d}"
-            return {
-                "checked": 1,
-                "created": 1,
-                "existing": 0,
-                "skipped": 0,
-                "skipped_exempt": 0,
-                "in_library": 0,
-                "candidate_count": 1,
-                "new_movies": [{"dvd_id": code, "code": code}],
-            }
+            code = f"TEST-{target_id:03d}"
+            return [{"content_id": code, "dvd_id": code, "title": "x"}]
 
         with patch("services.subscription.get_subscriptions", return_value=subscriptions), \
-            patch("services.subscription.get_latest_snapshot_key", return_value="snapshot-1", create=True), \
-            patch("services.subscription.get_snapshot_actors", return_value={
-                "data": [{"actress_id": 901}],
-                "total_pages": 1,
-            }, create=True), \
-            patch("services.subscription.get_snapshot_videos", return_value=[
-                {"title": "Actor library", "filename": "LIB-001.mp4"},
-            ], create=True), \
             patch("services.subscription.WatchlistPipeline") as pipeline_cls, \
+            patch("services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()), \
             patch("services.subscription.update_last_check"):
             pipeline = pipeline_cls.return_value
-            pipeline.generate_candidates_for_actress = AsyncMock(side_effect=generate_candidates_for_actress)
+            pipeline.fetch_actress_videos = AsyncMock(side_effect=fetch_actress_videos)
 
             started = time.perf_counter()
             report = await check_all_subscriptions_report()
@@ -70,11 +56,7 @@ class SubscriptionConcurrencyTest(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(max_active, 1)
         self.assertLessEqual(max_active, 8)
         self.assertEqual(report["subscriptions_checked"], 20)
-        self.assertEqual(pipeline.generate_candidates_for_actress.await_count, 20)
-        self.assertTrue(all(
-            call.kwargs["existing_codes"] == {"LIB001"}
-            for call in pipeline.generate_candidates_for_actress.await_args_list
-        ))
+        self.assertEqual(pipeline.fetch_actress_videos.await_count, 20)
 
     async def test_pipeline_uses_existing_codes_without_calling_emby_check_exists(self):
         from services.watchlist_pipeline import WatchlistPipeline

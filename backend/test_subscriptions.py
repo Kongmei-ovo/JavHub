@@ -50,29 +50,27 @@ class SubscriptionDatabaseTest(TempPostgresMixin, unittest.TestCase):
         self.assertEqual(get_subscriptions(), [])
 
 
-class SubscriptionServiceTest(unittest.IsolatedAsyncioTestCase):
+class SubscriptionServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_run_subscription_check_annotates_movies_and_updates_last_check(self):
-        from services.subscription import _run_subscription_check
+        from database import establish_baseline
+        from services import subscription
 
+        # Baseline already established → this is a subsequent check.
+        establish_baseline(9, ["OLD-1"])
         pipeline = AsyncMock()
-        pipeline.generate_candidates_for_actress = AsyncMock(return_value={
-            "created": 1,
-            "new_movies": [
-                {"candidate_id": 7, "dvd_id": "SIVR-438"},
-                {"candidate_id": 8, "dvd_id": "ABP-588"},
-            ],
-        })
-        sub = {"id": 9, "actress_id": 123, "actress_name": "Actor"}
+        pipeline.fetch_actress_videos = AsyncMock(return_value=[
+            {"content_id": "SIVR-438", "dvd_id": "SIVR-438", "title": "T", "release_date": "2999-01-01"},
+        ])
+        sub = {"id": 9, "scope": "actress", "actress_id": 123, "actress_name": "Actor",
+               "target_id": 123, "target_label": "Actor", "last_seen_codes": []}
 
-        with patch("services.subscription.update_last_check") as update_last_check:
-            result = await _run_subscription_check(sub, pipeline)
+        with patch.object(subscription, "start_acquisition", new=AsyncMock()) as start, \
+             patch.object(subscription, "update_last_check") as update_last_check, \
+             patch("services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()):
+            result = await subscription._run_subscription_check(sub, pipeline)
 
-        pipeline.generate_candidates_for_actress.assert_awaited_once_with(
-            actress_id=123,
-            actress_name="Actor",
-            trigger_source="subscription",
-            reason="subscription_check",
-        )
+        pipeline.fetch_actress_videos.assert_awaited_once_with(123, info_semaphore=None)
+        start.assert_awaited_once()  # fresh dated release auto-acquires
         self.assertEqual(result["new_movies"][0]["actress_name"], "Actor")
         self.assertEqual(result["new_movies"][0]["subscription_id"], 9)
         update_last_check.assert_called_once()

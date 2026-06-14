@@ -23,6 +23,8 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
     monkeypatch.setattr(base, "_init_emby_snapshot_tables", record_call("_init_emby_snapshot_tables", calls))
     monkeypatch.setattr(base, "_init_playback_tables", record_call("_init_playback_tables", calls))
     monkeypatch.setattr(base, "_init_movie_resource_tables", record_call("_init_movie_resource_tables", calls))
+    monkeypatch.setattr(base, "_init_acquisition_tables", record_call("_init_acquisition_tables", calls))
+    monkeypatch.setattr(base, "_init_subscription_baseline_tables", record_call("_init_subscription_baseline_tables", calls))
     monkeypatch.setattr(base, "_migrate_subscriptions", record_call("_migrate_subscriptions", calls))
     monkeypatch.setattr(base, "_create_indexes", record_call("_create_indexes", calls))
 
@@ -40,6 +42,8 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
         ("_init_emby_snapshot_tables", (cursor,)),
         ("_init_playback_tables", (cursor,)),
         ("_init_movie_resource_tables", (cursor,)),
+        ("_init_acquisition_tables", (cursor,)),
+        ("_init_subscription_baseline_tables", (cursor,)),
         ("commit", ()),
         ("close", ()),
         ("_migrate_subscriptions", ()),
@@ -95,6 +99,8 @@ def test_database_initializer_helpers_exist():
         "_init_emby_snapshot_tables",
         "_init_playback_tables",
         "_init_movie_resource_tables",
+        "_init_acquisition_tables",
+        "_init_subscription_baseline_tables",
     ]:
         assert callable(getattr(base, name))
 

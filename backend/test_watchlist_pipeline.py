@@ -1541,35 +1541,38 @@ class SubscriptionRouterCandidateStatsTest(TempPostgresMixin, unittest.IsolatedA
         self.assertEqual(result["limit_per_actress"], 20)
 
     async def test_check_subscriptions_returns_structured_report(self):
-        from database import add_subscription
+        from database import add_subscription, establish_baseline, upsert_movie_resource
         from routers import subscriptions
+        from services import subscription as sub_service
 
-        add_subscription(123, "Actor")
+        sub_id = add_subscription(123, "Actor")
+        establish_baseline(sub_id, ["OLD-1"])  # subsequent check
+        upsert_movie_resource(
+            movie_id="HAVE-1", provider="open115", remote_file_id="v",
+            name="HAVE-1.mp4", status="ready", is_default=True,
+        )
 
-        with patch("services.subscription.WatchlistPipeline") as pipeline_cls:
+        videos = [
+            {"content_id": "OLD-1", "dvd_id": "OLD-1"},  # baseline → ignored
+            {"content_id": "HAVE-1", "dvd_id": "HAVE-1", "release_date": "2999-01-01"},  # in_library
+            {"content_id": "FRESH-1", "dvd_id": "FRESH-1", "title": "f", "release_date": "2999-01-01"},  # auto
+            {"content_id": "CAND-1", "dvd_id": "CAND-1", "title": "c1"},  # dateless → candidate
+            {"content_id": "CAND-2", "dvd_id": "CAND-2", "title": "c2", "release_date": "1999-01-01"},  # old → candidate
+        ]
+
+        with patch("services.subscription.WatchlistPipeline") as pipeline_cls, \
+             patch.object(sub_service, "start_acquisition", new=AsyncMock()), \
+             patch("services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()):
             pipeline = pipeline_cls.return_value
-            pipeline.generate_candidates_for_actress = AsyncMock(return_value={
-                "checked": 3,
-                "created": 1,
-                "existing": 1,
-                "skipped": 0,
-                "skipped_exempt": 0,
-                "in_library": 1,
-                "candidate_count": 2,
-                "new_movies": [
-                    {"candidate_id": 7, "dvd_id": "SIVR-438", "code": "SIVR-438"},
-                    {"candidate_id": 8, "dvd_id": "ABP-588", "code": "ABP-588"},
-                ],
-            })
+            pipeline.fetch_actress_videos = AsyncMock(return_value=videos)
             result = await subscriptions.check_subscriptions()
 
         self.assertEqual(result["subscriptions_checked"], 1)
-        self.assertEqual(result["checked"], 3)
-        self.assertEqual(result["created"], 1)
-        self.assertEqual(result["existing"], 1)
-        self.assertEqual(result["in_library"], 1)
-        self.assertEqual(result["candidate_count"], 2)
-        self.assertEqual(result["new_found"], 2)
+        self.assertEqual(result["checked"], 5)  # whole filmography
+        self.assertEqual(result["created"], 1)  # FRESH-1 auto-acquired
+        self.assertEqual(result["in_library"], 1)  # HAVE-1 already ready
+        self.assertEqual(result["candidate_count"], 2)  # CAND-1, CAND-2 → manual
+        self.assertEqual(result["new_found"], 4)  # four new movies surfaced
         self.assertEqual(result["results"][0]["actress_id"], 123)
 
 
