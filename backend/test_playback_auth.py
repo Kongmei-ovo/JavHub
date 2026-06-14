@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from test_support.client import create_authed_router_test_client, create_router_test_client
 from test_support.postgres import TempPostgresMixin
@@ -12,6 +13,10 @@ class PlaybackAuthTests(TempPostgresMixin, unittest.TestCase):
         from services.emby_auth import clear_compat_sessions
 
         clear_compat_sessions()  # no session bleed between cases
+        # Enforce the opt-in gate for these assertions (default is off).
+        patcher = patch("services.emby_auth._playback_auth_required", return_value=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def _unauthed(self, router):
         return create_router_test_client(router)

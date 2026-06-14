@@ -194,8 +194,17 @@ def require_auth(request: Request, username: str, password: str) -> str:
     return token
 
 
+def _playback_auth_required() -> bool:
+    return bool(getattr(config, "playback_require_auth", False))
+
+
 def require_app_token(request: Request) -> str:
     """FastAPI dependency for first-party (non-Emby) endpoints. Same single-user
     credential as the Emby compat layer; accepts the token via header, query
-    (?token=/api_key=, needed for browser-issued HLS sub-requests), or session."""
+    (?token=/api_key=, needed for browser-issued HLS sub-requests), or session.
+
+    Opt-in: when ``playback_require_auth`` is off (default — same-origin web app
+    behind network auth) it is a no-op so the local player keeps working."""
+    if not _playback_auth_required():
+        return ""
     return require_auth(request, config.emby_compat_username, config.emby_compat_password)

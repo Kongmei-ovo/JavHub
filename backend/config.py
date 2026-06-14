@@ -162,6 +162,15 @@ class Config:
         return bool(self._config.get('emby_compat', {}).get('proxy_stream', False))
 
     @property
+    def playback_require_auth(self) -> bool:
+        """Enforce a single-user token on native playback/acquisition endpoints.
+
+        Default off: the same-origin web app is unauthenticated and typically sits
+        behind network-layer auth (Cloudflare Access). Turn on before exposing the
+        raw /api/v1/playback face directly to untrusted clients."""
+        return bool(self._config.get('playback', {}).get('require_auth', False))
+
+    @property
     def crawler_request_interval(self) -> int:
         return self._config.get('crawler', {}).get('request_interval', 3)
 
