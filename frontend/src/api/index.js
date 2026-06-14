@@ -821,6 +821,20 @@ export default {
     return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/stream?mode=${normalizedMode}`
   },
 
+  // ========== 按需获取会话（点播/订阅复用同一条链路） ==========
+
+  startAcquisition(movieId, { auto = true } = {}) {
+    return api.post(`/v1/movies/${pathSegment(movieId, 'movieId')}/acquisitions`, { auto })
+  },
+
+  getAcquisition(sessionId) {
+    return api.get(`/v1/acquisitions/${numericPathSegment(sessionId, 'sessionId')}`)
+  },
+
+  stopAcquisitionWaiting(sessionId) {
+    return api.post(`/v1/acquisitions/${numericPathSegment(sessionId, 'sessionId')}/stop-waiting`)
+  },
+
   savePlaybackProgress(contentId, data) {
     return api.put(`/v1/playback/progress/${contentId}`, data)
   },
