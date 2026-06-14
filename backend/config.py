@@ -37,6 +37,21 @@ def _first_env(default: str, *keys: str) -> str:
     return default
 
 
+def _coerce_bool(value, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+        return False
+    return bool(value)
+
+
 def _warn_if_legacy_javinfo_url(api_url: str, source: str) -> None:
     normalized = str(api_url or "").rstrip("/")
     if normalized not in LEGACY_JAVINFO_API_URLS:
@@ -124,6 +139,10 @@ class Config:
     @property
     def open115_root_path(self) -> str:
         return self.open115.get('root_path', '/JavHub')
+
+    @property
+    def open115_delete_on_remove(self) -> bool:
+        return _coerce_bool(self.open115.get('delete_on_remove'), default=True)
 
     # ── emby_compat（Emby 兼容 API）────────────────────────────
     @property

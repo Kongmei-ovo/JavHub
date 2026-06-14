@@ -307,16 +307,20 @@ def set_movie_resource_status(resource_id: int, status: str) -> bool:
         return changed
 
 
-def delete_movie_resource(movie_id: str, resource_id: int) -> bool:
+def delete_movie_resource(movie_id: str, resource_id: int) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT provider, is_default FROM movie_resources WHERE id = ? AND movie_id = ?",
+            """
+            SELECT provider, pick_code, remote_file_id, is_default, parent_id
+            FROM movie_resources
+            WHERE id = ? AND movie_id = ?
+            """,
             (resource_id, str(movie_id)),
         )
         target = cursor.fetchone()
         if target is None:
-            return False
+            return None
         cursor.execute(
             "UPDATE movie_resources SET related_resource_id = NULL WHERE related_resource_id = ?",
             (resource_id,),
@@ -347,4 +351,4 @@ def delete_movie_resource(movie_id: str, resource_id: int) -> bool:
                     (replacement["id"],),
                 )
         _bump_generation()
-        return True
+        return dict(target)

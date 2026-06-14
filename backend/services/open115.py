@@ -573,6 +573,24 @@ class Open115Client:
         )
         return payload if isinstance(payload, dict) else {}
 
+    async def delete_files(
+        self,
+        file_ids: Iterable[str],
+        parent_id: str | None = None,
+    ) -> None:
+        normalized = [str(file_id).strip() for file_id in file_ids if str(file_id or "").strip()]
+        if not normalized:
+            return
+        data = {"file_ids": ",".join(normalized)}
+        normalized_parent_id = str(parent_id or "").strip()
+        if normalized_parent_id:
+            data["parent_id"] = normalized_parent_id
+        await self._auth_request(
+            "POST",
+            "/open/ufile/delete",
+            data=data,
+        )
+
     async def downurl(self, pick_code: str, user_agent: str) -> str:
         effective_ua = str(user_agent or "").strip() or self.default_ua
         payload = await self._auth_request(
