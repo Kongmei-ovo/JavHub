@@ -254,6 +254,7 @@ class Config:
             'candidate_sources': ['subscription', 'inventory', 'supplement'],
             'rules_require_magnet': True,
             'auto_process_interval_minutes': 30,
+            'acquisition_coordinator_interval_minutes': 1,
             'max_auto_downloads_per_run': 20,
             'max_auto_downloads_per_24h': 100,
         }
@@ -279,6 +280,10 @@ class Config:
     @property
     def automation_auto_process_interval_minutes(self) -> int:
         return self._clamp_int(self.automation.get('auto_process_interval_minutes', 30), 30, 0)
+
+    @property
+    def acquisition_coordinator_interval_minutes(self) -> int:
+        return self._clamp_int(self.automation.get('acquisition_coordinator_interval_minutes', 1), 1, 0)
 
     @property
     def automation_max_auto_downloads_per_run(self) -> int:

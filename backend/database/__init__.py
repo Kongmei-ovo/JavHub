@@ -72,6 +72,7 @@ from database.acquisition_session import (
     get_acquisition_session,
     get_active_session_for_movie,
     get_or_create_active_session,
+    get_session_by_download_task,
     mark_session_detached,
     update_acquisition_session,
 )
@@ -286,6 +287,7 @@ __all__ = [
     "get_acquisition_session",
     "get_active_session_for_movie",
     "get_or_create_active_session",
+    "get_session_by_download_task",
     "mark_session_detached",
     "update_acquisition_session",
     "delete_movie_resource",

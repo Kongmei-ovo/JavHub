@@ -84,6 +84,18 @@ def get_acquisition_session(session_id: int) -> dict[str, Any] | None:
         return _row_to_dict(cursor.fetchone())
 
 
+def get_session_by_download_task(task_id: int) -> dict[str, Any] | None:
+    """Find the session bound to a specific offline task (coordinator uses this
+    to write finalize/failure outcomes back to the session)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM acquisition_sessions WHERE download_task_id = ? ORDER BY id DESC LIMIT 1",
+            (int(task_id),),
+        )
+        return _row_to_dict(cursor.fetchone())
+
+
 def get_active_session_for_movie(movie_id: str) -> dict[str, Any] | None:
     mid = str(movie_id or "").strip()
     if not mid:

@@ -296,6 +296,43 @@ def configure_candidate_sent_audit_job():
     )
 
 
+def acquisition_coordinator_job():
+    """Poll in-flight 115 offline tasks → finalize → sync acquisition sessions.
+
+    This is the background coordinator the design called for:
+    ``downloader_service.update_all_task_statuses`` existed but was never on any
+    schedule, so 115 finalize never ran on its own. This interval job drives it.
+    """
+    from scheduler.worker_loop import run as run_on_loop
+    from services.downloader import downloader_service
+
+    try:
+        run_on_loop(downloader_service.update_all_task_statuses())
+    except Exception as exc:
+        add_log("ERROR", f"获取任务协调失败: {exc}")
+        raise
+
+
+def configure_acquisition_coordinator_job():
+    """Install or refresh the 115 finalize coordinator interval job."""
+    try:
+        scheduler.remove_job('acquisition_coordinator')
+    except Exception as exc:
+        if "No job by the id" not in str(exc):
+            logger.debug("Unable to remove acquisition coordinator job before refresh: %s", exc)
+    interval_minutes = config.acquisition_coordinator_interval_minutes
+    if interval_minutes <= 0:
+        return
+    scheduler.add_job(
+        scheduler_job_wrapper('acquisition_coordinator', acquisition_coordinator_job),
+        IntervalTrigger(minutes=interval_minutes),
+        id='acquisition_coordinator',
+        name='获取任务协调器',
+        replace_existing=True,
+        max_instances=1,
+    )
+
+
 def start_scheduler():
     """启动定时任务"""
     check_hour = config.scheduler_check_hour
@@ -335,6 +372,7 @@ def start_scheduler():
 
     configure_candidate_auto_process_job()
     configure_candidate_sent_audit_job()
+    configure_acquisition_coordinator_job()
 
     scheduler.start()
     logger.info(f"Scheduler started, subscription check at {check_hour}:00")

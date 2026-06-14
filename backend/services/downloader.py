@@ -157,6 +157,38 @@ class DownloaderService:
 
         return {"task_id": task_id, "status": status}
 
+    def _sync_acquisition_session(self, task_id: int) -> None:
+        """Mirror an offline task's terminal outcome onto its acquisition session.
+
+        Failures are classified with ``classify_candidate_error`` so the waiting
+        page can show a structured reason instead of a raw 115 string."""
+        from database.acquisition_session import (
+            get_session_by_download_task,
+            update_acquisition_session,
+        )
+
+        task = get_download_task(task_id)
+        if not task:
+            return
+        session = get_session_by_download_task(task_id)
+        if not session:
+            return
+        status = task.get("status")
+        if status == "completed":
+            update_acquisition_session(session["id"], status="ready")
+        elif status == "failed":
+            from services.candidate_processor import classify_candidate_error
+
+            info = classify_candidate_error(task.get("error_msg"))
+            update_acquisition_session(
+                session["id"],
+                status="failed",
+                error_code=info.get("error_category"),
+                error_msg=task.get("error_msg"),
+            )
+        elif status in {"finalizing", "downloading"} and session.get("status") != status:
+            update_acquisition_session(session["id"], status=status)
+
     async def update_all_task_statuses(self):
         tasks = get_download_tasks()
         for task in tasks:
@@ -165,5 +197,9 @@ class DownloaderService:
                     await self.poll_task_status(task['id'])
                 except Exception as e:
                     logger.warning(f"轮询任务状态失败 task_id={task['id']}: {e}")
+                try:
+                    self._sync_acquisition_session(task['id'])
+                except Exception as e:
+                    logger.warning(f"同步获取会话失败 task_id={task['id']}: {e}")
 
 downloader_service = DownloaderService()
