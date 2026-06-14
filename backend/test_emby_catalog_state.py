@@ -336,6 +336,7 @@ class EmbyCatalogStateTests(unittest.TestCase):
             ],
         )
         self.assertEqual(dto["CommunityRating"], 8.4)
+        self.assertEqual(dto["OfficialRating"], "XXX")
         self.assertEqual(len(dto["BackdropImageTags"]), 2)
         self.assertNotEqual(dto["BackdropImageTags"][0], dto["BackdropImageTags"][1])
         self.assertEqual(dto["Studios"][0]["Name"], "片商")

@@ -90,6 +90,7 @@ def to_base_item_dto(
         "DateCreated": f"{release_date}T00:00:00.0000000Z" if release_date else None,
         "RunTimeTicks": seconds_to_ticks(runtime_mins * 60) if runtime_mins else None,
         "CommunityRating": _community_rating(metadata.get("score")),
+        "OfficialRating": "XXX",  # all JavHub content is adult; clients show a rating badge
         "Overview": str(metadata.get("summary_translated") or metadata.get("summary") or ""),
         "ProviderIds": {
             "JavHub": content_id,
