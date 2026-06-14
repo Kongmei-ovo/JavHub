@@ -11,7 +11,7 @@ from typing import Any, Optional
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel
 
@@ -21,12 +21,25 @@ from database import (
     list_continue_watching,
     save_progress,
 )
+from services.emby_auth import extract_token, require_app_token
 from services.open115 import Open115Error, open115_client
 from services.playback_gateway import PlaybackContext, hls_sessions
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/playback", tags=["playback"])
+# Native playback is single-user authed. Browser-issued HLS sub-requests can't
+# carry a header, so require_app_token also accepts ?token=, and the token is
+# threaded into the master redirect + every rewritten child URI below.
+router = APIRouter(
+    prefix="/api/v1/playback",
+    tags=["playback"],
+    dependencies=[Depends(require_app_token)],
+)
+
+
+def _token_suffix(request: Request) -> str:
+    token = extract_token(request)
+    return f"?token={token}" if token else ""
 
 VALID_SOURCES = ("library", "online")
 
@@ -92,10 +105,11 @@ async def stream_movie_resource(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    token_suffix = _token_suffix(request)
     if context.preferred_mode == "hls":
         session_id = await _create_hls_session(resource, context.user_agent)
         return RedirectResponse(
-            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8",
+            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
             status_code=307,
             headers={"Cache-Control": "no-store"},
         )
@@ -110,7 +124,7 @@ async def stream_movie_resource(
             raise HTTPException(status_code=502, detail="115 原画换链失败") from exc
         session_id = await _create_hls_session(resource, context.user_agent)
         return RedirectResponse(
-            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8",
+            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
             status_code=307,
             headers={"Cache-Control": "no-store"},
         )
@@ -128,8 +142,9 @@ def _session_or_gone(resource_id: int, session_id: str):
     return session
 
 
-def _hls_proxy_path(resource_id: int, session_id: str, target_token: str) -> str:
-    return f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/{target_token}"
+def _hls_proxy_path(resource_id: int, session_id: str, target_token: str, token: str = "") -> str:
+    path = f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/{target_token}"
+    return f"{path}?token={token}" if token else path
 
 
 def _rewrite_hls_manifest(
@@ -138,11 +153,12 @@ def _rewrite_hls_manifest(
     base_url: str,
     resource_id: int,
     session,
+    token: str = "",
 ) -> str:
     def register(raw_uri: str) -> str:
         target_url = urljoin(base_url, raw_uri)
         target_token = hls_sessions.register_target(session, target_url)
-        return _hls_proxy_path(resource_id, session.session_id, target_token)
+        return _hls_proxy_path(resource_id, session.session_id, target_token, token)
 
     def rewrite_uri_attribute(match: re.Match[str]) -> str:
         return f'URI="{register(match.group(1))}"'
@@ -196,6 +212,7 @@ async def _proxy_hls_target(
             base_url=target_url,
             resource_id=resource_id,
             session=session,
+            token=extract_token(request),
         ).encode("utf-8")
         content_type = "application/vnd.apple.mpegurl"
     else:

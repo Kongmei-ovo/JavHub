@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from services.emby_auth import require_app_token
 from services.library_import import emby_resource_parity, import_115_library
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
+router = APIRouter(
+    prefix="/api/v1/migration", tags=["migration"], dependencies=[Depends(require_app_token)]
+)
 
 
 @router.post("/backfill-115")

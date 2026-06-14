@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from test_support.client import create_router_test_client
+from test_support.client import create_authed_router_test_client
 from test_support.postgres import TempPostgresMixin
 
 
@@ -20,7 +20,7 @@ class AcquisitionRoutesTests(TempPostgresMixin, unittest.TestCase):
     def _client(self):
         from routers.acquisitions import router
 
-        return create_router_test_client(router)
+        return create_authed_router_test_client(router)
 
     def test_start_snapshot_then_stop_waiting_keeps_session_active(self):
         from services import acquisition

@@ -18,12 +18,17 @@ class ASGIClient:
         *,
         base_url: str = "http://testserver",
         raise_app_exceptions: bool = True,
+        default_headers: dict[str, str] | None = None,
     ) -> None:
         self.app = app
         self.base_url = base_url
         self.raise_app_exceptions = raise_app_exceptions
+        self.default_headers = dict(default_headers or {})
 
     def request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        if self.default_headers:
+            kwargs["headers"] = {**self.default_headers, **(kwargs.get("headers") or {})}
+
         async def send() -> httpx.Response:
             transport = httpx.ASGITransport(
                 app=self.app,
@@ -63,6 +68,17 @@ def create_router_test_client(router: Any, **kwargs: Any) -> ASGIClient:
     app = FastAPI()
     app.include_router(router)
     return create_test_client(app, **kwargs)
+
+
+def create_authed_router_test_client(router: Any, **kwargs: Any) -> ASGIClient:
+    """Router test client carrying a valid single-user token by default — for
+    routers guarded by require_app_token (playback/acquisitions/migration)."""
+    from config import config
+    from services.emby_auth import issue_token
+
+    token = issue_token(config.emby_compat_username, config.emby_compat_password)
+    headers = {"X-Emby-Token": token, **(kwargs.pop("default_headers", None) or {})}
+    return create_router_test_client(router, default_headers=headers, **kwargs)
 
 
 def load_main_app_without_db() -> FastAPI:

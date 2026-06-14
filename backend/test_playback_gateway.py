@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from test_support.client import create_router_test_client
+from test_support.client import create_authed_router_test_client
 
 
 RESOURCE = {
@@ -73,7 +73,7 @@ class PlaybackResourceRouteTests(unittest.TestCase):
     def _client(self):
         from routers.playback import router
 
-        return create_router_test_client(router)
+        return create_authed_router_test_client(router)
 
     def test_original_stream_uses_exact_final_request_user_agent_and_redirects(self):
         player_ua = "IINA/1.4.0 macOS"
@@ -162,7 +162,7 @@ class HLSProxyTests(unittest.TestCase):
     def _client(self):
         from routers.playback import router
 
-        return create_router_test_client(router)
+        return create_authed_router_test_client(router)
 
     def test_manifest_rewrites_segments_and_key_to_opaque_same_origin_targets(self):
         from services.playback_gateway import hls_sessions

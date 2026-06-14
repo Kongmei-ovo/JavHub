@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from services import acquisition
+from services.emby_auth import require_app_token
 
 logger = logging.getLogger(__name__)
 
 # Two path families share one router: per-movie start under /movies, and
-# per-session control under /acquisitions.
-router = APIRouter(prefix="/api/v1", tags=["acquisitions"])
+# per-session control under /acquisitions. Single-user authed like playback.
+router = APIRouter(
+    prefix="/api/v1", tags=["acquisitions"], dependencies=[Depends(require_app_token)]
+)
 
 
 class StartAcquisitionBody(BaseModel):

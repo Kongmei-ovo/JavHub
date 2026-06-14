@@ -14,6 +14,7 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 
+from config import config
 from services.emby_mapper import SERVER_ID
 
 TOKEN_VERSION = "jh1"
@@ -191,3 +192,10 @@ def require_auth(request: Request, username: str, password: str) -> str:
         raise EmbyHTTPException(401, "Unauthorized", code=40101)
     remember_session(request, token)
     return token
+
+
+def require_app_token(request: Request) -> str:
+    """FastAPI dependency for first-party (non-Emby) endpoints. Same single-user
+    credential as the Emby compat layer; accepts the token via header, query
+    (?token=/api_key=, needed for browser-issued HLS sub-requests), or session."""
+    return require_auth(request, config.emby_compat_username, config.emby_compat_password)

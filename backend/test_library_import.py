@@ -92,11 +92,11 @@ class LibraryImportTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
 
 class MigrationRouteTests(TempPostgresMixin, unittest.TestCase):
     def test_parity_endpoint_returns_report(self):
-        from test_support.client import create_router_test_client
+        from test_support.client import create_authed_router_test_client
         from routers.migration import router
 
         with patch("services.subscription._load_latest_existing_codes", return_value=set()):
-            resp = create_router_test_client(router).get("/api/v1/migration/parity")
+            resp = create_authed_router_test_client(router).get("/api/v1/migration/parity")
 
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
