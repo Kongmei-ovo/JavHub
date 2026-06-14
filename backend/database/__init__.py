@@ -66,6 +66,15 @@ from database.movie_resource import (
     set_movie_resource_status,
     upsert_movie_resource,
 )
+from database.acquisition_session import (
+    create_acquisition_session,
+    finish_acquisition_session,
+    get_acquisition_session,
+    get_active_session_for_movie,
+    get_or_create_active_session,
+    mark_session_detached,
+    update_acquisition_session,
+)
 from database.download_candidate import (
     upsert_download_candidate,
     upsert_candidate_from_video,
@@ -272,6 +281,13 @@ __all__ = [
     "delete_download_task",
     "code_has_ready_resource",
     "codes_with_ready_resource",
+    "create_acquisition_session",
+    "finish_acquisition_session",
+    "get_acquisition_session",
+    "get_active_session_for_movie",
+    "get_or_create_active_session",
+    "mark_session_detached",
+    "update_acquisition_session",
     "delete_movie_resource",
     "get_movie_resource",
     "get_movie_resource_by_remote_id",
