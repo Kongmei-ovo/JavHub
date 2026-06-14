@@ -124,6 +124,24 @@ class PlaybackResourceRouteTests(unittest.TestCase):
         self.assertLessEqual(downurl.await_count, _RELINK_CAP + 1)  # bounded, no infinite loop
         set_status.assert_called_once_with(9, "missing")
 
+    def test_subtitle_resource_served_as_converted_vtt(self):
+        sub = {"id": 12, "resource_type": "subtitle", "movie_id": "ABC-123",
+               "pick_code": "pc", "extension": "srt", "name": "ABC-123.srt", "status": "ready"}
+        upstream = SimpleNamespace(status_code=200, text="1\n00:00:01,000 --> 00:00:02,000\nHi\n")
+        with patch("routers.playback.get_movie_resource", return_value=sub), \
+             patch("routers.playback.open115_client.downurl", new=AsyncMock(return_value="http://115/x.srt")), \
+             patch("routers.playback.playback_hls_client.get", new=AsyncMock(return_value=upstream)):
+            resp = self._client().get("/api/v1/playback/resources/12/subtitle.vtt")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers["content-type"].split(";")[0], "text/vtt")
+        self.assertTrue(resp.text.startswith("WEBVTT"))
+        self.assertIn("00:00:01.000 --> 00:00:02.000", resp.text)
+
+    def test_non_subtitle_resource_rejected_by_subtitle_endpoint(self):
+        with patch("routers.playback.get_movie_resource", return_value={"id": 1, "resource_type": "video"}):
+            resp = self._client().get("/api/v1/playback/resources/1/subtitle.vtt")
+        self.assertEqual(resp.status_code, 404)
+
     def test_web_mkv_gets_same_origin_hls_redirect_without_upstream_url(self):
         from services.open115 import TranscodeURL
 

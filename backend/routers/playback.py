@@ -303,6 +303,34 @@ async def proxy_open115_hls_target(
     )
 
 
+@router.get("/resources/{resource_id}/subtitle.vtt")
+async def stream_resource_subtitle(resource_id: int, request: Request):
+    """Serve a downloaded subtitle resource as WebVTT (ass/ssa converted) for the
+    first-party <track>. Mirrors the Emby external-subtitle delivery."""
+    resource = get_movie_resource(resource_id)
+    if not resource or resource.get("resource_type") != "subtitle":
+        raise HTTPException(status_code=404, detail="字幕资源不存在")
+    pick_code = str(resource.get("pick_code") or "")
+    if not pick_code:
+        raise HTTPException(status_code=409, detail="字幕资源不可用")
+
+    from services.subtitles import to_webvtt
+
+    ua = request.headers.get("user-agent", "")
+    try:
+        url = await open115_client.downurl(pick_code, ua)
+        upstream = await playback_hls_client.get(url, headers={"User-Agent": ua} if ua else {})
+    except Open115Error as exc:
+        raise HTTPException(status_code=502, detail="115 字幕换链失败") from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="字幕下载失败") from exc
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="字幕上游不可用")
+
+    vtt = to_webvtt(upstream.text, str(resource.get("extension") or ""))
+    return Response(content=vtt, media_type="text/vtt", headers={"Cache-Control": "no-store"})
+
+
 class ProgressRequest(BaseModel):
     source: str = "library"
     resource_id: int | None = None

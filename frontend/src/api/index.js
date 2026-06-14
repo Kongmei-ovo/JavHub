@@ -821,6 +821,10 @@ export default {
     return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/stream?mode=${normalizedMode}`
   },
 
+  movieResourceSubtitleUrl(resourceId) {
+    return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/subtitle.vtt`
+  },
+
   // ========== 按需获取会话（点播/订阅复用同一条链路） ==========
 
   startAcquisition(movieId, { auto = true } = {}) {

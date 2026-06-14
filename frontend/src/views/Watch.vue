@@ -1,9 +1,10 @@
 <template>
   <div class="watch-page">
     <VideoPlayerOverlay
-      v-if="playerVisible"
+      :visible="playerVisible"
       :src="streamUrl"
-      :name="movieId"
+      :title="movieId"
+      :subtitles="subtitleTracks"
       @close="handleClose"
     />
     <div v-else class="acquisition-waiting">
@@ -44,6 +45,7 @@ export default {
       movieId: String(this.$route.params.movieId || ''),
       playerVisible: false,
       streamUrl: '',
+      subtitleTracks: [],
       sessionId: null,
       status: 'searching',
       errorMessage: '',
@@ -74,9 +76,29 @@ export default {
         item => item.resource_type === 'video' && item.status === 'ready',
       )
     },
-    playResource(resource) {
+    subtitleSrclang(name) {
+      const value = String(name || '')
+      if (/中文|中字|简|繁|chs|cht|chinese|_zh|\.zh/i.test(value)) return 'zh'
+      if (/日本|日语|jpn|japanese|\.ja/i.test(value)) return 'ja'
+      if (/english|eng|\.en/i.test(value)) return 'en'
+      return 'und'
+    },
+    subtitleTracksFor(resource, items) {
+      const subs = (items || []).filter(
+        item => item.resource_type === 'subtitle' && item.status === 'ready'
+          && (item.related_resource_id === resource.id || !item.related_resource_id),
+      )
+      return subs.map((sub, index) => ({
+        url: api.movieResourceSubtitleUrl(sub.id),
+        srclang: this.subtitleSrclang(sub.name),
+        label: sub.name || ('字幕 ' + (index + 1)),
+        default: index === 0,
+      }))
+    },
+    playResource(resource, items) {
       // Has-resource shortcut: stream straight away, never opens a session.
       this.streamUrl = api.movieResourceStreamUrl(resource.id, 'auto')
+      this.subtitleTracks = this.subtitleTracksFor(resource, items || [])
       this.playerVisible = true
     },
     async bootstrap() {
@@ -85,7 +107,7 @@ export default {
       const existing = await api.getMovieResources(this.movieId)
       const resource = this.readyVideo(existing.data?.items)
       if (resource) {
-        this.playResource(resource)
+        this.playResource(resource, existing.data?.items)
         return
       }
       // 2. No resource → open (or attach to) an acquisition session, then poll.
@@ -128,7 +150,7 @@ export default {
     async loadAndPlay() {
       const { data } = await api.getMovieResources(this.movieId)
       const resource = this.readyVideo(data?.items)
-      if (resource) this.playResource(resource)
+      if (resource) this.playResource(resource, data?.items)
     },
     handleClose() {
       this.playerVisible = false
@@ -160,7 +182,7 @@ export default {
   margin: 0;
 }
 .acquisition-stages li {
-  padding: 6px 14px;
+  padding: var(--space-2) var(--space-3);
   color: var(--text-muted);
   font-size: var(--type-caption);
 }

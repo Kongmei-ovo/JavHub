@@ -23,7 +23,7 @@ test('Watch shortcuts to autoplay when a ready resource already exists (no sessi
   assert.match(watchSource, /readyVideo/)
   // The has-resource branch plays and returns before any startAcquisition call.
   const bootstrap = watchSource.slice(watchSource.indexOf('async bootstrap'))
-  const playIdx = bootstrap.indexOf('this.playResource(resource)')
+  const playIdx = bootstrap.indexOf('this.playResource(resource')
   const acquireIdx = bootstrap.indexOf('startAcquisition')
   assert.ok(playIdx > -1 && acquireIdx > -1 && playIdx < acquireIdx)
 })
@@ -42,4 +42,12 @@ test('Watch drives the acquisition waiting flow with four stages and polling', (
 test('Watch reuses the shared VideoPlayerOverlay kernel', () => {
   assert.match(watchSource, /VideoPlayerOverlay/)
   assert.match(watchSource, /from '\.\.\/features\/video\/VideoPlayerOverlay\.vue'/)
+  assert.match(watchSource, /:visible="playerVisible"/) // overlay visibility is bound, not just v-if
+})
+
+test('Watch passes downloaded subtitle tracks into the player', () => {
+  assert.match(watchSource, /movieResourceSubtitleUrl/)
+  assert.match(watchSource, /subtitleTracksFor/)
+  assert.match(watchSource, /:subtitles="subtitleTracks"/)
+  assert.match(apiSource, /movieResourceSubtitleUrl\(resourceId\)/)
 })
