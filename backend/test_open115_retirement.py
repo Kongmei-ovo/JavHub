@@ -37,13 +37,6 @@ class Open115RuntimeRetirementTests(unittest.TestCase):
         self.assertNotIn("CREATE TABLE IF NOT EXISTS library_scan_runs", source)
         self.assertNotIn("idx_library_files_", source)
 
-    def test_inventory_collection_has_no_library_snapshot_branch(self):
-        from scheduler import inventory_tasks
-
-        source = inspect.getsource(inventory_tasks)
-        self.assertNotIn("services.library_snapshot", source)
-        self.assertNotIn('baseline == "library"', source)
-
     def test_config_updates_cannot_modify_legacy_openlist_section(self):
         from routers.config import update_config
 
