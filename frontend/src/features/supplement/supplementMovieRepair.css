@@ -1,0 +1,130 @@
+/* Wave A — 字段缺口 ledger + field-chip grid.
+   Earlier 字段优先级 / 分拣台 / 修复队列 / 处理线 layers were retired in favor of
+   the prototype's single analysis layer (ledger) + inline field-chips on each row. */
+
+.movie-field-ledger {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-card);
+  background: var(--card-2);
+  border: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.ledger-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 84px;
+}
+
+.ledger-summary strong {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-summary span {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ledger-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ledger-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(var(--warn-rgb), 0.12);
+  border: 1px solid rgba(var(--warn-rgb), 0.22);
+}
+
+.ledger-chip b {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-primary);
+  letter-spacing: 0.1px;
+}
+
+.ledger-chip em {
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-chip.clear {
+  background: var(--card);
+  border-color: var(--hairline);
+}
+
+.ledger-chip.clear em { color: var(--text-muted); }
+
+/* field-chip grid inside each .field-card */
+.fc-fieldgrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.field-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 10px;
+  border-radius: 9px;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  min-width: 0;
+}
+
+.field-chip b {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1px;
+}
+
+.field-chip em {
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-chip.miss {
+  background: rgba(var(--bad-rgb), 0.10);
+  border-color: rgba(var(--bad-rgb), 0.24);
+}
+
+.field-chip.miss b,
+.field-chip.miss em { color: var(--bad); }
+
+@media (max-width: 860px) {
+  .movie-field-ledger {
+    padding: 12px 14px;
+    gap: 14px;
+  }
+  .ledger-summary { min-width: 0; }
+}
