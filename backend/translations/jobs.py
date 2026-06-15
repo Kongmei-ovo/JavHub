@@ -14,6 +14,7 @@ from database import (
     bulk_upsert_translation_workbench_items,
     get_translation,
     get_translation_job,
+    get_translations_bulk,
     list_translation_workbench_retry_batch,
     list_translation_jobs,
     mark_translation_workbench_failed,
@@ -146,7 +147,10 @@ def _title_known_translation(content_id: str, source: str) -> dict[str, Any]:
 def _metadata_known_translation(entity_type: str, entity_id: Any, source: str) -> dict[str, Any]:
     if not entity_type or not entity_id or not source:
         return {}
-    raw = get_translation(f"{entity_type}:{entity_id}")
+    return _known_from_mapping(get_translation(f"{entity_type}:{entity_id}"), entity_type, source)
+
+
+def _known_from_mapping(raw: dict | None, entity_type: str, source: str) -> dict[str, Any]:
     mapping = raw.get(entity_type, {}) if raw else {}
     translated = mapping.get(source) if isinstance(mapping, dict) else ""
     if translated:
@@ -363,9 +367,24 @@ async def _run_job(
                     cursor_prefix="sweep_",
                 )
         elif job_type in METADATA_JOB_TYPES:
-            items = await _collect_metadata_names(METADATA_JOB_TYPES[job_type])
+            entity_types = METADATA_JOB_TYPES[job_type]
+            # Actresses are a six-figure roster, so collecting them all up front
+            # leaves the job sitting at zero progress for minutes (it "looks
+            # stuck"). Stream them in concurrent page batches instead, translating
+            # and reporting progress as pages arrive — mirroring the title scan.
+            # The remaining (small, already-concurrent) entity types still
+            # collect-then-translate.
+            static_types = tuple(t for t in entity_types if t != "actress")
+            items = await _collect_metadata_names(static_types) if static_types else []
+            # Provisional total; _translate_actress_pages raises it once the
+            # roster size is known from page 1.
             update_translation_job(job_id, total=len(items))
-            await _translate_metadata_names(job_id, items, provider_order, counters, force=force_refresh)
+            if items:
+                await _translate_metadata_names(job_id, items, provider_order, counters, force=force_refresh)
+            if "actress" in entity_types:
+                await _translate_actress_pages(
+                    job_id, provider_order, counters, force=force_refresh, base_total=len(items)
+                )
         if job_id in _paused_jobs:
             raise asyncio.CancelledError()
         update_translation_job(
@@ -674,6 +693,108 @@ def _append_metadata_row(rows: list[dict], entity_type: str, item: dict, limit: 
     return True
 
 
+_ACTRESS_PAGE_SIZE = 100
+_ACTRESS_FETCH_CONCURRENCY = 8
+
+
+def _result_items(result: Any) -> list[dict]:
+    return result.get("data", []) if isinstance(result, dict) else []
+
+
+def _result_total_pages(result: Any, page_size: int, fallback: int) -> int:
+    if not isinstance(result, dict):
+        return fallback
+    total_pages = int(result.get("total_pages") or 0)
+    if total_pages:
+        return total_pages
+    total_count = int(result.get("total_count") or 0)
+    if total_count:
+        return max(1, (total_count + page_size - 1) // page_size)
+    return fallback
+
+
+async def _collect_actress_rows(client, capped_limit: int | None) -> list[dict]:
+    """Collect actress name rows.
+
+    The upstream caps page_size at 100, so a six-figure roster needs ~1k requests.
+    Fetching them one-at-a-time (the old behaviour) stalled metadata jobs for
+    minutes with no progress, while every sibling entity already pages
+    concurrently via info_client._get_all_pages. Mirror that here: page 1 reveals
+    the page count, then the rest are fetched in bounded concurrent batches.
+    """
+    page_size = _ACTRESS_PAGE_SIZE
+    first = await client.list_actresses(page=1, page_size=page_size)
+    rows: list[dict] = []
+    for item in _result_items(first):
+        if not _append_metadata_row(rows, "actress", item, capped_limit):
+            return rows
+    total_pages = _result_total_pages(first, page_size, fallback=1)
+    if total_pages <= 1:
+        return rows
+
+    # Capped collection stays sequential so we never over-fetch past the limit.
+    if capped_limit is not None:
+        page = 2
+        while len(rows) < capped_limit and page <= total_pages:
+            items = _result_items(await client.list_actresses(page=page, page_size=page_size))
+            if not items:
+                break
+            for item in items:
+                if not _append_metadata_row(rows, "actress", item, capped_limit):
+                    break
+            page += 1
+        return rows
+
+    for start in range(2, total_pages + 1, _ACTRESS_FETCH_CONCURRENCY):
+        pages = range(start, min(start + _ACTRESS_FETCH_CONCURRENCY, total_pages + 1))
+        results = await asyncio.gather(
+            *(client.list_actresses(page=page, page_size=page_size) for page in pages)
+        )
+        for result in results:
+            for item in _result_items(result):
+                _append_metadata_row(rows, "actress", item, capped_limit)
+    return rows
+
+
+def _actress_rows(result: Any) -> list[dict]:
+    return [{"type": "actress", "id": item.get("id"), "text": _metadata_text(item, "actress")} for item in _result_items(result)]
+
+
+async def _translate_actress_pages(
+    job_id: int,
+    provider_order: list[str],
+    counters: dict,
+    *,
+    force: bool,
+    base_total: int = 0,
+) -> None:
+    """Stream actress pages through translation with live progress.
+
+    Page 1 reveals the roster size so the job total is meaningful immediately,
+    then pages are fetched in bounded concurrent batches and translated as they
+    arrive, so progress climbs steadily instead of freezing during a multi-minute
+    upstream sweep.
+    """
+    client = get_info_client()
+    page_size = _ACTRESS_PAGE_SIZE
+    first = await client.list_actresses(page=1, page_size=page_size)
+    total_count = int(first.get("total_count") or 0) if isinstance(first, dict) else 0
+    update_translation_job(job_id, total=base_total + (total_count or len(_result_items(first))))
+    total_pages = _result_total_pages(first, page_size, fallback=1)
+
+    await _translate_metadata_names(job_id, _actress_rows(first), provider_order, counters, force=force)
+    for start in range(2, total_pages + 1, _ACTRESS_FETCH_CONCURRENCY):
+        if job_id in _paused_jobs:
+            raise asyncio.CancelledError()
+        pages = range(start, min(start + _ACTRESS_FETCH_CONCURRENCY, total_pages + 1))
+        results = await asyncio.gather(
+            *(client.list_actresses(page=page, page_size=page_size) for page in pages)
+        )
+        rows = [row for result in results for row in _actress_rows(result)]
+        if rows:
+            await _translate_metadata_names(job_id, rows, provider_order, counters, force=force)
+
+
 async def _collect_metadata_names(entity_types: tuple[str, ...] | None = None, limit: int | None = None) -> list[dict]:
     client = get_info_client()
     requested = tuple(entity_types or METADATA_ENTITY_TYPES)
@@ -711,28 +832,7 @@ async def _collect_metadata_names(entity_types: tuple[str, ...] | None = None, l
         rows.extend(type_rows)
 
     if "actress" in requested:
-        type_rows = []
-        page = 1
-        page_size = 100
-        while capped_limit is None or len(type_rows) < capped_limit:
-            remaining = capped_limit - len(type_rows) if capped_limit is not None else page_size
-            result = await client.list_actresses(page=page, page_size=min(page_size, max(1, remaining)))
-            items = result.get("data", []) if isinstance(result, dict) else []
-            if not items:
-                break
-            for item in items:
-                if not _append_metadata_row(type_rows, "actress", item, capped_limit):
-                    break
-            if not isinstance(result, dict):
-                break
-            total_pages = int(result.get("total_pages") or 0)
-            if not total_pages:
-                total_count = int(result.get("total_count") or 0)
-                total_pages = max(1, (total_count + page_size - 1) // page_size) if total_count else page
-            if page >= total_pages:
-                break
-            page += 1
-        rows.extend(type_rows)
+        rows.extend(await _collect_actress_rows(client, capped_limit))
     return rows
 
 
@@ -876,6 +976,16 @@ async def _translate_metadata_names(job_id: int, items: list[dict], provider_ord
     pending: list[dict] = []
     index_entries: list[dict] = []
     skipped = 0
+    # get_translation() fans out to up to 6 SQL lookups per call; doing that
+    # per-item over a six-figure roster serializes into another long stall.
+    # One bulk fetch (batched + cached) collapses it.
+    bulk_translations = get_translations_bulk(
+        [
+            f"{item.get('type')}:{item.get('id')}"
+            for item in items
+            if item.get("type") and item.get("id")
+        ]
+    )
     for item in items:
         entity_type = item.get("type")
         entity_id = item.get("id")
@@ -886,7 +996,7 @@ async def _translate_metadata_names(job_id: int, items: list[dict], provider_ord
             skipped += 1
             continue
         scope = str(item.get("_translation_scope") or f"{entity_type}:{entity_id}")
-        known = _metadata_known_translation(str(entity_type), entity_id, source)
+        known = _known_from_mapping(bulk_translations.get(f"{entity_type}:{entity_id}"), str(entity_type), source)
         index_entries.append({
             "item_type": str(entity_type),
             "item_id": str(entity_id),
