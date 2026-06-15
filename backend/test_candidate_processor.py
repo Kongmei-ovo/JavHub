@@ -761,46 +761,6 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         self.assertEqual([row["id"] for row in page["data"]], [missing["id"], placeholder["id"]])
 
 
-class InventoryFillBehaviorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
-    async def test_fill_video_keeps_missing_fact_after_candidate_created(self):
-        from database import add_missing_video, get_missing_videos, list_download_candidates
-        from routers.inventory import fill_video
-
-        add_missing_video("SIVR-438", 901, "Title", "2026-05-01", "")
-
-        info_client = AsyncMock()
-        info_client.get_video.return_value = {
-            "content_id": "SIVR-438",
-            "dvd_id": "SIVR-438",
-            "title_ja": "Title",
-            "release_date": "2026-05-01",
-        }
-
-        with patch("routers.inventory.get_info_client", return_value=info_client):
-            result = await fill_video("SIVR-438")
-
-        self.assertTrue(result["success"])
-        self.assertEqual(len(get_missing_videos(901)), 1)
-        candidates = list_download_candidates(source="inventory")
-        self.assertEqual(candidates[0]["actress_id"], 901)
-
-    async def test_fill_video_fallback_preserves_missing_actress_id(self):
-        from database import add_missing_video, list_download_candidates
-        from routers.inventory import fill_video
-
-        add_missing_video("SIVR-438", 901, "Title", "2026-05-01", "")
-
-        info_client = AsyncMock()
-        info_client.get_video.side_effect = RuntimeError("javinfo unavailable")
-
-        with patch("routers.inventory.get_info_client", return_value=info_client):
-            result = await fill_video("SIVR-438")
-
-        self.assertTrue(result["success"])
-        candidates = list_download_candidates(source="inventory")
-        self.assertEqual(candidates[0]["actress_id"], 901)
-
-
 class AcquisitionRankingTest(unittest.TestCase):
     """Pure-function ranking: subtitle > 1080p > source health > reasonable size."""
 

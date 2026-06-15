@@ -26,26 +26,18 @@ from routers.series import router as series_router
 from routers.categories import router as categories_router
 from routers.downloads import router as downloads_router
 from routers.subscriptions import router as subscriptions_router
-from routers.missing import router as missing_router
 from routers.duplicates import router as duplicates_router
 from routers.config import router as config_router
 from routers.logs import router as logs_router
 from routers.health import router as health_router
 from routers.translation import router as translation_router
 from routers.proxy import router as proxy_router
-from routers.inventory import router as inventory_router
-from routers.inventory_actors import router as inventory_actors_router
-from routers.inventory_jobs import router as inventory_jobs_router
-from routers.inventory_mapping import router as inventory_mapping_router
 from routers.favorites import router as favorites_router
 from routers.stream import router as stream_router
-from routers.supplement import router as supplement_router
 from routers.directors import router as directors_router
 from routers.actors import router as actors_router
 from routers.authors import router as authors_router
 from routers.labels import router as labels_router
-from routers.operations import router as operations_router
-from routers.data_quality import router as data_quality_router
 from routers.javinfo_imports import router as javinfo_imports_router
 from routers.video_variant_index import router as video_variant_index_router
 from routers.source_health import router as source_health_router
@@ -170,26 +162,18 @@ app.include_router(series_router)
 app.include_router(categories_router)
 app.include_router(downloads_router)
 app.include_router(subscriptions_router)
-app.include_router(missing_router)
 app.include_router(duplicates_router)
 app.include_router(config_router)
 app.include_router(logs_router)
 app.include_router(health_router)
 app.include_router(translation_router)
 app.include_router(proxy_router)
-app.include_router(inventory_router)
-app.include_router(inventory_jobs_router)
-app.include_router(inventory_actors_router)
-app.include_router(inventory_mapping_router)
 app.include_router(favorites_router)
 app.include_router(stream_router)
-app.include_router(supplement_router)
 app.include_router(directors_router)
 app.include_router(actors_router)
 app.include_router(authors_router)
 app.include_router(labels_router)
-app.include_router(operations_router)
-app.include_router(data_quality_router)
 app.include_router(javinfo_imports_router)
 app.include_router(video_variant_index_router)
 app.include_router(source_health_router)
