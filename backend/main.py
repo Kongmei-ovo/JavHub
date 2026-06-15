@@ -26,7 +26,6 @@ from routers.series import router as series_router
 from routers.categories import router as categories_router
 from routers.downloads import router as downloads_router
 from routers.subscriptions import router as subscriptions_router
-from routers.duplicates import router as duplicates_router
 from routers.config import router as config_router
 from routers.logs import router as logs_router
 from routers.health import router as health_router
@@ -162,7 +161,6 @@ app.include_router(series_router)
 app.include_router(categories_router)
 app.include_router(downloads_router)
 app.include_router(subscriptions_router)
-app.include_router(duplicates_router)
 app.include_router(config_router)
 app.include_router(logs_router)
 app.include_router(health_router)
@@ -237,12 +235,6 @@ async def shutdown_event():
         await get_info_client().close()
     except Exception as e:
         logging.debug("Failed to close JavInfoApi client: %s", e)
-
-    try:
-        from modules.emby_client import get_emby_client
-        await get_emby_client().close()
-    except Exception as e:
-        logging.debug("Failed to close Emby client: %s", e)
 
     try:
         from services.open115 import open115_client

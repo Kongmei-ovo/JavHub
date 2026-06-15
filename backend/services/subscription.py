@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -9,9 +8,6 @@ from database import (
     candidate_title,
     code_has_ready_resource,
     get_active_session_for_movie,
-    get_latest_snapshot_key,
-    get_snapshot_actors,
-    get_snapshot_videos,
     get_subscriptions,
     is_video_exempt,
     update_last_check,
@@ -26,14 +22,12 @@ from database.subscription_baseline import (
 )
 from services.acquisition import start_acquisition
 from services.video_variants import is_non_movie_item
-from services.watchlist_pipeline import WatchlistPipeline, normalize_code
+from services.watchlist_pipeline import WatchlistPipeline
 
 logger = logging.getLogger(__name__)
 
 VALID_SUBSCRIPTION_SCOPES = {"actress", "maker", "series", "label"}
-SNAPSHOT_PAGE_SIZE = 500
 SUBSCRIPTION_CONCURRENCY = 8
-CODE_PATTERN = re.compile(r"\b(?:FC2[-_\s]?(?:PPV[-_\s]?)?\d{3,8}|[A-Z]{2,10}[-_\s]?\d{2,8})\b", re.IGNORECASE)
 
 
 def _parse_timestamp(value) -> datetime | None:
@@ -63,47 +57,6 @@ def _video_release_date(video: dict) -> datetime | None:
 
 def _movie_code(movie: dict) -> str:
     return str(movie.get("dvd_id") or movie.get("code") or movie.get("content_id") or "").strip()
-
-
-def _snapshot_item_codes(item: dict) -> set[str]:
-    codes: set[str] = set()
-    for field in ("filename", "title", "Name", "FileName"):
-        for match in CODE_PATTERN.finditer(str(item.get(field) or "")):
-            code = normalize_code(match.group(0))
-            if code:
-                codes.add(code)
-    return codes
-
-
-def _load_latest_existing_codes() -> set[str] | None:
-    try:
-        snapshot_key = get_latest_snapshot_key()
-        if not snapshot_key:
-            logger.warning("No Emby snapshot available; falling back to per-code check_exists")
-            return None
-
-        existing_codes: set[str] = set()
-        page = 1
-        while True:
-            actors_page = get_snapshot_actors(snapshot_key, page=page, page_size=SNAPSHOT_PAGE_SIZE)
-            actors = actors_page.get("data", []) if isinstance(actors_page, dict) else []
-            for actor in actors:
-                actor_id = actor.get("actress_id")
-                if actor_id is None:
-                    continue
-                for video in get_snapshot_videos(snapshot_key, actor_id):
-                    existing_codes.update(_snapshot_item_codes(video))
-
-            total_pages = actors_page.get("total_pages") if isinstance(actors_page, dict) else None
-            if not isinstance(total_pages, int) or page >= total_pages:
-                break
-            page += 1
-
-        logger.info("Loaded %s normalized codes from Emby snapshot %s", len(existing_codes), snapshot_key)
-        return existing_codes
-    except Exception as exc:
-        logger.warning("Failed to load Emby snapshot; falling back to per-code check_exists: %s", exc)
-        return None
 
 
 def _seen_codes_from_movies(movies: list[dict]) -> list[str]:

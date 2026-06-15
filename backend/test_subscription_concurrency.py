@@ -58,41 +58,6 @@ class SubscriptionConcurrencyTest(TempPostgresMixin, unittest.IsolatedAsyncioTes
         self.assertEqual(report["subscriptions_checked"], 20)
         self.assertEqual(pipeline.fetch_actress_videos.await_count, 20)
 
-    async def test_pipeline_uses_existing_codes_without_calling_emby_check_exists(self):
-        from services.watchlist_pipeline import WatchlistPipeline
-
-        info_client = AsyncMock()
-        info_client.get_actress_videos.return_value = {
-            "data": [
-                {"content_id": "lib001", "dvd_id": "LIB-001", "title": "Already owned"},
-                {"content_id": "miss002", "dvd_id": "MISS-002", "title": "Missing"},
-            ]
-        }
-        emby_client = AsyncMock()
-        emby_client.check_exists.side_effect = AssertionError("check_exists should not be called")
-
-        pipeline = WatchlistPipeline(info_client=info_client, emby_client=emby_client)
-        with patch("services.watchlist_pipeline.download_candidate_content_keys", Mock(return_value=set())), \
-            patch("services.watchlist_pipeline.is_video_exempt", Mock(return_value=False)), \
-            patch("services.watchlist_pipeline.upsert_candidate_from_video", Mock(return_value={
-                "id": 9,
-                "content_id": "MISS-002",
-                "dvd_id": "MISS-002",
-                "title": "Missing",
-            })):
-            result = await pipeline.generate_candidates_for_actress(
-                123,
-                "Actor",
-                "subscription",
-                existing_codes={"LIB001"},
-            )
-
-        self.assertEqual(result["checked"], 2)
-        self.assertEqual(result["in_library"], 1)
-        self.assertEqual(result["created"], 1)
-        self.assertEqual([movie["dvd_id"] for movie in result["new_movies"]], ["MISS-002"])
-        emby_client.check_exists.assert_not_called()
-
 
 if __name__ == "__main__":
     unittest.main()

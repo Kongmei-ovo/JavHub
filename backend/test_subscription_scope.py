@@ -95,35 +95,6 @@ class SubscriptionScopePipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioT
         info_client.get_maker_videos.assert_any_await(123, page=1, page_size=100)
         info_client.get_maker_videos.assert_any_await(123, page=2, page_size=100)
 
-    async def test_generates_candidates_for_label_scope_with_target_metadata(self):
-        from services.watchlist_pipeline import WatchlistPipeline
-
-        info_client = AsyncMock()
-        info_client.get_label_videos.return_value = {
-            "data": [
-                {
-                    "content_id": "sivr438",
-                    "dvd_id": "SIVR-438",
-                    "title_ja": "Title",
-                    "release_date": "2026-05-01",
-                }
-            ]
-        }
-        emby_client = AsyncMock()
-        emby_client.check_exists.return_value = False
-
-        pipeline = WatchlistPipeline(info_client=info_client, emby_client=emby_client)
-        result = await pipeline.generate_candidates_for_label(456, "FALENO", "subscription")
-
-        self.assertEqual(result["checked"], 1)
-        self.assertEqual(result["created"], 1)
-        self.assertEqual(result["new_movies_count"], 1)
-        self.assertEqual(result["scope"], "label")
-        self.assertEqual(result["target_id"], 456)
-        self.assertEqual(result["target_label"], "FALENO")
-        self.assertEqual(result["candidates"][0]["dvd_id"], "SIVR-438")
-        info_client.get_label_videos.assert_awaited_once_with(456, page=1, page_size=100)
-
 
 class SubscriptionScopeServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_check_report_dispatches_non_actress_scope(self):
