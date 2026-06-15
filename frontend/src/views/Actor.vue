@@ -62,64 +62,6 @@
         返回
       </button>
     </div>
-    <!-- Supplement Status Card -->
-    <div v-if="actressId && supplementStatus" class="supplement-card page-rail page-rail--gallery">
-      <div class="supplement-header">
-        <h3>补全状态</h3>
-        <span
-          class="supplement-badge"
-          :class="{
-            'badge-running': supplementStatus.last_job?.status === 'running' || supplementStatus.last_job?.status === 'queued',
-            'badge-failed': supplementStatus.last_job?.status === 'failed',
-            'badge-ok': supplementStatus.last_job?.status === 'succeeded',
-          }"
-        >
-          {{ statusLabel(supplementStatus.last_job?.status) }}
-        </span>
-      </div>
-      <div v-if="supplementStatus.last_job?.last_error && supplementStatus.last_job?.status === 'failed'" class="supplement-error">
-        {{ supplementStatus.last_job.last_error }}
-      </div>
-      <div class="supplement-counters">
-        <div class="counter-item">
-          <span class="counter-value">{{ supplementStatus.supplement_movies ?? '—' }}</span>
-          <span class="counter-label">补全来源</span>
-        </div>
-        <div class="counter-item">
-          <span class="counter-value">{{ supplementStatus.matched_r18 ?? '—' }}</span>
-          <span class="counter-label">已匹配片库</span>
-        </div>
-        <div class="counter-item">
-          <span class="counter-value">{{ supplementStatus.supplement_only ?? '—' }}</span>
-          <span class="counter-label">补全新增</span>
-        </div>
-        <div class="counter-item">
-          <span class="counter-value">{{ supplementStatus.resolved_videos ?? '—' }}</span>
-          <span class="counter-label">含版本条目</span>
-        </div>
-        <div class="counter-item">
-          <span class="counter-value">{{ candidateSummary.candidate }}</span>
-          <span class="counter-label">下载候选</span>
-        </div>
-      </div>
-      <div v-if="candidateSummary.candidate > 0" class="candidate-summary">
-        {{ candidateSummary.needsMagnet }} 个还缺磁力，{{ candidateSummary.ready }} 个可直接批准
-      </div>
-      <div class="supplement-actions">
-        <button
-          class="btn btn-primary btn-sm"
-          :disabled="isSupplementRunning"
-          @click="startSupplement"
-        >
-          {{ isSupplementRunning ? '补全中...' : '补全作品' }}
-        </button>
-        <button class="btn btn-ghost btn-sm" @click="refreshResolved">刷新版本条目</button>
-        <button class="btn btn-ghost btn-sm" @click="goSupplementMovies">字段管理</button>
-        <button class="btn btn-ghost btn-sm" @click="goSupplementJobs">任务队列</button>
-        <button class="btn btn-ghost btn-sm" @click="goDownloadCandidates">处理候选</button>
-      </div>
-    </div>
-
     <AppleSkeleton v-if="loading" class="loading-wrap page-rail page-rail--standard" variant="gallery" :items="8" label="演员作品加载中" />
 
     <AppleErrorState
@@ -227,7 +169,7 @@
       v-else
       class="empty-state page-rail page-rail--standard"
       title="暂无演员作品"
-      description="当前演员还没有可展示的作品或补全记录。"
+      description="当前演员还没有可展示的作品。"
       next-step="可以重新加载作品集，或回到随机探索继续发现演员。"
       action-label="重新加载"
       secondary-action-label="随机探索"
@@ -294,10 +236,6 @@ export default {
       yearLoadingYear: null,
       showVariants: false,
       expandedVariantGroups: {},
-      supplementStatus: null,
-      candidateSummary: { candidate: 0, needsMagnet: 0, ready: 0 },
-      supplementLoading: false,
-      supplementPolling: null,
       _yearObserver: null
     }
   },
@@ -380,10 +318,6 @@ export default {
     actressId() {
       return this.$route.query.actress_id || this.actressData?.id || null
     },
-    isSupplementRunning() {
-      const s = this.supplementStatus?.last_job?.status
-      return s === 'running' || s === 'queued'
-    },
     hasMoreMovies() {
       if (this.totalCount < 0 || this.movieTotalPages < 0) {
         return this.movies.length >= this.moviePage * this.moviePageSize
@@ -413,37 +347,25 @@ export default {
     await this.loadRouteActor()
   },
   beforeUnmount() {
-    this._stopSupplementPolling()
     if (this._yearObserver) this._yearObserver.disconnect()
   },
   watch: {
     routeIdentity(newIdentity, oldIdentity) {
       if (newIdentity !== oldIdentity) this.loadRouteActor()
     },
-    actressId(newId, oldId) {
-      if (newId && newId !== oldId) {
-        this.loadSupplementStatus()
-        this.loadCandidateSummary()
-      }
-    },
   },
   methods: {
     async loadRouteActor() {
       this.actorName = this.$route.query.name || this.$route.params.name || ''
       this.actressData = null
-      this.supplementStatus = null
-      this.candidateSummary = { candidate: 0, needsMagnet: 0, ready: 0 }
       this.yearRange = []
       this.yearLoadState = {}
       this.yearLoadingYear = null
       this.activeYear = null
       this.expandedVariantGroups = {}
-      this._stopSupplementPolling()
       if (!this.actorName) return
       await this.loadActressInfo()
       this.loadActorMovies()
-      this.loadSupplementStatus()
-      this.loadCandidateSummary()
     },
     async loadActressInfo() {
       try {
@@ -743,68 +665,6 @@ export default {
     handleAvatarError(e) {
       applyImageFallback(e, { label: (this.translatedName || this.actorName || '?').slice(0, 1) })
     },
-    async loadSupplementStatus() {
-      if (!this.actressId) return
-      try {
-        const resp = await api.getSupplementActressStatus(this.actressId)
-        this.supplementStatus = resp.data || resp
-        if (this.isSupplementRunning) {
-          this._startSupplementPolling()
-        }
-      } catch (e) {
-        console.warn('Load supplement status failed:', e)
-      }
-    },
-    async loadCandidateSummary() {
-      if (!this.actressId) return
-      try {
-        const resp = await api.getDownloadCandidateSummary({
-          status: 'candidate',
-          actress_id: this.actressId,
-        })
-        const summary = resp.data || {}
-        this.candidateSummary = {
-          candidate: summary.candidate || summary.total || 0,
-          needsMagnet: summary.needs_magnet || 0,
-          ready: summary.ready || 0,
-        }
-      } catch (e) {
-        console.warn('Load actor candidate summary failed:', e)
-      }
-    },
-    async startSupplement() {
-      if (!this.actressId || this.isSupplementRunning) return
-      try {
-        await api.startSupplementFilmographyJob(this.actressId)
-        await this.loadSupplementStatus()
-      } catch (e) {
-        console.error('Start supplement failed:', e)
-      }
-    },
-    async refreshResolved() {
-      if (!this.actressId) return
-      try {
-        await api.refreshSupplementActressResolved(this.actressId)
-        await this.loadSupplementStatus()
-      } catch (e) {
-        console.error('Refresh resolved failed:', e)
-      }
-    },
-    goSupplementMovies() {
-      this.$router.push({ path: '/supplement', query: { tab: 'movies', actress_id: this.actressId } })
-    },
-    goSupplementJobs() {
-      this.$router.push({ path: '/supplement', query: { tab: 'jobs', actress_id: this.actressId } })
-    },
-    goDownloadCandidates() {
-      this.$router.push({
-        path: '/candidates',
-        query: {
-          status: 'candidate',
-          actress_id: this.actressId,
-        },
-      })
-    },
     async toggleActorFavorite() {
       const id = this.actorFavoriteId
       if (!id) return
@@ -820,23 +680,6 @@ export default {
         await subscriptionState.toggle(this.actressId, this.translatedName || this.actorName)
       } catch (e) {
         console.error('Toggle actor subscription failed:', e)
-      }
-    },
-    statusLabel(status) {
-      const map = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }
-      return map[status] || status || '未知'
-    },
-    _startSupplementPolling() {
-      this._stopSupplementPolling()
-      this.supplementPolling = setInterval(async () => {
-        await this.loadSupplementStatus()
-        if (!this.isSupplementRunning) this._stopSupplementPolling()
-      }, 4000)
-    },
-    _stopSupplementPolling() {
-      if (this.supplementPolling) {
-        clearInterval(this.supplementPolling)
-        this.supplementPolling = null
       }
     },
   }

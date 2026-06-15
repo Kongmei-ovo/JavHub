@@ -1,37 +1,26 @@
 <template>
   <div v-if="tasks.length > 0" class="tasks-grid">
-    <div v-for="task in tasks" :key="task.id" class="task-card av-card">
+    <article v-for="task in tasks" :key="task.id" class="task-card">
       <div class="task-cover">
-        <div class="cover-placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-            <line x1="7" y1="2" x2="7" y2="22"/>
-            <line x1="17" y1="2" x2="17" y2="22"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <line x1="2" y1="7" x2="7" y2="7"/>
-            <line x1="2" y1="17" x2="7" y2="17"/>
-            <line x1="17" y1="17" x2="22" y2="17"/>
-            <line x1="17" y1="7" x2="22" y2="7"/>
-          </svg>
-        </div>
-        <div class="cover-overlay">
-          <span class="cover-code">{{ task.content_id || task.code }}</span>
-        </div>
-        <div v-if="task.status === 'downloading'" class="progress-overlay">
-          <div class="progress-bar">
-            <div class="progress-bar-fill progress-bar-fill-demo"></div>
-          </div>
-        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="cover-code">{{ task.content_id || task.code || `#${task.id}` }}</span>
       </div>
 
       <div class="task-info">
         <h3 class="task-title" :title="task.title">{{ task.title }}</h3>
         <div class="task-meta">
-          <span :class="['badge', statusBadge(task.status)]">{{ statusLabel(task.status) }}</span>
+          <span class="task-downloader">{{ task.downloader_name || downloaderTypeLabel(task.downloader_type) || '默认下载源' }}</span>
           <span class="task-time">{{ formatTime(task.created_at) }}</span>
         </div>
-        <div class="task-downloader">{{ task.downloader_name || downloaderTypeLabel(task.downloader_type) || '默认下载源' }}</div>
         <div v-if="task.error_msg" class="task-error">{{ task.error_msg }}</div>
+      </div>
+
+      <div class="task-status">
+        <span :class="['badge', statusBadge(task.status)]">{{ statusLabel(task.status) }}</span>
       </div>
 
       <div class="task-actions">
@@ -50,7 +39,7 @@
           删除
         </button>
       </div>
-    </div>
+    </article>
   </div>
 
   <AppleEmptyState
@@ -58,7 +47,7 @@
     class="empty-state"
     :title="taskEmptyTitle"
     :description="taskEmptyHint"
-    next-step="可以清除筛选、处理下载候选，或从影片检索和磁链解析添加新任务。"
+    next-step="可以清除筛选，或从影库和磁链解析添加新任务。"
     :action-label="taskEmptyPrimaryLabel"
     secondary-action-label="磁链解析"
     density="compact"
@@ -96,4 +85,4 @@ export default {
 }
 </script>
 
-<style scoped src="./home.css"></style>
+<style scoped src="./downloads.css"></style>

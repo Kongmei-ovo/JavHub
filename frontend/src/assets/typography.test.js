@@ -9,9 +9,9 @@ const sources = [
     readFileSync(new URL('../views/Search.vue', import.meta.url), 'utf8'),
     readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
   ].join('\n')],
-  ['Home.vue', [
-    readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8'),
-    readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  ['Downloads.vue', [
+    readFileSync(new URL('../views/Downloads.vue', import.meta.url), 'utf8'),
+    readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8'),
   ].join('\n')],
 ]
 
@@ -24,21 +24,12 @@ function productionStyleSources(path = new URL('../', import.meta.url)) {
   })
 }
 
-// Candidates + Supplement wave A 走 v2 设计语言,在用户决定 A/B 之前不纳入
+// Candidates wave A 走 v2 设计语言,在用户决定 A/B 之前不纳入
 // focus-ring / uppercase 等扫描契约;ratchet 计数(font-size / spacing)仍然
 // 全文件参与,以便保留"整体趋势不回退"的护栏。
 const v2IslandPaths = new Set([
   'src/features/candidates/DownloadCandidatePanel.vue',
   'src/features/candidates/downloadCandidatePanel.css',
-  'src/features/supplement/RepairLaneTab.vue',
-  'src/features/supplement/SourceHealthPanel.vue',
-  'src/features/supplement/sourceHealthPanel.css',
-  'src/features/supplement/SupplementJobList.vue',
-  'src/features/supplement/SupplementMoviesPanel.vue',
-  'src/features/supplement/supplementManagement.css',
-  'src/features/supplement/supplementMoviesPanel.css',
-  'src/features/supplement/supplementMovieRepair.css',
-  'src/views/SupplementManagement.vue',
 ])
 
 test('Apple typography avoids negative letter spacing across shell and primary pages', () => {
@@ -124,7 +115,7 @@ test('Production UI styles ratchet raw font sizes toward shared type tokens', ()
   const tokenSources = new Set(['src/assets/main.css'])
   // Today 页面 hero h1 用 30px,不在 --type-* ramp 上(--type-display-2=28 / --type-page-title-mobile=26)。
   // 视觉精修要求页面标题立起来,留作单点豁免,后续若加 30px 档再迁。
-  const existingRawFontSizeCount = 426
+  const existingRawFontSizeCount = 216
 
   for (const [name, source] of productionStyleSources()) {
     if (tokenSources.has(name)) continue

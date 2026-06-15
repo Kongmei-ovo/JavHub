@@ -63,7 +63,6 @@
       @toggle-selected="toggleCandidateSelected"
       @open-detail="openCandidateDetail"
       @go-actor="goCandidateActor"
-      @go-supplement="goCandidateSupplement"
       @edit-magnet="editCandidateMagnet"
       @enrich-magnet="enrichCandidateMagnet"
       @approve="approveCandidate"
@@ -113,4 +112,4 @@ export default {
 }
 </script>
 
-<style scoped src="../features/home/home.css"></style>
+<style scoped src="../features/candidates/candidates.css"></style>

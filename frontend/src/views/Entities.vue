@@ -118,7 +118,6 @@ import { actressImgUrl } from '../utils/imageUrl.js'
 
 const ENTITY_TABS = [
   { key: 'actresses', label: '资料库演员', entityType: 'actress', discoveryType: 'actress', loader: 'listActresses', paged: true, portrait: true, favorite: true },
-  { key: 'actors', label: 'Emby演员', entityType: 'actor', discoveryType: 'actor', loader: 'listInventoryActors', paged: true, portrait: true, inventoryRoute: true, favorite: false },
   { key: 'categories', label: '题材', entityType: 'category', discoveryType: 'category', loader: 'listCategories', paged: false },
   { key: 'series', label: '系列', entityType: 'series', discoveryType: 'series', loader: 'listSeries', paged: true, wideText: true },
   { key: 'makers', label: '厂商', entityType: 'maker', discoveryType: 'maker', loader: 'listMakers', paged: true },
@@ -129,13 +128,6 @@ const ENTITY_TABS = [
 
 const ENTITY_LOADERS = {
   listActresses: (page, pageSize, options) => api.listActresses(page, pageSize, options),
-  listInventoryActors: (_page, _pageSize, options) => api.listInventoryActors({
-    search: options.q,
-    page: options.page,
-    page_size: options.page_size,
-    sort_by: 'total_videos',
-    sort_order: 'desc',
-  }),
   listCategories: () => api.listCategories(),
   listSeries: (page, pageSize, options) => api.listSeries(page, pageSize, options),
   listMakers: (_page, _pageSize, options) => api.listMakers(options),
@@ -301,10 +293,6 @@ export default {
       const value = item.id || item.actress_id || name
       if (cfg.key === 'actresses') {
         this.$router.push({ path: `/actor/${encodeURIComponent(name)}`, query: value ? { name, actress_id: value } : { name } })
-        return
-      }
-      if (cfg.inventoryRoute) {
-        this.$router.push({ path: `/inventory/actors/${encodeURIComponent(String(value))}` })
         return
       }
       this.$router.push({ name: 'DiscoveryDetail', params: { type: cfg.discoveryType, value: String(value) }, query: { name } })

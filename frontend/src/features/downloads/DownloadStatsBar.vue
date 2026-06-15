@@ -1,6 +1,6 @@
 <template>
   <div class="stats-bar">
-    <div v-for="item in statusCards" :key="item.status" class="stat-card" @click="$emit('select-status', item.status)">
+    <button v-for="item in statusCards" :key="item.status" class="stat-card" type="button" @click="$emit('select-status', item.status)">
       <div :class="['stat-icon', item.status]">
         <svg v-if="item.status === 'pending'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="10"/>
@@ -25,23 +25,18 @@
         <div class="stat-num" :class="{ 'animate-in': statsLoaded && item.status === 'pending' }">{{ item.value }}</div>
         <div class="stat-label">{{ item.label }}</div>
       </div>
-    </div>
+    </button>
   </div>
-  <CandidateOverview :candidate-stats="candidateStats" @open-preset="$emit('open-preset', $event)" />
 </template>
 
 <script>
-import CandidateOverview from './CandidateOverview.vue'
-
 export default {
   name: 'DownloadStatsBar',
-  components: { CandidateOverview },
   props: {
     stats: { type: Object, required: true },
-    candidateStats: { type: Object, required: true },
     statsLoaded: { type: Boolean, default: false },
   },
-  emits: ['select-status', 'open-preset'],
+  emits: ['select-status'],
   computed: {
     statusCards() {
       return [
@@ -55,4 +50,4 @@ export default {
 }
 </script>
 
-<style scoped src="./home.css"></style>
+<style scoped src="./downloads.css"></style>

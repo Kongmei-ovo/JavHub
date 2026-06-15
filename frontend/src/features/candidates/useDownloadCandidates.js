@@ -1,18 +1,14 @@
 // Single source of truth for the download-candidate workspace.
 //
-// Two views share this composable:
-//   - views/Candidates.vue (independent /candidates page)
-//   - views/Home.vue       (legacy /downloads tab — kept during the migration)
-//
-// API calls and routing semantics are preserved verbatim from the original
-// Home.vue implementation; this is a relocation, not a rewrite.
+// API calls and routing semantics are preserved from the original workspace;
+// views/Candidates.vue is now the only UI owner.
 
 import { reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../api'
 import { ElMessage } from '../../utils/message.js'
 import { requestConfirm } from '../../utils/confirmDialog'
-import * as homePresentation from '../home/homePresentation'
+import * as candidatePresentation from './candidatePresentation'
 
 const cleanObject = (target) => {
   Object.keys(target).forEach(key => {
@@ -67,7 +63,7 @@ export function useDownloadCandidates(options = {}) {
   const route = useRoute()
   const router = useRouter()
 
-  // === Reactive state (mirrors Home.vue data fields verbatim) ===
+  // === Reactive state ===
   const candidates = ref([])
   const candidateStats = ref(initialCandidateStats())
   const candidatePage = ref(Number(route.query.page || 1) || 1)
@@ -85,16 +81,16 @@ export function useDownloadCandidates(options = {}) {
   const magnetEditor = reactive({ open: false, candidate: null, value: '' })
   const candidateDetail = reactive({ open: false, loading: false, data: null })
 
-  // === Computed (mirrors Home.vue computed properties) ===
+  // === Computed ===
   const filteredCandidates = computed(() => candidates.value)
 
   const candidateFilterLedger = computed(() => {
     if (!enabled.value) return []
-    const items = [{ key: 'status', label: homePresentation.candidateStatusLabel(candidateFilter.status || 'candidate') }]
+    const items = [{ key: 'status', label: candidatePresentation.candidateStatusLabel(candidateFilter.status || 'candidate') }]
     if (candidateFilter.needs_magnet === true) items.push({ key: 'needs_magnet', label: '待补磁力' })
     if (candidateFilter.needs_magnet === false) items.push({ key: 'ready', label: '可批准' })
     if (candidateFilter.missing_cover) items.push({ key: 'missing_cover', label: '缺封面' })
-    if (candidateFilter.source) items.push({ key: 'source', label: `来源 ${homePresentation.candidateSourceLabel(candidateFilter.source)}` })
+    if (candidateFilter.source) items.push({ key: 'source', label: `来源 ${candidatePresentation.candidateSourceLabel(candidateFilter.source)}` })
     if (candidateFilter.latest_event_action) items.push({ key: 'event', label: `最近 ${candidateEventActionLabel(candidateFilter.latest_event_action)}` })
     if (candidateFilter.actress_id) items.push({ key: 'actor', label: `演员 ${candidateFilter.actress_id}` })
     if (candidateFilter.q) items.push({ key: 'q', label: `搜索 ${candidateFilter.q}` })
@@ -262,10 +258,6 @@ export function useDownloadCandidates(options = {}) {
     pushCandidateRoute({ latest_event_action: action, page: 1 })
   }
 
-  function openCandidatePreset({ status = 'candidate', source = '', needs_magnet = null } = {}) {
-    pushCandidateRoute({ status, source, needs_magnet, page: 1 })
-  }
-
   function goCandidatePage(page) {
     const nextPage = Math.max(1, Math.min(candidateTotalPages.value, Number(page) || 1))
     if (nextPage !== candidatePage.value) pushCandidateRoute({ page: nextPage })
@@ -347,7 +339,7 @@ export function useDownloadCandidates(options = {}) {
     candidateDetail.data = null
   }
 
-  // === API-driven methods (API calls preserved verbatim from Home.vue) ===
+  // === API-driven methods ===
   async function loadCandidates() {
     try {
       const params = {}
@@ -626,15 +618,6 @@ export function useDownloadCandidates(options = {}) {
     })
   }
 
-  function goCandidateSupplement(candidate) {
-    if (candidate.actress_id) {
-      router.push({
-        path: '/supplement',
-        query: { tab: 'movies', actress_id: candidate.actress_id, q: candidate.dvd_id || candidate.content_id || '' },
-      })
-    }
-  }
-
   return {
     // state
     candidates,
@@ -682,7 +665,6 @@ export function useDownloadCandidates(options = {}) {
     setNeedsMagnet,
     setCandidateSource,
     setCandidateLatestEvent,
-    openCandidatePreset,
     goCandidatePage,
     applyCandidateRunFilters,
     // selection
@@ -711,6 +693,5 @@ export function useDownloadCandidates(options = {}) {
     processVisibleCandidates,
     retryFailedCandidateRun,
     goCandidateActor,
-    goCandidateSupplement,
   }
 }

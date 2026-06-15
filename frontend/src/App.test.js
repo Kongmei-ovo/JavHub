@@ -54,10 +54,7 @@ test('primary navigation is grouped around daily workflows first', () => {
     '实体目录',
     '候选确认',
     '演员订阅',
-    '片库整理',
-    '补全管理',
     '翻译作业',
-    '运营总览',
     '配置中心',
     '运行日志',
   ])
@@ -73,51 +70,29 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 
   assert.deepEqual(labels, [
     '随机探索',
-    '运营总览',
     '磁链解析',
     '实体目录',
     '订阅演员',
-    '片库整理',
     '翻译作业',
-    '补全管理',
     '配置中心',
     '运行日志',
   ])
   assert.match(mobileBlock, /path: '\/entities'/)
-  assert.match(mobileBlock, /path: '\/library-organize'/)
   assert.match(mobileBlock, /path: '\/logs'/)
 })
 
-test('maintenance routes converge on the unified library organizer', () => {
-  assert.match(routerSource, /path:\s*'\/library-organize'[\s\S]*LibraryOrganize/)
-  assert.match(routerSource, /path:\s*'\/inventory'[\s\S]*tab:\s*'inventory'/)
-  // P2: /library 词义归位为浏览入口,重定向到 /search 海报墙,而非维护台 check tab。
+test('retired maintenance routes stay out of the active router', () => {
   assert.match(routerSource, /\{\s*path:\s*'\/library',\s*redirect:\s*'\/search'\s*\}/)
-  assert.match(routerSource, /path:\s*'\/duplicates'[\s\S]*tab:\s*'duplicates'/)
-  assert.match(routerSource, /path:\s*'\/normalize'[\s\S]*tab:\s*'mapping'/)
-  assert.match(routerSource, /path:\s*'\/inventory\/actors\/:id'[\s\S]*actor_id:\s*to\.params\.id/)
-})
-
-test('supplement repair workbench has hard routes for direct panels', () => {
-  assert.match(routerSource, /const supplementPanelRedirect/)
-  assert.match(routerSource, /path:\s*'\/supplement\/movies'/)
-  assert.match(routerSource, /path:\s*'\/supplement\/jobs'/)
-  assert.match(routerSource, /path:\s*'\/supplement\/sources'/)
-  assert.match(routerSource, /path:\s*'\/supplement\/stats'/)
-  assert.match(routerSource, /redirect:\s*supplementPanelRedirect\('movies'\)/)
-  assert.match(routerSource, /redirect:\s*supplementPanelRedirect\('jobs'\)/)
-  assert.match(routerSource, /redirect:\s*supplementPanelRedirect\('sources'\)/)
-  assert.match(routerSource, /redirect:\s*supplementPanelRedirect\('stats'\)/)
-  assert.match(routerSource, /query:\s*\{ \.\.\.to\.query, tab \}/)
+  assert.doesNotMatch(routerSource, /LibraryOrganize|SupplementManagement|Operations|InventoryActor/)
+  assert.doesNotMatch(routerSource, /path:\s*'\/(?:library-organize|inventory|duplicates|normalize|supplement|operations)'/)
 })
 
 test('root route mounts the Today dashboard as the primary entry page', () => {
-  // Wave C redesign: the new home is /views/Today.vue (the dashboard);
-  // the legacy /downloads (Home.vue) keeps its place under the same path
-  // so existing deep links and the bottom-nav route still resolve.
+  // Today remains the dashboard while downloads owns a focused v2 page.
   assert.match(routerSource, /\{\s*path:\s*'\/',\s*name:\s*'Today',\s*component:\s*\(\) => import\('\.\.\/views\/Today\.vue'\)\s*\}/)
   assert.match(routerSource, /\{\s*path:\s*'\/today',\s*redirect:\s*'\/'\s*\}/)
-  assert.match(routerSource, /\{\s*path:\s*'\/downloads',\s*component:\s*\(\) => import\('\.\.\/views\/Home\.vue'\)\s*\}/)
+  assert.match(routerSource, /\{\s*path:\s*'\/downloads',\s*name:\s*'Downloads',\s*component:\s*\(\) => import\('\.\.\/views\/Downloads\.vue'\)\s*\}/)
+  assert.doesNotMatch(routerSource, /views\/Home\.vue/)
   assert.doesNotMatch(routerSource, /\/videos\/:contentId/)
   assert.doesNotMatch(routerSource, /name:\s*'VideoDetail'/)
 })
@@ -178,7 +153,8 @@ test('app navigation controls use layered liquid glass materials', () => {
 
 test('app shell navigation marks current route semantically across desktop mobile and more menu', () => {
   // P2: '/library' 从 library-organize 桶移到 search 桶,让"影库"导航在 /library 时也高亮。
-  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\][\s\S]*'\/library-organize': \['\/library-organize', '\/inventory', '\/duplicates', '\/normalize'\]/)
+  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\]/)
+  assert.doesNotMatch(navigationSource, /library-organize|supplement|operations/)
   assert.match(source, /const isNavItemActive = \(path\) => \{[\s\S]*const currentPath = normalizedRoutePath\.value[\s\S]*const activePaths = navActivePaths\[path\] \|\| \[path\][\s\S]*currentPath === activePath \|\| currentPath\.startsWith\(`\$\{activePath\}\/`\)/)
   assert.match(source, /:class="\{ active: isNavItemActive\(item\.path\) \}"/)
   assert.match(source, /:aria-current="isNavItemActive\(item\.path\) \? 'page' : undefined"/)
@@ -472,9 +448,9 @@ test('app shell route families keep system navigation active on related pages', 
   assert.match(navBlock, /'\/entities':\s*\['\/entities', '\/entity', '\/actor'\]/)
   assert.match(navBlock, /'\/downloads':\s*\['\/downloads', '\/tasks'\]/)
   assert.match(navBlock, /'\/subscription':\s*\['\/subscription', '\/subscriptions'\]/)
-  assert.match(navBlock, /'\/supplement':\s*\['\/supplement', '\/supplement\/actor', '\/supplement\/movies', '\/supplement\/jobs', '\/supplement\/sources', '\/supplement\/stats'\]/)
   assert.match(navBlock, /'\/settings':\s*\['\/settings', '\/config'\]/)
   assert.match(navBlock, /'\/logs':\s*\['\/logs', '\/log'\]/)
+  assert.doesNotMatch(navBlock, /library-organize|supplement|operations/)
   assert.match(source, /const normalizedRoutePath = computed\(\(\) => route\.path\.replace\(\/\\\/\+\$\/, ''\) \|\| '\/'\)/)
   assert.match(source, /const currentPath = normalizedRoutePath\.value/)
 })

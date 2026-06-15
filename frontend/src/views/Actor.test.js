@@ -71,32 +71,9 @@ test('actor page offers lightweight first-screen recovery after catalog load fai
   assert.match(source, /async loadActorMoviesCompact\(\)[\s\S]*return this\.loadActorMovies\(\{\s*pageSize:\s*RECOVERY_MOVIE_PAGE_SIZE\s*\}\)/)
 })
 
-test('actor page surfaces download candidate handoff', () => {
-  assert.match(source, /candidateSummary/)
-  assert.match(source, /下载候选/)
-  assert.match(source, /还缺磁力/)
-  assert.match(source, /可直接批准/)
-  assert.match(source, /api\.getDownloadCandidateSummary/)
-  assert.doesNotMatch(source, /api\.listDownloadCandidates/)
-  assert.doesNotMatch(source, /limit:\s*100000/)
-  assert.match(source, /goDownloadCandidates/)
-  assert.match(source, /path: '\/candidates'/)
-  assert.doesNotMatch(source, /tab: 'candidates'/)
-})
-
-test('actor supplement status labels describe source and variant counts clearly', () => {
-  assert.match(vueSource, />补全来源<\/span>/)
-  assert.match(vueSource, />已匹配片库<\/span>/)
-  assert.match(vueSource, />补全新增<\/span>/)
-  assert.match(vueSource, />含版本条目<\/span>/)
-  assert.match(vueSource, />刷新版本条目<\/button>/)
-  assert.doesNotMatch(vueSource, />补全影片<\/span>/)
-  assert.doesNotMatch(vueSource, />已匹配<\/span>/)
-  assert.doesNotMatch(vueSource, />仅补全<\/span>/)
-  assert.doesNotMatch(vueSource, />可展示<\/span>/)
-  assert.doesNotMatch(vueSource, /待补磁力/)
-  assert.doesNotMatch(vueSource, /个可批准/)
-  assert.doesNotMatch(vueSource, /刷新 resolved/)
+test('actor page no longer owns the retired supplement workbench', () => {
+  assert.doesNotMatch(vueSource, /supplementStatus|candidateSummary|goSupplement|startSupplement/)
+  assert.doesNotMatch(vueSource, /补全状态|处理候选|刷新版本条目/)
 })
 
 test('actor page reloads the catalog when route identity changes', () => {
@@ -266,7 +243,7 @@ test('actor page loading and year empty states use shared subtle materials', () 
   assert.doesNotMatch(yearEmpty, /rgba\(255,\s*255,\s*255/)
 })
 
-test('actor hero and supplement workspace use shared Apple glass controls', () => {
+test('actor hero uses shared Apple glass controls', () => {
   const actorHero = cssBlock('.actor-hero')
   const actorAvatar = cssBlock('.actor-avatar')
   const actionButton = cssBlock('.actor-action-btn')
@@ -280,7 +257,6 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
   const metaFavorite = cssBlock('.meta-item--favorite')
   const metaSubscribed = cssBlock('.meta-item--subscribed')
   const sectionHeader = cssBlock('.section-header')
-  const supplementCard = cssBlock('.supplement-card')
 
   assert.match(actorHero, /background:\s*var\(--card\)/)
   assert.match(actorHero, /border:\s*1px solid var\(--glass-edge\)/)
@@ -298,11 +274,6 @@ test('actor hero and supplement workspace use shared Apple glass controls', () =
     assert.match(block, /box-shadow:\s*var\(--glass-control-shadow\)/)
     assert.doesNotMatch(block, /var\(--surface-control\)|var\(--surface-card-hover\)|var\(--bg-secondary\)|var\(--border-light\)|rgba\(255,\s*255,\s*255|#fff|#ffffff/i)
   }
-
-  assert.match(supplementCard, /border:\s*1px solid var\(--hairline\)/)
-  assert.match(supplementCard, /background:\s*var\(--card\)/)
-  assert.match(supplementCard, /box-shadow:\s*var\(--shadow-card\)/)
-  assert.doesNotMatch(supplementCard, /material-glass|surface-specular-edge|surface-noise|backdrop-filter/)
 
   assert.ok(backgroundIncludes(actionButtonHover, '--material-glass-control-hover'))
   assert.match(actionButtonHover, /border-color:\s*var\(--glass-control-border-hover\)/)
@@ -365,7 +336,6 @@ test('actor glass backgrounds are layered with specular and noise surfaces', () 
     '.year-nav-item:hover',
     '.year-nav-item.active',
     '.year-empty',
-    '.supplement-card',
   ]) {
     const block = cssBlock(selector)
     // v2：实底块不得有玻璃分层；仍是玻璃的块（chrome/控件态）必须分层完整

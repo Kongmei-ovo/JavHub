@@ -42,7 +42,9 @@ test('Watch drives the acquisition waiting flow with four stages and polling', (
 test('Watch reuses the shared VideoPlayerOverlay kernel', () => {
   assert.match(watchSource, /VideoPlayerOverlay/)
   assert.match(watchSource, /from '\.\.\/features\/video\/VideoPlayerOverlay\.vue'/)
+  assert.match(watchSource, /<VideoPlayerOverlay[\s\S]*v-if="playerVisible"/)
   assert.match(watchSource, /:visible="playerVisible"/) // overlay visibility is bound, not just v-if
+  assert.match(watchSource, /<div v-else class="acquisition-waiting">/)
 })
 
 test('Watch passes downloaded subtitle tracks into the player', () => {

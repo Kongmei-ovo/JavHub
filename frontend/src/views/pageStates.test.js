@@ -2,23 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 
-const operationsFeatureSource = [
-  readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/SchedulerCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/DataQualityCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/CandidateAutoCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/SnapshotCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/MappingCard.vue', import.meta.url), 'utf8'),
-].join('\n')
-
 const pages = {
-  Duplicates: readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8'),
   Logs: readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8'),
-  Inventory: readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8'),
-  InventoryActor: readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8'),
-  Normalize: readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8'),
-  LibraryOrganize: readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8'),
-  Operations: operationsFeatureSource,
 }
 
 test('page loading states use AppleSkeleton instead of bare loading text or spinners', () => {

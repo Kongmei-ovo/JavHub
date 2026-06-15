@@ -1,6 +1,7 @@
 <template>
   <div class="watch-page">
     <VideoPlayerOverlay
+      v-if="playerVisible"
       :visible="playerVisible"
       :src="streamUrl"
       :title="movieId"

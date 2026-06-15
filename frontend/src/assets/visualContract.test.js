@@ -8,21 +8,12 @@ const tokenSourceNames = new Set([
   'src/assets/themes.js',
 ])
 
-// Candidates + Supplement 在 wave A 故意走 v2 设计语言(海报优先 / 实心内容层 /
+// Candidates 在 wave A 故意走 v2 设计语言(海报优先 / 实心内容层 /
 // 语义色 token),跟项目原本的 glass-everywhere 契约相冲;在用户决定 A/B
 // 之前,这些路径不纳入 raw-color / focus-ring / blur 等扫描契约。
 const v2IslandPaths = new Set([
   'src/features/candidates/DownloadCandidatePanel.vue',
   'src/features/candidates/downloadCandidatePanel.css',
-  'src/features/supplement/RepairLaneTab.vue',
-  'src/features/supplement/SourceHealthPanel.vue',
-  'src/features/supplement/sourceHealthPanel.css',
-  'src/features/supplement/SupplementJobList.vue',
-  'src/features/supplement/SupplementMoviesPanel.vue',
-  'src/features/supplement/supplementManagement.css',
-  'src/features/supplement/supplementMoviesPanel.css',
-  'src/features/supplement/supplementMovieRepair.css',
-  'src/views/SupplementManagement.vue',
 ])
 
 function productionUiFiles(dirUrl = srcRoot) {
@@ -124,19 +115,10 @@ test('production source files stay reviewable below the large-file line', () => 
     ['src/assets/main.css', 1295],
     ['src/features/config/advancedSettingsPanel.css', 939],
     ['src/features/config/config.css', 1158],
-    ['src/features/library/libraryOrganize.css', 1092],
-    ['src/features/operations/operations.css', 1269],
     ['src/features/search/search.css', 1191],
-    ['src/features/supplement/SourceHealthPanel.vue', 1141],
-    ['src/features/supplement/sourceHealthPanel.css', 857],
     ['src/features/candidates/downloadCandidatePanel.css', 1100],
-    ['src/features/supplement/supplementManagement.css', 1200],
     ['src/features/translations/translationJobs.css', 1159],
     ['src/views/Config.vue', 1227],
-    ['src/views/Home.vue', 1279],
-    ['src/views/LibraryOrganize.vue', 972],
-    ['src/views/SupplementManagement.vue', 1489],
-    ['src/views/Operations.vue', 917],
     ['src/views/TranslationJobs.vue', 1092],
   ])
   const offenders = productionUiFiles()
