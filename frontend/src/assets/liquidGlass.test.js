@@ -94,13 +94,6 @@ function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
   })
 }
 
-// Candidates wave A 走 v2 设计语言,在用户决定 A/B 之前不参与
-// backdrop-blur / single-layer badge / 等 glass 契约扫描。
-const v2IslandPaths = new Set([
-  'frontend/src/features/candidates/DownloadCandidatePanel.vue',
-  'frontend/src/features/candidates/downloadCandidatePanel.css',
-])
-
 test('root defaults stay aligned with every light theme runtime token', () => {
   for (const [token, value] of Object.entries(THEMES['apple-light'].vars)) {
     assert.equal(rootVar(token), value, `${token} should match apple-light before applyTheme() runs`)
@@ -509,7 +502,6 @@ test('production backdrop blur uses shared glass tokens', () => {
 
   for (const fileUrl of productionStyleFiles()) {
     const name = fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')
-    if (v2IslandPaths.has(name)) continue
     const source = readFileSync(fileUrl, 'utf8')
     for (const match of source.matchAll(hardcodedBlur)) {
       const line = source.slice(0, match.index).split('\n').length

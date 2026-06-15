@@ -117,6 +117,8 @@
   --accent-glow: rgba(124, 140, 255, 0.40);
   --accent-bg: rgba(124, 140, 255, 0.10);
   --text-on-accent-solid: #FFFFFF;
+  /* 亮语义色(如 --ok 绿)实心填充上的深色文字 */
+  --text-on-positive: #06140d;
 
   /* Wave A semantic colors (poster-first redesign):
      used directly by content surfaces (candidate cards, status pills, ledgers)
@@ -238,6 +240,7 @@
   --white-10: rgba(255,255,255,0.10);
   --white-15: rgba(255,255,255,0.15);
   --white-20: rgba(255,255,255,0.20);
+  --white-75: rgba(255,255,255,0.75);
   /* 通用黑色叠加层 */
   --black-10: rgba(0,0,0,0.10);
   --black-20: rgba(0,0,0,0.20);

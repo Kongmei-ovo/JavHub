@@ -24,14 +24,6 @@ function productionStyleSources(path = new URL('../', import.meta.url)) {
   })
 }
 
-// Candidates wave A 走 v2 设计语言,在用户决定 A/B 之前不纳入
-// focus-ring / uppercase 等扫描契约;ratchet 计数(font-size / spacing)仍然
-// 全文件参与,以便保留"整体趋势不回退"的护栏。
-const v2IslandPaths = new Set([
-  'src/features/candidates/DownloadCandidatePanel.vue',
-  'src/features/candidates/downloadCandidatePanel.css',
-])
-
 test('Apple typography avoids negative letter spacing across shell and primary pages', () => {
   for (const [name, source] of sources) {
     assert.doesNotMatch(
@@ -86,7 +78,6 @@ test('Production focus halos use shared focus ring tokens', () => {
   const offenders = []
 
   for (const [name, source] of productionStyleSources()) {
-    if (v2IslandPaths.has(name)) continue
     for (const match of source.matchAll(rawAccentFocusRing)) {
       const line = source.slice(0, match.index).split('\n').length
       const lineText = source.split('\n')[line - 1] || ''
@@ -100,7 +91,6 @@ test('Production focus halos use shared focus ring tokens', () => {
 
 test('Apple-style microcopy avoids forced uppercase labels', () => {
   for (const [name, source] of productionStyleSources()) {
-    if (v2IslandPaths.has(name)) continue
     assert.doesNotMatch(
       source,
       /text-transform:\s*uppercase\b/,

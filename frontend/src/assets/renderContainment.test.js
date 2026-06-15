@@ -57,14 +57,6 @@ function collectStyleSources(rootUrl) {
 
 const pageStyleSources = collectStyleSources(new URL('../', import.meta.url))
 
-// Candidates + Supplement wave A 走 v2 设计语言(语义色 transition / 实心内容层),
-// 在用户决定 A/B 之前不参与 transition-only-transform 与 interactive-transform 契约。
-// 注意:此处路径相对 src/,与 pageStyleSources 的 key 对齐。
-const v2IslandPaths = new Set([
-  'features/candidates/DownloadCandidatePanel.vue',
-  'features/candidates/downloadCandidatePanel.css',
-])
-
 function selectorMatches(ruleSelector, selector) {
   return ruleSelector
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -189,7 +181,6 @@ test('page motion transitions only animate transform and opacity', () => {
   const offenders = []
 
   for (const [sourceName, source] of pageStyleSources) {
-    if (v2IslandPaths.has(sourceName)) continue
     for (const { selector, value } of declarationsFor(source, 'transition')) {
       const animatedProperties = splitTransitionItems(value).map(transitionPropertyFor)
       for (const property of animatedProperties) {
@@ -232,7 +223,6 @@ test('interactive transforms stay light for hover focus and press', () => {
   const offenders = []
 
   for (const [sourceName, source] of pageStyleSources) {
-    if (v2IslandPaths.has(sourceName)) continue
     for (const { selector, value } of declarationsFor(source, 'transform')) {
       const isHoverOrFocus = selectorHasState(selector, ':hover') || selectorHasState(selector, ':focus-visible')
       const isPress = selectorHasState(selector, ':active')
