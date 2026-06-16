@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -729,6 +730,31 @@ class JavInfoImportManagerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(restored["dump_format"], "plain_sql_gzip")
         self.assertFalse(Path(restored["file_path"]).exists())
         self.assertEqual(runner.stdin_payloads, [(compressed, True)])
+
+    async def test_gzip_stdin_preserves_process_output_when_child_exits_early(self):
+        from services.javinfo_import import AsyncCommandRunner
+
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = b"INSERT INTO movies VALUES (1);\n" * 500000
+            dump = Path(tmp) / "r18.sql.gz"
+            with gzip.open(dump, "wb") as fh:
+                fh.write(payload)
+
+            script = (
+                "import sys\n"
+                "sys.stderr.write('ERROR: unrecognized configuration parameter \"transaction_timeout\"\\n')\n"
+                "sys.stderr.flush()\n"
+                "sys.exit(3)\n"
+            )
+
+            result = await AsyncCommandRunner().run(
+                [sys.executable, "-c", script],
+                stdin_path=dump,
+                gzip_stdin=True,
+            )
+
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("transaction_timeout", result.output)
 
     async def test_migrating_status_blocks_second_import_job(self):
         from services.javinfo_import import JavInfoImportConflict, JavInfoImportManager

@@ -409,7 +409,11 @@ class AsyncCommandRunner:
         try:
             pump_task = asyncio.create_task(pump())
             result = await _collect_process(process, args, timeout=timeout, cancel_check=cancel_check)
-            await pump_task
+            try:
+                await pump_task
+            except (BrokenPipeError, ConnectionResetError):
+                if result.returncode == 0:
+                    raise
             output = result.output
         except BaseException:
             if "pump_task" in locals() and not pump_task.done():
@@ -464,7 +468,11 @@ class AsyncCommandRunner:
         pump_task = asyncio.create_task(pump())
         try:
             result = await _collect_process(process, args, timeout=timeout, cancel_check=cancel_check)
-            await pump_task
+            try:
+                await pump_task
+            except (BrokenPipeError, ConnectionResetError):
+                if result.returncode == 0:
+                    raise
         except BaseException:
             if not pump_task.done():
                 pump_task.cancel()
