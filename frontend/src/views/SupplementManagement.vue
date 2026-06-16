@@ -12,6 +12,15 @@
       </div>
     </header>
 
+    <nav class="segmented-control" aria-label="补全工作台视图">
+      <button v-for="tab in tabItems" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="setActiveTab(tab.key)">
+        <span class="segment-label">{{ tab.label }}</span>
+        <span class="segment-count">{{ tab.count }}</span>
+        <span class="segment-status">{{ tab.status }}</span>
+        <span class="segment-next-step">{{ tab.nextStep }}</span>
+      </button>
+    </nav>
+
     <ActorPickerView
       v-if="showActorPicker"
       v-model:keyword="actorSearchKeyword"
@@ -64,15 +73,6 @@
           <div class="metric-num">{{ metric.value }}</div>
         </div>
       </div>
-
-      <nav class="segmented-control" aria-label="补全工作台视图">
-        <button v-for="tab in tabItems" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="setActiveTab(tab.key)">
-          <span class="segment-label">{{ tab.label }}</span>
-          <span class="segment-count">{{ tab.count }}</span>
-          <span class="segment-status">{{ tab.status }}</span>
-          <span class="segment-next-step">{{ tab.nextStep }}</span>
-        </button>
-      </nav>
 
       <component
         :is="activeTabComponent"
