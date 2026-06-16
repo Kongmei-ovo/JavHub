@@ -7,8 +7,6 @@
       </div>
       <div class="topbar-actions">
         <button v-if="actorContext" class="btn btn-ghost btn-sm" type="button" @click="clearActorContext">更换演员</button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="openSourceHealth">来源状态</button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="openGlobalQueue">全局队列</button>
       </div>
     </header>
 
@@ -353,8 +351,6 @@ export default {
       await this.replaceSupplementRoute()
       await this.loadRecentActorJobs()
     },
-    async openGlobalQueue() { this.activeTab = 'jobs'; this.actorContext = null; await this.replaceSupplementRoute({ tab: 'jobs' }) },
-    async openSourceHealth() { this.activeTab = 'sourceHealth'; this.actorContext = null; await this.replaceSupplementRoute({ tab: 'sources' }) },
     async viewGfriendsAvatarJobs() { this.activeTab = 'jobs'; this.actorContext = null; await this.replaceSupplementRoute({ tab: 'jobs', source: 'gfriends' }) },
     async openSourcesFromMovie(movie) { this.diagnosticsFocusMovie = movie; await this.setActiveTab('diagnostics') },
     goActorContext() {
