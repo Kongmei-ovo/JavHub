@@ -367,7 +367,7 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.doesNotMatch(bottomNavBlock, /label: '库存'/)
   assert.match(appNavigation, /export const mobileMoreItems/)
   assert.match(appNavigation, /label: '磁链解析'/)
-  assert.match(appNavigation, /label: '实体目录'/)
+  assert.match(appNavigation, /label: '分类目录'/)
   assert.doesNotMatch(appNavigation, /label: '补全管理'/)
   assert.doesNotMatch(appNavigation, /label: '片库整理'/)
   assert.doesNotMatch(appNavigation, /label: '库检测'/)
@@ -675,7 +675,7 @@ test('entity catalog unifies entity directories behind a route and nav entry', (
   assert.match(router, /path: '\/entities'/)
   assert.match(router, /Entities/)
   assert.match(appNavigation, /path: '\/entities'/)
-  assert.match(appNavigation, /label: '实体目录'/)
+  assert.match(appNavigation, /label: '分类目录'/)
   assert.match(entities, /name: 'Entities'/)
   for (const label of ['资料库演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
     assert.match(entities, new RegExp(label))

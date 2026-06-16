@@ -245,6 +245,45 @@ def configure_acquisition_coordinator_job():
     )
 
 
+# 可手动"立即运行"的调度作业白名单：id → 作业函数。
+# 系统作业控制台 (POST /scheduler/jobs/{id}/run) 只允许触发这些。
+_MANUAL_JOB_FUNCS: dict[str, Callable[[], Any]] = {
+    'subscription_check': subscription_check_job,
+    'variant_index_rebuild': variant_index_rebuild_job,
+    'candidate_auto_process': candidate_auto_process_job,
+    'acquisition_coordinator': acquisition_coordinator_job,
+}
+
+MANUAL_JOB_IDS: tuple[str, ...] = tuple(_MANUAL_JOB_FUNCS)
+
+_manual_run_threads: dict[str, threading.Thread] = {}
+_manual_run_lock = threading.Lock()
+
+
+def trigger_scheduler_job(job_id: str) -> dict[str, Any]:
+    """Run a whitelisted scheduler job immediately in a background thread.
+
+    Reuses ``scheduler_job_wrapper`` so a manual run records the same
+    last_run/last_status as a scheduled run. Returns immediately; if the job
+    is already running we report ``accepted=False`` instead of double-firing.
+    """
+    func = _MANUAL_JOB_FUNCS.get(job_id)
+    if func is None:
+        raise KeyError(job_id)
+    with _manual_run_lock:
+        existing = _manual_run_threads.get(job_id)
+        if existing is not None and existing.is_alive():
+            return {"accepted": False, "running": True}
+        thread = threading.Thread(
+            target=scheduler_job_wrapper(job_id, func),
+            name=f"manual-{job_id}",
+            daemon=True,
+        )
+        _manual_run_threads[job_id] = thread
+        thread.start()
+    return {"accepted": True, "running": True}
+
+
 def start_scheduler():
     """启动定时任务"""
     check_hour = config.scheduler_check_hour

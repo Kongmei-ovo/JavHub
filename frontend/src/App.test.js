@@ -47,14 +47,18 @@ test('primary navigation is grouped around daily workflows first', () => {
   assert.deepEqual(labels, [
     '今日',
     '影库',
-    '随机探索',
+    '分类目录',
+    '发现',
     '我的收藏',
     '下载任务',
     '磁链解析',
-    '实体目录',
-    '候选确认',
     '演员订阅',
+    '候选确认',
+    '资料补全',
     '翻译作业',
+    '运营总览',
+    '系统作业',
+    '115 网盘',
     '配置中心',
     '运行日志',
   ])
@@ -69,11 +73,16 @@ test('mobile more exposes initialization and maintenance entry points', () => {
   const labels = [...mobileBlock.matchAll(/\{ path: '[^']+', label: '([^']+)'/g)].map((match) => match[1])
 
   assert.deepEqual(labels, [
-    '随机探索',
+    '分类目录',
+    '发现',
     '磁链解析',
-    '实体目录',
-    '订阅演员',
+    '演员订阅',
+    '候选确认',
+    '资料补全',
     '翻译作业',
+    '运营总览',
+    '系统作业',
+    '115 网盘',
     '配置中心',
     '运行日志',
   ])
@@ -83,8 +92,12 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 
 test('retired maintenance routes stay out of the active router', () => {
   assert.match(routerSource, /\{\s*path:\s*'\/library',\s*redirect:\s*'\/search'\s*\}/)
-  assert.doesNotMatch(routerSource, /LibraryOrganize|SupplementManagement|Operations|InventoryActor/)
-  assert.doesNotMatch(routerSource, /path:\s*'\/(?:library-organize|inventory|duplicates|normalize|supplement|operations)'/)
+  // Emby-era inventory screens stay retired; the de-emby sweep wrongly took
+  // operations/system-jobs with them — those are first-party and now restored.
+  assert.doesNotMatch(routerSource, /LibraryOrganize|InventoryActor|Normalize|Duplicates/)
+  assert.doesNotMatch(routerSource, /path:\s*'\/(?:library-organize|inventory|duplicates|normalize)'/)
+  assert.match(routerSource, /path:\s*'\/operations'/)
+  assert.match(routerSource, /path:\s*'\/system-jobs'/)
 })
 
 test('root route mounts the Today dashboard as the primary entry page', () => {
@@ -154,7 +167,7 @@ test('app navigation controls use layered liquid glass materials', () => {
 test('app shell navigation marks current route semantically across desktop mobile and more menu', () => {
   // P2: '/library' 从 library-organize 桶移到 search 桶,让"影库"导航在 /library 时也高亮。
   assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\]/)
-  assert.doesNotMatch(navigationSource, /library-organize|supplement|operations/)
+  assert.doesNotMatch(navigationSource, /library-organize|inventory|duplicates|normalize/)
   assert.match(source, /const isNavItemActive = \(path\) => \{[\s\S]*const currentPath = normalizedRoutePath\.value[\s\S]*const activePaths = navActivePaths\[path\] \|\| \[path\][\s\S]*currentPath === activePath \|\| currentPath\.startsWith\(`\$\{activePath\}\/`\)/)
   assert.match(source, /:class="\{ active: isNavItemActive\(item\.path\) \}"/)
   assert.match(source, /:aria-current="isNavItemActive\(item\.path\) \? 'page' : undefined"/)
@@ -450,7 +463,7 @@ test('app shell route families keep system navigation active on related pages', 
   assert.match(navBlock, /'\/subscription':\s*\['\/subscription', '\/subscriptions'\]/)
   assert.match(navBlock, /'\/settings':\s*\['\/settings', '\/config'\]/)
   assert.match(navBlock, /'\/logs':\s*\['\/logs', '\/log'\]/)
-  assert.doesNotMatch(navBlock, /library-organize|supplement|operations/)
+  assert.doesNotMatch(navBlock, /library-organize|inventory|duplicates|normalize/)
   assert.match(source, /const normalizedRoutePath = computed\(\(\) => route\.path\.replace\(\/\\\/\+\$\/, ''\) \|\| '\/'\)/)
   assert.match(source, /const currentPath = normalizedRoutePath\.value/)
 })

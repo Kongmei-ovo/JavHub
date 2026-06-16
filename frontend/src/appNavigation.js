@@ -12,6 +12,8 @@ export const IconSettings = defineComponent({ render: () => h('svg', { viewBox: 
 export const IconTranslate = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M5 8l6 6' }), h('path', { d: 'M4 14l6-6 2-2' }), h('path', { d: 'M2 5h12' }), h('path', { d: 'M7 2v3' }), h('path', { d: 'M22 22l-5-10-5 10' }), h('path', { d: 'M14 18h6' })]) })
 export const IconCloud = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z' })]) })
 export const IconSupplement = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2 2 7l10 5 10-5-10-5z' }), h('path', { d: 'M2 17l10 5 10-5' }), h('path', { d: 'M2 12l10 5 10-5' })]) })
+export const IconGauge = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 14a2 2 0 100-4 2 2 0 000 4z' }), h('path', { d: 'm13.4 12.6 4.6-4.6' }), h('path', { d: 'M4 18a8 8 0 1116 0' })]) })
+export const IconJobs = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2v2' }), h('path', { d: 'M12 20v2' }), h('path', { d: 'm4.9 4.9 1.4 1.4' }), h('path', { d: 'm17.7 17.7 1.4 1.4' }), h('path', { d: 'M2 12h2' }), h('path', { d: 'M20 12h2' }), h('path', { d: 'm6.3 17.7-1.4 1.4' }), h('path', { d: 'm19.1 4.9-1.4 1.4' }), h('circle', { cx: '12', cy: '12', r: '4' })]) })
 
 export const navGroups = [
   {
@@ -19,18 +21,18 @@ export const navGroups = [
     items: [
       { path: '/', label: '今日', icon: IconHome },
       { path: '/search', label: '影库', icon: IconSearch },
-      { path: '/genres', label: '随机探索', icon: IconGenres },
+      { path: '/entities', label: '分类目录', icon: IconList },
+      { path: '/genres', label: '发现', icon: IconGenres },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/downloads', label: '下载任务', icon: IconDownload },
       { path: '/parse', label: '磁链解析', icon: IconParse },
-      { path: '/entities', label: '实体目录', icon: IconList },
     ],
   },
   {
     label: '自动化维护',
     items: [
-      { path: '/candidates', label: '候选确认', icon: IconParse },
       { path: '/subscription', label: '演员订阅', icon: IconStar },
+      { path: '/candidates', label: '候选确认', icon: IconParse },
       { path: '/supplement', label: '资料补全', icon: IconSupplement },
       { path: '/translations', label: '翻译作业', icon: IconTranslate },
     ],
@@ -38,6 +40,8 @@ export const navGroups = [
   {
     label: '系统管理',
     items: [
+      { path: '/operations', label: '运营总览', icon: IconGauge },
+      { path: '/system-jobs', label: '系统作业', icon: IconJobs },
       { path: '/drive', label: '115 网盘', icon: IconCloud },
       { path: '/settings', label: '配置中心', icon: IconSettings },
       { path: '/logs', label: '运行日志', icon: IconList },
@@ -53,12 +57,15 @@ export const bottomNavItems = [
 ]
 
 export const mobileMoreItems = [
-  { path: '/genres', label: '随机探索', icon: IconGenres },
+  { path: '/entities', label: '分类目录', icon: IconList },
+  { path: '/genres', label: '发现', icon: IconGenres },
   { path: '/parse', label: '磁链解析', icon: IconParse },
-  { path: '/entities', label: '实体目录', icon: IconList },
-  { path: '/subscription', label: '订阅演员', icon: IconStar },
+  { path: '/subscription', label: '演员订阅', icon: IconStar },
+  { path: '/candidates', label: '候选确认', icon: IconParse },
   { path: '/supplement', label: '资料补全', icon: IconSupplement },
   { path: '/translations', label: '翻译作业', icon: IconTranslate },
+  { path: '/operations', label: '运营总览', icon: IconGauge },
+  { path: '/system-jobs', label: '系统作业', icon: IconJobs },
   { path: '/drive', label: '115 网盘', icon: IconCloud },
   { path: '/settings', label: '配置中心', icon: IconSettings },
   { path: '/logs', label: '运行日志', icon: IconList },
@@ -73,6 +80,8 @@ export const navActivePaths = {
   '/entities': ['/entities', '/entity', '/actor'],
   '/subscription': ['/subscription', '/subscriptions'],
   '/supplement': ['/supplement'],
+  '/operations': ['/operations'],
+  '/system-jobs': ['/system-jobs'],
   '/drive': ['/drive'],
   '/settings': ['/settings', '/config'],
   '/logs': ['/logs', '/log'],

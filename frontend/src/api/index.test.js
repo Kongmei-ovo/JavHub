@@ -603,32 +603,29 @@ test('downloader management APIs send expected requests', async (t) => {
   assert.deepEqual(JSON.parse(calls[2].data), { id: 'tr', type: 'transmission', address: 'http://tr' })
 })
 
-test('operations overview API sends GET to correct path', async (t) => {
+test('operations / system-jobs APIs send requests to correct paths', async (t) => {
   const calls = []
   installAxiosAdapter(t, async (config) => {
     calls.push(config)
     return { config, status: 200, statusText: 'OK', headers: {}, data: { status: 'ok' } }
   })
 
-  const { default: api } = await import(`./index.js?operations-overview-${Date.now()}`)
-  await api.getOperationsOverview()
-  await api.runCandidateProcessingNow()
-  await api.getDataQualityOverview(12)
+  const { default: api } = await import(`./index.js?system-jobs-${Date.now()}`)
+  await api.getSchedulerJobs()
+  await api.runSchedulerJob('variant_index_rebuild')
   await api.startVideoVariantIndexJob()
   await api.listVideoVariantIndexJobs(5)
   await api.getVideoVariantIndexStats()
 
-  assert.equal(calls[0].url, '/v1/operations/overview')
+  assert.equal(calls[0].url, '/v1/scheduler/jobs')
   assert.equal(calls[0].method, 'get')
-  assert.equal(calls[1].url, '/v1/operations/candidate-processing/run')
+  assert.equal(calls[1].url, '/v1/scheduler/jobs/variant_index_rebuild/run')
   assert.equal(calls[1].method, 'post')
-  assert.equal(calls[2].url, '/v1/data-quality/overview')
-  assert.deepEqual(calls[2].params, { limit: 12 })
+  assert.equal(calls[2].url, '/v1/video-variants/index/jobs')
+  assert.equal(calls[2].method, 'post')
   assert.equal(calls[3].url, '/v1/video-variants/index/jobs')
-  assert.equal(calls[3].method, 'post')
-  assert.equal(calls[4].url, '/v1/video-variants/index/jobs')
-  assert.deepEqual(calls[4].params, { limit: 5 })
-  assert.equal(calls[5].url, '/v1/video-variants/index/stats')
+  assert.deepEqual(calls[3].params, { limit: 5 })
+  assert.equal(calls[4].url, '/v1/video-variants/index/stats')
 })
 
 test('translation job APIs send expected requests', async (t) => {

@@ -892,29 +892,17 @@ export default {
     return api.get('/v1/playback/continue', { params: { limit } })
   },
 
-  // ========== 运营总览 ==========
-
-  getOperationsOverview() {
-    return api.get('/v1/operations/overview')
-  },
-
-  getDataQualityOverview(limit = 8) {
-    return api.get('/v1/data-quality/overview', { params: { limit } })
-  },
-
-  runCandidateProcessingNow() {
-    return api.post('/v1/operations/candidate-processing/run')
-  },
+  // ========== 运营总览 / 系统作业 ==========
 
   getSchedulerJobs() {
     return api.get('/v1/scheduler/jobs', { silentError: true })
   },
 
-  ensureSubscribedSupplement() {
-    return api.post('/v1/supplement/actresses/ensure_subscribed')
+  runSchedulerJob(jobId) {
+    return api.post(`/v1/scheduler/jobs/${jobId}/run`)
   },
 
-  runInventoryPipeline(data = {}) {
-    return api.post('/inventory/pipeline/run', data)
+  ensureSubscribedSupplement() {
+    return api.post('/v1/supplement/actresses/ensure_subscribed')
   }
 }

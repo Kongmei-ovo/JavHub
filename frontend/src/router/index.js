@@ -25,6 +25,8 @@ const routes = [
   { path: '/favorites', component: () => import('../views/Favorites.vue') },
   { path: '/translations', name: 'TranslationJobs', component: () => import('../views/TranslationJobs.vue') },
   { path: '/drive', name: 'Drive115', component: () => import('../views/Drive115.vue') },
+  { path: '/operations', name: 'Operations', component: () => import('../views/Operations.vue') },
+  { path: '/system-jobs', name: 'SystemJobs', component: () => import('../views/SystemJobs.vue') },
   { path: '/supplement', name: 'Supplement', component: () => import('../views/SupplementManagement.vue') },
   { path: '/supplement/movies', redirect: supplementPanelRedirect('movies') },
   { path: '/supplement/jobs', redirect: supplementPanelRedirect('jobs') },
