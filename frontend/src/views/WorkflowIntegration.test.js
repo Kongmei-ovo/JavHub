@@ -134,7 +134,8 @@ test('docker deployment defaults to stable images and CI injects automatic versi
   assert.match(dockerCompose, /ghcr\.io\/kongmei-ovo\/javinfoapi:stable/)
   assert.doesNotMatch(dockerCompose, /v1\.2\.0-beta\.4/)
   assert.match(dockerCompose, /JAVINFO_API_URL:\s*\$\{JAVINFO_API_URL:-http:\/\/javinfoapi:18080\}/)
-  assert.match(dockerCompose, /JAVHUB_CONFIG_PATH:\s*\/app\/config\.yaml/)
+  assert.match(dockerCompose, /JAVHUB_CONFIG_PATH:\s*\/config\/config\.yaml/)
+  assert.match(dockerCompose, /\.\/config:\/config/)
   assert.match(dockerBuildWorkflow, /RELEASE_VERSION: v1\.2\.0-beta\.\$\{\{ github\.run_number \}\}/)
   assert.match(dockerBuildWorkflow, /\$\{IMAGE_NAME\}:stable/)
   assert.match(dockerBuildWorkflow, /\$\{IMAGE_NAME\}:\$\{RELEASE_VERSION\}/)
@@ -145,6 +146,7 @@ test('docker deployment defaults to stable images and CI injects automatic versi
   assert.match(dockerBuildWorkflow, /docker buildx imagetools create/)
   assert.match(dockerfile, /ARG VITE_APP_VERSION=dev/)
   assert.match(dockerfile, /ENV VITE_APP_VERSION=\$\{VITE_APP_VERSION\}/)
+  assert.match(dockerfile, /COPY config\.yaml\.example \/app\/config\.yaml\.example/)
 })
 
 test('settings page warns when Docker uses a localhost JavInfo URL', () => {

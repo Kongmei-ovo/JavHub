@@ -55,12 +55,15 @@ starts:
 ```bash
 git clone https://github.com/Kongmei-ovo/JavHub.git
 cd JavHub
-cp config.yaml.example config.yaml
+docker compose pull
+docker compose up -d
 ```
 
-Edit `config.yaml` before starting the stack. For the bundled compose network,
-the JavHub state database and JavInfo import database should point at the
-compose service names. Keep them as separate database names:
+On first start, JavHub creates `./config/config.yaml` from the image's bundled
+example. Edit that file to set secrets and external service URLs, then restart
+the stack. For the bundled compose network, the JavHub state database and
+JavInfo import database should point at the compose service names. Keep them as
+separate database names:
 
 ```yaml
 database:
@@ -174,13 +177,13 @@ replace that database.
 
 | Path or volume | Purpose |
 |----------------|---------|
-| `./config.yaml` | Runtime configuration mounted into the container |
+| `./config/config.yaml` | Runtime configuration mounted into the container |
 | `./data` | Runtime files and logs |
 | `javinfo-postgres` | PostgreSQL data volume for `r18` and `javhub` |
 | `javhub-redis` | Redis cache data volume |
 
-Secrets, runtime data, logs, `config.yaml`, and database files are not baked
-into the Docker image.
+Secrets, runtime data, logs, `./config/config.yaml`, and database files are not
+baked into the Docker image.
 
 ### Updating
 
@@ -277,9 +280,11 @@ telegram:
   allowed_user_ids: []
 ```
 
-Container deployments mount `./config.yaml` at `/app/config.yaml` and set
-`JAVHUB_CONFIG_PATH=/app/config.yaml`, so the settings page reflects the file
-you edited. JavHub state reads `JAVHUB_DB_HOST`, `JAVHUB_DB_PORT`,
+Container deployments mount `./config` at `/config` and set
+`JAVHUB_CONFIG_PATH=/config/config.yaml`, so the settings page reflects the
+file you edited. If `./config/config.yaml` does not exist yet, the container
+creates it from the bundled example during startup. JavHub state reads
+`JAVHUB_DB_HOST`, `JAVHUB_DB_PORT`,
 `JAVHUB_DB_USER`, `JAVHUB_DB_PASSWORD`, and `JAVHUB_DB_NAME`. JavInfo import
 settings still read `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and
 `DB_NAME`.

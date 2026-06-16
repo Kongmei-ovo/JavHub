@@ -32,6 +32,7 @@ COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend/ .
+COPY config.yaml.example /app/config.yaml.example
 
 COPY --from=frontend-builder /frontend/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

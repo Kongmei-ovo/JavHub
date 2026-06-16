@@ -14,7 +14,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "validate_docker_read
 def _payload() -> dict:
     return {
         "status": "degraded",
-        "config": {"loaded": True, "error": "", "path": "/app/config.yaml"},
+        "config": {"loaded": True, "error": "", "path": "/config/config.yaml"},
         "database": {"connectable": True, "error": ""},
         "javinfo": {
             "api_url_configured": True,

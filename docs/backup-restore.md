@@ -7,8 +7,9 @@ for both local development and Docker Compose deployments.
 
 Back up these items before upgrades, host moves, or destructive maintenance:
 
-- `config.yaml`: runtime settings and secrets. In Compose this is mounted at
-  `/app/config.yaml` through `JAVHUB_CONFIG_PATH=/app/config.yaml`.
+- `config/config.yaml`: runtime settings and secrets. In Compose this is
+  mounted at `/config/config.yaml` through
+  `JAVHUB_CONFIG_PATH=/config/config.yaml`.
 - `data/`: JavHub's local runtime directory. It includes logs, import job state,
   legacy SQLite backup files if you still have them, and other local runtime
   files. JavHub runtime state is no longer read from SQLite.
@@ -77,7 +78,8 @@ PostgreSQL, and Redis:
 stamp="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "backups/${stamp}"
 
-cp config.yaml "backups/${stamp}/config.yaml"
+mkdir -p "backups/${stamp}/config"
+cp config/config.yaml "backups/${stamp}/config/config.yaml"
 test -f .env && cp .env "backups/${stamp}/.env"
 tar -czf "backups/${stamp}/javhub-data.tgz" data
 
@@ -142,7 +144,7 @@ PostgreSQL dumps:
 scripts/services.sh stop
 
 tar -xzf backups/<stamp>/javhub-data.tgz
-cp backups/<stamp>/config.yaml config.yaml
+cp backups/<stamp>/config/config.yaml config.yaml
 test -f backups/<stamp>/.env && cp backups/<stamp>/.env .env
 
 pg_restore -h "${DB_HOST:-localhost}" \
@@ -166,12 +168,13 @@ scripts/services.sh ensure
 
 ## Restore a Docker Compose Instance
 
-Stop the stack and restore `config.yaml`, `.env`, and `data/`:
+Stop the stack and restore `config/config.yaml`, `.env`, and `data/`:
 
 ```bash
 docker compose down
 
-cp backups/<stamp>/config.yaml config.yaml
+mkdir -p config
+cp backups/<stamp>/config/config.yaml config/config.yaml
 test -f backups/<stamp>/.env && cp backups/<stamp>/.env .env
 rm -rf data
 tar -xzf backups/<stamp>/javhub-data.tgz

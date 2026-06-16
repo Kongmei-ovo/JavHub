@@ -1,8 +1,11 @@
 name: javhub
 
-# Before first start:
-#   cp config.yaml.example config.yaml
-#   edit config.yaml secrets and external service URLs
+# First start:
+#   docker compose pull
+#   docker compose up -d
+#
+# JavHub writes a default ./config/config.yaml on first container start.
+# Edit it after first start to set secrets and external service URLs.
 #
 # PostgreSQL is included for JavInfoApi metadata and JavHub state.
 # If you already have PostgreSQL, you may comment out the postgres service and
@@ -100,7 +103,7 @@ services:
     #   dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      JAVHUB_CONFIG_PATH: /app/config.yaml
+      JAVHUB_CONFIG_PATH: /config/config.yaml
       JAVINFO_API_URL: ${JAVINFO_API_URL:-http://javinfoapi:18080}
       SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
       DB_HOST: ${DB_HOST:-postgres}
@@ -123,7 +126,7 @@ services:
       JAVHUB_REDIS_PREFIX: ${JAVHUB_REDIS_PREFIX:-javhub-cache}
     volumes:
       - ./data:/app/data
-      - ./config.yaml:/app/config.yaml
+      - ./config:/config
     ports:
       - "${JAVHUB_PORT:-3000}:80"
     depends_on:
