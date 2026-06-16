@@ -24,6 +24,7 @@ const routes = [
   { path: '/actor/:name', component: () => import('../views/Actor.vue') },
   { path: '/favorites', component: () => import('../views/Favorites.vue') },
   { path: '/translations', name: 'TranslationJobs', component: () => import('../views/TranslationJobs.vue') },
+  { path: '/drive', name: 'Drive115', component: () => import('../views/Drive115.vue') },
   { path: '/supplement', name: 'Supplement', component: () => import('../views/SupplementManagement.vue') },
   { path: '/supplement/movies', redirect: supplementPanelRedirect('movies') },
   { path: '/supplement/jobs', redirect: supplementPanelRedirect('jobs') },

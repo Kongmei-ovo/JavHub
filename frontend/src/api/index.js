@@ -477,6 +477,47 @@ export default {
     return api.post('/v1/open115/unbind')
   },
 
+  // ========== 115 文件管理 ==========
+
+  listOpen115Files({ cid = '0', offset = 0, limit = 100, keyword = '' } = {}) {
+    const params = { cid, offset, limit }
+    if (keyword) params.keyword = keyword
+    return api.get('/v1/open115/files', { params, silentError: true })
+  },
+
+  createOpen115Folder(pid, name) {
+    return api.post('/v1/open115/files/folder', { pid: String(pid), name })
+  },
+
+  renameOpen115File(fileId, name) {
+    return api.post('/v1/open115/files/rename', { file_id: String(fileId), name })
+  },
+
+  moveOpen115Files(fileIds, toCid) {
+    return api.post('/v1/open115/files/move', { file_ids: fileIds.map(String), to_cid: String(toCid) })
+  },
+
+  copyOpen115Files(fileIds, toCid) {
+    return api.post('/v1/open115/files/copy', { file_ids: fileIds.map(String), to_cid: String(toCid) })
+  },
+
+  deleteOpen115Files(fileIds, parentId) {
+    return api.post('/v1/open115/files/delete', { file_ids: fileIds.map(String), parent_id: parentId ? String(parentId) : null })
+  },
+
+  getOpen115VideoSources(pickCode) {
+    return api.get('/v1/open115/files/video', { params: { pick_code: pickCode }, silentError: true })
+  },
+
+  open115ImageUrl(pickCode, ext = '') {
+    const suffix = ext ? `&ext=${encodeURIComponent(ext)}` : ''
+    return `/api/v1/open115/files/image?pick_code=${encodeURIComponent(pickCode)}${suffix}`
+  },
+
+  open115StreamUrl(pickCode) {
+    return `/api/v1/open115/files/stream?pick_code=${encodeURIComponent(pickCode)}`
+  },
+
   exportConfig() {
     return api.get('/v1/config/export', { responseType: 'blob' })
   },
