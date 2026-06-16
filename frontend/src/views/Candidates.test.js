@@ -34,7 +34,7 @@ test('Candidates view mounts the shared candidate workspace', () => {
 })
 
 test('Candidates view forwards every DownloadCandidatePanel emit', () => {
-  // Panel emits — keep parity with views/Home.vue so behavior carries over.
+  // The shell forwards the complete panel event surface.
   const emits = [...panel.matchAll(/\$emit\('([^']+)'/g)].map((m) => m[1])
   assert.ok(emits.length >= 25, 'panel should declare a complete emit surface')
   const unique = [...new Set(emits)]
@@ -123,8 +123,7 @@ test('useDownloadCandidates composable preserves all candidate API endpoints', (
 })
 
 test('useDownloadCandidates composable exposes the full panel emit surface', () => {
-  // Every method that Home.vue used as an @-handler must remain exported so the
-  // Candidates shell can wire it without rewriting business logic.
+  // Every panel handler must remain exported by the composable.
   for (const exported of [
     'loadCandidates',
     'loadCandidateSummary',
@@ -144,7 +143,6 @@ test('useDownloadCandidates composable exposes the full panel emit surface', () 
     'setNeedsMagnet',
     'setCandidateSource',
     'setCandidateLatestEvent',
-    'openCandidatePreset',
     'goCandidatePage',
     'applyCandidateRunFilters',
     'toggleCandidateSelection',
@@ -158,7 +156,6 @@ test('useDownloadCandidates composable exposes the full panel emit surface', () 
     'openCandidateDetail',
     'closeCandidateDetail',
     'goCandidateActor',
-    'goCandidateSupplement',
   ]) {
     assert.ok(
       new RegExp(`(?:^|\\s|,)\\s*${exported}(?:\\s*,|\\s*\\}|\\s*$)`, 'm').test(composable),

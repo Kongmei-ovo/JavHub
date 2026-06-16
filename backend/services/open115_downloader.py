@@ -94,14 +94,18 @@ class Open115DownloaderClient:
                 return None
             page += 1
 
-    async def finalize(
+    async def register_movie_directory(
         self,
-        *,
-        task_id: int,
         movie_id: str,
-        result_file_id: str,
+        folder_id: str,
+        *,
+        task_id: int | None = None,
     ) -> dict[str, int]:
-        files = [item async for item in self.client.walk_files(result_file_id)]
+        """Walk a 115 movie folder and upsert its videos/subtitles into
+        ``movie_resources``. Shared by live finalize and one-time library backfill
+        so there is exactly one registration path. Does not raise on an empty
+        folder — callers decide what a zero-video result means."""
+        files = [item async for item in self.client.walk_files(folder_id)]
         videos = sorted(
             [item for item in files if _normalized_extension(item) in VIDEO_EXTENSIONS],
             key=lambda item: (-item.size, item.file_id),
@@ -150,13 +154,25 @@ class Open115DownloaderClient:
                 related_resource_id=_matching_video_id(subtitle, registered_videos),
             )
 
-        if ready_count == 0:
-            raise Open115FinalizationError("115 离线任务没有产生可播放视频")
         return {
             "video_count": len(videos),
             "ready_video_count": ready_count,
             "subtitle_count": len(subtitles),
         }
+
+    async def finalize(
+        self,
+        *,
+        task_id: int,
+        movie_id: str,
+        result_file_id: str,
+    ) -> dict[str, int]:
+        counts = await self.register_movie_directory(
+            movie_id, result_file_id, task_id=task_id
+        )
+        if counts["ready_video_count"] == 0:
+            raise Open115FinalizationError("115 离线任务没有产生可播放视频")
+        return counts
 
 
 open115_downloader = Open115DownloaderClient()

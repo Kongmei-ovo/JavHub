@@ -1,25 +1,33 @@
 import asyncio
 import logging
-import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from database import (
-    get_latest_snapshot_key,
-    get_snapshot_actors,
-    get_snapshot_videos,
+    candidate_content_id,
+    candidate_title,
+    code_has_ready_resource,
+    get_active_session_for_movie,
     get_subscriptions,
+    is_video_exempt,
     update_last_check,
+    upsert_candidate_from_video,
 )
 from database.subscription import set_subscription_cooldown
-from services.watchlist_pipeline import WatchlistPipeline, normalize_code
+from database.subscription_baseline import (
+    add_to_baseline,
+    establish_baseline,
+    filter_new_against_baseline,
+    get_baseline_at,
+)
+from services.acquisition import start_acquisition
+from services.video_variants import is_non_movie_item
+from services.watchlist_pipeline import WatchlistPipeline
 
 logger = logging.getLogger(__name__)
 
 VALID_SUBSCRIPTION_SCOPES = {"actress", "maker", "series", "label"}
-SNAPSHOT_PAGE_SIZE = 500
 SUBSCRIPTION_CONCURRENCY = 8
-CODE_PATTERN = re.compile(r"\b(?:FC2[-_\s]?(?:PPV[-_\s]?)?\d{3,8}|[A-Z]{2,10}[-_\s]?\d{2,8})\b", re.IGNORECASE)
 
 
 def _parse_timestamp(value) -> datetime | None:
@@ -43,49 +51,12 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _video_release_date(video: dict) -> datetime | None:
+    return _parse_timestamp(video.get("release_date") or video.get("date"))
+
+
 def _movie_code(movie: dict) -> str:
     return str(movie.get("dvd_id") or movie.get("code") or movie.get("content_id") or "").strip()
-
-
-def _snapshot_item_codes(item: dict) -> set[str]:
-    codes: set[str] = set()
-    for field in ("filename", "title", "Name", "FileName"):
-        for match in CODE_PATTERN.finditer(str(item.get(field) or "")):
-            code = normalize_code(match.group(0))
-            if code:
-                codes.add(code)
-    return codes
-
-
-def _load_latest_existing_codes() -> set[str] | None:
-    try:
-        snapshot_key = get_latest_snapshot_key()
-        if not snapshot_key:
-            logger.warning("No Emby snapshot available; falling back to per-code check_exists")
-            return None
-
-        existing_codes: set[str] = set()
-        page = 1
-        while True:
-            actors_page = get_snapshot_actors(snapshot_key, page=page, page_size=SNAPSHOT_PAGE_SIZE)
-            actors = actors_page.get("data", []) if isinstance(actors_page, dict) else []
-            for actor in actors:
-                actor_id = actor.get("actress_id")
-                if actor_id is None:
-                    continue
-                for video in get_snapshot_videos(snapshot_key, actor_id):
-                    existing_codes.update(_snapshot_item_codes(video))
-
-            total_pages = actors_page.get("total_pages") if isinstance(actors_page, dict) else None
-            if not isinstance(total_pages, int) or page >= total_pages:
-                break
-            page += 1
-
-        logger.info("Loaded %s normalized codes from Emby snapshot %s", len(existing_codes), snapshot_key)
-        return existing_codes
-    except Exception as exc:
-        logger.warning("Failed to load Emby snapshot; falling back to per-code check_exists: %s", exc)
-        return None
 
 
 def _seen_codes_from_movies(movies: list[dict]) -> list[str]:
@@ -170,64 +141,142 @@ def _subscription_result_identity(identity: dict) -> dict:
     return data
 
 
+async def _fetch_filmography(
+    pipeline: WatchlistPipeline,
+    identity: dict,
+    *,
+    info_semaphore: asyncio.Semaphore | None,
+) -> list[dict]:
+    """Pipeline is used as a fetcher only — existence/trigger are decided here."""
+    scope = identity["scope"]
+    if scope == "actress":
+        # Drive the JavInfoApi supplement pipeline before reading the
+        # filmography: without this, an actress whose supplement data never got
+        # fetched silently checks against the bare r18 list forever. TTL-deduped
+        # internally; lands by this (or the next) check without blocking here.
+        from services.supplement_autopilot import ensure_actress_supplement
+        await ensure_actress_supplement(identity["target_id"])
+        return await pipeline.fetch_actress_videos(
+            identity["target_id"], info_semaphore=info_semaphore
+        )
+    fetch = getattr(pipeline, f"fetch_{scope}_videos")
+    return await fetch(identity["target_id"], info_semaphore=info_semaphore)
+
+
 async def _run_subscription_check(
     sub: dict,
     pipeline: WatchlistPipeline,
     *,
-    existing_codes: set[str] | None = None,
     info_semaphore: asyncio.Semaphore | None = None,
 ) -> dict:
     identity = _subscription_identity(sub)
     scope = identity["scope"]
-    if scope == "actress":
-        # Drive the JavInfoApi supplement pipeline before reading the
-        # filmography: without this, an actress whose supplement data never
-        # got fetched silently checks against the bare r18 list forever.
-        # TTL-deduped internally; the job is async upstream, so data lands by
-        # this (or the next) check without blocking here.
-        from services.supplement_autopilot import ensure_actress_supplement
-        await ensure_actress_supplement(identity["target_id"])
-        kwargs = {
-            "actress_id": identity["target_id"],
-            "actress_name": identity["target_label"],
-            "trigger_source": "subscription",
-            "reason": "subscription_check",
+    sub_id = sub["id"]
+
+    videos = await _fetch_filmography(pipeline, identity, info_semaphore=info_semaphore)
+
+    # Dedup to stable per-movie keys (content_id == movie_id == code).
+    movie_videos: dict[str, dict] = {}
+    for video in videos:
+        if is_non_movie_item(video):
+            continue
+        code = candidate_content_id(video)
+        if not code or is_video_exempt(code):
+            continue
+        movie_videos.setdefault(code, video)
+    all_codes = list(movie_videos.keys())
+
+    stats = {
+        "checked": len(all_codes),
+        "created": 0,
+        "existing": 0,
+        "skipped": 0,
+        "skipped_exempt": 0,
+        "in_library": 0,
+        "candidate_count": 0,
+    }
+
+    # First check: record the whole filmography as the baseline, download nothing.
+    baseline_at = _parse_timestamp(get_baseline_at(sub_id))
+    if baseline_at is None:
+        establish_baseline(sub_id, all_codes)
+        result = {
+            **stats,
+            "baseline_established": True,
+            "candidates": [],
+            "new_movies": [],
+            "new_since_last": [],
         }
-        if existing_codes is not None:
-            kwargs["existing_codes"] = existing_codes
-        if existing_codes is not None and info_semaphore is not None:
-            kwargs["info_semaphore"] = info_semaphore
-        result = await pipeline.generate_candidates_for_actress(**kwargs)
-    else:
-        generator = getattr(pipeline, f"generate_candidates_for_{scope}")
-        kwargs = {
-            "target_id": identity["target_id"],
-            "target_label": identity["target_label"],
-            "trigger_source": "subscription",
-            "reason": "subscription_check",
-        }
-        if existing_codes is not None:
-            kwargs["existing_codes"] = existing_codes
-        if existing_codes is not None and info_semaphore is not None:
-            kwargs["info_semaphore"] = info_semaphore
-        result = await generator(**kwargs)
-    for movie in result.get("new_movies", []):
-        if identity["target_label"]:
-            movie["target_label"] = identity["target_label"]
-        if identity["actress_name"]:
-            movie["actress_name"] = identity["actress_name"]
-        movie["subscription_id"] = sub["id"]
-        movie["subscription_scope"] = scope
-        movie["target_id"] = identity["target_id"]
+        result.update(_subscription_result_identity(identity))
+        update_last_check(sub_id, "", last_run_at=_now(), cooldown_until=None)
+        return result
+
+    new_codes = filter_new_against_baseline(sub_id, all_codes)
+
+    candidates: list[dict] = []
+    new_movies: list[dict] = []
+    for code in new_codes:
+        video = movie_videos[code]
+        release_date = _video_release_date(video)
+        is_fresh = (
+            release_date is not None
+            and baseline_at is not None
+            and release_date > baseline_at
+        )
+        if is_fresh:
+            # Truly new release → auto-acquire, but never double-spend an offline
+            # slot: skip if a resource is already ready or a session is active.
+            if code_has_ready_resource(code):
+                stats["in_library"] += 1
+            elif get_active_session_for_movie(code) is not None:
+                stats["existing"] += 1
+            else:
+                await start_acquisition(
+                    code,
+                    auto=True,
+                    trigger="subscription",
+                    title=candidate_title(video) or code,
+                )
+                stats["created"] += 1
+        else:
+            # Dateless or older-than-baseline → human candidate only, no auto offline.
+            candidates.append(
+                upsert_candidate_from_video(
+                    video=video,
+                    actress_id=identity["actress_id"],
+                    actress_name=identity["actress_name"],
+                    source="subscription",
+                    reason="subscription_check",
+                )
+            )
+        add_to_baseline(sub_id, code)
+        new_movies.append(
+            {
+                "code": code,
+                "content_id": code,
+                "dvd_id": video.get("dvd_id") or code,
+                "title": candidate_title(video),
+                "release_date": video.get("release_date"),
+                "actress_name": identity["actress_name"] or None,
+                "target_label": identity["target_label"] or None,
+                "subscription_id": sub_id,
+                "subscription_scope": scope,
+                "target_id": identity["target_id"],
+            }
+        )
+
+    stats["candidate_count"] = len(candidates)
+    fresh = _seen_codes_from_movies(new_movies)
+    result = {
+        **stats,
+        "candidates": candidates,
+        "new_movies": new_movies,
+        "new_since_last": fresh,
+    }
     result.update(_subscription_result_identity(identity))
-    latest = _movie_code(result.get("new_movies", [{}])[0]) if result.get("new_movies") else ""
-    codes = _seen_codes_from_movies(result.get("new_movies", []))
-    new_since_last = _new_codes_since_last(codes, sub.get("last_seen_codes") or [])
-    result["new_since_last"] = new_since_last
     update_last_check(
-        sub["id"],
-        latest,
-        last_seen_codes=_merge_seen_codes(sub.get("last_seen_codes") or [], codes),
+        sub_id,
+        fresh[0] if fresh else "",
         last_run_at=_now(),
         cooldown_until=None,
     )
@@ -239,7 +288,6 @@ async def _run_subscription_check_guarded(
     identity: dict,
     semaphore: asyncio.Semaphore,
     info_semaphore: asyncio.Semaphore,
-    existing_codes: set[str] | None,
 ) -> dict:
     async with semaphore:
         pipeline = WatchlistPipeline()
@@ -247,7 +295,6 @@ async def _run_subscription_check_guarded(
             result = await _run_subscription_check(
                 sub,
                 pipeline,
-                existing_codes=existing_codes,
                 info_semaphore=info_semaphore,
             )
             return {"subscription": sub, "identity": identity, "result": result}
@@ -279,6 +326,7 @@ async def check_all_subscriptions_report() -> dict:
     new_since_last = []
     totals = {
         "subscriptions_checked": 0,
+        "subscriptions_baselined": 0,
         "subscriptions_skipped_cadence": 0,
         "subscriptions_skipped_cooldown": 0,
         "subscriptions_failed": 0,
@@ -291,7 +339,9 @@ async def check_all_subscriptions_report() -> dict:
         "candidate_count": 0,
     }
 
-    existing_codes = await asyncio.to_thread(_load_latest_existing_codes)
+    # Existence is now resource-backed (per-code) inside _run_subscription_check;
+    # the Emby snapshot path (_load_latest_existing_codes) is retired from the main
+    # flow but kept for rollback until P6.
     subscription_semaphore = asyncio.Semaphore(SUBSCRIPTION_CONCURRENCY)
     info_semaphore = asyncio.Semaphore(SUBSCRIPTION_CONCURRENCY)
     tasks = []
@@ -320,7 +370,6 @@ async def check_all_subscriptions_report() -> dict:
             identity,
             subscription_semaphore,
             info_semaphore,
-            existing_codes,
         ))
 
     for task_result in await asyncio.gather(*tasks):
@@ -339,6 +388,8 @@ async def check_all_subscriptions_report() -> dict:
         result = task_result["result"]
 
         totals["subscriptions_checked"] += 1
+        if result.get("baseline_established"):
+            totals["subscriptions_baselined"] += 1
         for key in ("checked", "created", "existing", "skipped", "skipped_exempt", "in_library", "candidate_count"):
             totals[key] += int(result.get(key) or 0)
         fresh_codes = result.get("new_since_last", [])

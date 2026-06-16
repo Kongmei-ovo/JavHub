@@ -2,7 +2,7 @@
   <div class="genres-page page-bleed">
     <!-- 顶部 Tab 栏 -->
     <div class="genres-hero">
-      <h1 class="hero-title">随机探索</h1>
+      <h1 class="hero-title">发现</h1>
       <p class="hero-subtitle">随机浏览，发现更多内容</p>
       <div class="tab-bar" role="tablist" aria-label="探索类型">
         <button

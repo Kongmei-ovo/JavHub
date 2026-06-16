@@ -8,23 +8,6 @@ const tokenSourceNames = new Set([
   'src/assets/themes.js',
 ])
 
-// Candidates + Supplement 在 wave A 故意走 v2 设计语言(海报优先 / 实心内容层 /
-// 语义色 token),跟项目原本的 glass-everywhere 契约相冲;在用户决定 A/B
-// 之前,这些路径不纳入 raw-color / focus-ring / blur 等扫描契约。
-const v2IslandPaths = new Set([
-  'src/features/candidates/DownloadCandidatePanel.vue',
-  'src/features/candidates/downloadCandidatePanel.css',
-  'src/features/supplement/RepairLaneTab.vue',
-  'src/features/supplement/SourceHealthPanel.vue',
-  'src/features/supplement/sourceHealthPanel.css',
-  'src/features/supplement/SupplementJobList.vue',
-  'src/features/supplement/SupplementMoviesPanel.vue',
-  'src/features/supplement/supplementManagement.css',
-  'src/features/supplement/supplementMoviesPanel.css',
-  'src/features/supplement/supplementMovieRepair.css',
-  'src/views/SupplementManagement.vue',
-])
-
 function productionUiFiles(dirUrl = srcRoot) {
   return readdirSync(dirUrl, { withFileTypes: true }).flatMap((entry) => {
     const entryUrl = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, dirUrl)
@@ -90,7 +73,18 @@ function hasLayeredGlass(value) {
 test('production UI styles keep raw colors centralized in theme tokens', () => {
   const rawColor = /#[0-9a-fA-F]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)/g
   const offenders = collectMatches(productionUiFiles(), rawColor, {
-    ignore: ({ name }) => tokenSourceNames.has(name) || v2IslandPaths.has(name),
+    ignore: ({ name, source, match }) => {
+      if (tokenSourceNames.has(name)) return true
+      // 颜色函数的色相来自 token(如 rgba(var(--accent-rgb), 0.16) 这类 v2 语义 tint)
+      // —— 色相已集中,只有 alpha 是字面量,不算裸色,放行。
+      if (match[0].includes('var(')) return true
+      // 动态计算色(模板字面量插值,如 HSL-from-id 头像)无法固化成静态 token —— 放行;
+      // 静态裸色(行内无 ${ 插值)仍然必须集中到主题 token。
+      const lineStart = source.lastIndexOf('\n', match.index) + 1
+      const lineEnd = source.indexOf('\n', match.index)
+      const line = source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd)
+      return line.includes('${')
+    },
   })
 
   assert.deepEqual(offenders, [])
@@ -124,19 +118,10 @@ test('production source files stay reviewable below the large-file line', () => 
     ['src/assets/main.css', 1295],
     ['src/features/config/advancedSettingsPanel.css', 939],
     ['src/features/config/config.css', 1158],
-    ['src/features/library/libraryOrganize.css', 1092],
-    ['src/features/operations/operations.css', 1269],
     ['src/features/search/search.css', 1191],
-    ['src/features/supplement/SourceHealthPanel.vue', 1141],
-    ['src/features/supplement/sourceHealthPanel.css', 857],
     ['src/features/candidates/downloadCandidatePanel.css', 1100],
-    ['src/features/supplement/supplementManagement.css', 1200],
     ['src/features/translations/translationJobs.css', 1159],
     ['src/views/Config.vue', 1227],
-    ['src/views/Home.vue', 1279],
-    ['src/views/LibraryOrganize.vue', 972],
-    ['src/views/SupplementManagement.vue', 1489],
-    ['src/views/Operations.vue', 917],
     ['src/views/TranslationJobs.vue', 1092],
   ])
   const offenders = productionUiFiles()

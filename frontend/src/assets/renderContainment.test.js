@@ -6,45 +6,20 @@ const sources = new Map([
   ['actor.css', readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8')],
   ['entities.css', readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8')],
   ['favorites.css', readFileSync(new URL('../features/favorites/favorites.css', import.meta.url), 'utf8')],
-  ['home.css', readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8')],
+  ['downloads.css', readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8')],
   ['downloadCandidatePanel.css', readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8')],
-  ['inventory.css', readFileSync(new URL('../features/inventory/inventory.css', import.meta.url), 'utf8')],
-  ['libraryOrganize.css', readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8')],
-  ['normalize.css', readFileSync(new URL('../features/normalize/normalize.css', import.meta.url), 'utf8')],
-  ['operations.css', readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8')],
   ['search.css', readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8')],
   ['subscription.css', readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8')],
-  ['supplementManagement.css', readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8')],
-  ['supplementMoviesPanel.css', readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8')],
-  ['supplementMovieRepair.css', readFileSync(new URL('../features/supplement/supplementMovieRepair.css', import.meta.url), 'utf8')],
-  ['supplementSourceDiagnosticsDialog.css', readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8')],
-  ['supplementDiagnosticsFields.css', readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8')],
-  ['SupplementJobList.vue', readFileSync(new URL('../features/supplement/SupplementJobList.vue', import.meta.url), 'utf8')],
 ])
 
 const repeatedSurfaces = [
   ['actor.css', '.movie-card-wrap'],
   ['entities.css', '.entity-list-card'],
   ['favorites.css', '.collection-row'],
-  ['home.css', '.task-card'],
+  ['downloads.css', '.task-card'],
   ['downloadCandidatePanel.css', '.event-row'],
-  ['inventory.css', '.actor-card'],
-  ['libraryOrganize.css', '.missing-video'],
-  ['libraryOrganize.css', '.mapping-item'],
-  ['libraryOrganize.css', '.inventory-candidate'],
-  ['libraryOrganize.css', '.duplicate-group'],
-  ['libraryOrganize.css', '.job-row'],
-  ['normalize.css', '.mapping-card'],
-  ['normalize.css', '.mapping-row'],
-  ['operations.css', '.compact-row'],
-  ['operations.css', '.run-row'],
   ['search.css', '.result-card-group'],
   ['subscription.css', '.work-card-wrap'],
-  // supplementMoviesPanel.css 与 SupplementJobList.vue 的 .ios-row 走 v2 设计语言,
-  // 在用户决定 A/B 之前不参与 long-list containment 契约。
-  ['supplementSourceDiagnosticsDialog.css', '.diagnostics-row'],
-  ['supplementSourceDiagnosticsDialog.css', '.detail-source-item'],
-  ['supplementSourceDiagnosticsDialog.css', '.manual-action-item'],
 ]
 
 function collectStyleSources(rootUrl) {
@@ -81,23 +56,6 @@ function collectStyleSources(rootUrl) {
 }
 
 const pageStyleSources = collectStyleSources(new URL('../', import.meta.url))
-
-// Candidates + Supplement wave A 走 v2 设计语言(语义色 transition / 实心内容层),
-// 在用户决定 A/B 之前不参与 transition-only-transform 与 interactive-transform 契约。
-// 注意:此处路径相对 src/,与 pageStyleSources 的 key 对齐。
-const v2IslandPaths = new Set([
-  'features/candidates/DownloadCandidatePanel.vue',
-  'features/candidates/downloadCandidatePanel.css',
-  'features/supplement/RepairLaneTab.vue',
-  'features/supplement/SourceHealthPanel.vue',
-  'features/supplement/sourceHealthPanel.css',
-  'features/supplement/SupplementJobList.vue',
-  'features/supplement/SupplementMoviesPanel.vue',
-  'features/supplement/supplementManagement.css',
-  'features/supplement/supplementMoviesPanel.css',
-  'features/supplement/supplementMovieRepair.css',
-  'views/SupplementManagement.vue',
-])
 
 function selectorMatches(ruleSelector, selector) {
   return ruleSelector
@@ -223,7 +181,6 @@ test('page motion transitions only animate transform and opacity', () => {
   const offenders = []
 
   for (const [sourceName, source] of pageStyleSources) {
-    if (v2IslandPaths.has(sourceName)) continue
     for (const { selector, value } of declarationsFor(source, 'transition')) {
       const animatedProperties = splitTransitionItems(value).map(transitionPropertyFor)
       for (const property of animatedProperties) {
@@ -266,7 +223,6 @@ test('interactive transforms stay light for hover focus and press', () => {
   const offenders = []
 
   for (const [sourceName, source] of pageStyleSources) {
-    if (v2IslandPaths.has(sourceName)) continue
     for (const { selector, value } of declarationsFor(source, 'transform')) {
       const isHoverOrFocus = selectorHasState(selector, ':hover') || selectorHasState(selector, ':focus-visible')
       const isPress = selectorHasState(selector, ':active')

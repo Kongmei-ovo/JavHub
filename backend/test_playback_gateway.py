@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from test_support.client import create_router_test_client
+from test_support.client import create_authed_router_test_client
 
 
 RESOURCE = {
@@ -73,7 +73,7 @@ class PlaybackResourceRouteTests(unittest.TestCase):
     def _client(self):
         from routers.playback import router
 
-        return create_router_test_client(router)
+        return create_authed_router_test_client(router)
 
     def test_original_stream_uses_exact_final_request_user_agent_and_redirects(self):
         player_ua = "IINA/1.4.0 macOS"
@@ -90,6 +90,57 @@ class PlaybackResourceRouteTests(unittest.TestCase):
         self.assertEqual(response.headers["location"], "https://download.115.test/file?sig=secret")
         self.assertEqual(response.headers["cache-control"], "no-store")
         downurl.assert_awaited_once_with("pick-1", player_ua)
+
+    def test_expired_direct_link_transparently_relinks(self):
+        from routers.playback import relink_limiter
+        from services.open115 import Open115Error
+
+        relink_limiter.reset()
+        # request 1 → link-a; request 2 → first downurl expired, relink → link-b
+        downurl = AsyncMock(side_effect=["http://link-a", Open115Error(None, "expired"), "http://link-b"])
+        with patch("routers.playback.get_movie_resource", return_value=RESOURCE), \
+             patch("routers.playback.open115_client.downurl", new=downurl):
+            first = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+            second = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(first.headers["location"], "http://link-a")
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(second.headers["location"], "http://link-b")  # relinked, not an error
+        self.assertEqual(downurl.await_count, 3)
+
+    def test_relink_is_capped_and_marks_resource_missing(self):
+        from routers.playback import _RELINK_CAP, relink_limiter
+        from services.open115 import Open115Error
+
+        relink_limiter.reset()
+        downurl = AsyncMock(side_effect=Open115Error(None, "gone"))
+        with patch("routers.playback.get_movie_resource", return_value=RESOURCE), \
+             patch("routers.playback.open115_client.downurl", new=downurl), \
+             patch("routers.playback.set_movie_resource_status") as set_status:
+            response = self._client().get("/api/v1/playback/resources/9/stream?mode=original")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertLessEqual(downurl.await_count, _RELINK_CAP + 1)  # bounded, no infinite loop
+        set_status.assert_called_once_with(9, "missing")
+
+    def test_subtitle_resource_served_as_converted_vtt(self):
+        sub = {"id": 12, "resource_type": "subtitle", "movie_id": "ABC-123",
+               "pick_code": "pc", "extension": "srt", "name": "ABC-123.srt", "status": "ready"}
+        upstream = SimpleNamespace(status_code=200, text="1\n00:00:01,000 --> 00:00:02,000\nHi\n")
+        with patch("routers.playback.get_movie_resource", return_value=sub), \
+             patch("routers.playback.open115_client.downurl", new=AsyncMock(return_value="http://115/x.srt")), \
+             patch("routers.playback.playback_hls_client.get", new=AsyncMock(return_value=upstream)):
+            resp = self._client().get("/api/v1/playback/resources/12/subtitle.vtt")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers["content-type"].split(";")[0], "text/vtt")
+        self.assertTrue(resp.text.startswith("WEBVTT"))
+        self.assertIn("00:00:01.000 --> 00:00:02.000", resp.text)
+
+    def test_non_subtitle_resource_rejected_by_subtitle_endpoint(self):
+        with patch("routers.playback.get_movie_resource", return_value={"id": 1, "resource_type": "video"}):
+            resp = self._client().get("/api/v1/playback/resources/1/subtitle.vtt")
+        self.assertEqual(resp.status_code, 404)
 
     def test_web_mkv_gets_same_origin_hls_redirect_without_upstream_url(self):
         from services.open115 import TranscodeURL
@@ -162,7 +213,7 @@ class HLSProxyTests(unittest.TestCase):
     def _client(self):
         from routers.playback import router
 
-        return create_router_test_client(router)
+        return create_authed_router_test_client(router)
 
     def test_manifest_rewrites_segments_and_key_to_opaque_same_origin_targets(self):
         from services.playback_gateway import hls_sessions

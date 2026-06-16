@@ -13,6 +13,32 @@
         <button class="btn btn-ghost btn-sm" type="button" @click="loadJobs">刷新</button>
       </div>
     </div>
+    <section class="avatar-job-card" aria-label="头像覆盖作业">
+      <div class="avatar-job-head">
+        <div>
+          <h3>头像覆盖作业</h3>
+          <p>gfriends Filetree 匹配本地演员头像并校验图片健康 · 全局维护任务</p>
+        </div>
+        <span class="status-pill" :class="`status-${gfriendsAvatarJob?.status || 'idle'}`">{{ statusLabel(gfriendsAvatarJob?.status) }}</span>
+      </div>
+      <div class="avatar-job-actions">
+        <button class="btn btn-primary btn-sm" type="button" :disabled="gfriendsAvatarSyncing || isGfriendsAvatarJobRunning" @click="confirmSyncAvatars">
+          {{ gfriendsAvatarSyncing || isGfriendsAvatarJobRunning ? '同步中...' : '同步演员头像' }}
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" :class="{ active: jobFilters.source === 'gfriends' }" @click="toggleAvatarJobFilter">
+          {{ jobFilters.source === 'gfriends' ? '显示全部任务' : '只看头像任务' }}
+        </button>
+      </div>
+      <div class="avatar-job-metrics">
+        <div><strong>{{ gfriendsAvatarJob?.total_found ?? 0 }}</strong><span>匹配头像</span></div>
+        <div><strong>{{ gfriendsAvatarJob?.inserted_count ?? 0 }}</strong><span>写入覆盖</span></div>
+        <div><strong>{{ gfriendsAvatarJob?.updated_count ?? 0 }}</strong><span>已校验</span></div>
+        <div><strong>{{ gfriendsAvatarJob?.matched_r18 ?? 0 }}</strong><span>有效头像</span></div>
+      </div>
+      <p v-if="gfriendsAvatarJob?.last_error" class="avatar-job-error">{{ gfriendsAvatarJob.last_error }}</p>
+      <p v-else class="avatar-job-footnote">{{ gfriendsAvatarJob?.created_at ? `最近任务 #${gfriendsAvatarJob.id} · ${formatActionTime(gfriendsAvatarJob.finished_at || gfriendsAvatarJob.started_at || gfriendsAvatarJob.created_at)}` : '暂无头像同步任务' }}</p>
+    </section>
+
     <div v-if="contextItems.length" class="queue-filter-summary" aria-label="全局队列筛选上下文">
       <span v-for="item in contextItems" :key="item.label" class="queue-filter-chip">
         <b>{{ item.label }}</b>
@@ -45,6 +71,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import GlassSelect from '../../components/GlassSelect.vue'
 import SupplementJobList from './SupplementJobList.vue'
+import { requestConfirm } from '../../utils/confirmDialog'
 import { useSupplementApi } from './useSupplementApi.js'
 
 export default {
@@ -175,12 +202,30 @@ export default {
       await supplement.recoverStale(30)
     }
 
+    async function confirmSyncAvatars() {
+      const confirmed = await requestConfirm({
+        title: '同步演员头像？',
+        message: '会拉取 gfriends Filetree、匹配本地演员、写入头像覆盖，并校验图片可访问性。',
+        details: '这是全局维护任务，不绑定具体演员。已有运行中的头像同步任务时会复用该任务。',
+        confirmText: '开始同步',
+      })
+      if (!confirmed) return
+      await supplement.syncGfriendsAvatars()
+    }
+
+    async function toggleAvatarJobFilter() {
+      jobFilters.source = jobFilters.source === 'gfriends' ? '' : 'gfriends'
+      jobPage.value = 1
+      emit('filters-change', { ...jobFilters })
+      await loadJobs()
+    }
+
     watch(
       () => [props.actorContext?.id || '', JSON.stringify(props.initialFilters), props.refreshNonce],
       async () => {
         jobPage.value = 1
         syncFilters()
-        await loadJobs()
+        await Promise.all([loadJobs(), supplement.loadGfriendsAvatarJob()])
       },
       { immediate: true }
     )
@@ -200,7 +245,11 @@ export default {
       applyJobFilters,
       goJobPage,
       recoverStaleJobs,
+      confirmSyncAvatars,
+      toggleAvatarJobFilter,
     }
   },
 }
 </script>
+
+<style scoped src="./supplementPanel.css"></style>

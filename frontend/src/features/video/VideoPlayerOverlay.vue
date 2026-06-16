@@ -22,9 +22,20 @@
           controls
           autoplay
           playsinline
+          crossorigin="anonymous"
           @keydown.left.prevent="$emit('seek-backward')"
           @keydown.right.prevent="$emit('seek-forward')"
-        ></video>
+        >
+          <track
+            v-for="(track, index) in subtitles"
+            :key="track.url"
+            kind="subtitles"
+            :src="track.url"
+            :srclang="track.srclang || 'und'"
+            :label="track.label || ('字幕 ' + (index + 1))"
+            :default="track.default || index === 0"
+          />
+        </video>
       </div>
       <div class="vp-info">
         <span class="vp-title">{{ title }}</span>
@@ -40,6 +51,7 @@ export default {
     visible: { type: Boolean, default: false },
     src: { type: String, default: '' },
     title: { type: String, default: '' },
+    subtitles: { type: Array, default: () => [] },
   },
   emits: ['close', 'seek-forward', 'seek-backward'],
   methods: {

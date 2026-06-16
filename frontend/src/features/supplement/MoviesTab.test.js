@@ -23,7 +23,16 @@ test('MoviesTab performs movie actions through the shared composable', () => {
   assert.match(source, /createDownloadCandidates/)
   assert.match(source, /openMovieSources/)
   assert.match(source, /emit\('jobs-requested'/)
-  assert.match(source, /emit\('sources-opened'/)
   assert.match(source, /emit\('filters-change'/)
   assert.match(source, /applyImageFallback/)
+})
+
+test('MoviesTab owns the diagnostics drawer (no tab swap, addressed by ?work)', () => {
+  // Work-first restructure: 诊断 opens a right-side drawer here instead of emitting
+  // sources-opened to swap to a separate 来源诊断 tab.
+  assert.match(source, /SupplementSourceDiagnosticsDialog/)
+  assert.match(source, /drawer/)
+  assert.match(source, /route\.query\.work/)
+  assert.match(source, /work:\s*String\(movie\.id\)/)
+  assert.doesNotMatch(source, /emit\('sources-opened'/)
 })

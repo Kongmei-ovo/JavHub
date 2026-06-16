@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 from pydantic import ValidationError
 
@@ -95,40 +95,12 @@ class SubscriptionScopePipelineTest(TempPostgresMixin, unittest.IsolatedAsyncioT
         info_client.get_maker_videos.assert_any_await(123, page=1, page_size=100)
         info_client.get_maker_videos.assert_any_await(123, page=2, page_size=100)
 
-    async def test_generates_candidates_for_label_scope_with_target_metadata(self):
-        from services.watchlist_pipeline import WatchlistPipeline
 
-        info_client = AsyncMock()
-        info_client.get_label_videos.return_value = {
-            "data": [
-                {
-                    "content_id": "sivr438",
-                    "dvd_id": "SIVR-438",
-                    "title_ja": "Title",
-                    "release_date": "2026-05-01",
-                }
-            ]
-        }
-        emby_client = AsyncMock()
-        emby_client.check_exists.return_value = False
-
-        pipeline = WatchlistPipeline(info_client=info_client, emby_client=emby_client)
-        result = await pipeline.generate_candidates_for_label(456, "FALENO", "subscription")
-
-        self.assertEqual(result["checked"], 1)
-        self.assertEqual(result["created"], 1)
-        self.assertEqual(result["new_movies_count"], 1)
-        self.assertEqual(result["scope"], "label")
-        self.assertEqual(result["target_id"], 456)
-        self.assertEqual(result["target_label"], "FALENO")
-        self.assertEqual(result["candidates"][0]["dvd_id"], "SIVR-438")
-        info_client.get_label_videos.assert_awaited_once_with(456, page=1, page_size=100)
-
-
-class SubscriptionScopeServiceTest(unittest.IsolatedAsyncioTestCase):
+class SubscriptionScopeServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
     async def test_check_report_dispatches_non_actress_scope(self):
         from services.subscription import check_all_subscriptions_report
 
+        maker_videos = [{"content_id": "SIVR-438", "dvd_id": "SIVR-438", "title": "T"}]
         with patch("services.subscription.get_subscriptions", return_value=[
             {
                 "id": 9,
@@ -140,29 +112,16 @@ class SubscriptionScopeServiceTest(unittest.IsolatedAsyncioTestCase):
                 "cadence_minutes": 0,
             }
         ]), patch("services.subscription.WatchlistPipeline") as pipeline_cls, \
-            patch("services.subscription.update_last_check") as update_last_check, \
-            patch("services.subscription._load_latest_existing_codes", return_value=None):
+            patch("services.subscription.update_last_check") as update_last_check:
             pipeline = pipeline_cls.return_value
-            pipeline.generate_candidates_for_maker = AsyncMock(return_value={
-                "checked": 1,
-                "created": 1,
-                "existing": 0,
-                "skipped": 0,
-                "skipped_exempt": 0,
-                "in_library": 0,
-                "candidate_count": 1,
-                "new_movies": [{"dvd_id": "SIVR-438"}],
-            })
+            # Pipeline is now used as a fetcher; first check just records the baseline.
+            pipeline.fetch_maker_videos = AsyncMock(return_value=maker_videos)
 
             report = await check_all_subscriptions_report()
 
-        pipeline.generate_candidates_for_maker.assert_awaited_once_with(
-            target_id=123,
-            target_label="FALENO",
-            trigger_source="subscription",
-            reason="subscription_check",
-        )
+        pipeline.fetch_maker_videos.assert_awaited_once_with(123, info_semaphore=ANY)
         self.assertEqual(report["subscriptions_checked"], 1)
+        self.assertEqual(report["subscriptions_baselined"], 1)
         self.assertEqual(report["results"][0]["scope"], "maker")
         self.assertEqual(report["results"][0]["target_id"], 123)
         self.assertEqual(report["results"][0]["target_label"], "FALENO")

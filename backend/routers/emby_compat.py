@@ -38,11 +38,15 @@ from services.emby_mapper import (
     SERVER_ID,
     empty_result,
     library_view_dto,
-    media_source_dto,
-    online_media_source_dto,
     ticks_to_seconds,
     to_base_item_dto,
 )
+from services.emby_images import (
+    actress_image_url,
+    movie_backdrop_image_urls,
+    movie_primary_image_url,
+)
+from services.emby_playback import emby_playback_broker
 from services.emby_auth import (
     EmbyHTTPException,
     extract_token,
@@ -80,6 +84,15 @@ discovery_router = APIRouter(tags=["emby-compat"])
 
 EMBY_USER_ID = "javhub-emby-user"
 METADATA_CONCURRENCY = 8
+EMBY_FIELDS_REQUIRING_DETAIL = {
+    "backdropimagetags",
+    "genres",
+    "genreitems",
+    "overview",
+    "people",
+    "seriesname",
+    "studios",
+}
 TRANSPARENT_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 )
@@ -547,7 +560,7 @@ async def virtual_folders(request: Request):
 @router.get("/Users/{user_id}/Items/Resume")
 @router.get("/users/{user_id}/items/resume", include_in_schema=False)
 async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
-    token = _require_auth(request)
+    _require_auth(request)
     default_limit = 12 if isinstance(Limit, QueryParam) else Limit
     limit = min(max(_query_int(request, "Limit", default=default_limit), 1), 200)
     rows = [r for r in list_continue_watching(limit=limit) if r.get("source") == "library"]
@@ -556,10 +569,11 @@ async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
     favorite_flags = await asyncio.to_thread(movie_favorite_flags, codes)
     items = []
     for row in rows:
-        resources = list_movie_resources(row["content_id"])
         items.append(to_base_item_dto(
-            row["content_id"], metadata.get(row["content_id"]), resources,
-            progress=row, is_favorite=favorite_flags.get(row["content_id"], False), token=token,
+            row["content_id"],
+            metadata.get(row["content_id"]),
+            progress=row,
+            is_favorite=favorite_flags.get(row["content_id"], False),
         ))
     return {"Items": items, "TotalRecordCount": len(items), "StartIndex": 0}
 
@@ -567,7 +581,7 @@ async def items_resume(user_id: str, request: Request, Limit: int = Query(12)):
 @router.get("/Users/{user_id}/Items/Latest")
 @router.get("/users/{user_id}/items/latest", include_in_schema=False)
 async def items_latest(user_id: str, request: Request, Limit: int = Query(16)):
-    token = _require_auth(request)
+    _require_auth(request)
     default_limit = 16 if isinstance(Limit, QueryParam) else Limit
     limit = min(max(_query_int(request, "Limit", default=default_limit), 1), 200)
     page = await _catalog_page(start_index=0, limit=limit)
@@ -592,7 +606,6 @@ async def items_latest(user_id: str, request: Request, Limit: int = Query(16)):
                 str(metadata.get("content_id") or metadata.get("dvd_id") or ""),
                 False,
             ),
-            token=token,
         )
         for metadata in rows
     ]
@@ -812,6 +825,16 @@ async def _browse_items_impl(
         str(metadata.get("content_id") or metadata.get("dvd_id") or "")
         for metadata in page.get("data") or []
     ]
+    requested_fields = {
+        field.casefold()
+        for field in split_csv(_query_value(request, "Fields", default=""))
+    }
+    if requested_fields.intersection(EMBY_FIELDS_REQUIRING_DETAIL):
+        detail_map = await _metadata_for(content_ids)
+        page["data"] = [
+            detail_map.get(content_id) or metadata
+            for content_id, metadata in zip(content_ids, page.get("data") or [])
+        ]
     progress_map, favorite_flags = await asyncio.gather(
         asyncio.to_thread(get_progress_map, content_ids, source="library"),
         asyncio.to_thread(movie_favorite_flags, content_ids),
@@ -822,7 +845,6 @@ async def _browse_items_impl(
             metadata,
             progress=progress_map.get(content_id),
             is_favorite=favorite_flags.get(content_id, False),
-            token=token,
         )
         for content_id, metadata in zip(content_ids, page.get("data") or [])
     ]
@@ -836,24 +858,20 @@ async def _browse_items_impl(
 @router.get("/Users/{user_id}/Items/{item_id}")
 @router.get("/users/{user_id}/items/{item_id}", include_in_schema=False)
 async def item_detail(user_id: str, item_id: str, request: Request):
-    token = _require_auth(request)
+    _require_auth(request)
     from modules.info_client import get_info_client
 
     try:
         metadata = await get_info_client().get_catalog_video(item_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Item not found")
-    resources = list_movie_resources(item_id)
     progress = get_progress(item_id, source="library")
     favorite = await asyncio.to_thread(is_movie_favorite, item_id)
     return to_base_item_dto(
         item_id,
         metadata,
-        resources,
         progress=progress,
         is_favorite=favorite,
-        token=token,
-        detailed=True,
     )
 
 
@@ -962,40 +980,28 @@ async def item_image(
 
     url = ""
     if item_id.casefold().startswith("person:"):
-        actress_id = parse_person_id(item_id)
+        if image_type.casefold() == "primary":
+            actress_id = parse_person_id(item_id)
+        else:
+            actress_id = None
         if actress_id is not None:
             try:
                 actress = await get_info_client().get_actress(actress_id)
             except Exception:
                 actress = {}
-            url = str(
-                actress.get("image_url")
-                or actress.get("avatar_url")
-                or actress.get("javinfo_avatar_url")
-                or ""
-            )
+            url = actress_image_url(actress)
     else:
         try:
             metadata = await get_info_client().get_catalog_video(item_id)
         except Exception:
             metadata = {}
         image_kind = image_type.casefold()
-        if image_kind == "backdrop":
-            candidates = (
-                metadata.get("sample_image_urls")
-                or metadata.get("sample_images")
-                or []
-            )
-            if isinstance(candidates, str):
-                candidates = [candidates]
-            if isinstance(candidates, list) and candidates:
-                url = str(candidates[min(index, len(candidates) - 1)] or "")
-            url = url or str(metadata.get("backdrop_url") or "")
-        url = url or str(
-            metadata.get("jacket_full_url")
-            or metadata.get("jacket_thumb_url")
-            or ""
-        )
+        if image_kind == "primary":
+            url = movie_primary_image_url(metadata)
+        elif image_kind == "backdrop":
+            candidates = movie_backdrop_image_urls(metadata)
+            if 0 <= index < len(candidates):
+                url = candidates[index]
     if not url:
         return Response(
             content=b"" if request.method == "HEAD" else TRANSPARENT_PNG,
@@ -1018,18 +1024,11 @@ async def item_image(
 @router.post("/items/{item_id}/playbackinfo", include_in_schema=False)
 async def playback_info(item_id: str, request: Request):
     token = _require_auth(request)
-    resources = [
-        resource for resource in list_movie_resources(item_id)
-        if resource.get("resource_type") == "video" and resource.get("status") == "ready"
-    ]
-    resources.sort(
-        key=lambda resource: (
-            not bool(resource.get("is_default")),
-            -int(resource.get("size") or 0),
-        )
+    sources = emby_playback_broker.describe(
+        item_id,
+        token,
+        list_movie_resources(item_id),
     )
-    sources = [media_source_dto(resource, item_id, token=token) for resource in resources]
-    sources.append(online_media_source_dto(item_id, token=token))
     return {
         "MediaSources": sources,
         "PlaySessionId": uuid.uuid4().hex,
@@ -1085,33 +1084,34 @@ async def video_stream(
 ):
     """Emby stream entry; 115 resolution happens only for this final request."""
     _require_auth(request)
+    if getattr(request, "method", "GET").upper() == "HEAD":
+        return Response(
+            status_code=200,
+            media_type=emby_playback_broker.probe_media_type(ext),
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "no-store",
+            },
+        )
+
     media_source_id = (
         None if isinstance(MediaSourceId, QueryParam) else MediaSourceId
     ) or _query_value(request, "MediaSourceId")
     requested_mode_value = (
         "" if isinstance(mode, QueryParam) else mode
     )
-    if media_source_id == "online:auto":
+    selection = emby_playback_broker.select(
+        item_id,
+        str(media_source_id or ""),
+        get_resource=get_movie_resource,
+        list_resources=list_movie_resources,
+    )
+    if selection is None:
+        raise HTTPException(status_code=404, detail="Media source not found")
+    if selection.kind == "online":
         return RedirectResponse(url=await _resolve_online_stream(item_id), status_code=302)
 
-    resource = None
-    if media_source_id and str(media_source_id).startswith("open115:"):
-        try:
-            resource_id = int(str(media_source_id).split(":", 1)[1])
-        except ValueError as exc:
-            raise HTTPException(status_code=404, detail="Media source not found") from exc
-        resource = get_movie_resource(resource_id)
-    else:
-        resources = [
-            item for item in list_movie_resources(item_id)
-            if item.get("resource_type") == "video" and item.get("status") == "ready"
-        ]
-        resource = next((item for item in resources if item.get("is_default")), None)
-        resource = resource or (resources[0] if resources else None)
-
-    if not resource or str(resource.get("movie_id")) != item_id:
-        raise HTTPException(status_code=404, detail="Media source not found")
-
+    resource = selection.resource or {}
     requested_mode = requested_mode_value or ("hls" if ext.lower() == "m3u8" else "original")
     from routers.playback import stream_movie_resource
 
@@ -1121,6 +1121,48 @@ async def video_stream(
         mode=requested_mode,
         caller="emby",
     )
+
+
+@router.api_route("/Videos/{item_id}/subtitles/{resource_id}/stream.{ext}", methods=["GET", "HEAD"])
+@router.api_route("/Videos/{item_id}/subtitles/{resource_id}/stream", methods=["GET", "HEAD"])
+@router.api_route(
+    "/videos/{item_id}/subtitles/{resource_id}/stream.{ext}",
+    methods=["GET", "HEAD"],
+    include_in_schema=False,
+)
+async def video_subtitle_stream(item_id: str, resource_id: int, request: Request, ext: str = ""):
+    """Serve a downloaded subtitle resource as WebVTT (ass/ssa converted)."""
+    _require_auth(request)
+    resource = get_movie_resource(resource_id)
+    if (
+        not resource
+        or resource.get("resource_type") != "subtitle"
+        or str(resource.get("movie_id")) != item_id
+    ):
+        raise HTTPException(status_code=404, detail="Subtitle not found")
+    if getattr(request, "method", "GET").upper() == "HEAD":
+        return Response(status_code=200, media_type="text/vtt", headers={"Cache-Control": "no-store"})
+    pick_code = str(resource.get("pick_code") or "")
+    if not pick_code:
+        raise HTTPException(status_code=409, detail="Subtitle not available")
+
+    from routers.playback import playback_hls_client
+    from services.open115 import Open115Error, open115_client
+    from services.subtitles import to_webvtt
+
+    ua = request.headers.get("user-agent", "")
+    try:
+        url = await open115_client.downurl(pick_code, ua)
+        upstream = await playback_hls_client.get(url, headers={"User-Agent": ua} if ua else {})
+    except Open115Error as exc:
+        raise HTTPException(status_code=502, detail="115 字幕换链失败") from exc
+    except Exception as exc:  # network/transport failure
+        raise HTTPException(status_code=502, detail="字幕下载失败") from exc
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="字幕上游不可用")
+
+    vtt = to_webvtt(upstream.text, str(resource.get("extension") or ""))
+    return PlainTextResponse(vtt, media_type="text/vtt", headers={"Cache-Control": "no-store"})
 
 
 @router.api_route("/Videos/{item_id}/original", methods=["GET", "HEAD"])
@@ -1191,7 +1233,10 @@ async def _record_session_progress(request: Request) -> Response:
     if item_id:
         position = ticks_to_seconds(body.get("PositionTicks"))
         duration = await _duration_seconds_for(item_id, body)
-        save_progress(item_id, "library", position, duration)
+        # Round-trip Emby (Infuse/VidHub) playback position into the shared
+        # movie-level record so web ↔ Emby continue-watching truly converge;
+        # last_source='emby' marks where it came from.
+        save_progress(item_id, "emby", position, duration)
     return Response(status_code=204)
 
 

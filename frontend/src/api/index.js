@@ -477,6 +477,47 @@ export default {
     return api.post('/v1/open115/unbind')
   },
 
+  // ========== 115 文件管理 ==========
+
+  listOpen115Files({ cid = '0', offset = 0, limit = 100, keyword = '' } = {}) {
+    const params = { cid, offset, limit }
+    if (keyword) params.keyword = keyword
+    return api.get('/v1/open115/files', { params, silentError: true })
+  },
+
+  createOpen115Folder(pid, name) {
+    return api.post('/v1/open115/files/folder', { pid: String(pid), name })
+  },
+
+  renameOpen115File(fileId, name) {
+    return api.post('/v1/open115/files/rename', { file_id: String(fileId), name })
+  },
+
+  moveOpen115Files(fileIds, toCid) {
+    return api.post('/v1/open115/files/move', { file_ids: fileIds.map(String), to_cid: String(toCid) })
+  },
+
+  copyOpen115Files(fileIds, toCid) {
+    return api.post('/v1/open115/files/copy', { file_ids: fileIds.map(String), to_cid: String(toCid) })
+  },
+
+  deleteOpen115Files(fileIds, parentId) {
+    return api.post('/v1/open115/files/delete', { file_ids: fileIds.map(String), parent_id: parentId ? String(parentId) : null })
+  },
+
+  getOpen115VideoSources(pickCode) {
+    return api.get('/v1/open115/files/video', { params: { pick_code: pickCode }, silentError: true })
+  },
+
+  open115ImageUrl(pickCode, ext = '') {
+    const suffix = ext ? `&ext=${encodeURIComponent(ext)}` : ''
+    return `/api/v1/open115/files/image?pick_code=${encodeURIComponent(pickCode)}${suffix}`
+  },
+
+  open115StreamUrl(pickCode) {
+    return `/api/v1/open115/files/stream?pick_code=${encodeURIComponent(pickCode)}`
+  },
+
   exportConfig() {
     return api.get('/v1/config/export', { responseType: 'blob' })
   },
@@ -821,6 +862,24 @@ export default {
     return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/stream?mode=${normalizedMode}`
   },
 
+  movieResourceSubtitleUrl(resourceId) {
+    return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/subtitle.vtt`
+  },
+
+  // ========== 按需获取会话（点播/订阅复用同一条链路） ==========
+
+  startAcquisition(movieId, { auto = true } = {}) {
+    return api.post(`/v1/movies/${pathSegment(movieId, 'movieId')}/acquisitions`, { auto })
+  },
+
+  getAcquisition(sessionId) {
+    return api.get(`/v1/acquisitions/${numericPathSegment(sessionId, 'sessionId')}`)
+  },
+
+  stopAcquisitionWaiting(sessionId) {
+    return api.post(`/v1/acquisitions/${numericPathSegment(sessionId, 'sessionId')}/stop-waiting`)
+  },
+
   savePlaybackProgress(contentId, data) {
     return api.put(`/v1/playback/progress/${contentId}`, data)
   },
@@ -833,29 +892,17 @@ export default {
     return api.get('/v1/playback/continue', { params: { limit } })
   },
 
-  // ========== 运营总览 ==========
-
-  getOperationsOverview() {
-    return api.get('/v1/operations/overview')
-  },
-
-  getDataQualityOverview(limit = 8) {
-    return api.get('/v1/data-quality/overview', { params: { limit } })
-  },
-
-  runCandidateProcessingNow() {
-    return api.post('/v1/operations/candidate-processing/run')
-  },
+  // ========== 运营总览 / 系统作业 ==========
 
   getSchedulerJobs() {
     return api.get('/v1/scheduler/jobs', { silentError: true })
   },
 
-  ensureSubscribedSupplement() {
-    return api.post('/v1/supplement/actresses/ensure_subscribed')
+  runSchedulerJob(jobId) {
+    return api.post(`/v1/scheduler/jobs/${jobId}/run`)
   },
 
-  runInventoryPipeline(data = {}) {
-    return api.post('/inventory/pipeline/run', data)
+  ensureSubscribedSupplement() {
+    return api.post('/v1/supplement/actresses/ensure_subscribed')
   }
 }

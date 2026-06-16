@@ -86,6 +86,26 @@ class EmbyOpen115Tests(unittest.TestCase):
 
         self.assertEqual([source["Id"] for source in response["MediaSources"]], ["online:auto"])
 
+    def test_playback_info_only_describes_sources_without_resolving_them(self):
+        from routers.emby_compat import playback_info
+
+        with patch("routers.emby_compat.config._config", EMBY_CONFIG), \
+             patch("routers.emby_compat.list_movie_resources", return_value=[RESOURCE]), \
+             patch(
+                 "services.open115.open115_client.downurl",
+                 new=AsyncMock(side_effect=AssertionError("PlaybackInfo must not resolve 115")),
+             ), \
+             patch(
+                 "sources.m3u8_source.M3U8Source.search_m3u8",
+                 new=AsyncMock(side_effect=AssertionError("PlaybackInfo must not search online")),
+             ):
+            response = asyncio.run(playback_info("stable:item-1", self.request))
+
+        self.assertEqual(
+            [source["Id"] for source in response["MediaSources"]],
+            ["open115:9", "online:auto"],
+        )
+
     def test_stream_delegates_resource_to_ua_aware_gateway(self):
         from routers.emby_compat import video_stream
 

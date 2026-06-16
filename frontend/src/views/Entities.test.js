@@ -49,9 +49,9 @@ test('entities portrait directories reuse actor portrait cards with API image fi
   assert.match(source, /item\.image_url \|\| item\.avatar_url \|\| item\.javinfo_avatar_url/)
 })
 
-test('entities separates JavInfo data actors from Emby library actors in labels and favorites', () => {
+test('entities exposes the JavInfo actress directory with favorites', () => {
   assert.match(source, /key: 'actresses'[\s\S]*label: '资料库演员'[\s\S]*favorite: true/)
-  assert.match(source, /key: 'actors'[\s\S]*label: 'Emby演员'[\s\S]*favorite: false/)
+  assert.doesNotMatch(source, /Emby演员|listInventoryActors|inventoryRoute/)
   assert.match(source, /canFavoriteEntity\(\) \{[\s\S]*return this\.activeConfig\.favorite !== false/)
   assert.match(source, /v-if="canFavoriteEntity"[\s\S]*class="entity-list-card__favorite"/)
   assert.match(source, /async toggleEntityFavorite\(item\) \{[\s\S]*if \(!this\.canFavoriteEntity\) return false/)
@@ -70,16 +70,11 @@ test('people entities render portrait media cards while metadata stays text-only
   assert.match(source, /v-else :class="\['entity-list-grid', \{ 'entity-list-grid--wide': usesWideTextCards \}\]"/)
   assert.match(source, /usesPortraitCards\(\) \{[\s\S]*return this\.activeConfig\.portrait === true/)
   assert.match(source, /key: 'actresses'[\s\S]*portrait: true/)
-  assert.match(source, /key: 'actors'[\s\S]*loader: 'listInventoryActors', paged: true, portrait: true, inventoryRoute: true, favorite: false/)
   assert.match(source, /key: 'categories'[\s\S]*loader: 'listCategories', paged: false \}/)
 })
 
-test('entities actor tab uses inventory actors so portraits can come from Emby', () => {
-  assert.match(source, /listInventoryActors: \(_page, _pageSize, options\) => api\.listInventoryActors\(\{/)
-  assert.match(source, /search: options\.q/)
-  assert.match(source, /sort_by: 'total_videos'/)
-  assert.match(source, /sort_order: 'desc'/)
-  assert.match(source, /if \(cfg\.inventoryRoute\) \{[\s\S]*\/inventory\/actors\/\$\{encodeURIComponent\(String\(value\)\)\}/)
+test('entities has no retired inventory actor route', () => {
+  assert.doesNotMatch(source, /listInventoryActors|inventoryRoute|\/inventory\/actors/)
 })
 
 test('entities page keeps chrome lean and hides raw ids', () => {

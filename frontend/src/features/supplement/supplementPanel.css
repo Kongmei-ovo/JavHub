@@ -1,0 +1,266 @@
+/* ============================================================
+   Supplement workbench — shared panel chrome + type scale.
+   Single source of truth for the three tabs (待补全作品 / 任务队列 /
+   来源健康) so their headings, subtitles, filter chips
+   and pagination stay identical. Import this (scoped) into every
+   component that renders `.workspace-panel` markup directly.
+
+   Type scale (design_handoff_javhub_redesign · --t-* → project --type-*):
+     panel title  (h2)  22px / 650 / -0.3px   — design --t-h2
+     subsection   (h3)  17px / 600 / -0.1px   — design --t-h3
+     body/callout       14px / 500            — --type-callout
+     caption            12px / 550            — --type-caption
+     micro              11px / 600            — --type-micro
+     badge              10px / 700            — --type-badge
+     metric numeral     28px / 700 mono       — --font-mono, tabular-nums
+   ============================================================ */
+
+.workspace-panel {
+  padding: 22px;
+  border-radius: var(--radius-sheet);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+}
+
+.workspace-panel p {
+  margin: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.panel-subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  font-weight: 550;
+}
+
+/* filter bar (shared by 作品字段 / 任务队列 / 来源状态) */
+.filter-bar {
+  --supplement-filter-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.filter-bar.compact {
+  margin-bottom: 0;
+}
+
+.filter-bar .glass-select {
+  min-width: 132px;
+  --radius-control: var(--supplement-filter-radius);
+}
+
+.filter-bar .btn {
+  min-width: 72px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: var(--supplement-filter-radius);
+}
+
+/* queue filter context chips (任务队列) */
+.queue-filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 14px;
+}
+
+.queue-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  font-size: var(--type-caption);
+  white-space: nowrap;
+}
+
+.queue-filter-chip b {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.queue-filter-chip em {
+  color: var(--text-primary);
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* status pill (任务状态 / 诊断状态 / 来源状态) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
+  border: 1px solid var(--badge-info-border);
+  color: var(--badge-info-text);
+}
+
+.status-succeeded {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
+  border-color: var(--badge-success-border);
+  color: var(--badge-success-text);
+}
+
+.status-running,
+.status-queued {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
+  color: var(--badge-warning-text);
+}
+
+.status-failed {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
+  border-color: var(--badge-error-border);
+  color: var(--badge-error-text);
+}
+
+.status-idle {
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
+  border-color: var(--badge-info-border);
+  color: var(--badge-info-text);
+}
+
+/* avatar override job card (任务队列 — global maintenance job) */
+.avatar-job-card {
+  display: grid;
+  gap: 12px;
+  margin: 2px 0 16px;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--card-2);
+}
+
+.avatar-job-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.avatar-job-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--text-primary);
+}
+
+.avatar-job-head p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
+.avatar-job-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.avatar-job-actions .btn.active {
+  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+}
+
+.avatar-job-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.avatar-job-metrics > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+
+.avatar-job-metrics strong {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.avatar-job-metrics span {
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  font-weight: 600;
+}
+
+.avatar-job-error {
+  color: var(--badge-error-text);
+  font-size: var(--type-caption);
+}
+
+.avatar-job-footnote {
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
+@media (max-width: 860px) {
+  .avatar-job-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* pagination (作品字段 / 任务队列) */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

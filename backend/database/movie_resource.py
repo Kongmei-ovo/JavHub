@@ -68,6 +68,9 @@ def upsert_movie_resource(
     is_default: bool = False,
     download_task_id: int | None = None,
     related_resource_id: int | None = None,
+    version_label: str | None = None,
+    part_index: int | None = None,
+    group_key: str | None = None,
 ) -> tuple[int, bool]:
     movie_id, provider, remote_file_id, name, status, resource_type = _validated_values(
         movie_id=movie_id,
@@ -102,9 +105,10 @@ def upsert_movie_resource(
                     movie_id, provider, remote_file_id, parent_id, pick_code,
                     name, extension, size, duration, resource_type, status,
                     is_default, download_task_id, related_resource_id,
+                    version_label, part_index, group_key,
                     created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 (
@@ -122,6 +126,9 @@ def upsert_movie_resource(
                     can_be_default,
                     download_task_id,
                     related_resource_id,
+                    str(version_label or ""),
+                    int(part_index) if part_index is not None else None,
+                    str(group_key or ""),
                 ),
             )
             resource_id = int(cursor.lastrowid)
@@ -134,7 +141,8 @@ def upsert_movie_resource(
                 SET movie_id = ?, parent_id = ?, pick_code = ?, name = ?,
                     extension = ?, size = ?, duration = ?, resource_type = ?,
                     status = ?, is_default = ?, download_task_id = ?,
-                    related_resource_id = ?, updated_at = CURRENT_TIMESTAMP
+                    related_resource_id = ?, version_label = ?, part_index = ?,
+                    group_key = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
                 (
@@ -150,12 +158,69 @@ def upsert_movie_resource(
                     can_be_default,
                     download_task_id,
                     related_resource_id,
+                    str(version_label or ""),
+                    int(part_index) if part_index is not None else None,
+                    str(group_key or ""),
                     resource_id,
                 ),
             )
             created = False
         _bump_generation()
         return resource_id, created
+
+
+def code_has_ready_resource(code: str) -> bool:
+    movie_id = str(code or "").strip()
+    if not movie_id:
+        return False
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 1 FROM movie_resources
+            WHERE movie_id = ? AND resource_type = 'video' AND status = 'ready'
+            LIMIT 1
+            """,
+            (movie_id,),
+        )
+        return cursor.fetchone() is not None
+
+
+def list_ready_video_movie_ids() -> list[str]:
+    """All movie_ids with a ready video resource. Scans only the sparse resource
+    library (never the 1.8M metadata set) — intended for migration/parity tools."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT movie_id FROM movie_resources
+            WHERE resource_type = 'video' AND status = 'ready'
+            """
+        )
+        return [str(row["movie_id"]) for row in cursor.fetchall()]
+
+
+def codes_with_ready_resource(codes: list[str]) -> set[str]:
+    movie_ids = list(dict.fromkeys(str(code or "").strip() for code in codes))
+    movie_ids = [movie_id for movie_id in movie_ids if movie_id]
+    if not movie_ids:
+        return set()
+    ready_movie_ids: set[str] = set()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        for offset in range(0, len(movie_ids), 500):
+            batch = movie_ids[offset : offset + 500]
+            placeholders = ", ".join("?" for _ in batch)
+            cursor.execute(
+                f"""
+                SELECT DISTINCT movie_id FROM movie_resources
+                WHERE movie_id IN ({placeholders})
+                  AND resource_type = 'video' AND status = 'ready'
+                """,
+                tuple(batch),
+            )
+            ready_movie_ids.update(str(row["movie_id"]) for row in cursor.fetchall())
+    return ready_movie_ids
 
 
 def get_movie_resource(resource_id: int) -> dict[str, Any] | None:
@@ -189,7 +254,7 @@ def list_movie_resources(movie_id: str) -> list[dict[str, Any]]:
                 is_default DESC,
                 CASE status WHEN 'ready' THEN 0 WHEN 'pending' THEN 1
                             WHEN 'missing' THEN 2 ELSE 3 END,
-                size DESC,
+                part_index ASC NULLS FIRST,
                 id ASC
             """,
             (str(movie_id),),
@@ -256,16 +321,20 @@ def set_movie_resource_status(resource_id: int, status: str) -> bool:
         return changed
 
 
-def delete_movie_resource(movie_id: str, resource_id: int) -> bool:
+def delete_movie_resource(movie_id: str, resource_id: int) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT provider, is_default FROM movie_resources WHERE id = ? AND movie_id = ?",
+            """
+            SELECT provider, pick_code, remote_file_id, is_default, parent_id
+            FROM movie_resources
+            WHERE id = ? AND movie_id = ?
+            """,
             (resource_id, str(movie_id)),
         )
         target = cursor.fetchone()
         if target is None:
-            return False
+            return None
         cursor.execute(
             "UPDATE movie_resources SET related_resource_id = NULL WHERE related_resource_id = ?",
             (resource_id,),
@@ -280,7 +349,7 @@ def delete_movie_resource(movie_id: str, resource_id: int) -> bool:
                 SELECT id FROM movie_resources
                 WHERE movie_id = ? AND provider = ?
                   AND resource_type = 'video' AND status = 'ready'
-                ORDER BY size DESC, id ASC
+                ORDER BY is_default DESC, part_index ASC NULLS FIRST, id ASC
                 LIMIT 1
                 """,
                 (str(movie_id), target["provider"]),
@@ -296,4 +365,4 @@ def delete_movie_resource(movie_id: str, resource_id: int) -> bool:
                     (replacement["id"],),
                 )
         _bump_generation()
-        return True
+        return dict(target)

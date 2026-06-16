@@ -8,46 +8,20 @@ const subscription = [
   readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8'),
 ].join('\n')
-const normalize = [
-  readFileSync(new URL('./Normalize.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/normalize/normalize.css', import.meta.url), 'utf8'),
-].join('\n')
-const inventory = [
-  readFileSync(new URL('./Inventory.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/inventory/inventory.css', import.meta.url), 'utf8'),
-].join('\n')
-const inventoryActor = readFileSync(new URL('./InventoryActor.vue', import.meta.url), 'utf8')
-const libraryOrganizeVue = readFileSync(new URL('./LibraryOrganize.vue', import.meta.url), 'utf8')
-const libraryOrganize = [
-  libraryOrganizeVue,
-  readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
-].join('\n')
-const homeVue = readFileSync(new URL('./Home.vue', import.meta.url), 'utf8')
+const downloadsVue = readFileSync(new URL('./Downloads.vue', import.meta.url), 'utf8')
 const downloadCandidatePanel = readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8')
-const home = [
-  homeVue,
+const downloads = [
+  downloadsVue,
+  readFileSync(new URL('../features/downloads/DownloadStatsBar.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloads/TaskList.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8'),
+].join('\n')
+const candidates = [
   downloadCandidatePanel,
-  // Wave P1-1: candidate logic lives in the composable; keep it in scope so
-  // existing candidate-truth assertions follow the source through the move.
-  // Wave P1-3: Home 收口为纯任务页后,候选工作台搬到 Candidates.vue,候选模板断言跟着挪过来。
   readFileSync(new URL('./Candidates.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/useDownloadCandidates.js', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/home/CandidateOverview.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/home/DownloadStatsBar.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/home/TaskList.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/candidates/candidates.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
-].join('\n')
-const operations = [
-  readFileSync(new URL('./Operations.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/PipelineCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/CacheCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/SchedulerCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/DataQualityCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/CandidateAutoCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/SnapshotCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/MappingCard.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8'),
 ].join('\n')
 const favorites = [
   readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8'),
@@ -78,30 +52,10 @@ const search = [
   readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
 ].join('\n')
 const discoveryDetail = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
-const supplement = [
-  readFileSync(new URL('./SupplementManagement.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/JobsTab.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/MoviesTab.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/SourcesHealthTab.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/RepairLaneTab.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/useSupplementApi.js', import.meta.url), 'utf8'),
-].join('\n')
-const supplementActorPicker = readFileSync(new URL('../features/supplement/ActorPickerView.vue', import.meta.url), 'utf8')
-const supplementSourceHealth = readFileSync(new URL('../features/supplement/SourceHealthPanel.vue', import.meta.url), 'utf8')
-const supplementMoviesPanel = readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8')
-const supplementDiagnosticsDialog = readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8')
 const candidateRunPanel = readFileSync(new URL('../features/candidates/CandidateRunPanel.vue', import.meta.url), 'utf8')
 const configFeatureSource = [config, configDefaults].join('\n')
-const supplementFeatureSource = [
-  supplement,
-  supplementActorPicker,
-  supplementSourceHealth,
-  supplementMoviesPanel,
-  supplementDiagnosticsDialog,
-].join('\n')
 const logs = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
 const library = readFileSync(new URL('./Library.vue', import.meta.url), 'utf8')
-const duplicates = readFileSync(new URL('./Duplicates.vue', import.meta.url), 'utf8')
 const glassSelect = readFileSync(new URL('../components/GlassSelect.vue', import.meta.url), 'utf8')
 const videoModal = [
   readFileSync(new URL('../components/VideoModal.vue', import.meta.url), 'utf8'),
@@ -211,89 +165,28 @@ test('settings page exposes bounded Torznab source configuration', () => {
   assert.match(config, /mergeSourceConfig\(data\.sources \|\| \{\}\)/)
 })
 
-test('navigation and actor page use actor mapping language', () => {
-  assert.match(app, /appVersion/)
-  assert.match(app, /import\.meta\.env\.VITE_APP_VERSION/)
-  assert.doesNotMatch(app, /v1\.2\.0-beta\.\d+/)
-  assert.match(packageJson.version, /^\d+\.\d+\.\d+-beta\.\d+$/)
-  assert.match(appChrome, /片库整理/)
-  assert.match(libraryOrganize, /演员映射/)
-  assert.doesNotMatch(app, /演员合并/)
-  assert.match(normalize, /演员映射/)
-  assert.match(normalize, /listUnmappedActors/)
-  assert.match(normalize, /confirmActorMapping/)
-  assert.match(normalize, /ignoreActorMapping/)
-  assert.match(normalize, /getActorMappingSummary/)
-  assert.match(normalize, /待映射审核/)
-  assert.doesNotMatch(normalize, />建议候选</)
-  assert.match(normalize, /JavInfo 库/)
-  assert.match(normalize, /Emby 库/)
-  assert.match(normalize, /candidate-compare/)
-  assert.match(normalize, /searchActorMappingCandidates/)
-  assert.match(normalize, /reviewActorMappingWithAi/)
-  assert.match(normalize, /candidateAvatar/)
-  assert.match(normalize, /智能判断/)
-  assert.match(normalize, /待智能判断/)
-  assert.match(normalize, /aiDecisionLabel/)
-  assert.match(normalize, /reviewFilterOptions/)
-  assert.match(normalize, /置信/)
-  assert.match(normalize, /autoMatchActorMappings/)
-  assert.match(normalize, /自动匹配预演/)
-  assert.doesNotMatch(normalize, /limit:\s*100000/)
-  assert.match(normalize, /import \{ requestConfirm \} from '\.\.\/utils\/confirmDialog'/)
-  assert.match(normalize, /requestConfirm\(\{[\s\S]*title: '执行自动匹配\?'/)
-  assert.match(normalize, /精确但歧义/)
-  assert.match(normalize, /statuses = \['confirmed', 'ignored'\]/)
-  assert.match(normalize, /actor\.candidates/)
-  assert.match(normalize, /loadingMappings/)
-})
-
 test('favorites video cards display dvd numbers instead of internal ids', () => {
   assert.match(favorites, /v-bind="movieCardVariantProps\(item\.metadata \|\| \{\}\)"/)
   assert.match(favorites, /import \{ movieCardVariantProps, variantGroupKey, visibleVariantItems \} from '\.\.\/utils\/videoVariantPresentation\.js'/)
   assert.doesNotMatch(favorites, /movieDisplayCode/)
 })
 
-test('actor portrait cards unify favorites subscriptions and supplement actor picking', () => {
+test('actor portrait cards unify favorites subscriptions and entity browsing', () => {
   assert.match(actorPortraitCard, /actor-portrait-card/)
   assert.match(favorites, /ActorPortraitCard/)
   assert.match(favorites, /subscriptionState/)
   assert.match(entities, /ActorPortraitCard/)
   assert.match(subscription, /ActorPortraitCard/)
-  assert.match(supplementActorPicker, /ActorPortraitCard/)
   assert.match(favorites, /class="actor-favorites-grid"/)
   assert.match(entities, /:show-favorite="canFavoriteEntity"/)
   assert.match(entities, /label: '资料库演员'/)
-  assert.match(entities, /label: 'Emby演员'/)
+  assert.doesNotMatch(entities, /label: 'Emby演员'/)
   assert.match(favorites, /otherEntityItems/)
   assert.match(favorites, /favoriteActorFromItem/)
   assert.doesNotMatch(favorites, /:show-favorite="true"/)
   assert.doesNotMatch(favorites, /:show-subscribe="actorCardCanSubscribe\(item\)"/)
   assert.doesNotMatch(favorites, /@subscribe="toggleActorSubscription\(item\)"/)
   assert.match(subscription, /density="standard"/)
-  assert.match(supplementActorPicker, /density="compact"/)
-  assert.match(supplementActorPicker, /action-label="选择"/)
-})
-
-test('supplement actor picker distinguishes empty recent jobs from load failures', () => {
-  assert.match(supplement, /actorPickerError:\s*''/)
-  assert.match(supplement, /actorPickerLoadFailed\(\)/)
-  assert.match(supplementActorPicker, /actorEmptyState\(\)[\s\S]*title: '补全队列不可用'[\s\S]*title: '暂无可选演员'/)
-  assert.match(supplementActorPicker, /:title="actorEmptyState\.title"/)
-  assert.match(supplement, /:error="actorPickerLoadFailed\(\)"/)
-  assert.doesNotMatch(supplement, /:error="actorPickerError"/)
-})
-
-test('library organize inventory actors reuse the shared portrait card', () => {
-  assert.match(libraryOrganize, /import ActorPortraitCard from '\.\.\/components\/ActorPortraitCard\.vue'/)
-  assert.match(libraryOrganize, /<ActorPortraitCard[\s\S]*v-for="actor in inventoryActors"/)
-  assert.match(libraryOrganize, /:name="inventoryActorName\(actor\)"/)
-  assert.match(libraryOrganize, /:avatar-url="inventoryActorAvatar\(actor\)"/)
-  assert.match(libraryOrganize, /:meta="inventoryActorMeta\(actor\)"/)
-  assert.match(libraryOrganize, /function inventoryActorMissingText\(actor\)/)
-  assert.match(libraryOrganize, /missing < 0 \? '待对比'/)
-  assert.match(libraryOrganize, /@open="goActorDetail\(actor\.actress_id\)"/)
-  assert.doesNotMatch(libraryOrganize, /class="actor-tile"/)
 })
 
 test('favorites actor cards show subscription badges and route to the unified actor page', () => {
@@ -397,7 +290,7 @@ test('movie cards keep cover media free of quick actions', () => {
 })
 
 test('movie detail entry points keep the user on the current page with the modal', () => {
-  const movieEntrySources = [search, discoveryDetail, actor, favorites, subscription, inventoryActor]
+  const movieEntrySources = [search, discoveryDetail, actor, favorites, subscription]
   for (const source of movieEntrySources) {
     assert.match(source, /openVideoModal/)
     assert.doesNotMatch(source, /openVideoDetail/)
@@ -449,83 +342,20 @@ test('actor discovery surfaces route to the canonical actor page', () => {
   assert.match(viewAllVideosBlock, /query\.actress_id = actressId/)
 })
 
-test('inventory page shows mapping coverage and candidate handoff', () => {
-  assert.match(inventory, /映射覆盖率/)
-  assert.match(inventory, /处理未映射演员/)
-  assert.match(inventory, /映射建议/)
-  assert.match(inventory, /source: 'inventory'/)
-  assert.match(inventory, /getActorMappingSummary/)
-  assert.match(inventory, /job\.result\.unmapped/)
-  assert.match(inventory, /候选/)
-  assert.match(inventoryActor, /转为候选/)
-  assert.match(inventoryActor, /createDownloadCandidate/)
-  assert.match(inventoryActor, /查看库存下载候选/)
-  assert.match(inventoryActor, /已映射到 JavInfo/)
-  assert.match(inventoryActor, /未映射到 JavInfo/)
-})
-
-test('library organizer unifies inventory check duplicates and actor mapping', () => {
-  assert.match(libraryOrganize, /片库整理/)
-  assert.match(libraryOrganize, /const activeTab = ref\('queue'\)/)
-  assert.match(libraryOrganize, /activeTab === 'inventory'/)
-  assert.match(libraryOrganize, /activeTab === 'check'/)
-  assert.match(libraryOrganize, /activeTab === 'mapping'/)
-  assert.match(libraryOrganize, /activeTab === 'duplicates'/)
-  assert.match(libraryOrganize, /source:\s*'inventory'/)
-  assert.match(libraryOrganize, /listDownloadCandidates/)
-  assert.match(libraryOrganize, /getDuplicates/)
-  assert.match(libraryOrganize, /checkLibrary/)
-  assert.match(libraryOrganize, /listUnmappedActors/)
-  assert.match(libraryOrganize, /triggerInventoryJob/)
-  assert.match(libraryOrganize, /getLibraryOrganizeOverview/)
-  assert.match(libraryOrganize, /goActorDetail/)
-  assert.match(libraryOrganize, /actor_id/)
-  assert.doesNotMatch(libraryOrganize, /limit:\s*100000/)
-})
-
-test('downloads page summary uses the lightweight candidate summary endpoint', () => {
-  // Wave P1-1: blocks now live in useDownloadCandidates.js as standalone
-  // async functions; loosen the bookend to accept either Options-API style or
-  // function-declaration style.
-  const summaryBlock = home.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
-    || home.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \}/)?.[0]
+test('candidate workspace summary uses the lightweight candidate summary endpoint', () => {
+  const summaryBlock = candidates.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
+    || candidates.match(/async (?:function )?loadCandidateSummary\(\) \{[\s\S]*?\n  \}/)?.[0]
     || ''
-  const listBlock = home.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
-    || home.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \}/)?.[0]
+  const listBlock = candidates.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \},?\n}?/)?.[0]
+    || candidates.match(/async (?:function )?loadCandidates\(\) \{[\s\S]*?\n  \}/)?.[0]
     || ''
 
   assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', include_sources: true \}\)/)
-  // Wave P1-3: Home 收口为纯任务页后 loadCandidateSummary 留在 Options API 里直接赋值,
-  // 接受 `this.X` 前缀;真正的候选 list 仍由 useDownloadCandidates 用 ref.value 赋值。
   assert.match(summaryBlock, /(?:this\.)?candidateStats(?:\.value)?\s*=\s*resp\.data\s*\|\|\s*(?:this\.)?candidateStats(?:\.value)?/)
   assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
   assert.doesNotMatch(listBlock, /resp\.data\.stats/)
   assert.match(listBlock, /params\.include_stats = false/)
-})
-
-test('inventory page summary uses lightweight candidate counts instead of candidate rows', () => {
-  const summaryBlock = inventory.match(/const fetchMappingSummary = async \(\) => \{[\s\S]*?\n\}/)?.[0] || ''
-
-  assert.match(summaryBlock, /api\.getDownloadCandidateSummary\(\{ status: 'candidate', source: 'inventory' \}\)/)
-  assert.doesNotMatch(summaryBlock, /api\.listDownloadCandidates/)
-})
-
-test('duplicates page renders duplicate groups from Emby snapshots', () => {
-  assert.match(duplicates, /duplicateItems\(item\)/)
-  assert.match(duplicates, /v-for="duplicate in duplicateItems\(item\)"/)
-  assert.match(duplicates, /deleteItem\(duplicate\)/)
-  assert.match(duplicates, /ignoreItem\(duplicate\)/)
-  assert.match(duplicates, /duplicate_count/)
-})
-
-test('default theme controls avoid white-on-white primary buttons', () => {
-  assert.doesNotMatch(inventory, /\.btn-primary\s*\{[^}]*color:\s*#fff/s)
-  assert.doesNotMatch(normalize, /\.btn-primary\s*\{[^}]*color:\s*#fff/s)
-  assert.doesNotMatch(search, /\.btn-primary\s*\{/)
-  assert.match(inventory, /class="btn btn-primary"/)
-  assert.match(normalize, /class="btn btn-primary"/)
-  assert.match(inventory, /var\(--badge-warning-bg\)/)
-  assert.match(inventory, /var\(--badge-success-bg\)/)
+  assert.doesNotMatch(downloads, /getDownloadCandidateSummary|candidateStats|CandidateOverview/)
 })
 
 test('mobile navigation and settings tabs stay compact', () => {
@@ -537,9 +367,9 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.doesNotMatch(bottomNavBlock, /label: '库存'/)
   assert.match(appNavigation, /export const mobileMoreItems/)
   assert.match(appNavigation, /label: '磁链解析'/)
-  assert.match(appNavigation, /label: '实体目录'/)
-  assert.match(appNavigation, /label: '补全管理'/)
-  assert.match(appNavigation, /label: '片库整理'/)
+  assert.match(appNavigation, /label: '分类目录'/)
+  assert.doesNotMatch(appNavigation, /label: '补全管理'/)
+  assert.doesNotMatch(appNavigation, /label: '片库整理'/)
   assert.doesNotMatch(appNavigation, /label: '库检测'/)
   assert.doesNotMatch(appNavigation, /label: '去重管理'/)
   assert.match(appNavigation, /label: '运行日志'/)
@@ -563,13 +393,8 @@ test('primary pages use unified breathing rails', () => {
   assert.match(app, /@media \(max-width: 768px\)\s*\{[\s\S]*\.main-content\s*\{[\s\S]*padding-bottom:\s*var\(--mobile-bottom-nav-reserve\)/)
 
   for (const [name, source] of Object.entries({
-    home,
-    operations,
-    inventory,
-    normalize,
-    supplement,
+    downloads,
     translationJobs,
-    inventoryActor,
     entities,
   })) {
     assert.match(source, /page-shell page-shell--workspace/, `${name} should use the workspace page shell`)
@@ -580,7 +405,6 @@ test('primary pages use unified breathing rails', () => {
     magnetParse,
     logs,
     library,
-    duplicates,
     subscription,
   })) {
     assert.match(source, /page-shell page-shell--standard/, `${name} should use the standard page shell`)
@@ -597,18 +421,13 @@ test('primary pages use unified breathing rails', () => {
   assert.match(actor, /page-rail page-rail--gallery/)
 
   for (const [name, source] of Object.entries({
-    home,
-    operations,
-    inventory,
-    normalize,
-    supplement,
+    downloads,
     translationJobs,
     config,
     magnetParse,
     logs,
-    duplicates,
   })) {
-    const topWrapper = source.match(/\.(home|operations-page|inventory-page|mapping-page|supplement-page|translation-page|settings|parse-page|logs|duplicates-page)\s*\{[^}]*\}/)?.[0] || ''
+    const topWrapper = source.match(/\.(downloads-page|translation-page|settings|parse-page|logs)\s*\{[^}]*\}/)?.[0] || ''
     assert.doesNotMatch(topWrapper, /max-width|margin:\s*0 auto|padding:\s*(?:\d|0)/, `${name} should not own page-level rail spacing`)
   }
 })
@@ -632,7 +451,6 @@ test('mobile video surfaces share compact gallery density', () => {
   assert.match(favorites, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
   assert.match(subscription, /--video-grid-min-mobile:\s*clamp\(104px, 31vw, 148px\)/)
   assert.match(subscription, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
-  assert.match(inventoryActor, /\.videos-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--video-grid-min-mobile\),\s*1fr\)\)/)
 })
 
 test('video modal and recommendation page use mobile-specific proportions', () => {
@@ -665,7 +483,7 @@ test('external data failures render page-level retry states', () => {
 
 test('inline style cleanup keeps only dynamic previews in settings and genres', () => {
   assert.doesNotMatch(magnetParse, /(^|[\s<])style="/)
-  assert.doesNotMatch(home, /(^|[\s<])style="/)
+  assert.doesNotMatch(downloads, /(^|[\s<])style="/)
   assert.doesNotMatch(config, /(^|[\s<])style="/)
   assert.match(config, /preview-bubble[\s\S]*:style="previewBubbleStyle\(index\)"/)
   assert.doesNotMatch(config, /legendary-dot|rarity-color-input|rarity-thresholds/)
@@ -796,216 +614,81 @@ test('magnet parser regex is stateless across multiple lines', () => {
   assert.match(magnetParse, /magnet:\\\?xt=urn:btih:\(\[A-Fa-f0-9\]\+\)/)
 })
 
-test('download page exposes candidate approval workflow', () => {
-  assert.match(home, /下载候选/)
-  assert.match(home, /待补磁力/)
-  assert.match(home, /approveDownloadCandidate/)
-  assert.match(home, /rejectDownloadCandidate/)
-  assert.match(home, /updateDownloadCandidateMagnet/)
-  assert.match(home, /bulkRejectDownloadCandidates/)
-  assert.match(home, /批量恢复/)
-  assert.match(home, /搜索番号、标题、演员/)
-  assert.match(home, /syncCandidateRoute/)
-  assert.match(home, /by_source/)
-  assert.match(home, /全部来源/)
-  assert.match(home, /candidateFilter\.source === 'supplement'/)
-  assert.match(home, /candidateSourceLabel/)
-  assert.match(home, /补全/)
-  assert.match(home, /candidate-overview/)
-  assert.match(home, /candidateFilterLedger/)
-  assert.match(home, /candidate-filter-ledger/)
-  assert.match(home, /v-for="filter in candidateFilterLedger"/)
-  assert.match(home, /latest_event_action/)
-  assert.match(home, /candidateEventActionLabel/)
-  assert.match(home, /待确认候选/)
-  assert.match(home, /订阅发现/)
-  assert.match(home, /库存发现/)
-  assert.match(home, /补全发现/)
-  assert.match(home, /candidate_by_source/)
-  assert.match(home, /readyCandidateCount/)
-  assert.match(home, /openCandidatePreset/)
+test('candidate page exposes candidate approval workflow', () => {
+  assert.match(candidates, /下载候选/)
+  assert.match(candidates, /待补磁力/)
+  assert.match(candidates, /approveDownloadCandidate/)
+  assert.match(candidates, /rejectDownloadCandidate/)
+  assert.match(candidates, /updateDownloadCandidateMagnet/)
+  assert.match(candidates, /bulkRejectDownloadCandidates/)
+  assert.match(candidates, /批量恢复/)
+  assert.match(candidates, /搜索番号、标题、演员/)
+  assert.match(candidates, /syncCandidateRoute/)
+  assert.match(candidates, /by_source/)
+  assert.match(candidates, /全部来源/)
+  assert.match(candidates, /candidateFilter\.source === 'supplement'/)
+  assert.match(candidates, /candidateSourceLabel/)
+  assert.match(candidates, /补全/)
+  assert.match(candidates, /candidateFilterLedger/)
+  assert.match(candidates, /candidate-filter-ledger/)
+  assert.match(candidates, /v-for="filter in candidateFilterLedger"/)
+  assert.match(candidates, /latest_event_action/)
+  assert.match(candidates, /candidateEventActionLabel/)
+  assert.match(candidates, /candidate_by_source/)
   // Wave P1-1: state/methods moved into useDownloadCandidates composable.
   // Truth-source assertions accept either Options-API style (this.X) or
   // composable style (X / X.value).
-  assert.match(home, /candidatePage\s*[:=]\s*(?:ref\()?Number\((?:this\.\$)?route\.query\.page \|\| 1\) \|\| 1/)
-  assert.match(home, /candidateTotalPages[:= ]+\s*(?:ref\(1\)|1)/)
-  assert.match(home, /(?:page:\s*tab === 'candidates' \?|nextPage\s*=\s*Number\(query\.page \|\| 1\) \|\| 1)/)
-  assert.match(home, /if \(filter\.page && Number\(filter\.page\) > 1\) query\.page = String\(Number\(filter\.page\)\)/)
-  assert.match(home, /params\.page = (?:this\.)?candidatePage(?:\.value)?/)
-  assert.match(home, /params\.page_size = (?:this\.)?candidatePageSize(?:\.value)?/)
-  assert.match(home, /params\.latest_event_action = (?:this\.)?candidateFilter\.latest_event_action/)
-  assert.match(home, /(?:this\.)?candidateTotalPages(?:\.value)?\s*=\s*Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
-  assert.match(home, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ status,? needs_magnet: null, page: 1 \}\)\)?/)
-  assert.match(home, /candidateFilter\.needs_magnet === true/)
-  assert.match(home, /goCandidatePage\(page\)/)
-  assert.match(home, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ page: nextPage \}\)\)?/)
-  assert.match(home, /candidateTotalPages > 1/)
-  assert.match(home, /goCandidateActor/)
-  assert.match(home, /goCandidateSupplement/)
-  assert.match(home, /最近动作/)
+  assert.match(candidates, /candidatePage\s*[:=]\s*(?:ref\()?Number\((?:this\.\$)?route\.query\.page \|\| 1\) \|\| 1/)
+  assert.match(candidates, /candidateTotalPages[:= ]+\s*(?:ref\(1\)|1)/)
+  assert.match(candidates, /(?:page:\s*tab === 'candidates' \?|nextPage\s*=\s*Number\(query\.page \|\| 1\) \|\| 1)/)
+  assert.match(candidates, /if \(filter\.page && Number\(filter\.page\) > 1\) query\.page = String\(Number\(filter\.page\)\)/)
+  assert.match(candidates, /params\.page = (?:this\.)?candidatePage(?:\.value)?/)
+  assert.match(candidates, /params\.page_size = (?:this\.)?candidatePageSize(?:\.value)?/)
+  assert.match(candidates, /params\.latest_event_action = (?:this\.)?candidateFilter\.latest_event_action/)
+  assert.match(candidates, /(?:this\.)?candidateTotalPages(?:\.value)?\s*=\s*Number\(resp\.data\.total_pages \|\| 1\) \|\| 1/)
+  assert.match(candidates, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ status,? needs_magnet: null, page: 1 \}\)\)?/)
+  assert.match(candidates, /candidateFilter\.needs_magnet === true/)
+  assert.match(candidates, /goCandidatePage\(page\)/)
+  assert.match(candidates, /(?:pushDownloadRoute\(this\.candidateRouteQuery|pushCandidateRoute)\(\{ page: nextPage \}\)\)?/)
+  assert.match(candidates, /candidateTotalPages > 1/)
+  assert.match(candidates, /goCandidateActor/)
+  assert.doesNotMatch(candidates, /goCandidateSupplement/)
+  assert.match(candidates, /最近动作/)
   assert.match(candidateRunPanel, /最近处理/)
-  assert.match(home, /loadCandidateRuns/)
-  assert.match(home, /applyCandidateRunFilters/)
-  assert.match(home, /retryFailedCandidateRun/)
-  assert.match(home, /retryDownloadCandidateRunFailed/)
-  assert.match(home, /listDownloadCandidateRuns/)
+  assert.match(candidates, /loadCandidateRuns/)
+  assert.match(candidates, /applyCandidateRunFilters/)
+  assert.match(candidates, /retryFailedCandidateRun/)
+  assert.match(candidates, /retryDownloadCandidateRunFailed/)
+  assert.match(candidates, /listDownloadCandidateRuns/)
   assert.match(candidateRunPanel, /失败队列/)
   assert.match(candidateRunPanel, /重试失败/)
-  assert.match(home, /dry_run: true/)
-  assert.match(home, /processPreviewMessage/)
-  assert.match(home, /processPreviewDetails/)
-  assert.match(home, /预演中/)
-  assert.match(home, /error_msg/)
-  assert.match(home, /已关联任务/)
-  assert.match(home, /重试/)
+  assert.match(candidates, /dry_run: true/)
+  assert.match(candidates, /processPreviewMessage/)
+  assert.match(candidates, /processPreviewDetails/)
+  assert.match(candidates, /预演中/)
+  assert.match(candidates, /error_msg/)
+  assert.match(candidates, /已关联任务/)
+  assert.match(candidates, /重试/)
 })
 
 test('entity catalog unifies entity directories behind a route and nav entry', () => {
   assert.match(router, /path: '\/entities'/)
   assert.match(router, /Entities/)
   assert.match(appNavigation, /path: '\/entities'/)
-  assert.match(appNavigation, /label: '实体目录'/)
+  assert.match(appNavigation, /label: '分类目录'/)
   assert.match(entities, /name: 'Entities'/)
-  for (const label of ['资料库演员', 'Emby演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
+  for (const label of ['资料库演员', '题材', '系列', '厂商', '厂牌', '导演', '作者']) {
     assert.match(entities, new RegExp(label))
   }
-  for (const method of ['listActresses', 'listInventoryActors', 'listCategories', 'listSeries', 'listMakers', 'listLabels', 'listDirectors', 'listAuthors']) {
+  for (const method of ['listActresses', 'listCategories', 'listSeries', 'listMakers', 'listLabels', 'listDirectors', 'listAuthors']) {
     assert.match(entities, new RegExp(`api\\.${method}`))
   }
+  assert.doesNotMatch(entities, /listInventoryActors|Emby演员/)
   assert.match(entities, /searchKeyword/)
   assert.match(entities, /openEntity\(item\)/)
   assert.match(entities, /favoriteState\.toggle/)
   assert.match(discoveryDetail, /\['actor', 'director', 'author'\]\.includes\(this\.type\)/)
   assert.match(discoveryDetail, /params\.q = this\.displayNameValue \|\| v/)
-})
-
-test('operations overview exposes candidate automation controls', () => {
-  assert.match(operations, /立即运行/)
-  assert.match(operations, /runCandidateProcessingNow/)
-  assert.match(operations, /candidateSchedule/)
-  assert.match(operations, /scheduleStatusLabel/)
-  assert.match(operations, /effective_enabled/)
-  assert.match(operations, /disabled_reason/)
-  assert.match(operations, /下一次/)
-  assert.match(operations, /候选处理正在运行/)
-  assert.match(operations, /采集后自动匹配/)
-  assert.match(operations, /保守唯一/)
-  assert.match(operations, /自动化工作台/)
-  assert.match(operations, /工作台路径/)
-  assert.match(operations, /goWorkbenchAction/)
-  assert.match(operations, /refreshMissingCache/)
-})
-
-test('operations overview surfaces prioritized data quality issues', () => {
-  assert.match(operations, /数据质量优先级/)
-  assert.match(operations, /topDataQualityIssues/)
-  assert.match(operations, /dataQualitySummary/)
-  assert.match(operations, /openDataQualityIssue\(issue\)/)
-  assert.match(operations, /overview\?\.data_quality/)
-  assert.match(operations, /issue\.score/)
-  assert.match(operations, /issue\?\.action\?\.route/)
-  assert.match(operations, /quality:\s*'missing_cover'/)
-  assert.match(operations, /issueRepairProgressLabel\(issue\)/)
-  assert.match(operations, /repair_progress\?\.label/)
-  assert.match(operations, /issueRepairActions\(issue\)/)
-  assert.match(operations, /seen\.has\(key\)/)
-  assert.match(operations, /seen\.add\(key\)/)
-  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
-  assert.match(operations, /issueRepairReasonLabel\(issue\)/)
-  assert.match(operations, /repair_progress\?\.reason_label/)
-  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
-  assert.match(operations, /issueRepairReasonActions\(issue\)/)
-  assert.match(operations, /issueRepairEventLabel\(issue\)/)
-  assert.match(operations, /issueRepairEventActions\(issue\)/)
-  assert.match(operations, /issueRepairLocalLabel\(issue\)/)
-  assert.match(operations, /issueRepairLocalSourceLabel\(issue\)/)
-  assert.match(operations, /issueRepairLocalActions\(issue\)/)
-  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
-  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
-  assert.match(operations, /repair_progress\?\.event_label/)
-  assert.match(operations, /repair_progress\?\.event_actions/)
-  assert.match(operations, /repair_progress\?\.reason_actions/)
-  assert.match(config, /navGroups[\s\S]*id:\s*'automation'/)
-  assert.match(config, /routeGroupMap[\s\S]*const group = routeGroupMap\[tab\] \|\| tab/)
-  assert.match(operations, /issueRepairProviderLabel\(issue\)/)
-  assert.match(operations, /issueRepairProviderActions\(issue\)/)
-  assert.match(operations, /openDataQualityRepairAction\(action, \$event\)/)
-  assert.match(operations, /openDataQualityRoute\(action\?\.route\)/)
-  assert.match(operations, /:key="action\.route \|\| action\.label"/)
-  assert.match(operations, /repair_progress\?\.provider_label/)
-  assert.match(operations, /repair_progress\?\.provider_actions/)
-  assert.match(operations, /repair_progress\?\.local_label/)
-  assert.match(operations, /repair_progress\?\.local_source_label/)
-  assert.match(operations, /repair_progress\?\.local_actions/)
-})
-
-test('operations overview uses a restrained Apple operations layout', () => {
-  assert.match(operations, /operations-hero/)
-  assert.match(operations, /priority-board/)
-  assert.match(operations, /operations-segments/)
-  assert.match(operations, /activeSegment/)
-  assert.match(operations, /segmentFromRoute\(\)/)
-  assert.match(operations, /setActiveSegment\(segment\)/)
-  assert.match(operations, /diagnostic-grid/)
-  assert.match(operations, /hero-stat-grid/)
-  assert.match(operations, /--operations-panel-gap:\s*clamp\(12px,\s*1\.4vw,\s*18px\)/)
-  assert.match(operations, /\.workbench-panel[\s\S]*background:\s*var\(--card\)/)
-  assert.match(operations, /\.hero-stat-grid[\s\S]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(108px,\s*1fr\)\)/)
-  assert.doesNotMatch(operations, /status-cell\.urgent/)
-  assert.doesNotMatch(operations, /title:\s*'活动中心'/)
-})
-
-test('operations overview splits daily work, system status, and diagnostics into internal views', () => {
-  assert.match(operations, /operationsSegments/)
-  assert.match(operations, /key:\s*'workbench'[\s\S]*label:\s*'处理'/)
-  assert.match(operations, /key:\s*'system'[\s\S]*label:\s*'数据管道'/)
-  assert.match(operations, /key:\s*'diagnostics'[\s\S]*label:\s*'诊断记录'/)
-  assert.match(operations, /<section v-if="activeSegment === 'workbench'" class="operations-workbench priority-board"/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"/)
-  assert.match(operations, /query: \{ \.\.\.this\.\$route\.query, tab: segment \}/)
-  assert.match(operations, /this\.activeSegment = this\.segmentFromRoute\(\)/)
-})
-
-test('operations overview surfaces initialization health and setup entry points', () => {
-  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"[\s\S]*<SchedulerCard/)
-  assert.match(operations, /初始化与健康检查/)
-  assert.match(operations, /api\.readiness\(\)/)
-  assert.match(operations, /healthStatusLabel/)
-  assert.match(operations, /health\.status/)
-  assert.match(operations, /配置已加载/)
-  assert.match(operations, /数据库/)
-  assert.match(operations, /JavInfo/)
-  assert.match(operations, /缓存/)
-  assert.match(operations, /healthCacheSummary/)
-  assert.match(operations, /healthJavInfoUrlSummary/)
-  assert.match(operations, /downloaders/)
-  assert.match(operations, /sources/)
-  assert.match(operations, /healthSourceAttemptSummary/)
-  assert.match(operations, /最近源检索/)
-  assert.match(operations, /scheduler/)
-  assert.match(operations, /goJavInfoImport/)
-  assert.match(operations, /\$router\.push\('\/settings'\)/)
-  assert.match(operations, /\$router\.push\('\/logs'\)/)
-  assert.match(operations, /query: \{ tab: 'javinfo-import' \}/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'system'" class="system-layout"[\s\S]*<SnapshotCard/)
-  assert.match(operations, /<section v-else-if="activeSegment === 'diagnostics'" class="diagnostic-grid"[\s\S]*<DataQualityCard/)
-  assert.match(operations, /缓存诊断/)
-  assert.match(operations, /响应命中率/)
-  assert.match(operations, /热门响应命名空间/)
-  assert.doesNotMatch(operations, /Cache Stats/)
-  assert.doesNotMatch(operations, /Response hit rate/)
-  assert.doesNotMatch(operations, /Top response namespaces/)
-})
-
-test('operations exposes cache cleanup UI backed by purge API', () => {
-  assert.match(operations, /缓存清理/)
-  assert.match(operations, /cachePurgeScopes/)
-  assert.match(operations, /selectedCachePurgeScope/)
-  assert.match(operations, /requestConfirm/)
-  assert.match(operations, /api\.purgeCache\(this\.selectedCachePurgeScope\)/)
-  assert.match(operations, /await this\.loadCacheStats\(\)/)
-  assert.match(apiSource, /purgeCache\(scope = 'video'\)/)
 })
 
 test('run logs page exposes search pagination and level summary', () => {
@@ -1315,8 +998,6 @@ test('appearance settings are grouped by scope and persist discovery preferences
 test('global dropdowns use the unified glass select control', () => {
   for (const [name, source] of Object.entries({
     config,
-    inventory,
-    supplementFeatureSource,
     translationJobs,
     logs,
     search,
@@ -1330,15 +1011,6 @@ test('global dropdowns use the unified glass select control', () => {
   assert.doesNotMatch(searchSection, /searchPrefs\.defaultServiceCode/)
   assert.doesNotMatch(config, /v-model="bubbleCfg\.palette"/)
 
-  assert.match(inventory, /import GlassSelect/)
-  assert.match(inventory, /v-model="sortBy"[\s\S]*@change="doSearch"/)
-  assert.match(inventory, /v-model="pageSize"[\s\S]*@change="onPageSizeChange"/)
-  assert.match(supplementFeatureSource, /v-model="movieFilters\.matched"[\s\S]*matchFilterOptions/)
-  assert.match(supplement, /value: false, label: '未匹配'/)
-  // After the SupplementManagement split this lives in useSupplementApi as a
-  // computed; accept either the legacy `providerSourceOptions()` call form or
-  // the composable export form.
-  assert.match(supplement, /providerSourceOptions/)
   assert.match(logs, /v-model="filterLevel"[\s\S]*levelOptions/)
   assert.doesNotMatch(search, /version-filter|aria-label="版本筛选"|this\.serviceCode|v-model="serviceCode"/, 'search page no longer offers a version filter')
   assert.doesNotMatch(discoveryDetail, /version-filter|aria-label="版本筛选"|this\.serviceCode|v-model="serviceCode"/, 'discovery detail no longer offers a version filter')
@@ -1483,7 +1155,7 @@ test('actor page lazy-loads full filmography pagination', () => {
   assert.match(actor, /hasMoreMovies\(\)[\s\S]*this\.moviePage < this\.movieTotalPages/)
   assert.match(actor, /async loadMoreMovies\(\)[\s\S]*this\.moviePage \+ 1/)
   assert.match(actor, /@click="loadMoreMovies"/)
-  assert.match(actor, /api\.getDownloadCandidateSummary/)
+  assert.doesNotMatch(actor, /api\.getDownloadCandidateSummary/)
   assert.doesNotMatch(actor, /fetchRemainingMoviePages/)
   assert.doesNotMatch(actor, /MOVIE_PAGE_FETCH_CONCURRENCY/)
   assert.doesNotMatch(actor, /Promise\.all\(pagePromises\)/)
@@ -1497,22 +1169,19 @@ test('vite dev server proxies bare health checks to the backend', () => {
 })
 
 test('download mutations are guarded by in-flight state', () => {
-  // Wave P1-1: candidate state lives in useDownloadCandidates.js as refs/reactive,
-  // while retryingTasks remains Home-owned. Accept either initialization style.
-  assert.match(home, /bulkCandidateLoading(?:: false|\s*=\s*ref\(false\))/)
-  assert.match(home, /candidateMutations(?:: \{\}|\s*=\s*ref\(\{\}\))/)
-  assert.match(home, /retryingTasks: \{\}/)
-  assert.match(home, /isCandidateMutating\(id\)/)
-  assert.match(home, /setCandidateMutation\(candidate\.id, 'approve'\)/)
-  assert.match(home, /clearCandidateMutation\(candidate\.id\)/)
-  assert.match(home, /if \(selectedCandidateIds(?:\.value)?\.length === 0 \|\| bulkCandidateLoading(?:\.value)?\) return/)
-  assert.match(home, /async retry\(task\)/)
-  assert.match(home, /await api\.createDownload/)
-  assert.match(home, /await this\.loadTasks\(\)/)
-  // Match either Options-API `async name()` or composable `async function name()`.
-  const enrichStart = home.indexOf('enrichVisibleCandidateMagnets()')
-  const enrichEnd = home.indexOf('processVisibleCandidates()', enrichStart + 1)
-  const enrichVisibleBlock = home.slice(enrichStart, enrichEnd)
+  assert.match(candidates, /bulkCandidateLoading(?:: false|\s*=\s*ref\(false\))/)
+  assert.match(candidates, /candidateMutations(?:: \{\}|\s*=\s*ref\(\{\}\))/)
+  assert.match(downloads, /retryingTasks: \{\}/)
+  assert.match(candidates, /isCandidateMutating\(id\)/)
+  assert.match(candidates, /setCandidateMutation\(candidate\.id, 'approve'\)/)
+  assert.match(candidates, /clearCandidateMutation\(candidate\.id\)/)
+  assert.match(candidates, /if \(selectedCandidateIds(?:\.value)?\.length === 0 \|\| bulkCandidateLoading(?:\.value)?\) return/)
+  assert.match(downloads, /async retry\(task\)/)
+  assert.match(downloads, /await api\.createDownload/)
+  assert.match(downloads, /await this\.loadTasks\(\)/)
+  const enrichStart = candidates.indexOf('enrichVisibleCandidateMagnets()')
+  const enrichEnd = candidates.indexOf('processVisibleCandidates()', enrichStart + 1)
+  const enrichVisibleBlock = candidates.slice(enrichStart, enrichEnd)
   assert.match(enrichVisibleBlock, /const confirmed = await requestConfirm\(/)
   assert.match(enrichVisibleBlock, /title: '批量补充磁力'/)
   assert.match(enrichVisibleBlock, /message: `确认为当前列表中的 \$\{targets\.length\} 个下载候选查找并写入磁力？当前筛选总量 \$\{(?:this\.)?candidateTotal(?:\.value)?\} 个。`/)

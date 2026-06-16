@@ -1,35 +1,57 @@
-.workspace-panel {
-  padding: 22px;
-  border-radius: var(--radius-sheet);
-  background: var(--card);
-  border: 1px solid var(--hairline);
+/* Panel chrome (workspace-panel, panel-header, panel-subtitle, status-pill,
+   pagination) is provided by the shared supplementPanel.css. */
+
+/* works tab wrapper + launchpad quick-filter chips */
+.works-tab {
+  display: grid;
+  gap: 14px;
 }
 
-.panel-header {
+.works-quick-chips {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.panel-header h2,
-.workspace-panel p {
-  margin: 0;
+.works-quick-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 116px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--card-2);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--motion-standard), border-color var(--motion-fast);
 }
 
-.panel-header h2 {
-  color: var(--text-primary);
+.works-quick-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--hairline-strong);
+}
+
+.works-quick-chip:active {
+  transform: translateY(0.5px) scale(0.99);
+}
+
+.works-quick-chip strong {
+  font-family: var(--font-mono);
   font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -0.3px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 
-.panel-subtitle {
-  margin-top: 4px;
+.works-quick-chip span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
+  font-weight: 600;
 }
+
+.works-quick-chip--candidate strong { color: var(--warn, var(--text-primary)); }
+.works-quick-chip--gap strong { color: var(--bad, var(--text-primary)); }
 
 .filter-bar,
 .movies-panel-toolbar {

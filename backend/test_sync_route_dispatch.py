@@ -10,13 +10,12 @@ from test_support.cache import FakeRedisMixin
 
 class SyncRouteDispatchTest(unittest.TestCase):
     def test_db_bound_read_routes_are_sync_for_threadpool_dispatch(self):
-        from routers import downloads, favorites, missing, video_variant_index
+        from routers import downloads, favorites, video_variant_index
 
         handlers = [
             downloads.list_candidate_runs,
             downloads.get_candidate,
             favorites.get_collections,
-            missing.get_missing_actress_detail,
             video_variant_index.list_variant_index_jobs,
             video_variant_index.get_variant_index_job,
         ]
@@ -26,16 +25,14 @@ class SyncRouteDispatchTest(unittest.TestCase):
                 self.assertFalse(inspect.iscoroutinefunction(handler))
 
     def test_cached_hot_read_routes_are_async_to_avoid_threadpool_queueing(self):
-        from routers import downloads, favorites, inventory, logs, missing
+        from routers import downloads, favorites, logs
 
         handlers = [
             downloads.list_downloads,
             downloads.list_candidates,
             downloads.candidate_summary,
             favorites.get_favorites,
-            inventory.list_actors,
             logs.get_logs,
-            missing.list_missing_actresses,
         ]
 
         for handler in handlers:

@@ -1,22 +1,5 @@
-.workspace-panel {
-  padding: 22px;
-  border-radius: var(--radius-sheet);
-  background: var(--card);
-  border: 1px solid var(--hairline);
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.panel-header h2 { font-size: 22px; font-weight: 650; letter-spacing: -0.3px; color: var(--text-primary); }
-.panel-subtitle { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
-
+/* Panel chrome (workspace-panel, panel-header, panel-subtitle, status-pill)
+   is provided by the shared supplementPanel.css. */
 .source-health-toolbar {
   display: flex;
   align-items: center;

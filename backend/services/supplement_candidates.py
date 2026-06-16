@@ -9,7 +9,7 @@ from database import (
     is_video_exempt,
     upsert_candidate_from_video,
 )
-from services.watchlist_pipeline import video_code
+from modules.code_matcher import video_code
 
 
 def supplement_movie_to_video(movie: dict) -> dict:

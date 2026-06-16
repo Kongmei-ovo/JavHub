@@ -18,12 +18,12 @@ test('SourcesHealthTab owns source health and provider smoke fetching', () => {
   assert.match(source, /providerSourceOptions/)
 })
 
-test('SourcesHealthTab keeps gfriends avatar sync controls inside the tab', () => {
-  assert.match(source, /syncGfriendsAvatars/)
-  assert.match(source, /requestConfirm/)
+test('SourcesHealthTab no longer hosts gfriends avatar sync (moved to Jobs tab)', () => {
+  // Work-first restructure: avatar override is a global maintenance job and now
+  // lives in the Jobs tab, not under source health.
+  assert.doesNotMatch(source, /confirmGfriendsAvatarSync/)
+  assert.doesNotMatch(source, /view-avatar-jobs/)
+  assert.doesNotMatch(source, /gfriends-avatar-job=/)
+  // the underlying API still exists for the Jobs tab to use
   assert.match(apiSource, /startGfriendsAvatarSyncJob/)
-  assert.match(source, /gfriendsAvatarJob/)
-  assert.match(source, /gfriendsAvatarSyncing/)
-  assert.match(source, /emit\('view-avatar-jobs'/)
-  assert.match(source, /同步演员头像/)
 })

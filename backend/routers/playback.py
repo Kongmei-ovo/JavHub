@@ -7,11 +7,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 from typing import Any, Optional
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel
 
@@ -20,13 +21,73 @@ from database import (
     get_progress,
     list_continue_watching,
     save_progress,
+    set_movie_resource_status,
 )
+from services.emby_auth import extract_token, require_app_token
 from services.open115 import Open115Error, open115_client
 from services.playback_gateway import PlaybackContext, hls_sessions
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/playback", tags=["playback"])
+# Native playback is single-user authed. Browser-issued HLS sub-requests can't
+# carry a header, so require_app_token also accepts ?token=, and the token is
+# threaded into the master redirect + every rewritten child URI below.
+router = APIRouter(
+    prefix="/api/v1/playback",
+    tags=["playback"],
+    dependencies=[Depends(require_app_token)],
+)
+
+
+def _token_suffix(request: Request) -> str:
+    token = extract_token(request)
+    return f"?token={token}" if token else ""
+
+
+_RELINK_CAP = 5
+_RELINK_WINDOW_SECONDS = 60.0
+
+
+class _RelinkLimiter:
+    """Per-resource sliding-window cap on direct-link relinks. A genuinely dead
+    115 file would otherwise spin downurl forever; the cap bounds retries so a
+    real failure surfaces as a 502 instead of an infinite relink loop."""
+
+    def __init__(self, cap: int, window_seconds: float):
+        self._cap = cap
+        self._window = window_seconds
+        self._hits: dict[int, list[float]] = {}
+
+    def allow(self, resource_id: int) -> bool:
+        now = time.monotonic()
+        hits = [t for t in self._hits.get(resource_id, []) if now - t < self._window]
+        if len(hits) >= self._cap:
+            self._hits[resource_id] = hits
+            return False
+        hits.append(now)
+        self._hits[resource_id] = hits
+        return True
+
+    def reset(self) -> None:
+        self._hits.clear()
+
+
+relink_limiter = _RelinkLimiter(_RELINK_CAP, _RELINK_WINDOW_SECONDS)
+
+
+async def _resolve_direct_url(resource: dict, user_agent: str) -> str:
+    """downurl with transparent relink: every direct link is short-lived, so on
+    expiry we re-fetch a fresh one instead of failing. Each failure consumes one
+    relink budget for the resource; once the per-resource cap is hit the error
+    propagates so the caller can fall back to HLS or report the resource gone."""
+    pick_code = str(resource["pick_code"])
+    resource_id = int(resource["id"])
+    while True:
+        try:
+            return await open115_client.downurl(pick_code, user_agent)
+        except Open115Error:
+            if not relink_limiter.allow(resource_id):
+                raise
 
 VALID_SOURCES = ("library", "online")
 
@@ -92,28 +153,32 @@ async def stream_movie_resource(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    token_suffix = _token_suffix(request)
     if context.preferred_mode == "hls":
         session_id = await _create_hls_session(resource, context.user_agent)
         return RedirectResponse(
-            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8",
+            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
             status_code=307,
             headers={"Cache-Control": "no-store"},
         )
 
     try:
-        direct_url = await open115_client.downurl(
-            str(resource["pick_code"]),
-            context.user_agent,
-        )
+        direct_url = await _resolve_direct_url(resource, context.user_agent)
     except Open115Error as exc:
-        if context.requested_mode != "auto" or not context.accepts_hls:
-            raise HTTPException(status_code=502, detail="115 原画换链失败") from exc
-        session_id = await _create_hls_session(resource, context.user_agent)
-        return RedirectResponse(
-            url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8",
-            status_code=307,
-            headers={"Cache-Control": "no-store"},
-        )
+        # Relink exhausted (or a hard 115 error). Prefer HLS when the client can
+        # take it; otherwise treat the resource as gone so the UI offers re-acquire.
+        if context.requested_mode == "auto" and context.accepts_hls:
+            session_id = await _create_hls_session(resource, context.user_agent)
+            return RedirectResponse(
+                url=f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/master.m3u8{token_suffix}",
+                status_code=307,
+                headers={"Cache-Control": "no-store"},
+            )
+        set_movie_resource_status(int(resource["id"]), "missing")
+        raise HTTPException(
+            status_code=502,
+            detail="115 原画换链多次失败，资源可能已失效，可重新获取",
+        ) from exc
     return RedirectResponse(
         url=direct_url,
         status_code=302,
@@ -128,8 +193,9 @@ def _session_or_gone(resource_id: int, session_id: str):
     return session
 
 
-def _hls_proxy_path(resource_id: int, session_id: str, target_token: str) -> str:
-    return f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/{target_token}"
+def _hls_proxy_path(resource_id: int, session_id: str, target_token: str, token: str = "") -> str:
+    path = f"/api/v1/playback/resources/{resource_id}/hls/{session_id}/{target_token}"
+    return f"{path}?token={token}" if token else path
 
 
 def _rewrite_hls_manifest(
@@ -138,11 +204,12 @@ def _rewrite_hls_manifest(
     base_url: str,
     resource_id: int,
     session,
+    token: str = "",
 ) -> str:
     def register(raw_uri: str) -> str:
         target_url = urljoin(base_url, raw_uri)
         target_token = hls_sessions.register_target(session, target_url)
-        return _hls_proxy_path(resource_id, session.session_id, target_token)
+        return _hls_proxy_path(resource_id, session.session_id, target_token, token)
 
     def rewrite_uri_attribute(match: re.Match[str]) -> str:
         return f'URI="{register(match.group(1))}"'
@@ -196,6 +263,7 @@ async def _proxy_hls_target(
             base_url=target_url,
             resource_id=resource_id,
             session=session,
+            token=extract_token(request),
         ).encode("utf-8")
         content_type = "application/vnd.apple.mpegurl"
     else:
@@ -235,8 +303,37 @@ async def proxy_open115_hls_target(
     )
 
 
+@router.get("/resources/{resource_id}/subtitle.vtt")
+async def stream_resource_subtitle(resource_id: int, request: Request):
+    """Serve a downloaded subtitle resource as WebVTT (ass/ssa converted) for the
+    first-party <track>. Mirrors the Emby external-subtitle delivery."""
+    resource = get_movie_resource(resource_id)
+    if not resource or resource.get("resource_type") != "subtitle":
+        raise HTTPException(status_code=404, detail="字幕资源不存在")
+    pick_code = str(resource.get("pick_code") or "")
+    if not pick_code:
+        raise HTTPException(status_code=409, detail="字幕资源不可用")
+
+    from services.subtitles import to_webvtt
+
+    ua = request.headers.get("user-agent", "")
+    try:
+        url = await open115_client.downurl(pick_code, ua)
+        upstream = await playback_hls_client.get(url, headers={"User-Agent": ua} if ua else {})
+    except Open115Error as exc:
+        raise HTTPException(status_code=502, detail="115 字幕换链失败") from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="字幕下载失败") from exc
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="字幕上游不可用")
+
+    vtt = to_webvtt(upstream.text, str(resource.get("extension") or ""))
+    return Response(content=vtt, media_type="text/vtt", headers={"Cache-Control": "no-store"})
+
+
 class ProgressRequest(BaseModel):
     source: str = "library"
+    resource_id: int | None = None
     position_seconds: float
     duration_seconds: float = 0
 
@@ -245,7 +342,13 @@ class ProgressRequest(BaseModel):
 async def put_progress(content_id: str, req: ProgressRequest):
     if req.source not in VALID_SOURCES:
         raise HTTPException(status_code=400, detail="source 必须是 library 或 online")
-    return save_progress(content_id, req.source, req.position_seconds, req.duration_seconds)
+    return save_progress(
+        content_id,
+        source=req.source,
+        resource_id=req.resource_id,
+        position_seconds=req.position_seconds,
+        duration_seconds=req.duration_seconds,
+    )
 
 
 @router.get("/progress/{content_id}")
@@ -268,9 +371,12 @@ async def continue_watching(limit: int = Query(12, ge=1, le=50)):
     client = get_info_client()
 
     async def enrich(row: dict) -> dict:
+        last_source = row.get("last_source") or row.get("source")
         item = {
             "content_id": row["content_id"],
-            "source": row["source"],
+            "source": last_source,
+            "last_source": last_source,
+            "last_resource_id": row.get("last_resource_id"),
             "position_seconds": row["position_seconds"],
             "duration_seconds": row["duration_seconds"],
             "updated_at": row.get("updated_at"),

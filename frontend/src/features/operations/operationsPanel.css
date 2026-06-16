@@ -1,0 +1,301 @@
+/* ============================================================
+   运营总览 + 系统作业 — 共享面板外壳与类型尺度。
+   两个视图 (Operations.vue / SystemJobs.vue) 的标题、卡片、状态格、
+   作业行、状态药丸都从这里取单一来源，scoped 导入。
+   类型尺度沿用 design handoff (--type-*)，颜色用 v2 token，
+   间距走 4px ramp，动效只动 transform 且用 --motion-* token。
+   ============================================================ */
+
+.ops-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+/* ---- hero header ---- */
+.ops-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ops-hero-copy .ops-eyebrow {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+
+.ops-hero-copy h1 {
+  margin: 8px 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--type-page);
+  font-weight: 680;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+}
+
+.ops-hero-copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-callout);
+}
+
+.ops-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.ops-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px;
+  text-align: left;
+  border-radius: var(--radius-card);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  transition: transform var(--motion-fast);
+}
+
+.ops-stat:hover { transform: translateY(-1px); }
+.ops-stat:hover { border-color: var(--accent); }
+
+.ops-stat strong {
+  font-family: var(--font-mono);
+  font-size: var(--type-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.ops-stat span {
+  font-size: var(--type-caption);
+  font-weight: 550;
+  color: var(--text-secondary);
+}
+
+.ops-stat small {
+  font-size: var(--type-micro);
+  color: var(--text-muted);
+}
+
+.ops-stat.urgent strong { color: var(--warn); }
+
+/* ---- panel ---- */
+.ops-panel {
+  padding: 24px;
+  border-radius: var(--radius-sheet);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+}
+
+.ops-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.ops-panel-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--type-section);
+  font-weight: 650;
+  letter-spacing: -0.2px;
+  color: var(--text-primary);
+}
+
+.ops-panel-head p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  font-weight: 550;
+}
+
+.ops-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- state grid ---- */
+.ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+  gap: 12px;
+}
+
+.ops-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+button.ops-cell { cursor: pointer; }
+button.ops-cell:hover { border-color: var(--accent); }
+
+.ops-cell span {
+  font-size: var(--type-caption);
+  font-weight: 550;
+  color: var(--text-secondary);
+}
+
+.ops-cell strong {
+  font-size: var(--type-callout);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ops-cell small {
+  font-size: var(--type-micro);
+  color: var(--text-muted);
+}
+
+.ops-cell.warning {
+  border-color: rgba(var(--warn-rgb), 0.5);
+  background: rgba(var(--warn-rgb), 0.08);
+}
+
+.ops-cell.warning strong { color: var(--warn); }
+
+/* ---- status pill ---- */
+.ops-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--type-micro);
+  font-weight: 650;
+  border: 1px solid var(--hairline);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+
+.ops-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ops-pill.is-success { color: var(--ok); }
+.ops-pill.is-failed { color: var(--warn); }
+.ops-pill.is-running { color: var(--accent); }
+.ops-pill.is-idle { color: var(--text-muted); }
+
+/* ---- system job rows ---- */
+.ops-job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ops-job {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.ops-job-main { min-width: 0; flex: 1 1 240px; }
+
+.ops-job-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ops-job-title h3 {
+  margin: 0;
+  font-size: var(--type-card);
+  font-weight: 620;
+  color: var(--text-primary);
+}
+
+.ops-job-desc {
+  margin: 4px 0 0;
+  font-size: var(--type-caption);
+  color: var(--text-muted);
+}
+
+.ops-job-meta {
+  margin: 8px 0 0;
+  font-size: var(--type-micro);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-job-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ops-job.is-highlighted {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring-wide-strong);
+}
+
+/* ---- cache scope chips ---- */
+.ops-chip-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+
+.ops-chip {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  font-size: var(--type-caption);
+  font-weight: 550;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ops-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+/* ---- misc ---- */
+.ops-muted {
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
+.ops-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+}
+
+.ops-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

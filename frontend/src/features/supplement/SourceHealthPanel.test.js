@@ -64,25 +64,25 @@ test('source rows expose consecutive_failures, last_error_type, budget binding',
   assert.match(source, /\$emit\(sourceHealthPrimaryAction\(source\)\.event,\s*source\.source\)/)
 })
 
-test('advanced disclosure keeps gfriends sync + provider smoke wiring', () => {
-  // 高级控制 collapsed by default; preserves all the API surface the test originally
-  // required (头像同步 / 来源诊断采样 / 最近诊断历史) without crowding the primary triad.
-  assert.match(source, /class="src-advanced"/)
-  assert.match(source, /<summary[\s\S]*高级控制/)
-  assert.match(source, /头像覆盖作业/)
-  assert.match(source, /同步演员头像/)
-  assert.match(source, /查看头像任务/)
-  assert.match(source, /class="avatar-sync-panel"/)
+test('provider smoke sampling is surfaced un-folded; avatar job no longer lives here', () => {
+  // Work-first restructure: 头像覆盖作业 moved to the Jobs tab. Source health keeps
+  // only source-level concerns, and 来源抽检/采样 is shown directly (no disclosure).
   assert.match(source, /class="provider-smoke-panel"/)
   assert.match(source, /class="provider-smoke-controls"/)
-  assert.match(source, /最近诊断/)
-  assert.match(source, /运行诊断/)
-  assert.match(source, /当前预算|sourceBudgetLabel/)
-  assert.match(source, /\$emit\('sync-gfriends-avatars'\)/)
+  assert.match(source, /来源抽检/)
   assert.match(source, /\$emit\('run-smoke'\)/)
   assert.match(source, /\$emit\('load-smoke-runs'\)/)
-  // pause-source / resume-source are dispatched through sourceHealthPrimaryAction.event;
-  // verify both ends of the wiring: the emits declaration + the action mapping.
+  assert.match(source, /当前预算|sourceBudgetLabel/)
+
+  // avatar / gfriends wiring is gone from this panel
+  assert.doesNotMatch(source, /class="src-advanced"/)
+  assert.doesNotMatch(source, /头像覆盖作业/)
+  assert.doesNotMatch(source, /同步演员头像/)
+  assert.doesNotMatch(source, /class="avatar-sync-panel"/)
+  assert.doesNotMatch(source, /sync-gfriends-avatars/)
+  assert.doesNotMatch(source, /view-avatar-jobs/)
+
+  // pause-source / resume-source still dispatched through sourceHealthPrimaryAction.event
   assert.match(source, /'pause-source'/)
   assert.match(source, /'resume-source'/)
   assert.match(source, /sourceHealthPrimaryAction\(source\)\.event,\s*source\.source/)

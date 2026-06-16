@@ -150,6 +150,37 @@ class TranslationJobsTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_translation_count("category"), 0)
         self.assertEqual(get_translation("maker:23")["maker"]["テストメーカー"], "テストメーカー中文")
 
+    async def test_metadata_actress_job_streams_pages_with_progress(self):
+        from database import add_translation_job, get_translation, get_translation_job
+        from translations.jobs import _run_job
+        from translations.providers import GoogleFreeProvider, TranslationResult
+
+        class Client:
+            def __init__(self):
+                self.pages = {
+                    1: [{"id": 1, "name_kanji": "一番"}, {"id": 2, "name_kanji": "二番"}],
+                    2: [{"id": 3, "name_kanji": "三番"}],
+                }
+
+            async def list_actresses(self, page=1, page_size=100):
+                return {"data": self.pages.get(page, []), "total_pages": 2, "total_count": 3}
+
+        job_id = add_translation_job("metadata_actresses", provider_order=["cache", "google_free"])
+
+        with patch("translations.jobs.get_info_client", return_value=Client()), \
+             patch.object(
+                 GoogleFreeProvider,
+                 "translate_many",
+                 AsyncMock(side_effect=lambda requests: [TranslationResult(f"{request.text}中文", "google_free") for request in requests]),
+             ):
+            await _run_job(job_id, "metadata_actresses", ["cache", "google_free"], force=False)
+
+        job = get_translation_job(job_id)
+        self.assertEqual(job["total"], 3)
+        self.assertEqual(job["translated"], 3)
+        self.assertEqual(get_translation("actress:1")["actress"]["一番"], "一番中文")
+        self.assertEqual(get_translation("actress:3")["actress"]["三番"], "三番中文")
+
     async def test_metadata_actress_job_paginates_to_limit(self):
         from translations.jobs import _collect_metadata_names
 

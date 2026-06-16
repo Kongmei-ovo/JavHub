@@ -233,6 +233,7 @@ class Open115Client:
         params: dict[str, Any] | None = None,
         user_agent: str | None = None,
         retried: bool = False,
+        full: bool = False,
     ) -> Any:
         token = self.access_token
         if not token:
@@ -265,10 +266,11 @@ class Open115Client:
                         params=params,
                         user_agent=user_agent,
                         retried=True,
+                        full=full,
                     )
                 raise Open115AuthRequired(code, "115 授权已失效，请重新绑定")
             raise Open115Error(code, str(body.get("message") or f"HTTP {response.status_code}"))
-        return body.get("data")
+        return body if full else body.get("data")
 
     async def start_device_auth(self) -> dict[str, str]:
         if not self.app_id:
@@ -524,6 +526,43 @@ class Open115Client:
             if isinstance(item, dict)
         ]
 
+    async def list_folder(
+        self,
+        folder_id: str,
+        *,
+        offset: int = 0,
+        limit: int = FILES_PAGE_SIZE,
+    ) -> dict[str, Any]:
+        """List one page of a folder, including breadcrumb path and total count."""
+        body = await self._auth_request(
+            "GET",
+            "/open/ufile/files",
+            params={
+                "cid": str(folder_id),
+                "offset": max(0, int(offset)),
+                "limit": max(1, min(int(limit), FILES_PAGE_SIZE)),
+                "show_dir": 1,
+                "cur": 1,
+            },
+            full=True,
+        )
+        body = body if isinstance(body, dict) else {}
+        items = body.get("data")
+        files = [Open115File.from_api(item) for item in (items or []) if isinstance(item, dict)]
+        breadcrumb = [
+            {
+                "file_id": str(crumb.get("cid") or crumb.get("file_id") or ""),
+                "name": str(crumb.get("name") or ""),
+            }
+            for crumb in (body.get("path") or [])
+            if isinstance(crumb, dict)
+        ]
+        return {
+            "files": files,
+            "path": breadcrumb,
+            "count": _as_int(body.get("count"), len(files)),
+        }
+
     async def iter_files(self, folder_id: str) -> AsyncIterator[Open115File]:
         offset = 0
         while True:
@@ -572,6 +611,84 @@ class Open115Client:
             params={"page": max(1, int(page))},
         )
         return payload if isinstance(payload, dict) else {}
+
+    async def delete_files(
+        self,
+        file_ids: Iterable[str],
+        parent_id: str | None = None,
+    ) -> None:
+        normalized = [str(file_id).strip() for file_id in file_ids if str(file_id or "").strip()]
+        if not normalized:
+            return
+        data = {"file_ids": ",".join(normalized)}
+        normalized_parent_id = str(parent_id or "").strip()
+        if normalized_parent_id:
+            data["parent_id"] = normalized_parent_id
+        await self._auth_request(
+            "POST",
+            "/open/ufile/delete",
+            data=data,
+        )
+
+    async def rename_file(self, file_id: str, new_name: str) -> None:
+        normalized_id = str(file_id or "").strip()
+        name = str(new_name or "").strip()
+        if not normalized_id or not name:
+            raise Open115Error(None, "重命名需要 file_id 和新名称")
+        await self._auth_request(
+            "POST",
+            "/open/ufile/update",
+            data={"file_id": normalized_id, "file_name": name},
+        )
+
+    async def move_files(self, file_ids: Iterable[str], to_cid: str) -> int:
+        normalized = [str(file_id).strip() for file_id in file_ids if str(file_id or "").strip()]
+        if not normalized:
+            return 0
+        await self._auth_request(
+            "POST",
+            "/open/ufile/move",
+            data={"file_ids": ",".join(normalized), "to_cid": str(to_cid)},
+        )
+        return len(normalized)
+
+    async def copy_files(self, file_ids: Iterable[str], to_cid: str) -> int:
+        normalized = [str(file_id).strip() for file_id in file_ids if str(file_id or "").strip()]
+        if not normalized:
+            return 0
+        await self._auth_request(
+            "POST",
+            "/open/ufile/copy",
+            data={"file_id": ",".join(normalized), "pid": str(to_cid)},
+        )
+        return len(normalized)
+
+    async def search_files(
+        self,
+        keyword: str,
+        *,
+        cid: str = "0",
+        offset: int = 0,
+        limit: int = FILES_PAGE_SIZE,
+    ) -> list[Open115File]:
+        value = str(keyword or "").strip()
+        if not value:
+            return []
+        payload = await self._auth_request(
+            "GET",
+            "/open/ufile/search",
+            params={
+                "search_value": value,
+                "cid": str(cid),
+                "offset": max(0, int(offset)),
+                "limit": max(1, min(int(limit), FILES_PAGE_SIZE)),
+            },
+        )
+        if isinstance(payload, dict):
+            items = payload.get("data") or payload.get("files") or []
+        else:
+            items = payload or []
+        return [Open115File.from_api(item) for item in items if isinstance(item, dict)]
 
     async def downurl(self, pick_code: str, user_agent: str) -> str:
         effective_ua = str(user_agent or "").strip() or self.default_ua

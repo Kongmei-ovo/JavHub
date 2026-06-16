@@ -1,50 +1,87 @@
 <template>
-  <SupplementMoviesPanel
-    :movie-filters="movieFilters"
-    :match-filter-options="matchFilterOptions"
-    :quality-filter-options="qualityFilterOptions"
-    :movies-loading="moviesLoading"
-    :supplement-movies="supplementMovies"
-    :movies-total-pages="moviesTotalPages"
-    :movie-page="moviePage"
-    :batch-enriching="batchEnriching"
-    :candidate-importing="candidateImporting"
-    :enriching-movies="enrichingMovies"
-    :apply-image-fallback="applyImageFallback"
-    :movie-cover="movieCover"
-    :movie-categories="movieCategories"
-    :movie-match-class="movieMatchClass"
-    :movie-match-label="movieMatchLabel"
-    @apply-filters="applyMovieFilters"
-    @batch-enrich="batchEnrichMoviesAction"
-    @create-candidates="createDownloadCandidatesAction"
-    @enrich="enrichMovieAction"
-    @open-sources="openMovieSourcesAction"
-    @go-page="goMoviePage"
-    @refresh="loadMovies"
-    @clear-filters="clearMovieFilters"
-  />
+  <div class="works-tab">
+    <div v-if="supplementMovies.length" class="works-quick-chips" aria-label="待补全概览快捷筛选">
+      <button
+        v-for="chip in quickChips"
+        :key="chip.key"
+        type="button"
+        class="works-quick-chip"
+        :class="`works-quick-chip--${chip.key}`"
+        @click="applyQuickChip(chip)"
+      >
+        <strong>{{ chip.value }}</strong>
+        <span>{{ chip.label }}</span>
+      </button>
+    </div>
+
+    <SupplementMoviesPanel
+      :movie-filters="movieFilters"
+      :match-filter-options="matchFilterOptions"
+      :quality-filter-options="qualityFilterOptions"
+      :movies-loading="moviesLoading"
+      :supplement-movies="supplementMovies"
+      :movies-total-pages="moviesTotalPages"
+      :movie-page="moviePage"
+      :batch-enriching="batchEnriching"
+      :candidate-importing="candidateImporting"
+      :enriching-movies="enrichingMovies"
+      :apply-image-fallback="applyImageFallback"
+      :movie-cover="movieCover"
+      :movie-categories="movieCategories"
+      :movie-match-class="movieMatchClass"
+      :movie-match-label="movieMatchLabel"
+      @apply-filters="applyMovieFilters"
+      @batch-enrich="batchEnrichMoviesAction"
+      @create-candidates="createDownloadCandidatesAction"
+      @enrich="enrichMovieAction"
+      @open-sources="openMovieSourcesAction"
+      @go-page="goMoviePage"
+      @refresh="loadMovies"
+      @clear-filters="clearMovieFilters"
+    />
+
+    <SupplementSourceDiagnosticsDialog
+      v-if="sourceDiagnosticsOpen"
+      v-model:manual-content-id="manualContentId"
+      drawer
+      :source-diagnostics-loading="sourceDiagnosticsLoading"
+      :source-diagnostics="sourceDiagnostics"
+      :diagnostics-movie-title="diagnosticsMovieTitle"
+      :diagnostics-movie-subtitle="diagnosticsMovieSubtitle"
+      :manual-action-loading="manualActionLoading"
+      :field-label="fieldLabel"
+      :field-value-preview="fieldValuePreview"
+      :manual-action-label="manualActionLabel"
+      :format-action-time="formatActionTime"
+      @close="closeDrawer"
+      @match="manualMatchMovie"
+      @unmatch="manualUnmatchMovie"
+      @ignore="manualIgnoreMovie"
+    />
+  </div>
 </template>
 
 <script>
-import { reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { applyImageFallback } from '../../utils/imageFallback.js'
 import SupplementMoviesPanel from './SupplementMoviesPanel.vue'
+import SupplementSourceDiagnosticsDialog from './SupplementSourceDiagnosticsDialog.vue'
 import { useSupplementApi } from './useSupplementApi.js'
 
 export default {
   name: 'MoviesTab',
-  components: { SupplementMoviesPanel },
+  components: { SupplementMoviesPanel, SupplementSourceDiagnosticsDialog },
   props: {
     actorContext: { type: Object, default: null },
     actorName: { type: String, default: '' },
     initialFilters: { type: Object, default: () => ({}) },
     refreshNonce: { type: Number, default: 0 },
   },
-  emits: ['filters-change', 'jobs-requested', 'sources-opened', 'summary-change'],
+  emits: ['filters-change', 'jobs-requested', 'summary-change'],
   setup(props, { emit }) {
     const router = useRouter()
+    const route = useRoute()
     const supplement = useSupplementApi()
     const moviePage = ref(1)
     const movieFilters = reactive({ matched: false, quality: '', actress_id: '', q: '' })
@@ -61,6 +98,21 @@ export default {
       { value: 'missing_categories', label: '缺分类' },
       { value: 'low_completeness', label: '低完整度' },
     ]
+
+    const quickChips = computed(() => [
+      { key: 'candidate', label: '待确认候选', value: supplement.workspacePendingCandidateCount.value, filter: { matched: false, quality: '' } },
+      { key: 'gap', label: '字段缺口', value: supplement.workspaceMovieFieldGapCount.value, filter: { quality: 'low_completeness' } },
+      { key: 'detail', label: '可补详情', value: supplement.workspaceDetailTargetCount.value, filter: { matched: false, quality: 'missing_cover' } },
+    ])
+
+    const diagnosticsMovieTitle = computed(() => {
+      const movie = supplement.sourceDiagnostics.value?.movie
+      return movie?.dvd_id || movie?.canonical_number || '字段来源'
+    })
+    const diagnosticsMovieSubtitle = computed(() => {
+      const movie = supplement.sourceDiagnostics.value?.movie
+      return movie?.title || movie?.matched_content_id || ''
+    })
 
     function syncFilters() {
       Object.assign(movieFilters, {
@@ -100,6 +152,11 @@ export default {
       await applyMovieFilters()
     }
 
+    async function applyQuickChip(chip) {
+      Object.assign(movieFilters, chip.filter)
+      await applyMovieFilters()
+    }
+
     async function goMoviePage(page) {
       moviePage.value = page
       await loadMovies()
@@ -128,9 +185,39 @@ export default {
       })
     }
 
-    async function openMovieSourcesAction(movie) {
-      emit('sources-opened', movie)
+    // Diagnostics drawer is addressed by ?work=<id> so the back button closes it
+    // instead of leaving the page, and it never swaps tabs or pops a full-screen modal.
+    function buildQuery(patch) {
+      const next = { ...route.query, ...patch }
+      Object.keys(next).forEach(key => {
+        if (next[key] === undefined || next[key] === null || next[key] === '') delete next[key]
+      })
+      return next
     }
+
+    function openMovieSourcesAction(movie) {
+      if (!movie?.id) return
+      router.push({ path: route.path, query: buildQuery({ work: String(movie.id) }) }).catch(() => {})
+    }
+
+    function closeDrawer() {
+      router.push({ path: route.path, query: buildQuery({ work: undefined }) }).catch(() => {})
+    }
+
+    watch(
+      () => route.query.work,
+      async (work) => {
+        const workId = Array.isArray(work) ? work[0] : work
+        if (workId) {
+          if (String(supplement.sourceDiagnostics.value?.movie?.id || '') !== String(workId)) {
+            await supplement.openMovieSources({ id: workId })
+          }
+        } else if (supplement.sourceDiagnosticsOpen.value) {
+          supplement.closeMovieSources()
+        }
+      },
+      { immediate: true }
+    )
 
     watch(
       () => [props.actorContext?.id || '', JSON.stringify(props.initialFilters), props.refreshNonce],
@@ -148,16 +235,23 @@ export default {
       movieFilters,
       matchFilterOptions,
       qualityFilterOptions,
+      quickChips,
+      diagnosticsMovieTitle,
+      diagnosticsMovieSubtitle,
       applyImageFallback,
       loadMovies,
       applyMovieFilters,
       clearMovieFilters,
+      applyQuickChip,
       goMoviePage,
       enrichMovieAction,
       batchEnrichMoviesAction,
       createDownloadCandidatesAction,
       openMovieSourcesAction,
+      closeDrawer,
     }
   },
 }
 </script>
+
+<style scoped src="./supplementMoviesPanel.css"></style>

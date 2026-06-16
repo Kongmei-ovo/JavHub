@@ -9,8 +9,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from config import config
-from database import add_inventory_job, add_log
-from scheduler.inventory_tasks import run_inventory_comparison
+from database import add_log
 from services.candidate_processor import is_candidate_processing_running
 
 logger = logging.getLogger(__name__)
@@ -177,73 +176,6 @@ def variant_index_rebuild_job():
         _variant_index_rebuild_lock.release()
 
 
-def inventory_comparison_job(job_type: str = "full"):
-    """Run the async inventory comparison job on the shared scheduler loop."""
-    from scheduler.worker_loop import run as run_on_loop
-
-    return run_on_loop(run_inventory_comparison(job_type=job_type))
-
-
-def inventory_daily_pipeline_job():
-    """Daily end-to-end: collect → compare → (preview).
-
-    Replaces the old "compare only" cron, which never refreshed the Emby
-    snapshot. Without this, every nightly compare ran against a stale
-    snapshot — anything downloaded yesterday looked like it was still
-    missing, so missing/candidate counts drifted further from reality each
-    day. Stage 3 stays a dry-run preview; actual download dispatch is the
-    job of the interval-driven candidate auto-process.
-    """
-    from scheduler.worker_loop import run as run_on_loop
-    from services.supplement_pipeline import run_supplement_pipeline
-
-    job_id = add_inventory_job("full", None, None)
-    summary = run_on_loop(
-        run_supplement_pipeline(
-            job_id,
-            do_collect=True,
-            actor_id=None,
-            process=True,
-            dry_run=True,
-        )
-    )
-    counts = (summary.get("stages", {}).get("process") or {}).get("counts") or {}
-    add_log("INFO", f"日常 pipeline (collect+compare) 完成 job={job_id} preview_counts={counts}")
-    return summary
-
-
-def candidate_sent_audit_job():
-    """Verify ``sent`` candidates landed: downloader finished + Emby has it.
-
-    Closes the loop the audit called out: candidates used to stop at ``sent``
-    forever, so the system never learned which downloads actually succeeded.
-    For each ``sent`` row:
-    - if the download task is failed → revert to ``failed`` (retryable)
-    - if Emby confirms the code is present → promote to ``completed`` and
-      delete the matching ``missing_videos`` row
-    - otherwise leave alone (still downloading / not yet visible to Emby)
-    """
-    from scheduler.worker_loop import run as run_on_loop
-    from services.sent_audit import audit_sent_candidates
-
-    try:
-        result = run_on_loop(audit_sent_candidates())
-        add_log(
-            "INFO",
-            (
-                "sent 候选核对完成: "
-                f"checked={result.get('checked', 0)} "
-                f"completed={result.get('completed', 0)} "
-                f"failed={result.get('failed', 0)} "
-                f"pending={result.get('pending', 0)}"
-            ),
-        )
-        return result
-    except Exception as exc:
-        add_log("ERROR", f"sent 候选核对失败: {exc}")
-        raise
-
-
 def candidate_auto_process_schedule_state() -> dict:
     """Expose scheduler status for operations overview."""
     job = scheduler.get_job('candidate_auto_process') if scheduler.running else None
@@ -276,24 +208,80 @@ def configure_candidate_auto_process_job():
     )
 
 
-def configure_candidate_sent_audit_job():
-    """Install or refresh the sent-candidate audit interval job."""
+def acquisition_coordinator_job():
+    """Poll in-flight 115 offline tasks → finalize → sync acquisition sessions.
+
+    This is the background coordinator the design called for:
+    ``downloader_service.update_all_task_statuses`` existed but was never on any
+    schedule, so 115 finalize never ran on its own. This interval job drives it.
+    """
+    from scheduler.worker_loop import run as run_on_loop
+    from services.downloader import downloader_service
+
     try:
-        scheduler.remove_job('candidate_sent_audit')
+        run_on_loop(downloader_service.update_all_task_statuses())
+    except Exception as exc:
+        add_log("ERROR", f"获取任务协调失败: {exc}")
+        raise
+
+
+def configure_acquisition_coordinator_job():
+    """Install or refresh the 115 finalize coordinator interval job."""
+    try:
+        scheduler.remove_job('acquisition_coordinator')
     except Exception as exc:
         if "No job by the id" not in str(exc):
-            logger.debug("Unable to remove sent-audit job before refresh: %s", exc)
-    interval_minutes = config.inventory_sent_audit_interval_minutes
+            logger.debug("Unable to remove acquisition coordinator job before refresh: %s", exc)
+    interval_minutes = config.acquisition_coordinator_interval_minutes
     if interval_minutes <= 0:
         return
     scheduler.add_job(
-        scheduler_job_wrapper('candidate_sent_audit', candidate_sent_audit_job),
+        scheduler_job_wrapper('acquisition_coordinator', acquisition_coordinator_job),
         IntervalTrigger(minutes=interval_minutes),
-        id='candidate_sent_audit',
-        name='sent 候选核对',
+        id='acquisition_coordinator',
+        name='获取任务协调器',
         replace_existing=True,
         max_instances=1,
     )
+
+
+# 可手动"立即运行"的调度作业白名单：id → 作业函数。
+# 系统作业控制台 (POST /scheduler/jobs/{id}/run) 只允许触发这些。
+_MANUAL_JOB_FUNCS: dict[str, Callable[[], Any]] = {
+    'subscription_check': subscription_check_job,
+    'variant_index_rebuild': variant_index_rebuild_job,
+    'candidate_auto_process': candidate_auto_process_job,
+    'acquisition_coordinator': acquisition_coordinator_job,
+}
+
+MANUAL_JOB_IDS: tuple[str, ...] = tuple(_MANUAL_JOB_FUNCS)
+
+_manual_run_threads: dict[str, threading.Thread] = {}
+_manual_run_lock = threading.Lock()
+
+
+def trigger_scheduler_job(job_id: str) -> dict[str, Any]:
+    """Run a whitelisted scheduler job immediately in a background thread.
+
+    Reuses ``scheduler_job_wrapper`` so a manual run records the same
+    last_run/last_status as a scheduled run. Returns immediately; if the job
+    is already running we report ``accepted=False`` instead of double-firing.
+    """
+    func = _MANUAL_JOB_FUNCS.get(job_id)
+    if func is None:
+        raise KeyError(job_id)
+    with _manual_run_lock:
+        existing = _manual_run_threads.get(job_id)
+        if existing is not None and existing.is_alive():
+            return {"accepted": False, "running": True}
+        thread = threading.Thread(
+            target=scheduler_job_wrapper(job_id, func),
+            name=f"manual-{job_id}",
+            daemon=True,
+        )
+        _manual_run_threads[job_id] = thread
+        thread.start()
+    return {"accepted": True, "running": True}
 
 
 def start_scheduler():
@@ -312,17 +300,7 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # 日常 pipeline: collect → compare → preview。每天 3:00 整条跑一遍,
-    # 这样隔天对比的快照是最新的(以前只跑 compare,快照永远滞后)。
-    scheduler.add_job(
-        scheduler_job_wrapper('inventory_daily_pipeline', inventory_daily_pipeline_job),
-        CronTrigger(hour=3, minute=0),
-        id='inventory_daily_pipeline',
-        name='日常库存 Pipeline',
-        replace_existing=True,
-    )
-
-    # 每日变体索引重建（默认 4:00，排在 3:00 日常库存 pipeline 之后）。
+    # 每日变体索引重建（默认 4:00）。
     variant_index_hour = config.scheduler_variant_index_rebuild_hour
     if variant_index_hour is not None:
         scheduler.add_job(
@@ -334,7 +312,7 @@ def start_scheduler():
         )
 
     configure_candidate_auto_process_job()
-    configure_candidate_sent_audit_job()
+    configure_acquisition_coordinator_job()
 
     scheduler.start()
     logger.info(f"Scheduler started, subscription check at {check_hour}:00")

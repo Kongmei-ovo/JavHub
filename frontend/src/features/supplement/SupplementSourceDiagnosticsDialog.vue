@@ -1,6 +1,6 @@
 <template>
-  <div class="diagnostics-overlay" @click.self="$emit('close')">
-    <div class="diagnostics-panel apple-surface">
+  <div class="diagnostics-overlay" :class="{ 'diagnostics-overlay--drawer': drawer }" @click.self="$emit('close')">
+    <div class="diagnostics-panel apple-surface" :class="{ 'diagnostics-panel--drawer': drawer }">
       <div class="diagnostics-header">
         <div>
           <h2>{{ diagnosticsMovieTitle }}</h2>
@@ -271,9 +271,10 @@
 export default {
   name: 'SupplementSourceDiagnosticsDialog',
   props: {
+    drawer: { type: Boolean, default: false },
     sourceDiagnosticsLoading: { type: Boolean, default: false },
     sourceDiagnostics: { type: Object, default: null },
-    diagnosticsMovieTitle: { type: String, default: '来源诊断' },
+    diagnosticsMovieTitle: { type: String, default: '字段来源' },
     diagnosticsMovieSubtitle: { type: String, default: '' },
     manualContentId: { type: String, default: '' },
     manualActionLoading: { type: Boolean, default: false },

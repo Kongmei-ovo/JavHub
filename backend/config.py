@@ -37,6 +37,21 @@ def _first_env(default: str, *keys: str) -> str:
     return default
 
 
+def _coerce_bool(value, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+        return False
+    return bool(value)
+
+
 def _warn_if_legacy_javinfo_url(api_url: str, source: str) -> None:
     normalized = str(api_url or "").rstrip("/")
     if normalized not in LEGACY_JAVINFO_API_URLS:
@@ -125,6 +140,10 @@ class Config:
     def open115_root_path(self) -> str:
         return self.open115.get('root_path', '/JavHub')
 
+    @property
+    def open115_delete_on_remove(self) -> bool:
+        return _coerce_bool(self.open115.get('delete_on_remove'), default=True)
+
     # ── emby_compat（Emby 兼容 API）────────────────────────────
     @property
     def emby_compat_enabled(self) -> bool:
@@ -141,6 +160,15 @@ class Config:
     @property
     def emby_compat_proxy_stream(self) -> bool:
         return bool(self._config.get('emby_compat', {}).get('proxy_stream', False))
+
+    @property
+    def playback_require_auth(self) -> bool:
+        """Enforce a single-user token on native playback/acquisition endpoints.
+
+        Default off: the same-origin web app is unauthenticated and typically sits
+        behind network-layer auth (Cloudflare Access). Turn on before exposing the
+        raw /api/v1/playback face directly to untrusted clients."""
+        return bool(self._config.get('playback', {}).get('require_auth', False))
 
     @property
     def crawler_request_interval(self) -> int:
@@ -235,6 +263,7 @@ class Config:
             'candidate_sources': ['subscription', 'inventory', 'supplement'],
             'rules_require_magnet': True,
             'auto_process_interval_minutes': 30,
+            'acquisition_coordinator_interval_minutes': 1,
             'max_auto_downloads_per_run': 20,
             'max_auto_downloads_per_24h': 100,
         }
@@ -260,6 +289,10 @@ class Config:
     @property
     def automation_auto_process_interval_minutes(self) -> int:
         return self._clamp_int(self.automation.get('auto_process_interval_minutes', 30), 30, 0)
+
+    @property
+    def acquisition_coordinator_interval_minutes(self) -> int:
+        return self._clamp_int(self.automation.get('acquisition_coordinator_interval_minutes', 1), 1, 0)
 
     @property
     def automation_max_auto_downloads_per_run(self) -> int:

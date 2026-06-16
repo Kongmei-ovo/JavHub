@@ -26,26 +26,18 @@ from routers.series import router as series_router
 from routers.categories import router as categories_router
 from routers.downloads import router as downloads_router
 from routers.subscriptions import router as subscriptions_router
-from routers.missing import router as missing_router
-from routers.duplicates import router as duplicates_router
 from routers.config import router as config_router
 from routers.logs import router as logs_router
 from routers.health import router as health_router
 from routers.translation import router as translation_router
+from routers.supplement import router as supplement_router
 from routers.proxy import router as proxy_router
-from routers.inventory import router as inventory_router
-from routers.inventory_actors import router as inventory_actors_router
-from routers.inventory_jobs import router as inventory_jobs_router
-from routers.inventory_mapping import router as inventory_mapping_router
 from routers.favorites import router as favorites_router
 from routers.stream import router as stream_router
-from routers.supplement import router as supplement_router
 from routers.directors import router as directors_router
 from routers.actors import router as actors_router
 from routers.authors import router as authors_router
 from routers.labels import router as labels_router
-from routers.operations import router as operations_router
-from routers.data_quality import router as data_quality_router
 from routers.javinfo_imports import router as javinfo_imports_router
 from routers.video_variant_index import router as video_variant_index_router
 from routers.source_health import router as source_health_router
@@ -55,7 +47,9 @@ from routers.playback import router as playback_router
 from routers.emby_compat import discovery_router as emby_discovery_router
 from routers.emby_compat import router as emby_compat_router
 from routers.open115 import router as open115_router
+from routers.open115_files import router as open115_files_router
 from routers.movie_resources import router as movie_resources_router
+from routers.acquisitions import router as acquisitions_router
 from services.emby_auth import EmbyHTTPException
 
 app = FastAPI(title="AV Downloader API")
@@ -169,26 +163,18 @@ app.include_router(series_router)
 app.include_router(categories_router)
 app.include_router(downloads_router)
 app.include_router(subscriptions_router)
-app.include_router(missing_router)
-app.include_router(duplicates_router)
 app.include_router(config_router)
 app.include_router(logs_router)
 app.include_router(health_router)
 app.include_router(translation_router)
+app.include_router(supplement_router)
 app.include_router(proxy_router)
-app.include_router(inventory_router)
-app.include_router(inventory_jobs_router)
-app.include_router(inventory_actors_router)
-app.include_router(inventory_mapping_router)
 app.include_router(favorites_router)
 app.include_router(stream_router)
-app.include_router(supplement_router)
 app.include_router(directors_router)
 app.include_router(actors_router)
 app.include_router(authors_router)
 app.include_router(labels_router)
-app.include_router(operations_router)
-app.include_router(data_quality_router)
 app.include_router(javinfo_imports_router)
 app.include_router(video_variant_index_router)
 app.include_router(source_health_router)
@@ -196,7 +182,9 @@ app.include_router(jobs_router)
 app.include_router(scheduler_router)
 app.include_router(playback_router)
 app.include_router(open115_router)
+app.include_router(open115_files_router)
 app.include_router(movie_resources_router)
+app.include_router(acquisitions_router)
 # Emby 兼容层挂根路径与 /emby 双前缀（不同客户端拼法不同）
 app.include_router(emby_compat_router)
 app.include_router(emby_discovery_router, prefix="/emby")
@@ -251,12 +239,6 @@ async def shutdown_event():
         await get_info_client().close()
     except Exception as e:
         logging.debug("Failed to close JavInfoApi client: %s", e)
-
-    try:
-        from modules.emby_client import get_emby_client
-        await get_emby_client().close()
-    except Exception as e:
-        logging.debug("Failed to close Emby client: %s", e)
 
     try:
         from services.open115 import open115_client

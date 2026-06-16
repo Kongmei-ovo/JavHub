@@ -27,26 +27,21 @@ const actor = [
   readFileSync(new URL('../views/Actor.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8'),
 ].join('\n')
-const supplementManagement = [
-  readFileSync(new URL('../views/SupplementManagement.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/SupplementMoviesPanel.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/SupplementSourceDiagnosticsDialog.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/supplementMoviesPanel.css', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/supplementMovieRepair.css', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8'),
-].join('\n')
-const inventoryActor = readFileSync(new URL('../views/InventoryActor.vue', import.meta.url), 'utf8')
 const subscription = [
   readFileSync(new URL('../views/Subscription.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8'),
 ].join('\n')
-const duplicates = readFileSync(new URL('../views/Duplicates.vue', import.meta.url), 'utf8')
-const home = [
-  readFileSync(new URL('../views/Home.vue', import.meta.url), 'utf8'),
+const downloads = [
+  readFileSync(new URL('../views/Downloads.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloads/DownloadStatsBar.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloads/TaskList.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/downloaders/DownloaderManagementPanel.vue', import.meta.url), 'utf8'),
+].join('\n')
+const candidates = [
+  readFileSync(new URL('../views/Candidates.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../features/candidates/candidates.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
 ].join('\n')
 const translationJobs = [
@@ -57,10 +52,6 @@ const translationJobs = [
   readFileSync(new URL('../features/translations/translationPanelControls.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/translations/translationSourcesPanel.css', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/translations/translationReviewPanel.css', import.meta.url), 'utf8'),
-].join('\n')
-const libraryOrganize = [
-  readFileSync(new URL('../views/LibraryOrganize.vue', import.meta.url), 'utf8'),
-  readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
 ].join('\n')
 
 function cssBlock(selector) {
@@ -102,22 +93,6 @@ function productionStyleFiles(dirUrl = new URL('../', import.meta.url)) {
     return [entryUrl]
   })
 }
-
-// Candidates + Supplement wave A 走 v2 设计语言,在用户决定 A/B 之前不参与
-// backdrop-blur / single-layer badge / 等 glass 契约扫描。
-const v2IslandPaths = new Set([
-  'frontend/src/features/candidates/DownloadCandidatePanel.vue',
-  'frontend/src/features/candidates/downloadCandidatePanel.css',
-  'frontend/src/features/supplement/RepairLaneTab.vue',
-  'frontend/src/features/supplement/SourceHealthPanel.vue',
-  'frontend/src/features/supplement/sourceHealthPanel.css',
-  'frontend/src/features/supplement/SupplementJobList.vue',
-  'frontend/src/features/supplement/SupplementMoviesPanel.vue',
-  'frontend/src/features/supplement/supplementManagement.css',
-  'frontend/src/features/supplement/supplementMoviesPanel.css',
-  'frontend/src/features/supplement/supplementMovieRepair.css',
-  'frontend/src/views/SupplementManagement.vue',
-])
 
 test('root defaults stay aligned with every light theme runtime token', () => {
   for (const [token, value] of Object.entries(THEMES['apple-light'].vars)) {
@@ -417,7 +392,7 @@ test('segmented controls stay glass while settings rows use solid content surfac
 test('native form controls use active glass accents instead of raw theme accent paint', () => {
   for (const [name, source] of [
     ['Config', config],
-    ['Home', home],
+    ['Candidates', candidates],
     ['TranslationJobs', translationJobs],
   ]) {
     assert.doesNotMatch(source, /accent-color:\s*var\(--accent\)/, `${name} should not use the raw accent color on native controls`)
@@ -449,8 +424,6 @@ test('image fallback placeholders use theme glass instead of hardcoded SVG data 
     ['VideoModal', videoModal],
     ['Actor', actor],
     ['Genres', genres],
-    ['SupplementManagement', supplementManagement],
-    ['InventoryActor', inventoryActor],
     ['Subscription', subscription],
   ]) {
     assert.doesNotMatch(source, /data:image\/svg\+xml/, `${name} should not inject hardcoded SVG fallbacks`)
@@ -476,11 +449,7 @@ test('secondary utility controls avoid one-off fog materials', () => {
   assert.match(actorYearNav, /var\(--surface-specular-edge-strong\)/)
   assert.match(actorYearNav, /var\(--surface-noise\)/)
   assert.match(actorYearNav, /backdrop-filter:\s*blur\(var\(--glass-blur-sheet\)\)/)
-  const duplicateIgnoreButton = sourceBlock(duplicates, '.action-btn.ignore')
-  assert.match(duplicateIgnoreButton, backgroundIncludes('material-glass-control'))
-  assert.match(duplicateIgnoreButton, /var\(--surface-specular-edge\)/)
-  assert.match(duplicateIgnoreButton, /var\(--surface-noise\)/)
-  assert.match(home, /\.dialog-close-btn\s*\{[\s\S]*background:[\s\S]*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
+  assert.match(downloads, /\.dialog-close-btn\s*\{[\s\S]*background:[\s\S]*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
 })
 
 test('page status colors use semantic badge tokens instead of hardcoded hues', () => {
@@ -488,8 +457,8 @@ test('page status colors use semantic badge tokens instead of hardcoded hues', (
   for (const [name, source] of [
     ['Actor', actor],
     ['Config', config],
-    ['Home', home],
-    ['LibraryOrganize', libraryOrganize],
+    ['Downloads', downloads],
+    ['Candidates', candidates],
     ['Subscription', subscription],
   ]) {
     assert.doesNotMatch(source, bannedStatusPaint, `${name} should use badge semantic status tokens`)
@@ -533,7 +502,6 @@ test('production backdrop blur uses shared glass tokens', () => {
 
   for (const fileUrl of productionStyleFiles()) {
     const name = fileUrl.pathname.replace(/^.*\/frontend\/src\//, 'frontend/src/')
-    if (v2IslandPaths.has(name)) continue
     const source = readFileSync(fileUrl, 'utf8')
     for (const match of source.matchAll(hardcodedBlur)) {
       const line = source.slice(0, match.index).split('\n').length
@@ -561,13 +529,10 @@ test('production stacking layers use the shared z-index scale', () => {
   assert.deepEqual(offenders, [])
 })
 
-test('home dashboard metrics use shared liquid glass controls', () => {
-  const statCardBlock = sourceBlock(home, '.stat-card')
-  const statCardHoverBlock = sourceBlock(home, '.stat-card:hover')
-  const statIconBlock = sourceBlock(home, '.stat-icon')
-  const candidateMetricBlock = sourceBlock(home, '.candidate-metric')
-  const candidateMetricHoverBlock = sourceBlock(home, '.candidate-metric:hover')
-  const mobileBlock = home.match(/@media \(max-width:\s*768px\)\s*\{[\s\S]*\n\}/)?.[0] || ''
+test('download metrics use solid v2 content surfaces', () => {
+  const statCardBlock = sourceBlock(downloads, '.stat-card')
+  const statCardHoverBlock = sourceBlock(downloads, '.stat-card:hover')
+  const statIconBlock = sourceBlock(downloads, '.stat-icon')
 
   // v2 内容层去玻璃：仪表盘统计卡 = 实底（--card + --hairline），对齐 Today
   assert.match(statCardBlock, /background:\s*var\(--card\)/)
@@ -580,15 +545,6 @@ test('home dashboard metrics use shared liquid glass controls', () => {
   assert.match(statIconBlock, /background:\s*var\(--card-2, var\(--card\)\)/)
   assert.match(statIconBlock, /border:\s*1px solid var\(--hairline\)/)
   assert.doesNotMatch(statIconBlock, /!important|rgba\(255,\s*255,\s*255|backdrop-filter/)
-
-  assert.match(candidateMetricBlock, /background:\s*var\(--card\)/)
-  assert.match(candidateMetricBlock, /border:\s*1px solid var\(--hairline\)/)
-  assert.doesNotMatch(candidateMetricBlock, /backdrop-filter/)
-  assert.match(candidateMetricHoverBlock, /border-color:\s*var\(--hairline-strong\)/)
-  assert.match(candidateMetricHoverBlock, /box-shadow:\s*var\(--shadow-card\)/)
-
-  assert.match(mobileBlock, /\.candidate-overview\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
-  assert.match(mobileBlock, /\.candidate-metric\s*\{[\s\S]*min-width:\s*0/)
 })
 
 test('translation jobs workbench separates solid content surfaces from glass controls', () => {

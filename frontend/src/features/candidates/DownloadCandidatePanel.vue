@@ -156,7 +156,6 @@
           <div class="cc-links">
             <button class="link-btn" type="button" @click="$emit('open-detail', candidate)">详情</button>
             <button v-if="candidate.actress_id" class="link-btn" type="button" @click="$emit('go-actor', candidate)">演员</button>
-            <button v-if="candidate.source === 'supplement' && candidate.actress_id" class="link-btn" type="button" @click="$emit('go-supplement', candidate)">补全</button>
           </div>
         </div>
 
@@ -359,7 +358,6 @@ export default {
     'toggle-selected',
     'open-detail',
     'go-actor',
-    'go-supplement',
     'edit-magnet',
     'enrich-magnet',
     'approve',

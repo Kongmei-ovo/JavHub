@@ -6,21 +6,14 @@ const files = {
   app: readFileSync(new URL('../App.vue', import.meta.url), 'utf8'),
   main: readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8'),
   search: readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
-  home: readFileSync(new URL('../features/home/home.css', import.meta.url), 'utf8'),
+  downloads: readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8'),
   favorites: readFileSync(new URL('../features/favorites/favorites.css', import.meta.url), 'utf8'),
   toastCapsule: readFileSync(new URL('../components/ToastCapsule.vue', import.meta.url), 'utf8'),
   variantGroupDisclosure: readFileSync(new URL('../components/VariantGroupDisclosure.vue', import.meta.url), 'utf8'),
   actorPortraitCard: readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8'),
   actor: readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8'),
   subscription: readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8'),
-  libraryOrganize: readFileSync(new URL('../features/library/libraryOrganize.css', import.meta.url), 'utf8'),
   logs: readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8'),
-  supplement: readFileSync(new URL('../features/supplement/supplementManagement.css', import.meta.url), 'utf8'),
-  supplementDiagnostics: [
-    readFileSync(new URL('../features/supplement/supplementSourceDiagnosticsDialog.css', import.meta.url), 'utf8'),
-    readFileSync(new URL('../features/supplement/supplementDiagnosticsFields.css', import.meta.url), 'utf8'),
-  ].join('\n'),
-  operations: readFileSync(new URL('../features/operations/operations.css', import.meta.url), 'utf8'),
   videoModal: readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8'),
   candidates: readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
   entities: readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8'),
@@ -53,7 +46,7 @@ function mobileBlock(source, maxWidth = 768) {
 
 function allMobileBlocks(source) {
   const blocks = []
-  const mediaPattern = /@media\s*\(max-width:\s*(?:980|920|900|860|768|640|560|480)px\)/g
+  const mediaPattern = /@media\s*\(max-width:\s*(?:980|920|900|860|768|640|560|520|480)px\)/g
   for (const match of source.matchAll(mediaPattern)) {
     const open = source.indexOf('{', match.index)
     let depth = 0
@@ -121,7 +114,6 @@ test('mobile shared controls use iPhone touch targets without inflating dense ca
   assert.match(mainMobile, /--video-card-body-padding-mobile:\s*9px 10px 11px/)
   assert.match(magnetMobile, /\.clear-input-btn,\s*\.clear-results-btn\s*\{[\s\S]*min-height:\s*var\(--touch-target\)/)
   assert.match(favoritesMobile, /\.btn-mini,\s*\.collection-form input\s*\{[\s\S]*min-height:\s*var\(--touch-target\)/)
-  assert.match(mobileCss('libraryOrganize'), /\.tab-btn\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('logs'), /\.toolbar input,\s*\.toolbar button\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('logs'), /\.activity-header \.toolbar-btn\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('translations'), /\.segmented-control button\s*\{[\s\S]*min-height:\s*40px/)
@@ -135,8 +127,6 @@ test('mobile shared controls use iPhone touch targets without inflating dense ca
   assert.match(files.config, /\.input-eye-btn\s*\{[\s\S]*width:\s*36px[\s\S]*height:\s*36px[\s\S]*\}[\s\S]*@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*\.input-eye-btn\s*\{[\s\S]*width:\s*40px[\s\S]*height:\s*40px/)
   assert.match(mobileCss('advancedConfig'), /\.input-eye-btn\s*\{[\s\S]*(?:width:\s*40px[\s\S]*height:\s*40px|inline-size:\s*40px[\s\S]*block-size:\s*40px)/)
   assert.match(mobileCss('actor'), /\.variant-expand-btn,\s*\.year-nav-item\s*\{[\s\S]*min-height:\s*40px/)
-  assert.match(mobileCss('operations'), /\.block-head button\s*\{[\s\S]*min-height:\s*40px/)
-  assert.match(mobileCss('operations'), /\.quality-progress-action\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('entities'), /\.search-box input\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('toastCapsule'), /\.toast-close\s*\{[\s\S]*width:\s*40px[\s\S]*height:\s*40px/)
   assertMobileOnlyProperty('variantGroupDisclosure', '.variant-group-disclosure__toggle', /min-height:\s*40px/, 'variant toggle should keep a mobile touch target')
@@ -148,16 +138,11 @@ test('primary mobile pages wrap toolbars and grids instead of creating iPhone ov
     ['search', '.sort-strip-left', /min-width:\s*0/],
     ['search', '.sort-strip-right', /min-width:\s*0/],
     ['search', '.pagination-bar', /overflow-x:\s*clip/],
-    ['home', '.download-tabs', /overflow-x:\s*auto/],
-    ['home', '.header-actions', /flex-wrap:\s*wrap/],
+    ['downloads', '.download-tabs', /overflow-x:\s*auto/],
+    ['downloads', '.header-actions', /width:\s*100%/],
     ['favorites', '.segmented-control', /overflow-x:\s*auto/],
     ['actor', '.actor-actions', /flex-wrap:\s*wrap/],
-    ['actor', '.supplement-actions', /align-items:\s*stretch/],
     ['subscription', '.hero-actions', /flex-wrap:\s*wrap/],
-    ['libraryOrganize', '.organize-workbench', /min-width:\s*0/],
-    ['supplement', '.workspace-actions', /flex-wrap:\s*wrap/],
-    ['operations', '.header-actions', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/],
-    ['operations', '.quick-actions', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/],
     ['candidates', '.candidate-toolbar', /overflow-x:\s*auto/],
     ['config', '.settings-row', /grid-template-columns:\s*1fr/],
     ['config', '.settings-sidebar', /margin:\s*0/],
@@ -174,5 +159,4 @@ test('mobile modal and sheet surfaces leave room for the home indicator', () => 
   assert.match(mobileCss('videoModal'), /\.modal-container\s*\{[\s\S]*max-height:\s*calc\(100dvh - 24px - env\(safe-area-inset-bottom,\s*0px\)\)/)
   assert.match(mobileCss('videoModal'), /\.modal-body\s*\{[\s\S]*padding-bottom:\s*calc\(14px \+ env\(safe-area-inset-bottom,\s*0px\)\)/)
   assert.match(mobileCss('subscription'), /\.sheet\s*\{[\s\S]*padding-bottom:\s*calc\(16px \+ env\(safe-area-inset-bottom,\s*0px\)\)/)
-  assert.match(mobileCss('supplementDiagnostics'), /\.diagnostics-panel\s*\{[\s\S]*max-height:\s*calc\(100dvh - 24px - env\(safe-area-inset-bottom,\s*0px\)\)/)
 })

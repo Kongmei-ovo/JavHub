@@ -16,6 +16,7 @@ from config import config
 
 
 _IDENTITY_TABLES = {
+    "acquisition_sessions",
     "actor_aliases",
     "actor_mappings",
     "actress_missing_summary",
@@ -404,6 +405,8 @@ def init_db():
         _init_emby_snapshot_tables(cursor)
         _init_playback_tables(cursor)
         _init_movie_resource_tables(cursor)
+        _init_acquisition_tables(cursor)
+        _init_subscription_baseline_tables(cursor)
         conn.commit()
     finally:
         conn.close()
@@ -784,13 +787,140 @@ def _init_playback_tables(cursor) -> None:
             content_id TEXT NOT NULL,
             user_id TEXT,
             source TEXT NOT NULL DEFAULT 'library',
+            last_source TEXT,
+            last_resource_id INTEGER,
             position_seconds DOUBLE PRECISION DEFAULT 0,
             duration_seconds DOUBLE PRECISION DEFAULT 0,
             completed INTEGER DEFAULT 0,
-            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(content_id, source)
+            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    _add_column_if_missing(
+        cursor,
+        "ALTER TABLE playback_progress ADD COLUMN IF NOT EXISTS last_source TEXT",
+    )
+    _add_column_if_missing(
+        cursor,
+        "ALTER TABLE playback_progress ADD COLUMN IF NOT EXISTS last_resource_id INTEGER",
+    )
+    cursor.execute(
+        """
+        UPDATE playback_progress
+        SET last_source = source
+        WHERE last_source IS NULL
+        """
+    )
+    cursor.execute(
+        """
+        DELETE FROM playback_progress
+        WHERE id IN (
+            SELECT id
+            FROM (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY content_id
+                        ORDER BY updated_at DESC NULLS LAST, id DESC
+                    ) AS row_number
+                FROM playback_progress
+            ) ranked
+            WHERE row_number > 1
+        )
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE playback_progress
+        SET source = 'library'
+        WHERE source <> 'library'
+        """
+    )
+    cursor.execute(
+        """
+        DO $$
+        DECLARE
+            unique_constraint RECORD;
+            has_content_id_unique BOOLEAN := FALSE;
+            constraint_name TEXT := 'playback_progress_content_id_key';
+            constraint_suffix INTEGER := 0;
+        BEGIN
+            FOR unique_constraint IN
+                SELECT
+                    tc.constraint_name,
+                    string_agg(kcu.column_name, ',' ORDER BY kcu.ordinal_position) AS columns
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                 AND tc.table_schema = kcu.table_schema
+                 AND tc.table_name = kcu.table_name
+                WHERE tc.table_schema = current_schema()
+                  AND tc.table_name = 'playback_progress'
+                  AND tc.constraint_type = 'UNIQUE'
+                GROUP BY tc.constraint_name
+            LOOP
+                IF unique_constraint.columns = 'content_id,source' THEN
+                    EXECUTE format(
+                        'ALTER TABLE playback_progress DROP CONSTRAINT %I',
+                        unique_constraint.constraint_name
+                    );
+                END IF;
+            END LOOP;
+
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_index index_info
+                JOIN pg_class table_info
+                  ON table_info.oid = index_info.indrelid
+                JOIN pg_namespace table_namespace
+                  ON table_namespace.oid = table_info.relnamespace
+                JOIN pg_attribute attribute
+                  ON attribute.attrelid = table_info.oid
+                 AND attribute.attnum = index_info.indkey[0]
+                 AND attribute.attname = 'content_id'
+                WHERE table_namespace.nspname = current_schema()
+                  AND table_info.relname = 'playback_progress'
+                  AND index_info.indisunique
+                  AND index_info.indisvalid
+                  AND index_info.indisready
+                  AND index_info.indpred IS NULL
+                  AND index_info.indexprs IS NULL
+                  AND index_info.indnkeyatts = 1
+                  AND index_info.indnatts = 1
+            )
+            INTO has_content_id_unique;
+
+            IF NOT has_content_id_unique THEN
+                WHILE EXISTS (
+                    SELECT 1
+                    FROM pg_class relation
+                    JOIN pg_namespace relation_namespace
+                      ON relation_namespace.oid = relation.relnamespace
+                    WHERE relation_namespace.nspname = current_schema()
+                      AND relation.relname = constraint_name
+                ) OR EXISTS (
+                    SELECT 1
+                    FROM pg_constraint existing_constraint
+                    JOIN pg_namespace constraint_namespace
+                      ON constraint_namespace.oid = existing_constraint.connamespace
+                    WHERE constraint_namespace.nspname = current_schema()
+                      AND existing_constraint.conname = constraint_name
+                )
+                LOOP
+                    constraint_suffix := constraint_suffix + 1;
+                    constraint_name := format(
+                        'playback_progress_content_id_key_%s',
+                        constraint_suffix
+                    );
+                END LOOP;
+
+                EXECUTE format(
+                    'ALTER TABLE playback_progress ADD CONSTRAINT %I UNIQUE(content_id)',
+                    constraint_name
+                );
+            END IF;
+        END $$;
+        """
+    )
 
 
 def _init_movie_resource_tables(cursor) -> None:
@@ -816,6 +946,48 @@ def _init_movie_resource_tables(cursor) -> None:
             UNIQUE(provider, remote_file_id),
             CHECK (resource_type IN ('video', 'subtitle')),
             CHECK (status IN ('pending', 'ready', 'missing', 'failed'))
+        )
+    ''')
+    for sql_text in (
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS version_label TEXT",
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS part_index INTEGER",
+        "ALTER TABLE movie_resources ADD COLUMN IF NOT EXISTS group_key TEXT",
+    ):
+        _add_column_if_missing(cursor, sql_text)
+
+
+def _init_subscription_baseline_tables(cursor) -> None:
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_baselines (
+            subscription_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            established_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (subscription_id, code)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_baseline_meta (
+            subscription_id INTEGER PRIMARY KEY,
+            baseline_at TIMESTAMPTZ NOT NULL
+        )
+    ''')
+
+
+def _init_acquisition_tables(cursor) -> None:
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS acquisition_sessions (
+            id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+            movie_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'searching',
+            trigger TEXT NOT NULL DEFAULT 'user',
+            candidate_id INTEGER,
+            download_task_id INTEGER,
+            selected_info_hash TEXT,
+            error_code TEXT,
+            error_msg TEXT,
+            detached INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -880,6 +1052,8 @@ def _create_indexes():
         "CREATE INDEX IF NOT EXISTS idx_movie_resources_movie ON movie_resources(movie_id, status, is_default DESC)",
         "CREATE INDEX IF NOT EXISTS idx_movie_resources_task ON movie_resources(download_task_id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_movie_resources_one_default ON movie_resources(movie_id, provider) WHERE is_default = 1 AND resource_type = 'video'",
+        "CREATE INDEX IF NOT EXISTS idx_acq_sessions_movie_status ON acquisition_sessions(movie_id, status)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_acq_session_active_movie ON acquisition_sessions(movie_id) WHERE status IN ('searching', 'options_ready', 'submitted', 'downloading', 'finalizing')",
     ]
     for sql_text in indexes:
         _create_index_if_possible(cursor, sql_text)

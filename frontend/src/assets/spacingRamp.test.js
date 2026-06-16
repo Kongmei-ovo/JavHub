@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const mainCss = readFileSync(new URL('./main.css', import.meta.url), 'utf8')
 
@@ -14,10 +14,11 @@ function customProperties(source) {
 }
 
 function trackedProductionStyleFiles() {
-  return execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
+  return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'src'], { encoding: 'utf8' })
     .trim()
     .split('\n')
     .filter(Boolean)
+    .filter((file) => existsSync(file))
     .filter((file) => /\.(css|vue)$/.test(file) && !/\.test\./.test(file))
 }
 
@@ -56,7 +57,7 @@ test('Apple spacing ramp semantic aliases resolve to shared steps', () => {
 
 test('Production spacing declarations ratchet non-ramp px values', () => {
   const declaration = /^\s*(padding(?:-[\w-]+)?|margin(?:-[\w-]+)?|gap|row-gap|column-gap|inset(?:-[\w-]+)?|top|right|bottom|left)\s*:\s*([^;{}]+);/gm
-  const existingOffRampSpacingCount = 708
+  const existingOffRampSpacingCount = 454
   const offenders = []
 
   for (const file of trackedProductionStyleFiles()) {
