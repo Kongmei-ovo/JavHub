@@ -19,57 +19,54 @@
       </button>
     </nav>
 
-    <ActorPickerView
-      v-if="showActorPicker"
-      v-model:keyword="actorSearchKeyword"
-      :actors="actorChoiceCards"
-      :searched="actorSearched"
-      :searching="actorSearching"
-      :error="actorPickerLoadFailed()"
-      :actor-avatar="actorAvatar"
-      :actor-display-name="actorDisplayName"
-      :actor-choice-status="actorChoiceStatus"
-      @search="searchActorContext"
-      @clear-search="clearActorSearch"
-      @select="selectActorContext"
-      @retry="loadRecentActorJobs"
-    />
-
-    <section v-else class="workspace-view">
-      <div v-if="actorContext" class="actor-workspace-hero" :style="heroAccentStyle">
-        <div class="workspace-identity">
-          <div class="workspace-avatar" :style="actorContextAvatar ? null : heroAvatarStyle">
-            <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
-            <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
-          </div>
-          <div class="workspace-title">
-            <h2>{{ actorContextName }}</h2>
-            <p class="workspace-sub">编号 {{ String(actorContext.id).padStart(5, '0') }}<span v-if="actorContextRomaji"> · {{ actorContextRomaji }}</span></p>
-            <div class="workspace-status-row">
+    <section class="workspace-view">
+      <div v-if="activeTab === 'movies'" class="actor-scope">
+        <div class="actor-scope-bar" :class="{ 'actor-scope-bar--scoped': actorContext }">
+          <template v-if="actorContext">
+            <div class="scope-identity">
+              <div class="scope-avatar" :style="actorContextAvatar ? null : heroAvatarStyle">
+                <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
+                <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
+              </div>
+              <div class="scope-meta">
+                <strong>{{ actorContextName }}</strong>
+                <span class="scope-sub">编号 {{ String(actorContext.id).padStart(5, '0') }}<template v-if="heroRecent"> · {{ heroRecent }}</template></span>
+              </div>
               <span class="status-pill" :class="`status-${heroStatus}`">{{ statusLabel(heroStatus) }}</span>
-              <span v-if="heroRecent" class="workspace-recent">{{ heroRecent }}</span>
             </div>
-          </div>
+            <div class="scope-actions">
+              <button class="btn btn-primary btn-sm" type="button" :disabled="isSupplementRunning" @click="startSupplement">
+                <span v-if="isSupplementRunning" class="spin-ring" aria-hidden="true"></span>
+                {{ isSupplementRunning ? '补全中…' : '补全这位演员全片' }}
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" @click="refreshResolved">刷新版本条目</button>
+              <button class="btn btn-ghost btn-sm" type="button" @click="goActorContext">返回演员页</button>
+              <button class="btn btn-quiet btn-sm" type="button" @click="clearActorContext">清除筛选</button>
+            </div>
+          </template>
+          <template v-else>
+            <span class="scope-hint">全部演员的待补全作品</span>
+            <button class="btn btn-ghost btn-sm" type="button" @click="actorScopePickerOpen = !actorScopePickerOpen">
+              {{ actorScopePickerOpen ? '收起演员筛选' : '按演员筛选' }}
+            </button>
+          </template>
         </div>
-        <div class="workspace-actions">
-          <button class="btn btn-primary" type="button" :disabled="isSupplementRunning" @click="startSupplement">
-            <span v-if="isSupplementRunning" class="spin-ring" aria-hidden="true"></span>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
-            {{ isSupplementRunning ? '补全中…' : '补全作品' }}
-          </button>
-          <button class="btn btn-ghost" type="button" @click="refreshResolved">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-            刷新版本条目
-          </button>
-          <button class="btn btn-quiet btn-sm" type="button" @click="goActorContext">返回演员页</button>
-        </div>
-      </div>
 
-      <div v-if="actorContext" class="workspace-metrics">
-        <div v-for="metric in workspaceMetrics" :key="metric.label" class="metric-card">
-          <div class="metric-top"><span class="metric-label">{{ metric.label }}</span><span class="metric-dot" :class="`metric-dot-${metric.icon}`"></span></div>
-          <div class="metric-num">{{ metric.value }}</div>
-        </div>
+        <ActorPickerView
+          v-if="!actorContext && actorScopePickerOpen"
+          v-model:keyword="actorSearchKeyword"
+          :actors="actorChoiceCards"
+          :searched="actorSearched"
+          :searching="actorSearching"
+          :error="actorPickerLoadFailed()"
+          :actor-avatar="actorAvatar"
+          :actor-display-name="actorDisplayName"
+          :actor-choice-status="actorChoiceStatus"
+          @search="searchActorContext"
+          @clear-search="clearActorSearch"
+          @select="selectActorContext"
+          @retry="loadRecentActorJobs"
+        />
       </div>
 
       <component
@@ -81,19 +78,10 @@
         :context-label="globalQueueContextLabel"
         :context-items="activeTab === 'jobs' && !actorContext ? globalQueueContextItems : []"
         :refresh-nonce="refreshNonce"
-        :movies="movieSummary.movies"
-        :field-gap-count="movieSummary.fieldGapCount"
-        :pending-candidate-count="movieSummary.pendingCandidateCount"
-        :detail-target-count="movieSummary.detailTargetCount"
-        :focus-movie="diagnosticsFocusMovie"
         @actor="applyJobActorContext"
         @start-supplement="actorContext ? startSupplement() : clearActorContext()"
         @filters-change="handleFiltersChange"
         @jobs-requested="setActiveTab('jobs')"
-        @sources-opened="openSourcesFromMovie"
-        @view-avatar-jobs="viewGfriendsAvatarJobs"
-        @movies-requested="setActiveTab('movies')"
-        @movies-refresh-requested="refreshNonce++"
         @summary-change="handleSummaryChange"
       />
     </section>
@@ -112,29 +100,26 @@ const ActorPickerView = defineAsyncComponent(() => import('../features/supplemen
 const JobsTab = defineAsyncComponent(() => import('../features/supplement/JobsTab.vue'))
 const MoviesTab = defineAsyncComponent(() => import('../features/supplement/MoviesTab.vue'))
 const SourcesHealthTab = defineAsyncComponent(() => import('../features/supplement/SourcesHealthTab.vue'))
-const RepairLaneTab = defineAsyncComponent(() => import('../features/supplement/RepairLaneTab.vue'))
 
 export default {
   name: 'SupplementManagement',
-  components: { ActorPickerView, JobsTab, MoviesTab, SourcesHealthTab, RepairLaneTab },
+  components: { ActorPickerView, JobsTab, MoviesTab, SourcesHealthTab },
   data: () => ({
-    actorContext: null, actorSearchKeyword: '', actorSearchResults: [], actorSearching: false, actorSearched: false, actorPickerError: '',
+    actorContext: null, actorScopePickerOpen: false, actorSearchKeyword: '', actorSearchResults: [], actorSearching: false, actorSearched: false, actorPickerError: '',
     recentJobs: [], recentActors: [], activeTab: 'movies',
     activeFilters: { status: '', source: '', error_provider: '', error_reason: '', q: '', quality: '' },
-    supplementStatus: null, supplementPolling: null, refreshNonce: 0, diagnosticsFocusMovie: null,
+    supplementStatus: null, supplementPolling: null, refreshNonce: 0,
     movieSummary: { total: 0, movies: [], fieldGapCount: 0, pendingCandidateCount: 0, detailTargetCount: 0 },
     sourceSummary: { count: 0, degraded: false },
     hasInitialized: false, wasDeactivated: false, lastAppliedRouteKey: '',
   }),
   computed: {
-    showActorPicker() { return !this.actorContext && !this.isGlobalTab },
-    isGlobalTab() { return ['jobs', 'sourceHealth', 'movies'].includes(this.activeTab) && !this.activeFilters.actress_id },
     actorChoiceCards() { return this.actorSearchResults.length || this.actorSearched ? this.actorSearchResults : this.recentActors },
     actorContextName() { return this.actorContext ? this.actorDisplayName(this.actorContext) : '' },
     actorContextAvatar() { return this.actorAvatar(this.actorContext) },
     isSupplementRunning() { return ['running', 'queued'].includes(this.supplementStatus?.last_job?.status) },
     activeTabComponent() {
-      return { movies: 'MoviesTab', jobs: 'JobsTab', sourceHealth: 'SourcesHealthTab', diagnostics: 'RepairLaneTab' }[this.activeTab] || 'MoviesTab'
+      return { movies: 'MoviesTab', jobs: 'JobsTab', sourceHealth: 'SourcesHealthTab' }[this.activeTab] || 'MoviesTab'
     },
     activeTabFilters() {
       return { ...this.activeFilters, actress_id: this.actorContext?.id || '' }
@@ -142,24 +127,10 @@ export default {
     tabItems() {
       const s = this.supplementStatus, f = this.activeFilters
       return [
-        { key: 'movies', label: '作品字段', count: this.movieSummary.total, status: f.quality || f.q ? '已筛选' : '字段池', nextStep: '先补字段' },
+        { key: 'movies', label: '待补全作品', count: this.movieSummary.total, status: f.quality || f.q ? '已筛选' : '字段池', nextStep: '先补字段' },
         { key: 'jobs', label: '任务队列', count: s?.last_job?.id ? 1 : 0, status: this.statusLabel(s?.last_job?.status), nextStep: '查看任务' },
-        { key: 'diagnostics', label: '来源诊断', count: this.movieSummary.pendingCandidateCount, status: '待选择', nextStep: '打开诊断' },
-        { key: 'sourceHealth', label: '来源状态', count: this.sourceSummary.count, status: this.sourceSummary.degraded ? '来源异常' : '来源池', nextStep: '查看降级来源' },
+        { key: 'sourceHealth', label: '来源健康', count: this.sourceSummary.count, status: this.sourceSummary.degraded ? '来源异常' : '来源池', nextStep: '查看降级来源' },
       ]
-    },
-    workspaceMetrics() {
-      const s = this.supplementStatus
-      return [
-        { label: '补全来源', value: s?.supplement_movies ?? '-', icon: 'stack' },
-        { label: '已匹配片库', value: s?.matched_r18 ?? '-', icon: 'matched' },
-        { label: '补全新增', value: s?.supplement_only ?? '-', icon: 'plus' },
-        { label: '含版本条目', value: s?.resolved_videos ?? '-', icon: 'clock' },
-      ]
-    },
-    actorContextRomaji() {
-      const r = this.actorContext?.name_romaji, k = this.actorContext?.name_kanji
-      return r && r !== k ? r : ''
     },
     heroStatus() { return this.supplementStatus?.last_job?.status || 'idle' },
     heroRecent() {
@@ -177,10 +148,6 @@ export default {
       for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) & 0xffffffff
       const hue = Math.abs(h) % 360
       return { hue, hue2: (hue + 38) % 360 }
-    },
-    heroAccentStyle() {
-      const { hue, hue2 } = this.heroAccent
-      return { '--hero-accent-1': `hsl(${hue} 62% 60%)`, '--hero-accent-2': `hsl(${hue2} 56% 48%)` }
     },
     heroAvatarStyle() {
       const { hue, hue2 } = this.heroAccent
@@ -267,8 +234,8 @@ export default {
       await this.$router.replace({ path: '/supplement', query: nextQuery })
       return true
     },
-    tabFromRoute(tab) { return tab === 'jobs' ? 'jobs' : tab === 'sources' ? 'sourceHealth' : tab === 'stats' ? 'diagnostics' : 'movies' },
-    tabToRoute(tab) { return tab === 'jobs' ? 'jobs' : tab === 'sourceHealth' ? 'sources' : tab === 'diagnostics' ? 'stats' : 'movies' },
+    tabFromRoute(tab) { return tab === 'jobs' ? 'jobs' : tab === 'sources' ? 'sourceHealth' : 'movies' },
+    tabToRoute(tab) { return tab === 'jobs' ? 'jobs' : tab === 'sourceHealth' ? 'sources' : 'movies' },
     async applyRouteState({ force = false } = {}) {
       const routeKey = this.supplementQueryKey()
       if (!force && routeKey === this.lastAppliedRouteKey) return
@@ -330,6 +297,7 @@ export default {
     async selectActorContext(actor) {
       if (!actor?.id) return
       this.actorContext = actor
+      this.actorScopePickerOpen = false
       this.actorSearchKeyword = this.actorDisplayName(actor)
       await this.replaceSupplementRoute({ tab: this.tabToRoute(this.activeTab), actress_id: actor.id, ...this.activeFilters })
     },
@@ -351,8 +319,6 @@ export default {
       await this.replaceSupplementRoute()
       await this.loadRecentActorJobs()
     },
-    async viewGfriendsAvatarJobs() { this.activeTab = 'jobs'; this.actorContext = null; await this.replaceSupplementRoute({ tab: 'jobs', source: 'gfriends' }) },
-    async openSourcesFromMovie(movie) { this.diagnosticsFocusMovie = movie; await this.setActiveTab('diagnostics') },
     goActorContext() {
       if (!this.actorContext) return
       const name = this.actorContext.name_kanji || this.actorContext.name_romaji || this.actorContext.name || ''

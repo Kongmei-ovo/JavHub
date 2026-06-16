@@ -2,14 +2,13 @@
   <section class="workspace-panel">
     <div class="panel-header">
       <div>
-        <h2>来源状态</h2>
-        <p class="panel-subtitle">汇总 → 来源行 → 隔离 runbook · 头像同步与诊断采样在下方高级控制</p>
+        <h2>来源健康</h2>
+        <p class="panel-subtitle">汇总 → 来源行 → 隔离 runbook · 来源抽检在下方</p>
       </div>
       <div class="source-health-toolbar">
         <button class="btn btn-ghost btn-sm" type="button" @click="$emit('refresh-health')">刷新</button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-avatar-jobs')">查看头像任务</button>
         <button class="btn btn-primary btn-sm" type="button" :disabled="providerSmokeLoading" @click="$emit('run-smoke')">
-          {{ providerSmokeLoading ? '诊断中...' : '运行诊断' }}
+          {{ providerSmokeLoading ? '抽检中...' : '运行抽检' }}
         </button>
       </div>
     </div>
@@ -88,47 +87,11 @@
       </div>
     </div>
 
-    <!-- Secondary: gfriends avatar sync + provider smoke (kept under disclosure) -->
-    <details class="src-advanced">
-      <summary>
-        <span>高级控制</span>
-        <small>头像覆盖作业 · 来源诊断采样 · 最近诊断历史</small>
-      </summary>
-      <div class="src-advanced-body">
-        <section class="avatar-sync-panel">
-          <div class="avatar-sync-head">
-            <div>
-              <h3>头像覆盖作业</h3>
-              <p>gfriends Filetree 匹配本地演员头像，并校验图片健康。</p>
-            </div>
-            <span class="status-pill" :class="`status-${gfriendsAvatarJob?.status || 'idle'}`">
-              {{ avatarJobStatusLabel(gfriendsAvatarJob?.status) }}
-            </span>
-          </div>
-          <div class="avatar-sync-actions">
-            <button
-              class="btn btn-primary btn-sm"
-              type="button"
-              :disabled="gfriendsAvatarSyncing || avatarJobRunning"
-              @click="$emit('sync-gfriends-avatars')"
-            >{{ gfriendsAvatarSyncing || avatarJobRunning ? '同步中...' : '同步演员头像' }}</button>
-            <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-avatar-jobs')">查看头像任务</button>
-          </div>
-          <div class="avatar-sync-metrics">
-            <div><strong>{{ gfriendsAvatarJob?.total_found ?? 0 }}</strong><span>匹配头像</span></div>
-            <div><strong>{{ gfriendsAvatarJob?.inserted_count ?? 0 }}</strong><span>写入覆盖</span></div>
-            <div><strong>{{ gfriendsAvatarJob?.updated_count ?? 0 }}</strong><span>已校验</span></div>
-            <div><strong>{{ gfriendsAvatarJob?.matched_r18 ?? 0 }}</strong><span>有效头像</span></div>
-          </div>
-          <p v-if="gfriendsAvatarJob?.last_error" class="avatar-sync-error">{{ gfriendsAvatarJob.last_error }}</p>
-          <p v-else class="avatar-sync-footnote">
-            {{ gfriendsAvatarJob?.created_at ? `最近任务 #${gfriendsAvatarJob.id} · ${formatActionTime(gfriendsAvatarJob.finished_at || gfriendsAvatarJob.started_at || gfriendsAvatarJob.created_at)}` : '暂无头像同步任务' }}
-          </p>
-        </section>
-
+    <!-- Source sampling (un-folded; this is how source quality is scored) -->
+    <div class="src-advanced-body">
         <section class="provider-smoke-panel">
           <div class="provider-smoke-head">
-            <h3>来源诊断采样</h3>
+            <h3>来源抽检 / 采样</h3>
             <small>样本字段分 · 当前预算 · 字段缺失</small>
           </div>
           <div class="provider-smoke-controls">
@@ -186,8 +149,7 @@
             <small v-else class="psh-empty">运行诊断后会在这里保留最近样本</small>
           </div>
         </section>
-      </div>
-    </details>
+    </div>
   </section>
 </template>
 
@@ -208,8 +170,6 @@ export default {
     sourceHealthLoading: { type: Boolean, default: false },
     sourceHealthRows: { type: Array, default: () => [] },
     sourceActionLoading: { type: String, default: '' },
-    gfriendsAvatarJob: { type: Object, default: null },
-    gfriendsAvatarSyncing: { type: Boolean, default: false },
     formatActionTime: { type: Function, required: true },
     smokeRunLabel: { type: Function, required: true },
     sourceHealthLabel: { type: Function, required: true },
@@ -221,8 +181,6 @@ export default {
     'update:providerSmokeReport',
     'refresh-health',
     'run-smoke',
-    'sync-gfriends-avatars',
-    'view-avatar-jobs',
     'load-smoke-runs',
     'pause-source',
     'resume-source',
@@ -245,10 +203,6 @@ export default {
         { label: '隔离 / 暂停', value: this.pausedRows.length, tone: 'bad' },
       ]
     },
-    avatarJobRunning() {
-      const s = this.gfriendsAvatarJob?.status
-      return s === 'queued' || s === 'running'
-    },
   },
   methods: {
     sourceDotTone(source) {
@@ -269,10 +223,6 @@ export default {
       if (source.runtime_status === 'cooling_down') return { event: 'resume-source', label: '解除冷却', tone: 'btn-primary' }
       return { event: 'pause-source', label: '暂停 24h', tone: 'btn-ghost' }
     },
-    avatarJobStatusLabel(status) {
-      const map = { queued: '排队中', running: '同步中', succeeded: '已完成', failed: '失败', idle: '待开始' }
-      return map[status] || status || '待开始'
-    },
     updateProviderSmokeForm(patch) {
       this.$emit('update:providerSmokeForm', { ...this.providerSmokeForm, ...patch })
     },
@@ -280,4 +230,5 @@ export default {
 }
 </script>
 
+<style scoped src="./supplementPanel.css"></style>
 <style scoped src="./sourceHealthPanel.css"></style>

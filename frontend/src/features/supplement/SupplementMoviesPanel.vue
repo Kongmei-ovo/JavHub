@@ -2,8 +2,8 @@
   <section class="workspace-panel">
     <div class="panel-header">
       <div>
-        <h2>作品字段</h2>
-        <p class="panel-subtitle">字段缺口对齐补全来源 · 补详情 / 诊断走单条</p>
+        <h2>待补全作品</h2>
+        <p class="panel-subtitle">全库字段缺口对齐补全来源 · 补详情 / 诊断走右侧抽屉</p>
       </div>
       <div class="movies-panel-toolbar">
         <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="$emit('batch-enrich')">
@@ -203,5 +203,6 @@ export default {
 }
 </script>
 
+<style scoped src="./supplementPanel.css"></style>
 <style scoped src="./supplementMoviesPanel.css"></style>
 <style scoped src="./supplementMovieRepair.css"></style>

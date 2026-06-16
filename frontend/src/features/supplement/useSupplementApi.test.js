@@ -166,6 +166,20 @@ test('useSupplementApi loads source health with budgets and provider smoke runs'
 
   assert.equal(supplement.sourceHealthRows.value[0].budget.local_active, 1)
   assert.equal(supplement.providerSmokeRuns.value[0].id, 1)
-  assert.equal(supplement.gfriendsAvatarJob.value.source, 'gfriends')
   assert.equal(supplement.sourceHealthLoading.value, false)
+  // source health no longer fetches the gfriends avatar job — that moved to the Jobs tab
+  assert.equal(supplement.gfriendsAvatarJob.value, null)
+})
+
+test('useSupplementApi loads the gfriends avatar job on demand (for the Jobs tab)', async () => {
+  const { useSupplementApi } = await import(moduleUrl.href)
+  const supplement = useSupplementApi({
+    api: createApi({
+      listSupplementJobs: async (params) => ({ data: { data: [{ id: 3, source: params.source, status: 'running' }] } }),
+    }),
+  })
+
+  await supplement.loadGfriendsAvatarJob()
+
+  assert.equal(supplement.gfriendsAvatarJob.value.source, 'gfriends')
 })

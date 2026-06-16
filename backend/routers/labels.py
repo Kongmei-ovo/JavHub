@@ -18,7 +18,7 @@ async def list_labels(
 ):
     _cache_control = None if isinstance(cache_control, QueryParam) else cache_control
     cache_bypass = cache.should_bypass_response_cache(_cache_control)
-    include_total = False
+    include_total = True
     cache_params = {"q": q, "page": page, "page_size": page_size, "include_total": include_total}
 
     async def produce():

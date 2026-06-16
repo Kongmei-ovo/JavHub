@@ -390,7 +390,6 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       sourceHealth.value = unwrapResponse(healthResp, [])
       sourceBudgets.value = unwrapResponse(budgetResp, [])
       providerSmokeRuns.value = unwrapResponse(smokeRunsResp, [])
-      await loadGfriendsAvatarJob()
     } catch (error) {
       sourceHealthError.value = errorMessage(error)
       console.error('Load source health failed:', error)
@@ -590,6 +589,8 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     providerSourceOptions,
     gfriendsAvatarJob,
     gfriendsAvatarSyncing,
+    isGfriendsAvatarJobRunning,
+    loadGfriendsAvatarJob,
     loadSourceHealth,
     loadProviderSmokeRuns,
     runProviderSmoke,

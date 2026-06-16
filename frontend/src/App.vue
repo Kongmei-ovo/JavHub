@@ -22,19 +22,6 @@
             </span>
           </button>
           <button
-            class="activity-toggle"
-            type="button"
-            aria-controls="activity-center-panel"
-            :aria-pressed="activityCenterExpanded"
-            :aria-label="activityCenterExpanded ? '收起活动中心' : '展开活动中心'"
-            :title="activityCenterExpanded ? '收起活动中心' : '展开活动中心'"
-            @click="toggleActivityCenter"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18">
-              <path d="M4 14h4l2-8 4 14 2-6h4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button
             class="collapse-btn"
             type="button"
             aria-controls="primary-navigation"
@@ -88,19 +75,6 @@
         <component :is="item.icon" />
         <span>{{ item.label }}</span>
       </router-link>
-      <button
-        class="bottom-nav-item bottom-nav-activity"
-        type="button"
-        aria-controls="activity-center-panel"
-        :aria-pressed="activityCenterExpanded"
-        :aria-label="activityCenterExpanded ? '收起活动中心' : '展开活动中心'"
-        @click="toggleActivityCenter"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <path d="M4 14h4l2-8 4 14 2-6h4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>活动</span>
-      </button>
       <button
         ref="mobileMoreButtonRef"
         class="bottom-nav-item bottom-nav-more"
@@ -166,11 +140,6 @@
         </transition>
       </router-view>
     </main>
-    <ActivityCenter
-      v-model:expanded="activityCenterExpanded"
-      :inert="mobileMoreActive ? '' : undefined"
-      :aria-hidden="mobileMoreActive ? 'true' : undefined"
-    />
     <VideoModal
       v-if="modalState.selectedVideo"
       :visible="modalState.visible"
@@ -194,7 +163,6 @@ import { ref, nextTick, defineAsyncComponent, watch, onMounted, onUnmounted, com
 import { useRoute, useRouter } from 'vue-router'
 import ToastCapsule from './components/ToastCapsule.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
-import ActivityCenter from './features/activity/ActivityCenter.vue'
 import { modalState, closeVideoModal, interruptModal, resumeModal } from './utils/modalState'
 import { favoriteState } from './utils/favoriteState'
 import api from './api'
@@ -209,12 +177,11 @@ const mobileMoreFocusableSelector = [
 ].join(',')
 export default {
   name: 'App',
-  components: { VideoModal, ToastCapsule, ConfirmDialog, ActivityCenter },
+  components: { VideoModal, ToastCapsule, ConfirmDialog },
   setup() {
     const sidebarCollapsed = ref(false)
     const mobileMoreOpen = ref(false)
     const mobileMoreClosing = ref(false)
-    const activityCenterExpanded = ref(false)
     const mobileMoreActive = computed(() => mobileMoreOpen.value || mobileMoreClosing.value)
     const mobileMoreButtonRef = ref(null)
     const mobileMoreSheetRef = ref(null)
@@ -286,7 +253,6 @@ export default {
       mobileMoreClosing.value = false
       mobileMoreOpen.value = true
     }
-    const toggleActivityCenter = () => { activityCenterExpanded.value = !activityCenterExpanded.value }
     const focusMainContent = ({ resetScroll = false } = {}) => nextTick(() => requestAnimationFrame(() => { const main = document.getElementById('main-content'); if (resetScroll) main?.scrollTo?.({ top: 0, left: 0 }); main?.focus({ preventScroll: true }) }))
     const focusMainContentFromNavigation = (event) => { if (event.detail !== 0) return; focusMainContent({ resetScroll: true }) }
     const closeMobileMore = ({ restoreFocus = false, focusMain = false } = {}) => {
@@ -400,7 +366,6 @@ export default {
       mobileMoreOpen,
       mobileMoreClosing,
       mobileMoreActive,
-      activityCenterExpanded,
       mobileMoreButtonRef,
       mobileMoreSheetRef,
       IconList,
@@ -412,7 +377,6 @@ export default {
       focusMainContent,
       focusMainContentFromNavigation,
       toggleMobileMore,
-      toggleActivityCenter,
       closeMobileMore,
       finishMobileMoreClose,
       trapMobileMoreFocus,
@@ -525,7 +489,6 @@ export default {
   padding-inline: var(--c1-sidebar-gutter);
 }
 .sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
-.sidebar.collapsed .activity-toggle { display: none; }
 .sidebar.collapsed .sidebar-header-actions { gap: 0; }
 .sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) { justify-content: center; }
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
@@ -643,7 +606,6 @@ export default {
   transition: transform var(--motion-standard);
 }
 .theme-toggle__orb.dark { transform: translateX(4px); }
-.activity-toggle,
 .collapse-btn {
   background: transparent;
   border: none;
@@ -656,21 +618,6 @@ export default {
   transition: transform var(--motion-standard), opacity var(--motion-fast);
   flex-shrink: 0;
 }
-.activity-toggle {
-  width: 32px;
-  height: 32px;
-  justify-content: center;
-}
-.activity-toggle[aria-pressed="true"] {
-  color: var(--text-primary);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--glass-active-material);
-  border: 1px solid var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow);
-}
-.activity-toggle:hover,
 .collapse-btn:hover {
   color: var(--text-primary);
   background:
@@ -680,7 +627,6 @@ export default {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.activity-toggle:focus-visible,
 .collapse-btn:focus-visible {
   outline: none;
   color: var(--text-primary);
@@ -690,7 +636,6 @@ export default {
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
 }
-.activity-toggle:active,
 .collapse-btn:active {
   transform: scale(0.96);
 }
@@ -979,18 +924,6 @@ export default {
   box-shadow: var(--glass-control-shadow-hover);
 }
 .bottom-nav-more.open:not(.active):focus-visible { background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover); box-shadow: var(--glass-control-shadow-hover), var(--focus-ring); }
-.bottom-nav-activity[aria-pressed="true"] {
-  color: var(--text-primary);
-  border-color: var(--glass-active-border);
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--glass-active-material);
-  box-shadow: var(--glass-active-shadow);
-}
-.bottom-nav-activity[aria-pressed="true"]:focus-visible {
-  box-shadow: var(--glass-active-shadow), var(--focus-ring);
-}
 .bottom-nav-item.active:focus-visible {
   background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
   border-color: var(--active-border);
@@ -1259,15 +1192,10 @@ export default {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.activity-toggle {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
   .theme-toggle,
   .theme-toggle__orb,
-  .activity-toggle,
   .collapse-btn,
   .nav-item,
   .nav-item svg,

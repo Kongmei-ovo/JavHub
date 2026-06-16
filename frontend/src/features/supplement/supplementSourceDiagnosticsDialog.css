@@ -19,6 +19,35 @@
   border-radius: var(--radius-sheet);
 }
 
+/* Right-side drawer variant (作品字段 → 诊断): slides in from the right,
+   closes on scrim click / back button — no tab swap, no full-screen modal. */
+.diagnostics-overlay--drawer {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+
+.diagnostics-panel--drawer {
+  width: min(760px, 100%);
+  max-height: 100vh;
+  height: 100vh;
+  border-radius: 0;
+  border-left: 1px solid var(--hairline);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.28);
+  animation: diagnostics-drawer-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes diagnostics-drawer-in {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 860px) {
+  .diagnostics-panel--drawer {
+    width: 100%;
+  }
+}
+
 .diagnostics-header {
   position: sticky;
   top: 0;

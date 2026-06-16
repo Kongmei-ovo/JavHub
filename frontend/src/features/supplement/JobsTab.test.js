@@ -119,8 +119,15 @@ async function importJobsTab(vueUrl) {
         cancelJob: async () => {},
         recoverStale: async () => {},
         statusLabel: status => ({ queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败' }[status] || status || '待开始'),
+        gfriendsAvatarJob: ref(null),
+        gfriendsAvatarSyncing: ref(false),
+        isGfriendsAvatarJobRunning: ref(false),
+        loadGfriendsAvatarJob: async () => {},
+        syncGfriendsAvatars: async () => {},
+        formatActionTime: () => '',
       }
     }\n`)
+    .replace(/import \{ requestConfirm \} from '\.\.\/\.\.\/utils\/confirmDialog'\n/, 'const requestConfirm = async () => false\n')
   const code = [
     scriptCode,
     template.code.replace(/from "vue"/g, `from '${vueUrl}'`),
@@ -167,6 +174,18 @@ test('JobsTab keeps filter state local and exposes route-friendly updates', () =
   assert.match(source, /emit\('filters-change'/)
   assert.match(source, /GlassSelect/)
   assert.match(source, /全局队列状态筛选|任务状态筛选/)
+})
+
+test('JobsTab hosts the gfriends avatar override job (moved from source health)', () => {
+  assert.match(source, /class="avatar-job-card"/)
+  assert.match(source, /头像覆盖作业/)
+  assert.match(source, /同步演员头像/)
+  assert.match(source, /confirmSyncAvatars/)
+  assert.match(source, /requestConfirm/)
+  assert.match(source, /gfriendsAvatarJob/)
+  assert.match(source, /loadGfriendsAvatarJob/)
+  assert.match(source, /toggleAvatarJobFilter/)
+  assert.match(source, /'gfriends'/)
 })
 
 test('JobsTab listens to supplement SSE jobs and updates the visible queue', async (t) => {

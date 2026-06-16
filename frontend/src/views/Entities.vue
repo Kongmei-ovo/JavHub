@@ -3,7 +3,7 @@
     <header class="entities-hero apple-surface">
       <div class="entities-hero__copy">
         <span class="entities-kicker">{{ activeConfig.label }}</span>
-        <h1>实体目录</h1>
+        <h1>分类目录</h1>
       </div>
       <div class="entities-hero__metrics" aria-label="目录统计">
         <strong>{{ totalLabel }}</strong>
@@ -13,7 +13,7 @@
       </div>
     </header>
 
-    <section class="entities-controls apple-surface" aria-label="实体目录筛选">
+    <section class="entities-controls apple-surface" aria-label="分类目录筛选">
       <div class="entity-tabs" role="tablist" aria-label="实体类型">
         <button
           v-for="tab in entityTabs"
@@ -51,7 +51,7 @@
       </div>
     </section>
 
-    <AppleSkeleton v-if="loading" :class="usesPortraitCards ? 'entity-grid entity-grid--loading' : 'entity-list-grid entity-list-grid--loading'" :variant="usesPortraitCards ? 'gallery' : 'list'" :items="12" :columns="usesPortraitCards ? 'repeat(auto-fill, minmax(148px, 1fr))' : 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))'" label="实体目录加载中" />
+    <AppleSkeleton v-if="loading" :class="usesPortraitCards ? 'entity-grid entity-grid--loading' : 'entity-list-grid entity-list-grid--loading'" :variant="usesPortraitCards ? 'gallery' : 'list'" :items="12" :columns="usesPortraitCards ? 'repeat(auto-fill, minmax(148px, 1fr))' : 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))'" label="分类目录加载中" />
 
     <AppleErrorState v-else-if="error" class="state-panel state-panel--error" title="目录加载失败" :description="error" next-step="重新加载会保留当前目录类型和搜索条件；如果仍失败，可以查看运行日志。" retry-label="重试" secondary-action-label="查看日志" @retry="loadEntities" @secondary-action="$router.push('/logs')" />
 
@@ -149,6 +149,7 @@ export default {
       total: 0,
       totalPages: 1,
       items: [],
+      tabCounts: {},
       loading: false,
       error: '',
     }
@@ -172,6 +173,7 @@ export default {
   },
   mounted() {
     this.loadEntities()
+    this.loadTabCounts()
   },
   watch: {
     '$route.query'(query) {
@@ -213,9 +215,17 @@ export default {
     normalizeResponse(data) {
       const items = Array.isArray(data) ? data : (data?.data || data?.items || [])
       const filtered = this.activeConfig.paged ? items : this.filterClientSide(items)
-      const total = Number(data?.total || data?.total_count || filtered.length) || filtered.length
-      const totalPages = Number(data?.total_pages || Math.max(1, Math.ceil(total / this.pageSize))) || 1
+      const total = this.resolveTotal(data, filtered.length)
+      const rawPages = Number(data?.total_pages)
+      const totalPages = Number.isFinite(rawPages) && rawPages >= 1
+        ? rawPages
+        : Math.max(1, Math.ceil(total / this.pageSize))
       return { items: filtered, total, totalPages }
+    },
+    resolveTotal(data, fallback) {
+      // 上游在 include_total=false 时会返回 -1，需回退到本页条数
+      const raw = Number(data?.total ?? data?.total_count)
+      return Number.isFinite(raw) && raw >= 0 ? raw : fallback
     },
     filterClientSide(items) {
       const q = this.searchKeyword.trim().toLowerCase()
@@ -273,9 +283,36 @@ export default {
       }
     },
     tabCountLabel(tab) {
-      if (tab.key !== this.activeTab) return ''
-      if (this.loading) return '...'
-      return this.total ? this.formatCompactNumber(this.total) : String(this.items.length)
+      // 搜索时活动 tab 显示过滤后的总数；其余 tab 始终显示全局数量
+      if (tab.key === this.activeTab && this.searchKeyword) {
+        if (this.loading) return '...'
+        return this.formatCompactNumber(this.total || this.items.length)
+      }
+      const count = this.tabCounts[tab.key]
+      if (count != null) return this.formatCompactNumber(count)
+      if (tab.key === this.activeTab && !this.loading) {
+        return this.formatCompactNumber(this.total || this.items.length)
+      }
+      return ''
+    },
+    async loadTabCounts() {
+      await Promise.all(this.entityTabs.map(async (tab) => {
+        try {
+          const resp = await ENTITY_LOADERS[tab.loader](1, 1, { page: 1, page_size: 1 })
+          const data = resp.data
+          let count
+          if (tab.paged) {
+            const raw = Number(data?.total ?? data?.total_count)
+            count = Number.isFinite(raw) && raw >= 0 ? raw : undefined
+          } else {
+            const arr = Array.isArray(data) ? data : (data?.data || data?.items || [])
+            count = arr.length
+          }
+          if (count != null) this.tabCounts = { ...this.tabCounts, [tab.key]: count }
+        } catch (err) {
+          /* 单个分类统计失败不影响其他 tab */
+        }
+      }))
     },
     isEntityFavorited(item) {
       const id = item.id || item.actress_id || this.displayName(item)
