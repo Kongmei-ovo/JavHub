@@ -15,7 +15,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from services.open115 import Open115AuthRequired, Open115Error, Open115File, open115_client
@@ -207,51 +207,17 @@ async def image_preview(
 
 
 @router.get("/stream")
-async def stream_file(pick_code: str = Query(...), request: Request = None) -> StreamingResponse:
-    """Range-aware proxy for direct playback/download of a 115 file.
+async def stream_file(pick_code: str = Query(...), request: Request = None) -> RedirectResponse:
+    """302 straight to the 115 direct link, signed for the calling client's UA.
 
-    Used for videos 115 hasn't transcoded (no HLS). Forwards the client's Range
-    header and passes upstream range/length/type back so the browser can seek.
+    The browser <video> (or any client) follows the redirect with the same UA the
+    link was issued for, so the bytes stream directly from 115's CDN and the
+    backend never sits in the data path — the same direct-play trick the Emby
+    compat layer uses for Infuse. Seeking (Range) goes straight to 115.
     """
     user_agent = (request.headers.get("user-agent") if request is not None else "") or open115_client.default_ua
     try:
         url = await open115_client.downurl(pick_code, user_agent)
     except Open115Error as exc:
         raise _http_error(exc) from exc
-
-    upstream_headers = {"User-Agent": user_agent}
-    range_header = request.headers.get("range") if request is not None else None
-    if range_header:
-        upstream_headers["Range"] = range_header
-
-    client = httpx.AsyncClient(timeout=None, follow_redirects=True, trust_env=False)
-    try:
-        upstream = await client.send(
-            client.build_request("GET", url, headers=upstream_headers),
-            stream=True,
-        )
-    except httpx.HTTPError as exc:
-        await client.aclose()
-        raise HTTPException(status_code=502, detail="无法获取文件") from exc
-
-    passthrough = {
-        key: upstream.headers[key]
-        for key in ("content-range", "content-length", "accept-ranges")
-        if key in upstream.headers
-    }
-    content_type = upstream.headers.get("content-type") or "application/octet-stream"
-
-    async def _body():
-        try:
-            async for chunk in upstream.aiter_bytes():
-                yield chunk
-        finally:
-            await upstream.aclose()
-            await client.aclose()
-
-    return StreamingResponse(
-        _body(),
-        status_code=upstream.status_code,
-        headers=passthrough,
-        media_type=content_type,
-    )
+    return RedirectResponse(url=url, status_code=302, headers={"Cache-Control": "no-store"})

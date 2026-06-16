@@ -95,7 +95,7 @@
     <div v-if="preview.kind === 'video'" class="overlay" @click.self="closePreview">
       <div class="player">
         <button class="overlay-close" type="button" @click="closePreview">✕</button>
-        <video ref="previewVideo" class="player-video" controls autoplay playsinline></video>
+        <video ref="previewVideo" class="player-video" controls autoplay playsinline @error="onVideoError"></video>
         <div class="player-bar">
           <span class="player-title">{{ preview.name }}</span>
           <div class="defs">
@@ -198,6 +198,8 @@ export default {
       searchActive: false,
       selected: [],
       preview: { kind: '', name: '', sources: [], current: '', imageUrl: '' },
+      playPick: '',
+      triedHls: false,
       picker: { open: false, mode: 'move', cid: '0', stack: [], dirs: [], loading: false, busy: false },
       nameModal: { open: false, mode: 'folder', value: '' },
     }
@@ -330,30 +332,39 @@ export default {
     previewImage(file) {
       this.preview = { kind: 'image', name: file.name, sources: [], current: '', imageUrl: api.open115ImageUrl(file.pick_code, file.extension) }
     },
+    browserNative(ext) {
+      return ['mp4', 'm4v', 'mov', 'webm'].includes(String(ext || '').toLowerCase())
+    },
     async playVideo(file) {
       this.preview = { kind: 'video', name: file.name, sources: [], current: '', imageUrl: '' }
+      this.playPick = file.pick_code
+      this.triedHls = false
+      // 浏览器原生容器 → 302 直连(后端不占带宽);其余 → 115 转码 HLS
+      if (this.browserNative(file.extension)) await this.attachDirect(file.pick_code)
+      else await this.playViaHls(file.pick_code)
+    },
+    async playViaHls(pickCode) {
+      this.triedHls = true
       try {
-        const { data } = await api.getOpen115VideoSources(file.pick_code)
+        const { data } = await api.getOpen115VideoSources(pickCode)
         const sources = data.sources || []
-        if (sources.length) {
-          this.preview.sources = sources
-          await this.attach(sources[0])
-        } else {
-          // 115 hasn't transcoded this video — play the original via the range proxy.
-          await this.attachDirect(file.pick_code)
-        }
-      } catch {
-        ElMessage.error('无法获取播放地址')
-        this.closePreview()
-      }
+        if (sources.length) { this.preview.sources = sources; await this.attach(sources[0]); return }
+      } catch { /* fall through to direct */ }
+      await this.attachDirect(pickCode)
     },
     async attachDirect(pickCode) {
       await this.$nextTick()
       const video = this.$refs.previewVideo
       if (!video) return
       this.destroyHls()
-      video.src = api.open115StreamUrl(pickCode)
+      this.preview.sources = [] // 直连模式无清晰度切换
+      this.preview.current = ''
+      video.src = api.open115StreamUrl(pickCode) // 后端 302 到 115 直链
       video.play().catch(() => {})
+    },
+    onVideoError() {
+      // 直连容器浏览器解不了 → 退回 115 转码 HLS(只尝试一次)
+      if (!this.triedHls && this.playPick) this.playViaHls(this.playPick)
     },
     proxied(url) {
       return `/api/v1/stream/proxy?url=${encodeURIComponent(url)}`
