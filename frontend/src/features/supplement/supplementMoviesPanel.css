@@ -288,7 +288,7 @@
 }
 
 .panel-state { margin: 14px 0 0; }
-.empty-inline { padding: 28px; text-align: center; }
+.empty-inline { padding: 28px; text-align: center; max-width: none; margin-inline: 0; }
 
 @media (max-width: 860px) {
   .panel-header,

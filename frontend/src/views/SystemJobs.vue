@@ -13,20 +13,25 @@
       <section ref="avatarSection" class="ops-panel" aria-label="演员头像下载">
         <div class="ops-panel-head">
           <div><h2>演员头像下载</h2><p>从 gfriends 同步演员头像，补齐缺失的头像资源。</p></div>
+          <div class="ops-panel-actions">
+            <button class="btn btn-ghost btn-sm" type="button" @click="loadAvatar">刷新</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="openAvatarHistory">历史</button>
+          </div>
         </div>
         <div class="ops-job-list">
           <div class="ops-job" :class="{ 'is-highlighted': isHi('avatar') }">
             <div class="ops-job-main">
               <div class="ops-job-title">
                 <h3>gfriends 头像同步</h3>
-                <span class="ops-pill" :class="avatarRunning ? 'is-running' : 'is-idle'">{{ avatarRunning ? '运行中' : '就绪' }}</span>
+                <span class="ops-pill" :class="avatarBusy ? 'is-running' : 'is-idle'">{{ avatarBusy ? '运行中' : '就绪' }}</span>
               </div>
               <p class="ops-job-desc">为缺少头像的演员批量抓取并合并头像。</p>
+              <p class="ops-job-meta">{{ avatarStatusText }}</p>
               <p v-if="avatarMessage" class="ops-job-meta">{{ avatarMessage }}</p>
             </div>
             <div class="ops-job-actions">
-              <button class="btn btn-primary btn-sm" type="button" :disabled="avatarRunning" @click="runAvatar">
-                {{ avatarRunning ? '已开始...' : '立即运行' }}
+              <button class="btn btn-primary btn-sm" type="button" :disabled="avatarBusy" @click="runAvatar">
+                {{ avatarBusy ? '已开始...' : '立即运行' }}
               </button>
             </div>
           </div>
@@ -36,9 +41,10 @@
       <!-- 影片分组索引重建 -->
       <section ref="variantSection" class="ops-panel" aria-label="影片分组索引重建">
         <div class="ops-panel-head">
-          <div><h2>影片分组索引重建</h2><p>重建跨页合并与整组收藏所依赖的变体（分组）索引。</p></div>
+          <div><h2>影片分组索引重建</h2><p>重建跨页合并与整组收藏所依赖的变体（分组）索引。全量数据库导入后会自动重建一次，平时无需手动触发。</p></div>
           <div class="ops-panel-actions">
             <button class="btn btn-ghost btn-sm" type="button" @click="loadVariant">刷新</button>
+            <button class="btn btn-ghost btn-sm" type="button" @click="openVariantHistory">历史</button>
           </div>
         </div>
         <div class="ops-job-list">
@@ -46,24 +52,16 @@
             <div class="ops-job-main">
               <div class="ops-job-title">
                 <h3>变体索引重建</h3>
-                <span class="ops-pill" :class="variantRunning ? 'is-running' : 'is-idle'">{{ variantRunning ? '运行中' : '就绪' }}</span>
+                <span class="ops-pill" :class="variantBusy ? 'is-running' : 'is-idle'">{{ variantBusy ? '运行中' : '就绪' }}</span>
               </div>
               <p class="ops-job-desc">{{ variantStatsText }}</p>
             </div>
             <div class="ops-job-actions">
-              <button class="btn btn-primary btn-sm" type="button" :disabled="variantRunning" @click="runVariant">
-                {{ variantRunning ? '已开始...' : '立即运行' }}
+              <button class="btn btn-primary btn-sm" type="button" :disabled="variantBusy" @click="runVariant">
+                {{ variantBusy ? '已开始...' : '立即运行' }}
               </button>
             </div>
           </div>
-        </div>
-        <div class="ops-grid" style="margin-top: 12px;">
-          <div class="ops-cell" v-for="job in variantJobs" :key="job.id">
-            <span>{{ job.status }}</span>
-            <strong>{{ formatTime(job.created_at) || `#${job.id}` }}</strong>
-            <small v-if="job.processed != null">处理 {{ job.processed }}{{ job.groups != null ? ` · 分组 ${job.groups}` : '' }}</small>
-          </div>
-          <p v-if="!variantJobs.length" class="ops-empty">暂无重建记录</p>
         </div>
       </section>
 
@@ -76,8 +74,8 @@
           </div>
         </div>
         <div class="ops-job" :class="{ 'is-highlighted': isHi('cache') }">
-          <div class="ops-job-main" style="flex-basis: 100%;">
-            <div class="ops-chip-group" role="group" aria-label="缓存清理范围">
+          <div class="ops-job-main">
+            <div class="ops-chip-group ops-chip-group--inline" role="group" aria-label="缓存清理范围">
               <button
                 v-for="scope in cachePurgeScopes"
                 :key="scope.value"
@@ -132,6 +130,14 @@
         <p v-else class="ops-empty">调度未启用，或暂无调度作业。</p>
       </section>
     </div>
+
+    <JobHistoryDialog
+      :open="historyOpen"
+      :title="historyTitle"
+      :rows="historyRows"
+      empty-text="暂无作业记录"
+      @close="historyOpen = false"
+    />
   </div>
 </template>
 
@@ -140,13 +146,16 @@ import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import { ElMessage } from '../utils/message'
 import { CACHE_PURGE_SCOPES } from '../features/operations/operationsOptions'
+import JobHistoryDialog from '../features/operations/JobHistoryDialog.vue'
 
 export default {
   name: 'SystemJobs',
+  components: { JobHistoryDialog },
   data() {
     return {
       avatarRunning: false,
       avatarMessage: '',
+      avatarJobs: [],
       variantRunning: false,
       variantStats: null,
       variantJobs: [],
@@ -157,9 +166,36 @@ export default {
       schedulerJobs: [],
       runningJob: '',
       highlightedJob: '',
+      historyOpen: false,
+      historyTitle: '',
+      historyRows: [],
     }
   },
   computed: {
+    avatarLatest() {
+      return this.avatarJobs[0] || null
+    },
+    avatarBusy() {
+      if (this.avatarRunning) return true
+      const s = this.avatarLatest?.status
+      return s === 'running' || s === 'queued'
+    },
+    avatarStatusText() {
+      const j = this.avatarLatest
+      if (!j) return '尚未运行过头像同步。'
+      if (j.status === 'running' || j.status === 'queued') {
+        return j.total_found ? `同步进行中… 已命中 ${j.total_found}` : '同步进行中…'
+      }
+      const t = this.formatTime(j.finished_at || j.started_at || j.created_at)
+      if (j.status === 'failed') return `上次同步失败${t ? `（${t}）` : ''}`
+      const parts = this.avatarCountParts(j)
+      return `上次同步 ${t || '—'}${parts ? ` · ${parts}` : ''}`
+    },
+    variantBusy() {
+      if (this.variantRunning) return true
+      const s = this.variantJobs[0]?.status
+      return s === 'running' || s === 'queued'
+    },
     variantStatsText() {
       const s = this.variantStats || {}
       if (s.groups == null && s.videos == null) return '重建跨页合并与整组收藏所依赖的索引。'
@@ -176,7 +212,16 @@ export default {
     this.loadScheduler()
     this.loadVariant()
     this.loadCache()
+    this.loadAvatar()
     this.applyHighlight()
+    this._poll = setInterval(() => {
+      if (this.avatarBusy) this.loadAvatar()
+      if (this.variantBusy) this.loadVariant()
+    }, 6000)
+  },
+  beforeUnmount() {
+    if (this._poll) clearInterval(this._poll)
+    if (this._highlightTimer) clearTimeout(this._highlightTimer)
   },
   watch: {
     '$route.query.job'() {
@@ -212,12 +257,73 @@ export default {
         await api.startGfriendsAvatarSyncJob()
         this.avatarMessage = '已开始演员头像下载，作业在后台运行。'
         ElMessage.success('已开始演员头像下载')
+        setTimeout(() => this.loadAvatar(), 800)
       } catch (e) {
         this.avatarMessage = this.errText(e)
         ElMessage.error(this.avatarMessage)
       } finally {
         this.avatarRunning = false
       }
+    },
+    async loadAvatar() {
+      try {
+        const resp = await api.listSupplementJobs({ source: 'gfriends', page_size: 10 })
+        const data = resp.data
+        this.avatarJobs = Array.isArray(data) ? data : (data?.data || data?.jobs || [])
+      } catch (e) {
+        this.avatarJobs = []
+      }
+    },
+    avatarCountParts(j) {
+      const parts = []
+      if (j.total_found != null) parts.push(`命中 ${j.total_found}`)
+      if (j.inserted_count != null) parts.push(`新增 ${j.inserted_count}`)
+      if (j.updated_count != null) parts.push(`更新 ${j.updated_count}`)
+      return parts.join(' · ')
+    },
+    openAvatarHistory() {
+      this.historyTitle = 'gfriends 头像同步历史'
+      this.historyRows = this.avatarJobs.map((j) => ({
+        id: j.id,
+        statusText: this.jobStatusText(j.status),
+        tone: this.jobTone(j.status),
+        time: this.formatTime(j.finished_at || j.started_at || j.created_at),
+        meta: [this.avatarCountParts(j), j.last_error].filter(Boolean).join(' · '),
+      }))
+      this.historyOpen = true
+    },
+    openVariantHistory() {
+      this.historyTitle = '变体索引重建历史'
+      this.historyRows = this.variantJobs.map((j) => ({
+        id: j.id,
+        statusText: this.jobStatusText(j.status),
+        tone: this.jobTone(j.status),
+        time: this.formatTime(j.updated_at || j.created_at),
+        meta: this.variantRowMeta(j),
+      }))
+      this.historyOpen = true
+    },
+    variantRowMeta(j) {
+      const parts = []
+      if (j.processed != null) parts.push(`处理 ${j.processed}`)
+      const groups = j.groups ?? j.result?.group_count
+      if (groups != null) parts.push(`分组 ${groups}`)
+      const err = j.last_error || j.error
+      if (err) parts.push(err)
+      return parts.join(' · ')
+    },
+    jobStatusText(status) {
+      const map = {
+        succeeded: '成功', success: '成功', completed: '完成',
+        failed: '失败', error: '失败', running: '运行中', queued: '排队',
+      }
+      return map[status] || status || '—'
+    },
+    jobTone(status) {
+      if (['succeeded', 'success', 'completed'].includes(status)) return 'ok'
+      if (['failed', 'error'].includes(status)) return 'bad'
+      if (['running', 'queued'].includes(status)) return 'run'
+      return 'idle'
     },
     async runVariant() {
       if (this.variantRunning) return

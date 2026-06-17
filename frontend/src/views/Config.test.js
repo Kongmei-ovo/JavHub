@@ -229,22 +229,18 @@ test('automation source picker reads like a System Settings multi-select list', 
 
 test('settings numeric inputs use compact System Settings stepper controls', () => {
   const numberControlMatches = [...vueSource.matchAll(/class="settings-number-control"/g)]
-  assert.equal(numberControlMatches.length, 7)
+  assert.equal(numberControlMatches.length, 4)
   const numberControlWrapperMatches = [...vueSource.matchAll(/class="settings-control settings-control--compact settings-control--number"[\s\S]*?<input/g)]
-  assert.equal(numberControlWrapperMatches.length, 7)
+  assert.equal(numberControlWrapperMatches.length, 4)
 
   for (const markup of [
     /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.auto_process_interval_minutes"[\s\S]*<span class="settings-number-unit">分钟<\/span>/,
     /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.max_auto_downloads_per_run"[\s\S]*<span class="settings-number-unit">次<\/span>/,
     /class="settings-number-control"[\s\S]*v-model\.number="config\.automation\.max_auto_downloads_per_24h"[\s\S]*<span class="settings-number-unit">24 小时<\/span>/,
-    /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.limit"[\s\S]*<span class="settings-number-unit">条<\/span>/,
-    /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.timeout"[\s\S]*<span class="settings-number-unit">秒<\/span>/,
-    /class="settings-number-control"[\s\S]*v-model\.number="config\.crawler\.request_interval"[\s\S]*<span class="settings-number-unit">秒<\/span>/,
     /class="settings-number-control"[\s\S]*v-model\.number="config\.scheduler\.subscription_check_hour"[\s\S]*<span class="settings-number-unit">时<\/span>/,
   ]) {
     assert.match(vueSource, markup)
   }
-  assert.match(vueSource, /class="settings-number-control"[\s\S]*v-model\.number="config\.sources\.torznab\.limit" type="number" min="1" max="100" step="1" inputmode="numeric"[\s\S]*<span class="settings-number-range">1-100<\/span>/)
   assert.match(vueSource, /class="settings-number-control"[\s\S]*v-model\.number="config\.scheduler\.subscription_check_hour" type="number" min="0" max="23" step="1" inputmode="numeric"[\s\S]*<span class="settings-number-range">0-23<\/span>/)
 
   const control = cssBlock('.settings-number-control')
@@ -277,7 +273,7 @@ test('settings numeric inputs use compact System Settings stepper controls', () 
 
 test('settings number control width class stays off switch rows', () => {
   const switchRows = [...vueSource.matchAll(/<label class="settings-row settings-row--toggle"[\s\S]*?<\/label>/g)].map(match => match[0])
-  assert.equal(switchRows.length, 7)
+  assert.equal(switchRows.length, 6)
   for (const row of switchRows) {
     assert.doesNotMatch(row, /settings-control--number/)
   }
@@ -408,10 +404,12 @@ test('settings page exposes macOS-style grouped lists and row controls', () => {
   const row = cssBlock('.settings-row')
   const control = cssBlock('.settings-control')
 
-  assert.match(shell, /display:\s*grid/)
-  assert.match(shell, /grid-template-columns:\s*minmax\(190px,\s*240px\)\s+minmax\(0,\s*1fr\)/)
+  // 分类已从左侧栏改为顶部横向标签，内容区全宽
+  assert.match(shell, /display:\s*flex/)
+  assert.match(shell, /flex-direction:\s*column/)
   assert.match(sidebar, /background:\s*var\(--card\)/)
-  assert.match(pane, /max-width:\s*920px/)
+  assert.match(sidebar, /flex-wrap:\s*wrap/)
+  assert.match(pane, /max-width:\s*none/)
   assert.match(group, /border-radius:\s*var\(--radius-lg\)/)
   assert.match(row, /grid-template-columns:\s*minmax\(180px,\s*0\.42fr\)\s+minmax\(0,\s*1fr\)/)
   assert.match(control, /justify-self:\s*end/)
@@ -518,9 +516,11 @@ test('settings base tabs have no legacy card form layouts after grouping pass', 
   assert.match(vueSource, /class="settings-group telegram-settings-group"/)
   assert.match(vueSource, /class="settings-group notification-settings-group"/)
   assert.match(vueSource, /class="settings-group automation-settings-group"/)
-  assert.match(vueSource, /class="settings-group torznab-settings-group"/)
-  assert.match(vueSource, /class="settings-group crawler-settings-group"/)
-  assert.match(vueSource, /class="settings-group inventory-schedule-group"/)
+  assert.match(vueSource, /class="settings-group subscription-schedule-group"/)
+  // 磁力索引源/爬虫/库存对比定时任务已分别迁移到下载中心或删除
+  assert.doesNotMatch(vueSource, /class="settings-group torznab-settings-group"/)
+  assert.doesNotMatch(vueSource, /class="settings-group crawler-settings-group"/)
+  assert.doesNotMatch(vueSource, /class="settings-group inventory-schedule-group"/)
 
   const actionRow = cssBlock('.settings-row--actions')
   const toggleRow = cssBlock('.settings-row--toggle')
@@ -541,14 +541,14 @@ test('settings base tabs have no legacy card form layouts after grouping pass', 
 test('settings boolean rows use System Settings-style switch controls', () => {
   assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="notifEnabled">/)
   assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="rulesRequireMagnet">/)
-  assert.match(vueSource, /<label class="settings-row settings-row--toggle" for="torznabEnabled">/)
+  assert.doesNotMatch(vueSource, /for="torznabEnabled"/)
   const proxySection = advancedSectionBlock('advanced-settings-group proxy-settings-group')
   assert.match(proxySection, /<label class="settings-row settings-row--toggle" for="proxyEnabled">[\s\S]*<span class="setting-title">启用代理<\/span>[\s\S]*id="proxyEnabled"/)
   const aiSection = advancedSectionBlock('advanced-settings-group ai-settings-group')
   assert.doesNotMatch(aiSection, /for="proxyEnabled"/)
   const baseSwitchInputs = toggleSwitchInputs(vueSource)
   const advancedSwitchInputs = toggleSwitchInputs(advancedPanelSource)
-  assert.equal(baseSwitchInputs.length, 7)
+  assert.equal(baseSwitchInputs.length, 6)
   assert.equal(advancedSwitchInputs.length, 3)
   for (const inputMarkup of [...baseSwitchInputs, ...advancedSwitchInputs]) {
     assert.match(inputMarkup, /role="switch"/)
@@ -1075,37 +1075,3 @@ test('telegram test mobile layout overrides base row styles in cascade order', (
   assert.ok(mobileButtonIndex > baseRowIndex, 'mobile button override should appear after base row styles')
 })
 
-test('inventory cron save action uses scoped busy status instead of full-page save', () => {
-  assert.match(vueSource, /class="settings-control settings-control--wide inventory-cron-save-row"/)
-  assert.match(vueSource, /:aria-busy="inventoryCronSaveBusy"/)
-  assert.match(vueSource, /aria-live="polite"/)
-  assert.match(vueSource, /@click="saveInventoryCron"/)
-  assert.match(vueSource, /:disabled="inventoryCronSaving \|\| !canSaveConfig"/)
-  assert.match(vueSource, /id="inventory-cron-save-status"/)
-  assert.match(vueSource, /role="status"/)
-  assert.match(vueSource, /{{ inventoryCronSaveStatus }}/)
-  assert.match(vueSource, /:aria-describedby="'inventory-cron-save-status'"/)
-  assert.match(vueSource, /inventoryCronSaving:\s*false/)
-  assert.match(vueSource, /inventoryCronSaveMsg:\s*''/)
-  assert.match(vueSource, /inventoryCronSaveBusy\(\)/)
-  assert.match(vueSource, /inventoryCronSaveStatus\(\)/)
-  assert.match(vueSource, /this\.inventoryCronSaving = true/)
-  assert.match(vueSource, /this\.inventoryCronSaveMsg = '保存成功'/)
-  assert.match(vueSource, /this\.inventoryCronSaveMsg = '保存失败'/)
-  assert.match(vueSource, /this\.inventoryCronSaving = false/)
-
-  const row = cssBlock('.inventory-cron-save-row')
-  const actions = cssBlock('.inventory-cron-actions')
-  const status = cssBlock('.inventory-cron-status')
-  const busy = cssBlock('.inventory-cron-save-row[aria-busy="true"]')
-  const baseRowIndex = baseStyle.indexOf('.inventory-cron-save-row {\n  display: grid')
-  const mobileRowIndex = baseStyle.lastIndexOf('.inventory-cron-save-row {\n    grid-template-columns: 1fr;')
-
-  assert.match(row, /display:\s*grid/)
-  assert.match(row, /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)/)
-  assert.match(actions, /display:\s*flex/)
-  assert.match(status, /color:\s*var\(--text-secondary\)/)
-  assert.match(status, /overflow-wrap:\s*anywhere/)
-  assert.match(busy, /cursor:\s*progress/)
-  assert.ok(mobileRowIndex > baseRowIndex, 'mobile inventory cron override should appear after base row styles')
-})

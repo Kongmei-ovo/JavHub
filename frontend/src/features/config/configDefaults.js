@@ -11,7 +11,6 @@ export const DEFAULT_CONFIG = {
   downloaders: { default_id: 'open115', clients: [] },
   emby: { api_url: '', api_key: '' },
   telegram: { bot_token: '', allowed_user_ids: [] },
-  crawler: { request_interval: 3 },
   scheduler: { subscription_check_hour: 2 },
   automation: {
     download_policy: 'manual',

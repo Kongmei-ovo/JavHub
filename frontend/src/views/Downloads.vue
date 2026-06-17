@@ -2,7 +2,7 @@
   <div class="downloads-page page-shell page-shell--workspace">
     <header class="page-header">
       <div class="header-left">
-        <h1>下载任务</h1>
+        <h1>下载中心</h1>
         <p class="header-subtitle">
           <span>{{ totalTaskCount }} 个任务</span>
           <span v-if="stats.downloading > 0" class="downloading-hint"> · {{ stats.downloading }} 个下载中</span>
@@ -41,6 +41,10 @@
         下载源
         <span v-if="enabledDownloaderCount" class="tab-badge subtle">{{ enabledDownloaderCount }}</span>
       </button>
+      <button class="tab-btn" type="button" :class="{ active: activeTab === 'indexer' }" @click="openIndexerTab">
+        索引源
+        <span v-if="torznabLoaded && torznab.enabled" class="tab-badge subtle">已启用</span>
+      </button>
     </div>
 
     <DownloaderManagementPanel
@@ -72,6 +76,14 @@
       @close-editor="closeDownloaderEditor"
       @sync-draft-defaults="syncDownloaderDraftDefaults"
       @apply-editor="applyDownloaderEditor"
+    />
+
+    <IndexerSourcePanel
+      v-else-if="activeTab === 'indexer'"
+      :model-value="torznab"
+      :saving="savingTorznab"
+      :status-message="torznabStatus"
+      @save="saveTorznab"
     />
 
     <TaskList
@@ -113,6 +125,8 @@ import {
 } from '../features/downloaders/downloaderPresentation'
 
 const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
+const IndexerSourcePanel = defineAsyncComponent(() => import('../features/downloads/IndexerSourcePanel.vue'))
+const DEFAULT_TORZNAB = { enabled: false, name: 'torznab', base_url: '', api_key: '', indexer: 'all', categories: '', limit: 20, timeout: 15 }
 const cleanObject = (target) => {
   Object.keys(target).forEach((key) => {
     if (target[key] === undefined || target[key] === '' || target[key] === null) delete target[key]
@@ -122,7 +136,7 @@ const cleanObject = (target) => {
 
 export default {
   name: 'Downloads',
-  components: { DownloadStatsBar, TaskList, AddDownloadSheet, DownloaderManagementPanel },
+  components: { DownloadStatsBar, TaskList, AddDownloadSheet, DownloaderManagementPanel, IndexerSourcePanel },
   data() {
     return {
       activeTab: 'tasks',
@@ -140,6 +154,10 @@ export default {
       downloaderTestMessages: {},
       downloaderEditor: { open: false, mode: 'new', originalId: '', draft: null, previousType: '' },
       downloaderIdSeed: 1,
+      torznab: { ...DEFAULT_TORZNAB },
+      torznabLoaded: false,
+      savingTorznab: false,
+      torznabStatus: '',
     }
   },
   computed: {
@@ -181,6 +199,7 @@ export default {
     if (this.$route.query.tab === 'candidates') return
     this.loadTasks()
     if (this.activeTab === 'downloaders') this.loadDownloaders()
+    if (this.activeTab === 'indexer') this.loadTorznab()
     this.timer = setInterval(this.loadTasks, 30000)
   },
   beforeUnmount() {
@@ -194,6 +213,7 @@ export default {
       }
       if (!this.applyDownloadRoute(query)) return
       if (this.activeTab === 'downloaders') this.loadDownloaders()
+      if (this.activeTab === 'indexer' && !this.torznabLoaded) this.loadTorznab()
     },
   },
   methods: {
@@ -204,7 +224,7 @@ export default {
     },
     applyDownloadRoute(query = {}) {
       let changed = false
-      const tab = query.tab === 'downloaders' ? 'downloaders' : 'tasks'
+      const tab = ['downloaders', 'indexer'].includes(query.tab) ? query.tab : 'tasks'
       if (this.activeTab !== tab) {
         this.activeTab = tab
         changed = true
@@ -245,6 +265,41 @@ export default {
     },
     openTaskTab() {
       this.pushDownloadRoute({ tab: 'tasks', task_status: this.filterStatus || undefined })
+    },
+    openIndexerTab() {
+      this.pushDownloadRoute({ tab: 'indexer' })
+    },
+    async loadTorznab() {
+      try {
+        const resp = await api.getConfig()
+        const data = resp.data || {}
+        const torznab = (data.sources && data.sources.torznab) || {}
+        this.torznab = { ...DEFAULT_TORZNAB, ...torznab }
+        this.torznabLoaded = true
+      } catch (error) {
+        console.error('Failed to load indexer config:', error)
+        this.torznabStatus = '索引源配置加载失败，请刷新重试。'
+      }
+    },
+    async saveTorznab(draft) {
+      this.savingTorznab = true
+      this.torznabStatus = ''
+      try {
+        const payload = { ...draft }
+        // 空 API Key 表示不修改已保存的密钥，由后端保留现值
+        if (!payload.api_key) delete payload.api_key
+        await api.updateConfig({ sources: { torznab: payload } })
+        this.torznab = { ...DEFAULT_TORZNAB, ...draft, api_key: '' }
+        this.torznabLoaded = true
+        this.torznabStatus = '索引源配置已保存。'
+        this.$message?.success?.('索引源配置已保存')
+      } catch (error) {
+        console.error('Failed to save indexer config:', error)
+        this.torznabStatus = '保存失败，请稍后重试。'
+        this.$message?.error?.('保存失败')
+      } finally {
+        this.savingTorznab = false
+      }
     },
     setTaskStatus(status) {
       this.pushDownloadRoute({ tab: 'tasks', task_status: status })

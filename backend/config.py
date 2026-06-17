@@ -224,18 +224,19 @@ class Config:
 
     @property
     def scheduler_variant_index_rebuild_hour(self) -> Optional[int]:
-        """每日变体索引重建的整点（0-23）；配置为 null/负数则关闭。
+        """每日变体索引重建的整点（0-23）；配置为 null/负数/未配置则关闭。
 
-        默认 4:00 —— 排在 3:00 的日常库存 pipeline 之后，保证 videos/收藏页
-        跨页变体注入和整组收藏用到的物化索引每天跟上数据与规则变化。
+        默认**关闭**：索引只在数据发生大变动时才需要重建，而全量数据库导入
+        完成后已自动触发一次（见 routers/javinfo_imports._restore_after_upload），
+        平时无需每天空跑。需要周期性重建的部署可显式配置一个整点。
         """
-        value = self._config.get('scheduler', {}).get('variant_index_rebuild_hour', 4)
+        value = self._config.get('scheduler', {}).get('variant_index_rebuild_hour', None)
         if value is None:
             return None
         try:
             hour = int(value)
         except (TypeError, ValueError):
-            return 4
+            return None
         return hour if 0 <= hour <= 23 else None
 
     @property
