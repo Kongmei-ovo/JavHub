@@ -416,7 +416,9 @@ export default {
 
     this.searchSettingsReady = true
     if (!Object.keys(this.$route.query || {}).length) {
-      this.replaceSearchRoute({ sort: sortValueFromSortState(this.sortState), page: 1 }, { replace: true })
+      // 默认进入影库时,按最新年份随机浏览(例如 2026 年随机)
+      this.year = this.defaultLibraryYear()
+      this.replaceSearchRoute({ sort: sortValueFromSortState(this.sortState), year: this.year, page: 1 }, { replace: true })
       return
     }
     this.syncRouteQuery(this.$route.query)
@@ -513,6 +515,9 @@ export default {
       this.jumpPage = null
       this.searched = false
       this.replaceSearchRoute({ sort: 'random', page: 1 }, { replace: true })
+    },
+    defaultLibraryYear() {
+      return new Date().getFullYear()
     },
     startRandomExplore() {
       this.keyword = ''
