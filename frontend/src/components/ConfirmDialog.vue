@@ -131,14 +131,14 @@ const confirm = () => resolveConfirm(true)
 
 .confirm-copy h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--type-panel-title);
   line-height: 1.3;
 }
 
 .confirm-copy p {
   margin: 6px 0 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1.6;
 }
 
@@ -160,7 +160,7 @@ const confirm = () => resolveConfirm(true)
   border-radius: var(--radius-control);
   padding: 0 18px;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 700;
   cursor: pointer;
   transition: transform var(--motion-standard), opacity var(--motion-fast);

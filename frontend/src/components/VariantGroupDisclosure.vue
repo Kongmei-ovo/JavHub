@@ -76,7 +76,7 @@ function variantKey(variant) {
   border-radius: var(--radius-control);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
@@ -151,7 +151,7 @@ function variantKey(variant) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 650;
 }
 
@@ -168,7 +168,7 @@ function variantKey(variant) {
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
   border: 1px solid var(--badge-info-border);
   color: var(--badge-info-text);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 650;
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));

@@ -442,14 +442,14 @@ export default {
 .activity-summary-strip strong {
   display: block;
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: var(--type-panel-title);
 }
 
 .activity-summary-strip span {
   display: block;
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .logs-container {
@@ -488,7 +488,7 @@ export default {
   border-bottom: 1px solid var(--hairline);
   background: var(--card-2);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 650;
   box-shadow: none;
 }

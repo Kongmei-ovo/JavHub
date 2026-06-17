@@ -170,12 +170,12 @@ export default {
 
 .actor-search-head h2 {
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: var(--type-section-title);
 }
 
 .soft-count {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 .search-row {
@@ -224,7 +224,7 @@ export default {
   border: 0;
   border-radius: 999px;
   outline: none;
-  font-size: 15px;
+  font-size: var(--type-card-title);
 }
 
 .search-action {
@@ -254,7 +254,7 @@ export default {
 .empty-panel p {
   margin-top: 8px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 @media (max-width: 860px) {

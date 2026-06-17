@@ -23,7 +23,7 @@
 }
 
 .ledger-summary strong {
-  font-size: 28px;
+  font-size: var(--type-page-title);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.4px;
@@ -33,7 +33,7 @@
 
 .ledger-summary span {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -54,14 +54,14 @@
 }
 
 .ledger-chip b {
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 650;
   color: var(--text-primary);
   letter-spacing: 0.1px;
 }
 
 .ledger-chip em {
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-style: normal;
   font-weight: 600;
   color: var(--warn);
@@ -95,14 +95,14 @@
 }
 
 .field-chip b {
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.1px;
 }
 
 .field-chip em {
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-style: normal;
   font-weight: 600;
   color: var(--text-primary);

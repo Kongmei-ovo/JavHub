@@ -140,7 +140,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   cursor: pointer;
   color: var(--modal-chip-color);
   z-index: var(--z-raised);
@@ -353,16 +353,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   color: var(--modal-chip-muted);
   border: 1px solid var(--modal-chip-border);
   box-shadow: var(--modal-chip-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
-.actress-name { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: var(--modal-text-secondary); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; transition: transform var(--motion-standard), opacity var(--motion-fast); }
+.actress-name { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--type-control); color: var(--modal-text-secondary); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; transition: transform var(--motion-standard), opacity var(--motion-fast); }
 .actress-name .name-orig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.actress-name .name-translated { font-size: 11px; color: var(--modal-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.actress-name .name-translated { font-size: var(--type-micro); color: var(--modal-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .actress-avatar-item:hover .actress-name { color: var(--modal-text-primary); }
 /* P1-2: 头像/名字承担跳转,继续用 .clickable 的悬停色;避免文字下划线干扰头像视觉。 */
 .actress-avatar.clickable,
@@ -457,7 +457,7 @@
     var(--surface-noise),
     var(--modal-chip-bg);
   border-radius: 40px;
-  font-size: 13px;
+  font-size: var(--type-control);
   color: var(--modal-chip-color);
   border: 1px solid var(--modal-chip-border);
   box-shadow: var(--modal-chip-shadow);
@@ -477,8 +477,8 @@
   box-shadow: var(--modal-chip-shadow-hover);
 }
 .tag-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; overflow-wrap: anywhere; }
-.meta-provider { font-size: 12px; color: var(--modal-text-faint); margin-left: 4px; }
-.summary-text { font-size: 15px; line-height: 1.8; color: var(--modal-text-body); background: var(--surface-specular-edge), var(--surface-noise), var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
+.meta-provider { font-size: var(--type-caption); color: var(--modal-text-faint); margin-left: 4px; }
+.summary-text { font-size: var(--type-card-title); line-height: 1.8; color: var(--modal-text-body); background: var(--surface-specular-edge), var(--surface-noise), var(--modal-panel-bg); border-radius: var(--radius-lg); padding: 24px; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--modal-panel-border); }
 .summary-text--empty { color: var(--modal-text-empty); font-style: italic; }
 .skeleton { background: var(--modal-skeleton-bg); position: relative; overflow: hidden; border-radius: 8px; }
 .skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--modal-skeleton-shine), transparent); transform: translateX(-100%); animation: shimmer 2s infinite; }
@@ -504,7 +504,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  font-size: 28px;
+  font-size: var(--type-page-title);
   color: var(--modal-chip-color);
   cursor: pointer;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
@@ -591,7 +591,7 @@
   border: 1px solid var(--modal-chip-border);
   border-radius: var(--radius-control);
   color: var(--modal-chip-color);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   letter-spacing: 0;
   font-family: var(--font-mono);
   padding: 8px 14px;
@@ -617,7 +617,7 @@
   gap: 10px;
   padding: 14px 28px;
   border-radius: var(--radius-control);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   font-weight: 600;
   cursor: pointer;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
@@ -694,7 +694,7 @@
     right: 12px;
     width: var(--touch-target);
     height: var(--touch-target);
-    font-size: 22px;
+    font-size: var(--type-title-1);
   }
 
   .modal-body {
@@ -739,7 +739,7 @@
 
   .modal-code {
     min-width: 0;
-    font-size: 22px;
+    font-size: var(--type-title-1);
     overflow-wrap: anywhere;
   }
 
@@ -831,7 +831,7 @@
     min-height: var(--compact-toolbar-height);
     padding: 8px 10px;
     border-radius: 14px;
-    font-size: 12px;
+    font-size: var(--type-caption);
     line-height: 1.35;
     overflow-wrap: anywhere;
     touch-action: manipulation;

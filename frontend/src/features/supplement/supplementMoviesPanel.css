@@ -24,7 +24,7 @@
   color: inherit;
   cursor: pointer;
   text-align: left;
-  transition: transform var(--motion-standard), border-color var(--motion-fast);
+  transition: transform var(--motion-standard);
 }
 
 .works-quick-chip:hover {
@@ -38,7 +38,7 @@
 
 .works-quick-chip strong {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: var(--type-title-1);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
@@ -97,8 +97,7 @@
   border: 1px solid var(--hairline);
   border-radius: var(--supplement-filter-radius);
   outline: none;
-  font-size: 13px;
-  transition: border-color var(--motion-fast);
+  font-size: var(--type-control);
 }
 
 .filter-input::placeholder { color: var(--text-muted); }
@@ -124,7 +123,6 @@
   border-radius: var(--radius-card);
   background: var(--card-2);
   border: 1px solid var(--hairline);
-  transition: border-color var(--motion-fast);
   content-visibility: auto;
   contain-intrinsic-size: 1px 168px;
 }
@@ -158,7 +156,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
 }
 
 .fc-scrim {
@@ -174,7 +172,7 @@
   bottom: 5px;
   z-index: 1;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 600;
   letter-spacing: 0.3px;
   color: var(--text-on-accent-solid);
@@ -190,7 +188,7 @@
 
 .fc-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
@@ -206,7 +204,7 @@
   flex-wrap: wrap;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
 }
 
@@ -228,14 +226,14 @@
 .fc-act-btn {
   min-height: 32px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .fc-ready {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   color: var(--ok);
 }
@@ -249,7 +247,7 @@
   border-radius: 999px;
   color: var(--badge-info-text);
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -286,7 +284,7 @@
   gap: 12px;
   margin-top: 18px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 .panel-state { margin: 14px 0 0; }

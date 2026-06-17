@@ -16,7 +16,7 @@
 .eyebrow {
   margin: 0 0 5px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -46,7 +46,7 @@ p {
 .topbar-sub {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .workspace-actions {
@@ -64,7 +64,7 @@ p {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   padding: 4px 8px;
   min-height: 28px;
   box-shadow: none;
@@ -190,7 +190,7 @@ p {
 .panel-subtitle {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .queue-filter-summary {
@@ -217,7 +217,7 @@ p {
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  font-size: 12px;
+  font-size: var(--type-caption);
   white-space: nowrap;
 }
 
@@ -282,7 +282,7 @@ p {
 .empty-panel p {
   margin-top: 8px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 .diagnostics-inline-state {
@@ -309,13 +309,13 @@ p {
 
 .diagnostics-inline-state h3 {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 
 .diagnostics-inline-state p {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 
@@ -347,7 +347,7 @@ p {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
   cursor: pointer;
-  transition: transform var(--motion-fast), border-color var(--motion-fast);
+  transition: transform var(--motion-fast);
 }
 
 .diagnostics-launchpad-card:hover,
@@ -370,7 +370,7 @@ p {
 
 .diag-card-label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
 }
 
@@ -390,7 +390,7 @@ p {
 .diagnostics-launchpad-card strong {
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 28px;
+  font-size: var(--type-page-title);
   font-weight: 700;
   letter-spacing: -0.4px;
   line-height: 1;
@@ -399,7 +399,7 @@ p {
 
 .diagnostics-launchpad-card small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -446,7 +446,7 @@ p {
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
 }
 
 .diag-focus-scrim {
@@ -462,7 +462,7 @@ p {
   bottom: 5px;
   z-index: 1;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 600;
   letter-spacing: 0.3px;
   color: var(--text-on-accent-solid);
@@ -484,7 +484,7 @@ p {
   border-radius: 999px;
   background: var(--card);
   border: 1px solid var(--hairline);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 700;
   letter-spacing: 0.4px;
   color: var(--text-muted);
@@ -506,7 +506,7 @@ p {
 .diag-focus-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.5;
 }
 
@@ -524,7 +524,7 @@ p {
   border-radius: 999px;
   background: var(--card);
   border: 1px solid var(--hairline);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -630,7 +630,7 @@ p {
 .workspace-sub {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -643,7 +643,7 @@ p {
 }
 
 .workspace-recent {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -682,13 +682,13 @@ p {
 .command-strip-primary strong {
   display: block;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 
 .command-strip-primary p {
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 
@@ -700,7 +700,7 @@ p {
   min-height: 32px;
   padding: 6px 10px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -804,13 +804,13 @@ p {
 .repair-action-value {
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
 }
 
 .repair-action-label {
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 800;
 }
 
@@ -818,7 +818,7 @@ p {
   display: -webkit-box;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
   line-height: 1.25;
   overflow-wrap: anywhere;
   white-space: normal;
@@ -858,12 +858,12 @@ p {
 
 .task-state-detail b {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
 }
 
 .task-state-detail em {
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-style: normal;
   font-weight: 700;
 }
@@ -901,7 +901,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: transform var(--motion-fast), border-color var(--motion-fast);
+  transition: transform var(--motion-fast);
 }
 
 .metric-card:hover {
@@ -917,7 +917,7 @@ p {
 
 .metric-label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
 }
 
@@ -974,7 +974,7 @@ p {
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 600;
   letter-spacing: 0;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
@@ -1029,14 +1029,14 @@ p {
 
 .segment-label {
   color: inherit;
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 600;
 }
 
 .segment-count {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
@@ -1059,7 +1059,7 @@ p {
 
 .segment-status {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
 }
 
 .workspace-panel {
@@ -1104,7 +1104,7 @@ p {
   min-height: 26px;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
   white-space: nowrap;
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
@@ -1144,7 +1144,7 @@ p {
   gap: 12px;
   margin-top: 16px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 @media (max-width: 860px) {

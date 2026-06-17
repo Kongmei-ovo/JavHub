@@ -75,7 +75,7 @@
 .collection-manager p {
   margin: 3px 0 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .collection-form {
@@ -129,7 +129,7 @@
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 650;
   box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -234,7 +234,7 @@
 .collection-row span,
 .collection-empty {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .collection-actions {
@@ -394,7 +394,7 @@
 
 .load-more-row span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .favorite-selectable {

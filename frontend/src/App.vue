@@ -654,7 +654,7 @@ export default {
   mask-image: linear-gradient(to bottom, transparent, currentColor 12px, currentColor calc(100% - 16px), transparent);
 }
 .nav-group { display: flex; flex-direction: column; gap: 4px; }
-.nav-group-label { padding: 8px 14px 4px; color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: 0; }
+.nav-group-label { padding: 8px 14px 4px; color: var(--text-muted); font-size: var(--type-micro); font-weight: 700; letter-spacing: 0; }
 .nav-item {
   display: flex;
   align-items: center;
@@ -663,7 +663,7 @@ export default {
   border-radius: var(--radius-control);
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 500;
   transition: transform var(--motion-standard);
   white-space: nowrap;
@@ -733,7 +733,7 @@ export default {
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 10px;
@@ -751,7 +751,7 @@ export default {
   background: var(--c1-sidebar-hairline);
   pointer-events: none;
 }
-.version { font-size: 11px; color: var(--text-muted); text-align: center; }
+.version { font-size: var(--type-micro); color: var(--text-muted); text-align: center; }
 /* ===== Main Content ===== */
 .main-content {
   flex: 1;
@@ -845,7 +845,7 @@ export default {
   gap: 4px;
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 500;
   padding: 6px 0;
   min-height: 50px;
@@ -1077,7 +1077,7 @@ export default {
     box-shadow: var(--glass-control-shadow);
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     font: inherit;
-    font-size: 13px;
+    font-size: var(--type-control);
     font-weight: 700;
     transition: transform var(--motion-standard);
   }
@@ -1095,7 +1095,7 @@ export default {
   .mobile-theme-toggle:active { transform: translateY(0) scale(0.985); }
   .mobile-theme-toggle span:last-child {
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--type-micro);
     font-weight: 600;
     letter-spacing: 0;
   }
@@ -1129,7 +1129,7 @@ export default {
     backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 12px;
+    font-size: var(--type-caption);
     font-weight: 600;
     transition: transform var(--motion-standard);
     scroll-margin-block: 12px;

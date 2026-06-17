@@ -396,7 +396,7 @@ function handleKeydown(event) {
   }
 
   .apple-video-card__code {
-    font-size: 10px;
+    font-size: var(--type-badge);
     padding: 2px 6px;
   }
 
@@ -418,12 +418,12 @@ function handleKeydown(event) {
   }
 
   .apple-video-card__title {
-    font-size: 12px;
+    font-size: var(--type-caption);
     line-height: 1.3;
   }
 
   .apple-video-card__subline {
-    font-size: 10px;
+    font-size: var(--type-badge);
     line-height: 1.25;
   }
 }

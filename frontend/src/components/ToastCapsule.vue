@@ -205,7 +205,7 @@ onUnmounted(() => {
 }
 
 .toast-message {
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 500;
   color: var(--b4-local-action-text);
   white-space: nowrap;
@@ -222,7 +222,7 @@ onUnmounted(() => {
   border: 1px solid var(--toast-action-border);
   padding: 6px 14px;
   border-radius: var(--b4-local-radius-control);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--toast-action-shadow);

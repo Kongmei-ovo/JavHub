@@ -73,13 +73,13 @@
 
 .diagnostics-header h2 {
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: var(--type-section-title);
 }
 
 .diagnostics-header p {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 .diagnostics-body {
@@ -108,13 +108,13 @@
 .triage-card strong {
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: var(--type-section-title);
   font-variant-numeric: tabular-nums;
 }
 
 .triage-card span {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
 }
 
 .diagnostics-action-queue {
@@ -182,17 +182,17 @@
 
 .diagnostics-action-item strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .diagnostics-action-item b {
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-micro);
 }
 
 .diagnostics-action-item span {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
 }
 
 .diagnostics-action-priority {
@@ -205,7 +205,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--badge-warning-bg);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-style: normal;
   font-weight: 800;
 }
@@ -255,7 +255,7 @@
 .diagnostics-section h3 {
   margin: 0 0 10px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 
 .manual-match-panel h3,
@@ -266,7 +266,7 @@
 .manual-match-panel p {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .candidate-decision-strip {
@@ -312,13 +312,13 @@
 
 .candidate-decision-card b {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
 }
 
 .candidate-decision-card em {
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-style: normal;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -353,7 +353,7 @@
   background: var(--card-2);
   border: 1px solid var(--hairline);
   box-shadow: none;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .diagnostics-row-candidates {
@@ -395,7 +395,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--badge-warning-bg);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-style: normal;
   font-weight: 700;
   vertical-align: middle;
@@ -433,7 +433,7 @@
   background: var(--card-2);
   border: 1px solid var(--hairline);
   box-shadow: none;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .detail-source-item {
@@ -466,7 +466,7 @@
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   outline: none;
-  font-size: 13px;
+  font-size: var(--type-control);
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
@@ -499,13 +499,13 @@
 
 .manual-action-item strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .manual-action-item span,
 .manual-action-item small {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .empty-inline {

@@ -122,5 +122,5 @@ export default {
 .vp-player-wrap { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sheet); background: var(--vp-player-bg); border: var(--stroke-pro) solid var(--vp-sheet-border); }
 .vp-video { display: block; width: 100%; border-radius: 20px; background: var(--vp-player-bg); }
 .vp-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--vp-control-bg); border: 1px solid var(--vp-control-border); border-radius: var(--radius-lg); box-shadow: var(--vp-control-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); }
-.vp-title { min-width: 0; font-size: 14px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-title { min-width: 0; font-size: var(--type-body); color: var(--text-secondary); font-weight: 600; letter-spacing: 0; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

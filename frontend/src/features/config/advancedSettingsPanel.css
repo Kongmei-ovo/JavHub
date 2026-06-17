@@ -135,7 +135,7 @@
   min-height: 24px;
   padding: 0 8px;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--type-micro);
   line-height: 1;
 }
 .advanced-number-unit {
@@ -162,12 +162,12 @@
 }
 .advanced-settings-group .setting-title {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 700;
 }
 .advanced-settings-group .setting-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 .input-password-wrap { position: relative; display: flex; align-items: center; }
@@ -237,7 +237,7 @@
   border-radius: 999px;
   background: var(--card);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
   cursor: pointer;
   box-shadow: none;
@@ -302,7 +302,7 @@
   gap: 8px;
   align-items: center;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
 }
 .export-readiness-row span {
@@ -333,7 +333,7 @@
 }
 .export-action-note {
   min-width: 0; color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.45; overflow-wrap: anywhere;
 }
 .export-action-note.error {
@@ -359,7 +359,7 @@
   border-radius: 12px;
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.5;
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -367,7 +367,7 @@
 }
 .danger-summary strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .import-step-list {
   display: grid;
@@ -393,7 +393,7 @@
     var(--surface-noise),
     var(--material-glass-control);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   box-shadow: var(--glass-control-shadow);
@@ -416,7 +416,7 @@
 .import-step-head h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -429,7 +429,7 @@
     var(--surface-noise),
     var(--material-glass-control);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -464,7 +464,7 @@
   border-radius: 12px;
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.5;
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -472,7 +472,7 @@
 }
 .import-warning strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .import-warning-direct {
   border-color: var(--badge-warning-border);
@@ -493,7 +493,7 @@
   gap: 8px;
   align-items: center;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
 }
 .readiness-row span {
@@ -514,7 +514,7 @@
 }
 .danger-action-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 .compact-number {
@@ -566,14 +566,14 @@
 .import-file-status {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .import-file-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 .import-file-trigger {
@@ -687,7 +687,7 @@
 }
 .import-status {
   color: var(--badge-success-text);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 700;
 }
 .import-status.error,
@@ -697,12 +697,12 @@
 .import-action-status,
 .ai-connection-status {
   min-width: 0; color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
   line-height: 1.45; overflow-wrap: anywhere;
 }
 .import-danger-action-status {
   min-width: 0; color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
   line-height: 1.45; overflow-wrap: anywhere;
 }
@@ -751,7 +751,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 .import-progress-head strong,
 .import-job-row strong {
@@ -792,7 +792,7 @@
     var(--material-glass-control);
   color: var(--text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -821,7 +821,7 @@
   border-radius: 10px;
   background: var(--card-2);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   box-shadow: none;
 }
@@ -849,7 +849,7 @@
   border-radius: 10px;
   background: var(--card-2);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   box-shadow: none;
 }
@@ -874,20 +874,20 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .import-job-row > strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .import-job-meta {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }

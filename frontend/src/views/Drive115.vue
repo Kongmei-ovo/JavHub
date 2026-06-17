@@ -591,7 +591,7 @@ export default {
 .icon-toggle:hover { background: var(--surface-control-hover); color: var(--text-primary); }
 .icon-toggle.active { background: var(--surface-control-hover); color: var(--accent); border-color: var(--accent); }
 
-.ghost-btn { background: var(--surface-control); border: 1px solid var(--border); border-radius: var(--radius-control); padding: 7px 14px; color: var(--text-primary); font-size: var(--type-caption); cursor: pointer; transition: background var(--motion-fast, .15s); white-space: nowrap; }
+.ghost-btn { background: var(--surface-control); border: 1px solid var(--border); border-radius: var(--radius-control); padding: 7px 14px; color: var(--text-primary); font-size: var(--type-caption); cursor: pointer; white-space: nowrap; }
 .ghost-btn:hover:not(:disabled) { background: var(--surface-control-hover); }
 .ghost-btn:disabled { opacity: .4; cursor: not-allowed; }
 .ghost-btn.active { color: var(--accent); border-color: var(--accent); }

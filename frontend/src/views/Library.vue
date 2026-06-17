@@ -136,7 +136,7 @@ export default {
 }
 .found,
 .not-found {
-  font-size: 15px;
+  font-size: var(--type-card-title);
   font-weight: 700;
 }
 .found { color: var(--badge-success-text); }

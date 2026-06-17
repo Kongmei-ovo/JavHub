@@ -271,7 +271,7 @@ export default {
   display: block;
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 .downloader-toolbar-actions {
   display: flex;
@@ -415,7 +415,7 @@ export default {
   border: 1px solid var(--glass-control-border);
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 800;
   letter-spacing: 0.01em;
   box-shadow: var(--glass-control-shadow);
@@ -438,7 +438,7 @@ export default {
 .downloader-title-line strong {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -447,7 +447,7 @@ export default {
 .downloader-title-line span {
   flex: 0 0 auto;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .downloader-summary {
   display: flex;
@@ -455,7 +455,7 @@ export default {
   margin-top: 6px;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .downloader-summary span {
   min-width: 0;
@@ -487,7 +487,7 @@ export default {
   border-radius: 999px;
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-pending-bg);
   color: var(--badge-pending-text);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 700;
   box-shadow: var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -517,11 +517,11 @@ export default {
 }
 .downloaders-empty strong {
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
 }
 .downloaders-empty span {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 .switch-mini {
   position: relative;
@@ -580,7 +580,7 @@ export default {
 }
 .downloaders-footer span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .inline-dialog-overlay {
   position: fixed;
@@ -618,7 +618,7 @@ export default {
 .inline-dialog-header p {
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 .dialog-close-btn {
   width: 44px;
@@ -628,7 +628,7 @@ export default {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -660,13 +660,13 @@ export default {
 .sheet-section-title strong {
   display: block;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .sheet-section-title span {
   display: block;
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .downloader-sheet-grid {
   display: grid;
@@ -677,7 +677,7 @@ export default {
   display: grid;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .downloader-sheet-grid .wide-field {
   grid-column: 1 / -1;
@@ -691,7 +691,7 @@ export default {
   flex-wrap: wrap;
   gap: 14px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .downloader-sheet-options label {
   display: inline-flex;

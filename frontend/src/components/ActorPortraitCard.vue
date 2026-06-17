@@ -443,7 +443,7 @@ function emitSubscribe() {
 }
 
 .actor-portrait-card--compact .actor-portrait-card__fallback {
-  font-size: 32px;
+  font-size: var(--type-display-mobile);
 }
 
 .actor-portrait-card--compact .actor-portrait-card__name {

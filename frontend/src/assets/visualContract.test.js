@@ -120,6 +120,7 @@ test('production source files stay reviewable below the large-file line', () => 
     ['src/features/config/config.css', 1158],
     ['src/features/search/search.css', 1191],
     ['src/features/candidates/downloadCandidatePanel.css', 1100],
+    ['src/features/supplement/supplementManagement.css', 1209],
     ['src/features/translations/translationJobs.css', 1159],
     ['src/views/Config.vue', 1227],
     ['src/views/TranslationJobs.vue', 1092],

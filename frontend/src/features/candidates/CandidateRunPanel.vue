@@ -96,7 +96,7 @@ export default {
 .candidate-run-stats span,
 .candidate-run-empty {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 .candidate-run-list {
   display: flex;

@@ -65,7 +65,7 @@ const handleClick = () => {
 }
 .stat-arrow {
   color: var(--text-muted);
-  font-size: 20px;
+  font-size: var(--type-section-title);
   transition: transform var(--motion-standard);
 }
 .stat-card:hover .stat-arrow {

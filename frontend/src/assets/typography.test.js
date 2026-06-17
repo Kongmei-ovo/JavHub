@@ -103,9 +103,9 @@ test('Production UI styles ratchet raw font sizes toward shared type tokens', ()
   const rawFontSize = /font-size:\s*\d+(?:\.\d+)?px\b/g
   const offenders = []
   const tokenSources = new Set(['src/assets/main.css'])
-  // Today 页面 hero h1 用 30px,不在 --type-* ramp 上(--type-display-2=28 / --type-page-title-mobile=26)。
-  // 视觉精修要求页面标题立起来,留作单点豁免,后续若加 30px 档再迁。
-  const existingRawFontSizeCount = 210
+  // 已把所有能 1:1 映射到 --type-* 的裸 px 字号迁成 token(零视觉变动),
+  // 残留的是 ramp 上没有对应档的值(9/16/17/42px 等),留作单点豁免,后续若补档再迁。
+  const existingRawFontSizeCount = 25
 
   for (const [name, source] of productionStyleSources()) {
     if (tokenSources.has(name)) continue

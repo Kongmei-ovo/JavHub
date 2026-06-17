@@ -85,7 +85,7 @@ export default {
 .th.active { color: var(--text-primary); }
 .sort-caret { font-size: var(--type-micro); }
 
-.list-row { min-height: 40px; cursor: pointer; border-bottom: 1px solid var(--hairline); transition: background var(--motion-fast, .15s); }
+.list-row { min-height: 40px; cursor: pointer; border-bottom: 1px solid var(--hairline); }
 .list-row:last-child { border-bottom: none; }
 .list-row:hover { background: var(--surface-card-hover); }
 .list-row.selected { background: var(--surface-card-hover); box-shadow: inset 2px 0 0 var(--accent); }

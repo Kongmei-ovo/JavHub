@@ -44,7 +44,7 @@ const initials = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   color: var(--text-muted);
   border: 1px solid var(--glass-control-border);
   box-shadow: var(--glass-inner-shadow);
@@ -60,7 +60,7 @@ const initials = computed(() => {
   border: 1px solid var(--badge-error-border);
   border-radius: 10px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: var(--type-micro);
   min-width: 20px;
   text-align: center;
   box-shadow: var(--glass-control-shadow);

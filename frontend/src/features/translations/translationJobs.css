@@ -30,7 +30,7 @@
 .eyebrow {
   margin: 0 0 4px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -83,7 +83,7 @@
     var(--surface-noise),
     var(--material-glass-control);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--glass-control-shadow);
@@ -261,7 +261,7 @@
 .signal-card small,
 .overview-section-head small {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .coverage-donut span {
@@ -335,13 +335,13 @@
 
 .coverage-count span {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--type-card-title);
 }
 
 .coverage-hero-copy p {
   margin: 8px 0 16px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-control);
 }
 
 .overview-track {
@@ -386,7 +386,7 @@
 
 .overview-section-head strong {
   color: var(--text-primary);
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -410,7 +410,7 @@
 .coverage-row-label strong {
   display: block;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 500;
 }
 
@@ -425,7 +425,7 @@
 
 .coverage-percent {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 600;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -448,7 +448,7 @@
 
 .signal-card strong {
   color: var(--text-primary);
-  font-size: 24px;
+  font-size: var(--type-workbench-title);
   font-weight: 600;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -497,12 +497,12 @@
 
 .job-progress-label {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .job-progress-label strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-variant-numeric: tabular-nums;
 }
 
@@ -528,7 +528,7 @@
 .job-control-meta,
 .job-error {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .job-control-metrics strong {
@@ -688,7 +688,7 @@
 
 .field span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 500;
 }
 
@@ -795,7 +795,7 @@
   display: block;
   margin-bottom: 3px;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-control);
   font-weight: 500;
 }
 
@@ -814,7 +814,7 @@
   border: 1px solid var(--hairline);
   background: var(--card);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   box-shadow: none;
   white-space: nowrap;
@@ -896,7 +896,7 @@
 
 .mapping-stat span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .import-button {
@@ -923,7 +923,7 @@
 
 .result-summary strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 500;
 }
 
@@ -949,7 +949,7 @@
   border: 1px solid var(--hairline);
   background: var(--card-2);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   box-shadow: none;
 }
 

@@ -227,7 +227,7 @@ const handleImgError = (e) => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 500;
   color: var(--text-muted);
 }

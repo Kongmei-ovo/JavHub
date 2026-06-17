@@ -45,7 +45,7 @@
 
 .field span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 500;
 }
 
@@ -118,7 +118,7 @@
   border: 1px solid var(--hairline);
   background: var(--card);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 600;
   box-shadow: none;
   white-space: nowrap;
@@ -164,7 +164,7 @@
   border: 1px solid var(--hairline);
   background: var(--card-2);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-caption);
   box-shadow: none;
 }
 

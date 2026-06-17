@@ -206,7 +206,7 @@ export default {
 }
 
 .job-ledger-sum strong {
-  font-size: 28px;
+  font-size: var(--type-page-title);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.4px;
@@ -216,7 +216,7 @@ export default {
 
 .job-ledger-sum span {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -238,14 +238,14 @@ export default {
 }
 
 .jl-card b {
-  font-size: 10px;
+  font-size: var(--type-badge);
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.1px;
 }
 
 .jl-card em {
-  font-size: 13px;
+  font-size: var(--type-control);
   font-style: normal;
   font-weight: 700;
   color: var(--text-primary);
@@ -275,7 +275,6 @@ export default {
   border-radius: var(--radius-card);
   background: var(--card);
   border: 1px solid var(--hairline);
-  transition: border-color var(--motion-fast);
 }
 
 .job-card:hover { border-color: var(--hairline-strong); }
@@ -289,7 +288,7 @@ export default {
   align-items: center;
   justify-content: center;
   color: var(--text-on-accent-solid);
-  font-size: 18px;
+  font-size: var(--type-panel-title);
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.18);
 }
@@ -303,7 +302,7 @@ export default {
 }
 
 .job-title {
-  font-size: 14px;
+  font-size: var(--type-body);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -312,19 +311,19 @@ export default {
 }
 
 .job-id {
-  font-size: 11px;
+  font-size: var(--type-micro);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .job-attempt {
-  font-size: 11px;
+  font-size: var(--type-micro);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.job-error { color: var(--bad); font-size: 11px; }
-.job-warning { color: var(--warn); font-size: 11px; }
+.job-error { color: var(--bad); font-size: var(--type-micro); }
+.job-warning { color: var(--warn); font-size: var(--type-micro); }
 
 .job-actions {
   display: flex;
@@ -343,7 +342,7 @@ export default {
   border-radius: 999px;
   color: var(--badge-info-text);
   background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
-  font-size: 11px;
+  font-size: var(--type-micro);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -371,7 +370,7 @@ export default {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-micro);
   padding: 4px 8px;
   box-shadow: none;
   backdrop-filter: none;
