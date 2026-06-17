@@ -264,6 +264,11 @@ button.ops-cell:hover { border-color: var(--accent); }
   margin: 4px 0 16px;
 }
 
+/* inline 变体：缓存清理范围与清理按钮同排,芯片占左侧、按钮靠右,无需换行 */
+.ops-chip-group--inline {
+  margin: 0;
+}
+
 .ops-chip {
   padding: 8px 16px;
   border-radius: 999px;

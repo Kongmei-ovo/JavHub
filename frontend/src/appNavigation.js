@@ -24,7 +24,7 @@ export const navGroups = [
       { path: '/entities', label: '分类目录', icon: IconList },
       { path: '/genres', label: '发现', icon: IconGenres },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
-      { path: '/downloads', label: '下载任务', icon: IconDownload },
+      { path: '/downloads', label: '下载中心', icon: IconDownload },
     ],
   },
   {

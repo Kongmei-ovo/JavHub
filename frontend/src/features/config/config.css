@@ -105,34 +105,34 @@
   width: 100%;
 }
 .settings-shell {
-  display: grid;
-  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 .settings-sidebar {
   position: sticky;
-  top: 24px;
+  top: 12px;
+  z-index: 3;
 }
 .settings-sidebar-list {
-  display: grid;
-  gap: 4px;
-  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
   border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-lg);
+  border-radius: 999px;
   background: var(--card);
   box-shadow: var(--shadow-card);
 }
 .settings-sidebar-list .tab-item {
-  width: 100%;
-  justify-content: flex-start;
+  flex: 0 0 auto;
+  justify-content: center;
   min-height: 38px;
-  padding: 0 12px;
-  border-radius: var(--radius-md);
+  padding: 0 16px;
 }
 .settings-pane {
-  width: min(100%, 920px);
-  max-width: 920px;
+  width: 100%;
+  max-width: none;
   min-width: 0;
 }
 .settings-loading {
@@ -476,8 +476,7 @@
     padding-bottom: calc(var(--mobile-bottom-nav-reserve) + 84px);
   }
   .settings-shell {
-    grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 16px;
   }
   .settings-sidebar {
     position: static;
@@ -486,15 +485,13 @@
     overflow: hidden;
   }
   .settings-sidebar-list {
-    display: flex;
+    flex-wrap: nowrap;
     max-width: 100%;
     overflow-x: auto;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
   }
   .settings-sidebar-list .tab-item {
-    width: auto;
-    flex: 0 0 auto;
     min-height: 44px;
     white-space: nowrap;
     scroll-snap-align: start;
@@ -689,39 +686,11 @@
 .telegram-test-row[aria-busy="true"] {
   cursor: progress;
 }
-.inventory-cron-save-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px 12px;
-}
-.inventory-cron-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-.inventory-cron-status {
-  color: var(--text-secondary);
-  font-size: var(--type-control, 13px);
-  line-height: 1.45;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.inventory-cron-save-row[aria-busy="true"] {
-  cursor: progress;
-}
 @media (max-width: 768px) {
   .telegram-test-row {
     grid-template-columns: 1fr;
   }
   .telegram-test-actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  .inventory-cron-save-row {
-    grid-template-columns: 1fr;
-  }
-  .inventory-cron-actions .btn {
     width: 100%;
     justify-content: center;
   }

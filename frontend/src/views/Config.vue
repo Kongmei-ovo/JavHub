@@ -70,42 +70,6 @@
               <h2>常规与服务</h2>
               <p>配置基础连接与外部服务集成，包括媒体服务器和元数据来源。</p>
             </div>
-            <section class="settings-group">
-              <div class="settings-group-header">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-                <h2>Emby</h2>
-              </div>
-              <div class="settings-list">
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">API 地址</span>
-                    <span class="setting-note">媒体服务器 HTTP 入口。</span>
-                  </span>
-                  <span class="settings-control">
-                    <input class="input" v-model="config.emby.api_url" placeholder="http://your-emby:8096" />
-                  </span>
-                </label>
-                <div class="settings-row">
-                  <div class="setting-copy">
-                    <span class="setting-title">密钥</span>
-                    <span class="setting-note">用于读取媒体库和下载状态。</span>
-                  </div>
-                  <div class="settings-control">
-                    <div class="input-password-wrap">
-                      <input class="input" :type="showEmbyKey ? 'text' : 'password'" v-model="config.emby.api_key" autocomplete="off" />
-                      <button class="input-eye-btn" type="button" @click="showEmbyKey = !showEmbyKey">
-                        <svg v-if="!showEmbyKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
             <Open115SettingsPanel
               v-model:app-id="config.open115.app_id"
               v-model:root-path="config.open115.root_path"
@@ -387,127 +351,20 @@
                 </label>
               </div>
             </section>
-            <!-- 磁力索引源 -->
-            <section class="settings-group torznab-settings-group">
-              <div class="settings-group-header">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                  <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03"/>
-                  <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22"/>
-                </svg>
-                <h2>磁力索引源 / Torznab</h2>
-              </div>
-              <div class="settings-list">
-                <label class="settings-row settings-row--toggle" for="torznabEnabled">
-                  <span class="setting-copy">
-                    <span class="setting-title">启用磁力索引源</span>
-                    <span class="setting-note">连接 Prowlarr、Jackett 或 Torznab 服务。</span>
-                  </span>
-                  <span class="settings-control settings-control--compact">
-                    <input type="checkbox" id="torznabEnabled" v-model="config.sources.torznab.enabled" role="switch" />
-                  </span>
-                </label>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Base URL</span>
-                    <span class="setting-note">Torznab 服务地址。</span>
-                  </span>
-                  <span class="settings-control">
-                    <input class="input" v-model="config.sources.torznab.base_url" placeholder="http://localhost:9696" />
-                  </span>
-                </label>
-                <div class="settings-row">
-                  <div class="setting-copy">
-                    <span class="setting-title">API Key</span>
-                    <span class="setting-note">用于访问索引源。</span>
-                  </div>
-                  <div class="settings-control">
-                    <div class="input-password-wrap">
-                      <input
-                        class="input"
-                        :type="showTorznabKey ? 'text' : 'password'"
-                        v-model="config.sources.torznab.api_key"
-                        autocomplete="off"
-                      />
-                      <button class="input-eye-btn" type="button" @click="showTorznabKey = !showTorznabKey" :title="showTorznabKey ? '隐藏' : '显示'">
-                        <svg v-if="!showTorznabKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.8 21.8 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Indexer</span>
-                    <span class="setting-note">默认 all。</span>
-                  </span>
-                  <span class="settings-control">
-                    <input class="input" v-model="config.sources.torznab.indexer" placeholder="all" />
-                  </span>
-                </label>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Categories</span>
-                    <span class="setting-note">可留空，使用服务默认分类。</span>
-                  </span>
-                  <span class="settings-control">
-                    <input class="input" v-model="config.sources.torznab.categories" placeholder="可留空" />
-                  </span>
-                </label>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Limit</span>
-                    <span class="setting-note">单次查询返回上限。</span>
-                  </span>
-                  <span class="settings-control settings-control--compact settings-control--number">
-                    <span class="settings-number-control">
-                      <input class="input" v-model.number="config.sources.torznab.limit" type="number" min="1" max="100" step="1" inputmode="numeric" />
-                      <span class="settings-number-unit">条</span>
-                      <span class="settings-number-range">1-100</span>
-                    </span>
-                  </span>
-                </label>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Timeout</span>
-                    <span class="setting-note">请求等待秒数。</span>
-                  </span>
-                  <span class="settings-control settings-control--compact settings-control--number">
-                    <span class="settings-number-control">
-                      <input class="input" v-model.number="config.sources.torznab.timeout" type="number" min="1" max="60" step="1" inputmode="numeric" />
-                      <span class="settings-number-unit">秒</span>
-                      <span class="settings-number-range">1-60</span>
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </section>
-            <!-- 爬虫 -->
-            <section class="settings-group crawler-settings-group">
+            <!-- 订阅检查 -->
+            <section class="settings-group subscription-schedule-group">
               <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                <h2>爬虫设置</h2>
+                <h2>订阅检查</h2>
               </div>
               <div class="settings-list">
                 <label class="settings-row">
                   <span class="setting-copy">
-                    <span class="setting-title">请求间隔</span>
-                    <span class="setting-note">秒，控制爬虫访问节奏。</span>
-                  </span>
-                  <span class="settings-control settings-control--compact settings-control--number">
-                    <span class="settings-number-control">
-                      <input class="input" v-model.number="config.crawler.request_interval" type="number" min="1" step="1" inputmode="numeric" />
-                      <span class="settings-number-unit">秒</span>
-                      <span class="settings-number-range">>=1</span>
-                    </span>
-                  </span>
-                </label>
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">订阅检查时间</span>
-                    <span class="setting-note">小时，0-23。</span>
+                    <span class="setting-title">每日检查时间</span>
+                    <span class="setting-note">演员订阅每天自动检查新作的时刻（0-23 时）。</span>
                   </span>
                   <span class="settings-control settings-control--compact settings-control--number">
                     <span class="settings-number-control">
@@ -517,47 +374,6 @@
                     </span>
                   </span>
                 </label>
-              </div>
-            </section>
-            <!-- 库存对比定时任务 -->
-            <section class="settings-group inventory-schedule-group">
-              <div class="settings-group-header">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <h2>库存对比定时任务</h2>
-              </div>
-              <div class="settings-list">
-                <label class="settings-row">
-                  <span class="setting-copy">
-                    <span class="setting-title">Cron 表达式</span>
-                    <span class="setting-note">例：0 2 * * * 表示每天凌晨2点。</span>
-                  </span>
-                  <span class="settings-control">
-                    <input class="input" v-model="inventoryCron" placeholder="0 2 * * *" />
-                  </span>
-                </label>
-                <div class="settings-row settings-row--actions">
-                  <div class="setting-copy">
-                    <span class="setting-title">保存自动化配置</span>
-                    <span class="setting-note">只提交当前自动化相关配置。</span>
-                  </div>
-                  <div class="settings-control settings-control--wide inventory-cron-save-row" :aria-busy="inventoryCronSaveBusy" aria-live="polite">
-                    <div class="inventory-cron-actions">
-                      <button
-                        class="btn btn-primary"
-                        type="button"
-                        @click="saveInventoryCron"
-                        :disabled="inventoryCronSaving || !canSaveConfig"
-                        :aria-describedby="'inventory-cron-save-status'"
-                      >
-                        {{ inventoryCronSaving ? '保存中...' : '保存自动化配置' }}
-                      </button>
-                    </div>
-                    <span id="inventory-cron-save-status" class="inventory-cron-status" role="status">{{ inventoryCronSaveStatus }}</span>
-                  </div>
-                </div>
               </div>
             </section>
           </div>
@@ -828,13 +644,8 @@ export default {
       },
       saving: false,
       testingTelegram: false,
-      inventoryCronSaving: false,
-      inventoryCron: '',
-      inventoryCronSaveMsg: '',
       telegramTestMsg: '',
       showBotToken: false,
-      showEmbyKey: false,
-      showTorznabKey: false,
       navGroups: [
         { id: 'services', label: '常规与服务' },
         { id: 'automation', label: '自动化策略' },
@@ -910,21 +721,6 @@ export default {
         return '填写 Bot Token 后可发送测试信息。'
       }
       return '可发送一次测试信息。'
-    },
-    inventoryCronSaveBusy() {
-      return this.inventoryCronSaving
-    },
-    inventoryCronSaveStatus() {
-      if (this.inventoryCronSaving) {
-        return '正在保存库存对比 Cron 表达式。'
-      }
-      if (this.inventoryCronSaveMsg) {
-        return this.inventoryCronSaveMsg
-      }
-      if (!this.canSaveConfig) {
-        return '配置未加载成功，自动化保存已暂停。'
-      }
-      return '只保存库存对比定时任务。'
     },
     configStatusSourceLabel() {
       return this.configMeta.config_path ? `路径 ${this.configMeta.config_path}` : ''
@@ -1028,9 +824,7 @@ export default {
         }
         this.mergeJavInfoConfig(data.javinfo || {})
         this.mergeAiConfig(data.ai || {})
-        this.mergeSourceConfig(data.sources || {})
         this.telegramUsers = (this.config.telegram.allowed_user_ids || []).join(', ')
-        this.inventoryCron = data.inventory_cron || ''
         this.configLoaded = true
       } catch (e) {
         console.error('Failed to load config:', e)
@@ -1049,7 +843,8 @@ export default {
       this.saving = true
       try {
         this.config.telegram.allowed_user_ids = this.telegramUsers.split(',').map(s => s.trim()).filter(Boolean)
-        const { downloaders, server, rate_limit, ...configPayload } = this.config
+        // 磁力索引源（sources.torznab）已迁到下载中心管理，此处不写回，避免覆盖
+        const { downloaders, server, rate_limit, sources, ...configPayload } = this.config
         await api.updateConfig(configPayload)
         this.saveBubbleCfg()
         this.saveSearchPrefs()
@@ -1082,39 +877,8 @@ export default {
         },
       }
     },
-    mergeSourceConfig(remote = {}) {
-      const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG.sources))
-      this.config.sources = {
-        ...base,
-        ...(remote || {}),
-        torznab: {
-          ...(base.torznab || {}),
-          ...((remote && remote.torznab) || {}),
-        },
-      }
-    },
     applyDockerJavInfoUrl() {
       this.config.javinfo.api_url = this.dockerJavInfoApiUrl
-    },
-    async saveInventoryCron() {
-      if (!this.canSaveConfig) {
-        this.inventoryCronSaveMsg = '配置未加载成功，已阻止保存'
-        this.$message.error('配置未加载成功，已阻止保存')
-        return
-      }
-      this.inventoryCronSaving = true
-      this.inventoryCronSaveMsg = ''
-      try {
-        await api.updateConfig({ inventory_cron: this.inventoryCron })
-        this.inventoryCronSaveMsg = '保存成功'
-        this.$message.success('库存对比定时任务配置已保存')
-      } catch (e) {
-        console.error('Failed to save inventory cron:', e)
-        this.inventoryCronSaveMsg = '保存失败'
-        this.$message.error('保存失败')
-      } finally {
-        this.inventoryCronSaving = false
-      }
     },
     toggleAutomationSource(source) {
       const current = this.config.automation.candidate_sources || []

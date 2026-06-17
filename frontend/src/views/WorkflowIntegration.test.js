@@ -10,11 +10,13 @@ const subscription = [
 ].join('\n')
 const downloadsVue = readFileSync(new URL('./Downloads.vue', import.meta.url), 'utf8')
 const downloadCandidatePanel = readFileSync(new URL('../features/candidates/DownloadCandidatePanel.vue', import.meta.url), 'utf8')
+const indexerSourcePanel = readFileSync(new URL('../features/downloads/IndexerSourcePanel.vue', import.meta.url), 'utf8')
 const downloads = [
   downloadsVue,
   readFileSync(new URL('../features/downloads/DownloadStatsBar.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/downloads/TaskList.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/downloads/downloads.css', import.meta.url), 'utf8'),
+  indexerSourcePanel,
 ].join('\n')
 const candidates = [
   downloadCandidatePanel,
@@ -158,14 +160,22 @@ test('settings page warns when Docker uses a localhost JavInfo URL', () => {
   assert.match(config, /修正为 Docker 服务地址/)
 })
 
-test('settings page exposes bounded Torznab source configuration', () => {
+test('download center hosts the indexer source (Torznab) configuration', () => {
+  // 默认配置仍保留 torznab 形态，供索引源面板兜底
   assert.match(configFeatureSource, /sources:\s*\{[\s\S]*torznab:\s*\{[\s\S]*enabled: false/)
-  assert.match(config, /磁力索引源 \/ Torznab/)
-  assert.match(config, /v-model="config\.sources\.torznab\.base_url"/)
-  assert.match(config, /v-model="config\.sources\.torznab\.api_key"/)
-  assert.match(config, /v-model\.number="config\.sources\.torznab\.limit"[\s\S]*max="100"/)
-  assert.match(config, /v-model\.number="config\.sources\.torznab\.timeout"[\s\S]*max="60"/)
-  assert.match(config, /mergeSourceConfig\(data\.sources \|\| \{\}\)/)
+  // 设置页不再承载磁力索引源
+  assert.doesNotMatch(config, /torznab-settings-group/)
+  assert.doesNotMatch(config, /v-model="config\.sources\.torznab\.base_url"/)
+  // 下载中心新增「索引源」tab，挂载 IndexerSourcePanel
+  assert.match(downloads, /索引源/)
+  assert.match(downloads, /IndexerSourcePanel/)
+  assert.match(downloads, /openIndexerTab/)
+  assert.match(downloads, /sources:\s*\{\s*torznab:\s*payload\s*\}/)
+  // 面板包含三种索引源类型（Prowlarr / Jackett / 通用 Torznab）与有界数值
+  assert.match(indexerSourcePanel, /prowlarr/)
+  assert.match(indexerSourcePanel, /jackett/)
+  assert.match(indexerSourcePanel, /v-model\.number="draft\.limit"[\s\S]*max="100"/)
+  assert.match(indexerSourcePanel, /v-model\.number="draft\.timeout"[\s\S]*max="60"/)
 })
 
 test('favorites video cards display dvd numbers instead of internal ids', () => {
@@ -877,7 +887,7 @@ test('settings page keeps downloaders out and gives Telegram its own section', (
   assert.match(config, /label: 'Telegram 通知'/)
   assert.match(config, /<h2>Bot 连接<\/h2>/)
   assert.match(config, /<h2>通知事件<\/h2>/)
-  assert.match(config, /const \{ downloaders, server, rate_limit, \.\.\.configPayload \} = this\.config/)
+  assert.match(config, /const \{ downloaders, server, rate_limit, sources, \.\.\.configPayload \} = this\.config/)
   assert.doesNotMatch(config, /OpenList \/ 115云盘/)
   assert.doesNotMatch(config, /管理下载源/)
   assert.doesNotMatch(config, /config\.openlist/)
