@@ -479,10 +479,32 @@ export default {
 
   // ========== 115 文件管理 ==========
 
-  listOpen115Files({ cid = '0', offset = 0, limit = 100, keyword = '' } = {}) {
+  listOpen115Files({ cid = '0', offset = 0, limit = 100, keyword = '', order = '', asc = null } = {}) {
     const params = { cid, offset, limit }
     if (keyword) params.keyword = keyword
+    if (order) params.order = order
+    if (asc !== null && asc !== undefined) params.asc = asc ? 1 : 0
     return api.get('/v1/open115/files', { params, silentError: true })
+  },
+
+  getOpen115Quota() {
+    return api.get('/v1/open115/offline/quota', { silentError: true })
+  },
+
+  listOpen115OfflineTasks(page = 1) {
+    return api.get('/v1/open115/offline/tasks', { params: { page }, silentError: true })
+  },
+
+  addOpen115Offline({ urls, cid = '0' }) {
+    return api.post('/v1/open115/offline/add', { urls, cid: String(cid) })
+  },
+
+  deleteOpen115OfflineTask({ infoHash, delSource = false }) {
+    return api.post('/v1/open115/offline/delete', { info_hash: String(infoHash), del_source: Boolean(delSource) })
+  },
+
+  clearOpen115OfflineTasks(flag = 0) {
+    return api.post('/v1/open115/offline/clear', { flag })
   },
 
   createOpen115Folder(pid, name) {

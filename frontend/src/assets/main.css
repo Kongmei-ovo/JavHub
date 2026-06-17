@@ -128,6 +128,10 @@
   --warn: #FFB02E; --warn-rgb: 255, 176, 46;
   --bad: #FF5A5A;  --bad-rgb: 255, 90, 90;
   --info: #62B6FF; --info-rgb: 98, 182, 255;
+  /* Base hues for constructing one-off scrims/shadows/borders as rgba(var(--*-rgb), a)
+     so the literal color stays centralized (raw-color contract). */
+  --black-rgb: 0, 0, 0;
+  --white-rgb: 255, 255, 255;
   
   /* 文字 */
   --text-primary: #1D1D1F;

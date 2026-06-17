@@ -288,10 +288,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-on-accent-solid);
   font-size: 18px;
   font-weight: 700;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.18);
 }
 
 .job-copy {

@@ -17,7 +17,6 @@ const files = {
   videoModal: readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8'),
   candidates: readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
   entities: readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8'),
-  magnetParse: readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8'),
   config: readFileSync(new URL('../features/config/config.css', import.meta.url), 'utf8'),
   advancedConfig: [
     readFileSync(new URL('../features/config/advancedSettingsPanel.css', import.meta.url), 'utf8'),
@@ -103,7 +102,6 @@ test('mobile shell reserves iPhone safe area and prevents document-wide horizont
 
 test('mobile shared controls use iPhone touch targets without inflating dense cards', () => {
   const mainMobile = mobileCss('main')
-  const magnetMobile = mobileCss('magnetParse')
   const favoritesMobile = mobileCss('favorites')
 
   assert.match(mainMobile, /\.btn,\s*\.btn-mini,\s*\.el-button,\s*\.glass-select__button,\s*\.input\s*\{[\s\S]*min-height:\s*var\(--touch-target\)/)
@@ -112,7 +110,6 @@ test('mobile shared controls use iPhone touch targets without inflating dense ca
   assert.match(mainMobile, /--video-grid-min-mobile:\s*clamp\(126px,\s*42vw,\s*168px\)/)
   assert.match(mainMobile, /--video-grid-gap-mobile:\s*clamp\(9px,\s*2\.8vw,\s*13px\)/)
   assert.match(mainMobile, /--video-card-body-padding-mobile:\s*9px 10px 11px/)
-  assert.match(magnetMobile, /\.clear-input-btn,\s*\.clear-results-btn\s*\{[\s\S]*min-height:\s*var\(--touch-target\)/)
   assert.match(favoritesMobile, /\.btn-mini,\s*\.collection-form input\s*\{[\s\S]*min-height:\s*var\(--touch-target\)/)
   assert.match(mobileCss('logs'), /\.toolbar input,\s*\.toolbar button\s*\{[\s\S]*min-height:\s*40px/)
   assert.match(mobileCss('logs'), /\.activity-header \.toolbar-btn\s*\{[\s\S]*min-height:\s*40px/)

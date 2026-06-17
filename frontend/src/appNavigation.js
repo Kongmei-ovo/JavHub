@@ -25,7 +25,6 @@ export const navGroups = [
       { path: '/genres', label: '发现', icon: IconGenres },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/downloads', label: '下载任务', icon: IconDownload },
-      { path: '/parse', label: '磁链解析', icon: IconParse },
     ],
   },
   {
@@ -59,7 +58,6 @@ export const bottomNavItems = [
 export const mobileMoreItems = [
   { path: '/entities', label: '分类目录', icon: IconList },
   { path: '/genres', label: '发现', icon: IconGenres },
-  { path: '/parse', label: '磁链解析', icon: IconParse },
   { path: '/subscription', label: '演员订阅', icon: IconStar },
   { path: '/candidates', label: '候选确认', icon: IconParse },
   { path: '/supplement', label: '资料补全', icon: IconSupplement },

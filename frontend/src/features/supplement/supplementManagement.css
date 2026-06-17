@@ -78,7 +78,7 @@ p {
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  border: 2px solid rgba(var(--white-rgb), 0.35);
   border-top-color: currentColor;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -122,7 +122,7 @@ p {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--text-on-accent-solid);
   font-weight: 700;
   border: 1px solid var(--hairline);
 }
@@ -452,7 +452,7 @@ p {
 .diag-focus-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 55%);
+  background: linear-gradient(to top, rgba(var(--black-rgb), 0.55), transparent 55%);
   pointer-events: none;
 }
 
@@ -465,7 +465,7 @@ p {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  color: #fff;
+  color: var(--text-on-accent-solid);
 }
 
 .diag-focus-meta {
@@ -608,7 +608,7 @@ p {
   border-radius: 50%;
   flex-shrink: 0;
   font-size: 38px;
-  color: #fff;
+  color: var(--text-on-accent-solid);
   font-weight: 700;
   display: flex;
   align-items: center;

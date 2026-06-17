@@ -39,6 +39,7 @@ def _file_dict(file: Open115File) -> dict[str, Any]:
         "duration": file.duration,
         "extension": file.extension,
         "pick_code": file.pick_code,
+        "mtime": file.mtime,
     }
 
 
@@ -73,6 +74,8 @@ async def list_files(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     keyword: str | None = Query(None),
+    order: str | None = Query(None),
+    asc: int | None = Query(None, ge=0, le=1),
 ) -> dict[str, Any]:
     keyword = (keyword or "").strip()
     try:
@@ -86,7 +89,7 @@ async def list_files(
                 "limit": limit,
                 "keyword": keyword,
             }
-        result = await open115_client.list_folder(cid, offset=offset, limit=limit)
+        result = await open115_client.list_folder(cid, offset=offset, limit=limit, order=order, asc=asc)
     except Open115Error as exc:
         raise _http_error(exc) from exc
     return {

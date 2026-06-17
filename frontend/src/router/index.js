@@ -14,7 +14,7 @@ const routes = [
   { path: '/watch/:movieId', name: 'Watch', component: () => import('../views/Watch.vue') },
   { path: '/genres', component: () => import('../views/Genres.vue') },
   { path: '/discovery/:type/:value', name: 'DiscoveryDetail', component: () => import('../views/DiscoveryDetail.vue') },
-  { path: '/parse', component: () => import('../views/MagnetParse.vue') },
+  { path: '/parse', redirect: '/downloads' },
   { path: '/entities', name: 'Entities', component: () => import('../views/Entities.vue') },
   { path: '/subscription', component: () => import('../views/Subscription.vue') },
   { path: '/library', redirect: '/search' },

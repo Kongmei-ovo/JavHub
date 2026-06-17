@@ -51,7 +51,6 @@ test('primary navigation is grouped around daily workflows first', () => {
     '发现',
     '我的收藏',
     '下载任务',
-    '磁链解析',
     '演员订阅',
     '候选确认',
     '资料补全',
@@ -75,7 +74,6 @@ test('mobile more exposes initialization and maintenance entry points', () => {
   assert.deepEqual(labels, [
     '分类目录',
     '发现',
-    '磁链解析',
     '演员订阅',
     '候选确认',
     '资料补全',

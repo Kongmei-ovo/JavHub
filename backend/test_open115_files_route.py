@@ -49,7 +49,7 @@ class Open115FilesRouteTests(unittest.TestCase):
         self.assertEqual([f["file_id"] for f in body["files"]], ["10", "11"])
         self.assertEqual(body["path"][-1]["name"], "dir")
         self.assertEqual(body["count"], 2)
-        client.list_folder.assert_awaited_once_with("10", offset=0, limit=50)
+        client.list_folder.assert_awaited_once_with("10", offset=0, limit=50, order=None, asc=None)
 
     def test_keyword_routes_to_search(self):
         client = AsyncMock()

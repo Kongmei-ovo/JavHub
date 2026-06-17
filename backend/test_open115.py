@@ -304,6 +304,96 @@ class Open115ClientTests(unittest.IsolatedAsyncioTestCase):
             "wp_path_id": "folder-1",
         })
 
+    async def test_offline_quota_backfills_remain_when_absent(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([
+                response({"state": True, "data": {"total": 1500, "used": 200}}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            quota = await client.offline_quota()
+
+        self.assertEqual(quota, {"total": 1500, "used": 200, "remain": 1300})
+
+    async def test_offline_quota_reads_explicit_remain(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([
+                response({"state": True, "data": {"count": 1500, "used": 200, "remain": 999}}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            quota = await client.offline_quota()
+
+        self.assertEqual(quota["remain"], 999)
+
+    async def test_delete_offline_task_posts_info_hash_and_source_flag(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([response({"state": True})])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            await client.delete_offline_task("hash-a", del_source=True)
+
+        self.assertTrue(http.calls[0]["url"].endswith("/open/offline/del_task"))
+        self.assertEqual(
+            http.calls[0]["kwargs"]["data"],
+            {"info_hash": "hash-a", "del_source_file": 1},
+        )
+
+    async def test_clear_offline_tasks_posts_flag(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([response({"state": True})])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            await client.clear_offline_tasks(2)
+
+        self.assertTrue(http.calls[0]["url"].endswith("/open/offline/clear_task"))
+        self.assertEqual(http.calls[0]["kwargs"]["data"], {"flag": 2})
+
+    async def test_list_folder_forwards_sort_params(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([
+                response({"state": True, "data": [], "path": [], "count": 0}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            await client.list_folder("7", offset=0, limit=50, order="file_size", asc=1)
+
+        params = http.calls[0]["kwargs"]["params"]
+        self.assertEqual(params["o"], "file_size")
+        self.assertEqual(params["asc"], 1)
+        self.assertEqual(params["cid"], "7")
+
+    async def test_list_folder_omits_sort_params_when_unset(self):
+        from services.open115 import Open115Client
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = self._config(Path(tmp), {"access_token": "access", "refresh_token": "refresh"})
+            http = SequenceHTTPClient([
+                response({"state": True, "data": [], "path": [], "count": 0}),
+            ])
+            client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+            await client.list_folder("0")
+
+        params = http.calls[0]["kwargs"]["params"]
+        self.assertNotIn("o", params)
+        self.assertNotIn("asc", params)
+
     async def test_transcode_urls_are_sorted_by_definition(self):
         from services.open115 import Open115Client
 
