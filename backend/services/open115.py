@@ -99,6 +99,7 @@ class Open115File:
     size: int
     duration: int
     extension: str
+    mtime: int = 0
 
     @classmethod
     def from_api(cls, item: dict[str, Any]) -> "Open115File":
@@ -116,6 +117,8 @@ class Open115File:
             size=_as_int(item.get("fs") or item.get("file_size")),
             duration=_as_int(item.get("play_long") or item.get("duration")),
             extension=extension,
+            # 115 修改时间(epoch 秒):upt 优先,回退 uet/ute
+            mtime=_as_int(item.get("upt") or item.get("uet") or item.get("ute")),
         )
 
 
@@ -532,18 +535,30 @@ class Open115Client:
         *,
         offset: int = 0,
         limit: int = FILES_PAGE_SIZE,
+        order: str | None = None,
+        asc: int | None = None,
     ) -> dict[str, Any]:
-        """List one page of a folder, including breadcrumb path and total count."""
+        """List one page of a folder, including breadcrumb path and total count.
+
+        ``order`` maps to 115's ``o`` sort field (``file_name`` / ``file_size`` /
+        ``user_utime``; any other value collapses to ``user_utime``). ``asc`` is
+        1 (ascending) or 0 (descending). When unset, 115's default ordering is
+        used (modify time, descending)."""
+        params: dict[str, Any] = {
+            "cid": str(folder_id),
+            "offset": max(0, int(offset)),
+            "limit": max(1, min(int(limit), FILES_PAGE_SIZE)),
+            "show_dir": 1,
+            "cur": 1,
+        }
+        if order:
+            params["o"] = order
+        if asc is not None:
+            params["asc"] = 1 if int(asc) else 0
         body = await self._auth_request(
             "GET",
             "/open/ufile/files",
-            params={
-                "cid": str(folder_id),
-                "offset": max(0, int(offset)),
-                "limit": max(1, min(int(limit), FILES_PAGE_SIZE)),
-                "show_dir": 1,
-                "cur": 1,
-            },
+            params=params,
             full=True,
         )
         body = body if isinstance(body, dict) else {}
@@ -611,6 +626,39 @@ class Open115Client:
             params={"page": max(1, int(page))},
         )
         return payload if isinstance(payload, dict) else {}
+
+    async def offline_quota(self) -> dict[str, int]:
+        """Monthly cloud-download quota. Normalized to total/used/remain; field
+        names vary across 115 responses so we read several aliases and backfill
+        ``remain`` when only total/used are present."""
+        payload = await self._auth_request("GET", "/open/offline/get_quota_info")
+        data = payload if isinstance(payload, dict) else {}
+        total = _as_int(data.get("total") or data.get("count") or data.get("quota"))
+        used = _as_int(data.get("used") or data.get("used_count"))
+        remain_raw = data.get("remain")
+        if remain_raw is None:
+            remain_raw = data.get("surplus")
+        remain = _as_int(remain_raw) if remain_raw is not None else max(0, total - used)
+        return {"total": total, "used": used, "remain": remain}
+
+    async def delete_offline_task(self, info_hash: str, *, del_source: bool = False) -> None:
+        wanted = str(info_hash or "").strip()
+        if not wanted:
+            raise Open115Error(None, "删除离线任务需要 info_hash")
+        await self._auth_request(
+            "POST",
+            "/open/offline/del_task",
+            data={"info_hash": wanted, "del_source_file": 1 if del_source else 0},
+        )
+
+    async def clear_offline_tasks(self, flag: int = 0) -> None:
+        """Clear cloud-download tasks. ``flag``: 0 已完成 / 1 全部 / 2 已失败 /
+        3 进行中 / 4 已完成+删源 / 5 全部+删源。"""
+        await self._auth_request(
+            "POST",
+            "/open/offline/clear_task",
+            data={"flag": int(flag)},
+        )
 
     async def delete_files(
         self,

@@ -188,5 +188,101 @@ class Open115DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioT
         )
 
 
+    async def test_raw_offline_task_completes_without_finalize(self):
+        from database import create_download_task, get_download_task, update_task_status
+        from services.downloader import downloader_service
+
+        task_id = create_download_task(
+            "hash-raw",
+            "Some Release",
+            "magnet:?xt=urn:btih:hash-raw",
+            downloader_id="open115",
+            downloader_name="115 Open（原生）",
+            downloader_type="open115",
+            movie_id="hash-raw",
+            kind="offline",
+        )
+        update_task_status(task_id, "downloading", info_hash="hash-raw", target_folder_id="42")
+        remote = {"info_hash": "hash-raw", "status": 2, "file_id": "landed-folder"}
+
+        with patch("services.downloader.open115_downloader.find_task", new=AsyncMock(return_value=remote)), \
+             patch("services.downloader.open115_downloader.finalize", new=AsyncMock()) as finalize:
+            result = await downloader_service.poll_task_status(task_id)
+
+        task = get_download_task(task_id)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(task["status"], "completed")
+        self.assertEqual(task["result_file_id"], "landed-folder")
+        finalize.assert_not_awaited()
+
+    async def test_not_ready_keeps_task_finalizing_instead_of_failing(self):
+        from database import create_download_task, get_download_task, update_task_status
+        from services.downloader import downloader_service
+        from services.open115_downloader import Open115NotReadyError
+
+        task_id = create_download_task(
+            "stable:item-2",
+            "Movie",
+            "magnet:?xt=urn:btih:hash-2",
+            downloader_id="open115",
+            downloader_name="115 Open",
+            downloader_type="open115",
+            movie_id="stable:item-2",
+        )
+        update_task_status(task_id, "downloading", info_hash="hash-2", target_folder_id="folder-2")
+        remote = {"info_hash": "hash-2", "status": 2, "file_id": "result-folder"}
+
+        with patch("services.downloader.open115_downloader.find_task", new=AsyncMock(return_value=remote)), \
+             patch("services.downloader.open115_downloader.finalize",
+                   new=AsyncMock(side_effect=Open115NotReadyError("not ready"))):
+            result = await downloader_service.poll_task_status(task_id)
+
+        task = get_download_task(task_id)
+        self.assertEqual(result["status"], "finalizing")
+        self.assertEqual(task["status"], "finalizing")
+        self.assertNotEqual(task["status"], "failed")
+
+    async def test_create_open115_offline_tasks_registers_tracked_offline_tasks(self):
+        from database import get_download_task
+        from services.downloader import downloader_service
+
+        with patch("services.open115.open115_client.add_offline_task",
+                   new=AsyncMock(side_effect=[["hash-1"], ["hash-2"]])) as add:
+            result = await downloader_service.create_open115_offline_tasks(
+                ["magnet:?xt=urn:btih:hash-1&dn=First+Movie", "magnet:?xt=urn:btih:hash-2"],
+                "55",
+            )
+
+        self.assertEqual(len(result["added"]), 2)
+        self.assertEqual(result["skipped"], [])
+        # each link added individually, into the browsed folder
+        self.assertEqual(add.await_count, 2)
+        for call in add.await_args_list:
+            self.assertEqual(call.args[1], "55")
+
+        first = get_download_task(result["added"][0]["task_id"])
+        self.assertEqual(first["kind"], "offline")
+        self.assertEqual(first["downloader_type"], "open115")
+        self.assertEqual(first["info_hash"], "hash-1")
+        self.assertEqual(first["target_folder_id"], "55")
+        self.assertEqual(first["status"], "downloading")
+        self.assertEqual(first["title"], "First Movie")
+
+    async def test_create_open115_offline_tasks_isolates_rejected_links(self):
+        from services.downloader import downloader_service
+        from services.open115 import Open115Error
+
+        with patch("services.open115.open115_client.add_offline_task",
+                   new=AsyncMock(side_effect=[Open115Error(None, "配额不足"), ["hash-ok"]])):
+            result = await downloader_service.create_open115_offline_tasks(
+                ["magnet:?xt=urn:btih:bad", "magnet:?xt=urn:btih:hash-ok"],
+                "0",
+            )
+
+        self.assertEqual(len(result["added"]), 1)
+        self.assertEqual(len(result["skipped"]), 1)
+        self.assertEqual(result["skipped"][0]["reason"], "配额不足")
+
+
 if __name__ == "__main__":
     unittest.main()

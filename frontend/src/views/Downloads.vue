@@ -14,9 +14,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           浏览影库
         </button>
-        <button class="btn btn-ghost" type="button" @click="$router.push('/parse')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          磁链解析
+        <button class="btn btn-ghost" type="button" @click="openAddSheet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          添加下载
         </button>
         <button class="btn btn-primary" type="button" @click="loadTasks">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -88,8 +88,10 @@
       @retry="retry"
       @remove="remove"
       @empty-action="handleTaskEmptyAction"
-      @parse="$router.push('/parse')"
+      @parse="openAddSheet"
     />
+
+    <AddDownloadSheet :open="showAddSheet" @close="showAddSheet = false" @added="onDownloadAdded" />
   </div>
 </template>
 
@@ -98,6 +100,7 @@ import { defineAsyncComponent } from 'vue'
 import api from '../api'
 import DownloadStatsBar from '../features/downloads/DownloadStatsBar.vue'
 import TaskList from '../features/downloads/TaskList.vue'
+import AddDownloadSheet from '../features/downloads/AddDownloadSheet.vue'
 import * as downloadPresentation from '../features/downloads/downloadPresentation'
 import { requestConfirm } from '../utils/confirmDialog'
 import {
@@ -119,10 +122,11 @@ const cleanObject = (target) => {
 
 export default {
   name: 'Downloads',
-  components: { DownloadStatsBar, TaskList, DownloaderManagementPanel },
+  components: { DownloadStatsBar, TaskList, AddDownloadSheet, DownloaderManagementPanel },
   data() {
     return {
       activeTab: 'tasks',
+      showAddSheet: false,
       tasks: [],
       stats: { pending: 0, downloading: 0, completed: 0, failed: 0 },
       statsLoaded: false,
@@ -251,6 +255,12 @@ export default {
     handleTaskEmptyAction() {
       if (this.filterStatus) this.clearTaskStatus()
       else this.$router.push('/search')
+    },
+    openAddSheet() {
+      this.showAddSheet = true
+    },
+    onDownloadAdded() {
+      this.loadTasks()
     },
     async loadDownloaders() {
       try {

@@ -16,7 +16,13 @@ SUBTITLE_EXTENSIONS = {"srt", "ass", "ssa", "vtt", "sub"}
 
 
 class Open115FinalizationError(RuntimeError):
-    pass
+    """Terminal finalize failure — the 115 folder has no video at all."""
+
+
+class Open115NotReadyError(Open115FinalizationError):
+    """Transient: videos exist in the folder but 115 has not assigned pick
+    codes yet. The caller should keep the task ``finalizing`` and re-poll
+    rather than failing it."""
 
 
 @dataclass(frozen=True)
@@ -171,6 +177,8 @@ class Open115DownloaderClient:
             movie_id, result_file_id, task_id=task_id
         )
         if counts["ready_video_count"] == 0:
+            if counts["video_count"] > 0:
+                raise Open115NotReadyError("115 视频文件尚未就绪，等待重试")
             raise Open115FinalizationError("115 离线任务没有产生可播放视频")
         return counts
 

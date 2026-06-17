@@ -70,7 +70,8 @@ function layeredBackground(token) {
 const searchPreferences = readFileSync(new URL('../utils/searchPreferences.js', import.meta.url), 'utf8')
 const displayLangSource = readFileSync(new URL('../utils/displayLang.js', import.meta.url), 'utf8')
 const translationProviders = readFileSync(new URL('../utils/translationProviders.js', import.meta.url), 'utf8')
-const magnetParse = readFileSync(new URL('./MagnetParse.vue', import.meta.url), 'utf8')
+const magnetParseModule = readFileSync(new URL('../features/downloads/magnetParse.js', import.meta.url), 'utf8')
+const addDownloadSheet = readFileSync(new URL('../features/downloads/AddDownloadSheet.vue', import.meta.url), 'utf8')
 const apiSource = readFileSync(new URL('../api/index.js', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 const appNavigation = readFileSync(new URL('../appNavigation.js', import.meta.url), 'utf8')
@@ -368,7 +369,7 @@ test('mobile navigation and settings tabs stay compact', () => {
   assert.doesNotMatch(bottomNavBlock, /label: '订阅'/)
   assert.doesNotMatch(bottomNavBlock, /label: '库存'/)
   assert.match(appNavigation, /export const mobileMoreItems/)
-  assert.match(appNavigation, /label: '磁链解析'/)
+  assert.doesNotMatch(appNavigation, /label: '磁链解析'/)
   assert.match(appNavigation, /label: '分类目录'/)
   assert.doesNotMatch(appNavigation, /label: '补全管理'/)
   assert.doesNotMatch(appNavigation, /label: '片库整理'/)
@@ -404,7 +405,6 @@ test('primary pages use unified breathing rails', () => {
 
   for (const [name, source] of Object.entries({
     config,
-    magnetParse,
     logs,
     library,
     subscription,
@@ -426,7 +426,6 @@ test('primary pages use unified breathing rails', () => {
     downloads,
     translationJobs,
     config,
-    magnetParse,
     logs,
   })) {
     const topWrapper = source.match(/\.(downloads-page|translation-page|settings|parse-page|logs)\s*\{[^}]*\}/)?.[0] || ''
@@ -484,7 +483,7 @@ test('external data failures render page-level retry states', () => {
 })
 
 test('inline style cleanup keeps only dynamic previews in settings and genres', () => {
-  assert.doesNotMatch(magnetParse, /(^|[\s<])style="/)
+  assert.doesNotMatch(addDownloadSheet, /(^|[\s<])style="/)
   assert.doesNotMatch(downloads, /(^|[\s<])style="/)
   assert.doesNotMatch(config, /(^|[\s<])style="/)
   assert.match(config, /preview-bubble[\s\S]*:style="previewBubbleStyle\(index\)"/)
@@ -611,9 +610,9 @@ test('legacy saved theme values resolve to Apple light and dark modes', () => {
 })
 
 test('magnet parser regex is stateless across multiple lines', () => {
-  assert.match(magnetParse, /const magnetRE = .*\/i/)
-  assert.doesNotMatch(magnetParse, /const magnetRE = .*\/g[i]?/)
-  assert.match(magnetParse, /magnet:\\\?xt=urn:btih:\(\[A-Fa-f0-9\]\+\)/)
+  assert.match(magnetParseModule, /const MAGNET_RE = .*\/i/)
+  assert.doesNotMatch(magnetParseModule, /const MAGNET_RE = .*\/g[i]?/)
+  assert.match(magnetParseModule, /magnet:\\\?xt=urn:btih:\(\[A-Fa-f0-9\]\+\)/)
 })
 
 test('candidate page exposes candidate approval workflow', () => {

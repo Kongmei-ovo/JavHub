@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const favorites = styleSource('./Favorites.vue')
-const magnetParse = styleSource('./MagnetParse.vue')
 const subscription = styleSource('./Subscription.vue')
 const globalStyles = readFileSync(new URL('../assets/main.css', import.meta.url), 'utf8')
 
@@ -38,12 +37,6 @@ function assertUsesPageRail(block, label) {
 test('favorites header surfaces use the global page rail', () => {
   assertUsesPageRail(cssBlock(favorites, '.curate-header-main'), 'favorites header')
   assertUsesPageRail(cssBlock(favorites, '.collection-manager'), 'favorites collection manager')
-})
-
-test('magnet parser workbench surfaces use the global page rail', () => {
-  for (const selector of ['.parse-console', '.result-section', '.issue-panel', '.parse-empty-state']) {
-    assertUsesPageRail(cssBlock(magnetParse, selector), selector)
-  }
 })
 
 test('subscription grid keeps the global page rail without local offsets', () => {

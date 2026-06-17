@@ -438,6 +438,7 @@ def _init_core_state_tables(cursor) -> None:
             remote_task_id TEXT,
             status TEXT DEFAULT 'pending',
             error_msg TEXT,
+            kind TEXT DEFAULT 'movie',
             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMPTZ
         )
@@ -452,6 +453,7 @@ def _init_core_state_tables(cursor) -> None:
         "ALTER TABLE download_tasks ADD COLUMN IF NOT EXISTS target_folder_id TEXT",
         "ALTER TABLE download_tasks ADD COLUMN IF NOT EXISTS open115_task_id TEXT",
         "ALTER TABLE download_tasks ADD COLUMN IF NOT EXISTS result_file_id TEXT",
+        "ALTER TABLE download_tasks ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'movie'",
     ):
         _add_column_if_missing(cursor, sql_text)
 

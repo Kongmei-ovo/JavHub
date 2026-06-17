@@ -33,7 +33,7 @@
   height: 100vh;
   border-radius: 0;
   border-left: 1px solid var(--hairline);
-  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.28);
+  box-shadow: -8px 0 40px rgba(var(--black-rgb), 0.28);
   animation: diagnostics-drawer-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 

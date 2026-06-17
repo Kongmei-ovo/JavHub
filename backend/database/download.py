@@ -26,6 +26,7 @@ def create_download_task(
     target_folder_id: Optional[str] = None,
     open115_task_id: Optional[str] = None,
     result_file_id: Optional[str] = None,
+    kind: str = "movie",
 ) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -35,9 +36,9 @@ def create_download_task(
                 content_id, movie_id, title, magnet, path,
                 downloader_id, downloader_name, downloader_type,
                 info_hash, target_folder_id, open115_task_id, result_file_id,
-                status, created_at
+                kind, status, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
             """,
             (
                 content_id,
@@ -52,6 +53,7 @@ def create_download_task(
                 target_folder_id,
                 open115_task_id,
                 result_file_id,
+                kind,
             )
         )
         task_id = cursor.lastrowid
