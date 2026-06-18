@@ -762,6 +762,11 @@ export default {
     return api.post(`/v1/supplement/sources/${source}/resume`)
   },
 
+  checkSupplementSource(source) {
+    // 探活会真正抓取一次（含过盾），后端最长 ~90s，前端给足超时。
+    return api.post(`/v1/supplement/sources/${source}/check`, undefined, { timeout: 120000 })
+  },
+
   enrichSupplementMovieDetail(sourceMovieId, source = 'all') {
     return this.startSupplementMovieDetailJob(sourceMovieId, source)
   },

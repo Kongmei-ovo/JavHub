@@ -18,6 +18,7 @@
     @load-smoke-runs="loadProviderSmokeRuns"
     @pause-source="pauseSource"
     @resume-source="resumeSource"
+    @check-source="recheckSource"
   />
 </template>
 

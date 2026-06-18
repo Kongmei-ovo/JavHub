@@ -314,6 +314,19 @@ async def resume_source(source: str) -> dict[str, Any]:
     return await client.proxy_post(f"/api/v1/supplement/sources/{source}/resume")
 
 
+@router.post("/sources/{source}/check")
+async def check_source(source: str) -> dict[str, Any]:
+    """对单个来源即时探活并回写健康（可达则恢复 / 故障则降级）。供来源健康每行的「检查」按钮。
+
+    探活会真正发一次请求（含 Cloudflare 过盾），最长 ~90s，所以走 long 客户端。
+    """
+    client = get_info_client()
+    return await client.proxy_post_long(
+        f"/api/v1/supplement/sources/{source}/check",
+        timeout=120,
+    )
+
+
 @router.post("/movies/detail")
 async def enrich_movie_detail(
     source_movie_id: str = Query(...),

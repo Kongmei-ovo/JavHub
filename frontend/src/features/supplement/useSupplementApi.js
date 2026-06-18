@@ -452,6 +452,26 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     }
   }
 
+  async function recheckSource(source) {
+    if (!source || sourceActionLoading.value) return
+    sourceActionLoading.value = source
+    try {
+      const data = unwrapResponse(await api.checkSupplementSource(source), {})
+      if (data.reachable) {
+        ElMessage.success(`${source} 可访问，已恢复`)
+      } else {
+        ElMessage.warning(`${source} 不可用：${data.error_type || data.error || '探活失败'}`)
+      }
+      await loadSourceHealth()
+    } catch (error) {
+      sourceHealthError.value = errorMessage(error)
+      ElMessage.error(`检查 ${source} 失败：${errorMessage(error)}`)
+      console.error('Recheck source failed:', error)
+    } finally {
+      sourceActionLoading.value = ''
+    }
+  }
+
   async function syncGfriendsAvatars() {
     if (gfriendsAvatarSyncing.value || isGfriendsAvatarJobRunning.value) return
     gfriendsAvatarSyncing.value = true
@@ -596,6 +616,7 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     runProviderSmoke,
     pauseSource,
     resumeSource,
+    recheckSource,
     syncGfriendsAvatars,
     sourceHealthLabel,
     sourceHealthDetail,

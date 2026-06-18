@@ -31,8 +31,15 @@ async def _push_proxy_to_javinfo():
         proxy_url = ""
         if config.proxy_enabled:
             proxy_url = config.proxy_http_url or config.proxy_https_url
-        await client.push_proxy_config(proxy_url)
-        logger.info("Pushed proxy config to JavInfoApi: %s", _mask_url_credentials(proxy_url) or "(none)")
+        # 补全源里 javlibrary/javbus 等挂在 Cloudflare 上,把同一个 FlareSolverr
+        # 地址下发给 JavInfoApi,让它的抓取也能过盾(流媒体模块早已在用这个容器)。
+        cf_solver_url = config.stream_cf_solver_url
+        await client.push_proxy_config(proxy_url, cf_solver_url=cf_solver_url)
+        logger.info(
+            "Pushed proxy config to JavInfoApi: proxy=%s cf_solver=%s",
+            _mask_url_credentials(proxy_url) or "(none)",
+            cf_solver_url or "(none)",
+        )
     except Exception as e:
         logger.warning(f"Failed to push proxy config to JavInfoApi: {e}")
 

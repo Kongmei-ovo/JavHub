@@ -35,6 +35,9 @@ x-javinfoapi-env: &javinfoapi-env
   SERVER_HOST: 0.0.0.0
   SERVER_PORT: 18080
   SUPPLEMENT_ADMIN_TOKEN: ${SUPPLEMENT_ADMIN_TOKEN:-change-me}
+  # 让补全源(javlibrary/javbus 等)的抓取也能过 Cloudflare 盾,复用同一个 flaresolverr 容器。
+  # JavHub 启动时还会把运行时值 PATCH 过来,这里只是 boot 默认。
+  JAVINFO_CF_SOLVER_URL: ${JAVINFO_CF_SOLVER_URL:-http://flaresolverr:8191/v1}
   CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
 
 services:

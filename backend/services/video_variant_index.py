@@ -15,6 +15,7 @@ from database.video_variant_index import (
     add_variant_group_job,
     get_variant_group_by_content_ids,
     get_variant_group_job,
+    list_variant_group_jobs,
     replace_variant_groups,
     update_variant_group_job,
 )
@@ -225,25 +226,99 @@ def apply_indexed_variant_groups(
     return result
 
 
-def start_variant_index_job() -> dict[str, Any]:
+def _compute_source_fingerprint() -> str | None:
+    """Cheap fingerprint of the imported dataset that backs the variant index.
+
+    Counts + max keys over the exact set ``scan_derived_video_rows`` reads. A
+    fresh DB import always shifts a count or a max, so the fingerprint changes;
+    a plain ``docker compose up`` with the same data leaves it identical. Used to
+    skip the expensive full rebuild when nothing was re-imported. Returns None on
+    any DB error so the caller falls back to rebuilding (never skips blindly).
+    """
+    try:
+        conn = _connect_import_db()
+    except Exception as exc:
+        logger.warning("Variant fingerprint: cannot reach import DB: %s", exc)
+        return None
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT count(*) AS c, max(content_id) AS mx, max(release_date) AS mr
+                FROM derived_video
+                WHERE service_code IS NULL OR service_code <> 'ebook'
+                """
+            )
+            dv = cursor.fetchone() or {}
+        rv_c = rv_mx = None
+        if _has_resolved_videos_table(conn):
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT count(*) AS c, max(resolved_id) AS mx
+                    FROM resolved_videos WHERE data_origin = 'supplement'
+                    """
+                )
+                rv = cursor.fetchone() or {}
+                rv_c, rv_mx = rv.get("c"), rv.get("mx")
+        raw = f"dv:{dv.get('c')}:{dv.get('mx')}:{dv.get('mr')}|rv:{rv_c}:{rv_mx}"
+        return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    except Exception as exc:
+        logger.warning("Variant fingerprint: query failed: %s", exc)
+        return None
+    finally:
+        conn.close()
+
+
+def _last_completed_fingerprint() -> str | None:
+    """Fingerprint stored by the most recent completed rebuild, if any."""
+    for job in list_variant_group_jobs(limit=25):
+        if job.get("status") != "completed":
+            continue
+        result = job.get("result")
+        if isinstance(result, dict):
+            return result.get("source_fingerprint")
+        return None
+    return None
+
+
+def start_variant_index_job(*, force: bool = False) -> dict[str, Any]:
     job_id = add_variant_group_job("queued")
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        run_variant_index_job(job_id)
+        run_variant_index_job(job_id, force=force)
     else:
-        loop.create_task(asyncio.to_thread(run_variant_index_job, job_id))
+        loop.create_task(asyncio.to_thread(run_variant_index_job, job_id, force=force))
     return get_variant_group_job(job_id) or {"id": job_id, "status": "queued"}
 
 
-def run_variant_index_job(job_id: int, *, limit: int | None = None) -> dict[str, Any]:
+def run_variant_index_job(job_id: int, *, limit: int | None = None, force: bool = False) -> dict[str, Any]:
     update_variant_group_job(job_id, status="running", processed=0, total=0)
     try:
+        # Skip the expensive scan/group/replace when the imported dataset is
+        # unchanged since the last rebuild (e.g. a redeploy without re-import).
+        # Only guard full rebuilds — limited/test runs always execute.
+        fingerprint = _compute_source_fingerprint() if limit is None else None
+        if not force and fingerprint is not None and fingerprint == _last_completed_fingerprint():
+            result = {
+                "skipped": True,
+                "reason": "source unchanged since last rebuild",
+                "source_fingerprint": fingerprint,
+            }
+            completed = update_variant_group_job(
+                job_id, status="completed", total=0, processed=0, result=result, error=""
+            )
+            logger.info("Variant index rebuild skipped — source unchanged (fp=%s)", fingerprint)
+            return {"status": "completed", **(completed or {}), "result": result}
+
         rows = list(scan_derived_video_rows() if limit is None else scan_derived_video_rows(limit=limit))
         rows = hydrate_rows_with_actresses(rows)
         update_variant_group_job(job_id, total=len(rows), processed=len(rows))
         groups = build_variant_index_groups(rows)
         result = replace_variant_groups(groups)
+        if fingerprint is not None:
+            result = {**result, "source_fingerprint": fingerprint}
         cache.purge_response_cache()
         completed = update_variant_group_job(
             job_id,

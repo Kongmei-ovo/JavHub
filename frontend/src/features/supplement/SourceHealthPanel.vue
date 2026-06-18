@@ -65,11 +65,17 @@
         </div>
         <div class="sc-act">
           <button
+            class="btn btn-primary btn-sm"
+            type="button"
+            :disabled="sourceActionLoading === source.source"
+            @click="$emit('check-source', source.source)"
+          >{{ sourceActionLoading === source.source ? '检查中…' : '检查' }}</button>
+          <button
             :class="['btn', sourceHealthPrimaryAction(source).tone, 'btn-sm']"
             type="button"
             :disabled="sourceActionLoading === source.source"
             @click="$emit(sourceHealthPrimaryAction(source).event, source.source)"
-          >{{ sourceActionLoading === source.source ? '执行中…' : sourceHealthPrimaryAction(source).label }}</button>
+          >{{ sourceHealthPrimaryAction(source).label }}</button>
         </div>
       </article>
     </div>
@@ -184,6 +190,7 @@ export default {
     'load-smoke-runs',
     'pause-source',
     'resume-source',
+    'check-source',
   ],
   computed: {
     healthyRows() {

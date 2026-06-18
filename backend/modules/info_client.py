@@ -385,9 +385,15 @@ class InfoClient:
             raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
-    async def push_proxy_config(self, proxy_url: str) -> dict:
-        """推送代理配置到 JavInfoApi"""
-        return await self.proxy_patch("/api/v1/config", {"proxy_url": proxy_url})
+    async def push_proxy_config(self, proxy_url: str, cf_solver_url: str | None = None) -> dict:
+        """推送代理 + CF solver 配置到 JavInfoApi。
+
+        cf_solver_url 为 None 时不下发该字段（JavInfoApi 保持原值）；传空串表示显式清空。
+        """
+        payload: dict = {"proxy_url": proxy_url}
+        if cf_solver_url is not None:
+            payload["cf_solver_url"] = cf_solver_url
+        return await self.proxy_patch("/api/v1/config", payload)
 
     async def run_migrations(self, dry_run: bool = False) -> dict:
         return await self.proxy_post_long("/api/v1/admin/migrations", {"dry_run": dry_run})
