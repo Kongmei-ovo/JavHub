@@ -134,7 +134,7 @@
     <main id="main-content" class="main-content" tabindex="-1" aria-label="应用内容" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <keep-alive :include="['Search', 'Genres', 'Favorites', 'Subscription', 'DiscoveryDetail', 'Actor', 'SupplementManagement']">
+          <keep-alive :include="['Search', 'Favorites', 'Subscription', 'DiscoveryDetail', 'Actor', 'SupplementManagement']">
             <component :is="Component" />
           </keep-alive>
         </transition>

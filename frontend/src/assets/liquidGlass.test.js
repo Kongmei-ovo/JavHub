@@ -9,7 +9,6 @@ const search = [
   readFileSync(new URL('../views/Search.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/search/search.css', import.meta.url), 'utf8'),
 ].join('\n')
-const genres = readFileSync(new URL('../views/Genres.vue', import.meta.url), 'utf8')
 const config = [
   readFileSync(new URL('../views/Config.vue', import.meta.url), 'utf8'),
   readFileSync(new URL('../features/config/AdvancedSettingsPanel.vue', import.meta.url), 'utf8'),
@@ -380,10 +379,6 @@ test('active states resolve to refractive glass rather than flat rgba tint', () 
 })
 
 test('segmented controls stay glass while settings rows use solid content surfaces', () => {
-  assert.match(genres, /\.shuffle-btn\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)[\s\S]*backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(genres, /\.tab-bar\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(genres, /\.tab-btn\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
-
   assert.match(config, /\.settings-tabs\s*\{[\s\S]*background:\s*var\(--surface-specular-edge\),\s*var\(--surface-noise\),\s*var\(--material-glass-control\)[\s\S]*box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(config, /\.appearance-setting-row\s*\{[\s\S]*background:\s*var\(--card-2\)[\s\S]*box-shadow:\s*none/)
   assert.match(config, /\.segmented-mini button\.active\s*\{[\s\S]*background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/)
@@ -423,7 +418,6 @@ test('image fallback placeholders use theme glass instead of hardcoded SVG data 
     ['ActressCard', actressCard],
     ['VideoModal', videoModal],
     ['Actor', actor],
-    ['Genres', genres],
     ['Subscription', subscription],
   ]) {
     assert.doesNotMatch(source, /data:image\/svg\+xml/, `${name} should not inject hardcoded SVG fallbacks`)

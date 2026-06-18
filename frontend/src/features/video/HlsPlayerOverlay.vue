@@ -13,7 +13,7 @@
         </svg>
       </button>
       <div class="vp-player-wrap">
-        <video ref="streamVideoEl" class="vp-video" controls autoplay playsinline></video>
+        <ArtPlayer ref="art" class="vp-video" />
       </div>
       <div class="vp-info">
         <span class="vp-title">{{ title }}</span>
@@ -31,10 +31,11 @@
 
 <script>
 import StreamSourcePicker from './StreamSourcePicker.vue'
+import ArtPlayer from './ArtPlayer.vue'
 
 export default {
   name: 'HlsPlayerOverlay',
-  components: { StreamSourcePicker },
+  components: { StreamSourcePicker, ArtPlayer },
   props: {
     visible: { type: Boolean, default: false },
     title: { type: String, default: '' },
@@ -45,7 +46,7 @@ export default {
   emits: ['close', 'switch-source'],
   methods: {
     mediaElement() {
-      return this.$refs.streamVideoEl
+      return this.$refs.art?.mediaElement?.() || null
     },
   },
 }

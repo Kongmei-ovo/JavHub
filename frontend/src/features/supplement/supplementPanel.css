@@ -1,7 +1,7 @@
 /* ============================================================
    Supplement workbench — shared panel chrome + type scale.
-   Single source of truth for the three tabs (待补全作品 / 任务队列 /
-   来源健康) so their headings, subtitles, filter chips
+   Single source of truth for the tabs (待补全演员 / 待补全作品 /
+   任务队列 / 来源健康) so their headings, subtitles, filter chips
    and pagination stay identical. Import this (scoped) into every
    component that renders `.workspace-panel` markup directly.
 

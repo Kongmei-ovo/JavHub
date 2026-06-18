@@ -451,138 +451,6 @@
                   </div>
                 </div>
               </section>
-              <section class="settings-group appearance-discovery-group">
-                <div class="settings-group-header">
-                  <h2>随机探索</h2>
-                  <button class="btn btn-ghost btn-sm" type="button" @click="resetBubbleCfg">恢复默认</button>
-                </div>
-                <div class="settings-list">
-                  <div class="settings-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">默认页签</span>
-                      <span class="setting-note">默认打开 {{ defaultTabLabel }}</span>
-                    </div>
-                    <div class="settings-control">
-                      <div class="segmented-mini" aria-label="随机探索默认页签">
-                        <button
-                          v-for="option in defaultTabOptions"
-                          :key="option.value"
-                          type="button"
-                          :class="{ active: bubbleCfg.defaultTab === option.value }"
-                          :aria-pressed="bubbleCfg.defaultTab === option.value"
-                          @click="bubbleCfg.defaultTab = option.value"
-                        >{{ option.label }}</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="settings-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">演员头像</span>
-                      <span class="setting-note">{{ avatarSizeHint }}</span>
-                    </div>
-                    <div class="settings-control">
-                      <div class="segmented-mini" aria-label="演员头像尺寸">
-                        <button
-                          v-for="option in avatarSizeOptions"
-                          :key="option.value"
-                          type="button"
-                          :class="{ active: bubbleCfg.actressAvatarSize === option.value }"
-                          :aria-pressed="bubbleCfg.actressAvatarSize === option.value"
-                          @click="bubbleCfg.actressAvatarSize = option.value"
-                        >{{ option.label }}</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="settings-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">演员每批数量</span>
-                      <span class="setting-note">{{ bubbleCfg.actressPageSize }} 位 / 批</span>
-                    </div>
-                    <div class="settings-control">
-                      <div class="segmented-mini" aria-label="演员每批数量">
-                        <button
-                          v-for="size in actressPageSizeOptions"
-                          :key="size"
-                          type="button"
-                          :class="{ active: bubbleCfg.actressPageSize === size }"
-                          :aria-pressed="bubbleCfg.actressPageSize === size"
-                          @click="bubbleCfg.actressPageSize = size"
-                        >{{ size }}</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="settings-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">系列每批数量</span>
-                      <span class="setting-note">{{ bubbleCfg.seriesPageSize }} 个 / 批</span>
-                    </div>
-                    <div class="settings-control">
-                      <div class="segmented-mini" aria-label="系列每批数量">
-                        <button
-                          v-for="size in seriesPageSizeOptions"
-                          :key="size"
-                          type="button"
-                          :class="{ active: bubbleCfg.seriesPageSize === size }"
-                          :aria-pressed="bubbleCfg.seriesPageSize === size"
-                          @click="bubbleCfg.seriesPageSize = size"
-                        >{{ size }}</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <section class="settings-group appearance-visual-group">
-                <div class="settings-group-header">
-                  <h2>题材 / 系列气泡</h2>
-                </div>
-                <div class="settings-list">
-                  <div class="settings-row settings-row--stacked appearance-visual-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">预览</span>
-                      <span class="setting-note">当前数量、尺寸和间距。</span>
-                    </div>
-                    <div class="settings-control settings-control--wide">
-                      <div class="aura-preview" :style="auraPreviewStyle">
-                        <span
-                          v-for="(tag, index) in previewTags"
-                          :key="tag"
-                          class="preview-bubble"
-                          :style="previewBubbleStyle(index)"
-                        >
-                        {{ tag }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="settings-row settings-row--stacked appearance-visual-row">
-                    <div class="setting-copy">
-                      <span class="setting-title">气泡参数</span>
-                      <span class="setting-note">调整随机探索中标签的显示密度。</span>
-                    </div>
-                    <div class="settings-control settings-control--wide">
-                      <div class="tag-tuning-grid">
-                        <div
-                          v-for="control in tagTuningControls"
-                          :key="control.key"
-                          class="tuning-control"
-                        >
-                          <div class="tuning-copy">
-                            <span>{{ control.label }}</span>
-                            <strong>{{ bubbleCfg[control.key] }}{{ control.unit }}</strong>
-                          </div>
-                          <input
-                            type="range"
-                            :min="control.min"
-                            :max="control.max"
-                            :step="control.step"
-                            v-model.number="bubbleCfg[control.key]"
-                            class="threshold-slider"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
           <AdvancedSettingsPanel
@@ -623,9 +491,8 @@ import AppleSkeleton from '../components/AppleSkeleton.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { AdvancedSettingsPanel } from '../features/config/advancedSettingsAsync.js'
 import Open115SettingsPanel from '../features/config/Open115SettingsPanel.vue'
-import { DEFAULT_BUBBLE_CFG, DEFAULT_CONFIG } from '../features/config/configDefaults.js'
-import { actressPageSizeOptions, avatarSizeOptions, candidateSourceOptions, defaultTabOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchSortOptions, seriesPageSizeOptions, tagTuningControls } from '../features/config/configOptions.js'
-const BUBBLE_CFG_KEYS = Object.keys(DEFAULT_BUBBLE_CFG)
+import { DEFAULT_CONFIG } from '../features/config/configDefaults.js'
+import { candidateSourceOptions, displayLangOptions, downloadPolicyOptions, pageSizeOptions, searchSortOptions } from '../features/config/configOptions.js'
 const AI_PROVIDER_KEYS = ['openai_compatible', 'gemini', 'ollama']
 export default {
   name: 'Config',
@@ -654,19 +521,12 @@ export default {
         { id: 'advanced', label: '高级设置' }
       ],
       activeGroup: 'services',
-      bubbleCfg: JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)),
       searchPrefs: { ...DEFAULT_SEARCH_PREFERENCES },
       pageSizeOptions,
-      avatarSizeOptions,
-      actressPageSizeOptions,
-      seriesPageSizeOptions,
-      defaultTabOptions,
       displayLangOptions,
       searchSortOptions,
       downloadPolicyOptions,
       candidateSourceOptions,
-      tagTuningControls,
-      previewTags: ['剧情', '高清', '限定', '新作', '字幕'],
     }
   },
   computed: {
@@ -748,12 +608,6 @@ export default {
       }
       return ''
     },
-    avatarSizeHint() {
-      return this.avatarSizeOptions.find(option => option.value === this.bubbleCfg.actressAvatarSize)?.hint || ''
-    },
-    defaultTabLabel() {
-      return this.defaultTabOptions.find(option => option.value === this.bubbleCfg.defaultTab)?.label || '题材'
-    },
     searchSortLabel() {
       return this.searchSortOptions.find(option => option.value === this.searchPrefs.defaultSort)?.label || '随机'
     },
@@ -762,12 +616,6 @@ export default {
     },
     currentPolicyHint() {
       return this.downloadPolicyOptions.find(option => option.value === this.config.automation.download_policy)?.hint || ''
-    },
-    auraPreviewStyle() {
-      return {
-        '--preview-gap': `${Math.max(4, Math.min(this.bubbleCfg.spacing || 12, 28)) * 0.45}px`,
-        '--preview-font': `${Math.max(11, Math.min(this.bubbleCfg.baseSize || 16, 24))}px`,
-      }
     },
   },
   created() {
@@ -778,7 +626,6 @@ export default {
   },
   async mounted() {
     await this.loadConfig()
-    this.loadBubbleCfg()
     this.loadSearchPrefs()
   },
   methods: {
@@ -846,7 +693,6 @@ export default {
         // 磁力索引源（sources.torznab）已迁到下载中心管理，此处不写回，避免覆盖
         const { downloaders, server, rate_limit, sources, ...configPayload } = this.config
         await api.updateConfig(configPayload)
-        this.saveBubbleCfg()
         this.saveSearchPrefs()
         this.$message.success('配置已保存')
       } catch (e) {
@@ -910,50 +756,14 @@ export default {
         this.testingTelegram = false
       }
     },
-    loadBubbleCfg() {
-      try {
-        const saved = localStorage.getItem('genres_bubble_cfg')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            this.bubbleCfg = BUBBLE_CFG_KEYS.reduce((cfg, key) => {
-              if (Object.prototype.hasOwnProperty.call(parsed, key)) cfg[key] = parsed[key]
-              return cfg
-            }, JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG)))
-            if (!parsed.actressPageSize && parsed.actressAvatarSize) {
-              const fallbackPageSize = { small: 48, medium: 36, large: 20 }
-              this.bubbleCfg.actressPageSize = fallbackPageSize[parsed.actressAvatarSize] || DEFAULT_BUBBLE_CFG.actressPageSize
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse bubble cfg", e);
-      }
-    },
-    saveBubbleCfg() {
-      localStorage.setItem('genres_bubble_cfg', JSON.stringify(this.bubbleCfg))
-    },
     loadSearchPrefs() {
       this.searchPrefs = loadSearchPreferences()
     },
     saveSearchPrefs() {
       this.searchPrefs = saveSearchPreferences(this.searchPrefs)
     },
-    resetBubbleCfg() {
-      this.bubbleCfg = JSON.parse(JSON.stringify(DEFAULT_BUBBLE_CFG))
-      localStorage.removeItem('genres_bubble_cfg')
-      this.$message.info('已恢复默认')
-    },
     setDisplayLang(lang) {
       displayLang.value = lang
-    },
-    previewBubbleStyle() {
-      const fill = Math.max(0.7, Math.min((this.bubbleCfg.fillPercent || 50) / 100, 1.8))
-      const basePaddingY = Math.round(7 * fill)
-      const basePaddingX = Math.round(12 * fill)
-      return {
-        padding: `${basePaddingY}px ${basePaddingX}px`,
-      }
     },
   }
 }

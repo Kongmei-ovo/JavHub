@@ -63,5 +63,10 @@ export function open115Api(api) {
     open115StreamUrl(pickCode) {
       return `/api/v1/open115/files/stream?pick_code=${encodeURIComponent(pickCode)}`
     },
+
+    // 115 转码 HLS 主清单(同源代理):非原生容器(mkv/avi…)在网页里靠这个用 hls.js 播放。
+    open115HlsUrl(pickCode) {
+      return `/api/v1/open115/files/hls?pick_code=${encodeURIComponent(pickCode)}`
+    },
   }
 }

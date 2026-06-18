@@ -105,7 +105,7 @@ test('Production UI styles ratchet raw font sizes toward shared type tokens', ()
   const tokenSources = new Set(['src/assets/main.css'])
   // 已把所有能 1:1 映射到 --type-* 的裸 px 字号迁成 token(零视觉变动),
   // 残留的是 ramp 上没有对应档的值(9/16/17/42px 等),留作单点豁免,后续若补档再迁。
-  const existingRawFontSizeCount = 25
+  const existingRawFontSizeCount = 24
 
   for (const [name, source] of productionStyleSources()) {
     if (tokenSources.has(name)) continue

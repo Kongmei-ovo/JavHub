@@ -316,7 +316,7 @@ test('favorites empty state offers media-library next actions without entering e
   assert.match(vueSource, /@secondary-action="handleEmptySecondaryAction"/)
   assert.match(vueSource, /浏览题材/)
   assert.match(vueSource, /订阅演员/)
-  assert.match(vueSource, /activeTab\.value === 'all'[\s\S]*router\.push\('\/genres'\)/)
+  assert.match(vueSource, /activeTab\.value === 'all'[\s\S]*router\.push\('\/entities'\)/)
   assert.match(vueSource, /router\.push\('\/subscription'\)/)
   assert.match(vueSource, /:disabled="!editMode && visibleFavoriteCount === 0"[\s\S]*{{ editMode \? '完成' : '编辑' }}/)
 })

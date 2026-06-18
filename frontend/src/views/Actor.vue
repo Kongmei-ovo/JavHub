@@ -2,7 +2,7 @@
   <div class="actor-page page-bleed">
     <div class="actor-hero page-rail page-rail--gallery">
       <div class="hero-content">
-        <div class="actor-avatar">
+        <div v-if="avatarUrl" class="actor-avatar">
           <img
             :src="avatarUrl"
             :alt="actorName"
@@ -11,6 +11,11 @@
             @error="handleAvatarError"
           />
         </div>
+        <div
+          v-else
+          class="actor-avatar image-fallback"
+          :data-fallback-label="avatarFallbackLabel"
+        ></div>
         <div class="actor-info">
           <h1 class="actor-name">{{ translatedName || actorName }}</h1>
           <p v-if="translatedName && translatedName !== actorName" class="actor-name-original">{{ actorName }}</p>
@@ -170,12 +175,12 @@
       class="empty-state page-rail page-rail--standard"
       title="暂无演员作品"
       description="当前演员还没有可展示的作品。"
-      next-step="可以重新加载作品集，或回到随机探索继续发现演员。"
+      next-step="可以重新加载作品集，或回到分类目录继续浏览演员。"
       action-label="重新加载"
-      secondary-action-label="随机探索"
+      secondary-action-label="分类目录"
       density="compact"
       @action="loadActorMovies"
-      @secondary-action="$router.push('/genres')"
+      @secondary-action="$router.push('/entities')"
     />
 
     <!-- Year Navigator (right side) -->
@@ -243,6 +248,9 @@ export default {
     avatarUrl() {
       if (this.actressData?.image_url) return actressImgUrl(this.actressData.image_url)
       return ''
+    },
+    avatarFallbackLabel() {
+      return (this.translatedName || this.actorName || '?').slice(0, 1)
     },
     translatedName() {
       if (!this.actressData) return this.actorName
@@ -663,7 +671,7 @@ export default {
       return movie._raw?.service_code || ''
     },
     handleAvatarError(e) {
-      applyImageFallback(e, { label: (this.translatedName || this.actorName || '?').slice(0, 1) })
+      applyImageFallback(e, { label: this.avatarFallbackLabel })
     },
     async toggleActorFavorite() {
       const id = this.actorFavoriteId

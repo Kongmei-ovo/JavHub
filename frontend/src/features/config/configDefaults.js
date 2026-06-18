@@ -119,13 +119,4 @@ export const DEFAULT_CONFIG = {
   proxy: { enabled: false, http_url: '', https_url: '' },
 }
 
-export const DEFAULT_BUBBLE_CFG = {
-  baseSize: 16, fillPercent: 50, spacing: 16,
-  bubbleCount: 36,
-  defaultTab: 'genre',
-  actressAvatarSize: 'medium',
-  actressPageSize: 36,
-  seriesPageSize: 24,
-}
-
 export const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', maker: '厂商', label: '厂牌', title: '标题' }

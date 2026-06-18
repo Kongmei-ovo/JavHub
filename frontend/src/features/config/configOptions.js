@@ -1,18 +1,4 @@
 export const pageSizeOptions = [15, 30, 50, 100]
-export const actressPageSizeOptions = [24, 36, 48, 60]
-export const seriesPageSizeOptions = [12, 24, 36, 48]
-
-export const avatarSizeOptions = [
-  { value: 'small', label: '小', hint: '头像 60px' },
-  { value: 'medium', label: '中', hint: '头像 80px' },
-  { value: 'large', label: '大', hint: '头像 100px' },
-]
-
-export const defaultTabOptions = [
-  { value: 'genre', label: '题材' },
-  { value: 'actress', label: '演员' },
-  { value: 'series', label: '系列' },
-]
 
 export const displayLangOptions = [
   { value: 'ja', label: '日文' },
@@ -42,11 +28,4 @@ export const candidateSourceOptions = [
   { value: 'inventory', label: '库存发现' },
   { value: 'supplement', label: '补全发现' },
   { value: 'manual', label: '手动加入' },
-]
-
-export const tagTuningControls = [
-  { key: 'bubbleCount', label: '显示数量', min: 12, max: 120, step: 6, unit: '' },
-  { key: 'baseSize', label: '基础尺寸', min: 8, max: 48, step: 1, unit: 'px' },
-  { key: 'fillPercent', label: '填充间距', min: 30, max: 200, step: 5, unit: '%' },
-  { key: 'spacing', label: '标签间距', min: 0, max: 48, step: 2, unit: 'px' },
 ]

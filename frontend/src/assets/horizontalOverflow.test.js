@@ -8,7 +8,6 @@ const shellTimeoutMs = 30_000
 const routes = [
   '/',
   '/search',
-  '/genres',
   '/favorites',
   '/subscription',
   '/operations',

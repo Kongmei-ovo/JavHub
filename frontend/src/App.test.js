@@ -48,7 +48,6 @@ test('primary navigation is grouped around daily workflows first', () => {
     '今日',
     '影库',
     '分类目录',
-    '发现',
     '我的收藏',
     '下载中心',
     '演员订阅',
@@ -73,7 +72,6 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 
   assert.deepEqual(labels, [
     '分类目录',
-    '发现',
     '演员订阅',
     '候选确认',
     '资料补全',
@@ -164,7 +162,7 @@ test('app navigation controls use layered liquid glass materials', () => {
 
 test('app shell navigation marks current route semantically across desktop mobile and more menu', () => {
   // P2: '/library' 从 library-organize 桶移到 search 桶,让"影库"导航在 /library 时也高亮。
-  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/genres': \['\/genres', '\/discovery'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\]/)
+  assert.match(navigationSource, /export const navActivePaths = \{[\s\S]*'\/search': \['\/search', '\/library'\][\s\S]*'\/entities': \['\/entities', '\/entity', '\/actor'\]/)
   assert.doesNotMatch(navigationSource, /library-organize|inventory|duplicates|normalize/)
   assert.match(source, /const isNavItemActive = \(path\) => \{[\s\S]*const currentPath = normalizedRoutePath\.value[\s\S]*const activePaths = navActivePaths\[path\] \|\| \[path\][\s\S]*currentPath === activePath \|\| currentPath\.startsWith\(`\$\{activePath\}\/`\)/)
   assert.match(source, /:class="\{ active: isNavItemActive\(item\.path\) \}"/)

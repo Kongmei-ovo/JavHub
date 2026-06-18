@@ -211,10 +211,5 @@ export default {
         ElMessage.error('复制播放链接失败')
       }
     },
-    async openInExternalPlayer() {
-      const url = this.stableResourceUrl()
-      if (!url) return
-      window.location.href = `iina://weblink?url=${encodeURIComponent(url)}`
-    },
   },
 }

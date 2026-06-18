@@ -4,8 +4,6 @@
     class="vp-overlay"
     @click.self="$emit('close')"
     @keydown.esc="$emit('close')"
-    @keydown.left.prevent="$emit('seek-backward')"
-    @keydown.right.prevent="$emit('seek-forward')"
     tabindex="0"
   >
     <div class="vp-container">
@@ -15,27 +13,7 @@
         </svg>
       </button>
       <div class="vp-player-wrap">
-        <video
-          ref="videoEl"
-          :src="src"
-          class="vp-video"
-          controls
-          autoplay
-          playsinline
-          crossorigin="anonymous"
-          @keydown.left.prevent="$emit('seek-backward')"
-          @keydown.right.prevent="$emit('seek-forward')"
-        >
-          <track
-            v-for="(track, index) in subtitles"
-            :key="track.url"
-            kind="subtitles"
-            :src="track.url"
-            :srclang="track.srclang || 'und'"
-            :label="track.label || ('字幕 ' + (index + 1))"
-            :default="track.default || index === 0"
-          />
-        </video>
+        <ArtPlayer ref="art" class="vp-video" :url="src" :title="title" :subtitles="subtitles" />
       </div>
       <div class="vp-info">
         <span class="vp-title">{{ title }}</span>
@@ -45,8 +23,11 @@
 </template>
 
 <script>
+import ArtPlayer from './ArtPlayer.vue'
+
 export default {
   name: 'VideoPlayerOverlay',
+  components: { ArtPlayer },
   props: {
     visible: { type: Boolean, default: false },
     src: { type: String, default: '' },
@@ -56,7 +37,7 @@ export default {
   emits: ['close', 'seek-forward', 'seek-backward'],
   methods: {
     mediaElement() {
-      return this.$refs.videoEl
+      return this.$refs.art?.mediaElement?.() || null
     },
   },
 }

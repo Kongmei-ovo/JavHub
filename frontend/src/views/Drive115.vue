@@ -111,18 +111,23 @@
     <div v-if="preview.kind === 'video'" class="overlay overlay--dark" @click.self="closePreview">
       <div class="player">
         <button class="overlay-close" type="button" @click="closePreview">✕</button>
-        <video ref="previewVideo" class="player-video" controls autoplay playsinline @error="onVideoError"></video>
+        <ArtPlayer
+          ref="previewArt"
+          :key="preview.playUrl"
+          class="player-video"
+          :url="preview.playUrl"
+          :type="preview.playType"
+          :autoplay="true"
+          @video-error="onVideoError"
+        />
+        <p v-if="preview.errored" class="player-fallback-note">
+          浏览器无法解码这个格式,用下方「外部播放器」打开原片(同样 302 直连原档)。
+        </p>
         <div class="player-bar">
           <span class="player-title">{{ preview.name }}</span>
           <div class="defs">
-            <button
-              v-for="s in preview.sources"
-              :key="s.url"
-              class="def-btn"
-              :class="{ active: s.url === preview.current }"
-              type="button"
-              @click="switchDefinition(s)"
-            >{{ s.desc || s.definition }}</button>
+            <button class="def-btn" type="button" @click="copyDirectLink">复制直链</button>
+            <OpenWithMenu :url="directUrl" :name="preview.name" label="外部播放器" @launch="closePreview" />
           </div>
         </div>
       </div>
@@ -204,6 +209,8 @@ import DriveGrid from '../features/drive/DriveGrid.vue'
 import DriveList from '../features/drive/DriveList.vue'
 import OfflinePanel from '../features/drive/OfflinePanel.vue'
 import AddDownloadSheet from '../features/downloads/AddDownloadSheet.vue'
+import ArtPlayer from '../features/video/ArtPlayer.vue'
+import OpenWithMenu from '../features/video/OpenWithMenu.vue'
 import { kindOf, sortFilesByType } from '../features/drive/driveFormat'
 
 const PAGE_SIZE = 100
@@ -223,7 +230,7 @@ function readPref(key, fallback) {
 
 export default {
   name: 'Drive115',
-  components: { AppleSkeleton, AppleEmptyState, DriveGrid, DriveList, OfflinePanel, AddDownloadSheet },
+  components: { AppleSkeleton, AppleEmptyState, DriveGrid, DriveList, OfflinePanel, AddDownloadSheet, ArtPlayer, OpenWithMenu },
   data() {
     let sortKey = 'time'
     let sortAsc = false
@@ -248,9 +255,8 @@ export default {
       sortAsc,
       showOffline: false,
       showAddSheet: false,
-      preview: { kind: '', name: '', sources: [], current: '', imageUrl: '' },
+      preview: { kind: '', name: '', imageUrl: '', errored: false, playUrl: '', playType: '' },
       playPick: '',
-      triedHls: false,
       picker: { open: false, mode: 'move', cid: '0', stack: [], dirs: [], loading: false, busy: false },
       nameModal: { open: false, mode: 'folder', value: '' },
     }
@@ -262,6 +268,10 @@ export default {
     serverOrder() {
       return SERVER_ORDER[this.sortKey] || 'user_utime'
     },
+    // 当前预览视频的 115 直链(走后端 302),供外连播放器使用。
+    directUrl() {
+      return this.playPick ? api.open115StreamUrl(this.playPick) : ''
+    },
     // 文件夹永远置顶;"类型"在已加载页内做完整排序,其余键服务端已排好,这里只做稳定的目录置顶。
     displayFiles() {
       if (this.sortKey === 'type') return sortFilesByType(this.items, this.sortAsc)
@@ -272,9 +282,6 @@ export default {
   },
   mounted() {
     this.load('0', [])
-  },
-  beforeUnmount() {
-    this.destroyHls()
   },
   methods: {
     kindOf,
@@ -389,71 +396,41 @@ export default {
       else ElMessage.info('该类型暂不支持预览')
     },
     previewImage(file) {
-      this.preview = { kind: 'image', name: file.name, sources: [], current: '', imageUrl: api.open115ImageUrl(file.pick_code, file.extension) }
+      this.preview = { kind: 'image', name: file.name, imageUrl: api.open115ImageUrl(file.pick_code, file.extension), errored: false, playUrl: '', playType: '' }
     },
     browserNative(ext) {
       return ['mp4', 'm4v', 'mov', 'webm'].includes(String(ext || '').toLowerCase())
     },
-    async playVideo(file) {
-      this.preview = { kind: 'video', name: file.name, sources: [], current: '', imageUrl: '' }
+    playVideo(file) {
+      // 网页播放,数据面都不过服务器:原生容器(mp4/webm)走 302 直连原片;
+      // 非原生(mkv/avi…)走 115 转码 HLS —— 同源代理只过清单,分片仍是 CDN→浏览器,
+      // 浏览器照样能在网页里放(像 alist)。hls 致命错误再退到外连原片。
+      const native = this.browserNative(file.extension)
       this.playPick = file.pick_code
-      this.triedHls = false
-      if (this.browserNative(file.extension)) await this.attachDirect(file.pick_code)
-      else await this.playViaHls(file.pick_code)
-    },
-    async playViaHls(pickCode) {
-      this.triedHls = true
-      try {
-        const { data } = await api.getOpen115VideoSources(pickCode)
-        const sources = data.sources || []
-        if (sources.length) { this.preview.sources = sources; await this.attach(sources[0]); return }
-      } catch { /* fall through to direct */ }
-      await this.attachDirect(pickCode)
-    },
-    async attachDirect(pickCode) {
-      await this.$nextTick()
-      const video = this.$refs.previewVideo
-      if (!video) return
-      this.destroyHls()
-      this.preview.sources = []
-      this.preview.current = ''
-      video.src = api.open115StreamUrl(pickCode)
-      video.play().catch(() => {})
-    },
-    onVideoError() {
-      if (!this.triedHls && this.playPick) this.playViaHls(this.playPick)
-    },
-    proxied(url) {
-      return `/api/v1/stream/proxy?url=${encodeURIComponent(url)}`
-    },
-    async attach(source) {
-      this.preview.current = source.url
-      await this.$nextTick()
-      const video = this.$refs.previewVideo
-      if (!video) return
-      this.destroyHls()
-      const url = this.proxied(source.url)
-      const { default: Hls } = await import('hls.js/dist/hls.light.mjs')
-      if (Hls.isSupported()) {
-        const hls = new Hls()
-        hls.loadSource(url)
-        hls.attachMedia(video)
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}))
-        this._hls = hls
-      } else {
-        video.src = url
-        video.play().catch(() => {})
+      this.preview = {
+        kind: 'video',
+        name: file.name,
+        imageUrl: '',
+        errored: false,
+        playUrl: native ? api.open115StreamUrl(file.pick_code) : api.open115HlsUrl(file.pick_code),
+        playType: native ? 'native' : 'hls',
       }
     },
-    switchDefinition(source) {
-      if (source.url !== this.preview.current) this.attach(source)
+    onVideoError() {
+      // 浏览器/转码都拿不下这个文件——亮出外连提示,用本地播放器放原片(302 直连)。
+      this.preview.errored = true
     },
-    destroyHls() {
-      if (this._hls) { this._hls.destroy(); this._hls = null }
+    async copyDirectLink() {
+      if (!this.directUrl) return
+      try {
+        await navigator.clipboard.writeText(new URL(this.directUrl, window.location.origin).toString())
+        ElMessage.success('115 直链已复制')
+      } catch {
+        ElMessage.error('复制失败')
+      }
     },
     closePreview() {
-      this.destroyHls()
-      this.preview = { kind: '', name: '', sources: [], current: '', imageUrl: '' }
+      this.preview = { kind: '', name: '', imageUrl: '', errored: false, playUrl: '', playType: '' }
     },
     openAddSheet() {
       this.showAddSheet = true
@@ -615,6 +592,7 @@ export default {
 .defs { display: flex; gap: 6px; }
 .def-btn { background: var(--vp-control-bg, var(--surface-control)); border: none; color: var(--text-on-accent-solid); border-radius: var(--radius-xs); padding: 4px 10px; font-size: var(--type-caption); cursor: pointer; }
 .def-btn.active { background: var(--accent); }
+.player-fallback-note { margin: 0; font-size: var(--type-caption); color: var(--text-on-accent-solid); opacity: 0.8; text-align: center; }
 .lightbox { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: var(--radius-md); }
 
 .sheet { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-sheet); width: min(440px, 92vw); padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-sheet); }

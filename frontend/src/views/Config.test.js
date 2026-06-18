@@ -756,30 +756,21 @@ test('appearance settings use the shared macOS grouped row layout', () => {
   const appearanceSections = {
     global: vueSectionBlock('settings-group appearance-global-group'),
     search: vueSectionBlock('settings-group appearance-search-group'),
-    discovery: vueSectionBlock('settings-group appearance-discovery-group'),
-    visual: vueSectionBlock('settings-group appearance-visual-group'),
   }
 
   assert.match(vueSource, /class="appearance-settings-stack"/)
   assert.match(vueSource, /class="settings-group appearance-global-group"/)
   assert.match(vueSource, /class="settings-group appearance-search-group"/)
-  assert.match(vueSource, /class="settings-group appearance-discovery-group"/)
-  assert.match(vueSource, /class="settings-group appearance-visual-group"/)
   assert.match(appearanceSections.global, /<h2>全局偏好<\/h2>/)
   assert.match(appearanceSections.search, /<h2>影片检索<\/h2>/)
-  assert.match(appearanceSections.discovery, /<h2>随机探索<\/h2>/)
-  assert.match(appearanceSections.visual, /<h2>题材 \/ 系列气泡<\/h2>/)
   assert.doesNotMatch(vueSource, /class="preference-stack"|class="preference-section"|class="scope-card"/)
   assert.doesNotMatch(vueSource, /class="appearance-setting-row"/)
+  // 发现模块已移除:随机探索 / 题材气泡两个外观分组不再存在
+  assert.doesNotMatch(vueSource, /appearance-discovery-group|appearance-visual-group/)
 
   const stack = cssBlock('.appearance-settings-stack')
-  const visualGroup = cssBlock('.appearance-visual-group .settings-list')
-  const visualRow = cssBlock('.appearance-visual-row')
-
   assert.match(stack, /display:\s*grid/)
   assert.match(stack, /gap:\s*18px/)
-  assert.match(visualGroup, /overflow:\s*visible/)
-  assert.match(visualRow, /align-items:\s*start/)
 })
 
 test('advanced export readiness styles are defined once in the lazy stylesheet', () => {

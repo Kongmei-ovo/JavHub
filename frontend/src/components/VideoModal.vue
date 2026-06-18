@@ -268,10 +268,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 <span>复制稳定链接</span>
               </button>
-              <button class="btn stream-download-btn" @click="openInExternalPlayer" title="用外部播放器打开（IINA）">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                <span>外部播放器</span>
-              </button>
+              <OpenWithMenu :url="stableResourceUrl()" :name="libraryCode()" @launch="closeStreamPlayer" />
             </template>
           </div>
         </div>
@@ -334,6 +331,7 @@ import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
 import VideoResourcePanel from '../features/video/VideoResourcePanel.vue'
+import OpenWithMenu from '../features/video/OpenWithMenu.vue'
 import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '../features/video/streamSourcesHelper.js'
 import libraryPlaybackMixin from '../features/video/libraryPlaybackMixin.js'
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
@@ -347,7 +345,7 @@ function videoFavoriteId(video = {}) {
 export default {
   name: 'VideoModal',
   mixins: [libraryPlaybackMixin],
-  components: { VideoGallerySection, VideoMagnetSection, VideoResourcePanel, VideoPlayerOverlay, HlsPlayerOverlay },
+  components: { VideoGallerySection, VideoMagnetSection, VideoResourcePanel, VideoPlayerOverlay, HlsPlayerOverlay, OpenWithMenu },
   emits: ['close', 'download', 'navigate'],
   props: {
     visible: { type: Boolean, default: false },
@@ -599,11 +597,11 @@ export default {
       if (this.streamSession) { this.streamSession.close(); this.streamSession = null }
     },
     async waitForStreamVideoEl() {
-      for (let i = 0; i < 20; i += 1) {
+      for (let i = 0; i < 60; i += 1) {
         await this.$nextTick()
         const video = this.streamVideoEl()
         if (video) return video
-        await new Promise(resolve => setTimeout(resolve, 25))
+        await new Promise(resolve => setTimeout(resolve, 50))
       }
       return null
     },

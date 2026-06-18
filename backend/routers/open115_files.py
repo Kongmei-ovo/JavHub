@@ -11,14 +11,17 @@ logged, cached, or persisted.
 from __future__ import annotations
 
 import mimetypes
+import re
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from services.open115 import Open115AuthRequired, Open115Error, Open115File, open115_client
+from services.playback_gateway import HLSPlaybackSessionStore
 
 router = APIRouter(prefix="/api/v1/open115/files", tags=["open115-files"])
 
@@ -224,3 +227,117 @@ async def stream_file(pick_code: str = Query(...), request: Request = None) -> R
     except Open115Error as exc:
         raise _http_error(exc) from exc
     return RedirectResponse(url=url, status_code=302, headers={"Cache-Control": "no-store"})
+
+
+# ── 115 转码 HLS 同源代理 ──────────────────────────────────────────
+# mkv/avi 等容器浏览器原生放不了,但 115 能服务端转码成 H.264 HLS。该转码流没有 CORS 头,
+# hls.js 不能跨域直拉 → 后端同源代理 + 递归改写分片地址(主清单→子清单→ts 都改成本端 token 地址)。
+# 安全同 playback.py 的库资源 HLS:分片地址只来自 115 自家清单(token 映射),不暴露任意 URL,无 SSRF 面;
+# session_id 与 per-target token 都是随机密钥。网盘文件无库资源 id,用常量 scope,安全由 token 承担。
+_open115_hls_sessions = HLSPlaybackSessionStore()
+_OPEN115_HLS_SCOPE = 0
+
+_open115_hls_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(30),
+    follow_redirects=True,
+    limits=httpx.Limits(max_connections=32, max_keepalive_connections=16),
+    trust_env=False,
+)
+
+
+def _open115_hls_path(session_id: str, target_token: str) -> str:
+    return f"/api/v1/open115/files/hls/{session_id}/{target_token}"
+
+
+def _rewrite_open115_hls(text: str, base_url: str, session) -> str:
+    def register(raw_uri: str) -> str:
+        target_url = urljoin(base_url, raw_uri)
+        token = _open115_hls_sessions.register_target(session, target_url)
+        return _open115_hls_path(session.session_id, token)
+
+    def rewrite_uri_attr(match) -> str:
+        return f'URI="{register(match.group(1))}"'
+
+    out = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if 'URI="' in stripped:
+            stripped = re.sub(r'URI="([^"]+)"', rewrite_uri_attr, stripped)
+        if stripped and not stripped.startswith("#"):
+            stripped = register(stripped)
+        out.append(stripped)
+    return "\n".join(out) + "\n"
+
+
+async def _proxy_open115_hls(session, target_token: str, request: Request | None) -> Response:
+    target_url = session.targets.get(target_token)
+    if not target_url:
+        raise HTTPException(status_code=410, detail="HLS 播放目标已过期")
+    headers = {
+        "User-Agent": session.user_agent,
+        "Accept": request.headers.get("accept", "*/*") if request is not None else "*/*",
+    }
+    if request is not None and request.headers.get("range"):
+        headers["Range"] = request.headers["range"]
+    try:
+        upstream = await _open115_hls_client.get(target_url, headers=headers)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="115 HLS 上游请求失败") from exc
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="115 HLS 上游暂不可用")
+
+    content_type = str(upstream.headers.get("content-type") or "application/octet-stream")
+    content = upstream.content
+    looks_like_manifest = (
+        content.lstrip().startswith(b"#EXTM3U")
+        or "mpegurl" in content_type.lower()
+        or target_url.split("?", 1)[0].lower().endswith(".m3u8")
+    )
+    response_headers = {"Cache-Control": "no-store", "Access-Control-Allow-Origin": "*"}
+    if looks_like_manifest:
+        content = _rewrite_open115_hls(
+            content.decode("utf-8", errors="replace"), target_url, session
+        ).encode("utf-8")
+        content_type = "application/vnd.apple.mpegurl"
+    else:
+        for header in ("content-range", "accept-ranges"):
+            if upstream.headers.get(header):
+                response_headers[header.title()] = upstream.headers[header]
+    return Response(
+        content=content,
+        status_code=upstream.status_code,
+        media_type=content_type,
+        headers=response_headers,
+    )
+
+
+@router.get("/hls")
+async def hls_master(pick_code: str = Query(...), request: Request = None) -> Response:
+    """115 转码 HLS 主清单(同源代理)。浏览器把这个 URL 交给 hls.js 当源,即可在网页里
+    播放 mkv/avi 等原生放不了的格式 —— 115 服务端转 H.264 HLS,数据面分片仍是 CDN→浏览器。"""
+    user_agent = (request.headers.get("user-agent") if request is not None else "") or open115_client.default_ua
+    try:
+        urls = await open115_client.video_transcode_urls(pick_code)
+    except Open115Error as exc:
+        raise _http_error(exc) from exc
+    if not urls:
+        raise HTTPException(
+            status_code=425,
+            detail="115 转码尚未就绪，请稍后重试",
+            headers={"Retry-After": "15"},
+        )
+    session_id = _open115_hls_sessions.create(
+        resource_id=_OPEN115_HLS_SCOPE,
+        root_url=urls[0].url,
+        user_agent=user_agent,
+    )
+    session = _open115_hls_sessions.get(session_id, _OPEN115_HLS_SCOPE)
+    return await _proxy_open115_hls(session, "root", request)
+
+
+@router.get("/hls/{session_id}/{target_token}")
+async def hls_target(session_id: str, target_token: str, request: Request = None) -> Response:
+    session = _open115_hls_sessions.get(session_id, _OPEN115_HLS_SCOPE)
+    if session is None:
+        raise HTTPException(status_code=410, detail="HLS 播放会话已过期，请重新打开播放地址")
+    return await _proxy_open115_hls(session, target_token, request)

@@ -446,12 +446,12 @@ export default {
       selectedFavoriteKeys.value = new Set()
     }
     const handleEmptyAction = () => {
-      if (activeTab.value === 'all') router.push('/genres')
+      if (activeTab.value === 'all') router.push('/entities')
       else setActiveTab('all')
     }
     const handleEmptySecondaryAction = () => {
       if (activeTab.value === 'all') router.push('/subscription')
-      else router.push('/genres')
+      else router.push('/entities')
     }
     const handleFavoriteItemClick = (item) => {
       if (editMode.value) {
