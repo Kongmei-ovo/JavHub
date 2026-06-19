@@ -48,6 +48,8 @@
       :source-diagnostics="sourceDiagnostics"
       :diagnostics-movie-title="diagnosticsMovieTitle"
       :diagnostics-movie-subtitle="diagnosticsMovieSubtitle"
+      :actress-name="actorName"
+      :actress-avatar="actressAvatar"
       :manual-action-loading="manualActionLoading"
       :field-label="fieldLabel"
       :field-value-preview="fieldValuePreview"
@@ -65,6 +67,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { applyImageFallback } from '../../utils/imageFallback.js'
+import { actorAvatar } from '../../utils/actorDisplay.js'
 import SupplementMoviesPanel from './SupplementMoviesPanel.vue'
 import SupplementSourceDiagnosticsDialog from './SupplementSourceDiagnosticsDialog.vue'
 import { useSupplementApi } from './useSupplementApi.js'
@@ -104,6 +107,8 @@ export default {
       { key: 'gap', label: '字段缺口', value: supplement.workspaceMovieFieldGapCount.value, filter: { quality: 'low_completeness' } },
       { key: 'detail', label: '可补详情', value: supplement.workspaceDetailTargetCount.value, filter: { matched: false, quality: 'missing_cover' } },
     ])
+
+    const actressAvatar = computed(() => actorAvatar(props.actorContext))
 
     const diagnosticsMovieTitle = computed(() => {
       const movie = supplement.sourceDiagnostics.value?.movie
@@ -236,6 +241,7 @@ export default {
       matchFilterOptions,
       qualityFilterOptions,
       quickChips,
+      actressAvatar,
       diagnosticsMovieTitle,
       diagnosticsMovieSubtitle,
       applyImageFallback,

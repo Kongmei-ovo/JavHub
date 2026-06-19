@@ -307,6 +307,9 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       await api.matchSupplementMovie(movieId, contentId, '人工确认匹配')
       ElMessage.success('已确认匹配')
       await reloadCurrentDiagnostics()
+    } catch (error) {
+      ElMessage.error(`确认匹配失败：${errorMessage(error)}`)
+      console.error('Manual match failed:', error)
     } finally {
       manualActionLoading.value = false
     }
@@ -320,6 +323,9 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       await api.ignoreSupplementMovie(movieId, '人工忽略')
       ElMessage.success('已忽略该补全影片')
       await reloadCurrentDiagnostics()
+    } catch (error) {
+      ElMessage.error(`忽略失败：${errorMessage(error)}`)
+      console.error('Manual ignore failed:', error)
     } finally {
       manualActionLoading.value = false
     }
@@ -333,6 +339,9 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       await api.unmatchSupplementMovie(movieId, '人工解除匹配')
       ElMessage.success('已解除匹配')
       await reloadCurrentDiagnostics()
+    } catch (error) {
+      ElMessage.error(`解除匹配失败：${errorMessage(error)}`)
+      console.error('Manual unmatch failed:', error)
     } finally {
       manualActionLoading.value = false
     }
