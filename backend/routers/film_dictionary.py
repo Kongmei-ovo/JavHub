@@ -12,7 +12,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from database.download_candidate import list_download_candidates
 from services.canonical_resolver import (
+    ResolvedFilm,
     overlay_owned,
     resolve_rows_to_films,
 )
@@ -143,5 +145,109 @@ def get_actress_film_dictionary(actress_id: int) -> dict:
         "actress_id": actress_id,
         "total_films": len(films),
         "owned_films": owned_count,
+        "films": payload_films,
+    }
+
+
+# --- P4-3 completeness: classify gaps against magnet/download state ----------
+
+GAP_TIERS = ("owned", "in_progress", "available", "needs_magnet")
+
+
+def _norm_number(value) -> str:
+    text = str(value or "").upper()
+    return "".join(ch for ch in text if ch.isalnum())
+
+
+def _fetch_actress_candidates(actress_id: int) -> list[dict]:
+    """All download candidates for an actress (any status), incl. magnet."""
+    return list_download_candidates(actress_id=actress_id, limit=2000)
+
+
+def _build_candidate_indexes(candidates: list[dict]) -> tuple[dict, dict]:
+    """content_id -> candidate, and normalized-番号 -> candidate."""
+    by_cid: dict[str, dict] = {}
+    by_number: dict[str, dict] = {}
+    for cand in candidates or []:
+        cid = str(cand.get("content_id") or "").strip()
+        if cid:
+            by_cid.setdefault(cid, cand)
+        for key in (cand.get("dvd_id"), cand.get("content_id")):
+            num = _norm_number(key)
+            if num:
+                by_number.setdefault(num, cand)
+    return by_cid, by_number
+
+
+def _match_film_candidates(film: ResolvedFilm, by_cid: dict, by_number: dict) -> list[dict]:
+    matched: list[dict] = []
+    seen: set[int] = set()
+
+    def _add(cand: dict | None) -> None:
+        if cand and id(cand) not in seen:
+            seen.add(id(cand))
+            matched.append(cand)
+
+    for member in film.members:
+        _add(by_cid.get(member.content_id))
+        _add(by_number.get(_norm_number(member.content_id)))
+        if member.dvd_id:
+            _add(by_number.get(_norm_number(member.dvd_id)))
+    _add(by_number.get(_norm_number(film.canonical_number)))
+    return matched
+
+
+def classify_film_status(owned: bool, candidates: list[dict]) -> str:
+    """owned > in_progress (sent/approved) > available (has magnet) > needs_magnet."""
+    if owned:
+        return "owned"
+    statuses = {str(c.get("status") or "").strip().lower() for c in candidates}
+    if statuses & {"sent", "approved"}:
+        return "in_progress"
+    for cand in candidates:
+        if str(cand.get("magnet") or "").strip():
+            return "available"
+        for alt in cand.get("magnet_alternatives") or []:
+            if str(alt.get("magnet") or "").strip():
+                return "available"
+    return "needs_magnet"
+
+
+@router.get("/actresses/{actress_id}/completeness")
+def get_actress_completeness(actress_id: int) -> dict:
+    try:
+        rows = _fetch_actress_catalog_rows(actress_id)
+    except Exception as exc:
+        logger.warning("completeness: import DB unavailable for actress %s: %s", actress_id, exc)
+        raise HTTPException(status_code=503, detail="catalog database unavailable")
+
+    films = resolve_rows_to_films(rows)
+    owned = overlay_owned(films)
+    by_cid, by_number = _build_candidate_indexes(_fetch_actress_candidates(actress_id))
+
+    summary = {tier: 0 for tier in GAP_TIERS}
+    payload_films = []
+    for film in films:
+        is_owned = bool(owned.get(film.canonical_number))
+        matched = _match_film_candidates(film, by_cid, by_number)
+        status = classify_film_status(is_owned, matched)
+        summary[status] += 1
+        payload_films.append(
+            {
+                "canonical_number": film.canonical_number,
+                "display_code": film.display_code,
+                "title": film.title,
+                "release_date": film.release_date,
+                "status": status,
+                "member_count": len(film.members),
+                "origin": film.origin,
+            }
+        )
+
+    return {
+        "actress_id": actress_id,
+        "total_films": len(films),
+        "owned_films": summary["owned"],
+        "summary": summary,
         "films": payload_films,
     }

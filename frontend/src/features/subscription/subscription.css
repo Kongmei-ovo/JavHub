@@ -825,3 +825,20 @@
     flex-wrap: wrap;
   }
 }
+
+/* —— moved from Subscription.vue inline scoped block (ratchet: keep view < 600 lines) —— */
+.subscription-since-chip { position: absolute; top: 10px; right: 10px; z-index: var(--z-raised); display: inline-flex; align-items: center; min-height: 30px; max-width: calc(100% - 20px); padding: 0 10px; border: 1px solid var(--glass-active-border); border-radius: 999px; background: var(--subscription-active-bg); color: var(--text-primary); box-shadow: var(--glass-active-shadow), var(--glass-inner-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); font-size: var(--type-caption); font-weight: 700; cursor: pointer; }
+.subscription-completeness-chip { position: absolute; top: 10px; left: 10px; z-index: var(--z-raised); display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border: 1px solid var(--glass-active-border); border-radius: 999px; background: var(--subscription-active-bg); color: var(--text-primary); box-shadow: var(--glass-active-shadow), var(--glass-inner-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); font-size: var(--type-caption); font-weight: 700; cursor: pointer; }
+.since-last-sheet { max-width: 620px; }
+.since-last-head { padding: 20px 24px 12px; }
+.since-last-head h2 { margin: 0; color: var(--text-primary); font-size: var(--type-section-title); }
+.since-last-head p { margin: 8px 0 0; color: var(--text-secondary); font-size: var(--type-control); }
+.since-last-list { display: grid; gap: 10px; padding: 0 20px 28px; }
+.since-last-item { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-md); background: var(--subscription-control-bg); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); }
+.since-last-title { color: var(--text-primary); font-weight: 650; }
+.since-last-meta { color: var(--text-muted); font-size: var(--type-caption); }
+.cadence-control { display: grid; justify-items: center; gap: 8px; padding: 0 20px 20px; }
+.cadence-control .sheet-stat-line { padding: 0; }
+.cadence-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cadence-option { min-height: 32px; padding: 0 12px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-control); background: var(--subscription-control-bg); color: var(--text-secondary); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); font-size: var(--type-caption); font-weight: 650; cursor: pointer; }
+.cadence-option.is-active { background: var(--subscription-active-bg); border-color: var(--glass-active-border); color: var(--text-primary); }

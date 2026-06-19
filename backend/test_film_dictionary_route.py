@@ -77,3 +77,38 @@ def test_import_db_unavailable_returns_503(client, monkeypatch):
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", boom)
     resp = client.get("/api/v1/film-dictionary/actresses/7")
     assert resp.status_code == 503
+
+
+def test_classify_film_status_tiers():
+    assert fd.classify_film_status(True, []) == "owned"
+    assert fd.classify_film_status(False, [{"status": "sent"}]) == "in_progress"
+    assert fd.classify_film_status(False, [{"status": "candidate", "magnet": "magnet:?xt=1"}]) == "available"
+    assert fd.classify_film_status(False, [{"status": "candidate", "magnet": ""}]) == "needs_magnet"
+    assert fd.classify_film_status(False, []) == "needs_magnet"
+
+
+def test_completeness_summary_classifies_gaps(client, monkeypatch):
+    rows = [
+        {"content_id": "owned00001", "dvd_id": "OWN-001", "service_code": "digital",
+         "release_date": "2022-03-01", "data_origin": "native", "actress_ids": [5]},
+        {"content_id": "mag00002", "dvd_id": "MAG-002", "service_code": "digital",
+         "release_date": "2022-02-01", "data_origin": "native", "actress_ids": [5]},
+        {"content_id": "gap00003", "dvd_id": "GAP-003", "service_code": "digital",
+         "release_date": "2022-01-01", "data_origin": "native", "actress_ids": [5]},
+    ]
+    candidates = [
+        {"content_id": "mag00002", "dvd_id": "MAG-002", "status": "candidate", "magnet": "magnet:?xt=2"},
+        {"content_id": "gap00003", "dvd_id": "GAP-003", "status": "candidate", "magnet": ""},
+    ]
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"owned00001"})
+
+    body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
+    assert body["total_films"] == 3
+    assert body["owned_films"] == 1
+    assert body["summary"] == {"owned": 1, "in_progress": 0, "available": 1, "needs_magnet": 1}
+    by_canon = {f["canonical_number"]: f["status"] for f in body["films"]}
+    assert by_canon[next(c for c in by_canon if "OWN" in c.upper())] == "owned"
+    assert by_canon[next(c for c in by_canon if "MAG" in c.upper())] == "available"
+    assert by_canon[next(c for c in by_canon if "GAP" in c.upper())] == "needs_magnet"
