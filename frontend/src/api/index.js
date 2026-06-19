@@ -364,6 +364,10 @@ export default {
     return api.get(`/v1/subscriptions/status/${actressId}`)
   },
 
+  getActressCompleteness(actressId) {
+    return api.get(`/v1/film-dictionary/actresses/${actressId}/completeness`)
+  },
+
   // ========== 演员映射 ==========
 
   listActorMappings(params = {}) {

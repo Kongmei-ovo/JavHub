@@ -50,6 +50,7 @@
           <button v-if="!subscriptionEditMode && sinceLastKnown(sub)" class="subscription-since-chip" type="button" aria-label="查看自上次以来新增" @click.stop="openSinceLastSheet(sub)">
             <template v-if="sinceLastCount(sub)">新增 {{ sinceLastCount(sub) }}</template><template v-else>无新增</template><span v-if="formatSinceLastElapsed(sub.last_run_at)"> · {{ formatSinceLastElapsed(sub.last_run_at) }}</span>
           </button>
+          <button v-if="!subscriptionEditMode && sub.actress_id" class="subscription-completeness-chip" type="button" aria-label="查看收藏完整度" @click.stop="openCompletenessSheet(sub)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>完整度</button>
           <button v-if="subscriptionEditMode" class="subscription-select-button" type="button" :aria-label="isSubscriptionSelected(sub) ? '取消选择订阅' : '选择订阅'" @click.stop="toggleSubscriptionSelection(sub)">
             <span></span>
           </button>
@@ -213,6 +214,8 @@
         </div>
       </transition>
     </teleport>
+
+    <CompletenessSheet :sub="completenessSheetSub" :name="completenessSheetSub ? subDisplayName(completenessSheetSub) : ''" :data="completenessData" :loading="completenessLoading" @close="closeCompletenessSheet" />
   </div>
 </template>
 
@@ -229,6 +232,7 @@ import { actorName, actorOriginalName } from '../utils/actorDisplay.js'
 import subscriptionState from '../utils/subscriptionState'
 import { hydrateSubscriptionActorMeta } from '../utils/subscriptionActorMeta.js'
 import ActorPortraitCard from '../components/ActorPortraitCard.vue'
+import CompletenessSheet from '../features/subscription/CompletenessSheet.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import MovieCard from '../components/MovieCard.vue'
@@ -257,6 +261,9 @@ const expandedVariantGroups = ref({})
 const actressMetaMap = ref({})
 const lastCheckReport = ref(null)
 const sinceLastSheetSub = ref(null)
+const completenessSheetSub = ref(null)
+const completenessData = ref(null)
+const completenessLoading = ref(false)
 const cadenceOptions = [{ label: '每 6 小时', minutes: 360 }, { label: '每 12 小时', minutes: 720 }, { label: '每 24 小时', minutes: 1440 }, { label: '每 72 小时', minutes: 4320 }]
 
 const totalNewMovies = computed(() => subs.value.reduce((sum, sub) => sum + Number(sub.candidate_count || 0), 0))
@@ -334,6 +341,13 @@ function toggleSubscriptionEditMode() {
 function handleSubscriptionCardOpen(sub) { if (subscriptionEditMode.value) { toggleSubscriptionSelection(sub); return } openSubSheet(sub) }
 function openSinceLastSheet(sub) { sinceLastSheetSub.value = sub }
 function closeSinceLastSheet() { sinceLastSheetSub.value = null }
+async function openCompletenessSheet(sub) {
+  completenessSheetSub.value = sub; completenessData.value = null; completenessLoading.value = true
+  try { completenessData.value = (await api.getActressCompleteness(sub.actress_id)).data }
+  catch (error) { ElMessage.error('加载完整度失败'); completenessData.value = { total_films: 0, owned_films: 0, summary: {}, films: [] } }
+  finally { completenessLoading.value = false }
+}
+function closeCompletenessSheet() { completenessSheetSub.value = null; completenessData.value = null }
 function subscriptionSheetActor(sub, meta = null) {
   const m = meta || {}
   return { id: sub.actress_id, actress_id: sub.actress_id, name_kanji: m.name_kanji || sub.actress_name || '', image_url: m.image_url || '', movie_count: m.movie_count, name_romaji: m.name_romaji || '', name_kana: m.name_kana || '', name_kanji_translated: m.name_kanji_translated || '', name_romaji_translated: m.name_romaji_translated || '' }
@@ -580,19 +594,3 @@ onMounted(loadSubs)
 </script>
 
 <style scoped src="../features/subscription/subscription.css"></style>
-<style scoped>
-.subscription-since-chip { position: absolute; top: 10px; right: 10px; z-index: var(--z-raised); display: inline-flex; align-items: center; min-height: 30px; max-width: calc(100% - 20px); padding: 0 10px; border: 1px solid var(--glass-active-border); border-radius: 999px; background: var(--subscription-active-bg); color: var(--text-primary); box-shadow: var(--glass-active-shadow), var(--glass-inner-shadow); backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control)); font-size: var(--type-caption); font-weight: 700; cursor: pointer; }
-.since-last-sheet { max-width: 620px; }
-.since-last-head { padding: 20px 24px 12px; }
-.since-last-head h2 { margin: 0; color: var(--text-primary); font-size: var(--type-section-title); }
-.since-last-head p { margin: 8px 0 0; color: var(--text-secondary); font-size: var(--type-control); }
-.since-last-list { display: grid; gap: 10px; padding: 0 20px 28px; }
-.since-last-item { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-md); background: var(--subscription-control-bg); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); }
-.since-last-title { color: var(--text-primary); font-weight: 650; }
-.since-last-meta { color: var(--text-muted); font-size: var(--type-caption); }
-.cadence-control { display: grid; justify-items: center; gap: 8px; padding: 0 20px 20px; }
-.cadence-control .sheet-stat-line { padding: 0; }
-.cadence-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.cadence-option { min-height: 32px; padding: 0 12px; border: 1px solid var(--subscription-control-border); border-radius: var(--radius-control); background: var(--subscription-control-bg); color: var(--text-secondary); box-shadow: var(--subscription-control-shadow), var(--glass-inner-shadow); font-size: var(--type-caption); font-weight: 650; cursor: pointer; }
-.cadence-option.is-active { background: var(--subscription-active-bg); border-color: var(--glass-active-border); color: var(--text-primary); }
-</style>

@@ -33,6 +33,7 @@ from database.download_candidate import (
     upsert_download_candidate,
 )
 from database.movie_resource import code_has_ready_resource, list_movie_resources
+from services.canonical_resolver import resolve_canonical_code
 from services.candidate_processor import _download_uri, find_best_magnet
 from services.downloader import downloader_service
 from services.downloaders import get_downloaders_config
@@ -145,18 +146,25 @@ async def start_acquisition(
     """Entry point for both point-play and subscription. Short-circuits when a
     ready resource already exists; otherwise reuses or opens the single active
     session for the movie."""
-    code = str(movie_id or "").strip()
-    if not code:
+    requested = str(movie_id or "").strip()
+    if not requested:
         raise ValueError("movie_id is required")
+    # P4-2: key the whole acquisition (session / 115 folder / movie_resources)
+    # by the canonical 番号 so a 番号's multiple products collapse into one
+    # download + one owned work. A legacy product-keyed resource still counts as
+    # ready so we never re-download something already on disk.
+    code = resolve_canonical_code(requested)
     display_title = str(title or "").strip() or code
 
-    if code_has_ready_resource(code):
+    requested_ready = requested != code and code_has_ready_resource(requested)
+    if code_has_ready_resource(code) or requested_ready:
+        owned_key = requested if requested_ready else code
         return {
             "status": "ready",
             "session": None,
             "options": [],
             "task": None,
-            "resources": list_movie_resources(code),
+            "resources": list_movie_resources(owned_key),
         }
 
     active = get_active_session_for_movie(code)
