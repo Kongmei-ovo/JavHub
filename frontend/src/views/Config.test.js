@@ -435,9 +435,13 @@ test('settings save footer exposes a System Settings-style status area', () => {
   const actions = cssBlock('.settings-save-actions')
   const mobile = baseStyle.slice(baseStyle.indexOf('@media (max-width: 768px)'))
 
-  // settings-footer 是 fixed 底部 chrome，保留玻璃
-  assert.match(footer, /background:[\s\S]*var\(--material-glass-sheet\)/)
-  assert.match(footer, /border-top:\s*1px solid var\(--glass-edge\)/)
+  // settings-footer 是 fixed 定位外壳（透明），玻璃面下沉到 .footer-content 成悬浮圆角坞
+  assert.match(footer, /position:\s*fixed/)
+  assert.match(footer, /pointer-events:\s*none/)
+  assert.match(content, /background:[\s\S]*var\(--material-glass-sheet\)/)
+  assert.match(content, /border:\s*1px solid var\(--glass-edge\)/)
+  assert.match(content, /border-radius:\s*var\(--radius-sheet\)/)
+  assert.match(content, /pointer-events:\s*auto/)
   assert.match(content, /display:\s*grid/)
   assert.match(content, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/)
   assert.match(status, /min-width:\s*0/)

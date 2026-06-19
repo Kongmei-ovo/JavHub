@@ -418,26 +418,31 @@
 .form-group-fill { flex: 1; }
 .settings-footer {
   position: fixed;
-  bottom: 0;
+  bottom: var(--app-chrome-inset);
   left: var(--sidebar-width);
   right: 0;
+  padding: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.footer-content {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 14px 12px 20px;
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-sheet);
   backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
   -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-surface));
-  border-top: 1px solid var(--glass-edge);
-  padding: 14px 0;
-  z-index: var(--z-nav);
-  display: flex;
-  justify-content: center;
-}
-.footer-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--chrome-floating-shadow);
 }
 .settings-save-status {
   display: grid;

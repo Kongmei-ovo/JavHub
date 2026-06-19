@@ -7,9 +7,9 @@
   z-index: var(--z-modal);
   display: flex;
   justify-content: flex-end;
-  background: var(--surface-scrim);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  background: rgba(var(--black-rgb), 0.44);
+  backdrop-filter: blur(10px) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(10px) saturate(var(--glass-saturate-control));
 }
 
 .diag-panel {
@@ -17,7 +17,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--surface-card);
+  background: var(--card);
   border-left: 1px solid var(--hairline);
   box-shadow: -8px 0 40px rgba(var(--black-rgb), 0.24);
   animation: diag-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -41,7 +41,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 18px 22px;
-  background: var(--surface-card);
+  background: var(--card);
   border-bottom: 1px solid var(--hairline);
 }
 

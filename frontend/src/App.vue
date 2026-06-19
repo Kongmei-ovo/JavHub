@@ -494,6 +494,9 @@ export default {
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
 .sidebar.collapsed .sidebar-nav { padding: 12px 8px; mask-image: linear-gradient(to bottom, transparent, currentColor 10px, currentColor calc(100% - 14px), transparent); }
 .sidebar.collapsed .nav-group { gap: 6px; }
+.sidebar.collapsed .nav-group-label { display: none; }
+.sidebar.collapsed :is(.nav-text, .nav-badge) { display: none; }
+.sidebar.collapsed .sidebar-footer { padding-block: 10px; }
 .sidebar.collapsed .nav-item {
   justify-content: center;
   padding: 11px 0;
