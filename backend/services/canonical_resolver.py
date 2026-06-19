@@ -64,6 +64,26 @@ def _member_content_id(row: dict[str, Any]) -> str:
     return ""
 
 
+def resolve_canonical_code(code: str) -> str:
+    """Collapse a single content_id or 番号 to its clean canonical 番号.
+
+    Used as the acquisition/ownership key so a 番号's several products (Blu-ray /
+    DVD / digital editions) all download into one folder and register one owned
+    work. Falls back to the trimmed input when it has no parseable code (e.g. a
+    raw private/无码 id), which is still a stable per-work key. No index/DB needed.
+    """
+    raw = str(code or "").strip()
+    if not raw:
+        return raw
+    enriched = enrich_video_variants(
+        [{"content_id": raw, "dvd_id": raw}], variant_mode="flat", include_explanations=False
+    )
+    if not enriched:
+        return raw
+    canonical = str(enriched[0].get("canonical_code") or "").strip()
+    return _bucket_key(canonical) if canonical else raw
+
+
 def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
     """Collapse raw catalog rows (native and/or supplement) into canonical
     番号-level virtual films. Deterministic: stable ordering, no randomness."""
@@ -142,13 +162,24 @@ def resolved_films_to_canonical_set(films: list[ResolvedFilm]) -> set[str]:
 
 
 def overlay_owned(films: list[ResolvedFilm]) -> dict[str, bool]:
-    """canonical_number -> owned (ANY member product has a ready resource)."""
-    all_member_ids = [member.content_id for film in films for member in film.members]
+    """canonical_number -> owned.
+
+    Owned when the canonical key OR any member product has a ready resource.
+    The canonical key covers new downloads (P4-2 keys acquisition by canonical);
+    the member content_ids cover any legacy product-keyed downloads.
+    """
+    lookup: list[str] = []
+    for film in films:
+        lookup.append(film.canonical_number)
+        lookup.extend(member.content_id for member in film.members)
     try:
-        ready = codes_with_ready_resource(all_member_ids)
+        ready = codes_with_ready_resource(lookup)
     except Exception:
         ready = set()
     return {
-        film.canonical_number: any(member.content_id in ready for member in film.members)
+        film.canonical_number: (
+            film.canonical_number in ready
+            or any(member.content_id in ready for member in film.members)
+        )
         for film in films
     }

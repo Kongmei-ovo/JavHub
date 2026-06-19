@@ -99,3 +99,24 @@ def test_overlay_owned_marks_canonical_when_any_member_ready(monkeypatch):
 def test_empty_input_returns_empty():
     assert resolve_rows_to_films([]) == []
     assert overlay_owned([]) == {}
+
+
+def test_resolve_canonical_code_collapses_editions():
+    from services.canonical_resolver import resolve_canonical_code
+
+    # content_id and 番号 forms of the same work share one canonical key.
+    assert resolve_canonical_code("umso00533") == resolve_canonical_code("UMSO-533")
+    # Unparseable / private id falls back to the trimmed input (still stable).
+    assert resolve_canonical_code("  fc2-ppv-998877 ").upper().replace("-", "") == "FC2PPV998877"
+    assert resolve_canonical_code("") == ""
+
+
+def test_overlay_owned_recognizes_canonical_key(monkeypatch):
+    # A work downloaded under the new canonical key (not a member content_id).
+    rows = [{"content_id": "umso00533", "dvd_id": "UMSO-533", "service_code": "digital"}]
+    films = resolve_rows_to_films(rows)
+    canonical = films[0].canonical_number
+
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {canonical})
+    owned = overlay_owned(films)
+    assert owned[canonical] is True
