@@ -29,6 +29,13 @@
               <span class="diag-stat"><b>{{ candidateCount }}</b><em>候选</em></span>
               <span class="diag-stat" :class="{ warn: missingFieldCount > 0 }"><b>{{ missingFieldCount }}</b><em>字段缺口</em></span>
             </div>
+            <div class="diag-primary">
+              <button class="btn btn-primary diag-primary-btn" type="button" :disabled="enriching.all" @click="$emit('enrich')">
+                <span v-if="enriching.all" class="spinner diag-spinner"></span>
+                <span>{{ enriching.all ? '补全中…' : '用番号补全字段' }}</span>
+              </button>
+              <span class="diag-primary-hint">番号 <b>{{ movie.dvd_id || movie.canonical_number || '—' }}</b> · 全部蛋源</span>
+            </div>
           </div>
         </section>
 
@@ -44,21 +51,9 @@
           />
         </section>
 
-        <!-- 匹配 -->
-        <section class="diag-section">
-          <h3>匹配</h3>
-          <div class="diag-match-bar">
-            <input
-              :value="manualContentId"
-              placeholder="内容编号(人工确认)"
-              class="filter-input"
-              @input="$emit('update:manualContentId', $event.target.value)"
-              @keyup.enter="$emit('match')"
-            />
-            <button class="btn btn-primary btn-sm" type="button" :disabled="manualActionLoading || !manualContentId.trim()" @click="$emit('match')">确认匹配</button>
-            <button class="btn btn-ghost btn-sm" type="button" :disabled="manualActionLoading" @click="$emit('unmatch')">解除</button>
-            <button class="btn btn-ghost btn-sm danger" type="button" :disabled="manualActionLoading" @click="$emit('ignore')">忽略</button>
-          </div>
+        <!-- 匹配 r18 目录(次要:有候选才点确认,无候选折叠) -->
+        <section class="diag-section diag-match">
+          <h3>匹配 r18 目录 <span class="diag-sub">{{ matchStatusLabel }}</span></h3>
           <table v-if="candidates.length" class="diag-table">
             <thead>
               <tr><th>内容编号</th><th>分数</th><th>状态</th><th></th></tr>
@@ -72,7 +67,11 @@
               </tr>
             </tbody>
           </table>
-          <p v-else class="diag-note">此作品在 r18 目录无候选——多为外快/无码片,匹配不适用。可保留补全数据,或点「忽略」。</p>
+          <p v-else class="diag-note">此作品在 r18 目录无候选——多为外快/无码片,匹配不适用。补全数据照常保留;不需要可点「忽略」。</p>
+          <div class="diag-match-actions">
+            <button v-if="movie.matched_content_id" class="btn btn-ghost btn-xs" type="button" :disabled="manualActionLoading" @click="$emit('unmatch')">解除匹配</button>
+            <button class="btn btn-ghost btn-xs danger" type="button" :disabled="manualActionLoading" @click="$emit('ignore')">忽略</button>
+          </div>
         </section>
 
         <!-- 字段来源(单表,取代原来 6 个重复面板) -->
@@ -108,6 +107,12 @@
                 <small>{{ d.source_movie_id }}</small>
                 <span>{{ detailMeta(d) }}</span>
               </div>
+              <button
+                class="btn btn-ghost btn-xs diag-detail-refetch"
+                type="button"
+                :disabled="enriching[d.source]"
+                @click="$emit('enrich-source', { source: d.source, sourceMovieId: d.source_movie_id })"
+              >{{ enriching[d.source] ? '…' : '补全' }}</button>
             </article>
           </div>
         </section>
@@ -160,7 +165,7 @@ export default {
     sourceDiagnostics: { type: Object, default: null },
     diagnosticsMovieTitle: { type: String, default: '字段来源' },
     diagnosticsMovieSubtitle: { type: String, default: '' },
-    manualContentId: { type: String, default: '' },
+    enriching: { type: Object, default: () => ({}) },
     manualActionLoading: { type: Boolean, default: false },
     actressName: { type: String, default: '' },
     actressAvatar: { type: String, default: '' },
@@ -169,7 +174,7 @@ export default {
     manualActionLabel: { type: Function, required: true },
     formatActionTime: { type: Function, required: true },
   },
-  emits: ['close', 'update:manualContentId', 'match', 'unmatch', 'ignore'],
+  emits: ['close', 'enrich', 'enrich-source', 'match', 'unmatch', 'ignore'],
   data() {
     return { showDetails: false }
   },

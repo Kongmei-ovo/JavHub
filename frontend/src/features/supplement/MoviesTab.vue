@@ -28,7 +28,6 @@
 
     <SupplementSourceDiagnosticsDialog
       v-if="sourceDiagnosticsOpen"
-      v-model:manual-content-id="manualContentId"
       drawer
       :source-diagnostics-loading="sourceDiagnosticsLoading"
       :source-diagnostics="sourceDiagnostics"
@@ -36,12 +35,15 @@
       :diagnostics-movie-subtitle="diagnosticsMovieSubtitle"
       :actress-name="actorName"
       :actress-avatar="actressAvatar"
+      :enriching="diagnosticsEnriching"
       :manual-action-loading="manualActionLoading"
       :field-label="fieldLabel"
       :field-value-preview="fieldValuePreview"
       :manual-action-label="manualActionLabel"
       :format-action-time="formatActionTime"
       @close="closeDrawer"
+      @enrich="enrichDiagnosticsAll"
+      @enrich-source="enrichDiagnosticsSourceAction"
       @match="manualMatchMovie"
       @unmatch="manualUnmatchMovie"
       @ignore="manualIgnoreMovie"
@@ -149,6 +151,23 @@ export default {
       })
     }
 
+    function enrichDiagnosticsAll() {
+      return supplement.enrichDiagnosticsMovie({
+        source: 'all',
+        actressId: props.actorContext?.id,
+        onJobsRequested: () => emit('jobs-requested'),
+      })
+    }
+
+    function enrichDiagnosticsSourceAction({ source, sourceMovieId } = {}) {
+      return supplement.enrichDiagnosticsMovie({
+        source,
+        sourceMovieId,
+        actressId: props.actorContext?.id,
+        onJobsRequested: () => emit('jobs-requested'),
+      })
+    }
+
     async function batchEnrichMoviesAction() {
       await supplement.batchEnrichMovies({
         filters: movieFilters,
@@ -224,6 +243,8 @@ export default {
       clearMovieFilters,
       goMoviePage,
       enrichMovieAction,
+      enrichDiagnosticsAll,
+      enrichDiagnosticsSourceAction,
       batchEnrichMoviesAction,
       createDownloadCandidatesAction,
       openMovieSourcesAction,

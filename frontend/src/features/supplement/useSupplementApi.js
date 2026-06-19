@@ -55,6 +55,7 @@ export function useSupplementApi({ api = defaultApi } = {}) {
   const sourceDiagnostics = ref(null)
   const manualContentId = ref('')
   const manualActionLoading = ref(false)
+  const diagnosticsEnriching = ref({})
 
   const sourceHealth = ref([])
   const sourceBudgets = ref([])
@@ -222,6 +223,44 @@ export function useSupplementApi({ api = defaultApi } = {}) {
       const next = { ...enrichingMovies.value }
       delete next[movie.id]
       enrichingMovies.value = next
+    }
+  }
+
+  // Drawer enrich: trigger 蛋源 detail completion for the movie open in the
+  // diagnostics drawer. source='all' fans out across every detail source by the
+  // canonical number (each search-capable source searches by number); a concrete
+  // source re-fetches just that source. The seed source_movie_id comes from the
+  // movie's identities (the diagnostics movie carries no top-level source_movie_id).
+  async function enrichDiagnosticsMovie({ source = 'all', sourceMovieId = '', actressId = '', onJobsRequested = null } = {}) {
+    const diag = sourceDiagnostics.value
+    const movie = diag?.movie
+    if (!movie?.id) return
+    const identities = diag?.identities || []
+    let seed = String(sourceMovieId || '').trim()
+    if (!seed && source !== 'all') {
+      seed = identities.find(item => item.source === source)?.source_movie_id || ''
+    }
+    if (!seed) {
+      seed = identities[0]?.source_movie_id || movie.dvd_id || movie.canonical_number || ''
+    }
+    if (!seed) {
+      ElMessage.warning('缺少可用番号，无法补全')
+      return
+    }
+    const key = source || 'all'
+    if (diagnosticsEnriching.value[key]) return
+    diagnosticsEnriching.value = { ...diagnosticsEnriching.value, [key]: true }
+    try {
+      await api.startSupplementMovieDetailJob(seed, source, movie.local_actress_id || actressId || null)
+      ElMessage.success(source === 'all' ? '已加入补全队列（全部源）' : `已加入补全队列（${source}）`)
+      if (onJobsRequested) await onJobsRequested()
+    } catch (error) {
+      ElMessage.error(`补全失败：${errorMessage(error)}`)
+      console.error('Diagnostics enrich failed:', error)
+    } finally {
+      const next = { ...diagnosticsEnriching.value }
+      delete next[key]
+      diagnosticsEnriching.value = next
     }
   }
 
@@ -595,6 +634,8 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     workspacePendingCandidateCount,
     workspaceDetailTargetCount,
     enrichMovie,
+    enrichDiagnosticsMovie,
+    diagnosticsEnriching,
     batchEnrichMovies,
     createDownloadCandidates,
     sourceDiagnosticsOpen,

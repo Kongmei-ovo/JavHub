@@ -169,6 +169,36 @@
 .diag-stat.warn b { color: var(--warning, #b26a00); }
 .diag-stat.muted b { color: var(--text-tertiary); }
 
+/* ── primary action: enrich by number ── */
+.diag-primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.diag-primary-btn {
+  min-height: 38px;
+  padding: 8px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.diag-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+.diag-primary-hint {
+  font-size: var(--type-caption-2);
+  color: var(--text-tertiary);
+}
+.diag-primary-hint b {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
 /* ── stills ── */
 .diag-stills {
   display: flex;
@@ -202,16 +232,10 @@
   color: var(--text-tertiary);
 }
 
-.diag-match-bar {
+.diag-match-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.diag-match-bar .filter-input {
-  flex: 1;
-  min-width: 180px;
+  margin-top: 10px;
 }
 
 .btn.danger { color: var(--danger, #c0392b); }
@@ -326,10 +350,16 @@
 }
 
 .diag-detail-text {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.diag-detail-refetch {
+  flex: none;
+  align-self: center;
 }
 
 .diag-detail-text strong { font-size: var(--type-body); font-weight: 600; }
