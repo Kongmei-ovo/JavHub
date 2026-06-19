@@ -1,57 +1,10 @@
 /* Panel chrome (workspace-panel, panel-header, panel-subtitle, status-pill,
    pagination) is provided by the shared supplementPanel.css. */
 
-/* works tab wrapper + launchpad quick-filter chips */
 .works-tab {
   display: grid;
   gap: 14px;
 }
-
-.works-quick-chips {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.works-quick-chip {
-  display: grid;
-  gap: 2px;
-  min-width: 116px;
-  padding: 10px 14px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--card-2);
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: transform var(--motion-standard);
-}
-
-.works-quick-chip:hover {
-  transform: translateY(-1px);
-  border-color: var(--hairline-strong);
-}
-
-.works-quick-chip:active {
-  transform: translateY(0.5px) scale(0.99);
-}
-
-.works-quick-chip strong {
-  font-family: var(--font-mono);
-  font-size: var(--type-title-1);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-
-.works-quick-chip span {
-  color: var(--text-muted);
-  font-size: var(--type-caption);
-  font-weight: 600;
-}
-
-.works-quick-chip--candidate strong { color: var(--warn, var(--text-primary)); }
-.works-quick-chip--gap strong { color: var(--bad, var(--text-primary)); }
 
 .filter-bar,
 .movies-panel-toolbar {

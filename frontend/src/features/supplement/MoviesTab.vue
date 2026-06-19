@@ -1,19 +1,5 @@
 <template>
   <div class="works-tab">
-    <div v-if="supplementMovies.length" class="works-quick-chips" aria-label="待补全概览快捷筛选">
-      <button
-        v-for="chip in quickChips"
-        :key="chip.key"
-        type="button"
-        class="works-quick-chip"
-        :class="`works-quick-chip--${chip.key}`"
-        @click="applyQuickChip(chip)"
-      >
-        <strong>{{ chip.value }}</strong>
-        <span>{{ chip.label }}</span>
-      </button>
-    </div>
-
     <SupplementMoviesPanel
       :movie-filters="movieFilters"
       :match-filter-options="matchFilterOptions"
@@ -102,12 +88,6 @@ export default {
       { value: 'low_completeness', label: '低完整度' },
     ]
 
-    const quickChips = computed(() => [
-      { key: 'candidate', label: '待确认候选', value: supplement.workspacePendingCandidateCount.value, filter: { matched: false, quality: '' } },
-      { key: 'gap', label: '字段缺口', value: supplement.workspaceMovieFieldGapCount.value, filter: { quality: 'low_completeness' } },
-      { key: 'detail', label: '可补详情', value: supplement.workspaceDetailTargetCount.value, filter: { matched: false, quality: 'missing_cover' } },
-    ])
-
     const actressAvatar = computed(() => actorAvatar(props.actorContext))
 
     const diagnosticsMovieTitle = computed(() => {
@@ -154,11 +134,6 @@ export default {
       movieFilters.quality = ''
       movieFilters.q = ''
       moviePage.value = 1
-      await applyMovieFilters()
-    }
-
-    async function applyQuickChip(chip) {
-      Object.assign(movieFilters, chip.filter)
       await applyMovieFilters()
     }
 
@@ -240,7 +215,6 @@ export default {
       movieFilters,
       matchFilterOptions,
       qualityFilterOptions,
-      quickChips,
       actressAvatar,
       diagnosticsMovieTitle,
       diagnosticsMovieSubtitle,
@@ -248,7 +222,6 @@ export default {
       loadMovies,
       applyMovieFilters,
       clearMovieFilters,
-      applyQuickChip,
       goMoviePage,
       enrichMovieAction,
       batchEnrichMoviesAction,

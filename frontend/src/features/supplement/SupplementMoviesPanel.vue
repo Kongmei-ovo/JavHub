@@ -88,16 +88,13 @@
             <span v-if="movie.maker_name">· {{ movie.maker_name }}</span>
             <span v-if="movieCategories(movie)" class="fc-cats">· {{ movieCategories(movie) }}</span>
           </div>
-          <div class="fc-fieldgrid" aria-label="影片字段完整度">
-            <span
-              v-for="chip in movieFieldChips(movie)"
-              :key="chip.key"
-              class="field-chip"
-              :class="{ miss: !chip.value }"
-            >
-              <b>{{ chip.label }}</b>
-              <em>{{ chip.value || '缺失' }}</em>
-            </span>
+          <div class="fc-fieldgrid" aria-label="影片字段缺口">
+            <template v-if="movieMissingChips(movie).length">
+              <span v-for="chip in movieMissingChips(movie)" :key="chip.key" class="field-chip miss">
+                缺{{ chip.label }}
+              </span>
+            </template>
+            <span v-else class="fc-fields-ok">字段已齐</span>
           </div>
         </div>
         <div class="fc-act">
@@ -195,6 +192,9 @@ export default {
         { key: 'series', label: '系列', value: movie.series_name || '' },
         { key: 'category', label: '分类', value: this.movieCategories(movie) || '' },
       ]
+    },
+    movieMissingChips(movie) {
+      return this.movieFieldChips(movie).filter(chip => !chip.value)
     },
     movieIsFieldComplete(movie) {
       return this.movieFieldChips(movie).every(chip => Boolean(chip.value))
