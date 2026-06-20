@@ -90,6 +90,10 @@ services:
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     restart: unless-stopped
+    # 硬性内存上限,护住 1c2g 的小机:JavInfoApi 的 CF 会话在抓取空闲 5 分钟后
+    # 被回收(见 cf_solver.go 的 idle reaper),空闲时它只剩基础进程几十 MB;
+    # 这个 cap 只在抓取活跃、Chrome 起来时兜底,防止它把整机吃满。
+    mem_limit: 768m
     environment:
       LOG_LEVEL: ${FLARESOLVERR_LOG_LEVEL:-info}
       TZ: ${TZ:-Asia/Shanghai}
