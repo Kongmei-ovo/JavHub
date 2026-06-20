@@ -366,3 +366,33 @@ def delete_movie_resource(movie_id: str, resource_id: int) -> dict[str, Any] | N
                 )
         _bump_generation()
         return dict(target)
+
+
+def delete_all_movie_resources(movie_id: str) -> list[dict[str, Any]]:
+    """Purge every resource row for a movie (used by whole-folder delete).
+
+    Returns the deleted rows so the caller can clean up their 115 files. Does
+    not touch 115 itself — that is the service layer's job.
+    """
+    movie_id = str(movie_id or "").strip()
+    if not movie_id:
+        return []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, provider, pick_code, remote_file_id, parent_id, resource_type
+            FROM movie_resources WHERE movie_id = ?
+            """,
+            (movie_id,),
+        )
+        rows = [dict(row) for row in cursor.fetchall()]
+        if not rows:
+            return []
+        cursor.execute(
+            "UPDATE movie_resources SET related_resource_id = NULL WHERE movie_id = ?",
+            (movie_id,),
+        )
+        cursor.execute("DELETE FROM movie_resources WHERE movie_id = ?", (movie_id,))
+        _bump_generation()
+        return rows

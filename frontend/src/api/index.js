@@ -829,6 +829,10 @@ export default {
     )
   },
 
+  deleteMovieLibrary(movieId) {
+    return api.delete(`/v1/movies/${pathSegment(movieId, 'movieId')}/library`)
+  },
+
   movieResourceStreamUrl(resourceId, mode = 'auto') {
     const normalizedMode = ['auto', 'original', 'hls'].includes(mode) ? mode : 'auto'
     return `/api/v1/playback/resources/${numericPathSegment(resourceId, 'resourceId')}/stream?mode=${normalizedMode}`

@@ -84,6 +84,17 @@ class Open115DownloaderClient:
             path=target_path,
         )
 
+    async def delete_movie_directory(self, movie_id: str) -> dict[str, Any]:
+        """Delete the whole 115 folder for a movie (``root/v1_<movie>``) and
+        everything inside it. Mirrors ``submit``'s path scheme so the folder is
+        addressed by the same stable, encoded directory name (not a mutable
+        path). Idempotent: ``ensure_folder_path`` returns the existing folder, or
+        materializes an empty one we then remove."""
+        target_path = f"{self.client.root_path.rstrip('/')}/{encode_movie_directory(movie_id)}"
+        folder_id = await self.client.ensure_folder_path(target_path)
+        await self.client.delete_files([str(folder_id)])
+        return {"folder_id": str(folder_id), "path": target_path}
+
     async def find_task(self, info_hash: str) -> dict[str, Any] | None:
         wanted = str(info_hash or "").strip().lower()
         if not wanted:
