@@ -215,7 +215,7 @@
       </transition>
     </teleport>
 
-    <CompletenessSheet :sub="completenessSheetSub" :name="completenessSheetSub ? subDisplayName(completenessSheetSub) : ''" :data="completenessData" :loading="completenessLoading" @close="closeCompletenessSheet" />
+    <CompletenessSheet :sub="completenessSheetSub" :name="completenessSheetSub ? subDisplayName(completenessSheetSub) : ''" :data="completenessData" :loading="completenessLoading" @close="closeCompletenessSheet" @refresh="completenessSheetSub && openCompletenessSheet(completenessSheetSub)" />
   </div>
 </template>
 
