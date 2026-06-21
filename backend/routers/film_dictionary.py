@@ -213,6 +213,56 @@ def classify_film_status(owned: bool, candidates: list[dict]) -> str:
     return "needs_magnet"
 
 
+# --- metadata gap (mirrors the frontend movieFieldChips six dimensions) -------
+
+META_FIELDS = (
+    ("cover", ("cover_url", "cover_thumb_url")),
+    ("runtime", ("runtime_mins",)),
+    ("maker", ("maker_name",)),
+    ("label", ("label_name",)),
+    ("series", ("series_name",)),
+    ("category", ("category_names", "genres")),
+)
+
+
+def _has_meta_value(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0
+    return value is not None and str(value).strip() != ""
+
+
+def _film_metadata(film: ResolvedFilm, field_rows: dict) -> tuple[str, list[str]]:
+    """Return (cover_url, missing_keys) for a canonical film, scanning members.
+
+    Members are unioned best-of: a 番号's several products (digital/rental/Blu-ray)
+    may each carry different fields, so the first non-empty value across members
+    fills the gap.
+    """
+    merged: dict = {}
+    for member in film.members:
+        fields = field_rows.get(member.content_id)
+        if fields:
+            for k, v in fields.items():
+                if _has_meta_value(v) and not _has_meta_value(merged.get(k)):
+                    merged[k] = v
+    cover = ""
+    missing: list[str] = []
+    for key, names in META_FIELDS:
+        present = any(_has_meta_value(merged.get(n)) for n in names)
+        if key == "cover" and present:
+            cover = next(str(merged[n]) for n in names if _has_meta_value(merged.get(n)))
+        if not present:
+            missing.append(key)
+    return cover, missing
+
+
+def _fetch_actress_field_rows(actress_id: int) -> dict:
+    """member content_id -> {cover_url, runtime_mins, maker_name, label_name,
+    series_name, category_names}. Real DB read wired in a follow-up; tests
+    monkeypatch this. Returns {} when unavailable (=> all gaps reported)."""
+    return {}
+
+
 @router.get("/actresses/{actress_id}/completeness")
 def get_actress_completeness(actress_id: int) -> dict:
     try:
@@ -224,14 +274,21 @@ def get_actress_completeness(actress_id: int) -> dict:
     films = resolve_rows_to_films(rows)
     owned = overlay_owned(films)
     by_cid, by_number = _build_candidate_indexes(_fetch_actress_candidates(actress_id))
+    field_rows = _fetch_actress_field_rows(actress_id)
 
     summary = {tier: 0 for tier in GAP_TIERS}
+    summary["owned_complete"] = 0
+    summary["owned_meta_gap"] = 0
     payload_films = []
     for film in films:
         is_owned = bool(owned.get(film.canonical_number))
         matched = _match_film_candidates(film, by_cid, by_number)
         status = classify_film_status(is_owned, matched)
         summary[status] += 1
+        cover, missing = _film_metadata(film, field_rows)
+        meta_complete = is_owned and not missing
+        if is_owned:
+            summary["owned_complete" if meta_complete else "owned_meta_gap"] += 1
         payload_films.append(
             {
                 "canonical_number": film.canonical_number,
@@ -239,6 +296,9 @@ def get_actress_completeness(actress_id: int) -> dict:
                 "title": film.title,
                 "release_date": film.release_date,
                 "status": status,
+                "cover_url": cover,
+                "metadata_missing": missing,
+                "metadata_complete": meta_complete,
                 "member_count": len(film.members),
                 "origin": film.origin,
             }
