@@ -10,6 +10,7 @@ function createApi(overrides = {}) {
     cancelSupplementJob: async () => ({}),
     recoverStaleSupplementJobs: async () => ({}),
     listSupplementMovies: async () => ({ data: [], total_count: 0, total_pages: 1 }),
+    getActressCompleteness: async () => ({ data: { summary: {}, films: [] } }),
     startSupplementMovieDetailJob: async () => ({}),
     startSupplementMovieDetailBatchJobs: async () => ({}),
     createSupplementDownloadCandidates: async () => ({ created: 0, existing: 0 }),
@@ -169,6 +170,38 @@ test('useSupplementApi loads source health with budgets and provider smoke runs'
   assert.equal(supplement.sourceHealthLoading.value, false)
   // source health no longer fetches the gfriends avatar job — that moved to the Jobs tab
   assert.equal(supplement.gfriendsAvatarJob.value, null)
+})
+
+test('useSupplementApi loadCatalog maps completeness films to stages and exposes summary', async () => {
+  const calls = []
+  const { useSupplementApi } = await import(moduleUrl.href)
+  const supplement = useSupplementApi({
+    api: createApi({
+      getActressCompleteness: async (id) => {
+        calls.push(id)
+        return {
+          data: {
+            summary: { owned: 1, in_progress: 0, available: 1, needs_magnet: 1, owned_complete: 0, owned_meta_gap: 1 },
+            films: [
+              { canonical_number: 'A-1', status: 'available', metadata_complete: false, cover_url: '', metadata_missing: ['cover'] },
+              { canonical_number: 'A-2', status: 'owned', metadata_complete: false, cover_url: 'c.jpg', metadata_missing: ['series'] },
+              { canonical_number: 'A-3', status: 'needs_magnet', metadata_complete: false },
+            ],
+          },
+        }
+      },
+    }),
+  })
+
+  await supplement.loadCatalog(5)
+
+  assert.deepEqual(calls, [5])
+  assert.equal(supplement.catalogFilms.value.length, 3)
+  assert.equal(supplement.catalogFilms.value[0].stage, 'downloadable')
+  assert.equal(supplement.catalogFilms.value[1].stage, 'meta_gap')
+  assert.equal(supplement.catalogFilms.value[2].stage, 'find_source')
+  assert.equal(supplement.catalogSummary.value.owned_meta_gap, 1)
+  assert.equal(supplement.catalogLoading.value, false)
 })
 
 test('useSupplementApi loads the gfriends avatar job on demand (for the Jobs tab)', async () => {
