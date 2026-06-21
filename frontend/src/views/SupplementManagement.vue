@@ -20,38 +20,12 @@
     </nav>
 
     <section class="workspace-view">
-      <div v-if="activeTab === 'movies'" class="actor-scope">
-        <div class="actor-scope-bar" :class="{ 'actor-scope-bar--scoped': actorContext }">
-          <template v-if="actorContext">
-            <div class="scope-identity">
-              <div class="scope-avatar" :style="actorContextAvatar ? null : heroAvatarStyle">
-                <img v-if="actorContextAvatar" :src="actorContextAvatar" :alt="actorContextName" loading="eager" decoding="async" @error="handleWorkspaceAvatarError" />
-                <span v-else>{{ actorContextName.slice(0, 1) || '?' }}</span>
-              </div>
-              <div class="scope-meta">
-                <strong>{{ actorContextName }}</strong>
-                <span v-if="actorContextOriginal || heroRecent" class="scope-sub">
-                  <template v-if="actorContextOriginal">{{ actorContextOriginal }}</template>
-                  <template v-if="actorContextOriginal && heroRecent"> · </template>
-                  <template v-if="heroRecent">{{ heroRecent }}</template>
-                </span>
-              </div>
-              <span class="status-pill" :class="`status-${heroStatus}`">{{ statusLabel(heroStatus) }}</span>
-            </div>
-            <div class="scope-actions">
-              <button class="btn btn-primary btn-sm" type="button" :disabled="isSupplementRunning" @click="startSupplement">
-                <span v-if="isSupplementRunning" class="spin-ring" aria-hidden="true"></span>
-                {{ isSupplementRunning ? '补全中…' : '补全这位演员全片' }}
-              </button>
-              <button class="btn btn-ghost btn-sm" type="button" @click="refreshResolved">刷新版本条目</button>
-              <button class="btn btn-ghost btn-sm" type="button" @click="goActorContext">返回演员页</button>
-              <button class="btn btn-quiet btn-sm" type="button" @click="clearActorContext">清除筛选</button>
-            </div>
-          </template>
-          <template v-else>
-            <span class="scope-hint">全部演员的待补全作品</span>
-            <button class="btn btn-ghost btn-sm" type="button" @click="setActiveTab('actors')">选择演员</button>
-          </template>
+      <!-- Scoped to an actress, the 作品目录 hero (inside MoviesTab) carries her
+           identity + actions, so the scope bar only shows the unscoped hint. -->
+      <div v-if="activeTab === 'movies' && !actorContext" class="actor-scope">
+        <div class="actor-scope-bar">
+          <span class="scope-hint">全部演员的待补全作品</span>
+          <button class="btn btn-ghost btn-sm" type="button" @click="setActiveTab('actors')">选择演员</button>
         </div>
       </div>
 
@@ -64,9 +38,11 @@
         :context-label="globalQueueContextLabel"
         :context-items="activeTab === 'jobs' && !actorContext ? globalQueueContextItems : []"
         :refresh-nonce="refreshNonce"
+        :recomputing="isSupplementRunning"
         @actor="applyJobActorContext"
         @select="enterActorWorkspace"
         @start-supplement="actorContext ? startSupplement() : clearActorContext()"
+        @back-to-list="backToActorList"
         @filters-change="handleFiltersChange"
         @jobs-requested="setActiveTab('jobs')"
         @summary-change="handleSummaryChange"
@@ -291,6 +267,10 @@ export default {
       if (!actor?.id) return
       this.actorContext = actor
       this.setActiveTab('movies')
+    },
+    async backToActorList() {
+      await this.clearActorContext()
+      this.setActiveTab('actors')
     },
     async applyActorContext(actressId) {
       const normalized = String(actressId || '').trim()

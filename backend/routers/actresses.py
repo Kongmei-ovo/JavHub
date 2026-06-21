@@ -7,6 +7,7 @@ from modules.info_client import get_info_client
 from services import cache
 from services.video_variants import enrich_video_variants, filter_movie_items
 from services.video_variant_index import apply_indexed_variant_groups
+from services.actress_film_count import overlay_movie_counts
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/actresses", tags=["actresses"])
@@ -67,6 +68,8 @@ async def list_actresses(
                 keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
                 allow_network=False,
             )
+            # 列表显示拟合后的 canonical 影片数（替换上游的商品数）
+            overlay_movie_counts(items)
         return result
 
     return await cache.get_or_set_response(
@@ -95,6 +98,9 @@ async def get_actress(actress_id: int) -> dict[str, Any]:
             keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
             allow_network=False,
         )
+        # 拟合后的 canonical 影片数（替换上游的商品数；未物化则保留商品数兜底）
+        result.setdefault("id", actress_id)
+        overlay_movie_counts([result])
     return result
 
 @router.get("/{actress_id}/videos")

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import defaultApi from '../../api/index.js'
 import { ElMessage } from '../../utils/message.js'
+import { catalogStage } from './catalogStage.js'
 
 function unwrapResponse(resp, fallback = null) {
   if (resp && Object.prototype.hasOwnProperty.call(resp, 'data')) return resp.data
@@ -49,6 +50,13 @@ export function useSupplementApi({ api = defaultApi } = {}) {
   const enrichingMovies = ref({})
   const batchEnriching = ref(false)
   const candidateImporting = ref(false)
+
+  // Drill-down catalog (作品目录): canonical films from completeness, each
+  // tagged with a lifecycle stage. Separate from the legacy flat movies list.
+  const catalogFilms = ref([])
+  const catalogSummary = ref({})
+  const catalogLoading = ref(false)
+  const catalogError = ref('')
 
   const sourceDiagnosticsOpen = ref(false)
   const sourceDiagnosticsLoading = ref(false)
@@ -150,6 +158,23 @@ export function useSupplementApi({ api = defaultApi } = {}) {
 
   async function refreshMovies() {
     await loadMovies(lastMovieRequest.value)
+  }
+
+  // Load an actress's canonical 作品目录 from completeness and tag each film with
+  // its lifecycle stage. Powers the drill-down catalog screen.
+  async function loadCatalog(actressId, { silent = false } = {}) {
+    if (!silent) catalogLoading.value = true
+    catalogError.value = ''
+    try {
+      const data = unwrapResponse(await api.getActressCompleteness(actressId), {})
+      catalogSummary.value = data.summary || {}
+      catalogFilms.value = (data.films || []).map(film => ({ ...film, stage: catalogStage(film) }))
+    } catch (error) {
+      catalogError.value = errorMessage(error)
+      console.error('Load actress catalog failed:', error)
+    } finally {
+      if (!silent) catalogLoading.value = false
+    }
   }
 
   function movieMatchState(movie) {
@@ -625,6 +650,11 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     batchEnriching,
     candidateImporting,
     loadMovies,
+    catalogFilms,
+    catalogSummary,
+    catalogLoading,
+    catalogError,
+    loadCatalog,
     movieMatchClass,
     movieMatchLabel,
     movieCover,

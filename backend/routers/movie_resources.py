@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from config import config
 from database import (
+    codes_with_ready_resource,
     delete_movie_resource,
     delete_all_movie_resources,
     list_movie_resources,
@@ -24,6 +25,21 @@ router = APIRouter(prefix="/api/v1/movies", tags=["movie-resources"])
 async def get_resources(movie_id: str):
     items = list_movie_resources(movie_id)
     return {"items": items, "total": len(items)}
+
+
+@router.post("/owned-status")
+async def owned_status(body: dict) -> dict:
+    """Which of the given keys have a ready 115 video resource.
+
+    Accepts a flat list of candidate keys (content_id / dvd_id / canonical 番号);
+    a film counts as owned when ANY of its keys matches, mirroring overlay_owned.
+    Batch endpoint for the actress film-library list so it can flag 拥有/未拥有
+    without a request per row. Returns the owned subset of the input keys.
+    """
+    raw = body.get("codes") if isinstance(body, dict) else None
+    codes = [str(c) for c in raw if str(c or "").strip()] if isinstance(raw, list) else []
+    owned = codes_with_ready_resource(codes)
+    return {"owned": sorted(owned)}
 
 
 @router.post("/{movie_id}/resources/{resource_id}/default")

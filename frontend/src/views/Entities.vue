@@ -265,6 +265,7 @@ export default {
       return names.find(name => name !== this.displayName(item)) || ''
     },
     entityMeta(item) {
+      // movie_count for actresses is the 拟合后 canonical count (backend-injected).
       const count = item.movie_count ?? item.video_count ?? item.total_videos ?? item.count
       return count != null ? `${this.formatNumber(count)} 部作品` : ''
     },

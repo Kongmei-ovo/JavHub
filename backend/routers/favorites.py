@@ -13,6 +13,32 @@ from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/favorites", tags=["Favorites"])
 
+
+def _overlay_favorite_film_counts(items):
+    """Show the 拟合后 canonical 影片数 for actress favorites instead of the raw
+    商品 count captured in their stored metadata. Best-effort, in place."""
+    if not isinstance(items, list):
+        return items
+    pairs = []  # (metadata_dict, actress_id)
+    for item in items:
+        if not isinstance(item, dict) or item.get("entity_type") != "actress":
+            continue
+        meta = item.get("metadata")
+        eid = str(item.get("entity_id") or "").strip()
+        if isinstance(meta, dict) and eid.isdigit():
+            pairs.append((meta, int(eid)))
+    if not pairs:
+        return items
+    try:
+        from database.actress_film_count import get_actress_film_counts
+        counts = get_actress_film_counts([aid for _, aid in pairs])
+    except Exception:  # noqa: BLE001 - never break the favorites listing
+        return items
+    for meta, aid in pairs:
+        if aid in counts:
+            meta["movie_count"] = counts[aid]
+    return items
+
 class ToggleFavoriteRequest(BaseModel):
     entity_type: str
     entity_id: str
@@ -54,7 +80,9 @@ async def get_favorites(
 
     async def produce():
         loader = favorite.list_favorites if include_metadata_value else favorite.list_favorite_index
-        return await asyncio.to_thread(loader, entity_type_value)
+        items = await asyncio.to_thread(loader, entity_type_value)
+        _overlay_favorite_film_counts(items)
+        return items
 
     return await response_cache.get_or_set_response(
         "favorites",

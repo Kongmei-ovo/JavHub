@@ -608,6 +608,18 @@ def _init_actor_mapping_tables(cursor) -> None:
             updated_at TIMESTAMPTZ
         )
     ''')
+
+    # Materialized 拟合后 canonical 影片数 per actress (variant/edition-collapsed),
+    # computed during the variant-index rebuild. Actress lists read this instead
+    # of the raw 商品/product count, with no per-request recompute.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS actress_film_counts (
+            actress_id BIGINT PRIMARY KEY,
+            total_films INTEGER NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     for sql_text in (
         "ALTER TABLE actor_mappings ADD COLUMN IF NOT EXISTS javinfo_avatar_url TEXT",
         "ALTER TABLE actor_mappings ADD COLUMN IF NOT EXISTS movie_count INTEGER",

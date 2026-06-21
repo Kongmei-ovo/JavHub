@@ -523,6 +523,7 @@ export default {
     const actorCardName = (item) => actorName(item.actor, entityDisplayName(item) || String(item.entity_id))
     const actorCardSubtitle = (item) => actorOriginalName(item.actor)
     const actorCardMeta = (item) => {
+      // movie_count is the 拟合后 canonical count (backend-injected into metadata).
       const count = item.actor?.movie_count
       return count != null ? `${Number(count).toLocaleString()} 部作品` : ''
     }

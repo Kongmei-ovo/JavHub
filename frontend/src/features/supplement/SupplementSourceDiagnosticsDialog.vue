@@ -34,7 +34,7 @@
                 <span v-if="enriching.all" class="spinner diag-spinner"></span>
                 <span>{{ enriching.all ? '补全中…' : '用番号补全字段' }}</span>
               </button>
-              <span class="diag-primary-hint">番号 <b>{{ movie.dvd_id || movie.canonical_number || '—' }}</b> · 全部蛋源</span>
+              <span class="diag-primary-hint">番号 <b>{{ movie.dvd_id || movie.canonical_number || '—' }}</b> · 全部资料源</span>
             </div>
           </div>
         </section>

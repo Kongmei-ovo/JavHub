@@ -3,7 +3,7 @@
     <div class="panel-header">
       <div>
         <h2>待补全演员</h2>
-        <p class="panel-subtitle">订阅演员的补全总览 · 点演员进入其待补全作品</p>
+        <p class="panel-subtitle">订阅演员的收藏与资料完整度 · 点演员查看其作品目录</p>
       </div>
       <div class="actors-toolbar">
         <label class="actors-search">
@@ -163,9 +163,14 @@ export default {
     },
     cardMeta(actor) {
       const parts = []
-      if (Number.isInteger(actor._pending)) parts.push(`${actor._pending} 部待补`)
-      else if (actor._pendingLoading) parts.push('待补统计中…')
-      if (Number.isInteger(actor.movie_count)) parts.push(`共 ${actor.movie_count} 部`)
+      if (actor._summaryLoading && !Number.isInteger(actor._missing)) {
+        parts.push('完整度统计中…')
+      } else if (Number.isInteger(actor._missing)) {
+        parts.push(actor._missing > 0 ? `缺 ${actor._missing} 部` : '收藏已齐')
+        if (Number.isInteger(actor._metaGap) && actor._metaGap > 0) parts.push(`元数据 ${actor._metaGap} 待补`)
+      }
+      const total = Number.isInteger(actor._filmCount) ? actor._filmCount : actor.movie_count
+      if (Number.isInteger(total)) parts.push(`共 ${total} 部`)
       return parts.join(' · ')
     },
     cardBadges(actor) {
@@ -224,8 +229,10 @@ export default {
         id: sub.actress_id || sub.target_id,
         name: sub.actress_name || sub.target_label || '',
         _subscribed: true,
-        _pending: null,
-        _pendingLoading: false,
+        _missing: null,
+        _metaGap: null,
+        _filmCount: null,
+        _summaryLoading: false,
         _job: null,
       }))
       this.loading = false
@@ -234,7 +241,7 @@ export default {
       // Stage 2-4 run independently; cards fill in as data arrives.
       this.enrichActors(token)
       this.loadJobStatuses(token)
-      this.loadPendingCounts(token)
+      this.loadCompletenessSummaries(token)
     },
     async enrichActors(token) {
       await this.pool(this.actors.map(actor => actor.id), 6, async (id) => {
@@ -276,17 +283,27 @@ export default {
         /* status badges are best-effort */
       }
     },
-    async loadPendingCounts(token) {
-      await this.pool(this.actors.map(actor => actor.id), 4, async (id) => {
+    // Best-effort completeness summary per actress: 缺 X 部 (尚未入库的收藏：
+    // 待找源 + 可下载 + 获取中) · 元数据 Y 待补 (已入库但字段不全)。完整度是较重
+    // 的调用，故并发压到 3，渐进填充，出错降级为不显示。
+    async loadCompletenessSummaries(token) {
+      await this.pool(this.actors.map(actor => actor.id), 3, async (id) => {
         if (token !== this._loadToken) return
-        this.patchActor(id, { _pendingLoading: true })
+        this.patchActor(id, { _summaryLoading: true })
         try {
-          const resp = await api.listSupplementMovies({ actress_id: id, matched: false, page: 1, page_size: 1 })
+          const resp = await api.getActressCompleteness(id)
           if (token !== this._loadToken) return
-          const total = Number(resp.data?.total_count)
-          this.patchActor(id, { _pending: Number.isFinite(total) ? total : null, _pendingLoading: false })
+          const data = resp.data || resp || {}
+          const s = data.summary || {}
+          const missing = (s.needs_magnet || 0) + (s.available || 0) + (s.in_progress || 0)
+          this.patchActor(id, {
+            _missing: missing,
+            _metaGap: s.owned_meta_gap || 0,
+            _filmCount: Number.isInteger(data.total_films) ? data.total_films : null,
+            _summaryLoading: false,
+          })
         } catch (e) {
-          this.patchActor(id, { _pending: null, _pendingLoading: false })
+          this.patchActor(id, { _missing: null, _metaGap: null, _summaryLoading: false })
         }
       })
     },

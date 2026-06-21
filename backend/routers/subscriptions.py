@@ -97,6 +97,8 @@ async def search_actresses(q: str = Query("", min_length=1)) -> dict[str, Any]:
         keys=["name_kanji", "name_romaji", "name_ja", "name_en", "name"],
         allow_network=False,
     )
+    from services.actress_film_count import overlay_movie_counts
+    overlay_movie_counts(matched)  # 拟合后 canonical 影片数
     return {"data": matched, "total": len(matched)}
 
 class ToggleSubscriptionRequest(BaseModel):

@@ -107,8 +107,45 @@ def test_completeness_summary_classifies_gaps(client, monkeypatch):
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
     assert body["total_films"] == 3
     assert body["owned_films"] == 1
-    assert body["summary"] == {"owned": 1, "in_progress": 0, "available": 1, "needs_magnet": 1}
+    # owned/in_progress/available/needs_magnet remain; the new owned split keys are additive.
+    assert body["summary"]["owned"] == 1
+    assert body["summary"]["in_progress"] == 0
+    assert body["summary"]["available"] == 1
+    assert body["summary"]["needs_magnet"] == 1
     by_canon = {f["canonical_number"]: f["status"] for f in body["films"]}
     assert by_canon[next(c for c in by_canon if "OWN" in c.upper())] == "owned"
     assert by_canon[next(c for c in by_canon if "MAG" in c.upper())] == "available"
     assert by_canon[next(c for c in by_canon if "GAP" in c.upper())] == "needs_magnet"
+
+
+def test_completeness_adds_metadata_gap_and_cover(client, monkeypatch):
+    rows = [
+        {"content_id": "full00001", "dvd_id": "FULL-001", "service_code": "digital",
+         "release_date": "2022-03-01", "data_origin": "native", "actress_ids": [5]},
+        {"content_id": "gap00002", "dvd_id": "GAP-002", "service_code": "digital",
+         "release_date": "2022-02-01", "data_origin": "native", "actress_ids": [5]},
+    ]
+    # member content_id -> rich field row (real DB read lives in _fetch_actress_field_rows)
+    fields = {
+        "full00001": {"cover_url": "https://x/c1.jpg", "runtime_mins": 120,
+                      "maker_name": "M", "label_name": "L", "series_name": "S",
+                      "category_names": ["a"]},
+        "gap00002": {"cover_url": "", "runtime_mins": None, "maker_name": "",
+                     "label_name": "", "series_name": "", "category_names": []},
+    }
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"full00001", "gap00002"})
+
+    body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
+    assert body["summary"]["owned_complete"] == 1
+    assert body["summary"]["owned_meta_gap"] == 1
+    by = {f["canonical_number"]: f for f in body["films"]}
+    full = next(f for c, f in by.items() if "FULL" in c.upper())
+    gap = next(f for c, f in by.items() if "GAP" in c.upper())
+    assert full["metadata_complete"] is True
+    assert full["cover_url"] == "https://x/c1.jpg"
+    assert full["metadata_missing"] == []
+    assert gap["metadata_complete"] is False
+    assert set(gap["metadata_missing"]) == {"cover", "runtime", "maker", "label", "series", "category"}

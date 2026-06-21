@@ -18,7 +18,7 @@ from services.canonical_resolver import (
     overlay_owned,
     resolve_rows_to_films,
 )
-from services.video_variant_index import _connect_import_db
+from services.video_variant_index import _connect_import_db, _has_resolved_videos_table
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +213,140 @@ def classify_film_status(owned: bool, candidates: list[dict]) -> str:
     return "needs_magnet"
 
 
+# --- metadata gap (mirrors the frontend movieFieldChips six dimensions) -------
+
+META_FIELDS = (
+    ("cover", ("cover_url", "cover_thumb_url")),
+    ("runtime", ("runtime_mins",)),
+    ("maker", ("maker_name",)),
+    ("label", ("label_name",)),
+    ("series", ("series_name",)),
+    ("category", ("category_names", "genres")),
+)
+
+
+def _has_meta_value(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0
+    return value is not None and str(value).strip() != ""
+
+
+def _film_metadata(film: ResolvedFilm, field_rows: dict) -> tuple[str, list[str]]:
+    """Return (cover_url, missing_keys) for a canonical film, scanning members.
+
+    Members are unioned best-of: a 番号's several products (digital/rental/Blu-ray)
+    may each carry different fields, so the first non-empty value across members
+    fills the gap.
+    """
+    merged: dict = {}
+    for member in film.members:
+        fields = field_rows.get(member.content_id)
+        if fields:
+            for k, v in fields.items():
+                if _has_meta_value(v) and not _has_meta_value(merged.get(k)):
+                    merged[k] = v
+    cover = ""
+    missing: list[str] = []
+    for key, names in META_FIELDS:
+        present = any(_has_meta_value(merged.get(n)) for n in names)
+        if key == "cover" and present:
+            cover = next(str(merged[n]) for n in names if _has_meta_value(merged.get(n)))
+        if not present:
+            missing.append(key)
+    return cover, missing
+
+
+def _field_row(row: dict, *, with_category: bool) -> dict:
+    cats = row.get("category_names") if with_category else None
+    return {
+        "cover_url": row.get("cover_url") or "",
+        "runtime_mins": row.get("runtime_mins"),
+        "maker_name": row.get("maker_name") or "",
+        "label_name": row.get("label_name") or "",
+        "series_name": row.get("series_name") or "",
+        "category_names": list(cats) if cats else [],
+    }
+
+
+def _fetch_actress_field_rows(actress_id: int) -> dict:
+    """member content_id -> {cover_url, runtime_mins, maker_name, label_name,
+    series_name, category_names}, read from the JavInfo import DB.
+
+    Covers native works (derived_video + taxonomy joins, categories aggregated)
+    and pure-supplement works (resolved_videos carries denormalized names; it has
+    no category column, so category stays a gap there). Best-effort: any read
+    failure degrades to the rows gathered so far (=> remaining films report all
+    gaps) and never breaks completeness. Tests monkeypatch this."""
+    try:
+        conn = _connect_import_db()
+    except Exception as exc:
+        logger.warning("completeness fields: import DB unavailable for actress %s: %s", actress_id, exc)
+        return {}
+    field_rows: dict[str, dict] = {}
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT v.content_id,
+                       COALESCE(v.jacket_thumb_url, v.jacket_full_url) AS cover_url,
+                       v.runtime_mins,
+                       COALESCE(mk.name_ja, mk.name_en) AS maker_name,
+                       COALESCE(lb.name_ja, lb.name_en) AS label_name,
+                       COALESCE(sr.name_ja, sr.name_en) AS series_name,
+                       ARRAY_REMOVE(ARRAY_AGG(DISTINCT COALESCE(cat.name_ja, cat.name_en)), NULL)
+                           AS category_names
+                FROM derived_video v
+                JOIN derived_video_actress va ON va.content_id = v.content_id
+                LEFT JOIN derived_maker mk ON mk.id = v.maker_id
+                LEFT JOIN derived_label lb ON lb.id = v.label_id
+                LEFT JOIN derived_series sr ON sr.id = v.series_id
+                LEFT JOIN derived_video_category vc ON vc.content_id = v.content_id
+                LEFT JOIN derived_category cat ON cat.id = vc.category_id
+                WHERE va.actress_id = %s
+                GROUP BY v.content_id, cover_url, v.runtime_mins, maker_name, label_name, series_name
+                """,
+                (actress_id,),
+            )
+            for row in cursor.fetchall():
+                cid = str(row.get("content_id") or "").strip()
+                if cid:
+                    field_rows[cid] = _field_row(row, with_category=True)
+
+        # Supplement half — only when the resolved layer exists. Keyed by every
+        # plausible member id (primary_content_id may be NULL for 私拍/无码, so
+        # dvd_id / canonical_number / resolved_id back it up — matching the keys
+        # the resolver derives via _member_content_id).
+        if _has_resolved_videos_table(conn):
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT rv.primary_content_id, rv.resolved_id, rv.dvd_id, rv.canonical_number,
+                           COALESCE(rv.jacket_thumb_url, rv.jacket_full_url) AS cover_url,
+                           rv.runtime_mins, rv.maker_name, rv.label_name, rv.series_name
+                    FROM resolved_videos rv
+                    JOIN resolved_video_actresses rva ON rva.resolved_id = rv.resolved_id
+                    WHERE rva.local_actress_id = %s AND rv.data_origin = 'supplement'
+                    """,
+                    (actress_id,),
+                )
+                for row in cursor.fetchall():
+                    fields = _field_row(row, with_category=False)
+                    for key in (
+                        row.get("primary_content_id"),
+                        row.get("resolved_id"),
+                        row.get("dvd_id"),
+                        row.get("canonical_number"),
+                    ):
+                        k = str(key or "").strip()
+                        if k:
+                            field_rows.setdefault(k, fields)
+    except Exception as exc:
+        logger.warning("completeness fields: read failed for actress %s: %s", actress_id, exc)
+    finally:
+        conn.close()
+    return field_rows
+
+
 @router.get("/actresses/{actress_id}/completeness")
 def get_actress_completeness(actress_id: int) -> dict:
     try:
@@ -224,14 +358,21 @@ def get_actress_completeness(actress_id: int) -> dict:
     films = resolve_rows_to_films(rows)
     owned = overlay_owned(films)
     by_cid, by_number = _build_candidate_indexes(_fetch_actress_candidates(actress_id))
+    field_rows = _fetch_actress_field_rows(actress_id)
 
     summary = {tier: 0 for tier in GAP_TIERS}
+    summary["owned_complete"] = 0
+    summary["owned_meta_gap"] = 0
     payload_films = []
     for film in films:
         is_owned = bool(owned.get(film.canonical_number))
         matched = _match_film_candidates(film, by_cid, by_number)
         status = classify_film_status(is_owned, matched)
         summary[status] += 1
+        cover, missing = _film_metadata(film, field_rows)
+        meta_complete = is_owned and not missing
+        if is_owned:
+            summary["owned_complete" if meta_complete else "owned_meta_gap"] += 1
         payload_films.append(
             {
                 "canonical_number": film.canonical_number,
@@ -239,6 +380,9 @@ def get_actress_completeness(actress_id: int) -> dict:
                 "title": film.title,
                 "release_date": film.release_date,
                 "status": status,
+                "cover_url": cover,
+                "metadata_missing": missing,
+                "metadata_complete": meta_complete,
                 "member_count": len(film.members),
                 "origin": film.origin,
             }

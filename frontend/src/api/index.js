@@ -817,6 +817,11 @@ export default {
     return api.get(`/v1/movies/${pathSegment(movieId, 'movieId')}/resources`)
   },
 
+  // 批量查一组番号/content_id 哪些 115 已拥有（任一键命中即拥有）
+  getMoviesOwnedStatus(codes = []) {
+    return api.post('/v1/movies/owned-status', { codes })
+  },
+
   setDefaultMovieResource(movieId, resourceId) {
     return api.post(
       `/v1/movies/${pathSegment(movieId, 'movieId')}/resources/${numericPathSegment(resourceId, 'resourceId')}/default`,
