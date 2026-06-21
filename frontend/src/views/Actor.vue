@@ -86,7 +86,7 @@
       <div class="section-header">
         <h2>全部作品</h2>
         <div class="header-right">
-          <div v-if="variantCount > 0" class="variant-switch">
+          <div v-if="variantCount > 0 && viewMode === 'cover'" class="variant-switch">
             <button
               class="switch-btn"
               :class="{ active: !showVariants }"
@@ -98,11 +98,20 @@
               @click="showVariants = true"
             >展开版本 <span class="variant-badge">{{ variantCount }}</span></button>
           </div>
+          <div class="view-switch" role="group" aria-label="视图切换">
+            <button class="switch-btn" :class="{ active: viewMode === 'cover' }" @click="viewMode = 'cover'">封面</button>
+            <button class="switch-btn" :class="{ active: viewMode === 'list' }" @click="setListView">列表</button>
+          </div>
+          <button class="btn btn-ghost csv-btn" type="button" :disabled="exportingCsv" @click="exportCsv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+            {{ exportingCsv ? (exportProgress || '导出中…') : '导出 CSV' }}
+          </button>
           <span class="movie-count">{{ sectionMovieCountLabel }}</span>
         </div>
       </div>
 
-      <!-- Year groups -->
+      <!-- Cover mode: year groups -->
+      <template v-if="viewMode === 'cover'">
       <div v-for="group in visibleYearGroups" :key="group.year" :id="'year-' + group.year" class="year-group">
         <div class="year-header">
           <span class="year-label">{{ group.year }}</span>
@@ -159,6 +168,34 @@
         </div>
         <div v-else class="year-empty">该年份暂无作品</div>
       </div>
+      </template>
+
+      <!-- List mode: flat sortable table (番号 · 片名 · 时长 · 出演时间 · 115) -->
+      <div v-else class="movie-list">
+        <div class="movie-list-head">
+          <button type="button" class="ml-col ml-code" :class="listSortClass('code')" @click="setListSort('code')">番号<span class="ml-arrow">{{ listSortArrow('code') }}</span></button>
+          <span class="ml-col ml-title">片名</span>
+          <button type="button" class="ml-col ml-runtime" :class="listSortClass('runtime')" @click="setListSort('runtime')">时长<span class="ml-arrow">{{ listSortArrow('runtime') }}</span></button>
+          <button type="button" class="ml-col ml-date" :class="listSortClass('date')" @click="setListSort('date')">出演时间<span class="ml-arrow">{{ listSortArrow('date') }}</span></button>
+          <span class="ml-col ml-owned">115</span>
+        </div>
+        <button
+          v-for="movie in sortedListMovies"
+          :key="movieKey(movie)"
+          type="button"
+          class="movie-list-row"
+          @click="openModal(movie)"
+        >
+          <span class="ml-col ml-code">{{ movie.display_code || movie.code || movie.id }}</span>
+          <span class="ml-col ml-title">{{ movie.title || '—' }}</span>
+          <span class="ml-col ml-runtime">{{ movie._raw?.runtime_mins ? movie._raw.runtime_mins + ' 分' : '—' }}</span>
+          <span class="ml-col ml-date">{{ movie.date || '—' }}</span>
+          <span class="ml-col ml-owned">
+            <span class="owned-badge" :class="isOwned(movie) ? 'is-owned' : 'not-owned'">{{ isOwned(movie) ? '已拥有' : '未拥有' }}</span>
+          </span>
+        </button>
+      </div>
+
       <div v-if="hasMoreMovies" class="load-more-wrap">
         <button
           class="btn btn-ghost load-more-btn"
@@ -185,7 +222,7 @@
 
     <!-- Year Navigator (right side) -->
     <transition name="nav-fade">
-      <div v-if="yearNavItems.length > 1" class="year-nav">
+      <div v-if="yearNavItems.length > 1 && viewMode === 'cover'" class="year-nav">
         <button
           v-for="item in yearNavItems"
           :key="item.year"
@@ -211,6 +248,7 @@ import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
 import { applyImageFallback } from '../utils/imageFallback.js'
 import { variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
+import { movieOwnKeys, sortFilmList, filmsToCsv, downloadCsv } from '../features/actor/filmListExport.js'
 import MovieCard from '../components/MovieCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
@@ -241,7 +279,13 @@ export default {
       yearLoadingYear: null,
       showVariants: false,
       expandedVariantGroups: {},
-      _yearObserver: null
+      _yearObserver: null,
+      viewMode: 'cover', // 'cover' | 'list'
+      listSortKey: 'date', // 'code' | 'runtime' | 'date'
+      listSortDir: 'desc',
+      ownedKeys: {}, // owned content_id / number -> true
+      exportingCsv: false,
+      exportProgress: '',
     }
   },
   computed: {
@@ -259,6 +303,9 @@ export default {
     displayMovies() {
       if (this.showVariants) return this.flattenVariantGroups(this.movies)
       return this.movies
+    },
+    sortedListMovies() {
+      return sortFilmList(this.displayMovies, this.listSortKey, this.listSortDir)
     },
     variantCount() {
       return this.movies.reduce((sum, movie) => sum + Math.max(0, Number(movie.variant_group_count || 1) - 1), 0)
@@ -537,9 +584,11 @@ export default {
         this.yearLoadState = {}
         this.yearLoadingYear = null
         this.expandedVariantGroups = {}
+        this.ownedKeys = {}
         const first = await this.fetchActorMoviePage(1, { pageSize, includeTotal: true })
         this.appendMoviePage(first, { trustTotals: true })
         this.loadYearBounds(first)
+        if (this.viewMode === 'list') this.refreshOwnedStatus()
       } catch (e) {
         console.error('Load actor movies failed:', e)
         this.movieError = e.response?.data?.detail || e.message || '演员作品加载失败'
@@ -558,6 +607,7 @@ export default {
         const data = await this.fetchActorMoviePage(nextPage, { pageSize: this.moviePageSize })
         this.moviePage = nextPage
         this.appendMoviePage(data)
+        if (this.viewMode === 'list') this.refreshOwnedStatus()
       } catch (e) {
         console.error('Load more actor movies failed:', e)
       } finally {
@@ -665,6 +715,93 @@ export default {
     },
     cardImageUrl(movie) {
       return movie.cover_url || movie.jacket_thumb_url || movie.jacket_full_url || ''
+    },
+    // --- list view: sort, ownership, CSV export ---------------------------
+    setListView() {
+      this.viewMode = 'list'
+      this.refreshOwnedStatus()
+    },
+    setListSort(key) {
+      if (this.listSortKey === key) {
+        this.listSortDir = this.listSortDir === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.listSortKey = key
+        this.listSortDir = key === 'code' ? 'asc' : 'desc'
+      }
+    },
+    listSortArrow(key) {
+      if (this.listSortKey !== key) return ''
+      return this.listSortDir === 'asc' ? '↑' : '↓'
+    },
+    listSortClass(key) {
+      return { active: this.listSortKey === key }
+    },
+    isOwned(movie) {
+      return movieOwnKeys(movie).some(k => this.ownedKeys[k])
+    },
+    ownedMapFor(owned) {
+      const map = {}
+      for (const k of (owned || [])) map[String(k)] = true
+      return map
+    },
+    async refreshOwnedStatus() {
+      const keys = [...new Set(this.displayMovies.flatMap(movieOwnKeys))]
+      if (!keys.length) return
+      try {
+        const resp = await api.getMoviesOwnedStatus(keys)
+        this.ownedKeys = this.ownedMapFor(resp.data?.owned || resp.owned)
+      } catch (e) {
+        console.error('Load owned status failed:', e)
+      }
+    },
+    async fetchAllMoviesForExport() {
+      const pageSize = MOVIE_PAGE_SIZE
+      const collected = []
+      const seen = new Set()
+      const pushPage = (data) => {
+        for (const m of (data.data || [])) {
+          const nm = this.normalizeMovie(m)
+          const key = this.movieKey(nm)
+          if (seen.has(key)) continue
+          seen.add(key)
+          collected.push(nm)
+        }
+      }
+      const first = await this.fetchActorMoviePage(1, { pageSize, includeTotal: true })
+      const total = Number.isInteger(first.total_count) && first.total_count >= 0 ? first.total_count : null
+      const totalPages = Number.isInteger(first.total_pages) && first.total_pages > 0 ? first.total_pages : null
+      pushPage(first)
+      const lastPage = totalPages || (total ? Math.ceil(total / pageSize) : 1)
+      for (let p = 2; p <= lastPage; p += 1) {
+        this.exportProgress = `导出中… ${collected.length}${total ? '/' + total : ''}`
+        const before = collected.length
+        pushPage(await this.fetchActorMoviePage(p, { pageSize }))
+        if (collected.length === before) break // safety: page returned nothing new
+      }
+      return collected
+    },
+    async exportCsv() {
+      if (this.exportingCsv) return
+      this.exportingCsv = true
+      this.exportProgress = '导出中…'
+      try {
+        const all = await this.fetchAllMoviesForExport()
+        let ownedMap = {}
+        try {
+          const resp = await api.getMoviesOwnedStatus([...new Set(all.flatMap(movieOwnKeys))])
+          ownedMap = this.ownedMapFor(resp.data?.owned || resp.owned)
+        } catch (e) {
+          console.error('Owned status for CSV failed:', e)
+        }
+        const csv = filmsToCsv(all, m => movieOwnKeys(m).some(k => ownedMap[k]))
+        const name = (this.translatedName || this.actorName || 'actress').replace(/[\\/:*?"<>|]/g, '_')
+        downloadCsv(csv, `${name}-作品集.csv`)
+      } catch (e) {
+        console.error('CSV export failed:', e)
+      } finally {
+        this.exportingCsv = false
+        this.exportProgress = ''
+      }
     },
     displayServiceCode(movie) {
       if (movie._raw?.data_origin === 'supplement') return ''

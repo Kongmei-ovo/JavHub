@@ -644,3 +644,89 @@
     font-size: var(--type-panel-title);
   }
 }
+
+/* ============================================================
+   列表视图（番号 · 片名 · 时长 · 出演时间 · 115）+ 视图切换 + CSV
+   ============================================================ */
+.view-switch { display: inline-flex; gap: 4px; }
+.csv-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; font-size: var(--type-caption); }
+.csv-btn svg { flex-shrink: 0; }
+
+.movie-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--card);
+}
+
+.movie-list-head,
+.movie-list-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 84px 116px 92px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  text-align: left;
+}
+
+.movie-list-head {
+  min-height: 40px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--card-2);
+}
+
+.movie-list-head .ml-col {
+  font-size: var(--type-micro);
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+button.ml-col { cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+button.ml-col:hover { color: var(--text-secondary); }
+button.ml-col.active { color: var(--accent); }
+.ml-arrow { font-size: 10px; }
+
+.movie-list-row {
+  min-height: 48px;
+  border-bottom: 1px solid var(--hairline);
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.movie-list-row:last-child { border-bottom: 0; }
+.movie-list-row:hover { background: var(--card-hover); }
+
+.ml-col { min-width: 0; font-size: var(--type-caption); color: var(--text-secondary); }
+.ml-code { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-title { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-runtime, .ml-date { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.ml-owned { display: flex; }
+
+.owned-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: var(--type-micro);
+  font-weight: 650;
+}
+.owned-badge.is-owned { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); }
+.owned-badge.not-owned { background: var(--card-2); color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .movie-list-head,
+  .movie-list-row { grid-template-columns: 110px minmax(0, 1fr) 70px; gap: 8px; padding: 0 12px; }
+  .movie-list-head .ml-date,
+  .movie-list-head .ml-owned,
+  .movie-list-row .ml-date,
+  .movie-list-row .ml-owned { display: none; }
+}

@@ -216,6 +216,30 @@ class MovieResourcesRoutesDatabaseTests(TempPostgresMixin, unittest.TestCase):
         delete_files.assert_awaited_once_with(["file-real"], parent_id="folder-real")
         self.assertIsNone(get_movie_resource(resource_id))
 
+    def test_owned_status_returns_owned_subset(self):
+        from database import upsert_movie_resource
+
+        upsert_movie_resource(
+            movie_id="OWNED-1",
+            provider="open115",
+            remote_file_id="file-owned",
+            name="OWNED-1.mp4",
+            resource_type="video",
+            status="ready",
+            is_default=True,
+        )
+        response = self._client().post(
+            "/api/v1/movies/owned-status",
+            json={"codes": ["OWNED-1", "NOPE-2", "", None]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"owned": ["OWNED-1"]})
+
+    def test_owned_status_empty_input(self):
+        response = self._client().post("/api/v1/movies/owned-status", json={"codes": []})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"owned": []})
+
     def test_delete_resource_passes_empty_real_database_parent_id_to_115(self):
         from database import get_movie_resource, upsert_movie_resource
 
