@@ -316,7 +316,8 @@ export default {
           // actress's flat supplement movies (any match state) as the ⋯ diagnostics index.
           await Promise.all([
             supplement.loadCatalog(props.actorContext.id),
-            supplement.loadMovies({ page: 1, pageSize: 200, filters: { matched: null, actress_id: String(props.actorContext.id) } }),
+            // page_size is capped at 100 server-side; the index is best-effort.
+            supplement.loadMovies({ page: 1, pageSize: 100, filters: { matched: null, actress_id: String(props.actorContext.id) } }),
           ])
           emitSummary()
         } else {
