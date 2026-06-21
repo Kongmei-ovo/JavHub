@@ -169,7 +169,8 @@ export default {
         parts.push(actor._missing > 0 ? `缺 ${actor._missing} 部` : '收藏已齐')
         if (Number.isInteger(actor._metaGap) && actor._metaGap > 0) parts.push(`元数据 ${actor._metaGap} 待补`)
       }
-      if (Number.isInteger(actor.movie_count)) parts.push(`共 ${actor.movie_count} 部`)
+      const total = Number.isInteger(actor._filmCount) ? actor._filmCount : actor.movie_count
+      if (Number.isInteger(total)) parts.push(`共 ${total} 部`)
       return parts.join(' · ')
     },
     cardBadges(actor) {
@@ -230,6 +231,7 @@ export default {
         _subscribed: true,
         _missing: null,
         _metaGap: null,
+        _filmCount: null,
         _summaryLoading: false,
         _job: null,
       }))
@@ -291,9 +293,15 @@ export default {
         try {
           const resp = await api.getActressCompleteness(id)
           if (token !== this._loadToken) return
-          const s = (resp.data || resp)?.summary || {}
+          const data = resp.data || resp || {}
+          const s = data.summary || {}
           const missing = (s.needs_magnet || 0) + (s.available || 0) + (s.in_progress || 0)
-          this.patchActor(id, { _missing: missing, _metaGap: s.owned_meta_gap || 0, _summaryLoading: false })
+          this.patchActor(id, {
+            _missing: missing,
+            _metaGap: s.owned_meta_gap || 0,
+            _filmCount: Number.isInteger(data.total_films) ? data.total_films : null,
+            _summaryLoading: false,
+          })
         } catch (e) {
           this.patchActor(id, { _missing: null, _metaGap: null, _summaryLoading: false })
         }

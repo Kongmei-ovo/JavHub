@@ -319,6 +319,15 @@ def run_variant_index_job(job_id: int, *, limit: int | None = None, force: bool 
         result = replace_variant_groups(groups)
         if fingerprint is not None:
             result = {**result, "source_fingerprint": fingerprint}
+        # Refresh the materialized per-actress 拟合后 canonical 影片数 off the same
+        # rebuild so actress lists read it instead of recomputing per request.
+        # Best-effort: a count failure must not fail the variant index job.
+        try:
+            from services.actress_film_count import rebuild_actress_film_counts
+
+            result = {**result, "actress_film_counts": rebuild_actress_film_counts()}
+        except Exception as count_exc:  # noqa: BLE001
+            logger.warning("actress film counts rebuild failed (non-fatal): %s", count_exc)
         cache.purge_response_cache()
         completed = update_variant_group_job(
             job_id,
