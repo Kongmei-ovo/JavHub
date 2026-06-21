@@ -1,6 +1,24 @@
 <template>
   <div class="works-tab">
+    <!-- Scoped to an actress: drill-down 作品目录 (collection→metadata lifecycle).
+         Unscoped: the legacy flat 待补全作品 panel across all actresses. -->
+    <ActressCatalogPanel
+      v-if="actorContext"
+      :actor="actorContext"
+      :films="catalogFilms"
+      :summary="catalogSummary"
+      :loading="catalogLoading"
+      :recomputing="recomputing"
+      @find="catalogFind"
+      @download="catalogDownload"
+      @enrich="catalogEnrich"
+      @open-sources="catalogOpenSources"
+      @recompute="$emit('start-supplement')"
+      @back="$emit('back-to-list')"
+    />
+
     <SupplementMoviesPanel
+      v-else
       :movie-filters="movieFilters"
       :match-filter-options="matchFilterOptions"
       :quality-filter-options="qualityFilterOptions"
@@ -56,20 +74,28 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { applyImageFallback } from '../../utils/imageFallback.js'
 import { actorAvatar } from '../../utils/actorDisplay.js'
+import { ElMessage } from '../../utils/message.js'
+import api from '../../api'
 import SupplementMoviesPanel from './SupplementMoviesPanel.vue'
+import ActressCatalogPanel from './ActressCatalogPanel.vue'
 import SupplementSourceDiagnosticsDialog from './SupplementSourceDiagnosticsDialog.vue'
 import { useSupplementApi } from './useSupplementApi.js'
 
+function normNumber(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 export default {
   name: 'MoviesTab',
-  components: { SupplementMoviesPanel, SupplementSourceDiagnosticsDialog },
+  components: { SupplementMoviesPanel, ActressCatalogPanel, SupplementSourceDiagnosticsDialog },
   props: {
     actorContext: { type: Object, default: null },
     actorName: { type: String, default: '' },
     initialFilters: { type: Object, default: () => ({}) },
     refreshNonce: { type: Number, default: 0 },
+    recomputing: { type: Boolean, default: false },
   },
-  emits: ['filters-change', 'jobs-requested', 'summary-change'],
+  emits: ['filters-change', 'jobs-requested', 'summary-change', 'start-supplement', 'back-to-list'],
   setup(props, { emit }) {
     const router = useRouter()
     const route = useRoute()
@@ -184,6 +210,68 @@ export default {
       })
     }
 
+    // ---- drill-down catalog actions (per canonical film) -------------------
+    async function reloadCatalog() {
+      if (props.actorContext?.id) await supplement.loadCatalog(props.actorContext.id, { silent: true })
+    }
+
+    function filmNumber(film) {
+      return film?.display_code || film?.canonical_number || ''
+    }
+
+    // 找源：按番号生成下载候选（含磁力检索），留在下钻里刷新状态。
+    async function catalogFind(film) {
+      await supplement.createDownloadCandidates({
+        filters: { matched: false, q: filmNumber(film) },
+        actressId: props.actorContext?.id,
+        actressName: props.actorName,
+      })
+      await reloadCatalog()
+    }
+
+    // 下载：同样生成候选，但跳到下载中心审批/秒离线。
+    async function catalogDownload(film) {
+      await supplement.createDownloadCandidates({
+        filters: { matched: false, q: filmNumber(film) },
+        actressId: props.actorContext?.id,
+        actressName: props.actorName,
+        router,
+      })
+    }
+
+    // 补元数据：按番号触发蛋源 detail job（全部源），进任务队列观察。
+    async function catalogEnrich(film) {
+      const seed = filmNumber(film)
+      if (!seed) return
+      try {
+        await api.startSupplementMovieDetailJob(seed, 'all', props.actorContext?.id || null)
+        ElMessage.success('已加入补全队列（全部源）')
+        emit('jobs-requested')
+      } catch (error) {
+        ElMessage.error(`补全失败：${error?.message || '请求失败'}`)
+      }
+    }
+
+    // number -> supplement movie, so the per-film ⋯ can open the diagnostics
+    // drawer (字段来源 / match·unmatch·ignore) for works backed by a 蛋源 record.
+    const movieByNumber = computed(() => {
+      const idx = {}
+      for (const movie of supplement.supplementMovies.value || []) {
+        for (const key of [movie.dvd_id, movie.canonical_number, movie.normalized_number, movie.display_number]) {
+          const n = normNumber(key)
+          if (n && !idx[n]) idx[n] = movie
+        }
+      }
+      return idx
+    })
+
+    function catalogOpenSources(film) {
+      const movie = movieByNumber.value[normNumber(filmNumber(film))]
+        || movieByNumber.value[normNumber(film?.canonical_number)]
+      if (movie?.id) openMovieSourcesAction(movie)
+      else ElMessage.info('该作品暂无补全源记录（多为原生作品，无需诊断）')
+    }
+
     // Diagnostics drawer is addressed by ?work=<id> so the back button closes it
     // instead of leaving the page, and it never swaps tabs or pops a full-screen modal.
     function buildQuery(patch) {
@@ -223,7 +311,17 @@ export default {
       async () => {
         moviePage.value = 1
         syncFilters()
-        await loadMovies()
+        if (props.actorContext?.id) {
+          // Scoped drill-down: load the canonical 作品目录 for the panel, plus this
+          // actress's flat supplement movies (any match state) as the ⋯ diagnostics index.
+          await Promise.all([
+            supplement.loadCatalog(props.actorContext.id),
+            supplement.loadMovies({ page: 1, pageSize: 200, filters: { matched: null, actress_id: String(props.actorContext.id) } }),
+          ])
+          emitSummary()
+        } else {
+          await loadMovies()
+        }
       },
       { immediate: true }
     )
@@ -249,6 +347,10 @@ export default {
       createDownloadCandidatesAction,
       openMovieSourcesAction,
       closeDrawer,
+      catalogFind,
+      catalogDownload,
+      catalogEnrich,
+      catalogOpenSources,
     }
   },
 }

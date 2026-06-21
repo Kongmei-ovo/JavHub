@@ -12,7 +12,7 @@
           <template v-if="original">{{ original }} · </template>鸡源并集 {{ totalFilms }} 部作品<template v-if="recentText"> · {{ recentText }}</template>
         </div>
         <div class="sh-status">
-          <span class="status-pill" :class="`status-${statusKey}`">{{ statusText }}</span>
+          <span v-if="statusKey !== 'idle' && statusText" class="status-pill" :class="`status-${statusKey}`">{{ statusText }}</span>
           <span v-if="newFindText" class="sh-recent">{{ newFindText }}</span>
         </div>
       </div>
@@ -21,7 +21,7 @@
           <span v-if="recomputing" class="spin-ring" aria-hidden="true"></span>
           {{ recomputing ? '补全中…' : '重新补全这位演员' }}
         </button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('back')">返回演员页</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('back')">返回演员列表</button>
       </div>
     </div>
 
