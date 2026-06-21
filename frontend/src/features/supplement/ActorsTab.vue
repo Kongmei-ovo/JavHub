@@ -3,7 +3,7 @@
     <div class="panel-header">
       <div>
         <h2>待补全演员</h2>
-        <p class="panel-subtitle">订阅演员的收藏与元数据完整度 · 点演员进入其作品目录下钻</p>
+        <p class="panel-subtitle">订阅演员的收藏与资料完整度 · 点演员查看其作品目录</p>
       </div>
       <div class="actors-toolbar">
         <label class="actors-search">

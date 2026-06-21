@@ -9,7 +9,7 @@
       <div class="sup-hero-id">
         <h2>{{ name }}</h2>
         <div class="sh-sub">
-          <template v-if="original">{{ original }} · </template>鸡源并集 {{ totalFilms }} 部作品<template v-if="recentText"> · {{ recentText }}</template>
+          <template v-if="original">{{ original }} · </template>全部作品 {{ totalFilms }} 部<template v-if="recentText"> · {{ recentText }}</template>
         </div>
         <div class="sh-status">
           <span v-if="statusKey !== 'idle' && statusText" class="status-pill" :class="`status-${statusKey}`">{{ statusText }}</span>
@@ -29,14 +29,14 @@
     <div class="cmp-strip">
       <div class="cmp-meter">
         <div class="cmp-top">
-          <span class="cmp-label">收藏 <small>你库里有多少</small></span>
+          <span class="cmp-label">收藏 <small>已入库 / 全部</small></span>
           <span class="cmp-val"><b>{{ ownedCount }}</b>/ {{ totalFilms }} 部</span>
         </div>
         <div class="cmp-bar collect"><i :style="{ width: collectPct }"></i></div>
       </div>
       <div class="cmp-meter">
         <div class="cmp-top">
-          <span class="cmp-label">元数据 <small>已入库的够不够喂 Emby</small></span>
+          <span class="cmp-label">资料 <small>已入库作品的资料完整度</small></span>
           <span class="cmp-val"><b>{{ metaCompleteCount }}</b>/ {{ ownedCount }} 齐全</span>
         </div>
         <div class="cmp-bar meta"><i :style="{ width: metaPct }"></i></div>
@@ -58,6 +58,25 @@
       </button>
     </div>
 
+    <!-- search + sort toolbar -->
+    <div v-if="films.length" class="catalog-toolbar">
+      <label class="catalog-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path>
+        </svg>
+        <input v-model="query" type="search" placeholder="搜索番号或片名" aria-label="搜索番号或片名" />
+      </label>
+      <div class="catalog-sort">
+        <span class="catalog-sort-label">排序</span>
+        <select v-model="sortKey" aria-label="排序方式">
+          <option value="date_desc">出演时间 · 新→旧</option>
+          <option value="date_asc">出演时间 · 旧→新</option>
+          <option value="number">番号 · A→Z</option>
+        </select>
+      </div>
+      <span class="catalog-count">共 {{ sortedFilms.length }} 部</span>
+    </div>
+
     <!-- work list -->
     <AppleSkeleton v-if="loading && !films.length" class="panel-state" variant="list" :items="6" label="作品目录加载中" />
 
@@ -65,16 +84,27 @@
       v-else-if="!films.length"
       class="panel-state"
       title="还没有作品目录"
-      description="这位演员的鸡源并集还没有结果。"
-      next-step="点「重新补全这位演员」从鸡源拉取她的完整作品集。"
+      description="这位演员的作品目录还没有结果。"
+      next-step="点「重新补全这位演员」拉取她的完整作品集。"
       action-label="重新补全这位演员"
       density="compact"
       @action="$emit('recompute')"
     />
 
+    <AppleEmptyState
+      v-else-if="!sortedFilms.length"
+      class="panel-state"
+      title="没有匹配的作品"
+      :description="query ? `没有番号或片名匹配「${query}」的作品。` : '当前筛选下没有作品。'"
+      next-step="换一个关键词，或切到「全部」阶段。"
+      action-label="清除搜索与筛选"
+      density="compact"
+      @action="resetFilters"
+    />
+
     <div v-else class="field-list">
       <div
-        v-for="film in filteredFilms"
+        v-for="film in pagedFilms"
         :key="film.canonical_number"
         class="cand-card"
         :class="{ dim: film.stage === 'complete' }"
@@ -125,6 +155,12 @@
         </div>
       </div>
     </div>
+
+    <div v-if="totalPages > 1" class="catalog-pager">
+      <button type="button" class="page-btn" :disabled="page <= 1" @click="page = Math.max(1, page - 1)">上一页</button>
+      <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
+      <button type="button" class="page-btn" :disabled="page >= totalPages" @click="page = Math.min(totalPages, page + 1)">下一页</button>
+    </div>
   </section>
 </template>
 
@@ -153,7 +189,14 @@ export default {
   },
   emits: ['find', 'download', 'enrich', 'open-sources', 'recompute', 'back'],
   data() {
-    return { activeStage: 'all' }
+    return { activeStage: 'all', query: '', sortKey: 'date_desc', page: 1, pageSize: 24 }
+  },
+  watch: {
+    activeStage() { this.page = 1 },
+    query() { this.page = 1 },
+    sortKey() { this.page = 1 },
+    films() { this.page = 1 },
+    totalPages(n) { if (this.page > n) this.page = n },
   },
   computed: {
     name() {
@@ -199,9 +242,43 @@ export default {
       }
       return chips
     },
-    filteredFilms() {
+    stageFilms() {
       if (this.activeStage === 'all') return this.films
       return this.films.filter(f => f.stage === this.activeStage)
+    },
+    searchedFilms() {
+      const q = this.query.trim().toLowerCase()
+      if (!q) return this.stageFilms
+      const qn = q.replace(/[^a-z0-9]/g, '')
+      return this.stageFilms.filter(film => {
+        const code = `${film.display_code || ''} ${film.canonical_number || ''}`.toLowerCase()
+        const title = (film.title || '').toLowerCase()
+        return code.includes(q) || (qn && code.replace(/[^a-z0-9]/g, '').includes(qn)) || title.includes(q)
+      })
+    },
+    sortedFilms() {
+      const list = [...this.searchedFilms]
+      if (this.sortKey === 'number') {
+        list.sort((a, b) => String(a.canonical_number || '').localeCompare(String(b.canonical_number || '')))
+      } else {
+        const dir = this.sortKey === 'date_asc' ? 1 : -1
+        list.sort((a, b) => {
+          const da = a.release_date || ''
+          const db = b.release_date || ''
+          if (da === db) return 0
+          if (!da) return 1 // undated last regardless of direction
+          if (!db) return -1
+          return da < db ? -dir : dir
+        })
+      }
+      return list
+    },
+    totalPages() {
+      return Math.max(1, Math.ceil(this.sortedFilms.length / this.pageSize))
+    },
+    pagedFilms() {
+      const start = (this.page - 1) * this.pageSize
+      return this.sortedFilms.slice(start, start + this.pageSize)
     },
   },
   methods: {
@@ -209,10 +286,15 @@ export default {
       if (!den) return '0%'
       return `${Math.min(100, Math.round((num / den) * 100))}%`
     },
+    resetFilters() {
+      this.query = ''
+      this.activeStage = 'all'
+      this.page = 1
+    },
     stageMeta(film) { return STAGE_META[film.stage] || STAGE_META.find_source },
     originLabel(film) {
       if (film.status === 'owned') return '已入库'
-      return film.origin === 'supplement' ? '私拍 / 外快' : '鸡源'
+      return film.origin === 'supplement' ? '私拍 / 外快' : '正片'
     },
     tagText(film) {
       if (film.stage === 'meta_gap') {
