@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const searchSource = readFileSync(new URL('./Search.vue', import.meta.url), 'utf8')
 const favoritesSource = readFileSync(new URL('./Favorites.vue', import.meta.url), 'utf8')
-const logsSource = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
+const logsSource = readFileSync(new URL('../features/operations/LogStreamPanel.vue', import.meta.url), 'utf8')
 
 test('search page gives failed and empty searches concrete next actions', () => {
   assert.match(searchSource, /<AppleSkeleton\s+v-if="loading"[\s\S]*variant="gallery"[\s\S]*label="影片结果加载中"/)
@@ -29,9 +29,9 @@ test('favorites page uses shared skeleton and empty state components', () => {
 })
 
 test('logs page replaces bare loading and empty text with shared states', () => {
-  assert.match(logsSource, /import AppleSkeleton from '\.\.\/components\/AppleSkeleton\.vue'/)
-  assert.match(logsSource, /import AppleEmptyState from '\.\.\/components\/AppleEmptyState\.vue'/)
-  assert.match(logsSource, /import AppleErrorState from '\.\.\/components\/AppleErrorState\.vue'/)
+  assert.match(logsSource, /import AppleSkeleton from '\.\.\/\.\.\/components\/AppleSkeleton\.vue'/)
+  assert.match(logsSource, /import AppleEmptyState from '\.\.\/\.\.\/components\/AppleEmptyState\.vue'/)
+  assert.match(logsSource, /import AppleErrorState from '\.\.\/\.\.\/components\/AppleErrorState\.vue'/)
   assert.match(logsSource, /<AppleSkeleton\s+v-if="loading"[\s\S]*variant="list"[\s\S]*label="日志加载中"/)
   assert.match(logsSource, /<AppleErrorState[\s\S]*v-else-if="logsError"/)
   assert.match(logsSource, /next-step="检查后端日志接口或清除筛选条件后再试。"/)

@@ -64,23 +64,25 @@ test('source rows expose consecutive_failures, last_error_type, budget binding',
   assert.match(source, /\$emit\(sourceHealthPrimaryAction\(source\)\.event,\s*source\.source\)/)
 })
 
-test('provider smoke sampling is surfaced un-folded; avatar job no longer lives here', () => {
-  // Work-first restructure: 头像覆盖作业 moved to the Jobs tab. Source health keeps
-  // only source-level concerns, and 来源抽检/采样 is shown directly (no disclosure).
-  assert.match(source, /class="provider-smoke-panel"/)
-  assert.match(source, /class="provider-smoke-controls"/)
-  assert.match(source, /来源抽检/)
-  assert.match(source, /\$emit\('run-smoke'\)/)
-  assert.match(source, /\$emit\('load-smoke-runs'\)/)
-  assert.match(source, /当前预算|sourceBudgetLabel/)
+test('provider smoke sampling is fully removed; replaced by a single 全局检查 + per-row 检查', () => {
+  // 抽检/采样 (smoke) was retired: the page is pure health now. One 全局检查 button
+  // re-probes every source's liveness (and writes health back), per-row 检查 stays.
+  assert.match(source, /全局检查/)
+  assert.match(source, /\$emit\('check-all'\)/)
+  assert.match(source, /\$emit\('check-source',\s*source\.source\)/)
 
-  // avatar / gfriends wiring is gone from this panel
-  assert.doesNotMatch(source, /class="src-advanced"/)
+  // every trace of the smoke panel is gone
+  assert.doesNotMatch(source, /provider-smoke/)
+  assert.doesNotMatch(source, /来源抽检/)
+  assert.doesNotMatch(source, /运行抽检/)
+  assert.doesNotMatch(source, /run-smoke/)
+  assert.doesNotMatch(source, /load-smoke-runs/)
+  assert.doesNotMatch(source, /smokeRunLabel/)
+  assert.doesNotMatch(source, /src-advanced-body/)
+
+  // avatar / gfriends wiring is still gone from this panel
   assert.doesNotMatch(source, /头像覆盖作业/)
-  assert.doesNotMatch(source, /同步演员头像/)
-  assert.doesNotMatch(source, /class="avatar-sync-panel"/)
   assert.doesNotMatch(source, /sync-gfriends-avatars/)
-  assert.doesNotMatch(source, /view-avatar-jobs/)
 
   // pause-source / resume-source still dispatched through sourceHealthPrimaryAction.event
   assert.match(source, /'pause-source'/)

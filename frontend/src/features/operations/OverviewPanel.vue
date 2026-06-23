@@ -1,11 +1,6 @@
 <template>
-  <div class="operations-page page-shell page-shell--workspace ops-page">
+  <div class="ops-page">
     <header class="ops-hero">
-      <div class="ops-hero-copy">
-        <span class="ops-eyebrow">系统工作台</span>
-        <h1>运营总览</h1>
-        <p>一眼看获取闭环是否健康。需要动手时，点指标直接跳到对应操作。</p>
-      </div>
       <div class="ops-hero-stats" aria-label="首要运营指标">
         <button class="ops-stat" :class="{ urgent: candidate.candidate > 0 }" type="button" @click="goCandidates()">
           <strong>{{ candidate.candidate ?? '—' }}</strong>
@@ -17,10 +12,10 @@
           <span>调度作业</span>
           <small>{{ schedulerEnabled ? '调度已启用' : '调度未启用' }}</small>
         </button>
-        <button class="ops-stat" :class="{ urgent: healthDegraded }" type="button" @click="onHealthStat">
+        <button class="ops-stat" :class="{ urgent: healthDegraded || recentErrorCount > 0 }" type="button" @click="onHealthStat">
           <strong>{{ healthStatusText }}</strong>
           <span>系统健康</span>
-          <small>{{ healthWarningCount ? `${healthWarningCount} 项需检查` : '全部正常' }}</small>
+          <small>{{ healthSubtext }}</small>
         </button>
         <button class="ops-stat" type="button" @click="goCachePurge">
           <strong>{{ cacheHitRate }}</strong>
@@ -39,10 +34,20 @@
         </div>
         <div class="ops-panel-actions">
           <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">配置中心</button>
-          <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/logs')">运行日志</button>
+          <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">运行日志</button>
         </div>
       </div>
       <div class="ops-grid">
+        <button
+          class="ops-cell"
+          :class="{ warning: hasRecentAlerts }"
+          type="button"
+          @click="goLogsFiltered"
+        >
+          <span>近 24h 告警</span>
+          <strong>{{ recentErrorCount }} ERROR · {{ recentWarningCount }} WARN</strong>
+          <small>{{ hasRecentAlerts ? '点开查看日志 →' : (logSummaryError ? '计数不可用' : '无新错误') }}</small>
+        </button>
         <component
           :is="row.jump ? 'button' : 'div'"
           v-for="row in healthRows"
@@ -139,19 +144,22 @@
 </template>
 
 <script>
-import api from '../api'
-import { requestConfirm } from '../utils/confirmDialog'
+import api from '../../api'
+import { requestConfirm } from '../../utils/confirmDialog'
 
 export default {
-  name: 'Operations',
+  name: 'OverviewPanel',
+  emits: ['summary'],
   data() {
     return {
       health: null,
       candidate: {},
       schedulerJobs: [],
       cacheStats: null,
+      logCounts: { error: 0, warning: 0, info: 0 },
       healthError: '',
       cacheError: '',
+      logSummaryError: '',
     }
   },
   computed: {
@@ -207,17 +215,33 @@ export default {
     cacheBackend() {
       return this.cacheStats?.backend || this.cacheStats?.response?.backend || 'unknown'
     },
+    recentErrorCount() {
+      return Number(this.logCounts?.error || 0)
+    },
+    recentWarningCount() {
+      return Number(this.logCounts?.warning || 0)
+    },
+    hasRecentAlerts() {
+      return this.recentErrorCount > 0 || this.recentWarningCount > 0
+    },
+    healthSubtext() {
+      const parts = []
+      if (this.healthWarningCount) parts.push(`${this.healthWarningCount} 项需检查`)
+      if (this.recentErrorCount) parts.push(`近 24h 错误 ${this.recentErrorCount}`)
+      return parts.length ? parts.join(' · ') : '全部正常'
+    },
   },
   mounted() {
     this.loadAll()
   },
   methods: {
     async loadAll() {
-      const [healthResp, candResp, jobsResp, cacheResp] = await Promise.allSettled([
+      const [healthResp, candResp, jobsResp, cacheResp, summaryResp] = await Promise.allSettled([
         api.readiness(),
         api.getDownloadCandidateSummary(),
         api.getSchedulerJobs(),
         api.getCacheStats(),
+        api.getLogSummary(1440),
       ])
       if (healthResp.status === 'fulfilled') this.health = healthResp.value.data
       else this.healthError = this.errText(healthResp.reason)
@@ -225,6 +249,13 @@ export default {
       if (jobsResp.status === 'fulfilled') this.schedulerJobs = Array.isArray(jobsResp.value.data) ? jobsResp.value.data : []
       if (cacheResp.status === 'fulfilled') this.cacheStats = cacheResp.value.data
       else this.cacheError = this.errText(cacheResp.reason)
+      if (summaryResp.status === 'fulfilled') this.logCounts = summaryResp.value.data?.counts || { error: 0, warning: 0, info: 0 }
+      else this.logSummaryError = this.errText(summaryResp.reason)
+      this.$emit('summary', {
+        status: this.healthStatusText,
+        degraded: this.healthDegraded || this.recentErrorCount > 0,
+        errorCount: this.recentErrorCount,
+      })
     },
     javinfoText(jav) {
       if (!jav.api_url_configured) return '未配置'
@@ -288,6 +319,15 @@ export default {
     goSchedulerConsole() {
       this.$router.push('/system-jobs')
     },
+    goLogs() {
+      this.$router.push({ path: '/operations', query: { tab: 'logs' } })
+    },
+    goLogsFiltered() {
+      const level = this.recentErrorCount > 0 ? 'ERROR' : this.recentWarningCount > 0 ? 'WARNING' : ''
+      const query = { tab: 'logs' }
+      if (level) query.level = level
+      this.$router.push({ path: '/operations', query })
+    },
     goCandidates(query = {}) {
       const extra = query && !(query instanceof Event) ? query : {}
       this.$router.push({ path: '/candidates', query: { status: 'candidate', ...extra } })
@@ -305,4 +345,4 @@ export default {
 }
 </script>
 
-<style scoped src="../features/operations/operationsPanel.css"></style>
+<style scoped src="./operationsPanel.css"></style>

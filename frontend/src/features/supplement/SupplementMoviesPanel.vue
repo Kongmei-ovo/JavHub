@@ -1,21 +1,24 @@
 <template>
-  <section class="workspace-panel">
-    <div class="panel-header">
-      <div>
-        <h2>待补全作品</h2>
-        <p class="panel-subtitle">全库字段缺口对齐补全来源 · 补详情 / 诊断走右侧抽屉</p>
+  <!-- 全库「全部待补全」聚合视图 — 复用作品目录(catalog)卡片设计，去掉演员 hero。
+       数据来自全库 supplement movies；按字段缺口呈现，保留筛选 / 批量动作 / 分页。 -->
+  <section class="catalog-panel">
+    <div class="all-pending-head">
+      <div class="aph-id">
+        <h2>全部待补全</h2>
+        <div class="sh-sub">全库字段缺口 · 共 {{ moviesTotalCount }} 部待补全作品</div>
       </div>
-      <div class="movies-panel-toolbar">
-        <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="$emit('batch-enrich')">
-          {{ batchEnriching ? '批量排队中...' : '批量补详情' }}
+      <div class="aph-actions">
+        <button class="btn btn-primary" type="button" :disabled="batchEnriching" @click="$emit('batch-enrich')">
+          {{ batchEnriching ? '批量排队中…' : '批量补详情' }}
         </button>
         <button class="btn btn-ghost btn-sm" type="button" :disabled="candidateImporting" @click="$emit('create-candidates')">
-          {{ candidateImporting ? '生成中...' : '生成下载候选' }}
+          {{ candidateImporting ? '生成中…' : '生成下载候选' }}
         </button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('pick-actor')">选择演员</button>
       </div>
     </div>
 
-    <div class="filter-bar">
+    <div class="catalog-toolbar">
       <GlassSelect
         v-model="movieFilters.matched"
         :options="matchFilterOptions"
@@ -30,104 +33,100 @@
         aria-label="影片质量筛选"
         @change="$emit('apply-filters')"
       />
-      <input
-        v-model="movieFilters.q"
-        placeholder="番号 / 标题"
-        class="filter-input"
-        @keyup.enter="$emit('apply-filters')"
-      />
+      <label class="catalog-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path>
+        </svg>
+        <input
+          v-model="movieFilters.q"
+          type="search"
+          placeholder="搜索番号或片名"
+          aria-label="搜索番号或片名"
+          @keyup.enter="$emit('apply-filters')"
+        />
+      </label>
       <button class="btn btn-ghost btn-sm" type="button" @click="$emit('apply-filters')">筛选</button>
-    </div>
-
-    <div v-if="!moviesLoading && supplementMovies.length" class="movie-field-ledger" aria-label="当前页字段缺口">
-      <div class="ledger-summary">
-        <strong>{{ movieFieldSummaryTotalMissing }}</strong>
-        <span>当前页字段缺口</span>
-      </div>
-      <div class="ledger-chips">
-        <span
-          v-for="row in movieFieldSummaryRows"
-          :key="row.key"
-          class="ledger-chip"
-          :class="{ clear: row.missing === 0 }"
-        >
-          <b>{{ row.label }}</b>
-          <em>{{ row.missing ? `${row.missing} 个缺口` : '已齐' }}</em>
-        </span>
-      </div>
     </div>
 
     <AppleSkeleton
       v-if="moviesLoading"
       class="panel-state"
       variant="list"
-      :items="5"
-      label="补全影片加载中"
+      :items="6"
+      label="待补全作品加载中"
     />
-    <div v-else class="field-card-list">
-      <article v-for="movie in supplementMovies" :key="movie.id" class="field-card">
-        <div class="fc-poster" @click="$emit('open-sources', movie)">
+
+    <AppleEmptyState
+      v-else-if="!supplementMovies.length"
+      class="panel-state"
+      title="暂无待补全作品"
+      :description="emptyDescription"
+      :next-step="emptyNextStep"
+      action-label="刷新"
+      secondary-action-label="清除筛选"
+      density="compact"
+      @action="$emit('refresh')"
+      @secondary-action="$emit('clear-filters')"
+    />
+
+    <div v-else class="field-list">
+      <div
+        v-for="movie in supplementMovies"
+        :key="movie.id"
+        class="cand-card"
+        :class="{ dim: isComplete(movie) }"
+      >
+        <div class="cc-poster" @click="$emit('open-sources', movie)">
           <img
             v-if="movieCover(movie)"
             :src="movieCover(movie)"
+            :alt="codeOf(movie)"
             loading="lazy"
             decoding="async"
             referrerpolicy="no-referrer"
-            alt=""
             @error="applyImageFallback($event)"
           />
-          <div v-else class="fc-poster-empty">无封面</div>
-          <div class="fc-scrim"></div>
-          <span class="fc-code">{{ movie.dvd_id || movie.canonical_number || '—' }}</span>
-        </div>
-        <div class="fc-main">
-          <h3 class="fc-title" :title="movie.title">{{ movie.title || movie.dvd_id || movie.canonical_number || '—' }}</h3>
-          <div class="fc-meta">
-            <span>{{ movie.release_date || '日期未知' }}</span>
-            <span v-if="movie.runtime_mins">· {{ movie.runtime_mins }} 分钟</span>
-            <span v-if="movie.maker_name">· {{ movie.maker_name }}</span>
-            <span v-if="movieCategories(movie)" class="fc-cats">· {{ movieCategories(movie) }}</span>
+          <div v-else class="cc-poster-placeholder">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg>
           </div>
-          <div class="fc-fieldgrid" aria-label="影片字段缺口">
-            <template v-if="movieMissingChips(movie).length">
-              <span v-for="chip in movieMissingChips(movie)" :key="chip.key" class="field-chip miss">
-                缺{{ chip.label }}
-              </span>
-            </template>
-            <span v-else class="fc-fields-ok">字段已齐</span>
+          <div class="cc-scrim"></div>
+          <span class="cc-code">{{ codeOf(movie) }}</span>
+        </div>
+
+        <div class="cc-main">
+          <div class="cc-srcline">
+            <span class="src-pill" :class="`m-${movieMatchClass(movie)}`">{{ movieMatchLabel(movie) }}</span>
+            <span class="cc-tag">{{ gapText(movie) }}</span>
+          </div>
+          <div class="cc-title" :title="movie.title || ''">{{ movie.title || codeOf(movie) }}</div>
+          <div class="cc-orig">
+            <template v-if="movie.release_date">{{ String(movie.release_date).slice(0, 7) }} · </template>
+            <span class="why-link" @click="$emit('open-sources', movie)">{{ isComplete(movie) ? '诊断与字段来源' : '看缺什么字段' }}</span>
           </div>
         </div>
-        <div class="fc-act">
-          <span class="status-pill match" :class="`match-${movieMatchClass(movie)}`">{{ movieMatchLabel(movie) }}</span>
-          <button
-            v-if="movie.source_movie_id && !movieIsFieldComplete(movie)"
-            class="btn btn-primary btn-sm fc-act-btn"
-            type="button"
-            :disabled="enrichingMovies[movie.id]"
-            @click="$emit('enrich', movie)"
-          >{{ enrichingMovies[movie.id] ? '排队中...' : '补详情' }}</button>
-          <span v-else-if="movieIsFieldComplete(movie)" class="fc-ready">字段已齐</span>
-          <button class="btn btn-ghost btn-sm fc-act-btn" type="button" @click="$emit('open-sources', movie)">诊断</button>
+
+        <div class="cc-decide">
+          <div class="trail-act">
+            <button
+              v-if="canEnrich(movie)"
+              class="btn btn-primary"
+              type="button"
+              :disabled="enrichingMovies[movie.id]"
+              @click="$emit('enrich', movie)"
+            >{{ enrichingMovies[movie.id] ? '排队中…' : '补详情' }}</button>
+            <span v-else-if="isComplete(movie)" class="trail-done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </span>
+          </div>
+          <button type="button" class="cc-dots" aria-label="诊断与字段来源" @click="$emit('open-sources', movie)">⋯</button>
         </div>
-      </article>
-      <AppleEmptyState
-        v-if="!supplementMovies.length"
-        class="panel-state empty-inline"
-        title="暂无补全影片"
-        :description="emptyDescription"
-        :next-step="emptyNextStep"
-        action-label="刷新影片"
-        secondary-action-label="清除筛选"
-        density="compact"
-        @action="$emit('refresh')"
-        @secondary-action="$emit('clear-filters')"
-      />
+      </div>
     </div>
 
-    <div v-if="moviesTotalPages > 1" class="pagination">
-      <button class="btn btn-ghost btn-sm" :disabled="moviePage <= 1" @click="$emit('go-page', moviePage - 1)">上一页</button>
-      <span>{{ moviePage }} / {{ moviesTotalPages }}</span>
-      <button class="btn btn-ghost btn-sm" :disabled="moviePage >= moviesTotalPages" @click="$emit('go-page', moviePage + 1)">下一页</button>
+    <div v-if="moviesTotalPages > 1" class="catalog-pager">
+      <button class="page-btn" type="button" :disabled="moviePage <= 1" @click="$emit('go-page', moviePage - 1)">上一页</button>
+      <span class="page-indicator">{{ moviePage }} / {{ moviesTotalPages }}</span>
+      <button class="page-btn" type="button" :disabled="moviePage >= moviesTotalPages" @click="$emit('go-page', moviePage + 1)">下一页</button>
     </div>
   </section>
 </template>
@@ -146,6 +145,7 @@ export default {
     qualityFilterOptions: { type: Array, default: () => [] },
     moviesLoading: { type: Boolean, default: false },
     supplementMovies: { type: Array, default: () => [] },
+    moviesTotalCount: { type: Number, default: 0 },
     moviesTotalPages: { type: Number, default: 1 },
     moviePage: { type: Number, default: 1 },
     batchEnriching: { type: Boolean, default: false },
@@ -153,56 +153,72 @@ export default {
     enrichingMovies: { type: Object, default: () => ({}) },
     applyImageFallback: { type: Function, required: true },
     movieCover: { type: Function, required: true },
-    movieCategories: { type: Function, required: true },
+    movieFieldChips: { type: Function, required: true },
     movieMatchClass: { type: Function, required: true },
     movieMatchLabel: { type: Function, required: true },
   },
-  emits: ['apply-filters', 'batch-enrich', 'create-candidates', 'enrich', 'open-sources', 'go-page', 'refresh', 'clear-filters'],
+  emits: ['apply-filters', 'batch-enrich', 'create-candidates', 'enrich', 'open-sources', 'go-page', 'refresh', 'clear-filters', 'pick-actor'],
   computed: {
     hasActiveFilters() {
       return Boolean(this.movieFilters.q || this.movieFilters.quality || this.movieFilters.matched !== null)
     },
     emptyDescription() {
-      return this.hasActiveFilters ? '当前筛选下没有可补全影片。' : '补全来源还没有写入作品字段。'
+      return this.hasActiveFilters ? '当前筛选下没有待补全作品。' : '补全来源还没有写入作品字段。'
     },
     emptyNextStep() {
       return this.hasActiveFilters
-        ? '清除筛选可以回到全部补全影片；也可以刷新确认最新补全结果。'
-        : '先刷新影片列表，或回到演员工作台启动一次作品补全任务。'
-    },
-    movieFieldSummaryRows() {
-      const rows = this.movieFieldChips({}).map(chip => ({ key: chip.key, label: chip.label, missing: 0 }))
-      const map = new Map(rows.map(r => [r.key, r]))
-      this.supplementMovies.forEach(movie => {
-        this.movieFieldChips(movie).forEach(chip => { if (!chip.value) map.get(chip.key).missing += 1 })
-      })
-      return rows
-    },
-    movieFieldSummaryTotalMissing() {
-      return this.movieFieldSummaryRows.reduce((sum, row) => sum + row.missing, 0)
+        ? '清除筛选可以回到全部待补全作品；也可以刷新确认最新补全结果。'
+        : '先刷新列表，或选一位演员启动一次作品补全任务。'
     },
   },
   methods: {
-    movieFieldChips(movie) {
-      return [
-        { key: 'cover', label: '封面', value: this.movieCover(movie) ? '已取' : '' },
-        { key: 'runtime', label: '时长', value: movie.runtime_mins ? `${movie.runtime_mins}m` : '' },
-        { key: 'maker', label: '厂商', value: movie.maker_name || '' },
-        { key: 'label', label: '厂牌', value: movie.label_name || '' },
-        { key: 'series', label: '系列', value: movie.series_name || '' },
-        { key: 'category', label: '分类', value: this.movieCategories(movie) || '' },
-      ]
+    codeOf(movie) {
+      return movie.dvd_id || movie.canonical_number || movie.display_number || '—'
     },
-    movieMissingChips(movie) {
-      return this.movieFieldChips(movie).filter(chip => !chip.value)
-    },
-    movieIsFieldComplete(movie) {
+    isComplete(movie) {
       return this.movieFieldChips(movie).every(chip => Boolean(chip.value))
+    },
+    canEnrich(movie) {
+      return Boolean(movie.source_movie_id) && !this.isComplete(movie)
+    },
+    gapText(movie) {
+      const miss = this.movieFieldChips(movie).filter(chip => !chip.value).map(chip => chip.label)
+      if (!miss.length) return '字段已齐'
+      return `缺 ${miss.slice(0, 3).join(' · ')}`
     },
   },
 }
 </script>
 
-<style scoped src="./supplementPanel.css"></style>
-<style scoped src="./supplementMoviesPanel.css"></style>
-<style scoped src="./supplementMovieRepair.css"></style>
+<style scoped src="./actressCatalogPanel.css"></style>
+<style scoped>
+.all-pending-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.aph-id h2 {
+  margin: 0;
+  font-size: var(--type-title-1);
+  font-weight: var(--type-title-1-weight);
+  letter-spacing: var(--type-title-1-tracking);
+  color: var(--text-primary);
+}
+
+.aph-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* match-state tint for the src-pill (catalog uses it for origin; here for 匹配状态) */
+.src-pill.m-matched { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); border-color: transparent; }
+.src-pill.m-candidate { background: rgba(var(--warn-rgb), 0.16); color: var(--warn); border-color: transparent; }
+.src-pill.m-ignored { color: var(--text-muted); }
+</style>

@@ -316,14 +316,16 @@ async def resume_source(source: str) -> dict[str, Any]:
 
 @router.post("/sources/{source}/check")
 async def check_source(source: str) -> dict[str, Any]:
-    """对单个来源即时探活并回写健康（可达则恢复 / 故障则降级）。供来源健康每行的「检查」按钮。
+    """对来源即时探活并回写健康（可达则恢复 / 故障则降级）。供来源健康的「检查」/「全局检查」按钮。
 
-    探活会真正发一次请求（含 Cloudflare 过盾），最长 ~90s，所以走 long 客户端。
+    探活会真正发一次请求（含 Cloudflare 过盾）。单源最长 ~90s；`source=all` 时后端以
+    受限并发探活全部来源、整体上限 4 分钟，故 long 客户端超时按 source 放宽。
     """
     client = get_info_client()
+    timeout = 300 if source.strip().lower() == "all" else 120
     return await client.proxy_post_long(
         f"/api/v1/supplement/sources/{source}/check",
-        timeout=120,
+        timeout=timeout,
     )
 
 

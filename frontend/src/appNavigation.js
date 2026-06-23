@@ -19,7 +19,6 @@ export const navGroups = [
     label: '日常使用',
     items: [
       { path: '/', label: '今日', icon: IconHome },
-      { path: '/search', label: '影库', icon: IconSearch },
       { path: '/entities', label: '分类目录', icon: IconList },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/downloads', label: '下载中心', icon: IconDownload },
@@ -37,18 +36,16 @@ export const navGroups = [
   {
     label: '系统管理',
     items: [
-      { path: '/operations', label: '运营总览', icon: IconGauge },
+      { path: '/operations', label: '系统监控', icon: IconGauge },
       { path: '/system-jobs', label: '系统作业', icon: IconJobs },
       { path: '/drive', label: '115 网盘', icon: IconCloud },
       { path: '/settings', label: '配置中心', icon: IconSettings },
-      { path: '/logs', label: '运行日志', icon: IconList },
     ],
   },
 ]
 
 export const bottomNavItems = [
   { path: '/', label: '今日', icon: IconHome },
-  { path: '/search', label: '影库', icon: IconSearch },
   { path: '/favorites', label: '收藏', icon: IconHeart },
   { path: '/downloads', label: '下载', icon: IconDownload },
 ]
@@ -59,11 +56,10 @@ export const mobileMoreItems = [
   { path: '/candidates', label: '候选确认', icon: IconParse },
   { path: '/supplement', label: '资料补全', icon: IconSupplement },
   { path: '/translations', label: '翻译作业', icon: IconTranslate },
-  { path: '/operations', label: '运营总览', icon: IconGauge },
+  { path: '/operations', label: '系统监控', icon: IconGauge },
   { path: '/system-jobs', label: '系统作业', icon: IconJobs },
   { path: '/drive', label: '115 网盘', icon: IconCloud },
   { path: '/settings', label: '配置中心', icon: IconSettings },
-  { path: '/logs', label: '运行日志', icon: IconList },
 ]
 
 export const navActivePaths = {
@@ -74,9 +70,8 @@ export const navActivePaths = {
   '/entities': ['/entities', '/entity', '/actor'],
   '/subscription': ['/subscription', '/subscriptions'],
   '/supplement': ['/supplement'],
-  '/operations': ['/operations'],
+  '/operations': ['/operations', '/logs', '/log'],
   '/system-jobs': ['/system-jobs'],
   '/drive': ['/drive'],
   '/settings': ['/settings', '/config'],
-  '/logs': ['/logs', '/log'],
 }

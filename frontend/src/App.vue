@@ -490,7 +490,9 @@ export default {
 }
 .sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
 .sidebar.collapsed .sidebar-header-actions { gap: 0; }
-.sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) { justify-content: center; }
+.sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) {
+  justify-content: center;
+}
 .sidebar.collapsed .collapse-btn { width: 38px; height: 38px; }
 .sidebar.collapsed .sidebar-nav { padding: 12px 8px; mask-image: linear-gradient(to bottom, transparent, currentColor 10px, currentColor calc(100% - 14px), transparent); }
 .sidebar.collapsed .nav-group { gap: 6px; }

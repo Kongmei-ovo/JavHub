@@ -55,6 +55,37 @@ async def get_logs(
         bypass=bypass_cache,
     )
 
+@router.get("/summary")
+async def get_log_summary(
+    since_minutes: int = Query(1440, ge=0, le=10080),
+    cache_control: str | None = Query(None, alias="cache"),
+):
+    """近窗日志等级计数 —— 给「系统监控」总览的「近期告警」卡用。
+
+    since_minutes=0 表示全量；默认 1440（近 24h），上限 10080（近 7 天）。
+    复用 logs 缓存命名空间与 generation，清空日志会一并失效。
+    """
+    window = since_minutes if since_minutes > 0 else None
+    bypass_cache = should_bypass_response_cache(cache_control)
+    cache_params = {
+        "generation": await response_cache.get_data_generation_async("logs"),
+        "summary": True,
+        "since_minutes": since_minutes,
+    }
+
+    async def produce():
+        counts = await asyncio.to_thread(log_database.count_by_level, window)
+        return {"counts": counts, "since_minutes": since_minutes}
+
+    return await response_cache.get_or_set_response(
+        "logs",
+        cache_params,
+        produce,
+        ttl=2,
+        bypass=bypass_cache,
+    )
+
+
 @router.post("")
 def add_log_entry(level: str, message: str):
     """写入日志"""

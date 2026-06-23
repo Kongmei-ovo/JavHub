@@ -15,6 +15,7 @@
       @open-sources="catalogOpenSources"
       @recompute="$emit('start-supplement')"
       @back="$emit('back-to-list')"
+      @view-all="$emit('view-all')"
     />
 
     <SupplementMoviesPanel
@@ -24,6 +25,7 @@
       :quality-filter-options="qualityFilterOptions"
       :movies-loading="moviesLoading"
       :supplement-movies="supplementMovies"
+      :movies-total-count="moviesTotalCount"
       :movies-total-pages="moviesTotalPages"
       :movie-page="moviePage"
       :batch-enriching="batchEnriching"
@@ -31,7 +33,7 @@
       :enriching-movies="enrichingMovies"
       :apply-image-fallback="applyImageFallback"
       :movie-cover="movieCover"
-      :movie-categories="movieCategories"
+      :movie-field-chips="movieFieldChips"
       :movie-match-class="movieMatchClass"
       :movie-match-label="movieMatchLabel"
       @apply-filters="applyMovieFilters"
@@ -42,6 +44,7 @@
       @go-page="goMoviePage"
       @refresh="loadMovies"
       @clear-filters="clearMovieFilters"
+      @pick-actor="$emit('pick-actor')"
     />
 
     <SupplementSourceDiagnosticsDialog
@@ -95,7 +98,7 @@ export default {
     refreshNonce: { type: Number, default: 0 },
     recomputing: { type: Boolean, default: false },
   },
-  emits: ['filters-change', 'jobs-requested', 'summary-change', 'start-supplement', 'back-to-list'],
+  emits: ['filters-change', 'jobs-requested', 'summary-change', 'start-supplement', 'back-to-list', 'view-all', 'pick-actor'],
   setup(props, { emit }) {
     const router = useRouter()
     const route = useRoute()
@@ -357,4 +360,6 @@ export default {
 }
 </script>
 
-<style scoped src="./supplementMoviesPanel.css"></style>
+<style scoped>
+.works-tab { display: grid; gap: 14px; }
+</style>
