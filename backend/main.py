@@ -18,6 +18,10 @@ logging.basicConfig(
 )
 install_sensitive_log_filter()
 
+# 把标准 logging(含未捕获异常 / 各模块行为)汇入运行日志表,供 /logs 页面统一查看。
+from services.db_log_bridge import install_db_log_bridge
+install_db_log_bridge()
+
 # 导入新模块化路由
 from routers.videos import router as videos_router
 from routers.actresses import router as actresses_router
@@ -90,8 +94,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    import traceback
-    logging.error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
+    # exc_info lets the formatter attach the traceback; logged via the "main"
+    # logger so it lands in the aggregated 运行日志 as ERROR (not just stdout).
+    logging.getLogger("main").error(
+        f"Unhandled exception {request.method} {request.url.path}: {exc}",
+        exc_info=exc,
+    )
     return JSONResponse(
         status_code=500,
         content={

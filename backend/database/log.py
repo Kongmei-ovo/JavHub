@@ -1,8 +1,13 @@
 """日志数据库层"""
+import random
 import time
 from typing import Any, Optional
 from database.base import get_db
 from middlewares.trace import get_trace_id
+
+# 运行日志是滚动汇总：只保留最近 N 条，超出的最旧记录在写入时按小概率自动清理，
+# 避免标准 logging 桥接进来后无限增长（仿 source_attempt 的 prune 模式）。
+LOG_RETENTION_LIMIT = 20000
 
 
 def _bump_logs_generation() -> None:
@@ -27,7 +32,34 @@ def add_log(level: str, message: str, trace_id: str | None = None):
             "INSERT INTO logs (level, message, trace_id, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
             (level, message, current_trace_id),
         )
+        if _should_prune(0.05):
+            _prune_logs(cursor, LOG_RETENTION_LIMIT)
     _bump_logs_generation()
+
+
+def _should_prune(chance: float) -> bool:
+    if chance <= 0:
+        return False
+    if chance >= 1:
+        return True
+    return random.random() < chance
+
+
+def _prune_logs(cursor, retention_limit: int = LOG_RETENTION_LIMIT) -> None:
+    """删除超出保留上限的最旧日志，只留最近 retention_limit 条。"""
+    bounded_limit = max(1, int(retention_limit or LOG_RETENTION_LIMIT))
+    cursor.execute(
+        """
+        DELETE FROM logs
+        WHERE id IN (
+            SELECT id
+            FROM logs
+            ORDER BY created_at DESC, id DESC
+            OFFSET ?
+        )
+        """,
+        (bounded_limit,),
+    )
 
 
 def _log_filters(
