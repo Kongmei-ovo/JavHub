@@ -22,6 +22,7 @@
           {{ recomputing ? '补全中…' : '重新补全这位演员' }}
         </button>
         <button class="btn btn-ghost btn-sm" type="button" @click="$emit('back')">返回演员列表</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-all')">查看全部待补全</button>
       </div>
     </div>
 
@@ -187,7 +188,7 @@ export default {
     statusKey: { type: String, default: 'idle' },
     recentText: { type: String, default: '' },
   },
-  emits: ['find', 'download', 'enrich', 'open-sources', 'recompute', 'back'],
+  emits: ['find', 'download', 'enrich', 'open-sources', 'recompute', 'back', 'view-all'],
   data() {
     return { activeStage: 'all', query: '', sortKey: 'date_desc', page: 1, pageSize: 24 }
   },

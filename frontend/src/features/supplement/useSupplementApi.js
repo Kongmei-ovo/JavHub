@@ -70,10 +70,7 @@ export function useSupplementApi({ api = defaultApi } = {}) {
   const sourceHealthLoading = ref(false)
   const sourceHealthError = ref('')
   const sourceActionLoading = ref('')
-  const providerSmokeLoading = ref(false)
-  const providerSmokeReport = ref(null)
-  const providerSmokeForm = ref({ source: '', sourceMovieId: '' })
-  const providerSmokeRuns = ref([])
+  const globalCheckLoading = ref(false)
   const gfriendsAvatarJob = ref(null)
   const gfriendsAvatarSyncing = ref(false)
 
@@ -419,14 +416,6 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     }))
   })
 
-  const providerSourceOptions = computed(() => [
-    { value: '', label: '默认样本' },
-    ...sourceHealthRows.value.map(source => ({
-      value: source.source,
-      label: source.display_name || source.source,
-    })),
-  ])
-
   const isGfriendsAvatarJobRunning = computed(() => {
     const status = gfriendsAvatarJob.value?.status
     return status === 'queued' || status === 'running'
@@ -442,27 +431,16 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     }
   }
 
-  async function loadProviderSmokeRuns() {
-    try {
-      providerSmokeRuns.value = unwrapResponse(await api.listSupplementProviderSmokeRuns(5, providerSmokeForm.value.source), [])
-    } catch (error) {
-      sourceHealthError.value = errorMessage(error)
-      console.error('Load provider smoke history failed:', error)
-    }
-  }
-
   async function loadSourceHealth({ silent = false } = {}) {
     if (!silent) sourceHealthLoading.value = true
     sourceHealthError.value = ''
     try {
-      const [healthResp, budgetResp, smokeRunsResp] = await Promise.all([
+      const [healthResp, budgetResp] = await Promise.all([
         api.listSupplementSourcesHealth(),
         api.listSupplementSourcesBudgets(),
-        api.listSupplementProviderSmokeRuns(5, providerSmokeForm.value.source),
       ])
       sourceHealth.value = unwrapResponse(healthResp, [])
       sourceBudgets.value = unwrapResponse(budgetResp, [])
-      providerSmokeRuns.value = unwrapResponse(smokeRunsResp, [])
     } catch (error) {
       sourceHealthError.value = errorMessage(error)
       console.error('Load source health failed:', error)
@@ -471,29 +449,27 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     }
   }
 
-  async function runProviderSmoke() {
-    if (providerSmokeLoading.value) return
-    const source = (providerSmokeForm.value.source || '').trim()
-    const sourceMovieId = (providerSmokeForm.value.sourceMovieId || '').trim()
-    if (sourceMovieId && !source) {
-      ElMessage.warning('自定义样本需要先选择来源')
-      return
-    }
-    const payload = {}
-    if (source) payload.source = source
-    if (sourceMovieId) {
-      payload.source_movie_id = sourceMovieId
-      payload.name = `${source} ${sourceMovieId}`
-    }
-    providerSmokeLoading.value = true
+  // 全局检查：一次性探活全部来源并回写健康（可达→恢复 / 故障→降级），完成后刷新健康表。
+  async function checkAllSources() {
+    if (globalCheckLoading.value) return
+    globalCheckLoading.value = true
     try {
-      providerSmokeReport.value = unwrapResponse(await api.runSupplementProviderSmoke(payload), {})
-      await loadProviderSmokeRuns()
+      const data = unwrapResponse(await api.checkAllSupplementSources(), {})
+      const checked = data.checked ?? 0
+      const reachable = data.reachable ?? 0
+      const unreachable = data.unreachable ?? (checked - reachable)
+      if (unreachable > 0) {
+        ElMessage.warning(`已检查 ${checked} 个来源 · 可用 ${reachable} · 异常 ${unreachable}`)
+      } else {
+        ElMessage.success(`已检查 ${checked} 个来源 · 全部可用`)
+      }
+      await loadSourceHealth()
     } catch (error) {
       sourceHealthError.value = errorMessage(error)
-      console.error('Run provider smoke failed:', error)
+      ElMessage.error(`全局检查失败：${errorMessage(error)}`)
+      console.error('Global source check failed:', error)
     } finally {
-      providerSmokeLoading.value = false
+      globalCheckLoading.value = false
     }
   }
 
@@ -565,25 +541,10 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     return map[status] || status || '未检测'
   }
 
-  function sourceHealthDetail(source) {
-    if (!source) return ''
-    const failures = source.consecutive_failures ? `连续失败 ${source.consecutive_failures}` : '无连续失败'
-    if (source.cooldown_until) return `${failures} · 冷却至 ${new Date(source.cooldown_until).toLocaleTimeString()}`
-    return `${failures} · 成功 ${source.success_count || 0} / 失败 ${source.failure_count || 0}`
-  }
-
   function sourceBudgetLabel(budget) {
     if (!budget) return '预算状态未加载'
     const lock = budget.global_lock_enabled ? '全局锁已启用' : '仅本进程'
     return `${lock} · 本进程 ${budget.local_active || 0} 个请求`
-  }
-
-  function smokeRunLabel(run) {
-    const req = run?.request || {}
-    if (req.source_movie_id) return `${req.source || '来源'} · ${req.source_movie_id}`
-    if (req.source) return `${req.source} 默认样本`
-    if (req.samples?.length) return `${req.samples.length} 个样本`
-    return '默认样本'
   }
 
   function fieldLabel(fieldName) {
@@ -682,26 +643,19 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     sourceHealthRows,
     sourceHealthLoading,
     sourceActionLoading,
-    providerSmokeLoading,
-    providerSmokeReport,
-    providerSmokeForm,
-    providerSmokeRuns,
-    providerSourceOptions,
+    globalCheckLoading,
     gfriendsAvatarJob,
     gfriendsAvatarSyncing,
     isGfriendsAvatarJobRunning,
     loadGfriendsAvatarJob,
     loadSourceHealth,
-    loadProviderSmokeRuns,
-    runProviderSmoke,
+    checkAllSources,
     pauseSource,
     resumeSource,
     recheckSource,
     syncGfriendsAvatars,
     sourceHealthLabel,
-    sourceHealthDetail,
     sourceBudgetLabel,
-    smokeRunLabel,
     fieldLabel,
     fieldValuePreview,
     manualActionLabel,

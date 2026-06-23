@@ -20,15 +20,8 @@
     </nav>
 
     <section class="workspace-view">
-      <!-- Scoped to an actress, the 作品目录 hero (inside MoviesTab) carries her
-           identity + actions, so the scope bar only shows the unscoped hint. -->
-      <div v-if="activeTab === 'movies' && !actorContext" class="actor-scope">
-        <div class="actor-scope-bar">
-          <span class="scope-hint">全部演员的待补全作品</span>
-          <button class="btn btn-ghost btn-sm" type="button" @click="setActiveTab('actors')">选择演员</button>
-        </div>
-      </div>
-
+      <!-- 待补全作品 owns its own header in both scopes: the per-actress 作品目录 hero
+           when scoped, and the 全部待补全 aggregate header when unscoped. -->
       <component
         :is="activeTabComponent"
         :actor-context="actorContext"
@@ -43,6 +36,8 @@
         @select="enterActorWorkspace"
         @start-supplement="actorContext ? startSupplement() : clearActorContext()"
         @back-to-list="backToActorList"
+        @view-all="viewAllPending"
+        @pick-actor="setActiveTab('actors')"
         @filters-change="handleFiltersChange"
         @jobs-requested="setActiveTab('jobs')"
         @summary-change="handleSummaryChange"
@@ -271,6 +266,14 @@ export default {
     async backToActorList() {
       await this.clearActorContext()
       this.setActiveTab('actors')
+    },
+    // From a scoped 作品目录, jump out to the unscoped 全部待补全 aggregate (stay on 作品 tab).
+    async viewAllPending() {
+      this._stopSupplementPolling()
+      this.actorContext = null
+      this.supplementStatus = null
+      Object.assign(this.activeFilters, { status: '', source: '', error_provider: '', error_reason: '', q: '', quality: '', actress_id: '' })
+      await this.replaceSupplementRoute({ tab: 'movies' })
     },
     async applyActorContext(actressId) {
       const normalized = String(actressId || '').trim()

@@ -20,8 +20,7 @@ function createApi(overrides = {}) {
     unmatchSupplementMovie: async () => ({}),
     listSupplementSourcesHealth: async () => [],
     listSupplementSourcesBudgets: async () => [],
-    listSupplementProviderSmokeRuns: async () => [],
-    runSupplementProviderSmoke: async () => ({}),
+    checkAllSupplementSources: async () => ({ checked: 0, reachable: 0, unreachable: 0 }),
     pauseSupplementSource: async () => ({}),
     resumeSupplementSource: async () => ({}),
     startGfriendsAvatarSyncJob: async () => ({}),
@@ -151,25 +150,46 @@ test('useSupplementApi performs shared job operations and refreshes the queue', 
   assert.equal(supplement.recovering.value, false)
 })
 
-test('useSupplementApi loads source health with budgets and provider smoke runs', async () => {
+test('useSupplementApi loads source health with budgets (smoke runs no longer fetched)', async () => {
   const { useSupplementApi } = await import(moduleUrl.href)
   const supplement = useSupplementApi({
     api: createApi({
       listSupplementSourcesHealth: async () => ({ data: [{ source: 'javbus', runtime_status: 'degraded' }] }),
       listSupplementSourcesBudgets: async () => ({ data: [{ source: 'javbus', local_active: 1 }] }),
-      listSupplementProviderSmokeRuns: async (limit, source) => ({ data: [{ id: 1, request: { source } }] }),
-      listSupplementJobs: async (params) => ({ data: { data: [{ id: 3, source: params.source, status: 'running' }] } }),
+      listSupplementProviderSmokeRuns: async () => { throw new Error('smoke runs must not be fetched') },
     }),
   })
-  supplement.providerSmokeForm.value.source = 'javbus'
 
   await supplement.loadSourceHealth()
 
   assert.equal(supplement.sourceHealthRows.value[0].budget.local_active, 1)
-  assert.equal(supplement.providerSmokeRuns.value[0].id, 1)
   assert.equal(supplement.sourceHealthLoading.value, false)
   // source health no longer fetches the gfriends avatar job — that moved to the Jobs tab
   assert.equal(supplement.gfriendsAvatarJob.value, null)
+})
+
+test('useSupplementApi checkAllSources probes all sources then reloads health', async () => {
+  const calls = []
+  const { useSupplementApi } = await import(moduleUrl.href)
+  const supplement = useSupplementApi({
+    api: createApi({
+      checkAllSupplementSources: async () => {
+        calls.push('check-all')
+        return { data: { source: 'all', checked: 31, reachable: 30, unreachable: 1, results: [] } }
+      },
+      listSupplementSourcesHealth: async () => {
+        calls.push('reload-health')
+        return { data: [{ source: 'javbus', runtime_status: 'healthy' }] }
+      },
+      listSupplementSourcesBudgets: async () => ({ data: [] }),
+    }),
+  })
+
+  await supplement.checkAllSources()
+
+  assert.deepEqual(calls, ['check-all', 'reload-health'])
+  assert.equal(supplement.globalCheckLoading.value, false)
+  assert.equal(supplement.sourceHealthRows.value[0].runtime_status, 'healthy')
 })
 
 test('useSupplementApi loadCatalog maps completeness films to stages and exposes summary', async () => {

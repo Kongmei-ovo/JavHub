@@ -1,21 +1,13 @@
 <template>
   <SourceHealthPanel
-    v-model:provider-smoke-form="providerSmokeForm"
-    v-model:provider-smoke-report="providerSmokeReport"
-    :provider-source-options="providerSourceOptions"
-    :provider-smoke-loading="providerSmokeLoading"
-    :provider-smoke-runs="providerSmokeRuns"
+    :global-check-loading="globalCheckLoading"
     :source-health-loading="sourceHealthLoading"
     :source-health-rows="sourceHealthRows"
     :source-action-loading="sourceActionLoading"
-    :format-action-time="formatActionTime"
-    :smoke-run-label="smokeRunLabel"
     :source-health-label="sourceHealthLabel"
     :source-budget-label="sourceBudgetLabel"
-    :source-health-detail="sourceHealthDetail"
     @refresh-health="loadSourceHealth"
-    @run-smoke="runProviderSmoke"
-    @load-smoke-runs="loadProviderSmokeRuns"
+    @check-all="checkAllSourcesAction"
     @pause-source="pauseSource"
     @resume-source="resumeSource"
     @check-source="recheckSource"
@@ -49,6 +41,11 @@ export default {
       emitSummary()
     }
 
+    async function checkAllSourcesAction() {
+      await supplement.checkAllSources()
+      emitSummary()
+    }
+
     watch(
       () => props.refreshNonce,
       () => loadSourceHealth(),
@@ -59,6 +56,7 @@ export default {
       ...supplement,
       emit,
       loadSourceHealth,
+      checkAllSourcesAction,
     }
   },
 }

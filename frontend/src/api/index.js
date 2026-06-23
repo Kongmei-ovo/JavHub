@@ -752,16 +752,6 @@ export default {
     return api.get('/v1/supplement/sources/budgets')
   },
 
-  runSupplementProviderSmoke(payload = {}) {
-    return api.post('/v1/supplement/providers/smoke', payload)
-  },
-
-  listSupplementProviderSmokeRuns(limit = 5, source = '') {
-    const params = { limit }
-    if (source) params.source = source
-    return api.get('/v1/supplement/providers/smoke/runs', { params })
-  },
-
   pauseSupplementSource(source, reason = '', durationMinutes = 1440) {
     return api.post(`/v1/supplement/sources/${source}/pause`, { reason, duration_minutes: durationMinutes })
   },
@@ -773,6 +763,11 @@ export default {
   checkSupplementSource(source) {
     // 探活会真正抓取一次（含过盾），后端最长 ~90s，前端给足超时。
     return api.post(`/v1/supplement/sources/${source}/check`, undefined, { timeout: 120000 })
+  },
+
+  checkAllSupplementSources() {
+    // 全局检查：后端以受限并发探活全部来源（整体上限 4 分钟），前端给足超时。
+    return api.post('/v1/supplement/sources/all/check', undefined, { timeout: 300000 })
   },
 
   enrichSupplementMovieDetail(sourceMovieId, source = 'all') {
