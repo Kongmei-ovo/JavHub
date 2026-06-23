@@ -28,7 +28,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             result = await makers.list_makers(page=2, page_size=10, q="企画")
 
         self.assertEqual(result["data"], [{"id": 1, "name_ja": "企画"}])
-        mock_client.list_makers_page.assert_awaited_once_with(q="企画", page=2, page_size=10, include_total=False)
+        mock_client.list_makers_page.assert_awaited_once_with(q="企画", page=2, page_size=10, include_total=True)
         mock_client.list_makers.assert_not_called()
         mock_translator.translate_entities.assert_awaited_once_with(
             result["data"],
@@ -53,7 +53,7 @@ class MakersRouterTest(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["data"], [{"id": 3, "name_ja": "三"}])
         self.assertEqual(result["total_count"], 3)
         self.assertEqual(result["total_pages"], 2)
-        mock_client.list_makers_page.assert_awaited_once_with(q=None, page=2, page_size=2, include_total=False)
+        mock_client.list_makers_page.assert_awaited_once_with(q=None, page=2, page_size=2, include_total=True)
 
     async def test_list_makers_cache_key_includes_page_params(self):
         mock_client = AsyncMock()
