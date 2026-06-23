@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8')
+const source = readFileSync(new URL('./LogStreamPanel.vue', import.meta.url), 'utf8')
 
 function cssBlock(selector) {
   const searchable = source.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -12,7 +12,7 @@ function cssBlock(selector) {
     .map(part => part.trim())
     .includes(selector))
     .map(([, , block]) => block)
-  assert.ok(blocks.length, `${selector} block should exist in Logs.vue`)
+  assert.ok(blocks.length, `${selector} block should exist in LogStreamPanel.vue`)
   return blocks.join('\n')
 }
 

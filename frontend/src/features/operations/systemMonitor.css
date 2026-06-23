@@ -1,0 +1,142 @@
+/* ============================================================
+   系统监控 — 宿主外壳：页头 + 视图分段控件。
+   合并了「运营总览」(OverviewPanel) 与「运行日志」(LogStreamPanel)，
+   两个面板自带各自的内部样式 (operationsPanel.css / 内联)，这里只管
+   页头与 tab 切换。分段控件沿用 supplementManagement.css 的玻璃风格。
+   ============================================================ */
+
+.monitor-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+/* ---- header ---- */
+.monitor-eyebrow {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+
+.monitor-header h1 {
+  margin: 8px 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--type-page);
+  font-weight: 680;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+}
+
+.monitor-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-callout);
+}
+
+/* ---- segmented control (玻璃风格，对齐补全工作台) ---- */
+.segmented-control {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0;
+  border-radius: 999px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.segmented-control button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 8px 16px;
+  color: var(--text-secondary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--type-control);
+  font-weight: 600;
+  letter-spacing: 0;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
+}
+
+.segmented-control button:hover,
+.segmented-control button:focus-visible {
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  border-color: var(--glass-control-border-hover);
+  color: var(--text-primary);
+  box-shadow: var(--glass-control-shadow-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.segmented-control button.active {
+  color: var(--text-primary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--glass-active-material);
+  border-color: var(--glass-active-border);
+  box-shadow: var(--glass-active-shadow);
+}
+
+.segmented-control button.segment-warning {
+  border-color: var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+}
+
+.segmented-control button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.segment-label {
+  color: inherit;
+  font-size: var(--type-control);
+  font-weight: 600;
+}
+
+.segment-count {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.segmented-control button.active .segment-count { color: var(--accent); }
+.segmented-control button.segment-warning .segment-count { color: var(--warn); }
+
+/* ---- view ---- */
+.monitor-view {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .segmented-control {
+    display: flex;
+    width: 100%;
+  }
+
+  .segmented-control button {
+    flex: 1;
+    justify-content: center;
+  }
+}

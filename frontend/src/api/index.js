@@ -444,6 +444,10 @@ export default {
     return api.get('/v1/logs', { params: { limit, level, ...options } })
   },
 
+  getLogSummary(sinceMinutes = 1440) {
+    return api.get('/v1/logs/summary', { params: { since_minutes: sinceMinutes } })
+  },
+
   clearLogs() {
     return api.delete('/v1/logs')
   },

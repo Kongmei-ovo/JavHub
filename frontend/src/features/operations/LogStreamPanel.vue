@@ -1,5 +1,5 @@
 <template>
-  <div class="logs page-shell page-shell--standard">
+  <div class="logs">
     <div class="activity-header apple-surface">
       <div>
         <h1>运行日志</h1>
@@ -98,15 +98,15 @@
 </template>
 
 <script>
-import api from '../api'
-import { requestConfirm } from '../utils/confirmDialog'
-import GlassSelect from '../components/GlassSelect.vue'
-import AppleSkeleton from '../components/AppleSkeleton.vue'
-import AppleEmptyState from '../components/AppleEmptyState.vue'
-import AppleErrorState from '../components/AppleErrorState.vue'
+import api from '../../api'
+import { requestConfirm } from '../../utils/confirmDialog'
+import GlassSelect from '../../components/GlassSelect.vue'
+import AppleSkeleton from '../../components/AppleSkeleton.vue'
+import AppleEmptyState from '../../components/AppleEmptyState.vue'
+import AppleErrorState from '../../components/AppleErrorState.vue'
 
 export default {
-  name: 'Logs',
+  name: 'LogStreamPanel',
   components: { GlassSelect, AppleSkeleton, AppleEmptyState, AppleErrorState },
   data() {
     return {
@@ -166,9 +166,25 @@ export default {
     },
   },
   mounted() {
+    this.applyRouteFilters()
     this.loadLogs()
   },
+  watch: {
+    // 从总览「近期告警」卡跳进来时带 ?level=ERROR；面板被 keep-alive 时
+    // mounted 不会重跑，靠这个 watch 重新套用筛选并刷新。
+    '$route.query.level'() {
+      if (this.applyRouteFilters()) this.loadLogs()
+    },
+  },
   methods: {
+    applyRouteFilters() {
+      const level = String(this.$route.query.level || '').toUpperCase()
+      const q = this.$route.query.q != null ? String(this.$route.query.q) : ''
+      let changed = false
+      if (level && level !== this.filterLevel) { this.filterLevel = level; changed = true }
+      if (q && q !== this.searchText) { this.searchText = q; changed = true }
+      return changed
+    },
     async loadLogs({ append = false } = {}) {
       this.loading = true
       this.logsError = ''

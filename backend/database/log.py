@@ -77,6 +77,31 @@ def get_logs(limit: int = 100, level: Optional[str] = None) -> list:
     return rows
 
 
+def count_by_level(since_minutes: Optional[int] = None) -> dict[str, int]:
+    """按等级统计日志条数；since_minutes 给定时只统计最近这么多分钟内的。
+
+    cutoff 用 Postgres NOW() 在库内计算（created_at 是 TIMESTAMPTZ），
+    避免 Python 端 naive/aware 时区错配。None 或 <=0 表示全量。
+    """
+    counts = {"error": 0, "warning": 0, "info": 0}
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if since_minutes is not None and since_minutes > 0:
+            cursor.execute(
+                "SELECT level, COUNT(*) AS n FROM logs "
+                "WHERE created_at >= NOW() - (? || ' minutes')::interval "
+                "GROUP BY level",
+                (int(since_minutes),),
+            )
+        else:
+            cursor.execute("SELECT level, COUNT(*) AS n FROM logs GROUP BY level")
+        for row in cursor.fetchall():
+            level_key = str(row["level"] or "").lower()
+            if level_key in counts:
+                counts[level_key] = int(row["n"])
+    return counts
+
+
 def clear_logs():
     with get_db() as conn:
         cursor = conn.cursor()

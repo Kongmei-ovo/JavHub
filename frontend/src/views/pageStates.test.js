@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 
 const pages = {
-  Logs: readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8'),
+  Logs: readFileSync(new URL('../features/operations/LogStreamPanel.vue', import.meta.url), 'utf8'),
 }
 
 test('page loading states use AppleSkeleton instead of bare loading text or spinners', () => {

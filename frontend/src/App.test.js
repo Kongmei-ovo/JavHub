@@ -54,11 +54,10 @@ test('primary navigation is grouped around daily workflows first', () => {
     '候选确认',
     '资料补全',
     '翻译作业',
-    '运营总览',
+    '系统监控',
     '系统作业',
     '115 网盘',
     '配置中心',
-    '运行日志',
   ])
   assert.match(source, /id="mobile-more-title">更多功能/)
   assert.match(source, /aria-label="关闭更多面板"/)
@@ -76,14 +75,13 @@ test('mobile more exposes initialization and maintenance entry points', () => {
     '候选确认',
     '资料补全',
     '翻译作业',
-    '运营总览',
+    '系统监控',
     '系统作业',
     '115 网盘',
     '配置中心',
-    '运行日志',
   ])
   assert.match(mobileBlock, /path: '\/entities'/)
-  assert.match(mobileBlock, /path: '\/logs'/)
+  assert.match(mobileBlock, /path: '\/operations'/)
 })
 
 test('retired maintenance routes stay out of the active router', () => {
@@ -458,7 +456,8 @@ test('app shell route families keep system navigation active on related pages', 
   assert.match(navBlock, /'\/downloads':\s*\['\/downloads', '\/tasks'\]/)
   assert.match(navBlock, /'\/subscription':\s*\['\/subscription', '\/subscriptions'\]/)
   assert.match(navBlock, /'\/settings':\s*\['\/settings', '\/config'\]/)
-  assert.match(navBlock, /'\/logs':\s*\['\/logs', '\/log'\]/)
+  // 运行日志并入「系统监控」(= /operations)；旧 /logs 深链重定向到此并归属同一导航项。
+  assert.match(navBlock, /'\/operations':\s*\['\/operations', '\/logs', '\/log'\]/)
   assert.doesNotMatch(navBlock, /library-organize|inventory|duplicates|normalize/)
   assert.match(source, /const normalizedRoutePath = computed\(\(\) => route\.path\.replace\(\/\\\/\+\$\/, ''\) \|\| '\/'\)/)
   assert.match(source, /const currentPath = normalizedRoutePath\.value/)

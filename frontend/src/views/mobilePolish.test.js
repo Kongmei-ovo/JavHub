@@ -13,7 +13,7 @@ const files = {
   actorPortraitCard: readFileSync(new URL('../components/ActorPortraitCard.vue', import.meta.url), 'utf8'),
   actor: readFileSync(new URL('../features/actor/actor.css', import.meta.url), 'utf8'),
   subscription: readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8'),
-  logs: readFileSync(new URL('./Logs.vue', import.meta.url), 'utf8'),
+  logs: readFileSync(new URL('../features/operations/LogStreamPanel.vue', import.meta.url), 'utf8'),
   videoModal: readFileSync(new URL('../features/videoModal/videoModal.css', import.meta.url), 'utf8'),
   candidates: readFileSync(new URL('../features/candidates/downloadCandidatePanel.css', import.meta.url), 'utf8'),
   entities: readFileSync(new URL('../features/entities/entities.css', import.meta.url), 'utf8'),
