@@ -46,7 +46,6 @@ test('primary navigation is grouped around daily workflows first', () => {
   assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统管理'])
   assert.deepEqual(labels, [
     '今日',
-    '影库',
     '分类目录',
     '我的收藏',
     '下载中心',

@@ -19,7 +19,6 @@ export const navGroups = [
     label: '日常使用',
     items: [
       { path: '/', label: '今日', icon: IconHome },
-      { path: '/search', label: '影库', icon: IconSearch },
       { path: '/entities', label: '分类目录', icon: IconList },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
       { path: '/downloads', label: '下载中心', icon: IconDownload },
@@ -47,7 +46,6 @@ export const navGroups = [
 
 export const bottomNavItems = [
   { path: '/', label: '今日', icon: IconHome },
-  { path: '/search', label: '影库', icon: IconSearch },
   { path: '/favorites', label: '收藏', icon: IconHeart },
   { path: '/downloads', label: '下载', icon: IconDownload },
 ]

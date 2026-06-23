@@ -7,10 +7,11 @@
       </div>
       <div class="today-topbar__spacer"></div>
       <button
+        v-if="!searchOpen"
         class="today-search"
         type="button"
         aria-label="搜索影片"
-        @click="$router.push('/search')"
+        @click="searchOpen = true"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="17" height="17" aria-hidden="true">
           <circle cx="11" cy="11" r="8" />
@@ -18,7 +19,19 @@
         </svg>
         <span>搜索影片 / 番号 / 演员</span>
       </button>
-      <button class="today-iconbtn" type="button" aria-label="刷新" @click="loadAll">
+      <button
+        v-else
+        class="today-search today-search--back"
+        type="button"
+        aria-label="返回今日"
+        @click="searchOpen = false"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="17" height="17" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        <span>返回今日</span>
+      </button>
+      <button v-if="!searchOpen" class="today-iconbtn" type="button" aria-label="刷新" @click="loadAll">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18" aria-hidden="true">
           <polyline points="23 4 23 10 17 10" />
           <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
@@ -26,7 +39,9 @@
       </button>
     </div>
 
-    <div class="today-page__rail">
+    <Search v-if="searchOpen" embedded class="today-embed-search" />
+
+    <div v-show="!searchOpen" class="today-page__rail">
       <section v-if="hero" class="today-hero" @click="openVideo(hero)">
         <div class="today-hero__art" :style="heroArtStyle" aria-hidden="true"></div>
         <div class="today-hero__scrim" aria-hidden="true"></div>
@@ -231,10 +246,12 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, defineAsyncComponent } from 'vue'
 import api, { formatApiError } from '../api'
 import AppleVideoCard from '../components/AppleVideoCard.vue'
 import AppleErrorState from '../components/AppleErrorState.vue'
+// 内嵌检索按需加载，避免把整套检索打进首页初始包。
+const Search = defineAsyncComponent(() => import('./Search.vue'))
 import { normalizeVideo } from '../utils/videoNormalize.js'
 import { openVideoModal } from '../utils/modalState.js'
 
@@ -284,9 +301,10 @@ function formatErrorMessage(error, action) {
 
 export default defineComponent({
   name: 'Today',
-  components: { AppleVideoCard, AppleErrorState },
+  components: { AppleVideoCard, AppleErrorState, Search },
   data() {
     return {
+      searchOpen: false,
       hero: null,
       continueItems: [],
       activeDownloads: [],

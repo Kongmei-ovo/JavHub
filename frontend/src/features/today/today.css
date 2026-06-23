@@ -80,6 +80,28 @@
   box-shadow: var(--focus-ring-wide-strong);
 }
 
+/* 进入内嵌检索时，右上角按钮变成「返回今日」——窄一点、用 accent 提示当前处于搜索态。 */
+.today-search--back {
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.today-search--back:hover {
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--accent);
+}
+
+.today-search--back > span { flex: 0 0 auto; }
+
+/* 内嵌检索区贴着 topbar 往下接（检索页自带 page-bleed/page-rail 约束，这里只补一点间距）。 */
+.today-embed-search { margin-top: var(--space-2); }
+
 .today-iconbtn {
   display: inline-flex;
   align-items: center;

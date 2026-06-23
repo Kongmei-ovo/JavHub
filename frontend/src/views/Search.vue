@@ -320,6 +320,10 @@ function sortStateFromPreference(defaultSort = 'random') {
 export default {
   name: 'Search',
   components: { MovieCard, AppleSkeleton, AppleEmptyState, AppleErrorState },
+  props: {
+    // 内嵌模式（如「今日」页里）：不读写路由、不默认浏览，只在组件内部状态上检索。
+    embedded: { type: Boolean, default: false },
+  },
   data() {
     return {
       keyword: '',
@@ -415,16 +419,18 @@ export default {
     await this.loadConfiguredPageSize()
 
     this.searchSettingsReady = true
-    if (!Object.keys(this.$route.query || {}).length) {
-      // 默认进入影库时,按最新年份随机浏览(例如 2026 年随机)
-      this.year = this.defaultLibraryYear()
-      this.replaceSearchRoute({ sort: sortValueFromSortState(this.sortState), year: this.year, page: 1 }, { replace: true })
+    if (this.embedded) {
+      // 内嵌进「今日」：开局空白检索界面、聚焦输入框，等用户主动检索（不预填任何默认参数）。
+      this.$nextTick(() => this.$el?.querySelector('.capsule-input.primary')?.focus())
       return
     }
+    // 直接进 /search 也不再默认按年份随机浏览，保持空白检索界面（用户搜/筛才出结果）。
+    if (!Object.keys(this.$route.query || {}).length) return
     this.syncRouteQuery(this.$route.query)
     this.runSearchFromRoute()
   },
   async activated() {
+    if (this.embedded) return
     if (!this.searchSettingsReady) return
     const preferencesChanged = this.applySearchPreferences()
     const pageSizeChanged = await this.loadConfiguredPageSize()
@@ -439,6 +445,7 @@ export default {
   },
   watch: {
     '$route.query'(q) {
+      if (this.embedded) return
       this.syncRouteQuery(q)
       if (this.searchSettingsReady) this.runSearchFromRoute()
     }
@@ -516,9 +523,6 @@ export default {
       this.searched = false
       this.replaceSearchRoute({ sort: 'random', page: 1 }, { replace: true })
     },
-    defaultLibraryYear() {
-      return new Date().getFullYear()
-    },
     startRandomExplore() {
       this.keyword = ''
       this.contentId = ''
@@ -573,6 +577,12 @@ export default {
     },
     replaceSearchRoute(patch = {}, { replace = false } = {}) {
       const query = searchQueryFromState({ ...this.searchState, ...patch })
+      if (this.embedded) {
+        // 内嵌模式不动路由（否则检索参数会写进「今日」的 URL）：落到本地状态后直接检索。
+        this.syncRouteQuery(query)
+        this.runSearchFromRoute()
+        return
+      }
       if (this.$route.query.returnTo) query.returnTo = this.$route.query.returnTo
       if (searchQueryEquals(this.$route.query || {}, query)) {
         this.runSearchFromRoute()
