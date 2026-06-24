@@ -148,7 +148,7 @@
   align-items: center;
   align-content: center;
   flex-wrap: wrap;
-  gap: var(--preview-gap);
+  gap: var(--space-2);
   min-height: 118px;
   margin-bottom: 10px;
   padding: 16px;
@@ -170,7 +170,7 @@
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control);
-  font-size: var(--preview-font);
+  font-size: var(--type-card-title);
   font-weight: 700;
   line-height: 1;
   box-shadow: var(--glass-inner-shadow);

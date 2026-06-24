@@ -1,7 +1,7 @@
 :root {
   --b3-local-backdrop: var(--surface-scrim, var(--scrim));
   --b3-local-sheet-bg: var(--material-glass-sheet);
-  --b3-local-sheet-border: var(--glass-sheet-border);
+  --b3-local-sheet-border: var(--glass-border);
   --b3-local-sheet-shadow: var(--shadow-sheet);
   --b3-local-handle-bg: var(--text-muted);
   --b3-local-title: var(--text-primary);

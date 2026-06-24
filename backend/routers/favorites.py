@@ -112,7 +112,7 @@ async def get_favorite_videos(cache_control: Optional[str] = Query(None, alias="
 
 @router.get("/videos/page")
 async def get_favorite_videos_page(
-    limit: int = Query(48),
+    limit: int = Query(48, ge=1, le=200),
     offset: int = Query(0),
     cache_control: Optional[str] = Query(None, alias="cache"),
 ):

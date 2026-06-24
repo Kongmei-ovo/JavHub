@@ -135,7 +135,7 @@ def _bounded_int(value: Any, default: int, *, minimum: int, maximum: int) -> int
 
 @router.get("/new_movies")
 async def get_new_movies(
-    limit_per_actress: int = Query(20),
+    limit_per_actress: int = Query(20, ge=1, le=50),
     cache_control: str | None = Query(None, alias="cache"),
 ) -> dict[str, Any]:
     """获取所有订阅的新片（不在 Emby 库中的），按 actress_id 分组"""
