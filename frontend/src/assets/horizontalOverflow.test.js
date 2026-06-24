@@ -39,6 +39,23 @@ async function waitForFrontend() {
   throw lastError || new Error(`Frontend did not become ready at ${baseUrl}`)
 }
 
+// This is an E2E check: it needs a running frontend AND an installed Playwright
+// browser. When either is missing (a plain `npm test` on a box without the E2E
+// stack) we SKIP rather than hard-fail, so the unit suite stays honest. CI
+// provisions both (see .github/workflows/ci.yml) and runs the real assertion.
+async function frontendReachable() {
+  try {
+    const response = await fetch(baseUrl, { signal: AbortSignal.timeout(2_000) })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+function isMissingBrowser(error) {
+  return /Executable doesn't exist|playwright install/i.test(String(error))
+}
+
 async function waitForShell(page) {
   await page.waitForSelector('.app-layout', { timeout: shellTimeoutMs })
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
@@ -63,8 +80,23 @@ async function gotoRoute(page, route) {
   throw lastError
 }
 
-test('top-level app routes do not create viewport horizontal overflow', async () => {
-  const browser = await chromium.launch()
+test('top-level app routes do not create viewport horizontal overflow', async (t) => {
+  if (!(await frontendReachable())) {
+    t.skip(`frontend not reachable at ${baseUrl} — E2E overflow check skipped (start it + set JAVHUB_FRONTEND_URL to run)`)
+    return
+  }
+
+  let browser
+  try {
+    browser = await chromium.launch()
+  } catch (error) {
+    if (isMissingBrowser(error)) {
+      t.skip('Playwright browser not installed — run `npx playwright install chromium` to enable this E2E check')
+      return
+    }
+    throw error
+  }
+
   const failures = []
 
   try {
