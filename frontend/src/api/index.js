@@ -182,30 +182,6 @@ export default {
     return api.get('/v1/actors', { params })
   },
 
-  listInventoryActors(params = {}) {
-    return api.get('/inventory/actors', { params })
-  },
-
-  getLibraryOrganizeOverview(params = {}) {
-    return api.get('/inventory/overview', { params })
-  },
-
-  getInventoryActor(actressId) {
-    return api.get(`/inventory/actors/${numericPathSegment(actressId, 'actressId')}`)
-  },
-
-  getInventorySnapshotLatest() {
-    return api.get('/inventory/snapshots/latest')
-  },
-
-  triggerInventoryJob(data) {
-    return api.post('/inventory/jobs/trigger', data)
-  },
-
-  listInventoryJobs() {
-    return api.get('/inventory/jobs')
-  },
-
   getJobs(params = {}) {
     return api.get('/v1/jobs', { params })
   },
@@ -219,18 +195,6 @@ export default {
     }
     const query = search.toString()
     return new EventSource(`/api/v1/jobs/stream${query ? `?${query}` : ''}`)
-  },
-
-  listInventoryMissing(params = {}) {
-    return api.get('/inventory/missing', { params })
-  },
-
-  fillInventoryVideo(contentId) {
-    return api.post(`/inventory/fill/${pathSegment(contentId, 'contentId')}`)
-  },
-
-  fillAllInventoryVideos(params = {}) {
-    return api.post('/inventory/fill-all', null, { params })
   },
 
   listAuthors(params = {}) {
@@ -366,76 +330,6 @@ export default {
 
   getActressCompleteness(actressId) {
     return api.get(`/v1/film-dictionary/actresses/${actressId}/completeness`)
-  },
-
-  // ========== 演员映射 ==========
-
-  listActorMappings(params = {}) {
-    return api.get('/inventory/actor-mappings', { params })
-  },
-
-  getActorMappingSummary() {
-    return api.get('/inventory/actor-mappings/summary')
-  },
-
-  listUnmappedActors(params = {}) {
-    return api.get('/inventory/actor-mappings/unmapped', { params })
-  },
-
-  searchActorMappingCandidates(params = {}) {
-    return api.get('/inventory/actor-mappings/search', { params })
-  },
-
-  reviewActorMappingWithAi(data) {
-    return api.post('/inventory/actor-mappings/ai-review', data)
-  },
-
-  generateActorMappingCandidates(params = {}) {
-    return api.post('/inventory/actor-mappings/candidates/generate', null, { params })
-  },
-
-  autoMatchActorMappings(params = {}) {
-    return api.post('/inventory/actor-mappings/auto-match', null, { params })
-  },
-
-  confirmActorMapping(data) {
-    return api.post('/inventory/actor-mappings/confirm', data)
-  },
-
-  ignoreActorMapping(data) {
-    return api.post('/inventory/actor-mappings/ignore', data)
-  },
-
-  deleteActorMapping(mappingId) {
-    return api.delete(`/inventory/actor-mappings/${mappingId}`)
-  },
-
-  // ========== 缺失检测 ==========
-
-  getMissingActresses() {
-    return api.get('/v1/missing/actresses')
-  },
-
-  getMissingActressDetail(actressId) {
-    return api.get(`/v1/missing/actresses/${actressId}`)
-  },
-
-  refreshMissingCache() {
-    return api.post('/v1/missing/actresses/refresh')
-  },
-
-  // ========== 去重 ==========
-
-  getDuplicates() {
-    return api.get('/v1/duplicates')
-  },
-
-  deleteDuplicate(embyItemId) {
-    return api.post(`/v1/duplicates/${embyItemId}/delete`)
-  },
-
-  ignoreDuplicate(embyItemId) {
-    return api.post(`/v1/duplicates/${embyItemId}/ignore`)
   },
 
   // ========== 日志 ==========
