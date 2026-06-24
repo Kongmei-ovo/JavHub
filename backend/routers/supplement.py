@@ -1,12 +1,26 @@
 from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, Query
-from modules.info_client import get_info_client
+from modules.info_client import _transform_jacket_url, get_info_client
 from routers._query import qv
 from services.supplement_candidates import generate_download_candidates_from_supplement
 from translations import get_translator_service
 
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
+
+
+def _transform_movie_cover(movie: Any) -> None:
+    """In-place: turn relative catalog (javinfo) jacket paths into full DMM URLs.
+
+    Matched movies now borrow their cover from the local catalog, whose jacket
+    columns store DMM-relative paths. ``_transform_jacket_url`` passes http URLs
+    through untouched, so 鸡源/蛋源 covers are unaffected.
+    """
+    if not isinstance(movie, dict):
+        return
+    for key in ("cover_url", "cover_thumb_url"):
+        if movie.get(key):
+            movie[key] = _transform_jacket_url(movie[key])
 
 
 @router.get("/stats")
@@ -195,13 +209,27 @@ async def list_supplement_movies(
         params["missing_categories"] = "true" if mcat else "false"
     if maxc is not None:
         params["max_completeness"] = maxc
-    return await client.proxy_get("/api/v1/supplement/movies", params=params)
+    result = await client.proxy_get("/api/v1/supplement/movies", params=params)
+    if isinstance(result, dict):
+        for movie in result.get("data") or []:
+            _transform_movie_cover(movie)
+    return result
 
 
 @router.get("/movies/{movie_id}/sources")
 async def get_movie_sources(movie_id: int) -> dict[str, Any]:
     client = get_info_client()
     data = await client.proxy_get(f"/api/v1/supplement/movies/{movie_id}/sources")
+    if isinstance(data, dict):
+        _transform_movie_cover(data.get("movie"))
+        for bucket in ("chosen_fields", "field_values"):
+            for field in data.get(bucket) or []:
+                if (
+                    isinstance(field, dict)
+                    and field.get("field_name") in ("cover_url", "cover_thumb_url")
+                    and field.get("field_value")
+                ):
+                    field["field_value"] = _transform_jacket_url(field["field_value"])
     return await get_translator_service().translate_supplement_sources(data, allow_network=False)
 
 

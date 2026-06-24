@@ -85,7 +85,7 @@
               <tr v-for="row in fieldRows" :key="row.key" :class="{ missing: !row.ready }">
                 <td>{{ row.label }}</td>
                 <td class="diag-val">{{ row.value || '—' }}</td>
-                <td>{{ row.source || '—' }}</td>
+                <td>{{ sourceLabel(row.source) }}</td>
                 <td>{{ row.available || '—' }}</td>
                 <td><span class="diag-pill" :class="row.ready ? 'ok' : 'gap'">{{ row.ready ? '已取' : '缺口' }}</span></td>
               </tr>
@@ -260,6 +260,12 @@ export default {
     scoreOf(candidate) {
       const score = Number(candidate?.score)
       return Number.isFinite(score) ? score : 0
+    },
+    sourceLabel(src) {
+      if (!src) return '—'
+      // Matched movies borrow their fields from the local catalog, surfaced as
+      // the virtual source 'javinfo' — show it as the friendly 「JavInfo」.
+      return src === 'javinfo' ? 'JavInfo' : src
     },
     hasValue(value) {
       if (Array.isArray(value)) return value.length > 0
