@@ -125,6 +125,7 @@
               :key="`${id.source}-${id.source_movie_id}`"
               :href="id.source_url || '#'"
               target="_blank"
+              rel="noopener noreferrer"
               class="diag-id-chip"
             >{{ id.source }}: {{ id.source_movie_id }}</a>
           </div>

@@ -23,7 +23,7 @@
 .monitor-header h1 {
   margin: 8px 0 4px;
   font-family: var(--font-display);
-  font-size: var(--type-page);
+  font-size: var(--type-workbench-title);
   font-weight: 680;
   letter-spacing: -0.4px;
   color: var(--text-primary);

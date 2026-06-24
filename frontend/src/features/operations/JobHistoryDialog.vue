@@ -121,7 +121,7 @@ export default {
   font-size: var(--type-badge);
   font-weight: 700;
   text-align: center;
-  background: var(--surface);
+  background: var(--surface-card);
   color: var(--text-muted);
 }
 

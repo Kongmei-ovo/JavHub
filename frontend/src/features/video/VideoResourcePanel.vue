@@ -74,7 +74,7 @@ function formatSize(size) {
 .resource-name {
   overflow: hidden;
   color: var(--modal-text-primary);
-  font-size: var(--type-subheadline);
+  font-size: var(--type-card-title);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
