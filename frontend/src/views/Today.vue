@@ -261,7 +261,6 @@ const ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>'
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="19" height="19"><polyline points="20 6 9 17 4 12"/></svg>'
 const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="19" height="19"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-const ICON_SUPPLEMENT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="19" height="19"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'
 
 const HERO_STORAGE_KEY = 'javhub_today_last_opened'
 // P3-2: 缓存最近查看 7 天即视为过期 — 比 hero 这种快被替换的引用足够,也避免久旧记录卡住首屏。
@@ -309,7 +308,6 @@ export default defineComponent({
       continueItems: [],
       activeDownloads: [],
       candidateSummary: { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 },
-      missingActressesCount: 0,
       subscriptionUpdates: [],
       libraryTotal: null,
       subscribedActressCount: null,
@@ -321,7 +319,6 @@ export default defineComponent({
       downloadsError: '',
       downloadsRetrying: false,
       candidateSummaryError: '',
-      missingActressesError: '',
       subscriptionUpdatesError: '',
       subscriptionUpdatesRetrying: false,
       libraryCountError: '',
@@ -335,7 +332,7 @@ export default defineComponent({
       const m = today.getMonth() + 1
       const d = today.getDate()
       const w = weekdayNames[today.getDay()]
-      const pendingTotal = this.candidateSummary.candidate + this.missingActressesCount
+      const pendingTotal = this.candidateSummary.candidate
       const pendingHint = pendingTotal > 0 ? ` · ${pendingTotal} 项待处理` : ''
       return `${m} 月 ${d} 日 · ${w}${pendingHint}`
     },
@@ -402,7 +399,7 @@ export default defineComponent({
         {
           key: 'pending',
           label: '待处理',
-          value: this.formatNumber(this.candidateSummary.candidate + this.missingActressesCount),
+          value: this.formatNumber(this.candidateSummary.candidate),
           delta: pendingDelta,
           // 积压不是好事,走中性灰。
           deltaTone: 'flat',
@@ -424,16 +421,6 @@ export default defineComponent({
           secondary: this.candidateSummary.missing_magnet > 0
             ? { label: `缺磁力 ${this.candidateSummary.missing_magnet}`, to: '/candidates' }
             : null,
-        })
-      }
-      if (this.missingActressesCount > 0) {
-        items.push({
-          key: 'supplement',
-          tone: 'info',
-          icon: ICON_SUPPLEMENT,
-          title: '资料补全',
-          desc: `${this.missingActressesCount} 位演员档案缺失，等待补全。`,
-          primary: { label: '去补全', to: '/supplement' },
         })
       }
       return items
@@ -485,7 +472,6 @@ export default defineComponent({
           this.loadContinueWatching(),
           this.loadDownloads(),
           this.loadCandidateSummary(),
-          this.loadMissingActresses(),
           this.loadSubscriptionUpdates(),
           this.loadLibraryCount(),
           this.loadSubscribedCount(),
@@ -584,17 +570,6 @@ export default defineComponent({
       } catch (err) {
         this.candidateSummary = { candidate: 0, missing_magnet: 0, approved: 0, rejected: 0 }
         this.candidateSummaryError = formatErrorMessage(err, '加载候选汇总')
-      }
-    },
-    async loadMissingActresses() {
-      this.missingActressesError = ''
-      try {
-        const res = await api.getMissingActresses()
-        const list = res?.data?.data || res?.data?.items || res?.data || []
-        this.missingActressesCount = Array.isArray(list) ? list.length : Number(res?.data?.total || 0)
-      } catch (err) {
-        this.missingActressesCount = 0
-        this.missingActressesError = formatErrorMessage(err, '加载缺失演员')
       }
     },
     async loadContinueWatching() {
