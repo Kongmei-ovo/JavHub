@@ -1,11 +1,10 @@
 """Bridge JavInfo supplement-only movies into local download candidates."""
 from __future__ import annotations
 
-import asyncio
-
 from database import (
     add_download_candidate_event,
     candidate_content_id,
+    codes_with_ready_resource,
     is_video_exempt,
     upsert_candidate_from_video,
 )
@@ -33,7 +32,6 @@ def supplement_movie_to_video(movie: dict) -> dict:
 
 async def generate_download_candidates_from_supplement(
     info_client=None,
-    emby_client=None,
     actress_id: int | None = None,
     actress_name: str = "",
     supplement_source: str | None = None,
@@ -61,9 +59,6 @@ async def generate_download_candidates_from_supplement(
     if info_client is None:
         from modules.info_client import get_info_client
         info_client = get_info_client()
-    if emby_client is None:
-        from modules.emby_client import get_emby_client
-        emby_client = get_emby_client()
 
     max_source_rows = max(0, limit) if limit is not None else None
     page_size = min(max_source_rows, 100) if max_source_rows is not None else 100
@@ -101,11 +96,9 @@ async def generate_download_candidates_from_supplement(
         "candidates": [],
     }
 
-    sem = asyncio.Semaphore(max(1, concurrency))
-
-    async def evaluate_movie(movie: dict) -> dict:
-        """Decide what to do with a movie. Does the slow Emby existence check
-        under a concurrency bound; performs no DB writes and never raises."""
+    def evaluate_movie(movie: dict, ready_codes: set[str]) -> dict:
+        """Decide what to do with a movie against local ownership; performs no DB
+        writes and never raises."""
         if movie.get("status") == "manual_ignored" or movie.get("match_status") == "manual_ignored":
             return {"action": "skipped", "movie": movie}
 
@@ -118,12 +111,9 @@ async def generate_download_candidates_from_supplement(
         if is_video_exempt(content_id) or is_video_exempt(code):
             return {"action": "exempt", "movie": movie}
 
-        async with sem:
-            try:
-                exists = await emby_client.check_exists(code)
-            except Exception as exc:  # one Emby hiccup must not abort the whole batch
-                return {"action": "error", "movie": movie, "error": str(exc)}
-        if exists:
+        # Skip what we already own. Replaces the removed Emby library probe with
+        # the local 115 / movie_resources ledger (keyed by canonical 番号 or content_id).
+        if content_id in ready_codes or code in ready_codes:
             return {"action": "in_library", "movie": movie}
         return {"action": "candidate", "movie": movie, "video": video}
 
@@ -185,10 +175,16 @@ async def generate_download_candidates_from_supplement(
             source_rows_seen += 1
             batch.append(movie)
 
-        # Phase 1: existence checks fan out (bounded); Phase 2: DB writes stay ordered.
-        decisions = await asyncio.gather(*(evaluate_movie(movie) for movie in batch))
-        for decision in decisions:
-            apply_decision(decision)
+        # Resolve local ownership for the whole page in one ledger lookup, then
+        # decide each movie (no remote calls; DB writes stay ordered).
+        ownership_lookup: list[str] = []
+        for movie in batch:
+            owned_probe = supplement_movie_to_video(movie)
+            ownership_lookup.append(candidate_content_id(owned_probe))
+            ownership_lookup.append(video_code(owned_probe))
+        ready_codes = codes_with_ready_resource([code for code in ownership_lookup if code])
+        for movie in batch:
+            apply_decision(evaluate_movie(movie, ready_codes))
 
         total_pages = result.get("total_pages") if isinstance(result, dict) else None
         if isinstance(total_pages, int):
