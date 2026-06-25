@@ -1,13 +1,15 @@
-// Map a completeness film (status + metadata_complete) onto a single lifecycle
-// stage. One canonical work carries one stage; the card action follows from it.
+// Field-first funnel (一部片一个阶段): a metadata gap holds the film in 缺元数据
+// until fields complete; then it surfaces by acquisition state. Backend emits
+// `funnel_stage` directly — prefer it; this mirror is the fallback + test spec.
 //
-//   待找源 ──► 可下载 ──► 获取中 ──► 缺元数据 ──► 齐全 ✓
-//   └──── 收藏阶段（鸡源 + 磁力 + 下载）────┘└── 元数据阶段（蛋源）──┘
+//   缺元数据 ──► (字段齐) ──► 待找源 ──► 可下载 ──► 获取中 ──► 已入库 ✓
 export function catalogStage(film) {
-  if (film.status === 'owned') return film.metadata_complete ? 'complete' : 'meta_gap'
+  if (film && film.funnel_stage) return film.funnel_stage
+  if (!film || !film.metadata_complete) return 'meta_gap'
+  if (film.status === 'owned') return 'complete'
   if (film.status === 'in_progress') return 'fetching'
   if (film.status === 'available') return 'downloadable'
-  return 'find_source' // needs_magnet / unknown
+  return 'find_source'
 }
 
 // label = 人话状态；tone = 语义色键（映射 main.css 语义色）；action = 主操作文案
@@ -29,4 +31,11 @@ export const STAGE_SUMMARY_KEY = {
   fetching: 'in_progress',
   meta_gap: 'owned_meta_gap',
   complete: 'owned_complete',
+}
+
+// Which lifecycle stages belong to each of the two action sub-tabs.
+// ① 影片目录 is the full list (no stage filter); ② 字段 / ③ 下载源 below.
+export const FUNNEL_TABS = {
+  fields: ['meta_gap'],
+  sources: ['find_source', 'downloadable', 'fetching'],
 }

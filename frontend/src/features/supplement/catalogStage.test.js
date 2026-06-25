@@ -1,28 +1,33 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catalogStage, STAGE_META, STAGE_ORDER } from './catalogStage.js'
+import { catalogStage, STAGE_META, STAGE_ORDER, FUNNEL_TABS } from './catalogStage.js'
 
+// Field-first gate: any metadata gap => meta_gap regardless of owned/acquisition.
+test('missing fields => meta_gap even if owned', () => {
+  assert.equal(catalogStage({ status: 'owned', metadata_complete: false }), 'meta_gap')
+})
+test('missing fields => meta_gap even if not owned', () => {
+  assert.equal(catalogStage({ status: 'needs_magnet', metadata_complete: false }), 'meta_gap')
+})
 test('owned + complete => complete', () => {
   assert.equal(catalogStage({ status: 'owned', metadata_complete: true }), 'complete')
 })
-test('owned + gap => meta_gap', () => {
-  assert.equal(catalogStage({ status: 'owned', metadata_complete: false }), 'meta_gap')
+test('not owned + complete + needs_magnet => find_source', () => {
+  assert.equal(catalogStage({ status: 'needs_magnet', metadata_complete: true }), 'find_source')
 })
-test('in_progress => fetching', () => {
-  assert.equal(catalogStage({ status: 'in_progress' }), 'fetching')
+test('not owned + complete + available => downloadable', () => {
+  assert.equal(catalogStage({ status: 'available', metadata_complete: true }), 'downloadable')
 })
-test('available => downloadable', () => {
-  assert.equal(catalogStage({ status: 'available' }), 'downloadable')
+test('not owned + complete + in_progress => fetching', () => {
+  assert.equal(catalogStage({ status: 'in_progress', metadata_complete: true }), 'fetching')
 })
-test('needs_magnet => find_source', () => {
-  assert.equal(catalogStage({ status: 'needs_magnet' }), 'find_source')
+test('prefers explicit backend funnel_stage when present', () => {
+  assert.equal(catalogStage({ funnel_stage: 'downloadable', status: 'owned', metadata_complete: false }), 'downloadable')
 })
-test('unknown status => find_source', () => {
-  assert.equal(catalogStage({ status: 'whatever' }), 'find_source')
+test('FUNNEL_TABS partition the acquisition stages under sources, meta_gap under fields', () => {
+  assert.deepEqual(FUNNEL_TABS.fields, ['meta_gap'])
+  assert.deepEqual(FUNNEL_TABS.sources, ['find_source', 'downloadable', 'fetching'])
 })
-test('STAGE_META has label+tone for every stage, STAGE_ORDER covers all', () => {
-  for (const s of STAGE_ORDER) {
-    assert.ok(STAGE_META[s].label && STAGE_META[s].tone, `${s} needs label+tone`)
-  }
-  assert.deepEqual(STAGE_ORDER, ['find_source', 'downloadable', 'fetching', 'meta_gap', 'complete'])
+test('STAGE_META covers every STAGE_ORDER entry', () => {
+  for (const s of STAGE_ORDER) assert.ok(STAGE_META[s].label && STAGE_META[s].tone, `${s} needs label+tone`)
 })
