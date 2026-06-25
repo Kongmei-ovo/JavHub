@@ -347,6 +347,16 @@ def _fetch_actress_field_rows(actress_id: int) -> dict:
     return field_rows
 
 
+def _funnel_stage(status: str, metadata_complete: bool) -> str:
+    """Field-first funnel: a film with metadata gaps stays in 'meta_gap' until
+    fields are complete, then surfaces by acquisition state. One film, one stage."""
+    if not metadata_complete:
+        return "meta_gap"
+    if status == "owned":
+        return "complete"
+    return "find_source"  # in_progress | available | needs_magnet => ③ sources
+
+
 @router.get("/actresses/{actress_id}/completeness")
 def get_actress_completeness(actress_id: int) -> dict:
     try:
@@ -363,6 +373,11 @@ def get_actress_completeness(actress_id: int) -> dict:
     summary = {tier: 0 for tier in GAP_TIERS}
     summary["owned_complete"] = 0
     summary["owned_meta_gap"] = 0
+    summary["total"] = len(films)
+    summary["owned"] = 0
+    summary["stage_fields"] = 0
+    summary["stage_sources"] = 0
+    summary["stage_complete"] = 0
     payload_films = []
     for film in films:
         is_owned = bool(owned.get(film.canonical_number))
@@ -370,9 +385,16 @@ def get_actress_completeness(actress_id: int) -> dict:
         status = classify_film_status(is_owned, matched)
         summary[status] += 1
         cover, missing = _film_metadata(film, field_rows)
-        meta_complete = is_owned and not missing
+        meta_complete = not missing                      # decoupled from ownership
         if is_owned:
             summary["owned_complete" if meta_complete else "owned_meta_gap"] += 1
+        stage = _funnel_stage(status, meta_complete)
+        if stage == "meta_gap":
+            summary["stage_fields"] += 1
+        elif stage == "complete":
+            summary["stage_complete"] += 1
+        else:
+            summary["stage_sources"] += 1
         payload_films.append(
             {
                 "canonical_number": film.canonical_number,
@@ -380,6 +402,7 @@ def get_actress_completeness(actress_id: int) -> dict:
                 "title": film.title,
                 "release_date": film.release_date,
                 "status": status,
+                "funnel_stage": stage,
                 "cover_url": cover,
                 "metadata_missing": missing,
                 "metadata_complete": meta_complete,
