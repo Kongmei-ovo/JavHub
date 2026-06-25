@@ -68,6 +68,7 @@ from database.movie_resource import (
     set_movie_resource_status,
     upsert_movie_resource,
 )
+from database.inventory_video import codes_in_inventory  # noqa: F401
 from database.acquisition_session import (
     create_acquisition_session,
     finish_acquisition_session,
@@ -231,6 +232,7 @@ __all__ = [
     "delete_download_task",
     "code_has_ready_resource",
     "codes_with_ready_resource",
+    "codes_in_inventory",
     "list_ready_video_movie_ids",
     "create_acquisition_session",
     "finish_acquisition_session",
