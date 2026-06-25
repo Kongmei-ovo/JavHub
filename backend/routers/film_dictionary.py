@@ -348,13 +348,19 @@ def _fetch_actress_field_rows(actress_id: int) -> dict:
 
 
 def _funnel_stage(status: str, metadata_complete: bool) -> str:
-    """Field-first funnel: a film with metadata gaps stays in 'meta_gap' until
-    fields are complete, then surfaces by acquisition state. One film, one stage."""
+    """Field-first funnel: a metadata gap holds a film in 'meta_gap' until fields
+    are complete; then it surfaces by acquisition state. Emits the frontend stage
+    vocabulary (find_source/downloadable/fetching) so the ③ 下载源 filter chips
+    (待找源/可下载/获取中) map 1:1. One film, one stage."""
     if not metadata_complete:
         return "meta_gap"
     if status == "owned":
         return "complete"
-    return "find_source"  # in_progress | available | needs_magnet => ③ sources
+    return {
+        "needs_magnet": "find_source",
+        "available": "downloadable",
+        "in_progress": "fetching",
+    }.get(status, "find_source")
 
 
 @router.get("/actresses/{actress_id}/completeness")
