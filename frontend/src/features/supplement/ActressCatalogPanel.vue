@@ -43,8 +43,8 @@
       @recompute="$emit('recompute')" @find="$emit('find', $event)"
     />
     <CatalogStagePanel
-      v-else :tab="stage" :films="stage === 'fields' ? byTab.fields : byTab.sources" :busy="busy"
-      @enrich="$emit('enrich', $event)" @find="$emit('find', $event)"
+      v-else :tab="stage" :films="stage === 'fields' ? byTab.fields : byTab.sources" :busy="busy" :batch-busy="batchBusy"
+      @enrich="$emit('enrich', $event)" @enrich-all="$emit('enrich-all')" @find="$emit('find', $event)"
       @download="$emit('download', $event)" @open-sources="$emit('open-sources', $event)"
     />
   </section>
@@ -67,10 +67,11 @@ export default {
     summary: { type: Object, default: () => ({}) },
     stage: { type: String, default: 'collection' },
     busy: { type: Object, default: () => ({}) },
+    batchBusy: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
     recomputing: { type: Boolean, default: false },
   },
-  emits: ['change-stage', 'recompute', 'find', 'download', 'enrich', 'open-sources', 'back', 'view-all'],
+  emits: ['change-stage', 'recompute', 'find', 'download', 'enrich', 'enrich-all', 'open-sources', 'back', 'view-all'],
   computed: {
     name() {
       return displayName(this.actor, 'name_kanji', 'name_romaji')

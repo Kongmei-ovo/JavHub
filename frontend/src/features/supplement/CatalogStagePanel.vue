@@ -7,6 +7,15 @@
       >{{ chip.label }}<span class="n">{{ chip.count }}</span></button>
     </div>
 
+    <!-- 字段阶段：一键把所有缺字段的作品加入补全队列，免去逐部点「补字段」。 -->
+    <div v-if="tab === 'fields' && films.length" class="stage-actions">
+      <span class="stage-actions-hint">{{ films.length }} 部缺字段</span>
+      <button class="btn btn-primary btn-sm" type="button" :disabled="batchBusy" @click="$emit('enrich-all')">
+        <span v-if="batchBusy" class="spin-ring" aria-hidden="true"></span>
+        {{ batchBusy ? '补全中…' : '一键补全' }}
+      </button>
+    </div>
+
     <AppleEmptyState
       v-if="!filtered.length"
       class="panel-state"
@@ -38,8 +47,9 @@ export default {
     tab: { type: String, required: true },        // 'fields' | 'sources'
     films: { type: Array, default: () => [] },     // already pre-filtered to this tab
     busy: { type: Object, default: () => ({}) },
+    batchBusy: { type: Boolean, default: false },  // 字段阶段「一键补全」运行中
   },
-  emits: ['enrich', 'find', 'download', 'open-sources'],
+  emits: ['enrich', 'enrich-all', 'find', 'download', 'open-sources'],
   data() { return { activeFilter: 'all' } },
   watch: {
     // Reset the sub-filter when switching stage (②↔③), so returning to 下载源
@@ -67,4 +77,12 @@ export default {
 <style scoped src="./actressCatalogPanel.css"></style>
 <style scoped>
 .stage-panel { display: grid; gap: var(--space-4); }
+.stage-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.stage-actions-hint { font-size: var(--type-caption); color: var(--text-muted); margin-right: auto; }
+.stage-actions .btn { border-radius: 999px; }
 </style>

@@ -680,6 +680,13 @@ export default {
     return api.post('/v1/supplement/movies/detail/jobs/batch', null, { params })
   },
 
+  // 一键补字段：为该演员所有缺字段 canonical 番号入队蛋源 detail job（默认全部源）。
+  enrichSupplementActressFields(actressId, { source = 'all', limit = null } = {}) {
+    const params = { source }
+    if (limit) params.limit = limit
+    return api.post(`/v1/supplement/actresses/${actressId}/fields/enrich`, null, { params })
+  },
+
   createSupplementDownloadCandidates(params = {}) {
     return api.post('/v1/supplement/movies/candidates', null, { params })
   },

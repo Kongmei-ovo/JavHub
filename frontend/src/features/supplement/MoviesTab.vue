@@ -10,12 +10,14 @@
       :summary="catalogSummary"
       :stage="catalogStageTab"
       :busy="catalogEnriching"
+      :batch-busy="catalogBatchEnriching"
       :loading="catalogLoading"
       :recomputing="recomputing"
       @change-stage="setCatalogStage"
       @find="catalogFind"
       @download="catalogDownload"
       @enrich="catalogEnrich"
+      @enrich-all="catalogEnrichAll"
       @open-sources="catalogOpenSources"
       @recompute="$emit('start-supplement')"
       @back="$emit('back-to-list')"
@@ -82,6 +84,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { applyImageFallback } from '../../utils/imageFallback.js'
 import { actorAvatar } from '../../utils/actorDisplay.js'
 import { ElMessage } from '../../utils/message.js'
+import { requestConfirm } from '../../utils/confirmDialog'
 import api from '../../api'
 import SupplementMoviesPanel from './SupplementMoviesPanel.vue'
 import ActressCatalogPanel from './ActressCatalogPanel.vue'
@@ -113,6 +116,8 @@ export default {
     const catalogStageTab = ref('collection')
     // Per-canonical 补字段 busy flags, so the ② card shows 排队中 on the right film.
     const catalogEnriching = reactive({})
+    // 字段阶段「一键补全」整体进行中标记，驱动批量按钮的转圈/禁用。
+    const catalogBatchEnriching = ref(false)
     const matchFilterOptions = [
       { value: null, label: '全部' },
       { value: false, label: '未匹配' },
@@ -148,6 +153,12 @@ export default {
     }
 
     function emitSummary() {
+      // Scoped: the three-stage panel is driven by completeness (catalogSummary),
+      // so the top-nav 待补全作品 count comes from there — no capped movie pre-load.
+      if (props.actorContext?.id) {
+        emit('summary-change', { total: supplement.catalogSummary.value?.total || 0, movies: [] })
+        return
+      }
       emit('summary-change', {
         total: supplement.moviesTotalCount.value,
         movies: supplement.supplementMovies.value,
@@ -267,6 +278,33 @@ export default {
       }
     }
 
+    // 一键补全：把字段阶段所有缺字段作品一次性加入蛋源 detail 队列（全部源），
+    // 免去逐部点「补字段」。走后端单次调用，后台逐个按番号入队（与单部「补字段」
+    // 同一路径，覆盖正片/私拍），即时返回排期数；JavInfoApi 侧对 active job 去重。
+    async function catalogEnrichAll() {
+      if (catalogBatchEnriching.value || !props.actorContext?.id) return
+      const count = (supplement.catalogByTab.value.fields || []).length
+      if (!count) return
+      const confirmed = await requestConfirm({
+        title: '一键补全缺字段',
+        message: `将为 ${count} 部缺字段作品加入补全队列（全部源）。`,
+        details: '蛋源会按番号在后台逐部补全标题/封面/时长/厂商等字段，可在「任务」标签查看进度。',
+        confirmText: '开始补全',
+      })
+      if (!confirmed) return
+      catalogBatchEnriching.value = true
+      try {
+        const resp = await api.enrichSupplementActressFields(props.actorContext.id)
+        const scheduled = (resp && (resp.data?.scheduled ?? resp.scheduled)) || 0
+        ElMessage.success(`已加入补全队列（全部源）：${scheduled} 部`)
+        emit('jobs-requested')
+      } catch (error) {
+        ElMessage.error(`一键补全失败：${error?.message || '请求失败'}`)
+      } finally {
+        catalogBatchEnriching.value = false
+      }
+    }
+
     // ?stage= drives the three-stage sub-tab; switching only updates the query
     // (buildQuery preserves tab/actress_id/work), so it never reloads the catalog.
     function setCatalogStage(stage) {
@@ -282,22 +320,31 @@ export default {
       { immediate: true }
     )
 
-    // number -> supplement movie, so the per-film ⋯ can open the diagnostics
-    // drawer (字段来源 / match·unmatch·ignore) for works backed by a 蛋源 record.
-    const movieByNumber = computed(() => {
-      const idx = {}
-      for (const movie of supplement.supplementMovies.value || []) {
-        for (const key of [movie.dvd_id, movie.canonical_number, movie.normalized_number, movie.display_number]) {
-          const n = normNumber(key)
-          if (n && !idx[n]) idx[n] = movie
-        }
+    // Resolve an actress's 蛋源 record by 番号 (exact normalized match), ON DEMAND
+    // and uncapped. Returns the movie or null; never throws (a failure just yields
+    // the fallback hint). Replaces the old server-capped pre-loaded number→id table
+    // that silently dropped any 蛋源-backed film sorting past the first 100 rows.
+    async function findSupplementMovieByNumber(number) {
+      const want = normNumber(number)
+      if (!want) return null
+      try {
+        const resp = await api.listSupplementMovies({ actress_id: props.actorContext?.id, q: number, page_size: 10 })
+        const payload = resp && Object.prototype.hasOwnProperty.call(resp, 'data') ? resp.data : resp
+        const list = (payload && payload.data) || payload || []
+        return list.find(movie =>
+          [movie.dvd_id, movie.canonical_number, movie.normalized_number, movie.display_number]
+            .some(key => normNumber(key) === want),
+        ) || null
+      } catch {
+        return null
       }
-      return idx
-    })
+    }
 
-    function catalogOpenSources(film) {
-      const movie = movieByNumber.value[normNumber(filmNumber(film))]
-        || movieByNumber.value[normNumber(film?.canonical_number)]
+    // The per-film ⋯ opens the diagnostics drawer (字段来源 / match·unmatch·ignore)
+    // for works backed by a 蛋源 record; native works fall back to a hint.
+    async function catalogOpenSources(film) {
+      const number = filmNumber(film) || film?.canonical_number || ''
+      const movie = number ? await findSupplementMovieByNumber(number) : null
       if (movie?.id) openMovieSourcesAction(movie)
       else if (film?.origin === 'supplement') ElMessage.info('该私拍片暂未建立蛋源诊断记录')
       else ElMessage.info('正片作品 · 字段来自正片目录；点「补字段」用蛋源补全缺失字段')
@@ -343,13 +390,10 @@ export default {
         moviePage.value = 1
         syncFilters()
         if (props.actorContext?.id) {
-          // Scoped drill-down: load the canonical 作品目录 for the panel, plus this
-          // actress's flat supplement movies (any match state) as the ⋯ diagnostics index.
-          await Promise.all([
-            supplement.loadCatalog(props.actorContext.id),
-            // page_size is capped at 100 server-side; the index is best-effort.
-            supplement.loadMovies({ page: 1, pageSize: 100, filters: { matched: null, actress_id: String(props.actorContext.id) } }),
-          ])
+          // Scoped drill-down: load the canonical 作品目录 for the panel. The ⋯
+          // diagnostics drawer resolves its 蛋源 record on demand (catalogOpenSources),
+          // so there is no capped pre-load of the flat supplement-movie list here.
+          await supplement.loadCatalog(props.actorContext.id)
           emitSummary()
         } else {
           await loadMovies()
@@ -382,9 +426,11 @@ export default {
       catalogFind,
       catalogDownload,
       catalogEnrich,
+      catalogEnrichAll,
       catalogOpenSources,
       catalogStageTab,
       catalogEnriching,
+      catalogBatchEnriching,
       setCatalogStage,
     }
   },
