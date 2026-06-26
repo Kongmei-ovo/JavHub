@@ -16,18 +16,24 @@
         <button class="btn btn-ghost btn-sm" type="button" @click="$emit('back')">返回演员列表</button>
         <button class="btn btn-ghost btn-sm" type="button" @click="$emit('view-all')">查看全部待补全</button>
       </div>
-    </div>
 
-    <!-- two meters double as the stage switch -->
-    <div class="cmp-strip">
-      <button class="cmp-meter" type="button" :class="{ on: stage === 'collection' }" @click="$emit('change-stage', 'collection')">
-        <div class="cmp-top"><span class="cmp-label">收藏 <small>已入库 / 全部</small></span><span class="cmp-val"><b>{{ ownedCount }}</b>/ {{ totalFilms }} 部</span></div>
-        <div class="cmp-bar collect"><i :style="{ width: collectPct }"></i></div>
-      </button>
-      <button class="cmp-meter" type="button" :class="{ on: stage !== 'collection' }" @click="$emit('change-stage', 'fields')">
-        <div class="cmp-top"><span class="cmp-label">待办 <small>字段 / 下载源</small></span><span class="cmp-val"><b>{{ fieldsCount }}</b> 缺字段 · <b>{{ sourcesCount }}</b> 待入库</span></div>
-        <div class="cmp-bar meta"><i :style="{ width: donePct }"></i></div>
-      </button>
+      <!-- 收藏 / 待办 进度并入演员卡片底部，顶部不再单挂一条 meter 条 -->
+      <div class="sup-hero-meters">
+        <div class="hero-meter">
+          <div class="hm-top">
+            <span class="hm-label">收藏 <small>已入库</small></span>
+            <span class="hm-val"><b>{{ ownedCount }}</b> / {{ totalFilms }}</span>
+          </div>
+          <div class="cmp-bar collect"><i :style="{ width: collectPct }"></i></div>
+        </div>
+        <div class="hero-meter">
+          <div class="hm-top">
+            <span class="hm-label">待办 <small>字段 / 下载源</small></span>
+            <span class="hm-val"><b>{{ fieldsCount }}</b> 缺字段 · <b>{{ sourcesCount }}</b> 待入库</span>
+          </div>
+          <div class="cmp-bar meta"><i :style="{ width: donePct }"></i></div>
+        </div>
+      </div>
     </div>
 
     <nav class="stage-seg" aria-label="补全阶段">
