@@ -86,23 +86,23 @@ export default {
 .collection-list { display: grid; gap: var(--space-4); }
 .collection-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
 .ch-id { display: grid; gap: 6px; min-width: 220px; }
-.ch-meter { font-size: var(--type-subhead); color: var(--text-secondary); }
+.ch-meter { font-size: var(--type-caption); color: var(--text-secondary); }
 .ch-meter b { color: var(--text-primary); }
-.ch-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.ch-bar { height: 6px; border-radius: 3px; background: var(--hairline-strong); overflow: hidden; }
 .ch-bar i { display: block; height: 100%; background: var(--accent); }
 .movie-list { display: grid; gap: 2px; }
 .movie-list-head, .movie-list-row { display: grid; grid-template-columns: 130px 1fr 110px 64px 96px; gap: 12px; align-items: center; padding: 8px 10px; }
-.movie-list-head { font-size: var(--type-caption-1); color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.movie-list-head { font-size: var(--type-caption-1); color: var(--text-muted); border-bottom: 1px solid var(--hairline); }
 .movie-list-row { border-radius: 8px; }
-.movie-list-row:hover { background: rgba(255,255,255,0.03); }
-.ml-col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--type-subhead); }
+.movie-list-row:hover { background: var(--card-hover); }
+.ml-col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--type-callout); }
 .ml-title { color: var(--text-secondary); }
 .ml-origin { color: var(--text-muted); }
 .owned-badge { font-size: var(--type-caption-1); padding: 2px 8px; border-radius: 999px; }
 .owned-badge.is-owned { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); }
-.owned-badge.not-owned { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+.owned-badge.not-owned { background: var(--card-2); color: var(--text-muted); }
 .row-find { margin-left: 8px; background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; }
 .year-header { display: flex; align-items: baseline; gap: 10px; margin: 14px 2px 6px; }
-.year-label { font-size: var(--type-title-3); font-weight: 600; color: var(--text-primary); }
+.year-label { font-size: var(--type-section-title); font-weight: 600; color: var(--text-primary); }
 .year-count { font-size: var(--type-caption-1); color: var(--text-muted); }
 </style>
