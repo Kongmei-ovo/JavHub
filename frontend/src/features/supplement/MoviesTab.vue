@@ -148,6 +148,12 @@ export default {
     }
 
     function emitSummary() {
+      // Scoped: the three-stage panel is driven by completeness (catalogSummary),
+      // so the top-nav 待补全作品 count comes from there — no capped movie pre-load.
+      if (props.actorContext?.id) {
+        emit('summary-change', { total: supplement.catalogSummary.value?.total || 0, movies: [] })
+        return
+      }
       emit('summary-change', {
         total: supplement.moviesTotalCount.value,
         movies: supplement.supplementMovies.value,
@@ -282,22 +288,31 @@ export default {
       { immediate: true }
     )
 
-    // number -> supplement movie, so the per-film ⋯ can open the diagnostics
-    // drawer (字段来源 / match·unmatch·ignore) for works backed by a 蛋源 record.
-    const movieByNumber = computed(() => {
-      const idx = {}
-      for (const movie of supplement.supplementMovies.value || []) {
-        for (const key of [movie.dvd_id, movie.canonical_number, movie.normalized_number, movie.display_number]) {
-          const n = normNumber(key)
-          if (n && !idx[n]) idx[n] = movie
-        }
+    // Resolve an actress's 蛋源 record by 番号 (exact normalized match), ON DEMAND
+    // and uncapped. Returns the movie or null; never throws (a failure just yields
+    // the fallback hint). Replaces the old server-capped pre-loaded number→id table
+    // that silently dropped any 蛋源-backed film sorting past the first 100 rows.
+    async function findSupplementMovieByNumber(number) {
+      const want = normNumber(number)
+      if (!want) return null
+      try {
+        const resp = await api.listSupplementMovies({ actress_id: props.actorContext?.id, q: number, page_size: 10 })
+        const payload = resp && Object.prototype.hasOwnProperty.call(resp, 'data') ? resp.data : resp
+        const list = (payload && payload.data) || payload || []
+        return list.find(movie =>
+          [movie.dvd_id, movie.canonical_number, movie.normalized_number, movie.display_number]
+            .some(key => normNumber(key) === want),
+        ) || null
+      } catch {
+        return null
       }
-      return idx
-    })
+    }
 
-    function catalogOpenSources(film) {
-      const movie = movieByNumber.value[normNumber(filmNumber(film))]
-        || movieByNumber.value[normNumber(film?.canonical_number)]
+    // The per-film ⋯ opens the diagnostics drawer (字段来源 / match·unmatch·ignore)
+    // for works backed by a 蛋源 record; native works fall back to a hint.
+    async function catalogOpenSources(film) {
+      const number = filmNumber(film) || film?.canonical_number || ''
+      const movie = number ? await findSupplementMovieByNumber(number) : null
       if (movie?.id) openMovieSourcesAction(movie)
       else if (film?.origin === 'supplement') ElMessage.info('该私拍片暂未建立蛋源诊断记录')
       else ElMessage.info('正片作品 · 字段来自正片目录；点「补字段」用蛋源补全缺失字段')
@@ -343,13 +358,10 @@ export default {
         moviePage.value = 1
         syncFilters()
         if (props.actorContext?.id) {
-          // Scoped drill-down: load the canonical 作品目录 for the panel, plus this
-          // actress's flat supplement movies (any match state) as the ⋯ diagnostics index.
-          await Promise.all([
-            supplement.loadCatalog(props.actorContext.id),
-            // page_size is capped at 100 server-side; the index is best-effort.
-            supplement.loadMovies({ page: 1, pageSize: 100, filters: { matched: null, actress_id: String(props.actorContext.id) } }),
-          ])
+          // Scoped drill-down: load the canonical 作品目录 for the panel. The ⋯
+          // diagnostics drawer resolves its 蛋源 record on demand (catalogOpenSources),
+          // so there is no capped pre-load of the flat supplement-movie list here.
+          await supplement.loadCatalog(props.actorContext.id)
           emitSummary()
         } else {
           await loadMovies()
