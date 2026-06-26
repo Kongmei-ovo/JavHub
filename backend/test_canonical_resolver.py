@@ -152,6 +152,20 @@ def test_backfill_skips_rows_without_a_matching_dvd_sibling():
     assert all(m.dvd_id is None for m in luxu.members)  # no UMD dvd fabricated onto it
 
 
+def test_clean_label_strips_prefix_without_exact_sibling():
+    # 125umd1013 has NO UMD-1013 sibling, but UMD is a clean label (UMD-934's
+    # dvd_id carries no numeric prefix), so 125 is provably a store prefix and
+    # the work resolves to UMD-1013 — not 125UMD-1013.
+    rows = [
+        {"content_id": "125umd1013", "dvd_id": None, "service_code": "digital"},
+        {"content_id": "125umd934", "dvd_id": "UMD-934", "service_code": "mono"},
+    ]
+    films = resolve_rows_to_films(rows)
+    canon = {f.canonical_number.upper().replace("-", "") for f in films}
+    assert "UMD1013" in canon
+    assert "125UMD1013" not in canon and "25UMD1013" not in canon
+
+
 def test_digit_prefixed_straggler_folds_into_clean_sibling_film():
     # 57MCSR-627 has no dvd_id anywhere to data-证 a strip, but a clean MCSR-627
     # film exists from another product — the straggler folds onto it (not a guess:
