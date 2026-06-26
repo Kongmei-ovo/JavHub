@@ -45,7 +45,6 @@
             <span class="ml-col ml-origin">{{ film.origin === 'supplement' ? '私拍' : '正片' }}</span>
             <span class="ml-col ml-owned">
               <span class="owned-badge" :class="isOwned(film) ? 'is-owned' : 'not-owned'">{{ isOwned(film) ? '已入库' : '未入库' }}</span>
-              <button v-if="!isOwned(film)" type="button" class="row-find" @click="$emit('find', film)">找源›</button>
             </span>
           </div>
         </div>
@@ -68,7 +67,7 @@ export default {
     loading: { type: Boolean, default: false },
     recomputing: { type: Boolean, default: false },
   },
-  emits: ['recompute', 'find'],
+  emits: ['recompute'],
   computed: {
     ownedPct() {
       if (!this.totalCount) return '0%'
@@ -90,7 +89,7 @@ export default {
 .ch-meter b { color: var(--text-primary); }
 .ch-bar { height: 6px; border-radius: 3px; background: var(--hairline-strong); overflow: hidden; }
 .ch-bar i { display: block; height: 100%; background: var(--accent); }
-.movie-list { display: grid; gap: 2px; }
+.movie-list { display: grid; gap: 2px; background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius-card); padding: 6px 8px; }
 .movie-list-head, .movie-list-row { display: grid; grid-template-columns: 130px 1fr 110px 64px 96px; gap: 12px; align-items: center; padding: 8px 10px; }
 .movie-list-head { font-size: var(--type-caption-1); color: var(--text-muted); border-bottom: 1px solid var(--hairline); }
 .movie-list-row { border-radius: 8px; }
@@ -101,7 +100,6 @@ export default {
 .owned-badge { font-size: var(--type-caption-1); padding: 2px 8px; border-radius: 999px; }
 .owned-badge.is-owned { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); }
 .owned-badge.not-owned { background: var(--card-2); color: var(--text-muted); }
-.row-find { margin-left: 8px; background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; }
 .year-header { display: flex; align-items: baseline; gap: 10px; margin: 14px 2px 6px; }
 .year-label { font-size: var(--type-section-title); font-weight: 600; color: var(--text-primary); }
 .year-count { font-size: var(--type-caption-1); color: var(--text-muted); }

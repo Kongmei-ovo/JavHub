@@ -404,7 +404,10 @@ def get_actress_completeness(actress_id: int) -> dict:
         payload_films.append(
             {
                 "canonical_number": film.canonical_number,
-                "display_code": film.display_code,
+                # Show the canonical 番号 (e.g. XVSR-812), not a member's prefixed
+                # store form (TKXVSR-812). display_code historically picked the
+                # first member's code, which is noisy for merged variant groups.
+                "display_code": film.canonical_number,
                 "title": film.title,
                 "release_date": film.release_date,
                 "status": status,
