@@ -10,12 +10,14 @@
       :summary="catalogSummary"
       :stage="catalogStageTab"
       :busy="catalogEnriching"
+      :batch-busy="catalogBatchEnriching"
       :loading="catalogLoading"
       :recomputing="recomputing"
       @change-stage="setCatalogStage"
       @find="catalogFind"
       @download="catalogDownload"
       @enrich="catalogEnrich"
+      @enrich-all="catalogEnrichAll"
       @open-sources="catalogOpenSources"
       @recompute="$emit('start-supplement')"
       @back="$emit('back-to-list')"
@@ -82,6 +84,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { applyImageFallback } from '../../utils/imageFallback.js'
 import { actorAvatar } from '../../utils/actorDisplay.js'
 import { ElMessage } from '../../utils/message.js'
+import { requestConfirm } from '../../utils/confirmDialog'
 import api from '../../api'
 import SupplementMoviesPanel from './SupplementMoviesPanel.vue'
 import ActressCatalogPanel from './ActressCatalogPanel.vue'
@@ -113,6 +116,8 @@ export default {
     const catalogStageTab = ref('collection')
     // Per-canonical 补字段 busy flags, so the ② card shows 排队中 on the right film.
     const catalogEnriching = reactive({})
+    // 字段阶段「一键补全」整体进行中标记，驱动批量按钮的转圈/禁用。
+    const catalogBatchEnriching = ref(false)
     const matchFilterOptions = [
       { value: null, label: '全部' },
       { value: false, label: '未匹配' },
@@ -273,6 +278,33 @@ export default {
       }
     }
 
+    // 一键补全：把字段阶段所有缺字段作品一次性加入蛋源 detail 队列（全部源），
+    // 免去逐部点「补字段」。走后端单次调用，后台逐个按番号入队（与单部「补字段」
+    // 同一路径，覆盖正片/私拍），即时返回排期数；JavInfoApi 侧对 active job 去重。
+    async function catalogEnrichAll() {
+      if (catalogBatchEnriching.value || !props.actorContext?.id) return
+      const count = (supplement.catalogByTab.value.fields || []).length
+      if (!count) return
+      const confirmed = await requestConfirm({
+        title: '一键补全缺字段',
+        message: `将为 ${count} 部缺字段作品加入补全队列（全部源）。`,
+        details: '蛋源会按番号在后台逐部补全标题/封面/时长/厂商等字段，可在「任务」标签查看进度。',
+        confirmText: '开始补全',
+      })
+      if (!confirmed) return
+      catalogBatchEnriching.value = true
+      try {
+        const resp = await api.enrichSupplementActressFields(props.actorContext.id)
+        const scheduled = (resp && (resp.data?.scheduled ?? resp.scheduled)) || 0
+        ElMessage.success(`已加入补全队列（全部源）：${scheduled} 部`)
+        emit('jobs-requested')
+      } catch (error) {
+        ElMessage.error(`一键补全失败：${error?.message || '请求失败'}`)
+      } finally {
+        catalogBatchEnriching.value = false
+      }
+    }
+
     // ?stage= drives the three-stage sub-tab; switching only updates the query
     // (buildQuery preserves tab/actress_id/work), so it never reloads the catalog.
     function setCatalogStage(stage) {
@@ -394,9 +426,11 @@ export default {
       catalogFind,
       catalogDownload,
       catalogEnrich,
+      catalogEnrichAll,
       catalogOpenSources,
       catalogStageTab,
       catalogEnriching,
+      catalogBatchEnriching,
       setCatalogStage,
     }
   },

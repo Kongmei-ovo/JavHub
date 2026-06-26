@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 from typing import Any
 from fastapi import APIRouter, Query
 from modules.info_client import _transform_jacket_url, get_info_client
 from routers._query import qv
 from services.supplement_candidates import generate_download_candidates_from_supplement
 from translations import get_translator_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
 
@@ -442,3 +445,51 @@ async def create_movie_detail_batch_jobs(
         "/api/v1/supplement/movies/detail/jobs/batch",
         params=params,
     )
+
+
+@router.post("/actresses/{actress_id}/fields/enrich")
+async def enrich_actress_fields(
+    actress_id: int,
+    source: str = Query("all"),
+    limit: int | None = Query(None, ge=1, le=5000),
+) -> dict[str, Any]:
+    """一键补字段：为该演员所有「缺字段」(funnel_stage=meta_gap) 的 canonical 番号
+    各排一个蛋源 detail job（默认全部源），免去补全页字段阶段逐部点「补字段」。
+
+    番号来自 completeness（与字段阶段所见同源），按番号入队——与单部「补字段」
+    完全同一路径，故正片/私拍、有无蛋源草稿都覆盖。任务在后台逐个入队（JavInfoApi
+    侧对 active job 去重，重复触发安全），立即返回排期数量，避免阻塞请求。
+    """
+    import asyncio
+
+    from routers.film_dictionary import get_actress_completeness
+
+    src = qv(source) or "all"
+    lim = qv(limit)
+
+    loop = asyncio.get_running_loop()
+    data = await loop.run_in_executor(None, get_actress_completeness, actress_id)
+    numbers = [
+        film["canonical_number"]
+        for film in (data.get("films") or [])
+        if film.get("funnel_stage") == "meta_gap" and film.get("canonical_number")
+    ]
+    if lim:
+        numbers = numbers[:lim]
+
+    if numbers:
+        client = get_info_client()
+
+        async def run() -> None:
+            for number in numbers:
+                try:
+                    await client.proxy_post(
+                        "/api/v1/supplement/movies/detail/jobs",
+                        params={"source": src, "source_movie_id": number, "actress_id": actress_id},
+                    )
+                except Exception as exc:  # noqa: BLE001 — 单部入队失败不应中断整批
+                    logger.warning("field enrich enqueue failed for %s: %s", number, exc)
+
+        loop.create_task(run())
+
+    return {"scheduled": len(numbers)}
