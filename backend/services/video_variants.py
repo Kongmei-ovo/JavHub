@@ -97,6 +97,80 @@ def filter_movie_items(items: list[dict[str, Any]] | None) -> list[dict[str, Any
     return [item for item in (items or []) if not is_non_movie_item(item)]
 
 
+_LOOSE_BANGER_RE = re.compile(r"^(.*?[A-Z])0*(\d+)([A-Z]*)$")
+_BANGER_LABEL_RE = re.compile(r"^(\d*)([A-Z]{2,})")
+_BANGER_PARTS_RE = re.compile(r"^([A-Z]+)0*(\d+)([A-Z]*)$")
+
+
+def _loose_banger_key(text: Any) -> str:
+    """Collapse a 品番/content_id to a padding-insensitive key for cross-row
+    matching: ``UMD-934`` / ``umd00934`` -> ``UMD934``. Used only to compare a
+    de-prefixed content_id against the set of authoritative dvd_id 品番."""
+    flat = re.sub(r"[^A-Za-z0-9]", "", str(text or "")).upper()
+    match = _LOOSE_BANGER_RE.match(flat)
+    return f"{match.group(1)}{match.group(2)}{match.group(3)}" if match else flat
+
+
+def _synthesize_banger(flat: str) -> str:
+    """``UMD01013`` -> ``UMD-1013`` (de-pad, hyphenate). Used to mint the clean
+    品番 for a content_id whose label is proven prefix-free."""
+    match = _BANGER_PARTS_RE.match(flat)
+    return f"{match.group(1)}-{match.group(2)}{match.group(3)}" if match else flat
+
+
+def backfill_dvd_id_from_siblings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Give a no-dvd_id row the authoritative 品番 implied by the dataset when its
+    leading numeric prefix is a FANZA maker-bucket marker, not part of the 品番.
+
+    FANZA digital content_ids prefix the real 品番 with a maker-bucket number that
+    the dvd_id omits — ``125umd00934`` ⇒ 品番 ``UMD-934``. Two data-self-证 signals
+    (NOT a maker allowlist) license the strip:
+
+      1. **Exact sibling** — another product carries the de-prefixed 品番 as its
+         dvd_id (``UMD-934``). Copy it over so both products share one canonical.
+      2. **Clean label** — the label (``UMD``) appears in some dvd_id with NO
+         leading digit, and never appears digit-prefixed. Then the prefix is
+         provably droppable even with no exact sibling (``125umd1013`` ⇒
+         ``UMD-1013``).
+
+    Amateur labels whose digits ARE the 品番 (``259LUXU-1234`` = ラグジュTV) are
+    preserved: ``LUXU`` only ever appears digit-prefixed, so neither signal fires.
+    Returns copies; never mutates the inputs.
+    """
+    known: dict[str, str] = {}
+    clean_labels: set[str] = set()
+    prefixed_labels: set[str] = set()
+    for row in rows or []:
+        dvd = str(row.get("dvd_id") or "").strip()
+        if not dvd:
+            continue
+        known.setdefault(_loose_banger_key(dvd), dvd)
+        flat = re.sub(r"[^A-Za-z0-9]", "", dvd).upper()
+        label_match = _BANGER_LABEL_RE.match(flat)
+        if label_match:
+            target = prefixed_labels if label_match.group(1) else clean_labels
+            target.add(label_match.group(2))
+    if not known:
+        return [dict(row) for row in (rows or [])]
+
+    result: list[dict[str, Any]] = []
+    for row in rows or []:
+        row = dict(row)
+        if not str(row.get("dvd_id") or "").strip():
+            flat = re.sub(r"[^A-Za-z0-9]", "", str(row.get("content_id") or "")).upper()
+            stripped = re.sub(r"^\d+", "", flat)
+            if stripped != flat and _loose_banger_key(stripped) != _loose_banger_key(flat):
+                key = _loose_banger_key(stripped)
+                label_match = _BANGER_LABEL_RE.match(stripped)
+                label = label_match.group(2) if label_match else ""
+                if key in known:
+                    row["dvd_id"] = known[key]
+                elif label and label in clean_labels and label not in prefixed_labels:
+                    row["dvd_id"] = _synthesize_banger(stripped)
+        result.append(row)
+    return result
+
+
 def search_codes_for_item(item: dict[str, Any]) -> list[str]:
     """Ordered keyword aliases for magnet/torrent search.
 

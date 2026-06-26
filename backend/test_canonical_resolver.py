@@ -120,3 +120,74 @@ def test_overlay_owned_recognizes_canonical_key(monkeypatch):
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {canonical})
     owned = overlay_owned(films)
     assert owned[canonical] is True
+
+
+def test_no_dvd_digital_folds_into_dvd_sibling():
+    # The digital product has the FANZA maker-bucket prefix and NO dvd_id; its
+    # mono sibling carries the authoritative 品番 UMD-934. They must collapse to
+    # ONE film whose number is the clean 品番 (not 125UMD-934 / 25UMD-934).
+    rows = [
+        {"content_id": "125umd00934", "dvd_id": None, "service_code": "digital"},
+        {"content_id": "125umd934", "dvd_id": "UMD-934", "service_code": "mono"},
+    ]
+    films = resolve_rows_to_films(rows)
+    assert len(films) == 1, f"expected one merged film, got {[f.canonical_number for f in films]}"
+    film = films[0]
+    assert film.canonical_number.upper().replace("-", "") == "UMD934"
+    assert film.display_code.upper().replace("-", "") == "UMD934"
+    assert len(film.members) == 2
+
+
+def test_backfill_skips_rows_without_a_matching_dvd_sibling():
+    # 259LUXU (ラグジュTV) has no de-prefixed LUXU-1234 dvd_id to license a
+    # strip, so the data-self-证 backfill must NOT fire: it stays a separate
+    # film and is never handed the unrelated UMD work's dvd_id.
+    rows = [
+        {"content_id": "259luxu1234", "dvd_id": None, "service_code": "digital"},
+        {"content_id": "125umd934", "dvd_id": "UMD-934", "service_code": "mono"},
+    ]
+    films = resolve_rows_to_films(rows)
+    assert len(films) == 2
+    luxu = next(f for f in films if "LUXU" in f.canonical_number.upper())
+    assert all(m.dvd_id is None for m in luxu.members)  # no UMD dvd fabricated onto it
+
+
+def test_clean_label_strips_prefix_without_exact_sibling():
+    # 125umd1013 has NO UMD-1013 sibling, but UMD is a clean label (UMD-934's
+    # dvd_id carries no numeric prefix), so 125 is provably a store prefix and
+    # the work resolves to UMD-1013 — not 125UMD-1013.
+    rows = [
+        {"content_id": "125umd1013", "dvd_id": None, "service_code": "digital"},
+        {"content_id": "125umd934", "dvd_id": "UMD-934", "service_code": "mono"},
+    ]
+    films = resolve_rows_to_films(rows)
+    canon = {f.canonical_number.upper().replace("-", "") for f in films}
+    assert "UMD1013" in canon
+    assert "125UMD1013" not in canon and "25UMD1013" not in canon
+
+
+def test_digit_prefixed_straggler_folds_into_clean_sibling_film():
+    # 57MCSR-627 has no dvd_id anywhere to data-证 a strip, but a clean MCSR-627
+    # film exists from another product — the straggler folds onto it (not a guess:
+    # the base film is real). No name list involved.
+    rows = [
+        {"content_id": "mcsr00627", "dvd_id": "MCSR-627", "service_code": "digital"},
+        {"content_id": "57mcsr627", "dvd_id": None, "service_code": "mono"},
+    ]
+    films = resolve_rows_to_films(rows)
+    assert len(films) == 1, f"expected one merged film, got {[f.canonical_number for f in films]}"
+    assert films[0].canonical_number.upper().replace("-", "") == "MCSR627"
+    assert len(films[0].members) == 2
+
+
+def test_display_code_tracks_canonical_number():
+    # Display must present the canonical (virtual) 番号, never a member's
+    # store-derived form. Holds across a mixed set.
+    rows = [
+        {"content_id": "umso00533", "dvd_id": "UMSO-533", "service_code": "digital"},
+        {"content_id": "h_999umso00533", "dvd_id": "UMSO-533", "service_code": "rental"},
+        {"content_id": "abcd00123", "dvd_id": "ABCD-123", "service_code": "digital"},
+    ]
+    films = resolve_rows_to_films(rows)
+    for film in films:
+        assert film.display_code == film.canonical_number
