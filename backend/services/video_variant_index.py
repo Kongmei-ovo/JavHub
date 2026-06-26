@@ -20,7 +20,11 @@ from database.video_variant_index import (
     update_variant_group_job,
 )
 from services import cache
-from services.video_variants import enrich_video_variants, is_non_movie_item
+from services.video_variants import (
+    backfill_dvd_id_from_siblings,
+    enrich_video_variants,
+    is_non_movie_item,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +132,9 @@ def build_variant_index_groups(rows: Iterable[dict[str, Any]]) -> list[dict[str,
     ``enrich_video_variants`` never sees both sides and the index would split
     what the actress page (which groups over the full collection) merges.
     """
+    # Lend no-dvd_id digital products their sibling's authoritative 品番 first, so
+    # 125umd00934 buckets onto UMD-934 instead of splitting off as 125UMD-934.
+    rows = backfill_dvd_id_from_siblings(list(rows))
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if is_non_movie_item(row):
