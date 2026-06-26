@@ -453,3 +453,14 @@
   }
   .trail-stage { flex: 1; }
 }
+
+/* ---- three-stage shell: clickable meters + segmented stage switch -------- */
+/* .cmp-meter keeps its card look from above; here we only make it a button. */
+.cmp-meter { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: border-color var(--motion-fast), background var(--motion-fast); }
+.cmp-meter:hover { border-color: var(--hairline-strong); }
+.cmp-meter.on { border-color: rgba(var(--accent-rgb), 0.5); background: var(--card-hover); }
+
+.stage-seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--radius-control); background: var(--card-2); margin-bottom: var(--space-5); }
+.stage-seg button { border: none; background: none; color: var(--text-secondary); padding: 6px 14px; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: background var(--motion-fast), color var(--motion-fast); }
+.stage-seg button.active { background: var(--card); color: var(--text-primary); }
+.stage-seg .seg-n { font-size: var(--type-micro); color: var(--text-muted); font-variant-numeric: tabular-nums; }
