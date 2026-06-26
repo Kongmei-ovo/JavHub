@@ -9,6 +9,10 @@ from translations import get_translator_service
 
 logger = logging.getLogger(__name__)
 
+# Keep strong refs to detached background tasks so the event loop can't GC them
+# mid-flight (an asyncio footgun that would silently drop pending enqueues).
+_BACKGROUND_TASKS: set[Any] = set()
+
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
 
 
@@ -490,6 +494,8 @@ async def enrich_actress_fields(
                 except Exception as exc:  # noqa: BLE001 — 单部入队失败不应中断整批
                     logger.warning("field enrich enqueue failed for %s: %s", number, exc)
 
-        loop.create_task(run())
+        task = loop.create_task(run())
+        _BACKGROUND_TASKS.add(task)
+        task.add_done_callback(_BACKGROUND_TASKS.discard)
 
     return {"scheduled": len(numbers)}
