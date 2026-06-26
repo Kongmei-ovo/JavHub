@@ -299,7 +299,8 @@ export default {
       const movie = movieByNumber.value[normNumber(filmNumber(film))]
         || movieByNumber.value[normNumber(film?.canonical_number)]
       if (movie?.id) openMovieSourcesAction(movie)
-      else ElMessage.info('该作品暂无补全源记录（多为原生作品，无需诊断）')
+      else if (film?.origin === 'supplement') ElMessage.info('该私拍片暂未建立蛋源诊断记录')
+      else ElMessage.info('正片作品 · 字段来自正片目录；点「补字段」用蛋源补全缺失字段')
     }
 
     // Diagnostics drawer is addressed by ?work=<id> so the back button closes it
