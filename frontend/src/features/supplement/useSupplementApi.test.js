@@ -203,9 +203,9 @@ test('useSupplementApi loadCatalog maps completeness films to stages and exposes
           data: {
             summary: { owned: 1, in_progress: 0, available: 1, needs_magnet: 1, owned_complete: 0, owned_meta_gap: 1 },
             films: [
-              { canonical_number: 'A-1', status: 'available', metadata_complete: false, cover_url: '', metadata_missing: ['cover'] },
+              { canonical_number: 'A-1', status: 'available', metadata_complete: true, cover_url: '', metadata_missing: [] },
               { canonical_number: 'A-2', status: 'owned', metadata_complete: false, cover_url: 'c.jpg', metadata_missing: ['series'] },
-              { canonical_number: 'A-3', status: 'needs_magnet', metadata_complete: false },
+              { canonical_number: 'A-3', status: 'needs_magnet', metadata_complete: true, metadata_missing: [] },
             ],
           },
         }
@@ -235,4 +235,23 @@ test('useSupplementApi loads the gfriends avatar job on demand (for the Jobs tab
   await supplement.loadGfriendsAvatarJob()
 
   assert.equal(supplement.gfriendsAvatarJob.value.source, 'gfriends')
+})
+
+test('loadCatalog exposes by-year and by-stage catalog groupings', async () => {
+  const { useSupplementApi } = await import(moduleUrl.href)
+  const films = [
+    { canonical_number: 'A-1', release_date: '2024-05-01', status: 'needs_magnet', metadata_complete: true, funnel_stage: 'find_source' },
+    { canonical_number: 'B-2', release_date: '2024-09-01', status: 'owned', metadata_complete: false, funnel_stage: 'meta_gap' },
+    { canonical_number: 'C-3', release_date: '2023-01-01', status: 'owned', metadata_complete: true, funnel_stage: 'complete' },
+  ]
+  const supplement = useSupplementApi({
+    api: createApi({ getActressCompleteness: async () => ({ data: { summary: { total: 3 }, films } }) }),
+  })
+  await supplement.loadCatalog(7)
+  assert.equal(supplement.catalogFilms.value.length, 3)
+  assert.equal(supplement.catalogFilms.value[0].stage, 'find_source')
+  assert.deepEqual(supplement.catalogYearGroups.value.map((g) => g.year), [2024, 2023])
+  assert.equal(supplement.catalogByTab.value.fields.length, 1)
+  assert.equal(supplement.catalogByTab.value.sources.length, 1)
+  assert.equal(supplement.catalogByTab.value.complete.length, 1)
 })

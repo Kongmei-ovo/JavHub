@@ -149,3 +149,87 @@ def test_completeness_adds_metadata_gap_and_cover(client, monkeypatch):
     assert full["metadata_missing"] == []
     assert gap["metadata_complete"] is False
     assert set(gap["metadata_missing"]) == {"cover", "runtime", "maker", "label", "series", "category"}
+
+
+def test_completeness_emits_funnel_stage_and_summary(client, monkeypatch):
+    rows = [
+        # owned + complete fields -> complete
+        {"content_id": "ok00001", "dvd_id": "OK-001", "service_code": "digital",
+         "release_date": "2022-03-01", "data_origin": "native", "actress_ids": [5]},
+        # NOT owned but complete fields -> sources stage (needs_magnet, no candidate)
+        {"content_id": "src00002", "dvd_id": "SRC-002", "service_code": "digital",
+         "release_date": "2022-02-01", "data_origin": "native", "actress_ids": [5]},
+        # missing fields (regardless of owned) -> fields stage
+        {"content_id": "fld00003", "dvd_id": "FLD-003", "service_code": "digital",
+         "release_date": "2022-01-01", "data_origin": "native", "actress_ids": [5]},
+    ]
+    fields = {
+        "ok00001": {"cover_url": "https://x/c.jpg", "runtime_mins": 120, "maker_name": "M",
+                    "label_name": "L", "series_name": "S", "category_names": ["a"]},
+        "src00002": {"cover_url": "https://x/c.jpg", "runtime_mins": 120, "maker_name": "M",
+                     "label_name": "L", "series_name": "S", "category_names": ["a"]},
+        "fld00003": {"cover_url": "", "runtime_mins": None, "maker_name": "", "label_name": "",
+                     "series_name": "", "category_names": []},
+    }
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"ok00001"})
+    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
+
+    body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
+    stage = {f["canonical_number"].upper().replace("-", ""): f["funnel_stage"] for f in body["films"]}
+    assert stage["OK1"] == "complete"
+    assert stage["SRC2"] == "find_source"
+    assert stage["FLD3"] == "meta_gap"
+    s = body["summary"]
+    assert s["total"] == 3
+    assert s["owned"] == 1
+    assert s["stage_fields"] == 1       # FLD-003
+    assert s["stage_sources"] == 1      # SRC-002
+    assert s["stage_complete"] == 1     # OK-001
+
+
+def test_completeness_metadata_complete_decoupled_from_owned(client, monkeypatch):
+    # A NOT-owned film with full fields is metadata_complete=True now (was False before).
+    rows = [{"content_id": "free00009", "dvd_id": "FREE-009", "service_code": "digital",
+             "release_date": "2022-01-01", "data_origin": "native", "actress_ids": [5]}]
+    fields = {"free00009": {"cover_url": "https://x/c.jpg", "runtime_mins": 100, "maker_name": "M",
+                            "label_name": "L", "series_name": "S", "category_names": ["a"]}}
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
+    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
+    body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
+    film = body["films"][0]
+    assert film["metadata_complete"] is True
+    assert film["funnel_stage"] == "find_source"
+
+
+def test_completeness_funnel_maps_acquisition_substatus(client, monkeypatch):
+    rows = [
+        {"content_id": "dl00001", "dvd_id": "DL-001", "service_code": "digital",
+         "release_date": "2022-03-01", "data_origin": "native", "actress_ids": [6]},
+        {"content_id": "ft00002", "dvd_id": "FT-002", "service_code": "digital",
+         "release_date": "2022-02-01", "data_origin": "native", "actress_ids": [6]},
+    ]
+    fields = {
+        "dl00001": {"cover_url": "https://x/c.jpg", "runtime_mins": 120, "maker_name": "M",
+                    "label_name": "L", "series_name": "S", "category_names": ["a"]},
+        "ft00002": {"cover_url": "https://x/c.jpg", "runtime_mins": 120, "maker_name": "M",
+                    "label_name": "L", "series_name": "S", "category_names": ["a"]},
+    }
+    candidates = [
+        {"content_id": "dl00001", "dvd_id": "DL-001", "status": "candidate", "magnet": "magnet:?xt=1"},
+        {"content_id": "ft00002", "dvd_id": "FT-002", "status": "sent", "magnet": ""},
+    ]
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
+    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
+    body = client.get("/api/v1/film-dictionary/actresses/6/completeness").json()
+    stage = {f["canonical_number"].upper().replace("-", ""): f["funnel_stage"] for f in body["films"]}
+    assert stage["DL1"] == "downloadable"   # candidate w/ magnet => available => downloadable
+    assert stage["FT2"] == "fetching"       # sent => in_progress => fetching

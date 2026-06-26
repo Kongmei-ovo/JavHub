@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import defaultApi from '../../api/index.js'
 import { ElMessage } from '../../utils/message.js'
-import { catalogStage } from './catalogStage.js'
+import { catalogStage, FUNNEL_TABS } from './catalogStage.js'
 
 function unwrapResponse(resp, fallback = null) {
   if (resp && Object.prototype.hasOwnProperty.call(resp, 'data')) return resp.data
@@ -57,6 +57,31 @@ export function useSupplementApi({ api = defaultApi } = {}) {
   const catalogSummary = ref({})
   const catalogLoading = ref(false)
   const catalogError = ref('')
+
+  const catalogYearGroups = computed(() => {
+    const groups = new Map()
+    for (const film of catalogFilms.value) {
+      const year = Number(String(film.release_date || '').slice(0, 4)) || 0
+      if (!groups.has(year)) groups.set(year, [])
+      groups.get(year).push(film)
+    }
+    return [...groups.entries()]
+      .sort((a, b) => b[0] - a[0]) // newest year first; 0 (undated) sinks last
+      .map(([year, items]) => ({
+        year: year || '未知年份',
+        films: items.slice().sort((a, b) => String(b.release_date || '').localeCompare(String(a.release_date || ''))),
+      }))
+  })
+
+  const catalogByTab = computed(() => {
+    const out = { fields: [], sources: [], complete: [] }
+    for (const film of catalogFilms.value) {
+      if (FUNNEL_TABS.fields.includes(film.stage)) out.fields.push(film)
+      else if (FUNNEL_TABS.sources.includes(film.stage)) out.sources.push(film)
+      else out.complete.push(film)
+    }
+    return out
+  })
 
   const sourceDiagnosticsOpen = ref(false)
   const sourceDiagnosticsLoading = ref(false)
@@ -612,6 +637,8 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     candidateImporting,
     loadMovies,
     catalogFilms,
+    catalogYearGroups,
+    catalogByTab,
     catalogSummary,
     catalogLoading,
     catalogError,
