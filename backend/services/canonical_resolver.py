@@ -19,12 +19,17 @@ Read-only: ownership is derived by expanding members against ``movie_resources``
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from database.movie_resource import codes_with_ready_resource
 from services.video_variant_index import _bucket_key, apply_indexed_variant_groups
-from services.video_variants import enrich_video_variants, is_non_movie_item
+from services.video_variants import (
+    backfill_dvd_id_from_siblings,
+    enrich_video_variants,
+    is_non_movie_item,
+)
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,11 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
     if not movie_rows:
         return []
 
+    # 0) Lend a no-dvd_id digital product its sibling's authoritative 品番 so the
+    #    FANZA maker-bucket prefix (125umd…) collapses onto the clean code and the
+    #    two products merge instead of splitting (125UMD-934 vs UMD-934).
+    movie_rows = backfill_dvd_id_from_siblings(movie_rows)
+
     # 1) per-row clean canonical_code; 2) attach global variant members.
     enriched = enrich_video_variants(movie_rows, variant_mode="flat", include_explanations=False)
     enriched = apply_indexed_variant_groups(enriched)
@@ -99,16 +109,28 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
     seen_members: dict[str, set[str]] = {}
 
     for original, item in zip(movie_rows, enriched):
-        canonical_code = str(item.get("canonical_code") or "").strip()
+        # An index-grouped item already carries the group's adopted base code —
+        # trust it. Otherwise prefer the (possibly backfilled) authoritative
+        # dvd_id 品番, which pins 125umd00934(→UMD-934) onto the clean code that
+        # batch enrich otherwise mangles to 25UMD-934, so the products merge.
+        if item.get("variant_indexed"):
+            canonical_code = str(item.get("canonical_code") or "").strip()
+        else:
+            dvd = str(original.get("dvd_id") or "").strip()
+            canonical_code = resolve_canonical_code(dvd) if dvd else ""
+            if not canonical_code:
+                canonical_code = str(item.get("canonical_code") or "").strip()
         if not canonical_code:
             continue
         bucket = _bucket_key(canonical_code)
         film = films.get(bucket)
         if film is None:
-            display = str(item.get("display_code") or item.get("dvd_id") or canonical_code).strip()
+            # Present the canonical (virtual) 番号 itself — never a member's
+            # store-derived form (TKXVSR-815 / 125UMD-934). Selection happens
+            # upstream in the resolver; the UI just renders display_code.
             film = ResolvedFilm(
                 canonical_number=canonical_code,
-                display_code=display or canonical_code,
+                display_code=canonical_code,
                 origin="native",
             )
             films[bucket] = film
@@ -116,6 +138,7 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
         # Prefer the base (non-digit-prefixed) canonical as the reported number.
         if _bucket_key(film.canonical_number) != film.canonical_number and canonical_code == bucket:
             film.canonical_number = canonical_code
+            film.display_code = canonical_code
 
         # Members: the indexed group items (whole-collection) plus this row.
         group_items = item.get("variant_group_items")
@@ -150,6 +173,36 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
                 film.actress_ids.append(aid)
         if str(original.get("data_origin") or "").strip() == "supplement":
             film.origin = "supplement"
+
+    # Second pass — fold a digit-prefixed straggler (57MCSR-627) onto an existing
+    # clean sibling film (MCSR-627) when that base film really exists. The base is
+    # a real sibling, not a guess, so 259LUXU-1234 keeps its digits (no LUXU-1234
+    # film to adopt it). Covers no-dvd works that pass 1 couldn't data-证.
+    canon_to_bucket = {film.canonical_number: bkey for bkey, film in films.items()}
+    for bkey, film in list(films.items()):
+        if bkey not in films:
+            continue  # already merged away
+        base = re.sub(r"^\d+", "", film.canonical_number)
+        if base == film.canonical_number or base not in canon_to_bucket:
+            continue
+        target = films.get(canon_to_bucket[base])
+        if target is None or target is film:
+            continue
+        existing = {member.content_id for member in target.members}
+        for member in film.members:
+            if member.content_id not in existing:
+                existing.add(member.content_id)
+                target.members.append(member)
+        for aid in film.actress_ids:
+            if aid not in target.actress_ids:
+                target.actress_ids.append(aid)
+        if film.title and not target.title:
+            target.title = film.title
+        if film.release_date and (target.release_date is None or film.release_date < target.release_date):
+            target.release_date = film.release_date
+        if film.origin == "supplement":
+            target.origin = "supplement"
+        del films[bkey]
 
     # Newest release first, NULL dates last; canonical_number as stable tiebreak.
     ordered = sorted(films.values(), key=lambda f: f.canonical_number)

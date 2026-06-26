@@ -97,6 +97,55 @@ def filter_movie_items(items: list[dict[str, Any]] | None) -> list[dict[str, Any
     return [item for item in (items or []) if not is_non_movie_item(item)]
 
 
+_LOOSE_BANGER_RE = re.compile(r"^(.*?[A-Z])0*(\d+)([A-Z]*)$")
+
+
+def _loose_banger_key(text: Any) -> str:
+    """Collapse a 品番/content_id to a padding-insensitive key for cross-row
+    matching: ``UMD-934`` / ``umd00934`` -> ``UMD934``. Used only to compare a
+    de-prefixed content_id against the set of authoritative dvd_id 品番."""
+    flat = re.sub(r"[^A-Za-z0-9]", "", str(text or "")).upper()
+    match = _LOOSE_BANGER_RE.match(flat)
+    return f"{match.group(1)}{match.group(2)}{match.group(3)}" if match else flat
+
+
+def backfill_dvd_id_from_siblings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Give a no-dvd_id row the authoritative 品番 of a sibling when stripping the
+    row's leading numeric store-prefix yields that 品番.
+
+    FANZA digital content_ids carry a maker-bucket numeric prefix that the real
+    品番 (dvd_id) omits — ``125umd00934`` ⇒ 品番 ``UMD-934``. When the same work's
+    other product carries that clean dvd_id, the prefix is provably strippable,
+    so we copy the dvd_id onto the bare row; the downstream analyzer then keys
+    both products to one canonical and they merge.
+
+    This is data-self-证, NOT a maker allowlist: amateur labels whose digits are
+    PART of the 品番 (``259LUXU-1234`` = ラグジュTV) keep them, because no
+    de-prefixed ``LUXU-1234`` dvd_id exists to license the strip. Returns copies;
+    never mutates the inputs.
+    """
+    known: dict[str, str] = {}
+    for row in rows or []:
+        dvd = str(row.get("dvd_id") or "").strip()
+        if dvd:
+            known.setdefault(_loose_banger_key(dvd), dvd)
+    if not known:
+        return [dict(row) for row in (rows or [])]
+
+    result: list[dict[str, Any]] = []
+    for row in rows or []:
+        row = dict(row)
+        if not str(row.get("dvd_id") or "").strip():
+            flat = re.sub(r"[^A-Za-z0-9]", "", str(row.get("content_id") or "")).upper()
+            stripped = re.sub(r"^\d+", "", flat)
+            if stripped != flat:  # there was a leading numeric prefix
+                key = _loose_banger_key(stripped)
+                if key != _loose_banger_key(flat) and key in known:
+                    row["dvd_id"] = known[key]
+        result.append(row)
+    return result
+
+
 def search_codes_for_item(item: dict[str, Any]) -> list[str]:
     """Ordered keyword aliases for magnet/torrent search.
 
