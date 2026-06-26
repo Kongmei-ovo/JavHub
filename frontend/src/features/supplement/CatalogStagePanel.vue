@@ -41,6 +41,11 @@ export default {
   },
   emits: ['enrich', 'find', 'download', 'open-sources'],
   data() { return { activeFilter: 'all' } },
+  watch: {
+    // Reset the sub-filter when switching stage (②↔③), so returning to 下载源
+    // never lands on a stale chip that hides the films that actually need work.
+    tab() { this.activeFilter = 'all' },
+  },
   computed: {
     chips() {
       const by = s => this.films.filter(f => f.stage === s).length
