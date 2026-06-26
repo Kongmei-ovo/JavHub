@@ -5,10 +5,14 @@
     <ActressCatalogPanel
       v-if="actorContext"
       :actor="actorContext"
-      :films="catalogFilms"
+      :year-groups="catalogYearGroups"
+      :by-tab="catalogByTab"
       :summary="catalogSummary"
+      :stage="catalogStageTab"
+      :busy="catalogEnriching"
       :loading="catalogLoading"
       :recomputing="recomputing"
+      @change-stage="setCatalogStage"
       @find="catalogFind"
       @download="catalogDownload"
       @enrich="catalogEnrich"
@@ -105,6 +109,10 @@ export default {
     const supplement = useSupplementApi()
     const moviePage = ref(1)
     const movieFilters = reactive({ matched: false, quality: '', actress_id: '', q: '' })
+    // Three-stage drill-down sub-tab (collection | fields | sources), driven by ?stage=.
+    const catalogStageTab = ref('collection')
+    // Per-canonical 补字段 busy flags, so the ② card shows 排队中 on the right film.
+    const catalogEnriching = reactive({})
     const matchFilterOptions = [
       { value: null, label: '全部' },
       { value: false, label: '未匹配' },
@@ -246,14 +254,33 @@ export default {
     async function catalogEnrich(film) {
       const seed = filmNumber(film)
       if (!seed) return
+      const key = film.canonical_number
+      catalogEnriching[key] = true
       try {
         await api.startSupplementMovieDetailJob(seed, 'all', props.actorContext?.id || null)
         ElMessage.success('已加入补全队列（全部源）')
         emit('jobs-requested')
       } catch (error) {
         ElMessage.error(`补全失败：${error?.message || '请求失败'}`)
+      } finally {
+        catalogEnriching[key] = false
       }
     }
+
+    // ?stage= drives the three-stage sub-tab; switching only updates the query
+    // (buildQuery preserves tab/actress_id/work), so it never reloads the catalog.
+    function setCatalogStage(stage) {
+      catalogStageTab.value = stage
+      router.push({ path: route.path, query: buildQuery({ stage: stage === 'collection' ? undefined : stage }) }).catch(() => {})
+    }
+    watch(
+      () => route.query.stage,
+      (value) => {
+        const v = Array.isArray(value) ? value[0] : value
+        catalogStageTab.value = (v === 'fields' || v === 'sources') ? v : 'collection'
+      },
+      { immediate: true }
+    )
 
     // number -> supplement movie, so the per-film ⋯ can open the diagnostics
     // drawer (字段来源 / match·unmatch·ignore) for works backed by a 蛋源 record.
@@ -355,6 +382,9 @@ export default {
       catalogDownload,
       catalogEnrich,
       catalogOpenSources,
+      catalogStageTab,
+      catalogEnriching,
+      setCatalogStage,
     }
   },
 }
