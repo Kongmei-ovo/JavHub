@@ -9,4 +9,4 @@ apscheduler==3.11.2
 python-telegram-bot==22.8
 psycopg2-binary==2.9.12
 python-multipart==0.0.32
-redis==8.0.0
+redis==8.0.1
