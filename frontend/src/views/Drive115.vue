@@ -1,9 +1,10 @@
 <template>
-  <div class="drive page-rail page-rail--standard">
+  <div class="drive page-rail page-rail--gallery">
+    <h1 class="drive-title">115 网盘</h1>
     <!-- 头部:面包屑 + 工具栏 -->
     <div class="drive-head">
       <div class="crumbs">
-        <button class="crumb" type="button" @click="goRoot">115 网盘</button>
+        <button class="crumb" type="button" @click="goRoot">全部文件</button>
         <template v-for="(crumb, i) in stack" :key="crumb.cid + ':' + i">
           <span class="crumb-sep">/</span>
           <button class="crumb" type="button" @click="goCrumb(i)">{{ crumb.name || '未命名' }}</button>
@@ -545,8 +546,9 @@ export default {
 </script>
 
 <style scoped>
-.drive { --page-max: 1200px; padding-block: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drive { padding-block: var(--page-top-space) 20px; display: flex; flex-direction: column; gap: 14px; }
 
+.drive-title { font-size: var(--type-page-title); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-4); }
 .drive-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .crumb { background: none; border: none; color: var(--text-secondary); font-size: var(--type-control); cursor: pointer; padding: 2px 4px; border-radius: var(--radius-xs); }

@@ -1,23 +1,18 @@
 <template>
   <section class="workspace-panel actors-tab">
-    <div class="panel-header">
-      <div>
-        <h2>待补全演员</h2>
-        <p class="panel-subtitle">订阅演员的收藏与资料完整度 · 点演员查看其作品目录</p>
-      </div>
-      <div class="actors-toolbar">
-        <label class="actors-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="M16.5 16.5 21 21"></path>
-          </svg>
-          <input v-model="keyword" placeholder="筛选订阅演员" aria-label="筛选订阅演员" />
-        </label>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="reload">
-          {{ loading ? '加载中…' : '刷新' }}
-        </button>
-      </div>
-    </div>
+    <!-- 刷新挪到菜单行右侧(与其他页一致)；搜索独占一行。 -->
+    <Teleport to="#supplement-tab-actions" :disabled="!canTeleport">
+      <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="reload">
+        {{ loading ? '加载中…' : '刷新' }}
+      </button>
+    </Teleport>
+    <label class="actors-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M16.5 16.5 21 21"></path>
+      </svg>
+      <input v-model="keyword" placeholder="筛选订阅演员" aria-label="筛选订阅演员" />
+    </label>
 
     <AppleSkeleton
       v-if="loading && !actors.length"
@@ -84,6 +79,8 @@ export default {
       loadFailed: false,
       actors: [],
       _loadToken: 0,
+      // 仅当父级菜单行的 Teleport 目标存在时才传送（隔离单测/无父级时就地渲染）。
+      canTeleport: typeof document !== 'undefined' && !!document.getElementById('supplement-tab-actions'),
     }
   },
   computed: {
@@ -318,16 +315,12 @@ export default {
   gap: 16px;
 }
 
-.actors-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+/* 搜索独占一行，撑满整行（与其他检索页一致） */
 .actors-search {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   min-width: 0;
   min-height: 38px;
   padding: 0 12px;
@@ -353,8 +346,7 @@ export default {
 }
 
 .actors-search input {
-  width: 168px;
-  max-width: 100%;
+  flex: 1;
   min-width: 0;
   min-height: 36px;
   padding: 0;
@@ -367,8 +359,8 @@ export default {
 
 .actor-choice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-portrait), 1fr));
+  gap: var(--grid-gap);
 }
 
 .panel-state {
@@ -380,18 +372,6 @@ export default {
 }
 
 @media (max-width: 860px) {
-  .actors-toolbar {
-    width: 100%;
-  }
-
-  .actors-search {
-    flex: 1;
-  }
-
-  .actors-search input {
-    width: 100%;
-  }
-
   .actor-choice-grid {
     grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
   }

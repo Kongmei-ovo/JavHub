@@ -1,9 +1,16 @@
 <template>
-  <div class="settings page-shell page-shell--standard">
+  <div class="settings page-shell page-shell--gallery">
     <div class="settings-header">
       <div class="settings-header-meta">
         <h1>配置中心</h1>
-        <p class="settings-subtitle">统一管理服务连接、自动化策略、通知、外观和高级维护。</p>
+      </div>
+      <!-- 配置路径挪到标题行右侧；仅未挂载(暂停保存)时升级为告警，正常态只静静显示路径。 -->
+      <div v-if="configLoaded && !configLoadError" class="settings-header-status">
+        <span v-if="!configMeta.config_loaded" class="shs-warn" :title="configStatusDescription">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ configStatusTitle }} · 已暂停保存
+        </span>
+        <code v-else-if="configMeta.config_path" class="shs-path" :title="configMeta.config_path">{{ configMeta.config_path }}</code>
       </div>
     </div>
     <main class="settings-content-wide">
@@ -57,19 +64,8 @@
         <section class="settings-pane" aria-live="polite">
       <transition name="fade-slide" mode="out-in">
         <div :key="activeGroup" class="active-section">
-          <div class="config-status-banner apple-surface" :class="{ warning: !configMeta.config_loaded }">
-            <div>
-              <strong>{{ configStatusTitle }}</strong>
-              <p>{{ configStatusDescription }}</p>
-            </div>
-            <code v-if="configMeta.config_path">{{ configMeta.config_path }}</code>
-          </div>
           <!-- Services Section -->
           <div v-if="activeGroup === 'services'" class="config-section">
-            <div class="section-header">
-              <h2>常规与服务</h2>
-              <p>配置基础连接与外部服务集成，包括媒体服务器和元数据来源。</p>
-            </div>
             <Open115SettingsPanel
               v-model:app-id="config.open115.app_id"
               v-model:root-path="config.open115.root_path"
@@ -128,10 +124,6 @@
           </div>
           <!-- Telegram Section -->
           <div v-if="activeGroup === 'telegram'" class="config-section">
-            <div class="section-header">
-              <h2>Telegram 通知</h2>
-              <p>配置 Telegram Bot、接收用户和通知事件。</p>
-            </div>
             <section class="settings-group telegram-settings-group">
               <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
@@ -256,10 +248,6 @@
           </div>
           <!-- Automation Section -->
           <div v-if="activeGroup === 'automation'" class="config-section">
-            <div class="section-header">
-              <h2>自动化策略</h2>
-              <p>控制候选生成后的处理强度，默认保持人工批准。</p>
-            </div>
             <section class="settings-group automation-settings-group">
               <div class="settings-group-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
@@ -379,10 +367,6 @@
           </div>
           <!-- Appearance Section -->
           <div v-if="activeGroup === 'appearance'" class="config-section appearance-section">
-            <div class="section-header">
-              <h2>界面与外观</h2>
-              <p>按作用范围整理全局显示、影片检索和随机探索偏好。</p>
-            </div>
             <div class="appearance-settings-stack">
               <section class="settings-group appearance-global-group">
                 <div class="settings-group-header">
@@ -551,7 +535,7 @@ export default {
         return '配置已读取，但 JavInfoApi URL 可能不适用于 Docker/远端部署。'
       }
       if (this.configMeta.config_loaded) {
-        return '当前表单来自后端读取到的运行配置。'
+        return ''
       }
       return '后端只返回了默认配置，界面已禁止保存，避免把默认值写回覆盖真实配置。'
     },

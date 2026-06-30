@@ -19,24 +19,7 @@
     @secondary-action="$emit('start-supplement')"
   />
   <div v-else class="job-list-wrap">
-    <div class="job-ledger" aria-label="任务汇总">
-      <div class="job-ledger-sum">
-        <strong>{{ jobs.length }}</strong>
-        <span>当前页任务</span>
-      </div>
-      <div class="job-ledger-cards">
-        <span
-          v-for="row in jobSummaryRows"
-          :key="row.key"
-          class="jl-card"
-          :class="`jl-card-${row.key}`"
-        >
-          <b>{{ row.label }}</b>
-          <em>{{ row.count }} 项</em>
-        </span>
-      </div>
-    </div>
-
+    <!-- 当前页状态汇总 ledger 已被顶部 hero 的跨页状态胶囊取代,此处不再重复。 -->
     <div class="job-card-list">
       <article v-for="job in jobs" :key="job.id" class="job-card">
         <div class="job-avatar" :style="avatarStyle(job)">{{ jobAvatarLabel(job) }}</div>
@@ -103,19 +86,6 @@ export default {
       return this.actorContext
         ? '可以先启动作品补全，或刷新任务队列等待后端写入新状态。'
         : '刷新队列确认最新状态，或回到演员工作台启动具体演员的补全任务。'
-    },
-    jobSummaryRows() {
-      const counts = this.jobs.reduce((acc, job) => {
-        const s = job?.status || 'unknown'
-        acc[s] = (acc[s] || 0) + 1
-        return acc
-      }, {})
-      return [
-        { key: 'running', label: '运行中', count: counts.running || 0 },
-        { key: 'queued', label: '排队中', count: counts.queued || 0 },
-        { key: 'succeeded', label: '已完成', count: counts.succeeded || 0 },
-        { key: 'failed', label: '失败', count: counts.failed || 0 },
-      ]
     },
   },
   methods: {
@@ -184,81 +154,6 @@ export default {
   flex-direction: column;
   gap: 14px;
 }
-
-/* 汇总 ledger */
-.job-ledger {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 14px 18px;
-  border-radius: var(--radius-card);
-  background: var(--card-2);
-  border: 1px solid var(--hairline);
-  flex-wrap: wrap;
-}
-
-.job-ledger-sum {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  min-width: 84px;
-}
-
-.job-ledger-sum strong {
-  font-size: var(--type-page-title);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.4px;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.job-ledger-sum span {
-  margin-top: 4px;
-  font-size: var(--type-micro);
-  color: var(--text-muted);
-}
-
-.job-ledger-cards {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.jl-card {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 14px;
-  border-radius: 10px;
-  background: var(--card);
-  border: 1px solid var(--hairline);
-  min-width: 76px;
-}
-
-.jl-card b {
-  font-size: var(--type-badge);
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.1px;
-}
-
-.jl-card em {
-  font-size: var(--type-control);
-  font-style: normal;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.jl-card-running { border-color: rgba(var(--accent-rgb), 0.3); }
-.jl-card-running em { color: var(--accent); }
-.jl-card-queued { border-color: rgba(var(--warn-rgb), 0.3); }
-.jl-card-queued em { color: var(--warn); }
-.jl-card-failed { border-color: rgba(var(--bad-rgb), 0.3); }
-.jl-card-failed em { color: var(--bad); }
-.jl-card-succeeded em { color: var(--ok); }
 
 /* job cards */
 .job-card-list {

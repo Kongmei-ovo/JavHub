@@ -10,15 +10,15 @@
 .src-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .ss-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: 3px;
+  padding: 9px 14px;
   border-radius: var(--radius-card);
   background: var(--card-2);
   border: 1px solid var(--hairline);
@@ -47,7 +47,7 @@
 .src-rows {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .source-card {
@@ -55,7 +55,7 @@
   grid-template-columns: auto minmax(0, 1.5fr) auto auto minmax(140px, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 9px 16px;
   border-radius: var(--radius-card);
   background: var(--card);
   border: 1px solid var(--hairline);
@@ -148,8 +148,8 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  padding: 14px 18px;
-  margin-top: 14px;
+  padding: 11px 16px;
+  margin-top: 12px;
   border-radius: var(--radius-card);
   background: rgba(var(--accent-rgb), 0.08);
   border: 1px solid rgba(var(--accent-rgb), 0.22);

@@ -1,143 +1,119 @@
 <template>
   <div class="ops-page">
-    <header class="ops-hero">
-      <div class="ops-hero-stats" aria-label="首要运营指标">
-        <button class="ops-stat" :class="{ urgent: candidate.candidate > 0 }" type="button" @click="goCandidates()">
-          <strong>{{ candidate.candidate ?? '—' }}</strong>
-          <span>待确认候选</span>
-          <small>可批准 {{ candidate.ready || 0 }} · 待补磁力 {{ candidate.needs_magnet || 0 }}</small>
-        </button>
-        <button class="ops-stat" type="button" @click="goSchedulerConsole">
-          <strong>{{ schedulerJobs.length || '—' }}</strong>
-          <span>调度作业</span>
-          <small>{{ schedulerEnabled ? '调度已启用' : '调度未启用' }}</small>
-        </button>
-        <button class="ops-stat" :class="{ urgent: healthDegraded || recentErrorCount > 0 }" type="button" @click="onHealthStat">
-          <strong>{{ healthStatusText }}</strong>
-          <span>系统健康</span>
-          <small>{{ healthSubtext }}</small>
-        </button>
-        <button class="ops-stat" type="button" @click="goCachePurge">
-          <strong>{{ cacheHitRate }}</strong>
-          <span>缓存命中率</span>
-          <small>活跃 {{ cacheActiveEntries }} · {{ cacheBackend }}</small>
-        </button>
+    <!-- 概览条：系统状态 + 待处理告警 + 全局动作，一行收口，不再用四张高卡复述下方面板 -->
+    <header class="ops-summary" :class="summaryTone">
+      <button class="ops-summary-status" type="button" @click="onHealthStat">
+        <span class="ops-dot" :class="summaryTone"></span>
+        <span class="ops-summary-state">{{ healthStatusText }}</span>
+        <span class="ops-summary-sub">{{ summaryHeadline }}</span>
+      </button>
+      <button v-if="hasRecentAlerts" class="ops-summary-alert" type="button" @click="goLogsFiltered">
+        近 24h
+        <strong v-if="recentErrorCount" class="is-bad">{{ recentErrorCount }} 错误</strong>
+        <strong v-if="recentWarningCount" class="is-warn">{{ recentWarningCount }} 警告</strong>
+      </button>
+      <div class="ops-summary-actions">
+        <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">运行日志</button>
+        <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">配置中心</button>
       </div>
     </header>
 
-    <!-- 系统健康 -->
+    <!-- 系统健康：扁平状态清单，绿点保持安静，黄/红跳出，点开直达配置 -->
     <section ref="healthPanel" class="ops-panel" aria-label="系统健康">
       <div class="ops-panel-head">
         <div>
           <h2>系统健康</h2>
-          <p>{{ healthError ? healthError : '初始化、数据库、来源与调度的就绪状态。异常项可点开直达配置。' }}</p>
-        </div>
-        <div class="ops-panel-actions">
-          <button class="btn btn-ghost btn-sm" type="button" @click="$router.push('/settings')">配置中心</button>
-          <button class="btn btn-ghost btn-sm" type="button" @click="goLogs">运行日志</button>
+          <p>{{ healthError || '各子系统就绪状态，异常项可点开直达配置。' }}</p>
         </div>
       </div>
-      <div class="ops-grid">
-        <button
-          class="ops-cell"
-          :class="{ warning: hasRecentAlerts }"
-          type="button"
-          @click="goLogsFiltered"
-        >
-          <span>近 24h 告警</span>
-          <strong>{{ recentErrorCount }} ERROR · {{ recentWarningCount }} WARN</strong>
-          <small>{{ hasRecentAlerts ? '点开查看日志 →' : (logSummaryError ? '计数不可用' : '无新错误') }}</small>
-        </button>
+      <div class="ops-statuslist">
         <component
           :is="row.jump ? 'button' : 'div'"
           v-for="row in healthRows"
           :key="row.key"
-          class="ops-cell"
-          :class="{ warning: row.warning }"
+          class="ops-statusrow"
+          :class="`is-${row.tone}`"
           :type="row.jump ? 'button' : undefined"
           @click="row.jump && confirmJumpSettings(row)"
         >
-          <span>{{ row.label }}</span>
-          <strong>{{ row.value }}</strong>
-          <small v-if="row.hint">{{ row.hint }}</small>
+          <span class="ops-dot" :class="`is-${row.tone}`"></span>
+          <span class="ops-statusrow-label">{{ row.label }}</span>
+          <span class="ops-statusrow-value">
+            <span class="ops-statusrow-state">{{ row.status }}</span>
+            <span v-if="row.detail" class="ops-statusrow-detail">{{ row.detail }}</span>
+          </span>
+          <span v-if="row.jump" class="ops-chevron" aria-hidden="true">›</span>
         </component>
       </div>
     </section>
 
-    <!-- 候选自动化 -->
-    <section class="ops-panel" aria-label="候选自动化">
-      <div class="ops-panel-head">
-        <div>
-          <h2>候选自动化</h2>
-          <p>{{ candidateSummaryText }}</p>
+    <!-- 运营：候选 / 调度 / 缓存 合并为一卡三段，数据走内联指标条而非高卡 -->
+    <section class="ops-panel ops-ops" aria-label="运营指标">
+      <div class="ops-block">
+        <div class="ops-block-head">
+          <h3>候选自动化</h3>
+          <button class="ops-link" type="button" @click="goCandidates()">候选队列 →</button>
         </div>
-        <div class="ops-panel-actions">
-          <button class="btn btn-ghost btn-sm" type="button" @click="goCandidates()">候选队列</button>
+        <div class="ops-statbar">
+          <button class="ops-stat-item" type="button" @click="goCandidates()">
+            <strong>{{ candidate.candidate || 0 }}</strong><span>待确认</span>
+          </button>
+          <button class="ops-stat-item" type="button" @click="goCandidates({ needs_magnet: '0' })">
+            <strong>{{ candidate.ready || 0 }}</strong><span>可批准</span>
+          </button>
+          <button
+            class="ops-stat-item"
+            :class="{ 'is-warn': (candidate.needs_magnet || 0) > 0 }"
+            type="button"
+            @click="goCandidates({ needs_magnet: '1' })"
+          >
+            <strong>{{ candidate.needs_magnet || 0 }}</strong><span>待补磁力</span>
+          </button>
+          <div class="ops-stat-item ops-stat-item--text">
+            <strong :class="{ 'is-ok': schedulerEnabled }">{{ schedulerEnabled ? '已调度' : '未调度' }}</strong>
+            <span>{{ candidateNextRunText }}</span>
+          </div>
         </div>
       </div>
-      <div class="ops-grid">
-        <button class="ops-cell" type="button" @click="goCandidates">
-          <span>待确认候选</span><strong>{{ candidate.candidate || 0 }}</strong>
-        </button>
-        <button class="ops-cell" type="button" @click="goCandidates({ needs_magnet: '0' })">
-          <span>可批准</span><strong>{{ candidate.ready || 0 }}</strong>
-        </button>
-        <button class="ops-cell" type="button" @click="goCandidates({ needs_magnet: '1' })">
-          <span>待补磁力</span><strong>{{ candidate.needs_magnet || 0 }}</strong>
-        </button>
-        <div class="ops-cell">
-          <span>自动处理</span>
-          <strong>{{ schedulerEnabled ? '已调度' : '未调度' }}</strong>
-          <small>{{ candidateNextRunText }}</small>
-        </div>
-      </div>
-    </section>
 
-    <!-- 调度管道（只读，点跳系统作业） -->
-    <section class="ops-panel" aria-label="调度管道">
-      <div class="ops-panel-head">
-        <div>
-          <h2>调度管道</h2>
-          <p>各定时作业的下次运行与上次结果。需要立即运行请进入系统作业。</p>
+      <div class="ops-block">
+        <div class="ops-block-head">
+          <h3>调度管道</h3>
+          <button class="ops-link" type="button" @click="goSchedulerConsole">系统作业 →</button>
         </div>
-        <div class="ops-panel-actions">
-          <button class="btn btn-primary btn-sm" type="button" @click="goSchedulerConsole">去系统作业 →</button>
+        <div v-if="schedulerJobs.length" class="ops-statuslist ops-statuslist--compact">
+          <button
+            v-for="job in schedulerJobs"
+            :key="job.id"
+            class="ops-statusrow"
+            :class="`is-${jobTone(job.last_status)}`"
+            type="button"
+            @click="confirmRunJob(job)"
+          >
+            <span class="ops-dot" :class="`is-${jobTone(job.last_status)}`"></span>
+            <span class="ops-statusrow-label">{{ job.name || job.id }}</span>
+            <span class="ops-statusrow-value">
+              <span class="ops-statusrow-state">{{ pillText(job.last_status) }}</span>
+              <span class="ops-statusrow-detail">下次 {{ formatTime(job.next_run_time) || '未计划' }}</span>
+            </span>
+            <span class="ops-chevron" aria-hidden="true">›</span>
+          </button>
         </div>
+        <p v-else class="ops-empty">调度未启用，或暂无调度作业。</p>
       </div>
-      <div v-if="schedulerJobs.length" class="ops-grid">
-        <button
-          v-for="job in schedulerJobs"
-          :key="job.id"
-          class="ops-cell"
-          type="button"
-          @click="confirmRunJob(job)"
-        >
-          <span>{{ job.name || job.id }}</span>
-          <strong>
-            <span class="ops-pill" :class="pillClass(job.last_status)">{{ pillText(job.last_status) }}</span>
-          </strong>
-          <small>下次 {{ formatTime(job.next_run_time) || '未计划' }}</small>
-        </button>
-      </div>
-      <p v-else class="ops-empty">调度未启用，或暂无调度作业。</p>
-    </section>
 
-    <!-- 缓存诊断（只读） -->
-    <section class="ops-panel" aria-label="缓存诊断">
-      <div class="ops-panel-head">
-        <div>
-          <h2>缓存诊断</h2>
-          <p>{{ cacheError ? cacheError : '响应缓存命中率与条目。清理操作在系统作业。' }}</p>
+      <div class="ops-block">
+        <div class="ops-block-head">
+          <h3>缓存</h3>
+          <button class="ops-link" type="button" @click="goCachePurge">清理 →</button>
         </div>
-        <div class="ops-panel-actions">
-          <button class="btn btn-ghost btn-sm" type="button" @click="goCachePurge">前往清理 →</button>
+        <div class="ops-statbar">
+          <div class="ops-stat-item"><strong>{{ cacheHitRate }}</strong><span>命中率</span></div>
+          <div class="ops-stat-item"><strong>{{ cacheActiveEntries }}</strong><span>活跃条目</span></div>
+          <div class="ops-stat-item"><strong>{{ cacheStats?.total_entries ?? 0 }}</strong><span>总条目</span></div>
+          <div class="ops-stat-item ops-stat-item--text"><strong>{{ cacheBackend }}</strong><span>后端</span></div>
         </div>
-      </div>
-      <div class="ops-grid">
-        <div class="ops-cell"><span>响应命中率</span><strong>{{ cacheHitRate }}</strong></div>
-        <div class="ops-cell"><span>活跃条目</span><strong>{{ cacheActiveEntries }}</strong></div>
-        <div class="ops-cell"><span>总条目</span><strong>{{ cacheStats?.total_entries ?? 0 }}</strong></div>
-        <div class="ops-cell"><span>后端</span><strong>{{ cacheBackend }}</strong></div>
+        <p v-if="cacheError" class="ops-block-error">{{ cacheError }}</p>
       </div>
     </section>
   </div>
@@ -174,15 +150,55 @@ export default {
       const db = h.database || {}
       const cache = h.cache || {}
       const sch = h.scheduler || {}
-      return [
-        { key: 'config', label: '配置', value: h.config?.loaded ? '已加载' : (h.config?.error || '未加载'), warning: !h.config?.loaded },
-        { key: 'database', label: '数据库', value: db.connectable ? (db.backend || 'postgres') : (db.error || '不可连接'), warning: db.connectable === false, jump: true },
-        { key: 'javinfo', label: 'JavInfo', value: this.javinfoText(jav), warning: !jav.api_url_configured || jav.legacy || jav.reachable === false, jump: true },
-        { key: 'cache', label: '缓存', value: cache.error ? cache.error : `${cache.backend || 'unknown'} · ${cache.active_entries || 0}/${cache.total_entries || 0}`, warning: Boolean(cache.error) },
-        { key: 'downloaders', label: '默认下载器', value: dl.error ? dl.error : `${dl.default_id || '未设置'} · ${dl.available || 0}/${dl.registered || 0}`, warning: dl.default_available === false, jump: true },
-        { key: 'sources', label: '磁力源', value: src.error ? src.error : `${src.available || 0}/${src.registered || 0} 可用`, warning: src.available === false || Boolean(src.latest_attempt_error), jump: true },
-        { key: 'scheduler', label: '调度有效性', value: sch.effective_enabled ? '已启用' : (sch.disabled_reason || '未启用'), warning: sch.effective_enabled === false },
+      // 每行拆成「状态词(tone+status) + 次要细节(detail，冗余则隐去)」，颜色一眼区分健康/需检查。
+      const rows = [
+        {
+          key: 'config', label: '配置',
+          ...(h.config?.loaded
+            ? { tone: 'ok', status: '已加载', detail: '' }
+            : { tone: 'bad', status: '未加载', detail: h.config?.error || '' }),
+        },
+        {
+          key: 'database', label: '数据库', jump: true,
+          ...(db.connectable
+            ? { tone: 'ok', status: '正常', detail: db.backend || 'postgres' }
+            : { tone: 'bad', status: '不可连接', detail: db.error || '' }),
+        },
+        { key: 'javinfo', label: 'JavInfo', jump: true, ...this.javinfoStatus(jav) },
+        {
+          key: 'cache', label: '缓存',
+          ...(cache.error
+            ? { tone: 'bad', status: '异常', detail: cache.error }
+            : { tone: 'ok', status: '正常', detail: `${cache.backend || 'unknown'} · ${cache.active_entries || 0}/${cache.total_entries || 0}` }),
+        },
+        {
+          key: 'downloaders', label: '默认下载器', jump: true,
+          ...(dl.error
+            ? { tone: 'bad', status: '异常', detail: dl.error }
+            : {
+                tone: dl.default_available === false ? 'warn' : 'ok',
+                status: dl.default_available === false ? '默认离线' : '在线',
+                detail: `${dl.default_id || '未设置'} · ${dl.available || 0}/${dl.registered || 0} 在线`,
+              }),
+        },
+        {
+          key: 'sources', label: '磁力源', jump: true,
+          ...(src.error
+            ? { tone: 'bad', status: '异常', detail: src.error }
+            : {
+                tone: (src.available === false || src.latest_attempt_error) ? 'warn' : 'ok',
+                status: `${src.available || 0}/${src.registered || 0} 可用`,
+                detail: src.latest_attempt_error ? '最近探测有误' : '',
+              }),
+        },
+        {
+          key: 'scheduler', label: '调度有效性',
+          ...(sch.effective_enabled
+            ? { tone: 'ok', status: '已启用', detail: '' }
+            : { tone: 'warn', status: '未启用', detail: sch.disabled_reason || '' }),
+        },
       ]
+      return rows.map(r => ({ ...r, jump: r.jump || false, warning: r.tone !== 'ok' }))
     },
     healthWarningCount() {
       return this.healthRows.filter(r => r.warning).length
@@ -195,8 +211,22 @@ export default {
       if (!this.health) return '—'
       return this.healthDegraded ? '需检查' : '正常'
     },
-    candidateSummaryText() {
-      return `候选 ${this.candidate.candidate || 0} · 可批准 ${this.candidate.ready || 0} · 待补磁力 ${this.candidate.needs_magnet || 0}`
+    // 概览条主色：错误/异常→红，需检查/警告→黄，全绿→绿，未加载→中性
+    healthWorstTone() {
+      if (this.healthError) return 'bad'
+      if (!this.health) return 'neutral'
+      if (this.recentErrorCount > 0 || this.healthRows.some(r => r.tone === 'bad')) return 'bad'
+      if (this.healthDegraded || this.recentWarningCount > 0) return 'warn'
+      return 'ok'
+    },
+    summaryTone() {
+      return `is-${this.healthWorstTone}`
+    },
+    summaryHeadline() {
+      if (this.healthError) return '健康检查不可用'
+      if (!this.health) return '加载中…'
+      if (this.healthWarningCount) return `${this.healthWarningCount} 项需关注`
+      return '所有子系统就绪'
     },
     candidateNextRunText() {
       const job = this.schedulerJobs.find(j => j.id === 'candidate_auto_process')
@@ -223,12 +253,6 @@ export default {
     },
     hasRecentAlerts() {
       return this.recentErrorCount > 0 || this.recentWarningCount > 0
-    },
-    healthSubtext() {
-      const parts = []
-      if (this.healthWarningCount) parts.push(`${this.healthWarningCount} 项需检查`)
-      if (this.recentErrorCount) parts.push(`近 24h 错误 ${this.recentErrorCount}`)
-      return parts.length ? parts.join(' · ') : '全部正常'
     },
   },
   mounted() {
@@ -257,14 +281,16 @@ export default {
         errorCount: this.recentErrorCount,
       })
     },
-    javinfoText(jav) {
-      if (!jav.api_url_configured) return '未配置'
-      if (jav.legacy) return '旧端口配置'
-      if (jav.reachable === false) return '不可达'
-      return '已配置'
+    javinfoStatus(jav) {
+      if (!jav.api_url_configured) return { tone: 'warn', status: '未配置', detail: '' }
+      if (jav.legacy) return { tone: 'warn', status: '旧端口', detail: '建议迁移端口' }
+      if (jav.reachable === false) return { tone: 'bad', status: '不可达', detail: '' }
+      return { tone: 'ok', status: '已配置', detail: '' }
     },
-    pillClass(status) {
-      return { 'is-success': status === 'success', 'is-failed': status === 'failed', 'is-idle': !status }
+    jobTone(status) {
+      if (status === 'success') return 'ok'
+      if (status === 'failed') return 'bad'
+      return 'neutral'
     },
     pillText(status) {
       if (status === 'success') return '成功'
@@ -272,9 +298,10 @@ export default {
       return '未运行'
     },
     async confirmJumpSettings(row) {
+      const detail = row.detail ? `（${row.detail}）` : ''
       const ok = await requestConfirm({
         title: '前往配置中心',
-        message: `「${row.label}」当前为：${row.value}。是否前往配置中心处理？`,
+        message: `「${row.label}」当前为：${row.status}${detail}。是否前往配置中心处理？`,
         confirmText: '前往配置',
         cancelText: '取消',
       })

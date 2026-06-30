@@ -1,10 +1,8 @@
 <template>
-  <div class="system-jobs-page page-shell page-shell--workspace ops-page">
+  <div class="system-jobs-page page-shell page-shell--gallery ops-page">
     <header class="ops-hero">
       <div class="ops-hero-copy">
-        <span class="ops-eyebrow">系统工作台</span>
         <h1>系统作业</h1>
-        <p>零散的系统级维护作业：触发、看状态、看历史。系统监控里点过来会直接定位到对应作业。</p>
       </div>
     </header>
 

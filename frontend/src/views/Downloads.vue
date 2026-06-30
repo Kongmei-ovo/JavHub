@@ -1,5 +1,5 @@
 <template>
-  <div class="downloads-page page-shell page-shell--workspace">
+  <div class="downloads-page page-shell page-shell--gallery">
     <header class="page-header">
       <div class="header-left">
         <h1>下载中心</h1>

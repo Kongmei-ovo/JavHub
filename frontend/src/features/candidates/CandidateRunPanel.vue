@@ -1,9 +1,9 @@
 <template>
-  <div class="candidate-run-panel">
+  <div class="candidate-run-panel" :class="{ bare }">
     <div class="candidate-run-head">
-      <div>
-        <strong>最近处理</strong>
-        <span>复用批处理筛选，快速回收失败项</span>
+      <div class="candidate-run-title">
+        <strong v-if="!bare">最近处理</strong>
+        <span v-if="!runs.length" class="candidate-run-empty">暂无处理记录</span>
       </div>
       <button class="link-btn" type="button" :disabled="loading" @click="$emit('refresh')">
         {{ loading ? '刷新中...' : '刷新记录' }}
@@ -36,7 +36,6 @@
         </div>
       </div>
     </div>
-    <small v-else class="candidate-run-empty">暂无处理记录</small>
   </div>
 </template>
 
@@ -47,6 +46,8 @@ export default {
     runs: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     processing: { type: [Boolean, String], default: false },
+    // 嵌进「最近处理」弹窗时去掉自身卡片外壳与重复标题，避免卡中卡。
+    bare: { type: Boolean, default: false },
   },
   emits: ['refresh', 'apply', 'apply-failed', 'retry-failed'],
   methods: {
@@ -74,6 +75,13 @@ export default {
   background: var(--card);
   box-shadow: var(--shadow-card);
 }
+.candidate-run-panel.bare {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
 .candidate-run-head,
 .candidate-run-row,
 .candidate-run-stats,
@@ -86,6 +94,8 @@ export default {
   justify-content: space-between;
   margin-bottom: 12px;
 }
+/* 空态「暂无处理记录」与标题同一行(虚化小字,不再独占大块) */
+.candidate-run-title { display: inline-flex; align-items: baseline; gap: 8px; }
 .candidate-run-head strong,
 .candidate-run-main strong {
   display: block;
@@ -143,4 +153,20 @@ export default {
 .candidate-run-actions {
   margin-left: auto;
 }
+
+/* 这些按钮原来依赖父组件 scoped 的 .link-btn,本组件作用域里取不到 → 之前没样式。 */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: var(--type-control);
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: opacity var(--motion-fast);
+}
+.link-btn:hover:not(:disabled) { opacity: 0.7; }
+.link-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.link-btn.danger { color: var(--bad); }
 </style>

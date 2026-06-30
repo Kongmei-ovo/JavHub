@@ -4,11 +4,47 @@
   padding-bottom: 120px; /* Space for footer */
 }
 .settings-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
   margin-bottom: 32px;
 }
 .settings-header-meta {
   max-width: 720px;
 }
+/* 配置路径/告警挪到标题行右侧：正常态只静态显示路径，未挂载(暂停保存)时升级为告警条 */
+.settings-header-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.shs-path {
+  max-width: 460px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-caption);
+}
+.shs-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--badge-warning-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.shs-warn svg { flex-shrink: 0; }
 .settings-header h1 { 
   font-size: var(--type-page-title); 
   font-weight: 700; 
@@ -40,17 +76,21 @@
   scrollbar-color: var(--glass-edge) transparent;
 }
 .tab-item {
+  /* 顶部分段菜单子项 — 与 .segment-item / .tab-btn 统一为 subtle 玻璃胶囊(内外 R 同 999) */
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 16px;
-  background: var(--card);
-  border: 1px solid var(--hairline);
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 8px 16px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  border: 1px solid transparent;
   border-radius: 999px;
   color: var(--text-secondary);
-  font-size: var(--type-body);
-  font-weight: 650;
+  font-size: var(--type-control);
+  font-weight: 600;
   cursor: pointer;
   position: relative;
   box-shadow: none;
@@ -115,20 +155,24 @@
   z-index: 3;
 }
 .settings-sidebar-list {
+  /* 玻璃轨道托底 — 与 .segmented-control / .download-tabs 同款 */
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--glass-edge);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-control-border);
   border-radius: 999px;
-  background: var(--card);
-  box-shadow: var(--shadow-card);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 .settings-sidebar-list .tab-item {
   flex: 0 0 auto;
   justify-content: center;
-  min-height: 38px;
-  padding: 0 16px;
 }
 .settings-pane {
   width: 100%;
@@ -161,54 +205,12 @@
   background: var(--card);
   box-shadow: var(--shadow-card);
 }
-.config-status-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 14px 16px;
-}
-.config-status-banner strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: var(--type-control);
-  margin-bottom: 4px;
-}
-.config-status-banner p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--type-caption);
-}
-.config-status-banner code {
-  max-width: 48%;
-  overflow-wrap: anywhere;
-  color: var(--text-muted);
-  font-size: var(--type-caption);
-}
-.config-status-banner.warning {
-  border-color: var(--badge-warning-border);
-}
 .config-section {
   animation: fadeIn 0.4s ease-out;
 }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-.section-header {
-  margin-bottom: 32px;
-}
-.section-header h2 {
-  font-size: var(--type-section-title);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-  letter-spacing: 0;
-}
-.section-header p {
-  font-size: var(--type-body);
-  color: var(--text-muted);
 }
 .settings-group {
   margin-bottom: 18px;

@@ -270,7 +270,9 @@
 
 .today-hero__btn-primary {
   background: var(--media-caption-text);
-  color: var(--bg-primary);
+  /* 药丸底固定为 --media-caption-text(不随主题切换的浅色),故字色必须恒为深墨;
+     原先用 --bg-primary 在浅色主题下也是近白,白底白字直接看不见。 */
+  color: var(--black-80);
   border: 1px solid var(--media-caption-text);
 }
 
@@ -645,8 +647,8 @@
 /* ===== Subscription grid ===== */
 .today-sub-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr));
+  gap: var(--grid-gap);
 }
 
 /* ===== Responsive ===== */

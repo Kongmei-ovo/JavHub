@@ -1,5 +1,4 @@
 .favorites-page {
-  --page-top-space: 38px;
   min-height: 100dvh;
 }
 
@@ -21,7 +20,7 @@
 }
 
 .curate-title {
-  font-size: var(--page-title-size);
+  font-size: var(--type-page-title);
   font-weight: var(--page-title-weight);
   line-height: var(--page-title-line);
   letter-spacing: 0;
@@ -29,24 +28,56 @@
   color: var(--text-primary);
 }
 
-.curate-stats {
-  font-size: var(--type-body);
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-.instance-note {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--type-control);
-}
-
-.curate-toolbar {
+/* 概览胶囊:与订阅页 hero-metrics 同一视觉语言,单行不分行。 */
+.curate-metrics {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  flex: 0 0 auto;
+  margin-top: 12px;
 }
+
+.curate-metrics span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--type-caption-1, 12px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 上行:分段切换(胶囊) + 编辑 */
+.curate-tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.curate-edit { flex: 0 0 auto; }
+
+/* 下行:公共搜索(整行,r角与间隔对齐补全页) */
+.curate-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--card);
+}
+.curate-search:focus-within { border-color: rgba(var(--accent-rgb), 0.5); box-shadow: var(--focus-ring); }
+.curate-search svg { width: 15px; height: 15px; color: var(--text-muted); flex-shrink: 0; }
+.curate-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text-primary); font: inherit; font-size: var(--type-control); }
+.curate-search input::-webkit-search-cancel-button { display: none; }
 
 .collection-manager {
   margin: 0 0 22px;
@@ -251,32 +282,32 @@
     var(--surface-noise),
     var(--material-glass-control);
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 999px;
   box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   border: 1px solid var(--glass-control-border);
+  gap: 4px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .segment-item {
-  border: 1px solid var(--glass-control-border);
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  color: var(--text-secondary);
-  padding: 8px 20px;
-  font-size: var(--type-control);
-  font-weight: 600;
-  border-radius: 10px;
-  box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
-  cursor: pointer;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 34px;
+  padding: 8px 16px;
+  color: var(--text-secondary);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--type-control);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
 .segment-item:hover {
@@ -373,8 +404,8 @@
 
 .favorites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr));
+  gap: var(--grid-gap);
   margin-bottom: 40px;
 }
 
@@ -465,8 +496,8 @@
 
 .actor-favorites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-portrait), 1fr));
+  gap: var(--grid-gap);
 }
 
 .section-label {
@@ -766,7 +797,7 @@
 
 @media (max-width: 768px) {
   .favorites-page { --page-top-space: 40px; }
-  .curate-title { font-size: var(--page-title-size-mobile); }
+  .curate-title { font-size: var(--type-page-title-mobile); }
   .segmented-control {
     overflow-x: auto;
     scrollbar-width: none;

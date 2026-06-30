@@ -44,7 +44,7 @@ class MockEventSource {
   }
 }
 
-function installDom(t) {
+function installDom() {
   const window = new Window({ url: 'http://localhost:5174/supplement/jobs' })
   const originals = {
     CustomEvent: globalThis.CustomEvent,
@@ -70,10 +70,10 @@ function installDom(t) {
   globalThis.SVGElement = window.SVGElement
   MockEventSource.instances = []
 
-  t.after(() => {
+  return () => {
     Object.assign(globalThis, originals)
     window.close()
-  })
+  }
 }
 
 async function waitFor(condition, label, { timeout = 1500, nextTick = async () => {} } = {}) {
@@ -128,6 +128,11 @@ async function importJobsTab(vueUrl) {
       }
     }\n`)
     .replace(/import \{ requestConfirm \} from '\.\.\/\.\.\/utils\/confirmDialog'\n/, 'const requestConfirm = async () => false\n')
+    .replace(/import api from '\.\.\/\.\.\/api'\n/, 'const api = { listSupplementJobs: async () => ({ data: { data: [] } }) }\n')
+    .replace(/import SupplementActorHero from '\.\/SupplementActorHero\.vue'\n/, `const SupplementActorHero = {
+      props: ["actor", "subtitle"],
+      template: "<div class=\\"sup-hero\\"><slot name=\\"aside\\"/><slot name=\\"meters\\"/></div>"
+    }\n`)
   const code = [
     scriptCode,
     template.code.replace(/from "vue"/g, `from '${vueUrl}'`),
@@ -138,7 +143,7 @@ async function importJobsTab(vueUrl) {
 }
 
 async function mountJobsTab(t) {
-  installDom(t)
+  const teardownDom = installDom()
   const vueUrl = `${baseVueUrl}?jobs-tab-${Date.now()}-${Math.random()}`
   const { createApp, nextTick } = await import(vueUrl)
   const JobsTab = await importJobsTab(vueUrl)
@@ -146,7 +151,9 @@ async function mountJobsTab(t) {
   document.body.appendChild(host)
   const app = createApp(JobsTab, { globalQueue: true })
   app.mount(host)
-  t.after(() => app.unmount())
+  // No #supplement-tab-actions target here, so JobsTab's Teleport stays disabled and
+  // renders its buttons in place; the menu-row teleport is exercised in the real app.
+  t.after(() => { app.unmount(); teardownDom() })
   return { app, host, nextTick }
 }
 
@@ -172,20 +179,23 @@ test('JobsTab keeps filter state local and exposes route-friendly updates', () =
   assert.match(source, /page:\s*jobPage\.value/)
   assert.match(source, /filters:\s*jobFilters/)
   assert.match(source, /emit\('filters-change'/)
-  assert.match(source, /GlassSelect/)
+  // 状态筛选改为「搜索撑满 + 右侧筛选下拉(状态 chips)」，与作品目录一致（不再是平铺下拉）。
+  assert.match(source, /class="sup-search"/)
+  assert.match(source, /class="filter-trigger"/)
+  assert.match(source, /setJobStatus/)
+  assert.match(source, /jobKeyword/)
   assert.match(source, /全局队列状态筛选|任务状态筛选/)
 })
 
-test('JobsTab hosts the gfriends avatar override job (moved from source health)', () => {
-  assert.match(source, /class="avatar-job-card"/)
-  assert.match(source, /头像覆盖作业/)
-  assert.match(source, /同步演员头像/)
-  assert.match(source, /confirmSyncAvatars/)
-  assert.match(source, /requestConfirm/)
-  assert.match(source, /gfriendsAvatarJob/)
-  assert.match(source, /loadGfriendsAvatarJob/)
-  assert.match(source, /toggleAvatarJobFilter/)
-  assert.match(source, /'gfriends'/)
+test('JobsTab no longer hosts the gfriends avatar override job (lives in /system-jobs)', () => {
+  // 头像覆盖/同步是全局运维作业，已归到 /system-jobs（演员头像下载 · gfriends 头像同步），
+  // 不再混进补全的任务队列。补全任务页只剩补全自身的队列。
+  assert.doesNotMatch(source, /class="avatar-job-card"/)
+  assert.doesNotMatch(source, /头像覆盖作业/)
+  assert.doesNotMatch(source, /同步演员头像/)
+  assert.doesNotMatch(source, /confirmSyncAvatars/)
+  assert.doesNotMatch(source, /toggleAvatarJobFilter/)
+  assert.doesNotMatch(source, /loadGfriendsAvatarJob/)
 })
 
 test('JobsTab listens to supplement SSE jobs and updates the visible queue', async (t) => {

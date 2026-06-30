@@ -15,7 +15,7 @@
 
 .page-header h1 {
   color: var(--text-primary);
-  font-size: var(--type-workbench-title);
+  font-size: var(--type-page-title);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -27,6 +27,28 @@
 
 .downloading-hint {
   color: var(--text-secondary);
+}
+
+/* 概览胶囊:与订阅 / 收藏页同款,单行不另起大框。 */
+.header-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.header-metrics span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--type-caption-1, 12px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .header-actions {

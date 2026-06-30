@@ -1,56 +1,49 @@
 <template>
   <div class="logs">
-    <div class="activity-header apple-surface">
-      <div>
-        <h1>运行日志</h1>
-        <p>{{ logSummary }}</p>
-      </div>
-      <button class="toolbar-btn primary" type="button" @click="loadLogs">刷新</button>
-    </div>
-
-    <div class="logs-control-panel apple-surface">
-      <div class="toolbar">
+    <!-- 控制条：筛选 + 搜索 + 动作，统计与分页窗口并入一条 meta，不再单列玻璃小卡 -->
+    <div class="logs-bar">
+      <div class="logs-bar-controls">
         <GlassSelect
           v-model="filterLevel"
           :options="levelOptions"
           aria-label="日志等级"
           @change="loadLogs"
         />
-        <input v-model="searchText" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
-        <button class="toolbar-btn primary" type="button" @click="loadLogs">搜索</button>
-        <button class="toolbar-btn danger" type="button" @click="clearLogs">清空</button>
+        <input v-model="searchText" class="logs-search" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
+        <button class="btn btn-primary btn-sm" type="button" @click="loadLogs">搜索</button>
+        <span class="logs-bar-spacer"></span>
+        <button class="btn btn-ghost btn-sm" type="button" @click="loadLogs">刷新</button>
+        <button class="btn btn-ghost btn-sm logs-danger" type="button" @click="clearLogs">清空</button>
       </div>
 
-      <div class="activity-summary-strip" aria-label="日志等级汇总">
-        <div v-for="item in levelSummary" :key="item.level">
-          <strong>{{ item.count }}</strong>
-          <span>{{ item.level }}</span>
+      <div class="logs-meta">
+        <div class="logs-counts" aria-label="日志等级汇总">
+          <span class="logs-count"><strong>{{ countFor('INFO') }}</strong> INFO</span>
+          <span class="logs-count is-warn"><strong>{{ countFor('WARNING') }}</strong> WARNING</span>
+          <span class="logs-count is-bad"><strong>{{ countFor('ERROR') }}</strong> ERROR</span>
         </div>
+        <div class="logs-window">{{ logWindowSummary }}</div>
       </div>
 
-      <div class="log-window-meta">{{ logWindowSummary }}</div>
-
-      <div v-if="activeLogFilters.length" class="filter-ledger" aria-label="当前日志筛选">
-        <span v-for="filter in activeLogFilters" :key="filter.key" class="filter-token">{{ filter.label }}</span>
-        <button class="filter-reset" type="button" :disabled="!hasActiveLogFilters" @click="clearLogFilters">清除筛选</button>
+      <div v-if="activeLogFilters.length" class="logs-filters" aria-label="当前日志筛选">
+        <span v-for="filter in activeLogFilters" :key="filter.key" class="logs-filter-chip">{{ filter.label }}</span>
+        <button class="logs-filter-clear" type="button" :disabled="!hasActiveLogFilters" @click="clearLogFilters">清除筛选</button>
       </div>
     </div>
 
-    <div class="logs-container" role="table" aria-label="运行日志">
-      <div class="log-table-head" role="row">
+    <div class="logs-table" role="table" aria-label="运行日志">
+      <div class="logs-head" role="row">
         <span role="columnheader">时间</span>
         <span role="columnheader">等级</span>
         <span role="columnheader">消息</span>
       </div>
-      <template v-if="loading && !logs.length">
-        <AppleSkeleton
-          v-if="loading"
-          class="logs-state"
-          variant="list"
-          :items="6"
-          label="日志加载中"
-        />
-      </template>
+      <AppleSkeleton
+        v-if="loading && !logs.length"
+        class="logs-state"
+        variant="list"
+        :items="6"
+        label="日志加载中"
+      />
       <AppleErrorState
         v-else-if="logsError"
         class="logs-state"
@@ -77,22 +70,22 @@
         @action="loadLogs"
         @secondary-action="clearLogFilters"
       />
-      <div v-else :class="{ 'is-loading-more': loading }" class="log-list" role="rowgroup">
+      <div v-else :class="{ 'is-loading-more': loading }" class="logs-rows" role="rowgroup">
         <div
           v-for="log in logs"
           :key="log.id"
-          :class="'log-item level-' + log.level.toLowerCase()"
+          :class="'logs-row is-' + toneFor(log.level)"
           role="row"
         >
-          <span class="log-time" role="cell">{{ formatTime(log.created_at) }}</span>
-          <span :class="'log-level level-' + log.level.toLowerCase()" role="cell">{{ log.level }}</span>
-          <span class="log-message" role="cell">{{ log.message }}</span>
+          <span class="logs-row-time" role="cell">{{ formatTime(log.created_at) }}</span>
+          <span class="logs-row-level" role="cell">{{ log.level }}</span>
+          <span class="logs-row-msg" role="cell">{{ log.message }}</span>
         </div>
       </div>
     </div>
 
-    <div class="pagination">
-      <button @click="loadMore" :disabled="!hasMoreLogs || loading">加载更多</button>
+    <div v-if="hasMoreLogs" class="logs-more">
+      <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="loadMore">加载更多</button>
     </div>
   </div>
 </template>
@@ -127,17 +120,6 @@ export default {
     }
   },
   computed: {
-    levelSummary() {
-      return ['INFO', 'WARNING', 'ERROR'].map(level => ({
-        level,
-        count: this.logs.filter(log => String(log.level || '').toUpperCase() === level).length,
-      }))
-    },
-    logSummary() {
-      const levelLabel = this.filterLevel || '全部等级'
-      const searchLabel = this.searchText.trim() ? ` · 关键词：${this.searchText.trim()}` : ''
-      return `显示 ${this.logs.length} 条日志 · ${levelLabel}${searchLabel} · 可按等级和关键词筛选`
-    },
     hasMoreLogs() {
       return this.logs.length < this.total
     },
@@ -177,6 +159,15 @@ export default {
     },
   },
   methods: {
+    countFor(level) {
+      return this.logs.filter(log => String(log.level || '').toUpperCase() === level).length
+    },
+    toneFor(level) {
+      const upper = String(level || '').toUpperCase()
+      if (upper === 'ERROR') return 'bad'
+      if (upper === 'WARNING') return 'warn'
+      return 'info'
+    },
     applyRouteFilters() {
       const level = String(this.$route.query.level || '').toUpperCase()
       const q = this.$route.query.q != null ? String(this.$route.query.q) : ''
@@ -248,476 +239,239 @@ export default {
 
 <style scoped>
 .logs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   color: var(--text-primary);
 }
 
-.activity-header {
+/* ---- control bar: filter + search + actions, stats folded into one meta line ---- */
+.logs-bar {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 72px;
-  margin-bottom: 10px;
-  padding: 12px;
-  border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-lg);
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-card);
   background: var(--card);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--hairline);
 }
 
-.logs h1 { margin: 0; font-size: var(--type-workbench-title); line-height: 1.16; letter-spacing: 0; }
-.activity-header p { margin: 6px 0 0; color: var(--text-secondary); font-size: var(--type-control); }
-.logs-control-panel {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(300px, 0.72fr) auto;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 10px;
-  border: 1px solid var(--glass-edge);
-  border-radius: var(--radius-lg);
-  background: var(--card);
-  box-shadow: var(--shadow-card);
-}
-
-.log-window-meta {
-  align-self: stretch;
+.logs-bar-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 132px;
-  padding: 8px 10px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-md);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logs-bar-spacer { flex: 1 1 auto; }
+.logs .glass-select { width: 128px; }
+
+.logs-search {
+  flex: 1 1 220px;
+  min-width: 160px;
+  max-width: 360px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-callout);
+  outline: none;
+}
+.logs-search::placeholder { color: var(--text-muted); }
+.logs-search:focus { border-color: var(--accent); }
+
+.logs-danger { color: var(--bad); }
+
+/* meta line: level counts + result window, divided by a hairline */
+.logs-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.logs-counts { display: flex; gap: 20px; flex-wrap: wrap; }
+
+.logs-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--type-caption);
+  color: var(--text-muted);
+}
+
+.logs-count strong {
+  font-family: var(--font-mono);
+  font-size: var(--type-callout);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
+}
+
+.logs-count.is-warn strong { color: var(--warn); }
+.logs-count.is-bad strong { color: var(--bad); }
+
+.logs-window {
   font-family: var(--font-mono);
   font-size: var(--type-caption);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  color: var(--text-muted);
 }
 
-.filter-ledger {
-  grid-column: 1 / -1;
+.logs-filters {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--glass-control-border);
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
 }
 
-.filter-token,
-.filter-reset {
-  min-width: 0;
-  min-height: 28px;
-  padding: 5px 9px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
-
-.filter-token {
+.logs-filter-chip {
   display: inline-flex;
   align-items: center;
-  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--hairline);
-  background: var(--card);
+  background: var(--surface-card);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
 }
 
-.filter-reset {
-  border: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  color: var(--text-primary);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--type-micro);
-  box-shadow: var(--glass-control-shadow);
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
-}
-
-.filter-reset:hover:not(:disabled) {
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-}
-
-.filter-reset:focus-visible {
-  outline: none;
-  border-color: var(--glass-control-border-hover);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
-}
-
-.filter-reset:active:not(:disabled) {
-  transform: scale(0.985);
-}
-
-.filter-reset:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.toolbar { margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.toolbar .glass-select { width: 132px; }
-.toolbar input {
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  color: var(--text-primary);
-  font: inherit;
-  outline: none;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
-}
-.toolbar input:focus {
-  border-color: var(--glass-active-border);
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
-  box-shadow: var(--glass-active-shadow);
-}
-.toolbar input { flex: 1; min-width: 180px; max-width: 300px; }
-.toolbar-btn {
-  min-height: 38px;
-  min-width: 82px;
-  padding: 0 14px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  color: var(--text-primary);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
-}
-.toolbar-btn:hover:not(:disabled) {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-  transform: translateY(-1px);
-}
-.toolbar-btn:focus-visible:not(:disabled) {
-  outline: none;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
-  transform: translateY(-1px);
-}
-.toolbar-btn.primary {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--glass-active-material);
-  border-color: var(--glass-active-border);
-  color: var(--text-primary);
-  box-shadow: var(--glass-active-shadow);
-}
-.toolbar-btn.danger {
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
-  border-color: var(--badge-error-border);
-  color: var(--badge-error-text);
-  box-shadow: var(--glass-control-shadow);
-}
-.toolbar-btn.danger:hover:not(:disabled) {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
-  border-color: var(--badge-error-border);
-  box-shadow: var(--glass-control-shadow-hover);
-}
-.toolbar-btn.danger:focus-visible:not(:disabled) {
-  outline: none;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--badge-error-bg);
-  border-color: var(--badge-error-border);
-  box-shadow: var(--glass-control-shadow-hover), 0 0 0 3px color-mix(in srgb, var(--badge-error-text) 18%, transparent);
-  transform: translateY(-1px);
-}
-
-.activity-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.activity-summary-strip > div {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--card);
-  box-shadow: var(--shadow-card);
-}
-
-.activity-summary-strip strong {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: var(--type-panel-title);
-}
-
-.activity-summary-strip span {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-secondary);
+.logs-filter-clear {
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--accent);
   font-size: var(--type-caption);
+  font-weight: 550;
+  cursor: pointer;
 }
+.logs-filter-clear:hover:not(:disabled) { text-decoration: underline; }
+.logs-filter-clear:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.logs-container {
+/* ---- table ---- */
+.logs-table {
+  border-radius: var(--radius-sheet);
   background: var(--card);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
-.logs-state {
-  max-width: none;
-  margin: 0;
-  padding: 12px;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.logs-state:deep(.apple-skeleton-row) {
-  min-height: 34px;
-  border-radius: var(--radius-sm);
-}
-
-.logs-state:deep(.apple-state-copy) {
-  text-align: left;
-}
-
-.log-table-head {
+.logs-head {
   position: sticky;
   top: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: 168px 76px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px 12px;
+  grid-template-columns: 168px 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--hairline);
-  background: var(--card-2);
+  background: var(--card);
   color: var(--text-muted);
   font-size: var(--type-micro);
   font-weight: 650;
-  box-shadow: none;
+  letter-spacing: 0.2px;
 }
-.log-list { max-height: 500px; overflow-y: auto; }
-.log-list.is-loading-more { position: relative; padding-bottom: 36px; }
-.log-list.is-loading-more::after {
-  content: "loading next page";
+
+.logs-rows { max-height: 560px; overflow-y: auto; }
+.logs-rows.is-loading-more { position: relative; padding-bottom: 32px; }
+.logs-rows.is-loading-more::after {
+  content: "加载下一页…";
   position: sticky;
   bottom: 0;
   display: flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-top: 1px solid var(--glass-control-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
+  min-height: 28px;
+  padding: 0 16px;
+  border-top: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
 }
 
-.log-item {
+.logs-row {
   position: relative;
   display: grid;
-  grid-template-columns: 168px 76px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 168px 72px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
-  min-height: 34px;
-  padding: 7px 12px;
+  min-height: 32px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--hairline);
   font-family: var(--font-mono);
-  font-size: var(--type-control);
+  font-size: var(--type-caption);
   min-width: 0;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
-.log-item::before {
+.logs-row:last-child { border-bottom: none; }
+
+/* level shown via a thin left bar + colored level word; rows stay neutral (no full-row tint) */
+.logs-row::before {
   content: "";
   position: absolute;
-  left: 6px;
-  top: 8px;
-  bottom: 8px;
-  grid-row: 1;
+  left: 0;
+  top: 0;
+  bottom: 0;
   width: 2px;
-  border-radius: 999px;
-  background: var(--hairline-strong);
+  background: transparent;
 }
-.log-item:hover {
-  background: var(--card-hover);
-  box-shadow: inset 2px 0 0 var(--glass-active-border);
-}
-.log-item:last-child { border-bottom: none; }
-.log-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.log-level {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 22px;
-  padding: 0 7px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-xs);
-  background: var(--card);
-  font-weight: bold;
-}
-.log-level.level-info,
-.level-info {
-  background: var(--card);
-  color: var(--text-secondary);
-}
-.log-level.level-warning,
-.level-warning {
-  border-color: var(--badge-warning-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
-  color: var(--badge-warning-text);
-}
-.log-item.level-warning::before { background: var(--badge-warning-border); }
-.log-level.level-error,
-.level-error {
-  border-color: var(--badge-error-border);
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
-  color: var(--badge-error-text);
-}
-.log-item.level-error::before { background: var(--badge-error-border); }
-.log-message { min-width: 0; word-break: break-all; }
-.loading,
-.empty {
-  margin: 12px;
-  padding: 40px;
-  text-align: center;
-  color: var(--text-secondary);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--card);
-}
-.pagination { margin-top: 20px; text-align: center; }
-.pagination button {
-  min-height: 44px;
-  padding: 0 30px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
-  cursor: pointer;
+.logs-row.is-warn::before { background: var(--warn); }
+.logs-row.is-bad::before { background: var(--bad); }
+.logs-row:hover { background: var(--surface-card); }
+
+.logs-row-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.logs-row-level {
+  font-size: var(--type-micro);
   font-weight: 700;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
 }
-.pagination button:hover:not(:disabled) {
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
-  transform: translateY(-1px);
-}
-.pagination button:focus-visible:not(:disabled) {
-  outline: none;
-  background: var(--surface-specular-edge-strong), var(--surface-noise), var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
-  transform: translateY(-1px);
-}
-.pagination button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+.logs-row.is-warn .logs-row-level { color: var(--warn); }
+.logs-row.is-bad .logs-row-level { color: var(--bad); }
+
+.logs-row-msg { min-width: 0; color: var(--text-secondary); word-break: break-word; }
+
+/* ---- async states ---- */
+.logs-state { max-width: none; margin: 0; padding: 16px; border-radius: 0; box-shadow: none; }
+.logs-state:deep(.apple-skeleton-row) { min-height: 32px; border-radius: var(--radius-sm); }
+.logs-state:deep(.apple-state-copy) { text-align: left; }
+
+.logs-more { text-align: center; }
 
 @media (max-width: 768px) {
-  .activity-header {
-    flex-direction: column;
-  }
-
-  .activity-header .toolbar-btn {
-    min-height: 40px;
-  }
-
-  .toolbar {
+  .logs-bar-controls {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
-
-  .toolbar .glass-select,
-  .toolbar input,
-  .toolbar button {
+  .logs .glass-select,
+  .logs-search,
+  .logs-bar-controls .btn {
     width: 100%;
-    min-height: 40px;
     max-width: none;
   }
+  .logs-search { grid-column: 1 / -1; min-height: 40px; }
+  .logs-bar-spacer { display: none; }
 
-  .toolbar input {
-    grid-column: 1 / -1;
-  }
+  .logs-head { display: none; }
 
-  .activity-summary-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .logs-row {
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    padding-left: 12px;
   }
-
-  .activity-summary-strip > div {
-    padding: 7px 8px;
-  }
-
-  .logs-control-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .log-window-meta {
-    min-width: 0;
-    overflow: hidden;
-    text-align: left;
-    text-overflow: ellipsis;
-    justify-content: flex-start;
-  }
-
-  .filter-ledger {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .filter-token,
-  .filter-reset {
-    width: 100%;
-  }
-
-  .logs-state {
-    padding: 10px;
-  }
-
-  .pagination {
-    margin-top: 10px;
-  }
-
-  .pagination button {
-    width: 100%;
-    min-height: 40px;
-  }
-
-  .log-table-head {
-    display: none;
-  }
-
-  .log-item {
-    display: grid;
-    grid-template-columns: 4px 1fr auto;
-    gap: 4px 10px;
-  }
-
-  .log-time,
-  .log-level {
-    width: auto;
-  }
-
-  .log-message {
-    grid-column: 2 / -1;
-  }
+  .logs-row-time { grid-column: 1; }
+  .logs-row-level { grid-column: 2; text-align: right; }
+  .logs-row-msg { grid-column: 1 / -1; }
 }
 </style>

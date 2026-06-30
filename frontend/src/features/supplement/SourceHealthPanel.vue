@@ -1,17 +1,12 @@
 <template>
   <section class="workspace-panel">
-    <div class="panel-header">
-      <div>
-        <h2>来源健康</h2>
-        <p class="panel-subtitle">汇总 → 来源行 → 隔离 runbook · 全局检查重新探活所有来源</p>
-      </div>
-      <div class="source-health-toolbar">
-        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('refresh-health')">刷新</button>
-        <button class="btn btn-primary btn-sm" type="button" :disabled="globalCheckLoading" @click="$emit('check-all')">
-          {{ globalCheckLoading ? '检查中…' : '全局检查' }}
-        </button>
-      </div>
-    </div>
+    <!-- 刷新 / 全局检查 挪到菜单行右侧（与其他页一致）。 -->
+    <Teleport to="#supplement-tab-actions" :disabled="!canTeleport">
+      <button class="btn btn-ghost btn-sm" type="button" @click="$emit('refresh-health')">刷新</button>
+      <button class="btn btn-primary btn-sm" type="button" :disabled="globalCheckLoading" @click="$emit('check-all')">
+        {{ globalCheckLoading ? '检查中…' : '全局检查' }}
+      </button>
+    </Teleport>
 
     <!-- Layer 1 — summary -->
     <div class="src-summary">
@@ -118,6 +113,10 @@ export default {
     'resume-source',
     'check-source',
   ],
+  data() {
+    // 仅当父级菜单行的 Teleport 目标存在时才传送（隔离单测/无父级时就地渲染）。
+    return { canTeleport: typeof document !== 'undefined' && !!document.getElementById('supplement-tab-actions') }
+  },
   computed: {
     healthyRows() {
       return this.sourceHealthRows.filter(s => s.runtime_status === 'healthy')

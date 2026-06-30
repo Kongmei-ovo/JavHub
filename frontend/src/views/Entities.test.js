@@ -106,17 +106,14 @@ test('text entity cards wrap full long series and metadata names', () => {
 })
 
 test('entities directory uses an Apple-style media-first grid and glass controls', () => {
-  assert.match(source, /class="entities-hero apple-surface"/)
+  assert.match(source, /class="entities-hero"/)
   assert.match(source, /class="entity-tab-count"/)
   assert.match(source, /:show-favorite="canFavoriteEntity"/)
   assert.match(source, /backdrop-filter: blur/)
   assert.match(actorPortraitCard, /aspect-ratio: 3 \/ 4/)
-  assert.match(source, /:global\(:root\[data-theme="dark"\] \.entities-hero\)/)
 })
 
 test('entities directory controls use shared liquid glass tokens without hardcoded theme fog', () => {
-  const hero = cssRule('.entities-hero')
-  const heroBefore = cssRule('.entities-hero::before')
   const listCard = cssRule('.entity-list-card')
   const listCardHover = cssRule('.entity-list-card:hover')
   const entityTab = cssRule('.entity-tab')
@@ -132,16 +129,6 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   const favoriteButtonActive = cssRule('.entity-list-card__favorite.active')
   const favoriteButtonActiveHover = cssRule('.entity-list-card__favorite.active:hover')
 
-  assert.match(hero, /background:\s*var\(--card\)/)
-  assert.match(hero, /border:\s*1px solid var\(--glass-edge-strong\)/)
-  assert.match(hero, /box-shadow:\s*var\(--shadow-card\)/)
-  assert.doesNotMatch(hero, /backdrop-filter/)
-  assert.doesNotMatch(hero, /rgba\(255,\s*255,\s*255|rgba\(255,255,255|var\(--surface-card\)/)
-  assert.match(heroBefore, /--entities-hero-mask-start:\s*var\(--media-edge-mask-strong\)/)
-  assert.match(heroBefore, /--entities-hero-mask-end:\s*var\(--media-edge-mask-clear\)/)
-  assert.match(heroBefore, /mask-image:\s*linear-gradient\(90deg,\s*var\(--entities-hero-mask-start\),\s*var\(--entities-hero-mask-end\) 72%\)/)
-  assert.doesNotMatch(heroBefore, /rgba\(0,\s*0,\s*0|rgba\(0,0,0|#000|#000000/i)
-
   assert.match(listCard, /background:\s*var\(--card\)/)
   assert.match(listCard, /border:\s*1px solid var\(--glass-edge-strong\)/)
   assert.match(listCard, /box-shadow:\s*var\(--shadow-card\)/)
@@ -152,10 +139,9 @@ test('entities directory controls use shared liquid glass tokens without hardcod
   assert.match(listCardHover, /box-shadow:\s*var\(--shadow-card\)/)
   assert.doesNotMatch(listCardHover, /var\(--surface-card-hover\)|var\(--shadow-floating\)/)
 
-  assert.match(entityTab, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(entityTab, backgroundIncludes('material-glass-control'))
-  assert.match(entityTab, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.match(entityTab, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)\s*saturate\(var\(--glass-saturate-control\)\)/)
+  // 胶囊 tab(对齐收藏/补全):透明描边 + subtle 底,玻璃/阴影在轨道 .entity-tabs 上。
+  assert.match(entityTab, /border:\s*1px solid transparent/)
+  assert.match(entityTab, backgroundIncludes('material-glass-subtle'))
   assert.match(entityTabHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(entityTabHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(entityTabHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
@@ -254,15 +240,9 @@ test('entities keyboard focus mirrors hover glass control treatment', () => {
 })
 
 test('entities dark list cards reuse shared material tokens', () => {
-  const darkHero = cssRule(':global(:root[data-theme="dark"] .entities-hero)')
   const darkListCard = cssRule(':global(:root[data-theme="dark"] .entity-list-card)')
   const darkListCardHover = cssRule(':global(:root[data-theme="dark"] .entity-list-card:hover)')
   const darkType = cssRule(':global(:root[data-theme="dark"] .entity-list-card__type)')
-
-  assert.match(darkHero, /background:\s*var\(--card\)/)
-  assert.doesNotMatch(darkHero, /var\(--surface-specular-edge|var\(--surface-noise\)/)
-  assert.doesNotMatch(darkHero, /var\(--surface-specular-edge|var\(--surface-noise\)/)
-  assert.match(darkHero, /border-color:\s*var\(--glass-edge-strong\)/)
 
   assert.match(darkListCard, /border-color:\s*var\(--glass-edge\)/)
   assert.match(darkListCard, /background:\s*var\(--card\)/)

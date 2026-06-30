@@ -32,7 +32,7 @@ test('logs page replaces bare loading and empty text with shared states', () => 
   assert.match(logsSource, /import AppleSkeleton from '\.\.\/\.\.\/components\/AppleSkeleton\.vue'/)
   assert.match(logsSource, /import AppleEmptyState from '\.\.\/\.\.\/components\/AppleEmptyState\.vue'/)
   assert.match(logsSource, /import AppleErrorState from '\.\.\/\.\.\/components\/AppleErrorState\.vue'/)
-  assert.match(logsSource, /<AppleSkeleton\s+v-if="loading"[\s\S]*variant="list"[\s\S]*label="日志加载中"/)
+  assert.match(logsSource, /<AppleSkeleton\s+v-if="loading && !logs\.length"[\s\S]*variant="list"[\s\S]*label="日志加载中"/)
   assert.match(logsSource, /<AppleErrorState[\s\S]*v-else-if="logsError"/)
   assert.match(logsSource, /next-step="检查后端日志接口或清除筛选条件后再试。"/)
   assert.match(logsSource, /<AppleEmptyState[\s\S]*v-else-if="logs.length === 0"/)

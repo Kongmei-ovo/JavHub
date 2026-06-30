@@ -56,6 +56,12 @@ from routers.movie_resources import router as movie_resources_router
 from routers.film_dictionary import router as film_dictionary_router
 from routers.acquisitions import router as acquisitions_router
 from services.emby_auth import EmbyHTTPException
+from modules.info_client import (
+    JavInfoError,
+    JavInfoNotFound,
+    JavInfoAuthError,
+    JavInfoUnavailable,
+)
 
 app = FastAPI(title="AV Downloader API")
 
@@ -90,6 +96,34 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "message": exc.detail,
         },
         headers={"X-Error-Code": str(exc.status_code)} if exc.status_code >= 500 else {}
+    )
+
+@app.exception_handler(JavInfoError)
+async def javinfo_error_handler(request: Request, exc: JavInfoError):
+    # 上游 JavInfoApi 的失败要按语义透传，别一律落进下面的 500 兜底：
+    # 404 透传成 404（前端如 Today hero 据此丢弃失效番号，而非把卡片卡死），
+    # 鉴权透传成 403，连不通/超时算 503，其余上游错误归 502。
+    if isinstance(exc, JavInfoNotFound):
+        status_code, code = 404, ApiResponse.ERR_NOT_FOUND
+    elif isinstance(exc, JavInfoAuthError):
+        status_code, code = 403, ApiResponse.ERR_FORBIDDEN
+    elif isinstance(exc, JavInfoUnavailable):
+        status_code, code = 503, "ERR_UPSTREAM_UNAVAILABLE"
+    else:
+        status_code, code = 502, "ERR_UPSTREAM"
+    if status_code >= 500:
+        logging.getLogger("main").warning(
+            "JavInfoApi error %s %s -> %s: %s",
+            request.method, request.url.path, status_code, exc,
+        )
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "detail": exc.upstream_message or "上游服务异常",
+            "code": code,
+            "message": exc.upstream_message or "上游服务异常",
+        },
+        headers={"X-Error-Code": code} if status_code >= 500 else {},
     )
 
 @app.exception_handler(Exception)

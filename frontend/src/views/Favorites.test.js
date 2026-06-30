@@ -74,10 +74,9 @@ test('favorites curation chrome uses shared Apple glass materials', () => {
   assert.match(segmentedControl, /border:\s*1px solid var\(--glass-control-border\)/)
   assert.match(segmentedControl, /box-shadow:\s*var\(--glass-control-shadow\)/)
   assert.match(segmentedControl, /backdrop-filter:\s*blur\(var\(--glass-blur-control\)\)/)
-  assert.match(segmentItem, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.match(segmentItem, backgroundIncludes('material-glass-control'))
-  assert.match(segmentItem, /box-shadow:\s*var\(--glass-control-shadow\)/)
-  assert.doesNotMatch(segmentItem, /border:\s*1px solid transparent|background:\s*transparent/)
+  // 胶囊 tab(对齐补全页):静止态透明描边 + subtle 底,只有 hover / active 浮起。
+  assert.match(segmentItem, /border:\s*1px solid transparent/)
+  assert.match(segmentItem, backgroundIncludes('material-glass-subtle'))
   assert.match(segmentItemHover, backgroundIncludes('material-glass-control-hover'))
   assert.match(segmentItemHover, /border-color:\s*var\(--glass-control-border-hover\)/)
   assert.match(segmentItemHover, /box-shadow:\s*var\(--glass-control-shadow-hover\)/)
@@ -208,7 +207,6 @@ test('favorites liquid glass surfaces keep inner edge highlights and pressed fee
     ['.collection-form input', 'glass-control-shadow'],
     ['.btn-mini', 'glass-control-shadow'],
     ['.segmented-control', 'glass-control-shadow'],
-    ['.segment-item', 'glass-control-shadow'],
     ['.entity-bubble', 'glass-control-shadow'],
     ['.select-check', 'glass-control-shadow'],
     ['.empty-icon', 'glass-control-shadow'],

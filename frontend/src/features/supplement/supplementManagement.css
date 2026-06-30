@@ -853,6 +853,26 @@ p {
 .metric-dot-stack { background: var(--info); box-shadow: 0 0 6px rgba(var(--info-rgb), 0.5); }
 .metric-dot-clock { background: var(--warn); box-shadow: 0 0 6px rgba(var(--warn-rgb), 0.5); }
 
+/* 顶部 tab 行：视图分段控件在左，「返回演员列表」靠右 */
+.tabbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+
+.tabbar-row .segmented-control { margin: 0; }
+
+/* 右侧操作簇：各 tab 的按钮 Teleport 进 .tabbar-actions，与「返回演员列表」同列、与菜单等高。 */
+.tabbar-right { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; flex-wrap: wrap; }
+.tabbar-actions { display: flex; align-items: center; gap: var(--space-2); }
+.tabbar-actions:empty { display: none; }
+
+.tabbar-back { flex-shrink: 0; gap: 4px; }
+.tabbar-back svg { width: 15px; height: 15px; }
+
 .segmented-control {
   display: inline-flex;
   gap: 4px;

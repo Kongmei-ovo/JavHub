@@ -657,10 +657,10 @@ export default {
   transform: translateY(-1px);
 }
 .page-indicator { font-size: var(--type-control); color: var(--text-secondary); padding: 0 4px; }
-.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; align-items: start; padding-block: 20px; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr)); gap: var(--grid-gap); align-items: start; padding-block: 20px; }
 .year-section { margin-bottom: 8px; }
 .year-header { font-size: var(--type-control); font-weight: 700; color: var(--text-secondary); padding: 12px 0 8px 12px; letter-spacing: 0.05em; border-left: 3px solid var(--glass-control-border); font-family: var(--font-mono); }
-.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px !important; padding-block: 0 24px; }
+.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr)); gap: var(--grid-gap) !important; padding-block: 0 24px; }
 .result-card-group { min-width: 0; }
 
 .genre-detail-page :deep(.apple-empty-state),

@@ -26,7 +26,7 @@ function cssBlock(selector) {
 }
 
 test('Candidates view mounts the shared candidate workspace', () => {
-  assert.match(candidatesView, /class="candidates-page page-shell page-shell--workspace"/)
+  assert.match(candidatesView, /class="candidates-page page-shell page-shell--gallery"/)
   assert.match(candidatesView, /<h1>候选确认<\/h1>/)
   assert.match(candidatesView, /<DownloadCandidatePanel/)
   assert.match(candidatesView, /import { useDownloadCandidates } from '\.\.\/features\/candidates\/useDownloadCandidates\.js'/)

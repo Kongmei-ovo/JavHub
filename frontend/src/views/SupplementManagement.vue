@@ -1,23 +1,31 @@
 <template>
-  <div class="supplement-page page-shell page-shell--workspace">
+  <div class="supplement-page page-shell page-shell--gallery">
     <header class="supplement-topbar">
       <div>
         <h1>补全演员</h1>
-        <p class="topbar-sub">字段补全工作台 · 实时追踪补全来源、字段缺口与诊断进度</p>
-      </div>
-      <div class="topbar-actions">
-        <button v-if="actorContext" class="btn btn-ghost btn-sm" type="button" @click="clearActorContext">更换演员</button>
       </div>
     </header>
 
-    <nav class="segmented-control" aria-label="补全工作台视图">
-      <button v-for="tab in tabItems" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="setActiveTab(tab.key)">
-        <span class="segment-label">{{ tab.label }}</span>
-        <span class="segment-count">{{ tab.count }}</span>
-        <span class="segment-status">{{ tab.status }}</span>
-        <span class="segment-next-step">{{ tab.nextStep }}</span>
-      </button>
-    </nav>
+    <!-- 顶部视图 tab 行 + 右侧「重选演员」(锁定演员时才显示;清空当前演员、回到选演员;
+         在 待补全演员 tab 上隐藏——那本身就是演员列表,无需再「返回」) -->
+    <div class="tabbar-row">
+      <nav class="segmented-control" aria-label="补全工作台视图">
+        <button v-for="tab in tabItems" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="setActiveTab(tab.key)">
+          <span class="segment-label">{{ tab.label }}</span>
+          <span class="segment-count">{{ tab.count }}</span>
+          <span class="segment-status">{{ tab.status }}</span>
+          <span class="segment-next-step">{{ tab.nextStep }}</span>
+        </button>
+      </nav>
+      <div class="tabbar-right">
+        <!-- 各 tab 的操作按钮(刷新/全局检查/恢复卡住任务…)Teleport 到这里，与菜单等高、靠右。 -->
+        <div id="supplement-tab-actions" class="tabbar-actions"></div>
+        <button v-if="actorContext && activeTab !== 'actors'" class="btn btn-ghost btn-sm tabbar-back" type="button" @click="backToActorList">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+          重选演员
+        </button>
+      </div>
+    </div>
 
     <section class="workspace-view">
       <!-- 待补全作品 owns its own header in both scopes: the per-actress 作品目录 hero
@@ -230,6 +238,13 @@ export default {
       this.refreshNonce++
     },
     async setActiveTab(tab) {
+      // 待补全演员 IS the unscoped actor list — there is no actor-scoped variant of it.
+      // Landing here means「取消选定」, identical to 重选演员, so drop the locked actor
+      // instead of carrying it (and a stray actress_id) onto the list page.
+      if (tab === 'actors' && this.actorContext) {
+        await this.backToActorList()
+        return
+      }
       this.activeTab = tab
       // actress_id must come AFTER the activeFilters spread — applyRouteState seeds an
       // empty actress_id into activeFilters, which would otherwise clobber the scoped id.

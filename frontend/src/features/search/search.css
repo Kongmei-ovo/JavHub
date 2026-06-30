@@ -715,11 +715,11 @@
   transform: translateY(-16px) scale(0.99) translateZ(0);
 }
 
-/* 结果网格样式同步 2.0 */
+/* 结果网格样式同步 2.0 — 尺寸/间距走全局卡片栅格规范 token */
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr));
+  gap: var(--grid-gap);
   padding-block: 40px;
 }
 

@@ -1,18 +1,21 @@
 <template>
-  <div class="candidates-page page-shell page-shell--workspace">
+  <div class="candidates-page page-shell page-shell--gallery">
     <header class="page-header">
       <div class="header-left">
         <h1>候选确认</h1>
-        <p class="header-subtitle">
-          <span class="total-tasks">待确认 {{ candidateStats.candidate || 0 }}</span>
-          <span v-if="candidateStats.needs_magnet > 0" class="downloading-hint"> · {{ candidateStats.needs_magnet }} 个待补磁力</span>
-          <span v-if="candidateRuns.length" class="downloading-hint"> · 最近处理 {{ candidateRuns.length }} 次</span>
-        </p>
+        <div class="header-metrics" aria-label="候选概览">
+          <span>待确认 {{ candidateStats.candidate || 0 }}</span>
+          <span v-if="candidateStats.needs_magnet > 0">{{ candidateStats.needs_magnet }} 待补磁力</span>
+        </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" type="button" @click="$router.push('/downloads')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
-          下载队列
+        <button class="btn btn-ghost" type="button" :class="{ active: selectingCandidates }" @click="toggleCandidateSelection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          {{ selectingCandidates ? '退出批量' : '批量' }}
+        </button>
+        <button class="btn btn-ghost" type="button" :class="{ active: runsOpen }" @click="runsOpen = !runsOpen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          最近处理
         </button>
         <button class="btn btn-primary" type="button" @click="reload">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -20,10 +23,6 @@
         </button>
       </div>
     </header>
-
-    <div v-if="candidateFilterLedger.length" class="candidate-filter-ledger" aria-label="当前候选筛选">
-      <span v-for="filter in candidateFilterLedger" :key="filter.key" class="candidate-filter-token">{{ filter.label }}</span>
-    </div>
 
     <DownloadCandidatePanel
       :candidate-filter="candidateFilter"
@@ -42,13 +41,13 @@
       :candidate-mutations="candidateMutations"
       :magnet-editor="magnetEditor"
       :candidate-detail="candidateDetail"
+      :runs-open="runsOpen"
       @update-candidate-search="updateCandidateSearch"
       @search="submitCandidateSearch"
       @set-status="setCandidateStatus"
       @set-needs-magnet="setNeedsMagnet"
       @set-source="setCandidateSource"
       @set-latest-event="setCandidateLatestEvent"
-      @toggle-selection="toggleCandidateSelection"
       @enrich-visible="enrichVisibleCandidateMagnets"
       @process-visible="processVisibleCandidates"
       @select-all-visible="selectAllVisibleCandidates"
@@ -72,12 +71,13 @@
       @update-magnet-editor-value="updateMagnetEditorValue"
       @submit-magnet-editor="submitMagnetEditor"
       @close-detail="closeCandidateDetail"
+      @close-runs="runsOpen = false"
     />
   </div>
 </template>
 
 <script>
-import { defineAsyncComponent, onMounted, watch } from 'vue'
+import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDownloadCandidates } from '../features/candidates/useDownloadCandidates.js'
 
@@ -93,6 +93,9 @@ export default {
       syncRoute: true,
     })
 
+    // 「最近处理」改为按需弹窗（学其他页「历史按钮→弹窗」），默认不占版面。
+    const runsOpen = ref(false)
+
     function reload() {
       c.loadCandidates()
       c.loadCandidateRuns()
@@ -107,7 +110,7 @@ export default {
       if (c.applyRouteQuery(query)) reload()
     })
 
-    return { ...c, reload }
+    return { ...c, reload, runsOpen }
   },
 }
 </script>

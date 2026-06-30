@@ -1,5 +1,5 @@
 <template>
-  <div class="sub-page page-shell page-shell--standard">
+  <div class="sub-page page-shell page-shell--gallery">
     <div class="sub-hero">
       <div class="hero-copy">
         <h1 class="hero-title">订阅演员</h1>

@@ -43,19 +43,20 @@ test('primary navigation is grouped around daily workflows first', () => {
   const groupLabels = [...navBlock.matchAll(/label: '([^']+)',\s*items:/g)].map((match) => match[1])
   const labels = [...navBlock.matchAll(/\{ path: '[^']+', label: '([^']+)'/g)].map((match) => match[1])
 
-  assert.deepEqual(groupLabels, ['日常使用', '自动化维护', '系统管理'])
+  assert.deepEqual(groupLabels, ['日常', '内容入库', '系统'])
+  // 内容入库组按流水线工序排列：订阅 → 补全 → 候选 → 下载。
   assert.deepEqual(labels, [
     '今日',
     '分类目录',
     '我的收藏',
-    '下载中心',
+    '115 网盘',
     '演员订阅',
-    '候选确认',
     '资料补全',
+    '候选确认',
+    '下载中心',
     '翻译作业',
     '系统监控',
     '系统作业',
-    '115 网盘',
     '配置中心',
   ])
   assert.match(source, /id="mobile-more-title">更多功能/)
@@ -70,13 +71,13 @@ test('mobile more exposes initialization and maintenance entry points', () => {
 
   assert.deepEqual(labels, [
     '分类目录',
+    '115 网盘',
     '演员订阅',
-    '候选确认',
     '资料补全',
+    '候选确认',
     '翻译作业',
     '系统监控',
     '系统作业',
-    '115 网盘',
     '配置中心',
   ])
   assert.match(mobileBlock, /path: '\/entities'/)
