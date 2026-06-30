@@ -201,7 +201,7 @@ test('page motion transitions only animate transform and opacity', () => {
   }
 
   // 历史 token 债基线:ratchet 锁当前计数、挡新增;存量过渡非 transform/opacity 待专门精修轮。
-  assert.equal(offenders.length, 10, offenders.join('\n'))
+  assert.equal(offenders.length, 9, offenders.join('\n'))
 })
 
 test('page motion transitions use shared motion tokens', () => {

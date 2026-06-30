@@ -252,7 +252,8 @@ test('discovery detail bars and state panels use compact glass trays', () => {
   assert.match(statePanelBlock, /border:\s*1px solid var\(--glass-edge-strong\)/)
   assert.match(statePanelBlock, /box-shadow:\s*var\(--shadow-sheet\)/)
   assert.doesNotMatch(statePanelBlock, /backdrop-filter/)
-  assert.match(skeletonGridBlock, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(180px,\s*1fr\)\)/)
+  // 卡片栅格走全站统一 token（影片海报档），不再硬写像素值
+  assert.match(skeletonGridBlock, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(var\(--grid-min-poster\),\s*1fr\)\)/)
   assert.match(skeletonGridBlock, /align-items:\s*start/)
 })
 

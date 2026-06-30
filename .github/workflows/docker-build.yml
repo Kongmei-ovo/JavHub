@@ -11,16 +11,38 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/kongmei-ovo/javhub
-  RELEASE_VERSION: v1.2.0-beta.${{ github.run_number }}
 
 permissions:
   contents: read
   packages: write
 
 jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.calc.outputs.release }}
+    steps:
+      - name: Compute date-based release version
+        id: calc
+        # 日期版本(CalVer):YYYY.MM.DD + 当次构建序号,与本地 package.json 的日期版本
+        # 同体系;run_number 保证同一天多次构建的镜像 tag 仍唯一。推 v* 标签时用标签名。
+        # 用 Asia/Shanghai 取日期,贴合本地直觉(GitHub runner 默认 UTC)。
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            release="${GITHUB_REF_NAME#v}"
+          else
+            release="$(TZ='Asia/Shanghai' date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+          fi
+          echo "release=${release}" >> "$GITHUB_OUTPUT"
+          echo "Resolved release version: ${release}"
+
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
+    needs: version
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.release }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,9 +90,11 @@ jobs:
 
   publish:
     name: Publish manifests
-    needs: build
+    needs: [version, build]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.release }}
 
     steps:
       - name: Log in to Container Registry

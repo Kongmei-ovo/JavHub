@@ -25,7 +25,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  padding: 20px 4px 24px;
+  padding: 0 4px 24px;
 }
 
 .hero-copy {
@@ -33,7 +33,7 @@
 }
 
 .hero-title {
-  font-size: var(--page-title-size);
+  font-size: var(--type-page-title);
   font-weight: var(--page-title-weight);
   line-height: var(--page-title-line);
   color: var(--text-primary);
@@ -94,7 +94,13 @@
 }
 
 .tab-content { animation: fadeIn 0.2s ease; }
-.subscription-content { padding-bottom: 32px; }
+/* 外框：与工作台系列一致——实底卡 + hairline 描边 + radius-sheet。 */
+.subscription-content {
+  padding: var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sheet);
+}
 
 .subscription-management-bar {
   display: flex;
@@ -199,8 +205,8 @@
 /* WAVE-3 D2: A2 spacing ramp — gap uses --space-card-gap (20px). */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: var(--space-card-gap, var(--space-5, 20px));
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-portrait), 1fr));
+  gap: var(--grid-gap);
 }
 
 .card-grid.is-subscription-editing {
@@ -716,8 +722,8 @@
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr));
+  gap: var(--grid-gap);
 }
 
 .work-card-wrap {
@@ -789,7 +795,7 @@
     flex-direction: column;
     padding: 32px 16px 16px;
   }
-  .hero-title { font-size: var(--page-title-size-mobile); }
+  .hero-title { font-size: var(--type-page-title-mobile); }
   .hero-actions {
     justify-content: flex-start;
     flex-wrap: wrap;

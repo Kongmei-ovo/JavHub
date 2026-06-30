@@ -19,7 +19,7 @@
 
 .page-header h1 {
   color: var(--text-primary);
-  font-size: var(--type-workbench-title);
+  font-size: var(--type-page-title);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -155,64 +155,92 @@
 }
 
 .download-tabs {
+  /* 胶囊分段控件 — 与 .segmented-control / .segment-item 统一(玻璃轨道+同径胶囊,内外 R 同 999) */
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: var(--space-4, 16px);
   padding: 4px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--card);
+  border-radius: 999px;
+  border: 1px solid var(--glass-control-border);
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-control);
+  box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--glass-control-border);
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
+    var(--material-glass-subtle);
   color: var(--text-secondary);
+  font-size: var(--type-control);
+  font-weight: 600;
   cursor: pointer;
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
-.tab-btn:hover,
-.tab-btn:focus-visible {
-  outline: none;
+.tab-btn:hover {
+  color: var(--text-primary);
   border-color: var(--glass-control-border-hover);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--material-glass-control-hover);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.tab-btn:focus-visible {
+  outline: none;
   color: var(--text-primary);
+  border-color: var(--glass-control-border-hover);
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
+  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  transform: translateY(-1px);
 }
 
 .tab-btn.active {
-  border-color: var(--glass-active-border);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-active-border);
   background:
     var(--surface-specular-edge-strong),
     var(--surface-noise),
     var(--glass-active-material);
   box-shadow: var(--glass-active-shadow);
-  color: var(--text-primary);
 }
 
+.tab-btn:active { transform: translateY(0) scale(0.98); }
+
 .tab-badge {
-  min-width: 18px;
   padding: 1px var(--space-2);
-  border: 1px solid var(--badge-success-border);
-  border-radius: 999px;
-  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
-  color: var(--badge-success-text);
-  font-size: var(--type-micro, 11px);
-  font-weight: 700;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--type-badge);
+  font-weight: 500;
+}
+
+.tab-btn.active .tab-badge {
+  background:
+    var(--surface-specular-edge-strong),
+    var(--surface-noise),
+    var(--material-glass-control-hover);
 }
 
 .tasks-grid {

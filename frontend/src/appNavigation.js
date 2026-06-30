@@ -14,31 +14,32 @@ export const IconSupplement = defineComponent({ render: () => h('svg', { viewBox
 export const IconGauge = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 14a2 2 0 100-4 2 2 0 000 4z' }), h('path', { d: 'm13.4 12.6 4.6-4.6' }), h('path', { d: 'M4 18a8 8 0 1116 0' })]) })
 export const IconJobs = defineComponent({ render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [h('path', { d: 'M12 2v2' }), h('path', { d: 'M12 20v2' }), h('path', { d: 'm4.9 4.9 1.4 1.4' }), h('path', { d: 'm17.7 17.7 1.4 1.4' }), h('path', { d: 'M2 12h2' }), h('path', { d: 'M20 12h2' }), h('path', { d: 'm6.3 17.7-1.4 1.4' }), h('path', { d: 'm19.1 4.9-1.4 1.4' }), h('circle', { cx: '12', cy: '12', r: '4' })]) })
 
+// 侧边栏 = 应用动线：日常消费 → 内容入库流水线(订阅→补全→候选→下载，按工序顺序) → 系统后台。
 export const navGroups = [
   {
-    label: '日常使用',
+    label: '日常',
     items: [
       { path: '/', label: '今日', icon: IconHome },
       { path: '/entities', label: '分类目录', icon: IconList },
       { path: '/favorites', label: '我的收藏', icon: IconHeart },
+      { path: '/drive', label: '115 网盘', icon: IconCloud },
+    ],
+  },
+  {
+    label: '内容入库',
+    items: [
+      { path: '/subscription', label: '演员订阅', icon: IconStar },
+      { path: '/supplement', label: '资料补全', icon: IconSupplement },
+      { path: '/candidates', label: '候选确认', icon: IconParse },
       { path: '/downloads', label: '下载中心', icon: IconDownload },
     ],
   },
   {
-    label: '自动化维护',
+    label: '系统',
     items: [
-      { path: '/subscription', label: '演员订阅', icon: IconStar },
-      { path: '/candidates', label: '候选确认', icon: IconParse },
-      { path: '/supplement', label: '资料补全', icon: IconSupplement },
       { path: '/translations', label: '翻译作业', icon: IconTranslate },
-    ],
-  },
-  {
-    label: '系统管理',
-    items: [
       { path: '/operations', label: '系统监控', icon: IconGauge },
       { path: '/system-jobs', label: '系统作业', icon: IconJobs },
-      { path: '/drive', label: '115 网盘', icon: IconCloud },
       { path: '/settings', label: '配置中心', icon: IconSettings },
     ],
   },
@@ -50,15 +51,16 @@ export const bottomNavItems = [
   { path: '/downloads', label: '下载', icon: IconDownload },
 ]
 
+// 与侧边栏同序（去掉底栏已有的 今日 / 收藏 / 下载 三个快捷项）。
 export const mobileMoreItems = [
   { path: '/entities', label: '分类目录', icon: IconList },
+  { path: '/drive', label: '115 网盘', icon: IconCloud },
   { path: '/subscription', label: '演员订阅', icon: IconStar },
-  { path: '/candidates', label: '候选确认', icon: IconParse },
   { path: '/supplement', label: '资料补全', icon: IconSupplement },
+  { path: '/candidates', label: '候选确认', icon: IconParse },
   { path: '/translations', label: '翻译作业', icon: IconTranslate },
   { path: '/operations', label: '系统监控', icon: IconGauge },
   { path: '/system-jobs', label: '系统作业', icon: IconJobs },
-  { path: '/drive', label: '115 网盘', icon: IconCloud },
   { path: '/settings', label: '配置中心', icon: IconSettings },
 ]
 

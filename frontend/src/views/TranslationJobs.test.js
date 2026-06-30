@@ -75,9 +75,9 @@ test('translation donut and compact rows use semantic solid content tokens', () 
   assert.match(overviewTrack, /box-shadow:\s*none/)
   assert.doesNotMatch(overviewTrack, /rgba\(var\(--accent-rgb\)/)
 
-  assert.match(segmentedButton, /border:\s*1px solid var\(--glass-control-border\)/)
-  assert.ok(backgroundIncludes(segmentedButton, '--material-glass-control'))
-  assert.match(segmentedButton, /box-shadow:\s*var\(--glass-control-shadow\)/)
+  // 胶囊 tab(对齐收藏/补全):透明描边 + subtle 底,玻璃/阴影在轨道 .segmented-control 上。
+  assert.match(segmentedButton, /border:\s*1px solid transparent/)
+  assert.ok(backgroundIncludes(segmentedButton, '--material-glass-subtle'))
 
   for (const block of [compactJob, historyRow]) {
     assert.match(block, /border:\s*1px solid var\(--hairline\)/)

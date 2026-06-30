@@ -59,11 +59,12 @@
 }
 
 .segmented-control {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 3px;
-  padding: 3px;
-  border-radius: var(--radius-md);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: var(--space-4);
+  border-radius: 999px;
   border: 1px solid var(--glass-control-border);
   background:
     var(--surface-specular-edge),
@@ -75,21 +76,22 @@
 }
 
 .segmented-control button {
-  min-height: 32px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
-    var(--material-glass-control);
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font-size: var(--type-caption);
   font-weight: 500;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
   transition: transform var(--motion-standard), opacity var(--motion-fast);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
 }
 
 .segmented-control button:hover {

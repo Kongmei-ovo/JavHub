@@ -3,70 +3,46 @@
     <div class="curate-header">
       <div class="curate-header-main">
         <div class="curate-copy">
-          <h1 class="curate-title">私人策展</h1>
-          <div class="curate-stats">
-            共 {{ count }} 个收藏项
+          <h1 class="curate-title">我的收藏</h1>
+          <div class="curate-metrics" aria-label="收藏概览">
+            <span>共 {{ count }} 收藏</span>
+            <span>影片 {{ typeCounts.video || 0 }}</span>
+            <span>演员 {{ typeCounts.actress || 0 }}</span>
           </div>
-          <p class="instance-note">{{ instanceNote }}</p>
-        </div>
-        <div class="curate-toolbar">
-          <button
-            class="btn-mini"
-            type="button"
-            :class="{ active: editMode }"
-            :disabled="!editMode && visibleFavoriteCount === 0"
-            @click="toggleEditMode"
-          >
-            {{ editMode ? '完成' : '编辑' }}
-          </button>
         </div>
       </div>
 
-      <section class="collection-manager" aria-label="收藏集合">
-        <div class="collection-manager-head">
-          <div>
-            <h2>收藏集合</h2>
-            <p>{{ collections.length }} 个集合 · 管理本地策展分组</p>
-          </div>
-          <button class="btn-mini" type="button" @click="resetCollectionForm">新建集合</button>
-        </div>
-        <form class="collection-form" @submit.prevent="saveCollection">
-          <input v-model="collectionForm.name" placeholder="集合名称" />
-          <input v-model="collectionForm.description" placeholder="描述，可选" />
-          <button class="btn-mini primary" type="submit" :disabled="collectionsLoading || !collectionForm.name.trim()">
-            {{ editingCollectionId ? '保存' : '创建' }}
+      <!-- 上:分段切换(胶囊) + 编辑;下:公共搜索 —— 两行布局,学补全页 -->
+      <div class="curate-tab-row">
+        <div class="segmented-control">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            class="segment-item"
+            type="button"
+            :class="{ active: activeTab === tab.id }"
+            @click="setActiveTab(tab.id)"
+          >
+            {{ tab.label }}
+            <span v-if="tab.count > 0" class="tab-badge">{{ tab.count }}</span>
           </button>
-          <button v-if="editingCollectionId" class="btn-mini" type="button" @click="resetCollectionForm">取消</button>
-        </form>
-        <div class="collection-list">
-          <article v-for="collection in collections" :key="collection.id" class="collection-row">
-            <div>
-              <strong>{{ collection.name }}</strong>
-              <span>{{ collection.description || '暂无描述' }}</span>
-            </div>
-            <div class="collection-actions">
-              <button class="btn-mini" type="button" @click="editCollection(collection)">重命名</button>
-              <button class="btn-mini danger" type="button" @click="removeCollection(collection)">删除</button>
-            </div>
-          </article>
-          <small v-if="!collectionsLoading && collections.length === 0" class="collection-empty">还没有收藏集合</small>
         </div>
-      </section>
-
-      <!-- iOS 风格的分段选择器 -->
-      <div class="segmented-control">
         <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="segment-item"
+          class="btn-mini curate-edit"
           type="button"
-          :class="{ active: activeTab === tab.id }"
-          @click="setActiveTab(tab.id)"
+          :class="{ active: editMode }"
+          :disabled="!editMode && visibleFavoriteCount === 0"
+          @click="toggleEditMode"
         >
-          {{ tab.label }}
-          <span v-if="tab.count > 0" class="tab-badge">{{ tab.count }}</span>
+          {{ editMode ? '完成' : '编辑' }}
         </button>
       </div>
+      <label class="curate-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input v-model="searchKeyword" type="search" :placeholder="`搜索${activeTabLabel}`" aria-label="搜索收藏" />
+      </label>
 
       <div
         v-if="editMode"
@@ -94,12 +70,37 @@
       class="favorites-grid favorites-grid-loading"
       variant="gallery"
       :items="8"
-      columns="repeat(auto-fill, minmax(180px, 1fr))"
+      columns="repeat(auto-fill, minmax(200px, 1fr))"
       label="收藏影片加载中"
     />
 
     <!-- 收藏内容 -->
     <div v-else class="curate-content">
+      <!-- 集合:本地策展分组(并入 tab;搜索按名称过滤) -->
+      <section v-if="activeTab === 'collection'" class="collection-manager" aria-label="收藏集合">
+        <form class="collection-form" @submit.prevent="saveCollection">
+          <input v-model="collectionForm.name" placeholder="集合名称" />
+          <input v-model="collectionForm.description" placeholder="描述，可选" />
+          <button class="btn-mini primary" type="submit" :disabled="collectionsLoading || !collectionForm.name.trim()">
+            {{ editingCollectionId ? '保存' : '创建' }}
+          </button>
+          <button v-if="editingCollectionId" class="btn-mini" type="button" @click="resetCollectionForm">取消</button>
+        </form>
+        <div class="collection-list">
+          <article v-for="collection in filteredCollections" :key="collection.id" class="collection-row">
+            <div>
+              <strong>{{ collection.name }}</strong>
+              <span>{{ collection.description || '暂无描述' }}</span>
+            </div>
+            <div class="collection-actions">
+              <button class="btn-mini" type="button" @click="editCollection(collection)">重命名</button>
+              <button class="btn-mini danger" type="button" @click="removeCollection(collection)">删除</button>
+            </div>
+          </article>
+          <small v-if="!collectionsLoading && filteredCollections.length === 0" class="collection-empty">{{ searchKeyword ? '没有匹配的集合' : '还没有收藏集合' }}</small>
+        </div>
+      </section>
+
       <!-- 影片网格 -->
       <div v-if="activeTab === 'video' || activeTab === 'all'" v-show="videoItems.length > 0" class="favorites-grid" :class="{ 'is-editing': editMode }">
         <div
@@ -208,7 +209,7 @@
 
       <!-- 空状态 -->
       <AppleEmptyState
-        v-if="displayVideoItems.length === 0 && actorFavoriteItems.length === 0 && otherEntityItems.length === 0"
+        v-if="activeTab !== 'collection' && displayVideoItems.length === 0 && actorFavoriteItems.length === 0 && otherEntityItems.length === 0"
         :title="emptyTitle"
         :description="emptyDescription"
         :next-step="emptyNextStep"
@@ -258,6 +259,7 @@ export default {
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
+    const searchKeyword = ref('')
     const videoLoading = ref(false)
     const videoLoadingMore = ref(false)
     const videoItems = ref([])
@@ -287,6 +289,7 @@ export default {
       { id: 'category', label: '题材', count: typeCounts.value.category || 0 },
       { id: 'series', label: '系列', count: typeCounts.value.series || 0 },
       { id: 'maker', label: '工作室', count: typeCounts.value.maker || 0 },
+      { id: 'collection', label: '集合', count: collections.value.length },
     ])
 
     // 分页加载完整影片数据，避免收藏多时一次性 fanout 所有详情请求
@@ -341,18 +344,34 @@ export default {
       })
     })
 
+    // 公共搜索:按番号 / 标题 / 名称过滤当前 tab(集合在 filteredCollections 单独过滤)
+    const favoriteMatchesSearch = (item) => {
+      const q = searchKeyword.value.trim().toLowerCase()
+      if (!q) return true
+      const m = item.metadata || {}
+      const hay = [
+        m.title_en_translated, m.title_ja_translated, m.title_en, m.title_ja, m.title,
+        m.name, m.dvd_id, m.content_id, m.service_code, entityDisplayName(item),
+      ].filter(Boolean).join(' ').toLowerCase()
+      return hay.includes(q)
+    }
+    const filteredCollections = computed(() => {
+      const q = searchKeyword.value.trim().toLowerCase()
+      if (!q) return collections.value
+      return collections.value.filter(c => `${c.name || ''} ${c.description || ''}`.toLowerCase().includes(q))
+    })
+
     // 影片展示列表
     const displayVideoItems = computed(() => {
-      if (activeTab.value === 'video') return videoItems.value
-      if (activeTab.value === 'all') return videoItems.value
-      return []
+      if (activeTab.value !== 'video' && activeTab.value !== 'all') return []
+      return videoItems.value.filter(favoriteMatchesSearch)
     })
 
     // 非影片收藏
     const nonVideoItems = computed(() => {
-      const items = state.items.filter(i => i.entity_type !== 'video')
-      if (activeTab.value === 'all') return items
-      return items.filter(i => i.entity_type === activeTab.value)
+      let items = state.items.filter(i => i.entity_type !== 'video')
+      if (activeTab.value !== 'all') items = items.filter(i => i.entity_type === activeTab.value)
+      return items.filter(favoriteMatchesSearch)
     })
 
     const actorSourceItems = computed(() => state.items.filter(i => i.entity_type === 'actress'))
@@ -367,7 +386,7 @@ export default {
     }
     const actorFavoriteItems = computed(() => {
       if (activeTab.value !== 'all' && activeTab.value !== 'actress') return []
-      return actorSourceItems.value.map(item => ({ ...item, actor: favoriteActorFromItem(item) }))
+      return actorSourceItems.value.filter(favoriteMatchesSearch).map(item => ({ ...item, actor: favoriteActorFromItem(item) }))
     })
     const otherEntityItems = computed(() => nonVideoItems.value.filter(i => i.entity_type !== 'actress'))
 
@@ -613,6 +632,10 @@ export default {
       actorFavoriteItems,
       otherEntityItems,
       sectionLabel,
+      typeCounts,
+      searchKeyword,
+      filteredCollections,
+      activeTabLabel,
       instanceNote,
       emptyTitle,
       emptyDescription,

@@ -1,9 +1,7 @@
 <template>
-  <div class="monitor-page page-shell page-shell--workspace">
+  <div class="monitor-page page-shell page-shell--gallery">
     <header class="monitor-header">
-      <span class="monitor-eyebrow">系统工作台</span>
       <h1>系统监控</h1>
-      <p>状态快照与运行日志合并在此：先看健康，异常一键钻进日志。</p>
     </header>
 
     <nav class="segmented-control" aria-label="系统监控视图">

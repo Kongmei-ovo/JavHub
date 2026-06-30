@@ -35,7 +35,7 @@ test('Apple typography avoids negative letter spacing across shell and primary p
 })
 
 test('Production UI styles avoid transition-all repaint traps', () => {
-  // 历史 token 债基线:ratchet 锁当前计数、挡新增;存量 transition:all 留待专门视觉精修轮。
+  // 全站已无 transition:all(补全目录重构清掉最后一处);ratchet 锁死在 0,挡住未来新增。
   const offenders = []
   for (const [name, source] of productionStyleSources()) {
     for (const match of source.matchAll(/(?:transition|--transition-pro):\s*all\b/g)) {
@@ -43,7 +43,7 @@ test('Production UI styles avoid transition-all repaint traps', () => {
       offenders.push(`${name}:${line}:${match[0]}`)
     }
   }
-  assert.equal(offenders.length, 1, offenders.join('\n'))
+  assert.equal(offenders.length, 0, offenders.join('\n'))
 })
 
 test('Production UI styles avoid layout-property transitions', () => {
@@ -108,7 +108,7 @@ test('Production UI styles ratchet raw font sizes toward shared type tokens', ()
   const tokenSources = new Set(['src/assets/main.css'])
   // 已把所有能 1:1 映射到 --type-* 的裸 px 字号迁成 token(零视觉变动),
   // 残留的是 ramp 上没有对应档的值(9/16/17/42px 等),留作单点豁免,后续若补档再迁。
-  const existingRawFontSizeCount = 26
+  const existingRawFontSizeCount = 25
 
   for (const [name, source] of productionStyleSources()) {
     if (tokenSources.has(name)) continue

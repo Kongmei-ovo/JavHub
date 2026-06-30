@@ -30,7 +30,7 @@
 .ops-hero-copy h1 {
   margin: 8px 0 4px;
   font-family: var(--font-display);
-  font-size: var(--type-workbench-title);
+  font-size: var(--type-page-title);
   font-weight: 680;
   letter-spacing: -0.4px;
   color: var(--text-primary);
@@ -42,48 +42,83 @@
   font-size: var(--type-callout);
 }
 
-.ops-hero-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-
-.ops-stat {
+/* ---- overview summary bar (replaces the four hero cards) ----
+   一行收口：系统状态 + 近期告警 + 全局动作，不再用四张高卡复述下方面板。 */
+.ops-summary {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 16px;
-  text-align: left;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
   border-radius: var(--radius-card);
   background: var(--card);
   border: 1px solid var(--hairline);
-  cursor: pointer;
-  transition: transform var(--motion-fast);
 }
 
-.ops-stat:hover { transform: translateY(-1px); }
-.ops-stat:hover { border-color: var(--accent); }
+.ops-summary.is-warn { border-color: var(--badge-warning-border); }
+.ops-summary.is-bad { border-color: var(--badge-error-border); }
 
-.ops-stat strong {
-  font-family: var(--font-mono);
-  font-size: var(--type-workbench-title);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.ops-summary-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ops-summary-state {
+  font-family: var(--font-display);
+  font-size: var(--type-title-2);
+  font-weight: 650;
+  letter-spacing: -0.2px;
   color: var(--text-primary);
 }
 
-.ops-stat span {
+.ops-summary-sub {
   font-size: var(--type-caption);
-  font-weight: 550;
-  color: var(--text-secondary);
-}
-
-.ops-stat small {
-  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
-.ops-stat.urgent strong { color: var(--warn); }
+.ops-summary-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--type-caption);
+  color: var(--text-muted);
+}
+
+.ops-summary-alert strong { font-weight: 650; font-variant-numeric: tabular-nums; }
+.ops-summary-alert strong.is-bad { color: var(--bad); }
+.ops-summary-alert strong.is-warn { color: var(--warn); }
+
+.ops-summary-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- status dot (shared by summary + status list) ---- */
+.ops-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.ops-dot.is-ok { background: var(--ok); }
+.ops-dot.is-warn { background: var(--warn); }
+.ops-dot.is-bad { background: var(--bad); }
+.ops-dot.is-neutral { background: var(--hairline-strong); }
+.ops-summary-status .ops-dot { width: 9px; height: 9px; }
 
 /* ---- panel ---- */
 .ops-panel {
@@ -124,77 +159,203 @@
   flex-wrap: wrap;
 }
 
-/* ---- state grid ---- */
-.ops-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
-  gap: 12px;
-}
+/* ---- status list (flat rows, replaces the rounded bubble grid) ----
+   子系统 / 调度作业各占一行：点 + 标签 + 状态·细节 + 跳转角标，
+   绿点保持安静，黄/红状态词跳出，整列扫读不再是一堆胶囊。 */
+.ops-statuslist { display: flex; flex-direction: column; }
 
-.ops-cell {
+.ops-statusrow {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 8px;
+  margin: 0;
   text-align: left;
-  border-radius: var(--radius-control);
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
 }
 
-button.ops-cell { cursor: pointer; }
-button.ops-cell:hover { border-color: var(--accent); }
+.ops-statuslist .ops-statusrow:last-child { border-bottom: none; }
+.ops-statuslist--compact .ops-statusrow { padding: 8px 8px; }
 
-.ops-cell span {
-  font-size: var(--type-caption);
-  font-weight: 550;
-  color: var(--text-secondary);
+button.ops-statusrow {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
 }
+button.ops-statusrow:hover { background: var(--surface-card); }
 
-.ops-cell strong {
+.ops-statusrow-label {
   font-size: var(--type-callout);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--text-primary);
 }
 
-.ops-cell small {
+.ops-statusrow-value {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ok 行只用绿点报平安，状态词压成次要色，避免整列泛绿 */
+.ops-statusrow-state { font-size: var(--type-caption); font-weight: 600; color: var(--text-secondary); }
+.ops-statusrow.is-warn .ops-statusrow-state { color: var(--warn); }
+.ops-statusrow.is-bad .ops-statusrow-state { color: var(--bad); }
+.ops-statusrow.is-neutral .ops-statusrow-state { color: var(--text-muted); }
+
+.ops-statusrow-detail {
   font-size: var(--type-micro);
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ops-cell.warning {
-  border-color: rgba(var(--warn-rgb), 0.5);
-  background: rgba(var(--warn-rgb), 0.08);
+.ops-chevron { flex: 0 0 auto; color: var(--text-muted); font-size: var(--type-title-2); line-height: 1; }
+
+/* ---- 运营卡：候选 / 调度 / 缓存 合并为一卡三段，发丝线分隔 ---- */
+.ops-ops { display: flex; flex-direction: column; }
+
+.ops-block { padding: 20px 0; border-top: 1px solid var(--hairline); }
+.ops-ops .ops-block:first-child { padding-top: 0; border-top: none; }
+.ops-ops .ops-block:last-child { padding-bottom: 0; }
+
+.ops-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.ops-cell.warning strong { color: var(--warn); }
+.ops-block-head h3 {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: 620;
+  color: var(--text-primary);
+}
+
+.ops-link {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--type-caption);
+  font-weight: 550;
+  color: var(--accent);
+}
+.ops-link:hover { text-decoration: underline; }
+
+.ops-block-error {
+  margin: 8px 0 0;
+  font-size: var(--type-micro);
+  color: var(--bad);
+}
+
+/* ---- 内联指标条：一个数字一个标签同基线，不再各占一张高卡 ---- */
+.ops-statbar { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+
+.ops-stat-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+}
+
+button.ops-stat-item { cursor: pointer; }
+
+.ops-stat-item strong {
+  font-family: var(--font-mono);
+  font-size: var(--type-workbench-title);
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.ops-stat-item span { font-size: var(--type-caption); color: var(--text-muted); }
+
+.ops-stat-item.is-warn strong { color: var(--warn); }
+
+/* 文本型指标（自动处理状态 / 缓存后端）走正文字体，别用大号 mono 撑高 */
+.ops-stat-item--text strong {
+  font-family: var(--font-body);
+  font-size: var(--type-callout);
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.ops-stat-item--text strong.is-ok { color: var(--ok); }
 
 /* ---- status pill ---- */
 .ops-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: var(--type-micro);
   font-weight: 650;
-  border: 1px solid var(--hairline);
-  color: var(--text-secondary);
-  background: var(--surface-card);
+  white-space: nowrap;
+  /* 状态药丸统一走 badge token + 分层玻璃,与来源健康/分类目录同一套胶囊语言 */
+  border: 1px solid var(--badge-info-border);
+  color: var(--badge-info-text);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-info-bg);
 }
 
 .ops-pill::before {
   content: '';
+  flex: 0 0 auto;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
 }
 
-.ops-pill.is-success { color: var(--ok); }
-.ops-pill.is-failed { color: var(--warn); }
-.ops-pill.is-running { color: var(--accent); }
-.ops-pill.is-idle { color: var(--text-muted); }
+.ops-pill.is-success,
+.ops-pill.is-ok {
+  color: var(--badge-success-text);
+  border-color: var(--badge-success-border);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-success-bg);
+}
+
+.ops-pill.is-failed,
+.ops-pill.is-bad {
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-border);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-error-bg);
+}
+
+.ops-pill.is-warn {
+  color: var(--badge-warning-text);
+  border-color: var(--badge-warning-border);
+  background: var(--surface-specular-edge), var(--surface-noise), var(--badge-warning-bg);
+}
+
+.ops-pill.is-running {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.28);
+  background: var(--surface-specular-edge), var(--surface-noise), rgba(var(--accent-rgb), 0.10);
+}
+
+.ops-pill.is-info,
+.ops-pill.is-idle,
+.ops-pill.is-neutral {
+  color: var(--text-muted);
+  border-color: var(--hairline);
+  background: var(--surface-card);
+}
 
 /* ---- system job rows ---- */
 .ops-job-list {

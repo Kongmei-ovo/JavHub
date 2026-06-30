@@ -1,19 +1,18 @@
 <template>
-  <div class="entities-page page-shell page-shell--workspace">
-    <header class="entities-hero apple-surface">
+  <div class="entities-page page-shell page-shell--gallery">
+    <header class="entities-hero">
       <div class="entities-hero__copy">
-        <span class="entities-kicker">{{ activeConfig.label }}</span>
         <h1>分类目录</h1>
+        <div class="entities-metrics" aria-label="目录统计">
+          <span>{{ totalLabel }}</span>
+        </div>
       </div>
-      <div class="entities-hero__metrics" aria-label="目录统计">
-        <strong>{{ totalLabel }}</strong>
-        <button class="btn btn-primary btn-sm" type="button" :disabled="loading" @click="loadEntities">
-          {{ loading ? '刷新中...' : '刷新' }}
-        </button>
-      </div>
+      <button class="btn btn-primary btn-sm" type="button" :disabled="loading" @click="loadEntities">
+        {{ loading ? '刷新中...' : '刷新' }}
+      </button>
     </header>
 
-    <section class="entities-controls apple-surface" aria-label="分类目录筛选">
+    <section class="entities-controls" aria-label="分类目录筛选">
       <div class="entity-tabs" role="tablist" aria-label="实体类型">
         <button
           v-for="tab in entityTabs"
@@ -47,7 +46,6 @@
             </svg>
           </button>
         </div>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="submitSearch">搜索</button>
       </div>
     </section>
 

@@ -1,71 +1,45 @@
 .entities-page {
   min-height: 100dvh;
-  padding-top: clamp(18px, 3vw, 34px);
 }
 
+/* 干净的页面头:无外框、无 min-height 撑高,标题与其他页同档(28)。 */
 .entities-hero {
-  position: relative;
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 148px;
   margin-bottom: 16px;
-  padding: clamp(22px, 3vw, 34px);
-  overflow: hidden;
-  border: 1px solid var(--glass-edge-strong);
-  background: var(--card);
-  box-shadow: var(--shadow-card);
-}
-
-.entities-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.42;
-  background: var(--card);
-  --entities-hero-mask-start: var(--media-edge-mask-strong);
-  --entities-hero-mask-end: var(--media-edge-mask-clear);
-  mask-image: linear-gradient(90deg, var(--entities-hero-mask-start), var(--entities-hero-mask-end) 72%);
-  -webkit-mask-image: linear-gradient(90deg, var(--entities-hero-mask-start), var(--entities-hero-mask-end) 72%);
-}
-
-.entities-hero__copy,
-.entities-hero__metrics {
-  position: relative;
-  z-index: 1;
-}
-
-.entities-kicker {
-  display: inline-flex;
-  margin-bottom: 10px;
-  color: var(--text-secondary);
-  font-size: var(--type-caption);
-  font-weight: 700;
 }
 
 .entities-hero h1 {
   margin: 0;
-  font-size: clamp(34px, 5vw, 56px);
-  font-weight: 700;
-  line-height: 0.96;
-  letter-spacing: 0;
+  font-size: var(--type-page-title);
 }
 
-.entities-hero__metrics {
+/* 标题下的附属计数,与收藏/订阅/候选同款胶囊(替代原右侧大数字) */
+.entities-metrics {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.entities-metrics span {
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-}
-
-.entities-hero__metrics strong {
-  color: var(--text-primary);
-  font-size: clamp(20px, 2.4vw, 28px);
-  font-weight: 750;
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--type-caption-1, 12px);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+/* 松散两行(对齐收藏/补全):去掉重盒子,保留吸顶。sticky 需实底兜住下方滚动内容,
+   用页面同色 --canvas,既不漏内容又看不出盒子;横向 flush 到 gallery 轨。 */
 .entities-controls {
   position: sticky;
   top: 14px;
@@ -73,34 +47,44 @@
   display: grid;
   gap: 14px;
   margin-bottom: 18px;
-  padding: 12px;
+  padding: 12px 0;
+  background: var(--canvas);
 }
 
+/* 胶囊分段(对齐收藏/补全):左对齐、不撑满整行;胶囊轨 + 透明描边按钮,只 hover/选中浮起 */
 .entity-tabs {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.entity-tab {
-  display: grid;
-  place-items: center;
-  min-height: 46px;
-  padding: 7px 8px;
-  border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-md);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
     var(--material-glass-control);
+  border: 1px solid var(--glass-control-border);
+  box-shadow: var(--glass-control-shadow), var(--glass-inner-shadow);
+  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
+}
+
+.entity-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background:
+    var(--surface-specular-edge),
+    var(--surface-noise),
+    var(--material-glass-subtle);
   color: var(--text-secondary);
   font: inherit;
   font-size: var(--type-control);
   font-weight: 650;
   cursor: pointer;
-  box-shadow: var(--glass-control-shadow);
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
-  -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 
@@ -112,6 +96,7 @@
     var(--material-glass-control-hover);
   color: var(--text-primary);
   box-shadow: var(--glass-control-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .entity-tab:focus-visible {
@@ -148,11 +133,10 @@
 }
 
 .entity-tab-count {
-  min-height: 14px;
-  margin-top: 2px;
   color: var(--text-muted);
   font-size: var(--type-micro);
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .entity-toolbar {
@@ -245,8 +229,8 @@
 
 .entity-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
-  gap: clamp(14px, 1.8vw, 22px);
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-portrait), 1fr));
+  gap: var(--grid-gap);
 }
 
 .entity-list-grid {
@@ -522,16 +506,6 @@
   color: var(--text-secondary);
   font-size: var(--type-caption);
   font-weight: 700;
-}
-
-:global(:root[data-theme="dark"] .entities-hero) {
-  border-color: var(--glass-edge-strong);
-  background: var(--card);
-}
-
-:global(:root[data-theme="dark"] .entities-hero::before) {
-  opacity: 0.22;
-  background: var(--card);
 }
 
 :global(:root[data-theme="dark"] .entity-list-card) {

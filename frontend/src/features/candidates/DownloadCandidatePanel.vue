@@ -1,93 +1,94 @@
 <template>
   <div class="candidate-panel">
     <div class="candidate-toolbar">
-      <input
-        :value="candidateFilter.q"
-        class="candidate-search-input"
-        placeholder="搜索番号、标题、演员"
-        @input="$emit('update-candidate-search', $event.target.value)"
-        @keyup.enter="$emit('search')"
-      />
-      <button class="chip" type="button" @click="$emit('search')">搜索</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' }" @click="$emit('set-status', 'candidate')">待确认</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="$emit('set-needs-magnet', true)">待补磁力</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="$emit('set-needs-magnet', false)">可批准</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'sent' }" @click="$emit('set-status', 'sent')">已下发</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'failed' }" @click="$emit('set-status', 'failed')">失败</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.status === 'rejected' }" @click="$emit('set-status', 'rejected')">已拒绝</button>
-      <button class="chip" type="button" :class="{ active: !candidateFilter.status }" @click="$emit('set-status', '')">全部</button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.source === 'subscription' }" @click="$emit('set-source', 'subscription')">
-        订阅 {{ candidateStats.by_source?.subscription || 0 }}
-      </button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.source === 'inventory' }" @click="$emit('set-source', 'inventory')">
-        库存 {{ candidateStats.by_source?.inventory || 0 }}
-      </button>
-      <button class="chip" type="button" :class="{ active: candidateFilter.source === 'supplement' }" @click="$emit('set-source', 'supplement')">
-        补全 {{ candidateStats.by_source?.supplement || 0 }}
-      </button>
-      <button class="chip" type="button" :class="{ active: !candidateFilter.source }" @click="$emit('set-source', '')">全部来源</button>
-      <button class="chip" type="button" :class="{ active: selectingCandidates }" @click="$emit('toggle-selection')">
-        {{ selectingCandidates ? '退出选择' : '选择' }}
-      </button>
-      <button class="chip action-chip" type="button" :disabled="candidateBatchProcessing" @click="$emit('enrich-visible')">
-        {{ candidateBatchProcessing === 'enrich' ? '补磁力中...' : '补当前磁力' }}
-      </button>
-      <button class="chip action-chip primary" type="button" :disabled="candidateBatchProcessing" @click="$emit('process-visible')">
-        {{ processVisibleLabel }}
-      </button>
-    </div>
-
-    <div v-if="candidateRepairScope" class="candidate-repair-scope" aria-label="候选修复范围">
-      <div>
-        <span>修复范围</span>
-        <strong>{{ candidateRepairScope.scopeLabel }}</strong>
+      <!-- 搜索撑满整行;状态/来源/最近动作 收进右侧「筛选」下拉。
+           批量开关 / 最近处理 已上移到页头(header-actions),工具行只剩搜索+筛选。 -->
+      <div class="candidate-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input
+          :value="candidateFilter.q"
+          type="search"
+          placeholder="搜索番号、标题、演员"
+          aria-label="搜索候选"
+          @input="$emit('update-candidate-search', $event.target.value)"
+          @keyup.enter="$emit('search')"
+        />
+        <button class="cand-search-go" type="button" @click="$emit('search')">搜索</button>
       </div>
-      <div class="candidate-repair-scope-grid">
-        <span><b>{{ candidateRepairScope.total || 0 }}</b><small>筛选总量</small></span>
-        <span><b>{{ candidateRepairScope.visibleCount || 0 }}</b><small>当前页</small></span>
-        <span><b>{{ candidateRepairScope.visibleMagnetTargets || 0 }}</b><small>当前页可补磁力</small></span>
+
+      <div ref="filterRoot" class="cand-filter">
+        <button
+          type="button" class="filter-trigger"
+          :class="{ on: filterOpen, active: activeFilterCount > 0 }"
+          :aria-expanded="filterOpen" @click="filterOpen = !filterOpen"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M3 6h11M3 12h7M3 18h13" /><circle cx="17.5" cy="6" r="2.2" /><circle cx="13.5" cy="12" r="2.2" /><circle cx="19" cy="18" r="2.2" />
+          </svg>
+          <span>筛选</span>
+          <span v-if="activeFilterCount" class="ft-count">{{ activeFilterCount }}</span>
+          <svg class="ft-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+
+        <transition name="fp">
+          <div v-if="filterOpen" class="filter-panel" role="dialog" aria-label="候选筛选">
+            <div class="fp-row">
+              <span class="fp-label">状态</span>
+              <div class="fp-chips">
+                <button class="chip" type="button" :class="{ active: !candidateFilter.status }" @click="$emit('set-status', '')">全部</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' }" @click="$emit('set-status', 'candidate')">待确认</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === true }" @click="$emit('set-needs-magnet', true)">待补磁力</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'candidate' && candidateFilter.needs_magnet === false }" @click="$emit('set-needs-magnet', false)">可批准</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'sent' }" @click="$emit('set-status', 'sent')">已下发</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'failed' }" @click="$emit('set-status', 'failed')">失败</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.status === 'rejected' }" @click="$emit('set-status', 'rejected')">已拒绝</button>
+              </div>
+            </div>
+            <div class="fp-row">
+              <span class="fp-label">来源</span>
+              <div class="fp-chips">
+                <button class="chip" type="button" :class="{ active: !candidateFilter.source }" @click="$emit('set-source', '')">全部</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.source === 'subscription' }" @click="$emit('set-source', 'subscription')">订阅 {{ candidateStats.by_source?.subscription || 0 }}</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.source === 'inventory' }" @click="$emit('set-source', 'inventory')">库存 {{ candidateStats.by_source?.inventory || 0 }}</button>
+                <button class="chip" type="button" :class="{ active: candidateFilter.source === 'supplement' }" @click="$emit('set-source', 'supplement')">补全 {{ candidateStats.by_source?.supplement || 0 }}</button>
+              </div>
+            </div>
+            <div v-if="candidateLatestEventFilters.length" class="fp-row">
+              <span class="fp-label">最近动作</span>
+              <div class="fp-chips">
+                <button class="chip" type="button" :class="{ active: !candidateFilter.latest_event_action }" @click="$emit('set-latest-event', '')">全部</button>
+                <button v-for="filter in candidateLatestEventFilters" :key="filter.action" class="chip" type="button" :class="{ active: candidateFilter.latest_event_action === filter.action }" @click="$emit('set-latest-event', filter.action)">{{ filter.label }} {{ filter.count }}</button>
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
+
     </div>
 
-    <div v-if="candidateLatestEventFilters.length" class="candidate-event-toolbar">
-      <span class="candidate-event-toolbar-label">最近动作</span>
-      <button
-        class="chip"
-        type="button"
-        :class="{ active: !candidateFilter.latest_event_action }"
-        @click="$emit('set-latest-event', '')"
-      >
-        全部
-      </button>
-      <button
-        v-for="filter in candidateLatestEventFilters"
-        :key="filter.action"
-        class="chip"
-        type="button"
-        :class="{ active: candidateFilter.latest_event_action === filter.action }"
-        @click="$emit('set-latest-event', filter.action)"
-      >
-        {{ filter.label }} {{ filter.count }}
-      </button>
-    </div>
-
+    <!-- 批量栏：仅在 header 开启「批量」后出现在顶部。按作用域分两组——
+         『按当前筛选』动作扫的是当前筛选/页，『选中项』动作只对勾选卡片生效。 -->
     <div v-if="selectingCandidates" class="bulk-toolbar">
-      <span>已选 {{ selectedCandidateIds.length }} 个</span>
-      <button class="btn btn-ghost" type="button" @click="$emit('select-all-visible')">选择当前页</button>
-      <button class="btn btn-ghost" type="button" @click="$emit('clear-selection')">清空</button>
-      <button class="btn btn-ghost" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="$emit('bulk-reject')">批量拒绝</button>
-      <button class="btn btn-primary" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="$emit('bulk-restore')">批量恢复</button>
+      <div class="batch-group">
+        <span class="batch-label">按当前筛选</span>
+        <button class="chip action-chip" type="button" :disabled="candidateBatchProcessing" @click="$emit('enrich-visible')">
+          {{ candidateBatchProcessing === 'enrich' ? '补磁力中...' : '补当前磁力' }}
+        </button>
+        <button class="chip action-chip primary" type="button" :disabled="candidateBatchProcessing" @click="$emit('process-visible')">
+          {{ processVisibleLabel }}
+        </button>
+      </div>
+      <span class="batch-div" aria-hidden="true"></span>
+      <div class="batch-group">
+        <span class="batch-label">选中项 · 已选 {{ selectedCandidateIds.length }}</span>
+        <button class="btn btn-ghost" type="button" @click="$emit('select-all-visible')">选择当前页</button>
+        <button class="btn btn-ghost" type="button" @click="$emit('clear-selection')">清空</button>
+        <button class="btn btn-ghost" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="$emit('bulk-reject')">批量拒绝</button>
+        <button class="btn btn-primary" type="button" :disabled="selectedCandidateIds.length === 0 || bulkCandidateLoading" @click="$emit('bulk-restore')">批量恢复</button>
+      </div>
     </div>
-
-    <CandidateRunPanel
-      :runs="candidateRuns"
-      :loading="candidateRunsLoading"
-      :processing="candidateBatchProcessing"
-      @refresh="$emit('refresh-runs')"
-      @apply="$emit('apply-run', $event)"
-      @apply-failed="$emit('apply-run-failed', $event)"
-      @retry-failed="$emit('retry-failed-run', $event)"
-    />
 
     <div v-if="candidateTotalPages > 1" class="candidate-pagination">
       <button class="page-btn" type="button" :disabled="candidatePage <= 1" @click="$emit('go-page', 1)">«</button>
@@ -309,6 +310,28 @@
         </template>
       </div>
     </div>
+
+    <div v-if="runsOpen" class="inline-dialog-overlay" @click.self="$emit('close-runs')">
+      <div class="inline-dialog candidate-runs-dialog">
+        <div class="inline-dialog-header">
+          <div>
+            <h2>最近处理</h2>
+            <p>策略处理 / 重试的历史记录，「套用筛选」会关闭本窗回到列表</p>
+          </div>
+          <button class="dialog-close-btn" type="button" @click="$emit('close-runs')">×</button>
+        </div>
+        <CandidateRunPanel
+          bare
+          :runs="candidateRuns"
+          :loading="candidateRunsLoading"
+          :processing="candidateBatchProcessing"
+          @refresh="$emit('refresh-runs')"
+          @apply="$emit('apply-run', $event)"
+          @apply-failed="$emit('apply-run-failed', $event)"
+          @retry-failed="$emit('retry-failed-run', $event)"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -335,6 +358,7 @@ export default {
     candidateMutations: { type: Object, default: () => ({}) },
     magnetEditor: { type: Object, required: true },
     candidateDetail: { type: Object, required: true },
+    runsOpen: { type: Boolean, default: false },
   },
   emits: [
     'update-candidate-search',
@@ -343,7 +367,6 @@ export default {
     'set-needs-magnet',
     'set-source',
     'set-latest-event',
-    'toggle-selection',
     'enrich-visible',
     'process-visible',
     'select-all-visible',
@@ -367,8 +390,16 @@ export default {
     'update-magnet-editor-value',
     'submit-magnet-editor',
     'close-detail',
+    'close-runs',
   ],
+  data() {
+    return { filterOpen: false }
+  },
   computed: {
+    activeFilterCount() {
+      const f = this.candidateFilter || {}
+      return [f.status, f.source, f.latest_event_action].filter(Boolean).length
+    },
     processVisibleLabel() {
       if (this.candidateBatchProcessing === 'dry-run') return '预演中...'
       if (this.candidateBatchProcessing === 'process') return '处理中...'
@@ -385,7 +416,29 @@ export default {
         }))
     },
   },
+  watch: {
+    filterOpen(open) {
+      if (open) {
+        document.addEventListener('mousedown', this.onDocPointer)
+        document.addEventListener('keydown', this.onKeydown)
+      } else {
+        document.removeEventListener('mousedown', this.onDocPointer)
+        document.removeEventListener('keydown', this.onKeydown)
+      }
+    },
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousedown', this.onDocPointer)
+    document.removeEventListener('keydown', this.onKeydown)
+  },
   methods: {
+    onDocPointer(event) {
+      const root = this.$refs.filterRoot
+      if (root && !root.contains(event.target)) this.filterOpen = false
+    },
+    onKeydown(event) {
+      if (event.key === 'Escape') this.filterOpen = false
+    },
     isCandidateMutating(id) {
       return Boolean(this.candidateMutations[id]) || this.bulkCandidateLoading || Boolean(this.candidateBatchProcessing)
     },

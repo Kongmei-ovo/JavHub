@@ -125,6 +125,18 @@ export function galleryThumbUrl(path) {
 }
 
 /**
+ * gfriends 头像走的是 jsdelivr 的 GitHub 镜像，主入口 cdn.jsdelivr.net 已对该超大仓库
+ * 返回 503（连 README 都拒），但 gcore POP 仍在服务。把主机名换成可用的 POP，路径与
+ * ?t= 缓存戳原样保留，避免重新同步整库。其余主机的 http(s) URL 原样放行。
+ */
+function rewriteDeadCdnHost(url) {
+  return url.replace(
+    /^https?:\/\/cdn\.jsdelivr\.net\/gh\/gfriends\/gfriends@/i,
+    'https://gcore.jsdelivr.net/gh/gfriends/gfriends@',
+  )
+}
+
+/**
  * 演员头像 URL
  * awsimgsrc.dmm.co.jp/pics_dig/mono/actjpgs/{filename}
  */
@@ -132,7 +144,7 @@ export function actressImgUrl(imageUrl) {
   if (!imageUrl) return null
   const url = String(imageUrl).trim()
   if (!url) return null
-  if (/^https?:\/\//i.test(url)) return url
+  if (/^https?:\/\//i.test(url)) return rewriteDeadCdnHost(url)
   const normalized = url.replace(/^\/+/, '')
   if (normalized.startsWith('pics_dig/')) {
     return `https://awsimgsrc.dmm.co.jp/${normalized}`

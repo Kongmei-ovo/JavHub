@@ -224,13 +224,16 @@
   --page-max-standard: 1180px;
   --page-max-workspace: 1360px;
   --page-max-gallery: 1600px;
-  --page-top-space: 24px;
+  --page-top-space: 44px;
   --page-bottom-space: 48px;
   --video-grid-min-mobile: 180px;
   --video-grid-gap-mobile: 24px;
   --video-card-radius-mobile: var(--radius-card);
   --video-card-body-padding-mobile: 14px 15px 16px;
   --compact-toolbar-height: 32px;
+  --grid-min-poster: 184px;   /* 内容卡栅格规范·影片海报；各页 *-grid 统一引用勿硬写像素 */
+  --grid-min-portrait: 152px; /* 演员人像卡，略密于海报 */
+  --grid-gap: clamp(14px, 1.6vw, 20px);
   /* 间距阶梯 */
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
@@ -1019,9 +1022,9 @@ a:hover {
 /* ===== Grid Layout ===== */
 .results-grid {
   display: grid;
-  gap: 24px !important;
+  gap: var(--grid-gap) !important;
   padding: 0 20px 40px;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-poster), 1fr));
 }
 
 /* ===== Animations ===== */

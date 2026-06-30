@@ -1,5 +1,5 @@
 <template>
-  <div class="translation-page page-shell page-shell--workspace">
+  <div class="translation-page page-shell page-shell--gallery">
     <header class="translation-header">
       <div>
         <h1>翻译作业</h1>
@@ -12,7 +12,7 @@
       </div>
     </header>
 
-    <nav class="segmented-control apple-surface" aria-label="翻译作业视图">
+    <nav class="segmented-control" aria-label="翻译作业视图">
       <button
         v-for="segment in segments"
         :key="segment.key"

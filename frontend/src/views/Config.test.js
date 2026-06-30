@@ -404,10 +404,11 @@ test('settings page exposes macOS-style grouped lists and row controls', () => {
   const row = cssBlock('.settings-row')
   const control = cssBlock('.settings-control')
 
-  // 分类已从左侧栏改为顶部横向标签，内容区全宽
+  // 分类已从左侧栏改为顶部横向标签，内容区全宽；轨道与「我的收藏」分段控件统一为玻璃胶囊。
   assert.match(shell, /display:\s*flex/)
   assert.match(shell, /flex-direction:\s*column/)
-  assert.match(sidebar, /background:\s*var\(--card\)/)
+  assert.match(sidebar, backgroundIncludes('material-glass-control'))
+  assert.match(sidebar, /border-radius:\s*999px/)
   assert.match(sidebar, /flex-wrap:\s*wrap/)
   assert.match(pane, /max-width:\s*none/)
   assert.match(group, /border-radius:\s*var\(--radius-lg\)/)

@@ -11,6 +11,7 @@
       :stage="catalogStageTab"
       :busy="catalogEnriching"
       :batch-busy="catalogBatchEnriching"
+      :finding="candidateImporting"
       :loading="catalogLoading"
       :recomputing="recomputing"
       @change-stage="setCatalogStage"
@@ -18,9 +19,9 @@
       @download="catalogDownload"
       @enrich="catalogEnrich"
       @enrich-all="catalogEnrichAll"
+      @find-all="catalogFindAll"
       @open-sources="catalogOpenSources"
       @recompute="$emit('start-supplement')"
-      @back="$emit('back-to-list')"
       @view-all="$emit('view-all')"
     />
 
@@ -34,6 +35,8 @@
       :movies-total-count="moviesTotalCount"
       :movies-total-pages="moviesTotalPages"
       :movie-page="moviePage"
+      :detail-target-count="workspaceDetailTargetCount"
+      :pending-candidate-count="workspacePendingCandidateCount"
       :batch-enriching="batchEnriching"
       :candidate-importing="candidateImporting"
       :enriching-movies="enrichingMovies"
@@ -305,6 +308,28 @@ export default {
       }
     }
 
+    // 一键查找：为该演员所有「待找源 / 未入库」作品批量生成下载候选（含磁力检索），
+    // 免去逐部点「找源」。复用 createDownloadCandidates(matched:false)，confirm 守门，
+    // 完成后刷新下钻状态。与字段阶段的「一键补全」对称。
+    async function catalogFindAll() {
+      if (supplement.candidateImporting.value || !props.actorContext?.id) return
+      const count = (supplement.catalogByTab.value.sources || []).filter(f => f.stage === 'find_source').length
+      if (!count) { ElMessage.info('没有待找源的作品'); return }
+      const confirmed = await requestConfirm({
+        title: '一键查找下载源',
+        message: `将为 ${count} 部待找源作品批量生成下载候选（含磁力检索）。`,
+        details: '系统会按番号检索磁力并生成下载候选，可在「下载中心」审批或秒离线。',
+        confirmText: '开始查找',
+      })
+      if (!confirmed) return
+      await supplement.createDownloadCandidates({
+        filters: { matched: false },
+        actressId: props.actorContext.id,
+        actressName: props.actorName,
+      })
+      await reloadCatalog()
+    }
+
     // ?stage= drives the three-stage sub-tab; switching only updates the query
     // (buildQuery preserves tab/actress_id/work), so it never reloads the catalog.
     function setCatalogStage(stage) {
@@ -427,6 +452,7 @@ export default {
       catalogDownload,
       catalogEnrich,
       catalogEnrichAll,
+      catalogFindAll,
       catalogOpenSources,
       catalogStageTab,
       catalogEnriching,
@@ -438,5 +464,14 @@ export default {
 </script>
 
 <style scoped>
-.works-tab { display: grid; gap: 14px; }
+/* 外框：与 待补全演员/任务队列(workspace-panel) 一致——实底卡 + hairline 描边 + radius-sheet。
+   hero 与外框同用 radius-sheet(28)，内外圆角同档，不是「内小外大」。 */
+.works-tab {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sheet);
+}
 </style>

@@ -2,40 +2,34 @@
   <!-- 全库「全部待补全」聚合视图 — 复用作品目录(catalog)卡片设计，去掉演员 hero。
        数据来自全库 supplement movies；按字段缺口呈现，保留筛选 / 批量动作 / 分页。 -->
   <section class="catalog-panel">
-    <div class="all-pending-head">
-      <div class="aph-id">
-        <h2>全部待补全</h2>
-        <div class="sh-sub">全库字段缺口 · 共 {{ moviesTotalCount }} 部待补全作品</div>
-      </div>
-      <div class="aph-actions">
-        <button class="btn btn-primary" type="button" :disabled="batchEnriching" @click="$emit('batch-enrich')">
-          {{ batchEnriching ? '批量排队中…' : '批量补详情' }}
-        </button>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="candidateImporting" @click="$emit('create-candidates')">
-          {{ candidateImporting ? '生成中…' : '生成下载候选' }}
-        </button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="$emit('pick-actor')">选择演员</button>
-      </div>
-    </div>
+    <!-- 批量动作 Teleport 到顶部菜单行右侧(与 待补全演员/任务/来源健康 各 tab 一致)，
+         与 tab 同行、靠右、等高，不再在面板内单占一行。 -->
+    <Teleport to="#supplement-tab-actions" :disabled="!canTeleport">
+      <button class="btn btn-primary btn-sm" type="button" :disabled="batchEnriching" @click="$emit('batch-enrich')">
+        {{ batchEnriching ? '批量排队中…' : '批量补详情' }}
+      </button>
+      <button class="btn btn-ghost btn-sm" type="button" :disabled="candidateImporting" @click="$emit('create-candidates')">
+        {{ candidateImporting ? '生成中…' : '生成下载候选' }}
+      </button>
+      <button class="btn btn-ghost btn-sm" type="button" @click="$emit('pick-actor')">选择演员</button>
+    </Teleport>
 
-    <div class="catalog-toolbar">
-      <GlassSelect
-        v-model="movieFilters.matched"
-        :options="matchFilterOptions"
-        size="compact"
-        aria-label="影片匹配状态"
-        @change="$emit('apply-filters')"
-      />
-      <GlassSelect
-        v-model="movieFilters.quality"
-        :options="qualityFilterOptions"
-        size="compact"
-        aria-label="影片质量筛选"
-        @change="$emit('apply-filters')"
-      />
-      <label class="catalog-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path>
+    <!-- 未选演员的全库聚合 hero(只剩胶囊，无头像)——与选中演员时的作品目录 hero 同构，
+         切 tab 时高度一致、不割裂。 -->
+    <SupplementActorHero :actor="null">
+      <template #meters>
+        <div class="job-stat"><b>{{ moviesTotalCount }}</b><span>待补全作品</span></div>
+        <div class="job-stat"><b>{{ detailTargetCount }}</b><span>可补详情</span></div>
+        <div class="job-stat"><b>{{ pendingCandidateCount }}</b><span>候选待定</span></div>
+      </template>
+    </SupplementActorHero>
+
+    <!-- 搜索撑满整行；匹配状态 / 质量 收进右侧「筛选」下拉（与作品目录、候选页一致），
+         不再在前面平铺两个独立下拉。 -->
+    <div class="cat-toolbar">
+      <label class="cat-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path>
         </svg>
         <input
           v-model="movieFilters.q"
@@ -44,8 +38,52 @@
           aria-label="搜索番号或片名"
           @keyup.enter="$emit('apply-filters')"
         />
+        <button v-if="movieFilters.q" type="button" class="cat-search-clear" aria-label="清除搜索" @click="clearSearch">×</button>
       </label>
-      <button class="btn btn-ghost btn-sm" type="button" @click="$emit('apply-filters')">筛选</button>
+
+      <div ref="filterRoot" class="cat-filter">
+        <button
+          type="button" class="filter-trigger"
+          :class="{ on: filterOpen, active: activeFilterCount > 0 }"
+          :aria-expanded="filterOpen" @click="filterOpen = !filterOpen"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M3 6h11M3 12h7M3 18h13" /><circle cx="17.5" cy="6" r="2.2" /><circle cx="13.5" cy="12" r="2.2" /><circle cx="19" cy="18" r="2.2" />
+          </svg>
+          <span>筛选</span>
+          <span v-if="activeFilterCount" class="ft-count">{{ activeFilterCount }}</span>
+          <svg class="ft-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+
+        <transition name="fp">
+          <div v-if="filterOpen" class="filter-panel" role="dialog" aria-label="待补全筛选">
+            <div class="fp-row">
+              <span class="fp-label">匹配</span>
+              <div class="stage-seg fp-seg" role="group" aria-label="匹配状态筛选">
+                <button
+                  v-for="opt in matchFilterOptions" :key="String(opt.value)" type="button"
+                  :class="{ active: movieFilters.matched === opt.value }" @click="setMatched(opt.value)"
+                >{{ opt.label }}</button>
+              </div>
+            </div>
+            <div class="fp-row">
+              <span class="fp-label">质量</span>
+              <GlassSelect
+                v-model="movieFilters.quality"
+                :options="qualityFilterOptions"
+                size="compact"
+                placement="right"
+                aria-label="影片质量筛选"
+                @change="$emit('apply-filters')"
+              />
+            </div>
+            <div class="fp-foot">
+              <span class="fp-count">共 {{ moviesTotalCount }} 部</span>
+              <button v-if="activeFilterCount" type="button" class="fp-clear" @click="$emit('clear-filters')">清除筛选</button>
+            </div>
+          </div>
+        </transition>
+      </div>
     </div>
 
     <AppleSkeleton
@@ -135,10 +173,11 @@
 import GlassSelect from '../../components/GlassSelect.vue'
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
+import SupplementActorHero from './SupplementActorHero.vue'
 
 export default {
   name: 'SupplementMoviesPanel',
-  components: { GlassSelect, AppleEmptyState, AppleSkeleton },
+  components: { GlassSelect, AppleEmptyState, AppleSkeleton, SupplementActorHero },
   props: {
     movieFilters: { type: Object, required: true },
     matchFilterOptions: { type: Array, default: () => [] },
@@ -148,6 +187,8 @@ export default {
     moviesTotalCount: { type: Number, default: 0 },
     moviesTotalPages: { type: Number, default: 1 },
     moviePage: { type: Number, default: 1 },
+    detailTargetCount: { type: Number, default: 0 },
+    pendingCandidateCount: { type: Number, default: 0 },
     batchEnriching: { type: Boolean, default: false },
     candidateImporting: { type: Boolean, default: false },
     enrichingMovies: { type: Object, default: () => ({}) },
@@ -158,9 +199,21 @@ export default {
     movieMatchLabel: { type: Function, required: true },
   },
   emits: ['apply-filters', 'batch-enrich', 'create-candidates', 'enrich', 'open-sources', 'go-page', 'refresh', 'clear-filters', 'pick-actor'],
+  data() {
+    return {
+      filterOpen: false,
+      // 仅当父级菜单行的 Teleport 目标存在时才传送（隔离单测/无父级时就地渲染）。
+      canTeleport: typeof document !== 'undefined' && !!document.getElementById('supplement-tab-actions'),
+    }
+  },
   computed: {
     hasActiveFilters() {
       return Boolean(this.movieFilters.q || this.movieFilters.quality || this.movieFilters.matched !== null)
+    },
+    // 「筛选」徽标只数下拉里的维度（匹配状态 / 质量）；搜索是独立输入，不计入。
+    // 匹配状态默认落在「未匹配(false)」这一待补全视角，全部(null) 视为未设。
+    activeFilterCount() {
+      return [this.movieFilters.matched !== null, this.movieFilters.quality !== ''].filter(Boolean).length
     },
     emptyDescription() {
       return this.hasActiveFilters ? '当前筛选下没有待补全作品。' : '补全来源还没有写入作品字段。'
@@ -171,7 +224,40 @@ export default {
         : '先刷新列表，或选一位演员启动一次作品补全任务。'
     },
   },
+  watch: {
+    filterOpen(open) {
+      if (open) {
+        document.addEventListener('mousedown', this.onDocPointer)
+        document.addEventListener('keydown', this.onKeydown)
+      } else {
+        document.removeEventListener('mousedown', this.onDocPointer)
+        document.removeEventListener('keydown', this.onKeydown)
+      }
+    },
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousedown', this.onDocPointer)
+    document.removeEventListener('keydown', this.onKeydown)
+  },
   methods: {
+    setMatched(value) {
+      this.movieFilters.matched = value
+      this.$emit('apply-filters')
+    },
+    clearSearch() {
+      this.movieFilters.q = ''
+      this.$emit('apply-filters')
+    },
+    // 下拉外点 / Esc 收起；GlassSelect 的浮层挂在 body 外，点它不算外点。
+    onDocPointer(event) {
+      const root = this.$refs.filterRoot
+      if (!root) return
+      if (root.contains(event.target) || (event.target.closest && event.target.closest('.glass-select__menu'))) return
+      this.filterOpen = false
+    },
+    onKeydown(event) {
+      if (event.key === 'Escape') this.filterOpen = false
+    },
     codeOf(movie) {
       return movie.dvd_id || movie.canonical_number || movie.display_number || '—'
     },
@@ -191,32 +277,8 @@ export default {
 </script>
 
 <style scoped src="./actressCatalogPanel.css"></style>
+<style scoped src="./supplementHero.css"></style>
 <style scoped>
-.all-pending-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-5);
-}
-
-.aph-id h2 {
-  margin: 0;
-  font-size: var(--type-title-1);
-  font-weight: var(--type-title-1-weight);
-  letter-spacing: var(--type-title-1-tracking);
-  color: var(--text-primary);
-}
-
-.aph-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
 /* match-state tint for the src-pill (catalog uses it for origin; here for 匹配状态) */
 .src-pill.m-matched { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); border-color: transparent; }
 .src-pill.m-candidate { background: rgba(var(--warn-rgb), 0.16); color: var(--warn); border-color: transparent; }

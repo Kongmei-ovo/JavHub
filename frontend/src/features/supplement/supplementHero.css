@@ -1,0 +1,39 @@
+/* 补全工作台 hero 胶囊样式 —— 收藏/待办 meter(.hero-meter) 与 任务/聚合 stat(.job-stat)。
+   这些胶囊由各 tab 通过 SupplementActorHero 的 #meters 槽传入(归父级 scope)，故样式集中
+   在本文件、由 待补全作品(scoped+aggregate) / 任务队列 各父级 scoped 引入。
+   关键：两类胶囊用同一固定高度(薄)，内容垂直居中、超出裁剪——保证选中演员时 作品 与 任务
+   两个 hero 高度完全一致。仅用 token，零裸色/裸字号/离格间距。 */
+
+.hero-meter,
+.job-stat {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 46px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+/* meter 胶囊：标签 + 数值 一行，进度条一行(细) */
+.hm-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.hm-label { font-size: var(--type-micro); color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+.hm-label small { color: var(--text-muted); font-weight: 500; margin-left: 4px; }
+.hm-val { font-size: var(--type-micro); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hm-val b { font-size: var(--type-card-title); font-weight: 700; color: var(--text-primary); margin-right: 1px; }
+.cmp-bar { height: 5px; border-radius: 999px; background: var(--hairline-strong); overflow: hidden; }
+.cmp-bar i { display: block; height: 100%; border-radius: 999px; transition: width var(--motion-standard); }
+.cmp-bar.collect i { background: var(--accent); }
+.cmp-bar.meta i { background: var(--ok); }
+
+/* stat 胶囊：数字 + 标签 一行(横排,省高度) */
+.job-stat { grid-auto-flow: column; grid-auto-columns: max-content; justify-content: start; align-items: baseline; gap: var(--space-2); }
+.job-stat b { font-size: var(--type-title-1); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.job-stat span { font-size: var(--type-micro); color: var(--text-secondary); font-weight: 600; }
+.job-stat.is-running b { color: var(--info); }
+.job-stat.is-queued b { color: var(--info); }
+.job-stat.is-succeeded b { color: var(--ok); }
+.job-stat.is-failed b { color: var(--bad); }
