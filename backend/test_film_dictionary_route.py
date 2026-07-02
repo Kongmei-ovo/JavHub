@@ -8,13 +8,18 @@ from fastapi.testclient import TestClient
 
 import routers.film_dictionary as fd
 import services.canonical_resolver as resolver
+from test_support.cache import fake_redis_backend
 
 
 @pytest.fixture()
 def client():
-    app = FastAPI()
-    app.include_router(fd.router)
-    return TestClient(app)
+    # Completeness responses are cached; give each test a fresh isolated cache so
+    # cases that reuse the same actress id with different data don't pollute each
+    # other (and so the endpoint's generation reads have a backend to talk to).
+    with fake_redis_backend(prefix="test-film-dictionary"):
+        app = FastAPI()
+        app.include_router(fd.router)
+        yield TestClient(app)
 
 
 def test_dictionary_collapses_products_and_counts_owned(client, monkeypatch):

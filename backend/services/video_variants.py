@@ -223,17 +223,26 @@ def enrich_video_variants(
     variant_mode: str = "grouped",
     include_explanations: bool = False,
 ) -> list[dict[str, Any]]:
+    grouped = variant_mode == "grouped"
     enriched = []
     for index, item in enumerate(items or []):
-        row = _enrich_one(item, include_explanations=include_explanations)
+        # The title-similarity key is only consumed by the grouped-mode grouping
+        # pass; flat mode strips every _variant_* field before returning, so
+        # computing it there is pure waste (and it dominates enrich cost — the
+        # per-row dynamic own-code regex thrashes the re cache). Skip it.
+        row = _enrich_one(
+            item, include_explanations=include_explanations, compute_title_key=grouped
+        )
         row["_variant_input_index"] = index
         enriched.append(row)
-    if variant_mode != "grouped":
+    if not grouped:
         return [_strip_internal_fields(item) for item in enriched]
     return _group_safe_variants(enriched)
 
 
-def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str, Any]:
+def _enrich_one(
+    item: dict[str, Any], *, include_explanations: bool, compute_title_key: bool = True
+) -> dict[str, Any]:
     row = copy.deepcopy(item)
     analysis = _analyze_item(row)
     labels: list[dict[str, Any]] = []
@@ -400,11 +409,12 @@ def _enrich_one(item: dict[str, Any], *, include_explanations: bool) -> dict[str
     row["variant_group_items"] = []
     row["_variant_sort_rank"] = _variant_sort_rank(row, labels)
     row["_variant_groupable"] = _is_groupable(analysis)
-    code_hint = None
-    if analysis.get("prefix") and str(analysis.get("digits") or "").isdigit():
-        code_hint = (str(analysis["prefix"]), str(analysis["digits"]))
-    row["_variant_title_key"] = _title_key(row, code_hint)
-    row["_variant_title_lang"] = _title_lang(row)
+    if compute_title_key:
+        code_hint = None
+        if analysis.get("prefix") and str(analysis.get("digits") or "").isdigit():
+            code_hint = (str(analysis["prefix"]), str(analysis["digits"]))
+        row["_variant_title_key"] = _title_key(row, code_hint)
+        row["_variant_title_lang"] = _title_lang(row)
     row["_variant_outlet"] = "アウトレット" in analysis["title"]
     row["_variant_markers"] = analysis["markers"]
     return row

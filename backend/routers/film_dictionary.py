@@ -8,11 +8,13 @@ resolver, and overlays ownership from the local ``movie_resources`` ledger.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from database.download_candidate import list_download_candidates
+from services import cache as response_cache
 from services.canonical_resolver import (
     ResolvedFilm,
     overlay_owned,
@@ -363,8 +365,7 @@ def _funnel_stage(status: str, metadata_complete: bool) -> str:
     }.get(status, "find_source")
 
 
-@router.get("/actresses/{actress_id}/completeness")
-def get_actress_completeness(actress_id: int) -> dict:
+def _compute_actress_completeness(actress_id: int) -> dict:
     try:
         rows = _fetch_actress_catalog_rows(actress_id)
     except Exception as exc:
@@ -427,3 +428,32 @@ def get_actress_completeness(actress_id: int) -> dict:
         "summary": summary,
         "films": payload_films,
     }
+
+
+@router.get("/actresses/{actress_id}/completeness")
+async def get_actress_completeness(
+    actress_id: int,
+    cache_control: str | None = Query(None, alias="cache"),
+) -> dict:
+    """完整度较重(番号归一 + 多表读),而同一演员会被反复请求:补全页每个演员各拉一次、
+    作品目录每次操作后 reload。这里按「演员 + 目录/候选/拥有」三个数据代际缓存,任一发生
+    变更(下载候选、拥有状态)即自动失效;60s TTL 兜底 115 库存这类无代际的变更。
+    get_or_set_response 的 singleflight 还会把并发的相同请求合并成一次计算。"""
+    bypass = response_cache.should_bypass_response_cache(cache_control)
+    cache_params = {
+        "actress_id": actress_id,
+        "gen_catalog": await response_cache.get_data_generation_async("javinfo"),
+        "gen_candidates": await response_cache.get_data_generation_async("download_candidates"),
+        "gen_owned": await response_cache.get_data_generation_async("movie_resources"),
+    }
+
+    async def produce():
+        return await asyncio.to_thread(_compute_actress_completeness, actress_id)
+
+    return await response_cache.get_or_set_response(
+        "film_dictionary_completeness",
+        cache_params,
+        produce,
+        ttl=60,
+        bypass=bypass,
+    )
