@@ -267,7 +267,7 @@
   padding: 6px 14px;
   background: var(--card);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   font-size: var(--type-control);
   cursor: pointer;

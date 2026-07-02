@@ -5,10 +5,8 @@
         <h1>翻译作业</h1>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" type="button" :disabled="loading || statsLoading" @click="refreshOverview">
-          {{ loading || statsLoading ? '刷新中...' : '刷新' }}
-        </button>
         <button class="btn btn-primary" type="button" @click="setActiveSegment('create')">创建作业</button>
+        <RefreshButton :loading="loading || statsLoading" @click="refreshOverview" />
       </div>
     </header>
 
@@ -362,6 +360,7 @@ import { requestConfirm } from '../utils/confirmDialog'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import GlassSelect from '../components/GlassSelect.vue'
 import { DEFAULT_CONFIG, TRANSLATION_TYPE_LABELS } from '../features/config/configDefaults.js'
+import RefreshButton from '../components/RefreshButton.vue'
 import {
   PROVIDER_KEYS,
   PROVIDER_META,
@@ -417,7 +416,7 @@ function cloneTranslationConfig() {
 
 export default {
   name: 'TranslationJobs',
-  components: { AppleEmptyState, GlassSelect, TranslationSourcesPanel, TranslationReviewPanel },
+  components: { AppleEmptyState, GlassSelect, TranslationSourcesPanel, TranslationReviewPanel, RefreshButton },
   data() {
     return {
       activeSegment: 'overview',

@@ -2,9 +2,7 @@
   <section class="workspace-panel actors-tab">
     <!-- 刷新挪到菜单行右侧(与其他页一致)；搜索独占一行。 -->
     <Teleport to="#supplement-tab-actions" :disabled="!canTeleport">
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="reload">
-        {{ loading ? '加载中…' : '刷新' }}
-      </button>
+      <RefreshButton :loading="loading" @click="reload" />
     </Teleport>
     <label class="actors-search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -34,7 +32,6 @@
           :meta="cardMeta(actor)"
           :badges="cardBadges(actor)"
           density="compact"
-          action-label="进入补全"
           @open="$emit('select', actor)"
         />
       </div>
@@ -62,12 +59,13 @@ import { displayName } from '../../utils/displayLang.js'
 import ActorPortraitCard from '../../components/ActorPortraitCard.vue'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
+import RefreshButton from '../../components/RefreshButton.vue'
 
 const STATUS_LABELS = { queued: '排队中', running: '运行中', succeeded: '已完成', failed: '失败', idle: '待开始' }
 
 export default {
   name: 'ActorsTab',
-  components: { ActorPortraitCard, AppleSkeleton, AppleEmptyState },
+  components: { ActorPortraitCard, AppleSkeleton, AppleEmptyState, RefreshButton },
   props: {
     refreshNonce: { type: Number, default: 0 },
   },

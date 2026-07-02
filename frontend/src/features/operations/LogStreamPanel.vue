@@ -12,8 +12,8 @@
         <input v-model="searchText" class="logs-search" placeholder="搜索日志内容" @keyup.enter="loadLogs" />
         <button class="btn btn-primary btn-sm" type="button" @click="loadLogs">搜索</button>
         <span class="logs-bar-spacer"></span>
-        <button class="btn btn-ghost btn-sm" type="button" @click="loadLogs">刷新</button>
         <button class="btn btn-ghost btn-sm logs-danger" type="button" @click="clearLogs">清空</button>
+        <RefreshButton :loading="loading" @click="loadLogs" />
       </div>
 
       <div class="logs-meta">
@@ -97,10 +97,11 @@ import GlassSelect from '../../components/GlassSelect.vue'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
 import AppleErrorState from '../../components/AppleErrorState.vue'
+import RefreshButton from '../../components/RefreshButton.vue'
 
 export default {
   name: 'LogStreamPanel',
-  components: { GlassSelect, AppleSkeleton, AppleEmptyState, AppleErrorState },
+  components: { GlassSelect, AppleSkeleton, AppleEmptyState, AppleErrorState, RefreshButton },
   data() {
     return {
       logs: [],

@@ -7,9 +7,7 @@
           <span>{{ totalLabel }}</span>
         </div>
       </div>
-      <button class="btn btn-primary btn-sm" type="button" :disabled="loading" @click="loadEntities">
-        {{ loading ? '刷新中...' : '刷新' }}
-      </button>
+      <RefreshButton :loading="loading" @click="loadEntities" />
     </header>
 
     <section class="entities-controls" aria-label="分类目录筛选">
@@ -112,6 +110,7 @@ import ActorPortraitCard from '../components/ActorPortraitCard.vue'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
 import AppleErrorState from '../components/AppleErrorState.vue'
+import RefreshButton from '../components/RefreshButton.vue'
 import { actressImgUrl } from '../utils/imageUrl.js'
 
 const ENTITY_TABS = [
@@ -136,7 +135,7 @@ const ENTITY_LOADERS = {
 
 export default {
   name: 'Entities',
-  components: { ActorPortraitCard, AppleSkeleton, AppleEmptyState, AppleErrorState },
+  components: { ActorPortraitCard, AppleSkeleton, AppleEmptyState, AppleErrorState, RefreshButton },
   data() {
     return {
       entityTabs: ENTITY_TABS,

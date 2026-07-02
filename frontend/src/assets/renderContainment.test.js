@@ -201,7 +201,9 @@ test('page motion transitions only animate transform and opacity', () => {
   }
 
   // 历史 token 债基线:ratchet 锁当前计数、挡新增;存量过渡非 transform/opacity 待专门精修轮。
-  assert.equal(offenders.length, 9, offenders.join('\n'))
+  // 9→11: 侧边栏收起/展开是「图标轨」宽度变化,相邻内容随之回流,transform 无法表达,
+  // 故 .sidebar 显式过渡 width/min-width(单个 chrome 元素、用户手动触发、非滚动逐帧)。
+  assert.equal(offenders.length, 11, offenders.join('\n'))
 })
 
 test('page motion transitions use shared motion tokens', () => {

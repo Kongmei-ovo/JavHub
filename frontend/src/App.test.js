@@ -143,9 +143,7 @@ test('app navigation controls use layered liquid glass materials', () => {
   const layeredActive = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--glass-active-material\)/
   const layeredSheet = /background:\s*var\(--surface-specular-edge-strong\),\s*var\(--surface-noise\),\s*var\(--material-glass-sheet\)/
 
-  assert.match(sourceBlock('.theme-toggle'), layeredControl)
-  assert.match(sourceBlock('.theme-toggle:hover'), layeredControlHover)
-  assert.match(sourceBlock('.theme-toggle__orb'), layeredActive)
+  // 桌面主题切换已改成脱离侧栏的裸太阳/月亮图标(无胶囊/无玻璃);移动端 .mobile-theme-toggle 仍是玻璃控件。
   assert.match(sourceBlock('.nav-item:hover'), layeredControlHover)
   assert.match(sourceBlock('.nav-item.active'), layeredActive)
   assert.match(sourceBlock('.nav-badge'), layeredControl)
@@ -236,7 +234,7 @@ test('keyboard entry points expose visible system focus surfaces', () => {
   assert.match(source, /class="theme-toggle"[\s\S]*:aria-pressed="isDarkMode"/)
   assert.match(source, /class="mobile-theme-toggle"[\s\S]*:aria-pressed="isDarkMode"/)
   assert.match(sourceBlock('.theme-toggle:focus-visible'), /outline:\s*none/)
-  assert.match(sourceBlock('.theme-toggle:focus-visible'), /box-shadow:\s*var\(--glass-control-shadow-hover\),\s*var\(--focus-ring\)/)
+  assert.match(sourceBlock('.theme-toggle:focus-visible'), /box-shadow:\s*var\(--focus-ring\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /color:\s*var\(--text-primary\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /background:[\s\S]*var\(--glass-active-material\)/)
   assert.match(sourceBlock('.skip-link:focus-visible'), /border:\s*1px solid var\(--glass-active-border\)/)
@@ -411,7 +409,7 @@ test('collapsed sidebar keeps icon rail navigation named and visually centered',
   assert.match(source, /const toggleSidebarFromKeyboard = \(event\) => \{[\s\S]*event\.repeat \|\| event\.altKey \|\| event\.shiftKey[\s\S]*sidebarCollapsed\.value = !sidebarCollapsed\.value/)
   assert.match(source, /:aria-label="sidebarCollapsed \? '展开侧边栏' : '收起侧边栏'"/)
   assert.match(source, /:title="sidebarCollapsed \? '展开侧边栏' : '收起侧边栏'"/)
-  assert.match(source, /\.sidebar\.collapsed :is\(\.logo, \.theme-toggle\)\s*\{ display:\s*none; \}/)
+  assert.match(source, /\.sidebar\.collapsed \.logo\s*\{ display:\s*none; \}/)
   assert.match(sourceBlock('.sidebar.collapsed .sidebar-header'), /justify-content:\s*center/)
   assert.match(sourceBlock('.sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn)'), /justify-content:\s*center/)
   assert.doesNotMatch(sourceBlock('.sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn)'), /display:\s*none/)
@@ -419,11 +417,8 @@ test('collapsed sidebar keeps icon rail navigation named and visually centered',
   assert.match(sourceBlock('.sidebar.collapsed .sidebar-nav'), /padding:\s*12px 8px/)
   assert.match(sourceBlock('.sidebar.collapsed .nav-item'), /justify-content:\s*center/)
   assert.match(sourceBlock('.sidebar.collapsed .nav-item'), /padding:\s*11px 0/)
-  assert.match(sourceBlock('.sidebar.collapsed .nav-item.active::after'), /content:\s*""/)
-  assert.match(sourceBlock('.sidebar.collapsed .nav-item.active::after'), /left:\s*auto/)
-  assert.match(sourceBlock('.sidebar.collapsed .nav-item.active::after'), /background:\s*var\(--active-indicator\)/)
-  assert.match(exactSourceBlock('.sidebar.collapsed .nav-item.active:focus-visible::after'), /opacity:\s*0\.34/)
-  assert.match(exactSourceBlock('.sidebar.collapsed .nav-item.active:focus-visible::after'), /transform:\s*scaleY\(0\.74\)/)
+  // 收起后不再画选中竖线,只剩图标,选中态靠药丸底色/描边表达;此处断言竖线被隐藏。
+  assert.match(exactSourceBlock('.sidebar.collapsed .nav-item.active::after'), /display:\s*none/)
   assert.match(exactSourceBlock('.sidebar.collapsed .nav-item.active:focus-visible'), /box-shadow:\s*var\(--glass-active-shadow\),\s*var\(--focus-ring\)/)
 })
 
@@ -464,7 +459,7 @@ test('app shell route families keep system navigation active on related pages', 
 })
 
 test('app shell navigation exposes calm pressed states across desktop and mobile chrome', () => {
-  assert.match(sourceBlock('.theme-toggle:active'), /transform:\s*translateY\(0\) scale\(0\.98\)/)
+  assert.match(sourceBlock('.theme-toggle:active'), /transform:\s*translateY\(0\) scale\(0\.96\)/)
   assert.match(sourceBlock('.collapse-btn:active'), /transform:\s*scale\(0\.96\)/)
   assert.match(sourceBlock('.nav-item:active'), /transform:\s*translateY\(0\) scale\(0\.985\)/)
   assert.match(sourceBlock('.nav-item.active:active'), /box-shadow:\s*var\(--glass-active-shadow\)/)
@@ -518,7 +513,13 @@ test('app shell transitions stay on composited visual properties', () => {
     .filter(line => line.startsWith('transition:'))
 
   assert.ok(transitionLines.length >= 8)
-  assert.equal(transitionLines.some(line => /width|height|padding|margin|left|right|top|bottom|min-width|min-height|max-height/.test(line)), false)
+  // 侧边栏 icon-rail 收起/展开必须动画宽度(相邻内容随之回流,transform 无法表达),
+  // 这是唯一被特批的 layout-property 过渡;其余仍须只动 transform/opacity。
+  const sidebarWidthTransition = 'transition: width var(--motion-standard), min-width var(--motion-standard), transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast);'
+  const layoutTransitions = transitionLines
+    .filter(line => line !== sidebarWidthTransition)
+    .filter(line => /\b(?:width|height|padding|margin|left|right|top|bottom|min-width|min-height|max-height)\b/.test(line))
+  assert.deepEqual(layoutTransitions, [])
   assert.match(exactSourceBlock('.collapse-btn'), /transition:\s*transform var\(--motion-standard\),\s*opacity var\(--motion-fast\)/)
   assert.doesNotMatch(exactSourceBlock('.collapse-btn'), /transition:\s*var\(--transition\)/)
 })

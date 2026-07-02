@@ -53,7 +53,7 @@
 
 /* filter bar (shared by 作品字段 / 任务队列 / 来源状态) */
 .filter-bar {
-  --supplement-filter-radius: 16px;
+  --supplement-filter-radius: var(--radius-control);
   display: flex;
   align-items: center;
   gap: 8px;

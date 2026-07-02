@@ -207,7 +207,7 @@
   --link-underline-hover: rgba(29, 29, 31, 0.38);
 
   /* 侧边栏宽度 */
-  --sidebar-width: 224px;
+  --sidebar-width: 200px;
   --app-chrome-inset: 12px;
   --app-backdrop-texture: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(242,242,247,0.84)), repeating-linear-gradient(135deg, rgba(29,29,31,0.018) 0, rgba(29,29,31,0.018) 1px, transparent 1px, transparent 6px);
   --content-material: rgba(255, 255, 255, 0.66);

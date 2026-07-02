@@ -2,10 +2,10 @@
   <section class="workspace-panel">
     <!-- 刷新 / 全局检查 挪到菜单行右侧（与其他页一致）。 -->
     <Teleport to="#supplement-tab-actions" :disabled="!canTeleport">
-      <button class="btn btn-ghost btn-sm" type="button" @click="$emit('refresh-health')">刷新</button>
       <button class="btn btn-primary btn-sm" type="button" :disabled="globalCheckLoading" @click="$emit('check-all')">
         {{ globalCheckLoading ? '检查中…' : '全局检查' }}
       </button>
+      <RefreshButton @click="$emit('refresh-health')" />
     </Teleport>
 
     <!-- Layer 1 — summary -->
@@ -94,10 +94,11 @@
 <script>
 import AppleEmptyState from '../../components/AppleEmptyState.vue'
 import AppleSkeleton from '../../components/AppleSkeleton.vue'
+import RefreshButton from '../../components/RefreshButton.vue'
 
 export default {
   name: 'SourceHealthPanel',
-  components: { AppleEmptyState, AppleSkeleton },
+  components: { AppleEmptyState, AppleSkeleton, RefreshButton },
   props: {
     globalCheckLoading: { type: Boolean, default: false },
     sourceHealthLoading: { type: Boolean, default: false },

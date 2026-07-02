@@ -216,7 +216,7 @@
   margin: -6px 0 16px;
   padding: 10px;
   border: 1px solid var(--badge-warning-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
@@ -260,7 +260,7 @@
   min-height: 44px;
   padding: 7px 8px;
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--card-2);
   box-shadow: none;
 }
@@ -888,7 +888,7 @@
   min-height: 150px;
   resize: vertical;
   border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 12px;
   background:
     var(--surface-specular-edge),

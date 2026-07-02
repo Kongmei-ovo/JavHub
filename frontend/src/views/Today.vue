@@ -31,12 +31,7 @@
         </svg>
         <span>返回今日</span>
       </button>
-      <button v-if="!searchOpen" class="today-iconbtn" type="button" aria-label="刷新" @click="loadAll">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18" aria-hidden="true">
-          <polyline points="23 4 23 10 17 10" />
-          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
-        </svg>
-      </button>
+      <RefreshButton v-if="!searchOpen" :loading="loading" @click="loadAll" />
     </div>
 
     <Search v-if="searchOpen" embedded class="today-embed-search" />
@@ -254,6 +249,7 @@ import AppleErrorState from '../components/AppleErrorState.vue'
 const Search = defineAsyncComponent(() => import('./Search.vue'))
 import { normalizeVideo } from '../utils/videoNormalize.js'
 import { openVideoModal } from '../utils/modalState.js'
+import RefreshButton from '../components/RefreshButton.vue'
 
 const ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>'
 const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
@@ -300,7 +296,7 @@ function formatErrorMessage(error, action) {
 
 export default defineComponent({
   name: 'Today',
-  components: { AppleVideoCard, AppleErrorState, Search },
+  components: { AppleVideoCard, AppleErrorState, Search, RefreshButton },
   data() {
     return {
       searchOpen: false,

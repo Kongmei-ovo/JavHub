@@ -133,6 +133,7 @@ async function importJobsTab(vueUrl) {
       props: ["actor", "subtitle"],
       template: "<div class=\\"sup-hero\\"><slot name=\\"aside\\"/><slot name=\\"meters\\"/></div>"
     }\n`)
+    .replace(/import RefreshButton from '\.\.\/\.\.\/components\/RefreshButton\.vue'\n/, 'const RefreshButton = { props: ["loading", "disabled", "label"], template: "<button></button>" }\n')
   const code = [
     scriptCode,
     template.code.replace(/from "vue"/g, `from '${vueUrl}'`),

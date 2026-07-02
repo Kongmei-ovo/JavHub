@@ -95,7 +95,7 @@ export default {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   color: var(--text-primary);
   border: 1px solid var(--glass-control-border);
-  border-radius: 14px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   font: inherit;
   font-weight: 700;

@@ -4,23 +4,9 @@
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'material-L2': true }" :inert="mobileMoreActive ? '' : undefined" :aria-hidden="mobileMoreActive ? 'true' : undefined">
       <div class="sidebar-header">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
           <span class="logo-text sidebar-copy" :aria-hidden="sidebarCollapsed ? 'true' : undefined">JavHub</span>
         </div>
         <div class="sidebar-header-actions">
-          <button class="theme-toggle" type="button" :aria-label="isDarkMode ? '开灯' : '关灯'" :aria-pressed="isDarkMode" :title="isDarkMode ? '开灯' : '关灯'" @click="toggleAppTheme">
-            <span class="theme-toggle__orb" :class="{ dark: isDarkMode }">
-              <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15">
-                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15">
-                <circle cx="12" cy="12" r="4"/>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-              </svg>
-            </span>
-          </button>
           <button
             class="collapse-btn"
             type="button"
@@ -140,6 +126,24 @@
         </transition>
       </router-view>
     </main>
+    <button
+      class="theme-toggle"
+      type="button"
+      :aria-label="isDarkMode ? '切换到白天' : '切换到黑夜'"
+      :aria-pressed="isDarkMode"
+      :title="isDarkMode ? '切换到白天' : '切换到黑夜'"
+      :inert="mobileMoreActive ? '' : undefined"
+      :aria-hidden="mobileMoreActive ? 'true' : undefined"
+      @click="toggleAppTheme"
+    >
+      <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+      </svg>
+      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    </button>
     <VideoModal
       v-if="modalState.selectedVideo"
       :visible="modalState.visible"
@@ -431,7 +435,7 @@ export default {
 }
 /* ===== Sidebar ===== */
 .sidebar {
-  --c1-sidebar-width: var(--sidebar-width, 224px);
+  --c1-sidebar-width: var(--sidebar-width, 200px);
   --c1-sidebar-collapsed-width: calc(var(--space-10, 44px) + var(--space-5, 20px));
   --c1-sidebar-gutter: var(--space-3, 12px);
   --c1-sidebar-copy-offset: calc(var(--space-1, 4px) * -1);
@@ -449,7 +453,7 @@ export default {
   box-shadow: var(--chrome-floating-shadow);
   display: flex;
   flex-direction: column;
-  transition: transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast);
+  transition: width var(--motion-standard), min-width var(--motion-standard), transform var(--motion-spring, 280ms cubic-bezier(0.34, 1.56, 0.64, 1)), opacity var(--motion-fast);
   z-index: var(--z-nav);
   flex-shrink: 0;
   overflow: hidden;
@@ -482,13 +486,13 @@ export default {
 .sidebar.collapsed {
   width: var(--c1-sidebar-collapsed-width);
   min-width: var(--c1-sidebar-collapsed-width);
-  transform: translateX(0) scaleX(0.995);
 }
 .sidebar.collapsed .sidebar-header {
   justify-content: center;
+  align-items: center;
   padding-inline: var(--c1-sidebar-gutter);
 }
-.sidebar.collapsed :is(.logo, .theme-toggle) { display: none; }
+.sidebar.collapsed .logo { display: none; }
 .sidebar.collapsed .sidebar-header-actions { gap: 0; }
 .sidebar.collapsed :is(.sidebar-header-actions, .collapse-btn) {
   justify-content: center;
@@ -505,19 +509,10 @@ export default {
   gap: 0;
 }
 .sidebar.collapsed .nav-item.active::after {
-  content: "";
-  position: absolute;
-  left: auto;
-  right: 5px;
-  width: 3px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--active-indicator);
-  opacity: 0.74;
-  box-shadow: var(--glass-inner-shadow);
+  /* 收起后只剩图标,选中态靠药丸底色/描边表达;再画竖线多余,直接隐藏 */
+  display: none;
 }
 .sidebar.collapsed .nav-item.active:focus-visible { box-shadow: var(--glass-active-shadow), var(--focus-ring); }
-.sidebar.collapsed .nav-item.active:focus-visible::after { opacity: 0.34; transform: scaleY(0.74); }
 .sidebar-copy {
   opacity: 1;
   transform: translateX(0);
@@ -535,10 +530,11 @@ export default {
 .sidebar-header {
   position: relative;
   z-index: 1;
-  display: flex; align-items: center;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 20px 16px;
-  min-height: 72px;
+  gap: 8px;
+  padding: 16px;
   overflow: hidden;
 }
 .sidebar-header::after {
@@ -554,63 +550,40 @@ export default {
 .logo { display: flex; align-items: center; gap: 10px; overflow: hidden; color: var(--text-primary); transition: opacity var(--motion-fast); }
 .logo-text { font-size: 17px; font-weight: 650; color: var(--text-primary); white-space: nowrap; letter-spacing: 0; }
 .sidebar-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* 白天/黑夜切换：脱离侧边栏,固定在窗口右上角;裸太阳/月亮图标,无胶囊。
+   位置对所有页面一致;带右上搜索/操作的页面顶栏留 --chrome-toggle-safe 安全间距。 */
 .theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: calc(var(--z-nav) + 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 28px;
-  padding: 3px;
-  border: 1px solid var(--glass-control-border);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
   border-radius: 999px;
-  background:
-    var(--surface-specular-edge),
-    var(--surface-noise),
-    var(--material-glass-control);
-  box-shadow: var(--glass-control-shadow);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   transition: transform var(--motion-standard), opacity var(--motion-fast);
 }
 .theme-toggle:hover {
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   transform: translateY(-1px);
 }
 .theme-toggle:focus-visible {
   outline: none;
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--material-glass-control-hover);
-  border-color: var(--glass-control-border-hover);
-  box-shadow: var(--glass-control-shadow-hover), var(--focus-ring);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  box-shadow: var(--focus-ring);
 }
 .theme-toggle:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(0) scale(0.96);
 }
-.theme-toggle__orb {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background:
-    var(--surface-specular-edge-strong),
-    var(--surface-noise),
-    var(--glass-active-material);
-  border: 1px solid var(--glass-active-border);
-  box-shadow: var(--glass-active-shadow);
-  transform: translateX(-4px);
-  transition: transform var(--motion-standard);
-}
-.theme-toggle__orb.dark { transform: translateX(4px); }
 .collapse-btn {
   background: transparent;
   border: none;
@@ -943,6 +916,8 @@ export default {
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .sidebar { display: none; }
+  /* 移动端用 mobile-more 面板里的 .mobile-theme-toggle,固定图标隐藏。 */
+  .theme-toggle { display: none; }
   .bottom-nav {
     display: flex;
     padding: 6px 6px max(8px, env(safe-area-inset-bottom, 0px));
@@ -1073,7 +1048,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     border: 1px solid var(--glass-control-border);
-    border-radius: 16px;
+    border-radius: var(--radius-control);
     background:
       var(--surface-specular-edge),
       var(--surface-noise),

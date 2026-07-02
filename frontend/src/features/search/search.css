@@ -25,7 +25,7 @@
   min-height: 40px;
   padding: 6px 12px;
   border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
@@ -187,7 +187,7 @@
 /* ===== 排序 + 筛选条 ===== */
 .sort-strip {
   --filter-control-height: 32px;
-  --filter-control-radius: 16px;
+  --filter-control-radius: var(--radius-control);
   --filter-control-width: 112px;
   margin-top: 16px;
   display: flex;
@@ -630,7 +630,7 @@
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 10px 24px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   font-size: var(--type-body);
   box-shadow: var(--glass-control-shadow);
@@ -1072,7 +1072,7 @@
   }
   .sort-strip {
     --filter-control-height: 44px;
-    --filter-control-radius: 18px;
+    --filter-control-radius: var(--radius-control);
     --filter-control-width: min(160px, 46vw);
     flex-direction: column;
     align-items: stretch;

@@ -44,7 +44,7 @@
         <button class="ghost-btn" type="button" :class="{ active: showOffline }" @click="showOffline = !showOffline">离线任务</button>
         <button class="ghost-btn" type="button" @click="openAddSheet">＋ 离线下载</button>
         <button class="ghost-btn" type="button" @click="askNewFolder" :disabled="loading">新建文件夹</button>
-        <button class="ghost-btn" type="button" @click="refresh" :disabled="loading">刷新</button>
+        <RefreshButton :loading="loading" @click="refresh" />
       </div>
     </div>
 
@@ -206,6 +206,7 @@ import { ElMessage } from '../utils/message.js'
 import { requestConfirm } from '../utils/confirmDialog'
 import AppleSkeleton from '../components/AppleSkeleton.vue'
 import AppleEmptyState from '../components/AppleEmptyState.vue'
+import RefreshButton from '../components/RefreshButton.vue'
 import DriveGrid from '../features/drive/DriveGrid.vue'
 import DriveList from '../features/drive/DriveList.vue'
 import OfflinePanel from '../features/drive/OfflinePanel.vue'
@@ -231,7 +232,7 @@ function readPref(key, fallback) {
 
 export default {
   name: 'Drive115',
-  components: { AppleSkeleton, AppleEmptyState, DriveGrid, DriveList, OfflinePanel, AddDownloadSheet, ArtPlayer, OpenWithMenu },
+  components: { AppleSkeleton, AppleEmptyState, DriveGrid, DriveList, OfflinePanel, AddDownloadSheet, ArtPlayer, OpenWithMenu, RefreshButton },
   data() {
     let sortKey = 'time'
     let sortAsc = false
@@ -592,7 +593,7 @@ export default {
 .player-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-on-accent-solid); }
 .player-title { font-size: var(--type-control); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .defs { display: flex; gap: 6px; }
-.def-btn { background: var(--vp-control-bg, var(--surface-control)); border: none; color: var(--text-on-accent-solid); border-radius: var(--radius-xs); padding: 4px 10px; font-size: var(--type-caption); cursor: pointer; }
+.def-btn { background: var(--vp-control-bg, var(--surface-control)); border: none; color: var(--text-on-accent-solid); border-radius: var(--radius-control); padding: 4px 10px; font-size: var(--type-caption); cursor: pointer; }
 .def-btn.active { background: var(--accent); }
 .player-fallback-note { margin: 0; font-size: var(--type-caption); color: var(--text-on-accent-solid); opacity: 0.8; text-align: center; }
 .lightbox { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: var(--radius-md); }

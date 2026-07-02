@@ -5,9 +5,7 @@
         <strong v-if="!bare">最近处理</strong>
         <span v-if="!runs.length" class="candidate-run-empty">暂无处理记录</span>
       </div>
-      <button class="link-btn" type="button" :disabled="loading" @click="$emit('refresh')">
-        {{ loading ? '刷新中...' : '刷新记录' }}
-      </button>
+      <RefreshButton label="刷新记录" :loading="loading" @click="$emit('refresh')" />
     </div>
     <div v-if="runs.length" class="candidate-run-list">
       <div v-for="run in runs" :key="run.id" class="candidate-run-row">
@@ -40,8 +38,11 @@
 </template>
 
 <script>
+import RefreshButton from '../../components/RefreshButton.vue'
+
 export default {
   name: 'CandidateRunPanel',
+  components: { RefreshButton },
   props: {
     runs: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },

@@ -482,7 +482,7 @@ export default {
 .back-btn {
   display: flex; align-items: center; gap: 4px; min-height: 44px; background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border); color: var(--text-secondary); font-size: var(--type-control); cursor: pointer;
-  padding: 6px 12px; border-radius: var(--radius-sm); box-shadow: var(--glass-control-shadow); flex-shrink: 0;
+  padding: 6px 12px; border-radius: var(--radius-control); box-shadow: var(--glass-control-shadow); flex-shrink: 0;
   transition: transform var(--motion-standard), opacity var(--motion-fast);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -505,7 +505,7 @@ export default {
 .entity-sub-btn {
   background: var(--surface-specular-edge), var(--surface-noise), var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   padding: 6px 8px;
   min-width: 44px;
   min-height: 44px;
@@ -539,7 +539,7 @@ export default {
 .type-label { font-size: var(--type-body); color: var(--text-muted); margin-right: 8px; font-weight: normal; }
 .result-bar {
   --filter-control-height: 32px;
-  --filter-control-radius: 16px;
+  --filter-control-radius: var(--radius-control);
   --filter-control-width: 112px;
   display: flex;
   align-items: center;
@@ -608,7 +608,7 @@ export default {
   border: 1px solid var(--glass-control-border);
   color: var(--text-primary);
   padding: 6px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   box-shadow: var(--glass-control-shadow);
   cursor: pointer;
   font-size: var(--type-control);
@@ -695,7 +695,7 @@ export default {
   }
   .result-bar {
     --filter-control-height: 44px;
-    --filter-control-radius: 18px;
+    --filter-control-radius: var(--radius-control);
     --filter-control-width: min(160px, 46vw);
     align-items: stretch;
     flex-direction: column;

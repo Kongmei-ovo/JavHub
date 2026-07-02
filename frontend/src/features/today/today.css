@@ -16,6 +16,8 @@
      窄屏：居中量 < gutter → 取 gutter，铺满到呼吸轨；宽屏（如 2K 不缩放）：取居中量，
      标题/搜索正好压在内容列的左右边缘上，不再悬空错位。 */
   padding: var(--space-5) max(var(--page-gutter), calc((100% - var(--page-max-gallery)) / 2));
+  /* 右上角固定的主题切换图标不压住搜索:右内边距至少留出图标安全位(--space-11=56px)。 */
+  padding-inline-end: max(var(--space-11), var(--page-gutter), calc((100% - var(--page-max-gallery)) / 2));
   background:
     var(--surface-specular-edge),
     var(--surface-noise),
@@ -104,36 +106,6 @@
 
 /* 内嵌检索区贴着 topbar 往下接（检索页自带 page-bleed/page-rail 约束，这里只补一点间距）。 */
 .today-embed-search { margin-top: var(--space-2); }
-
-.today-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--touch-target);
-  height: var(--touch-target);
-  border-radius: var(--radius-control);
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: transform var(--motion-standard), opacity var(--motion-fast);
-}
-
-.today-iconbtn:hover {
-  background: var(--card-2);
-  border-color: var(--hairline);
-  color: var(--text-primary);
-}
-
-.today-iconbtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring-wide-strong);
-}
-
-.today-iconbtn:active {
-  transform: scale(0.96);
-}
 
 .today-page__rail {
   width: min(var(--page-max-gallery), calc(100% - var(--page-gutter) - var(--page-gutter)));

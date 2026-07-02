@@ -44,8 +44,9 @@ test('logs async states reuse the shared Apple state components', () => {
 
 test('logs controls use the shared button system instead of bespoke glass buttons', () => {
   assert.match(source, /class="btn btn-primary btn-sm" type="button" @click="loadLogs">搜索/)
-  assert.match(source, /class="btn btn-ghost btn-sm" type="button" @click="loadLogs">刷新/)
   assert.match(source, /class="btn btn-ghost btn-sm logs-danger" type="button" @click="clearLogs">清空/)
+  // 刷新统一成 RefreshButton(图标),固定在动作组最右。
+  assert.match(source, /<RefreshButton :loading="loading" @click="loadLogs" \/>/)
   // legacy bespoke control classes are gone
   assert.doesNotMatch(source, /class="toolbar-btn/)
   assert.doesNotMatch(source, /class="activity-header/)

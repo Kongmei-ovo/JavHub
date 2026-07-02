@@ -5,12 +5,10 @@
         <h2>校对台</h2>
       </div>
       <div class="panel-actions">
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="reviewLoading" @click="$emit('load-items', reviewPage)">
-          {{ reviewLoading ? '加载中...' : '刷新条目' }}
-        </button>
         <button class="btn btn-primary btn-sm" type="button" :disabled="retryingItems" @click="$emit('retry-items')">
           {{ retryingItems ? '提交中...' : '重试当前筛选' }}
         </button>
+        <RefreshButton label="刷新条目" :loading="reviewLoading" @click="$emit('load-items', reviewPage)" />
       </div>
     </div>
 
@@ -135,6 +133,7 @@
 
 <script>
 import GlassSelect from '../../components/GlassSelect.vue'
+import RefreshButton from '../../components/RefreshButton.vue'
 import { providerLabel } from '../../utils/translationProviders.js'
 import {
   workbenchStatusClass,
@@ -143,7 +142,7 @@ import {
 
 export default {
   name: 'TranslationReviewPanel',
-  components: { GlassSelect },
+  components: { GlassSelect, RefreshButton },
   props: {
     reviewType: { type: String, required: true },
     reviewStatus: { type: String, required: true },

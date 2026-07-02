@@ -50,10 +50,15 @@ test('Production UI styles avoid layout-property transitions', () => {
   const layoutTransition = /^\s*transition:\s*[^;]*\b(?:width|height|top|right|bottom|left|min-width|max-width|min-height|max-height)\b[^;]*;/gm
   const offenders = []
 
+  // 侧边栏 icon-rail 收起/展开是唯一被特批的 layout-property 过渡：宽度变化会让相邻内容
+  // 回流,transform 无法表达。仅放行 .sidebar 这条 width/min-width 过渡,其余一律禁止。
+  const allowedSidebarWidth = /^transition:\s*width var\(--motion-standard\), min-width var\(--motion-standard\), transform/
   for (const [name, source] of productionStyleSources()) {
     for (const match of source.matchAll(layoutTransition)) {
+      const trimmed = match[0].trim()
+      if (allowedSidebarWidth.test(trimmed)) continue
       const line = source.slice(0, match.index).split('\n').length
-      offenders.push(`${name}:${line}:${match[0].trim()}`)
+      offenders.push(`${name}:${line}:${trimmed}`)
     }
   }
 

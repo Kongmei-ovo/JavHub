@@ -700,7 +700,7 @@
   color: var(--text-primary);
   border: 1px solid var(--glass-active-border);
   padding: 14px 48px;
-  border-radius: 24px;
+  border-radius: var(--radius-control);
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--glass-active-shadow);

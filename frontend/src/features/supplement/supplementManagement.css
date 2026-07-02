@@ -642,7 +642,7 @@ p {
     var(--surface-noise),
     var(--material-glass-control);
   border: 1px solid var(--glass-control-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--glass-control-shadow);
   backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
   -webkit-backdrop-filter: blur(var(--glass-blur-control)) saturate(var(--glass-saturate-control));
@@ -1001,7 +1001,7 @@ p {
 }
 
 .filter-bar {
-  --supplement-filter-radius: 16px;
+  --supplement-filter-radius: var(--radius-control);
   margin-bottom: 14px;
 }
 

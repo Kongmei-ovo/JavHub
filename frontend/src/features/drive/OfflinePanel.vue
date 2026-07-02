@@ -10,7 +10,7 @@
       <div class="op-actions">
         <button class="ghost-btn sm" type="button" @click="$emit('add')">＋ 添加离线</button>
         <button class="ghost-btn sm" type="button" :disabled="busy" @click="clearCompleted">清空已完成</button>
-        <button class="ghost-btn sm" type="button" :disabled="loading" @click="refresh">刷新</button>
+        <RefreshButton :loading="loading" @click="refresh" />
       </div>
     </div>
 
@@ -40,11 +40,13 @@ import api from '../../api'
 import { ElMessage } from '../../utils/message.js'
 import { requestConfirm } from '../../utils/confirmDialog'
 import { formatSize } from './driveFormat'
+import RefreshButton from '../../components/RefreshButton.vue'
 
 const STATUS_TEXT = { '-1': '失败', 0: '排队中', 1: '下载中', 2: '已完成' }
 
 export default {
   name: 'OfflinePanel',
+  components: { RefreshButton },
   emits: ['add', 'changed'],
   data() {
     return { tasks: [], totalCount: 0, quota: null, loading: false, busy: false, timer: null }

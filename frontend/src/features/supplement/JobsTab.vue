@@ -6,7 +6,7 @@
       <button v-if="globalQueue" class="btn btn-ghost btn-sm" type="button" :disabled="recovering" @click="recoverStaleJobs">
         {{ recovering ? '恢复中...' : '恢复卡住任务' }}
       </button>
-      <button class="btn btn-ghost btn-sm" type="button" @click="loadJobs">刷新</button>
+      <RefreshButton :loading="jobsLoading" @click="loadJobs" />
     </Teleport>
 
     <!-- 任务队列 hero(始终显示，与作品目录同构)：选中演员时头像露出在顶部，未选则只剩
@@ -81,11 +81,12 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../api'
 import SupplementJobList from './SupplementJobList.vue'
 import SupplementActorHero from './SupplementActorHero.vue'
+import RefreshButton from '../../components/RefreshButton.vue'
 import { useSupplementApi } from './useSupplementApi.js'
 
 export default {
   name: 'JobsTab',
-  components: { SupplementJobList, SupplementActorHero },
+  components: { SupplementJobList, SupplementActorHero, RefreshButton },
   props: {
     actorContext: { type: Object, default: null },
     actorName: { type: String, default: '' },

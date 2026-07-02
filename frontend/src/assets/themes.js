@@ -93,7 +93,7 @@ const SHARED_TOKENS = {
   '--hero-background': 'radial-gradient(circle at 50% 0%, var(--ambient-hero), transparent 36%), var(--bg-primary)',
   '--skeleton-base': 'var(--skeleton-track)',
   '--skeleton-highlight': 'var(--skeleton-glint)',
-  '--sidebar-width': '224px',
+  '--sidebar-width': '200px',
   '--app-chrome-inset': '12px',
 }
 

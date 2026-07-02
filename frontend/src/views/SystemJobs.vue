@@ -12,8 +12,8 @@
         <div class="ops-panel-head">
           <div><h2>演员头像下载</h2><p>从 gfriends 同步演员头像，补齐缺失的头像资源。</p></div>
           <div class="ops-panel-actions">
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadAvatar">刷新</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="openAvatarHistory">历史</button>
+            <RefreshButton @click="loadAvatar" />
           </div>
         </div>
         <div class="ops-job-list">
@@ -41,8 +41,8 @@
         <div class="ops-panel-head">
           <div><h2>影片分组索引重建</h2><p>重建跨页合并与整组收藏所依赖的变体（分组）索引。全量数据库导入后会自动重建一次，平时无需手动触发。</p></div>
           <div class="ops-panel-actions">
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadVariant">刷新</button>
             <button class="btn btn-ghost btn-sm" type="button" @click="openVariantHistory">历史</button>
+            <RefreshButton @click="loadVariant" />
           </div>
         </div>
         <div class="ops-job-list">
@@ -68,7 +68,7 @@
         <div class="ops-panel-head">
           <div><h2>缓存清理</h2><p>{{ cacheStatsText }}</p></div>
           <div class="ops-panel-actions">
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadCache">刷新</button>
+            <RefreshButton @click="loadCache" />
           </div>
         </div>
         <div class="ops-job" :class="{ 'is-highlighted': isHi('cache') }">
@@ -97,7 +97,7 @@
         <div class="ops-panel-head">
           <div><h2>调度作业控制台</h2><p>定时作业的下次运行、上次结果，可手动立即运行。</p></div>
           <div class="ops-panel-actions">
-            <button class="btn btn-ghost btn-sm" type="button" @click="loadScheduler">刷新</button>
+            <RefreshButton @click="loadScheduler" />
           </div>
         </div>
         <div v-if="schedulerJobs.length" class="ops-job-list">
@@ -145,10 +145,11 @@ import { requestConfirm } from '../utils/confirmDialog'
 import { ElMessage } from '../utils/message'
 import { CACHE_PURGE_SCOPES } from '../features/operations/operationsOptions'
 import JobHistoryDialog from '../features/operations/JobHistoryDialog.vue'
+import RefreshButton from '../components/RefreshButton.vue'
 
 export default {
   name: 'SystemJobs',
-  components: { JobHistoryDialog },
+  components: { JobHistoryDialog, RefreshButton },
   data() {
     return {
       avatarRunning: false,
