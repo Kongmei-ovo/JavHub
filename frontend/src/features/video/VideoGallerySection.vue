@@ -9,7 +9,7 @@
         type="button"
         @click="$emit('open', idx)"
       >
-        <img :src="formatGalleryUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" decoding="async" @error="onGalleryError" />
+        <img :src="formatGalleryUrl(thumb)" :data-thumb="thumbUrl(thumb)" :alt="'剧照 ' + (idx + 1)" loading="lazy" decoding="async" @error="onGalleryError" />
       </button>
     </div>
   </div>
@@ -33,9 +33,19 @@ export default {
   emits: ['open'],
   methods: {
     formatGalleryUrl(path) {
-      return galleryThumbUrl(path) || galleryFullUrl(path) || null
+      // HD sample (…jp-{n}.jpg, ~15x the thumb) first, matching the lightbox;
+      // the small thumb is only a fallback when the HD one is missing.
+      return galleryFullUrl(path) || galleryThumbUrl(path) || null
+    },
+    thumbUrl(path) {
+      return galleryThumbUrl(path) || ''
     },
     onGalleryError(e) {
+      const fallback = e.target.dataset.thumb
+      if (fallback && e.target.src !== fallback) {
+        e.target.src = fallback
+        return
+      }
       e.target.style.display = 'none'
     },
   },

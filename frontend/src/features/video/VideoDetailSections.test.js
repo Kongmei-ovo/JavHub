@@ -69,10 +69,13 @@ test('video gallery section uses solid media surfaces', () => {
   assert.doesNotMatch(gallerySource, /rgba\(255,\s*255,\s*255,\s*0\.05\)|transition:\s*var\(--transition-pro\)|transition:\s*all\b/)
 })
 
-test('video gallery grid prefers lightweight thumbnails over full lightbox images', () => {
+test('video gallery grid shows HD stills with a thumbnail fallback', () => {
   assert.match(gallerySource, /import \{ galleryFullUrl, galleryThumbUrl \}/)
-  assert.match(gallerySource, /return galleryThumbUrl\(path\) \|\| galleryFullUrl\(path\) \|\| null/)
-  assert.doesNotMatch(gallerySource, /return galleryFullUrl\(path\) \|\| galleryThumbUrl\(path\)/)
+  // HD (full) sample first, matching the lightbox, so grid stills aren't blurry.
+  assert.match(gallerySource, /return galleryFullUrl\(path\) \|\| galleryThumbUrl\(path\) \|\| null/)
+  // ...falling back to the lightweight thumb only when the HD sample errors.
+  assert.match(gallerySource, /:data-thumb="thumbUrl\(thumb\)"/)
+  assert.match(gallerySource, /e\.target\.dataset\.thumb/)
 })
 
 test('video magnet section separates solid rows from glass controls', () => {
