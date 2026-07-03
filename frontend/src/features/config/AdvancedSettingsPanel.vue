@@ -137,6 +137,7 @@
                     {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
                   </span>
                 </div>
+                <span class="setting-note">预检验证数据库连接与建库权限；「迁移」在导入的 r18 目录之上重建补全所需的表和性能索引（番号匹配、搜索、演员作品数等）。用上方导入功能导入会自动执行，手动全量恢复的库需在此补跑。</span>
                 <div class="import-actions import-actions--preflight" :aria-busy="javinfoImportPreflighting || javinfoMigrating" aria-live="polite">
                   <div class="import-preflight-action-buttons">
                     <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig" :aria-describedby="'javinfo-preflight-action-status'">
@@ -769,8 +770,8 @@ export default {
       }
       const confirmed = await requestConfirm({
         title: '运行 JavInfo 迁移',
-        message: '确认让 JavInfoApi 应用缺失的辅助表和索引？',
-        details: '此操作会复用 JavInfoApi 的幂等 migrations，适合修复导入后缺少派生统计表的问题。',
+        message: '确认在当前导入的目录上重建 JavHub 需要的辅助表与索引？',
+        details: '导入进来的 r18 只是原始目录数据。补全用的表、以及番号匹配 / 搜索 / 演员作品数等性能索引都靠「迁移」在其之上建立——通过导入功能导入时会自动执行这一步。若你是手动全量恢复的库，或发现相关查询变慢 / 报缺表，可用此按钮手动补跑。操作幂等，可安全重复。',
         confirmText: '运行迁移',
       })
       if (!confirmed) return
