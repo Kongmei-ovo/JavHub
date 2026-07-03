@@ -79,6 +79,36 @@ class VideoVariantAnalysisTest(unittest.TestCase):
         self.assertEqual([entry["display_code"] for entry in grouped[0]["variant_group_items"]], ["MIAA-784", "MIAA-784", "MIAA-784BOD", "TKMIAA-784"])
         self.assertEqual(grouped[0]["variant_group_items"][1]["content_id"], "miaa00784")
 
+    def test_grouped_primary_borrows_digital_sibling_cover(self):
+        rows = [
+            item(
+                content_id="jur740",
+                dvd_id="JUR-740",
+                service_code="mono",
+                jacket_thumb_url="https://awsimgsrc.dmm.com/dig/mono/movie/jur740/jur740ps.jpg",
+            ),
+            item(
+                content_id="jur00740",
+                dvd_id=None,
+                service_code="digital",
+                jacket_thumb_url="https://awsimgsrc.dmm.com/dig/digital/video/jur00740/jur00740ps.jpg",
+                jacket_full_url="digital/video/jur00740/jur00740pl",
+            ),
+        ]
+
+        grouped = video_variants.enrich_video_variants(rows, variant_mode="grouped")
+
+        self.assertEqual(len(grouped), 1)
+        primary = grouped[0]
+        # Identity stays the DVD code, but the merged card borrows the digital cover.
+        self.assertEqual(primary["display_code"], "JUR-740")
+        self.assertIn("/digital/video/", primary["jacket_thumb_url"])
+        self.assertEqual(primary["jacket_full_url"], "digital/video/jur00740/jur00740pl")
+        # The per-variant breakdown still keeps each variant's own cover.
+        covers = {e["content_id"]: e.get("jacket_thumb_url") for e in primary["variant_group_items"]}
+        self.assertIn("/mono/movie/", covers["jur740"])
+        self.assertIn("/digital/video/", covers["jur00740"])
+
     def test_grouping_keeps_search_result_order(self):
         rows = [
             item(content_id="zzzz00150", dvd_id="ZZZZ-150", title_ja="Later Title", release_date="2024-01-01"),

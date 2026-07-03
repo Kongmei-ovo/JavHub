@@ -1,87 +1,127 @@
 /**
- * DMM 图片 URL 映射工具
+ * DMM 封面 URL 工具
  *
- * 低清库：pics.dmm.co.jp/mono/movie/adult/{raw_id}/{raw_id}ps.jpg
- * 高清新库：awsimgsrc.dmm.co.jp/pics_dig/digital/video/{padded_id}/{padded_id}pl.jpg (竖版)
- *                                                    {padded_id}/{padded_id}ps.jpg (横版)
- * 高清旧库：awsimgsrc.dmm.co.jp/dig/mono/movie/{raw_id}/{raw_id}ps.jpg (TK等系列)
+ * 封面的"身份"= 目录段 + 番号，这是库里 jacket_full_url 已经存好的相对路径
+ * （如 `digital/video/achj00017/achj00017pl` 或 `mono/movie/adult/ebod093/ebod093pl`），
+ * 不需要、也不应该再从低清 URL 反推番号（前导数字 / h_·n_ 前缀 / 素人 js·jp 后缀都会让
+ * 正则静默失配，退回低清 —— 这正是过去封面不清晰的根因）。
  *
- * 补零规则：部分系列需要将数字部分补到5位（miaa784→miaa00784）
- *          TK等字母偏长的系列不需要补零（tkekdv814→tkekdv814）
+ * "高清"只是主机档位，不改路径：
+ *   - 老库 pics.dmm.co.jp/{path}pl          → ~800px，全目录通用、体积轻（卡片够用）
+ *   - 高清 CDN awsimgsrc.dmm.co.jp/pics_dig/… → 最高 2184px（仅数字版有；全屏时才值得）
+ *
+ * 2184px 只存在于 digital/video 目录（数字发行版）。一部 mono/movie/adult 的 DVD 片，
+ * 若发过数字版，其高清藏在补零后的 digital/video 孪生路径里（ebod093→ebod00093）。
  */
 
+const DMM_LEGACY = 'https://pics.dmm.co.jp'
+const DMM_HD = 'https://awsimgsrc.dmm.co.jp/pics_dig'
+// 后端会把相对路径拼成这些主机的绝对 URL；也有端点直接下发相对路径。两种都要能还原。
+const DMM_HOST_PREFIX = /^https?:\/\/(?:pics\.dmm\.co\.jp|awsimgsrc\.dmm\.co\.jp\/pics_dig|awsimgsrc\.dmm\.co\.jp|awsimgsrc\.dmm\.com\/dig|awsimgsrc\.dmm\.com)\//i
+const DMM_CATALOG_ROOT = /^(?:digital|mono)\//i
+
 /**
- * 将内容 ID 的数字部分补零到5位（仅当数字部分 < 10000 时）
- * miaa784     → miaa00784
- * tkekdv814   → tkekdv814   （不补，字母部分偏长）
- * 1stars540   → 1stars00540
+ * 从任意封面引用还原 DMM 相对目录路径（无主机、无 .jpg）。
+ * 兼容后端拼好的绝对 URL 与原始相对路径；非 DMM 引用（蛋源/鸡源/占位图）返回 ''。
  */
-function padContentId(id) {
-  return id.replace(/^([a-z]+)(\d+)$/i, (match, prefix, num) => {
-    // 字母部分 ≥ 5 个字母：不补零（TK系列等）
-    if (prefix.length >= 5) return id
-    return prefix + num.padStart(5, '0')
-  })
+function dmmRelativePath(ref) {
+  const s = String(ref || '').trim()
+  if (!s) return ''
+  const stripped = s.replace(DMM_HOST_PREFIX, '').replace(/^\/+/, '')
+  if (/^https?:\/\//i.test(stripped)) return '' // 其它绝对主机（蛋源/鸡源）
+  const path = stripped.replace(/\.jpg$/i, '')
+  return DMM_CATALOG_ROOT.test(path) ? path : ''
 }
 
 /**
- * 判断是否为 TK 系列（使用旧库 dig/mono/movie）
+ * DMM 有两张不同比例的图，别混：
+ *   ps（含素人 js）= 封面，竖版长方形（ratio≈0.70）→ 卡片用这张
+ *   pl（含素人 jp）= 大图，横版 front+back 拼版（ratio≈1.49）→ 弹窗用这张
+ * splitSuffix 把路径拆成 base(去后缀) + 后缀，好在两种变体间切换。
  */
-function isTkSeries(id) {
-  return /^[a-z]{5,}\d+$/i.test(id)
+function splitSuffix(path) {
+  const m = String(path || '').match(/^(.*?)(ps|pl|js|jp)$/i)
+  return m ? { base: m[1], suffix: m[2].toLowerCase() } : { base: String(path || ''), suffix: '' }
+}
+
+/** 把干净的 {字母}{数字} 番号补零到 5 位（digital 目录的写法）；其它形态原样返回 */
+function padContentId(cid) {
+  return cid.replace(/^([a-z]+)(\d+)$/i, (m, prefix, num) => (prefix.length >= 5 ? m : prefix + num.padStart(5, '0')))
+}
+
+/** DMM 相对路径 → 老库绝对 URL 供 <img> 直接使用；已是绝对 URL 或非 DMM 值原样返回 */
+function dmmAbsolutize(ref) {
+  const s = String(ref || '').trim()
+  if (!s || /^https?:\/\//i.test(s)) return s
+  const path = dmmRelativePath(s)
+  return path ? `${DMM_LEGACY}/${path}.jpg` : s
 }
 
 /**
- * 从低清 jacket_thumb_url 提取 content_id
- * 例: https://pics.dmm.co.jp/mono/movie/adult/miaa784/miaa784ps.jpg → miaa784
+ * 某路径对应的 digital/video 数字孪生 base（不带后缀）——高清就藏在这里；无则返回 ''。
+ * digital/video 本身即孪生；mono/movie 的 DVD 片（含无 adult 子目录、只下发 mono 番号的
+ * catalog 端点）借补零后的数字发行版。番号需为干净的 {字母}{数字}——tk·前导数字·h_·n_
+ * 无法可靠补零则返回 ''，交由 @error 降到给定路径。数字版竖封 ps 最高 1032px、横版 pl 最高 2184px。
  */
-function extractContentId(jacketUrl) {
-  if (!jacketUrl) return null
-  const m = jacketUrl.match(/\/([a-z]+\d+)(?:ps|pl)\.jpg$/i)
-  return m ? m[1] : null
+function digitalTwinBase(base, cid, cleanCid) {
+  if (base.startsWith('digital/video/')) return base
+  if (base.startsWith('mono/movie/') && cleanCid) {
+    const padded = padContentId(cid)
+    return `digital/video/${padded}/${padded}`
+  }
+  return ''
+}
+
+/** 卡片兜底用：把 DMM 引用的大图后缀 pl→ps / jp→js 翻成竖封（保留主机与路径）；非 DMM 原样透传 */
+function toPortraitRef(ref) {
+  const s = String(ref || '').trim()
+  if (!s || !dmmRelativePath(s)) return s
+  return s.replace(/pl(\.jpg)?$/i, 'ps$1').replace(/jp(\.jpg)?$/i, 'js$1')
 }
 
 /**
- * 构建高清竖版大图 URL (pl.jpg)
- * awsimgsrc.dmm.co.jp/pics_dig/digital/video/{id}/{id}pl.jpg
- * 兜底：awsimgsrc.dmm.co.jp/dig/mono/movie/{raw_id}/{raw_id}pl.jpg
+ * 封面 URL 候选，按"最优先"排序，供会在 @error 时逐级降级的 <img> 使用。
+ *
+ * hd=false（卡片=竖版封面 ps）：优先高清 CDN 上数字版竖封(最高 1032px)，再退回库里给的原始竖封缩略图。
+ * hd=true （弹窗=横版大图 pl）：优先高清 CDN 数字版大图(最高 2184px)，再退老库 800px 大图。
+ * ⚠ 卡片绝不返回 pl（横图塞竖卡会被裁成一团）；弹窗才用 pl。
+ * 非 DMM 封面（蛋源/鸡源）原样透传。最后再挂上原始引用，保证任何情况都有图可显示。
  */
-export function jacketFullUrl(jacketUrl) {
-  if (!jacketUrl) return null
-  const id = extractContentId(jacketUrl)
-  if (!id) return jacketUrl
-  if (isTkSeries(id)) {
-    // TK系列用旧库 dig/mono/movie
-    return `https://awsimgsrc.dmm.co.jp/dig/mono/movie/${id}/${id}pl.jpg`
+export function dmmCoverCandidates(video = {}, { hd = false, preferred = '' } = {}) {
+  const refs = [preferred, video?.jacket_full_url, video?.jacket_thumb_url, video?.cover_url, video?.cover]
+  const out = []
+  const add = (value) => {
+    const url = String(value || '').trim()
+    if (url && !out.includes(url)) out.push(url)
   }
-  const padded = padContentId(id)
-  if (padded !== id) {
-    // 需要补零的系列（数字不足5位）：pics_dig/digital/video
-    return `https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/${padded}/${padded}pl.jpg`
-  }
-  // 不需要补零：优先 pics_dig/digital/video，兜底 dig/mono/movie
-  return `https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/${id}/${id}pl.jpg`
-}
 
-/**
- * 构建高清横版 URL (ps.jpg)
- * awsimgsrc.dmm.co.jp/pics_dig/digital/video/{id}/{id}ps.jpg
- * 兜底：awsimgsrc.dmm.co.jp/dig/mono/movie/{raw_id}/{raw_id}ps.jpg
- */
-export function jacketHdUrl(jacketUrl) {
-  if (!jacketUrl) return null
-  const id = extractContentId(jacketUrl)
-  if (!id) return jacketUrl
-  if (isTkSeries(id)) {
-    // TK系列用旧库 dig/mono/movie
-    return `https://awsimgsrc.dmm.co.jp/dig/mono/movie/${id}/${id}ps.jpg`
+  let path = ''
+  for (const ref of refs) {
+    const found = dmmRelativePath(ref)
+    if (found) { path = found; break }
   }
-  const padded = padContentId(id)
-  if (padded !== id) {
-    // 需要补零的系列：pics_dig/digital/video
-    return `https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/${padded}/${padded}ps.jpg`
+
+  if (path) {
+    const { base } = splitSuffix(path)
+    const cid = base.split('/').pop() || ''
+    const cleanCid = /^[a-z]+\d+$/i.test(cid)
+    const isAmateur = base.startsWith('digital/amateur/')
+    const twinBase = digitalTwinBase(base, cid, cleanCid)
+    if (hd) {
+      // 弹窗大图 = 横版 pl（素人 jp）
+      const large = isAmateur ? 'jp' : 'pl'
+      if (twinBase) add(`${DMM_HD}/${twinBase}${large}.jpg`)
+      add(`${DMM_LEGACY}/${base}${large}.jpg`)
+    } else {
+      // 卡片封面 = 竖版 ps（素人 js）
+      const thumb = isAmateur ? 'js' : 'ps'
+      if (twinBase) add(`${DMM_HD}/${twinBase}${thumb}.jpg`)
+    }
   }
-  return `https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/${id}/${id}ps.jpg`
+
+  // 兜底原始引用：弹窗按原样(大图)；卡片把 DMM pl→ps 翻成竖封(不换主机)，非 DMM 原样透传。
+  for (const ref of refs) add(hd ? dmmAbsolutize(ref) : toPortraitRef(ref))
+  return out
 }
 
 /**
@@ -92,7 +132,7 @@ export function jacketThumbUrl(video) {
 }
 
 export function videoCardCoverUrl(video) {
-  return jacketThumbUrl(video) || video?.cover_url || ''
+  return dmmCoverCandidates(video)[0] || ''
 }
 
 /**

@@ -102,14 +102,15 @@ test('AppleVideoCard uses coverUrl prop when provided', async () => {
 test('AppleVideoCard advances through cover candidates before fallback', async () => {
   const r = await runSetup({
     video: {
-      jacket_thumb_url: 'first.jpg',
-      jacket_full_url: 'second.jpg',
+      jacket_full_url: 'full.jpg',
+      jacket_thumb_url: 'thumb.jpg',
     },
   })
 
-  assert.equal(r.coverUrl.value, 'first.jpg')
+  // The full (pl) cover is preferred over the low-res thumb (ps); thumb is the fallback.
+  assert.equal(r.coverUrl.value, 'full.jpg')
   r.onImageError()
-  assert.equal(r.coverUrl.value, 'second.jpg')
+  assert.equal(r.coverUrl.value, 'thumb.jpg')
   assert.equal(r.imageError.value, false)
   r.onImageError()
   assert.equal(r.coverUrl.value, '')
