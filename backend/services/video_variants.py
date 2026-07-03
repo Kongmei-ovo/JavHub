@@ -769,6 +769,7 @@ def _group_safe_variants(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 continue
             ordered = sorted(cluster, key=_sort_key)
             primary = copy.deepcopy(ordered[0])
+            _borrow_best_cover(primary, ordered)
             visible_items = [_strip_internal_fields(copy.deepcopy(item)) for item in ordered]
             primary["variant_group_count"] = len(visible_items)
             primary["variant_group_items"] = visible_items
@@ -1172,6 +1173,37 @@ def _sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
         str(item.get("release_date") or ""),
         str(item.get("display_code") or item.get("dvd_id") or item.get("content_id") or ""),
     )
+
+
+def _cover_rank(row: dict[str, Any]) -> int:
+    """Higher = better cover. DMM keeps its HD jacket under digital/video; a mono/DVD
+    jacket is the lower-res one. Used to pick which sibling's cover a merged card shows."""
+    url = str(row.get("jacket_thumb_url") or row.get("jacket_full_url") or row.get("cover_url") or "")
+    service = str(row.get("service_code") or "").lower()
+    if "/digital/video/" in url:
+        return 3
+    if service == "digital" or "/digital/" in url:
+        return 2
+    if url:
+        return 1
+    return 0
+
+
+def _borrow_best_cover(primary: dict[str, Any], ordered: list[dict[str, Any]]) -> None:
+    """Show the digital-release cover on a merged card even when a DVD variant is the
+    primary. The primary keeps its identity (code/display_code); only the jacket URLs
+    are borrowed from the highest-quality (digital/video) sibling in the group.
+
+    This is why cards can be sharp without any frontend id-guessing: the real HD cover
+    already lives on the digital sibling — we just surface it as the group's cover.
+    """
+    best = max(ordered, key=_cover_rank)
+    if _cover_rank(best) <= _cover_rank(primary):
+        return
+    primary["jacket_thumb_url"] = best.get("jacket_thumb_url") or primary.get("jacket_thumb_url")
+    primary["jacket_full_url"] = best.get("jacket_full_url")
+    if best.get("cover_url"):
+        primary["cover_url"] = best.get("cover_url")
 
 
 def _strip_internal_fields(item: dict[str, Any]) -> dict[str, Any]:

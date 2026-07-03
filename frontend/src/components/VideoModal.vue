@@ -322,7 +322,7 @@
 <script>
 import { defineAsyncComponent } from 'vue'
 import { displayName, displayLang } from '../utils/displayLang.js'
-import { jacketFullUrl, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
+import { dmmCoverCandidates, galleryFullUrl, galleryThumbUrl } from '../utils/imageUrl.js'
 import { applyImageFallback } from '../utils/imageFallback.js'
 import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
@@ -367,6 +367,7 @@ export default {
       currentSourceName: '',
       // P1-2: subBusy is a Set re-assigned on each mutation so Vue re-renders.
       subBusy: new Set(),
+      coverIndex: 0, // 封面在 dmmCoverCandidates(hd) 上逐级降级的游标：高清 CDN → 老库 800px → 原图
     }
   },
   mounted() {
@@ -402,14 +403,11 @@ export default {
       return this.video?.summary_translated || this.video?.summary || ''
     },
     magnets() { return this.video?.magnets || [] },
+    coverCandidates() {
+      return this.video ? dmmCoverCandidates(this.video, { hd: true }) : []
+    },
     coverImageUrl() {
-      if (!this.video) return '/placeholder.png'
-      const fullUrl = this.video.jacket_full_url
-      let hiResUrl = null
-      if (fullUrl) hiResUrl = fullUrl.startsWith('http') ? jacketFullUrl(fullUrl) || fullUrl : jacketFullUrl(fullUrl)
-      const thumbUrl = this.video.jacket_thumb_url
-      if (!hiResUrl && thumbUrl) hiResUrl = thumbUrl.startsWith('http') ? jacketFullUrl(thumbUrl) || thumbUrl : jacketFullUrl(thumbUrl)
-      return hiResUrl || '/placeholder.png'
+      return this.coverCandidates[this.coverIndex] || '/placeholder.png'
     },
     galleryThumbs() {
       if (!this.video) return []
@@ -439,6 +437,7 @@ export default {
       }
     },
     'video.content_id'() {
+      this.coverIndex = 0
       if (this.visible) this.checkLibraryStatus()
     },
   },
@@ -522,7 +521,10 @@ export default {
     },
 
     displayName,
-    handleImgError(e) { applyImageFallback(e, { label: '暂无封面' }) },
+    handleImgError(e) {
+      if (this.coverIndex + 1 < this.coverCandidates.length) { this.coverIndex += 1; return }
+      applyImageFallback(e, { label: '暂无封面' })
+    },
     handleGalleryImgError(e) {
       const img = e?.target
       if (!img) return

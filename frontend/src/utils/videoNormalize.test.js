@@ -48,18 +48,18 @@ test('videoCodeOf skips empty string identifiers while preserving numeric zero',
   assert.equal(videoCodeOf({ content_id: 0, dvd_id: 'DVD-001' }), '0')
 })
 
-test('videoCoverCandidates tries original DMM cover before derived HD candidates', () => {
+test('videoCoverCandidates keeps the raw portrait ps when the code cannot be re-derived', () => {
   const candidates = videoCoverCandidates({
     jacket_thumb_url: 'https://pics.dmm.co.jp/mono/movie/144ohdr0077r/144ohdr0077rps.jpg',
   })
 
+  // Leading-digit id can't be padded → no digital twin; portrait ps stays as-is (never pl).
   assert.deepEqual(candidates, [
     'https://pics.dmm.co.jp/mono/movie/144ohdr0077r/144ohdr0077rps.jpg',
-    'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/144ohdr0077r/144ohdr0077rps.jpg',
   ])
 })
 
-test('videoCoverCandidates deduplicates explicit and derived cover urls', () => {
+test('videoCoverCandidates upgrades to the HD digital-twin ps and dedupes', () => {
   const candidates = videoCoverCandidates({
     jacket_thumb_url: 'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
     jacket_full_url: 'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
@@ -67,7 +67,7 @@ test('videoCoverCandidates deduplicates explicit and derived cover urls', () => 
   })
 
   assert.deepEqual(candidates, [
-    'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
     'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/miaa00784/miaa00784ps.jpg',
+    'https://pics.dmm.co.jp/mono/movie/miaa784/miaa784ps.jpg',
   ])
 })
