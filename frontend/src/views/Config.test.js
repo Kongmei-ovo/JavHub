@@ -667,7 +667,7 @@ test('advanced numeric inputs use compact lazy-chunk stepper controls', () => {
 
 test('advanced import preflight actions expose busy status semantics', () => {
   assert.match(advancedPanelSource, /class="import-actions import-actions--preflight"/)
-  assert.match(advancedPanelSource, /:aria-busy="javinfoImportPreflighting \|\| javinfoMigrating"/)
+  assert.match(advancedPanelSource, /:aria-busy="javinfoImportPreflighting"/)
   assert.match(advancedPanelSource, /aria-live="polite"/)
   assert.match(advancedPanelSource, /class="import-preflight-action-buttons"/)
   assert.match(advancedPanelSource, /id="javinfo-preflight-action-status"/)
@@ -675,6 +675,13 @@ test('advanced import preflight actions expose busy status semantics', () => {
   assert.match(advancedPanelSource, /{{ javinfoPreflightActionStatus }}/)
   assert.match(advancedPanelSource, /:aria-describedby="'javinfo-preflight-action-status'"/)
   assert.match(advancedPanelSource, /javinfoPreflightActionStatus\(\)/)
+
+  // The rebuild-indexes step (post-import) is its own step with its own busy state.
+  assert.match(advancedPanelSource, /<h3>重建索引与辅助表<\/h3>/)
+  assert.match(advancedPanelSource, /:aria-busy="javinfoMigrating"/)
+  assert.match(advancedPanelSource, /id="javinfo-migration-action-status"/)
+  assert.match(advancedPanelSource, /{{ javinfoMigrationActionStatus }}/)
+  assert.doesNotMatch(advancedPanelSource, /预检与迁移/)
 
   const actions = cssBlock('.import-actions--preflight')
   const buttons = cssBlock('.import-preflight-action-buttons')

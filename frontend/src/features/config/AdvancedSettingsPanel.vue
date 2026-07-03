@@ -132,25 +132,19 @@
               <div class="import-step-index" aria-hidden="true"></div>
               <div class="import-step-body">
                 <div class="import-step-head">
-                  <h3>预检与迁移</h3>
+                  <h3>预检数据库</h3>
                   <span v-if="javinfoImportPreflight" class="import-status" :class="{ error: !javinfoImportPreflight.ok }">
                     {{ javinfoImportPreflight.ok ? '预检通过' : '预检未通过' }}
                   </span>
                 </div>
-                <span class="setting-note">预检验证数据库连接与建库权限；「迁移」在导入的 r18 目录之上重建补全所需的表和性能索引（番号匹配、搜索、演员作品数等）。用上方导入功能导入会自动执行，手动全量恢复的库需在此补跑。</span>
-                <div class="import-actions import-actions--preflight" :aria-busy="javinfoImportPreflighting || javinfoMigrating" aria-live="polite">
+                <span class="setting-note">导入前检查数据库连接与建库权限，确认能安全地创建临时库、切换和恢复。</span>
+                <div class="import-actions import-actions--preflight" :aria-busy="javinfoImportPreflighting" aria-live="polite">
                   <div class="import-preflight-action-buttons">
                     <button class="btn btn-secondary" type="button" @click="preflightJavInfoImport" :disabled="javinfoImportPreflighting || !canSaveConfig" :aria-describedby="'javinfo-preflight-action-status'">
                       {{ javinfoImportPreflighting ? '检查中...' : '预检数据库' }}
                     </button>
-                    <button class="btn btn-secondary" type="button" @click="runJavInfoMigrations" :disabled="javinfoMigrating || !canSaveConfig" :aria-describedby="'javinfo-preflight-action-status'">
-                      {{ javinfoMigrating ? '运行中...' : '运行 JavInfo 迁移' }}
-                    </button>
                   </div>
                   <div class="import-preflight-action-copy">
-                    <span v-if="javinfoMigrationStatus" class="import-status" :class="{ error: javinfoMigrationStatusType === 'error' }">
-                      {{ javinfoMigrationStatus }}
-                    </span>
                     <span id="javinfo-preflight-action-status" class="import-action-status" role="status">
                       {{ javinfoPreflightActionStatus }}
                     </span>
@@ -254,6 +248,30 @@
                       {{ javinfoImportDangerActionStatus }}
                     </span>
                     <span id="javinfo-import-start-note" class="danger-action-note">{{ javinfoImportStartNote }}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="import-step">
+              <div class="import-step-index" aria-hidden="true"></div>
+              <div class="import-step-body">
+                <div class="import-step-head">
+                  <h3>重建索引与辅助表</h3>
+                  <span v-if="javinfoMigrationStatus" class="import-status" :class="{ error: javinfoMigrationStatusType === 'error' }">
+                    {{ javinfoMigrationStatus }}
+                  </span>
+                </div>
+                <span class="setting-note">导入进来的 r18 只是原始目录数据。补全用的表、以及番号匹配 / 搜索 / 演员作品数等性能索引都靠这一步在其之上建立。上方导入完成后会自动执行；只有手动全量恢复的库，或发现相关查询变慢 / 报缺表时，才需要在此手动补跑。操作幂等，可安全重复。</span>
+                <div class="import-actions import-actions--preflight" :aria-busy="javinfoMigrating" aria-live="polite">
+                  <div class="import-preflight-action-buttons">
+                    <button class="btn btn-secondary" type="button" @click="runJavInfoMigrations" :disabled="javinfoMigrating || !canSaveConfig" :aria-describedby="'javinfo-migration-action-status'">
+                      {{ javinfoMigrating ? '重建中...' : '重建索引与辅助表' }}
+                    </button>
+                  </div>
+                  <div class="import-preflight-action-copy">
+                    <span id="javinfo-migration-action-status" class="import-action-status" role="status">
+                      {{ javinfoMigrationActionStatus }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -582,10 +600,13 @@ export default {
     },
     javinfoPreflightActionStatus() {
       if (this.javinfoImportPreflighting) return '正在检查数据库连接和恢复权限。'
-      if (this.javinfoMigrating) return '正在运行 JavInfoApi 迁移。'
-      if (this.javinfoMigrationStatus) return this.javinfoMigrationStatus
       if (this.javinfoImportPreflightCurrent()?.ok) return '数据库预检已通过。'
       return '先运行预检，确认数据库可以安全恢复。'
+    },
+    javinfoMigrationActionStatus() {
+      if (this.javinfoMigrating) return '正在重建索引与辅助表。'
+      if (this.javinfoMigrationStatus) return this.javinfoMigrationStatus
+      return '导入完成后会自动重建；此处用于手动补跑。'
     },
     javinfoImportRequiresDirectConfirm() {
       return Boolean(
@@ -765,14 +786,14 @@ export default {
     },
     async runJavInfoMigrations() {
       if (!this.canSaveConfig) {
-        this.$message.error('配置未加载成功，已阻止迁移')
+        this.$message.error('配置未加载成功，已阻止重建')
         return
       }
       const confirmed = await requestConfirm({
-        title: '运行 JavInfo 迁移',
+        title: '重建索引与辅助表',
         message: '确认在当前导入的目录上重建 JavHub 需要的辅助表与索引？',
-        details: '导入进来的 r18 只是原始目录数据。补全用的表、以及番号匹配 / 搜索 / 演员作品数等性能索引都靠「迁移」在其之上建立——通过导入功能导入时会自动执行这一步。若你是手动全量恢复的库，或发现相关查询变慢 / 报缺表，可用此按钮手动补跑。操作幂等，可安全重复。',
-        confirmText: '运行迁移',
+        details: '导入进来的 r18 只是原始目录数据。补全用的表、以及番号匹配 / 搜索 / 演员作品数等性能索引都靠这一步在其之上建立——通过导入功能导入时会自动执行。若你是手动全量恢复的库，或发现相关查询变慢 / 报缺表，可用此按钮手动补跑。操作幂等，可安全重复。',
+        confirmText: '重建',
       })
       if (!confirmed) return
       this.javinfoMigrating = true
@@ -780,11 +801,11 @@ export default {
       this.javinfoMigrationStatusType = 'info'
       try {
         const resp = await api.runJavInfoMigrations(false)
-        this.javinfoMigrationStatus = resp.data?.ok ? 'JavInfo 迁移已完成' : 'JavInfo 迁移已返回'
+        this.javinfoMigrationStatus = resp.data?.ok ? '索引与辅助表已重建' : '重建已返回'
         this.javinfoMigrationStatusType = 'success'
-        this.$message.success('JavInfo 迁移已完成')
+        this.$message.success('索引与辅助表已重建')
       } catch (e) {
-        const message = e.response?.data?.detail || e.message || 'JavInfo 迁移失败'
+        const message = e.response?.data?.detail || e.message || '重建失败'
         this.javinfoMigrationStatus = message
         this.javinfoMigrationStatusType = 'error'
         this.$message.error(message)
