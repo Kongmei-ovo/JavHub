@@ -426,3 +426,30 @@ test('subscription list preloads actor metadata so portraits render on direct en
   assert.match(vueSource, /api\.getActress/)
   assert.match(vueSource, /subCoverUrl\(sub\)/)
 })
+
+test('subscription list provides an immediate multilingual filter and a clearable no-match state', () => {
+  assert.match(vueSource, /v-model="subscriptionFilterKeyword"/)
+  assert.match(vueSource, /placeholder="筛选订阅演员"/)
+  assert.match(vueSource, /aria-label="筛选订阅演员"/)
+  assert.match(vueSource, /filteredSubscriptions/)
+  assert.match(vueSource, /subscriptionMatchesKeyword/)
+  assert.match(vueSource, /v-for="sub in filteredSubscriptions"/)
+  assert.match(vueSource, /没有匹配演员/)
+  assert.match(vueSource, /当前关键词没有匹配到订阅演员/)
+  assert.match(vueSource, /@action="clearSubscriptionFilter"/)
+
+  const search = cssBlock('.subscription-list-search')
+  const clear = cssBlock('.subscription-list-search-clear')
+  assert.match(search, /width:\s*100%/)
+  assert.match(search, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(search, /border:\s*1px solid var\(--subscription-control-border\)/)
+  assert.match(search, /box-shadow:\s*var\(--subscription-control-shadow\)/)
+  assert.match(clear, /border-radius:\s*999px/)
+})
+
+test('subscription edit select-all is scoped to visible filtered subscriptions', () => {
+  assert.match(vueSource, /filteredSubscriptions\.value\.length > 0/)
+  assert.match(vueSource, /filteredSubscriptions\.value\.every/)
+  assert.match(vueSource, /for \(const sub of filteredSubscriptions\.value\)/)
+  assert.match(vueSource, /new Set\(selectedSubscriptionIds\.value\)/)
+})

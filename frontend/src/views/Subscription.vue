@@ -24,15 +24,15 @@
         </button>
       </div>
     </div>
-
     <div class="tab-content subscription-content">
+      <label v-if="!loading && subs.length" class="subscription-list-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path></svg><input v-model="subscriptionFilterKeyword" type="search" placeholder="筛选订阅演员" aria-label="筛选订阅演员" /><button v-if="subscriptionFilterKeyword" type="button" class="subscription-list-search-clear" aria-label="清除筛选" @click.prevent="clearSubscriptionFilter">×</button></label>
       <div v-if="subscriptionEditMode" class="subscription-management-bar" role="toolbar" aria-label="订阅批量操作">
         <div class="subscription-management-summary">
           <strong>{{ selectedSubscriptionCount }}</strong>
           <span>已选择 · 共 {{ subs.length }} 个订阅</span>
         </div>
         <div class="sheet-top-actions subscription-batch-actions">
-          <button class="top-action-btn" type="button" :disabled="subs.length === 0 || allSubscriptionsSelected" @click="selectAllSubscriptions">全选</button>
+          <button class="top-action-btn" type="button" :disabled="filteredSubscriptions.length === 0 || allSubscriptionsSelected" @click="selectAllSubscriptions">全选</button>
           <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="clearSubscriptionSelection">清空</button>
           <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="pauseSelectedSubscriptions">暂停监控</button><button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="resumeSelectedSubscriptions">恢复监控</button>
           <button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="enableSelectedAutoDownload">开启自动策略</button><button class="top-action-btn" type="button" :disabled="selectedSubscriptionCount === 0" @click="disableSelectedAutoDownload">关闭自动策略</button>
@@ -41,11 +41,9 @@
           </button>
         </div>
       </div>
-
       <AppleSkeleton v-if="loading" class="card-grid" variant="gallery" :items="6" label="订阅演员加载中" />
-
-      <div v-else-if="subs.length > 0" class="card-grid" :class="{ 'is-subscription-editing': subscriptionEditMode }">
-        <div v-for="sub in subs" :key="sub.id" class="subscription-selectable" :class="{ 'is-selected': isSubscriptionSelected(sub) }">
+      <div v-else-if="filteredSubscriptions.length > 0" class="card-grid" :class="{ 'is-subscription-editing': subscriptionEditMode }">
+        <div v-for="sub in filteredSubscriptions" :key="sub.id" class="subscription-selectable" :class="{ 'is-selected': isSubscriptionSelected(sub) }">
           <ActorPortraitCard :actor="subActor(sub)" :name="subDisplayName(sub)" :subtitle="subOriginalName(sub)" :meta="subCardMeta(sub)" :avatar-url="subCoverUrl(sub)" :badges="subCardBadges(sub)" density="standard" @open="handleSubscriptionCardOpen(sub)" />
           <button v-if="!subscriptionEditMode && sinceLastKnown(sub)" class="subscription-since-chip" type="button" aria-label="查看自上次以来新增" @click.stop="openSinceLastSheet(sub)">
             <template v-if="sinceLastCount(sub)">新增 {{ sinceLastCount(sub) }}</template><template v-else>无新增</template><span v-if="formatSinceLastElapsed(sub.last_run_at)"> · {{ formatSinceLastElapsed(sub.last_run_at) }}</span>
@@ -56,7 +54,7 @@
           </button>
         </div>
       </div>
-
+      <AppleEmptyState v-else-if="subs.length > 0" class="empty-state compact subscription-filter-empty" title="没有匹配演员" description="当前关键词没有匹配到订阅演员。" next-step="换一个名字，或清除筛选回到全部订阅演员。" action-label="清除筛选" density="compact" @action="clearSubscriptionFilter" />
       <AppleEmptyState v-else class="empty-state" title="还没有订阅任何演员" description="订阅后可以定期检查新作品，并把缺失影片写入下载候选。" next-step="先搜索演员添加订阅；添加后可以立即检查，或到下载候选处理待补磁力。" action-label="添加演员" secondary-action-label="浏览演员目录" @action="openDiscover" @secondary-action="router.push('/entities?tab=actresses')">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -238,6 +236,7 @@ import AppleSkeleton from '../components/AppleSkeleton.vue'
 import MovieCard from '../components/MovieCard.vue'
 import VariantGroupDisclosure from '../components/VariantGroupDisclosure.vue'
 import { movieCardVariantProps, variantGroupKey, visibleVariantItems } from '../utils/videoVariantPresentation.js'
+import { subscriptionMatchesKeyword } from '../features/subscription/subscriptionFilter.js'
 
 const router = useRouter()
 
@@ -247,6 +246,7 @@ const searchResults = ref([])
 const searching = ref(false)
 const searched = ref(false)
 const subs = ref([])
+const subscriptionFilterKeyword = ref('')
 const loading = ref(false)
 const checkingAll = ref(false)
 const checkingId = ref(null)
@@ -269,7 +269,8 @@ const cadenceOptions = [{ label: '每 6 小时', minutes: 360 }, { label: '每 1
 const totalNewMovies = computed(() => subs.value.reduce((sum, sub) => sum + Number(sub.candidate_count || 0), 0))
 const totalNeedsMagnet = computed(() => subs.value.reduce((sum, sub) => sum + Number(sub.needs_magnet_count || 0), 0))
 const selectedSubscriptionCount = computed(() => selectedSubscriptionIds.value.size)
-const allSubscriptionsSelected = computed(() => subs.value.length > 0 && subs.value.every(sub => selectedSubscriptionIds.value.has(subscriptionKey(sub))))
+const filteredSubscriptions = computed(() => subs.value.filter(sub => subscriptionMatchesKeyword(sub, subMeta(sub), subscriptionFilterKeyword.value)))
+const allSubscriptionsSelected = computed(() => filteredSubscriptions.value.length > 0 && filteredSubscriptions.value.every(sub => selectedSubscriptionIds.value.has(subscriptionKey(sub))))
 const recentSubscriptions = computed(() => subs.value.slice(0, 6))
 const sheetCoverUrl = computed(() => sheetActor.value ? actressImgUrl(sheetActor.value.image_url) || '' : '')
 const sheetTranslatedName = computed(() => sheetActor.value ? displayName(sheetActor.value, 'name_kanji', 'name_romaji') || '' : '')
@@ -332,8 +333,9 @@ function subCardBadges(sub) {
 function subscriptionKey(sub) { return String(sub?.id || '') }
 function isSubscriptionSelected(sub) { return selectedSubscriptionIds.value.has(subscriptionKey(sub)) }
 function toggleSubscriptionSelection(sub) { const key = subscriptionKey(sub); if (!key) return; const next = new Set(selectedSubscriptionIds.value); if (next.has(key)) next.delete(key); else next.add(key); selectedSubscriptionIds.value = next }
-function selectAllSubscriptions() { selectedSubscriptionIds.value = new Set(subs.value.map(subscriptionKey).filter(Boolean)) }
+function selectAllSubscriptions() { const next = new Set(selectedSubscriptionIds.value); for (const sub of filteredSubscriptions.value) { const key = subscriptionKey(sub); if (key) next.add(key) } selectedSubscriptionIds.value = next }
 function clearSubscriptionSelection() { selectedSubscriptionIds.value = new Set() }
+function clearSubscriptionFilter() { subscriptionFilterKeyword.value = '' }
 function toggleSubscriptionEditMode() {
   subscriptionEditMode.value = !subscriptionEditMode.value
   if (!subscriptionEditMode.value) clearSubscriptionSelection()
