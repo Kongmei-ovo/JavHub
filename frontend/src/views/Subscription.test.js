@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs'
 
 const vueSource = readFileSync(new URL('./Subscription.vue', import.meta.url), 'utf8')
 const externalStyle = readFileSync(new URL('../features/subscription/subscription.css', import.meta.url), 'utf8')
-const source = `${vueSource}\n${externalStyle}`
+const filterStyle = readFileSync(new URL('../features/subscription/subscriptionFilter.css', import.meta.url), 'utf8')
+const source = `${vueSource}\n${externalStyle}\n${filterStyle}`
 
 function cssBlock(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -26,6 +27,7 @@ function cssGroupedBlock(selector) {
 
 test('subscription page keeps large scoped styles in a feature stylesheet', () => {
   assert.match(vueSource, /<style scoped src="\.\.\/features\/subscription\/subscription\.css"><\/style>/)
+  assert.match(vueSource, /<style scoped src="\.\.\/features\/subscription\/subscriptionFilter\.css"><\/style>/)
   assert.ok(vueSource.split('\n').length < 600, 'Subscription.vue should stay below 600 lines')
   assert.ok(externalStyle.split('\n').length > 530, 'external stylesheet should contain the moved subscription styles')
 })
@@ -441,7 +443,7 @@ test('subscription list provides an immediate multilingual filter and a clearabl
   const search = cssBlock('.subscription-list-search')
   const clear = cssBlock('.subscription-list-search-clear')
   assert.match(search, /width:\s*100%/)
-  assert.match(search, /background:\s*var\(--subscription-control-bg\)/)
+  assert.match(search, layeredSemanticBackground('material-glass-control'))
   assert.match(search, /border:\s*1px solid var\(--subscription-control-border\)/)
   assert.match(search, /box-shadow:\s*var\(--subscription-control-shadow\)/)
   assert.match(clear, /border-radius:\s*999px/)

@@ -594,5 +594,5 @@ function viewCandidates(sub) {
 
 onMounted(loadSubs)
 </script>
-
 <style scoped src="../features/subscription/subscription.css"></style>
+<style scoped src="../features/subscription/subscriptionFilter.css"></style>
