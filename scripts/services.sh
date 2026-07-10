@@ -14,6 +14,7 @@ JAVINFO_PLIST="${LAUNCH_AGENTS_DIR}/${JAVINFO_LABEL}.plist"
 BACKEND_PLIST="${LAUNCH_AGENTS_DIR}/${BACKEND_LABEL}.plist"
 FRONTEND_PLIST="${LAUNCH_AGENTS_DIR}/${FRONTEND_LABEL}.plist"
 FRONTEND_DIST_DIR="${JAVHUB_FRONTEND_DIST:-${ROOT_DIR}/frontend/dist}"
+LOCAL_FLARESOLVERR_HELPER="${LOCAL_FLARESOLVERR_HELPER:-${ROOT_DIR}/scripts/local-flaresolverr.sh}"
 
 if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
   PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
@@ -37,10 +38,12 @@ Commands:
   ensure                                Install/update LaunchAgents and start missing services.
   start                                 Install/update LaunchAgents and start all services.
   doctor                                Check local service dependencies without changing state.
-  restart [<javinfo|backend|frontend>]  Restart all services or one service.
-  stop [<javinfo|backend|frontend>]     Stop all services or one service.
+  restart [<javinfo|backend|frontend|flaresolverr>]
+                                        Restart all services or one service.
+  stop [<javinfo|backend|frontend|flaresolverr>]
+                                        Stop all services or one service.
   status                                Print launchd and port status.
-  logs <javinfo|backend|frontend> [--no-follow]
+  logs <javinfo|backend|frontend|flaresolverr> [--no-follow]
                                         Show service logs, following by default.
   rebuild-javinfo                       Rebuild JavInfoApi binary and restart javinfo.
   render-plists                         Write LaunchAgent plists without starting services.
@@ -49,6 +52,10 @@ Environment:
   JAVINFO_DIR         Defaults to /Users/kongmei/Code/JavInfoApi.
   JAVHUB_CONFIG_PATH  Defaults to config.yaml in the JavHub checkout.
 USAGE
+}
+
+run_local_flaresolverr() {
+  "${LOCAL_FLARESOLVERR_HELPER}" "$@"
 }
 
 xml_escape() {
@@ -1101,9 +1108,12 @@ ensure_preflight_checks() {
 }
 
 doctor() {
+  local failed=0
   DOCTOR_QUIET=0
   echo "Dependency check:"
-  doctor_checks
+  doctor_checks || failed=1
+  run_local_flaresolverr "doctor" || failed=1
+  return "${failed}"
 }
 
 ensure_dependency_preflight() {
@@ -1122,6 +1132,7 @@ ensure_dependency_preflight() {
 ensure_services() {
   ensure_dependency_preflight
   local failed=0
+  run_local_flaresolverr "ensure" || failed=1
   write_plists
   while IFS= read -r label; do
     if is_loaded "${label}" && plist_changed_for_label "${label}"; then
@@ -1182,6 +1193,7 @@ status() {
   print_port_diagnostics || failed=1
   print_http_health_summary || failed=1
   print_backend_readiness_summary || failed=1
+  run_local_flaresolverr "status" || failed=1
 
   return "${failed}"
 }
@@ -1191,7 +1203,7 @@ tail_logs() {
   local follow=1
 
   if [[ $# -gt 2 ]]; then
-    echo "Usage: scripts/services.sh logs <javinfo|backend|frontend> [--no-follow]" >&2
+    echo "Usage: scripts/services.sh logs <javinfo|backend|frontend|flaresolverr> [--no-follow]" >&2
     return 2
   fi
 
@@ -1199,7 +1211,7 @@ tail_logs() {
     case "$2" in
       --no-follow) follow=0 ;;
       *)
-        echo "Usage: scripts/services.sh logs <javinfo|backend|frontend> [--no-follow]" >&2
+        echo "Usage: scripts/services.sh logs <javinfo|backend|frontend|flaresolverr> [--no-follow]" >&2
         return 2
         ;;
     esac
@@ -1215,8 +1227,15 @@ tail_logs() {
     frontend)
       tail_service_logs "frontend" "${ROOT_DIR}/javhub-frontend.launchd.log" "${ROOT_DIR}/javhub-frontend.launchd.err.log" "${follow}"
       ;;
+    flaresolverr)
+      if [[ "${follow}" == "1" ]]; then
+        run_local_flaresolverr "logs"
+      else
+        run_local_flaresolverr "logs" "--no-follow"
+      fi
+      ;;
     *)
-      echo "Usage: scripts/services.sh logs <javinfo|backend|frontend> [--no-follow]" >&2
+      echo "Usage: scripts/services.sh logs <javinfo|backend|frontend|flaresolverr> [--no-follow]" >&2
       return 2
       ;;
   esac
@@ -1224,13 +1243,18 @@ tail_logs() {
 
 restart_services() {
   if [[ $# -gt 1 ]]; then
-    echo "Usage: scripts/services.sh restart [javinfo|backend|frontend]" >&2
+    echo "Usage: scripts/services.sh restart [javinfo|backend|frontend|flaresolverr]" >&2
     return 2
+  fi
+  if [[ $# -eq 1 && "$1" == "flaresolverr" ]]; then
+    run_local_flaresolverr "restart"
+    return
   fi
   if [[ $# -eq 0 ]]; then
     local failed=0
     write_plists
     build_frontend
+    run_local_flaresolverr "restart" || failed=1
     while IFS= read -r label; do
       restart_and_check_label "${label}" || failed=1
     done < <(all_labels)
@@ -1247,11 +1271,16 @@ restart_services() {
 
 stop_services() {
   if [[ $# -gt 1 ]]; then
-    echo "Usage: scripts/services.sh stop [javinfo|backend|frontend]" >&2
+    echo "Usage: scripts/services.sh stop [javinfo|backend|frontend|flaresolverr]" >&2
     return 2
+  fi
+  if [[ $# -eq 1 && "$1" == "flaresolverr" ]]; then
+    run_local_flaresolverr "stop"
+    return
   fi
   if [[ $# -eq 0 ]]; then
     local failed=0
+    run_local_flaresolverr "stop" || failed=1
     while IFS= read -r label; do
       stop_and_check_label "${label}" || failed=1
     done < <(all_labels)

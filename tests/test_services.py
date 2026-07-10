@@ -13,9 +13,65 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(autouse=True)
+def disable_real_local_flaresolverr_for_service_helper_tests(monkeypatch):
+    original_run = subprocess.run
+
+    def run(*args, **kwargs):
+        if kwargs.get("env") is not None:
+            env = dict(kwargs["env"])
+            env.setdefault("JAVHUB_LOCAL_FLARESOLVERR", "0")
+            kwargs["env"] = env
+        return original_run(*args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run)
+
+
 def write_executable(path, contents):
     path.write_text(contents)
     path.chmod(0o755)
+
+
+def test_services_routes_flaresolverr_commands_to_local_helper(tmp_path):
+    helper_log = tmp_path / "helper.log"
+    helper = tmp_path / "local-flaresolverr.sh"
+    write_executable(helper, '#!/bin/sh\necho "$@" >> "$HELPER_LOG"\nexit 0\n')
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "HELPER_LOG": str(helper_log),
+        "LOCAL_FLARESOLVERR_HELPER": str(helper),
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    }
+
+    commands = [
+        ["restart", "flaresolverr"],
+        ["stop", "flaresolverr"],
+        ["logs", "flaresolverr", "--no-follow"],
+    ]
+    results = [
+        subprocess.run(
+            ["bash", "scripts/services.sh", *command],
+            cwd=Path(__file__).resolve().parents[1],
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        for command in commands
+    ]
+
+    assert [result.returncode for result in results] == [0, 0, 0]
+    assert helper_log.read_text().splitlines() == ["restart", "stop", "logs --no-follow"]
+
+
+def test_services_declares_flaresolverr_lifecycle_delegation():
+    source = (Path(__file__).resolve().parents[1] / "scripts" / "services.sh").read_text()
+
+    assert 'run_local_flaresolverr "ensure"' in source
+    assert 'run_local_flaresolverr "doctor"' in source
+    assert 'run_local_flaresolverr "status"' in source
+    assert 'run_local_flaresolverr "restart"' in source
+    assert 'run_local_flaresolverr "stop"' in source
 
 
 def test_services_render_plists_injects_javinfo_source_proxy(tmp_path):
