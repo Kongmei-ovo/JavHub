@@ -229,6 +229,18 @@ The helper manages LaunchAgents:
 | JavHub backend | `http://localhost:18090` | FastAPI API server |
 | JavInfoApi | `http://localhost:8080` | Helper-managed companion API |
 
+When `stream.cf_solver_url` points to `http://127.0.0.1:8191/v1` (or the
+equivalent `localhost` URL), `scripts/services.sh ensure` also ensures a local
+FlareSolverr container. On macOS the helper starts Colima when the Docker daemon
+is unavailable, then exposes FlareSolverr only on `127.0.0.1:8191`. Use
+`scripts/services.sh status`, `restart flaresolverr`, `stop flaresolverr`, or
+`logs flaresolverr` to manage it. Set `JAVHUB_LOCAL_FLARESOLVERR=0` to opt out,
+or set `JAVHUB_FLARESOLVERR_IMAGE` to pin a different image.
+
+This helper is local-development tooling only. It does not participate in the
+Docker Compose deployment; servers still use the `flaresolverr` service from
+`docker-compose.yml` through the normal `docker compose up -d` workflow.
+
 Direct manual startup is also possible:
 
 ```bash
