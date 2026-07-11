@@ -16,11 +16,12 @@ __all__ = [
 def register_all_sources():
     """注册所有下载源到全局注册表"""
     for name, source in list(SourceRegistry._sources.items()):
-        if isinstance(source, TorznabSource):
+        if isinstance(source, TorznabSource) or not callable(getattr(source, "search", None)):
             SourceRegistry._sources.pop(name, None)
             if name in SourceRegistry._priority:
                 SourceRegistry._priority.remove(name)
-    sources = [M3U8Source()]
-    sources.extend(TorznabSource(**item) for item in config.enabled_torznab_configs)
+    # M3U8Source belongs to the streaming registry and intentionally is not a
+    # MagnetSource. Only configured indexers participate in candidate search.
+    sources = [TorznabSource(**item) for item in config.enabled_torznab_configs]
     for source in sources:
         SourceRegistry.register(source)

@@ -354,6 +354,42 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     }
   }
 
+  async function createCatalogDownloadCandidates({ actressId = '', actressName = '', canonicalNumber = '', router = null } = {}) {
+    if (candidateImporting.value || !actressId) return null
+    candidateImporting.value = true
+    try {
+      const data = unwrapResponse(await api.createSupplementActressCandidates(actressId, {
+        actressName,
+        canonicalNumber,
+      }), {})
+      const created = Number(data.created || 0)
+      const existing = Number(data.existing || 0)
+      const skipped = Number(data.skipped || 0)
+      if (created || existing) {
+        ElMessage.success(`候选已就绪：新增 ${created} 个，已有 ${existing} 个${skipped ? `，跳过 ${skipped} 个` : ''}`)
+      } else {
+        ElMessage.warning('没有生成候选：片单可能已入库、已豁免或状态刚刚发生变化')
+      }
+      if (router && (created || existing)) {
+        await router.push({
+          path: '/candidates',
+          query: {
+            status: 'candidate',
+            actress_id: actressId,
+            ...(canonicalNumber ? { q: canonicalNumber } : {}),
+          },
+        })
+      }
+      return data
+    } catch (error) {
+      moviesError.value = errorMessage(error)
+      console.error('Create catalog download candidates failed:', error)
+      return null
+    } finally {
+      candidateImporting.value = false
+    }
+  }
+
   async function openMovieSources(movie) {
     if (!movie?.id) return
     sourceDiagnosticsOpen.value = true
@@ -656,6 +692,7 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     diagnosticsEnriching,
     batchEnrichMovies,
     createDownloadCandidates,
+    createCatalogDownloadCandidates,
     sourceDiagnosticsOpen,
     sourceDiagnosticsLoading,
     sourceDiagnostics,

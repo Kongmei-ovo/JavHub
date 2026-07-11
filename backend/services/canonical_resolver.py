@@ -110,17 +110,25 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
     seen_members: dict[str, set[str]] = {}
 
     for original, item in zip(movie_rows, enriched):
-        # An index-grouped item already carries the group's adopted base code —
-        # trust it. Otherwise prefer the (possibly backfilled) authoritative
-        # dvd_id 品番, which pins 125umd00934(→UMD-934) onto the clean code that
-        # batch enrich otherwise mangles to 25UMD-934, so the products merge.
-        if item.get("variant_indexed"):
-            canonical_code = str(item.get("canonical_code") or "").strip()
-        else:
-            dvd = str(original.get("dvd_id") or "").strip()
-            canonical_code = resolve_canonical_code(dvd) if dvd else ""
-            if not canonical_code:
-                canonical_code = str(item.get("canonical_code") or "").strip()
+        # ``enrich_video_variants`` uses title evidence to collapse store-only
+        # TK/BTK and physical-media editions. Re-resolving their dvd_id here
+        # without the title used to undo that decision. For ordinary digital
+        # maker-bucket ids, however, the backfilled dvd_id remains the stronger
+        # authority (125umd1013 must become UMD-1013, not 25UMD-1013).
+        enriched_code = str(item.get("canonical_code") or "").strip()
+        edition_keys = {
+            "rental", "bod", "dod", "blu_ray", "dvd", "tower_bonus",
+            "hmv_bonus", "amazon_bonus", "tsutaya_bonus", "rakuten_bonus",
+            "deluxe_pack", "special_edition", "fanza_bonus", "bonus", "outlet",
+        }
+        labels = item.get("variant_labels") or []
+        trust_enriched = bool(item.get("variant_indexed")) or any(
+            str(label.get("key") or "") in edition_keys
+            for label in labels
+            if isinstance(label, dict)
+        )
+        dvd = str(original.get("dvd_id") or "").strip()
+        canonical_code = enriched_code if trust_enriched else (resolve_canonical_code(dvd) if dvd else enriched_code)
         if not canonical_code:
             continue
         bucket = _bucket_key(canonical_code)

@@ -30,6 +30,8 @@ class SubscriptionAcquisitionFlowTests(TempPostgresMixin, unittest.IsolatedAsync
 
         with patch.object(subscription, "start_acquisition", new=start), patch(
             "services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()
+        ), patch.object(
+            subscription, "_subscription_auto_acquire_enabled", return_value=True
         ):
             return await subscription._run_subscription_check(_sub(), _pipeline(videos))
 
@@ -87,6 +89,22 @@ class SubscriptionAcquisitionFlowTests(TempPostgresMixin, unittest.IsolatedAsync
         self.assertEqual(start.await_count, 0)  # neither re-spends an offline slot
         self.assertEqual(result["in_library"], 1)  # HAVE-1 already ready
         self.assertEqual(result["existing"], 1)  # BUSY-1 already being acquired
+
+    async def test_disabled_auto_download_keeps_fresh_release_as_candidate(self):
+        from database import establish_baseline
+        from services import subscription
+
+        establish_baseline(1, ["OLD-1"])
+        start = AsyncMock()
+        videos = [{"content_id": "FUTURE-1", "dvd_id": "FUTURE-1", "release_date": "2999-01-01"}]
+        with patch.object(subscription, "start_acquisition", new=start), patch(
+            "services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()
+        ), patch.object(subscription, "_subscription_auto_acquire_enabled", return_value=False):
+            result = await subscription._run_subscription_check(_sub(), _pipeline(videos))
+
+        start.assert_not_awaited()
+        self.assertEqual([candidate["content_id"] for candidate in result["candidates"]], ["FUTURE-1"])
+        self.assertEqual(result["candidate_count"], 1)
 
 
 if __name__ == "__main__":

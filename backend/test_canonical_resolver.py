@@ -191,3 +191,20 @@ def test_display_code_tracks_canonical_number():
     films = resolve_rows_to_films(rows)
     for film in films:
         assert film.display_code == film.canonical_number
+
+
+def test_store_limited_tk_and_btk_editions_collapse_to_base_work():
+    rows = [
+        {"content_id": "jur00418", "dvd_id": "JUR-418", "title_ja": "作品A"},
+        {"content_id": "tkjur00418", "dvd_id": "TKJUR-418", "title_ja": "【FANZA限定】作品A 生写真付き"},
+        {"content_id": "naac00047", "dvd_id": "NAAC-47", "title_ja": "Best naked"},
+        {"content_id": "naac00047tk", "dvd_id": "NAAC-47TK", "title_ja": "【数量限定】Best naked チェキ付き"},
+        {"content_id": "naac00047btk", "dvd_id": "NAAC-47BTK", "title_ja": "【数量限定】Best naked （ブルーレイディスク） チェキ付き"},
+    ]
+
+    films = resolve_rows_to_films(rows)
+
+    assert len(films) == 2
+    by_code = {film.canonical_number: film for film in films}
+    assert len(by_code["JUR-418"].members) == 2
+    assert len(by_code["NAAC-47"].members) == 3

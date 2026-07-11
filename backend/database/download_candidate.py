@@ -361,6 +361,27 @@ def list_download_candidates(
     return _enrich_candidate_rows(rows)
 
 
+def list_download_candidate_states_by_actress(actress_id: int) -> list[dict]:
+    """Lightweight, unbounded candidate state snapshot for completeness.
+
+    Completeness needs only identity/status/magnet fields. Reusing the paged UI
+    reader truncated actresses above 2,000 rows and performed unrelated latest
+    event/download-task lookups for every candidate.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
+        cursor.execute(
+            '''
+            SELECT id, content_id, dvd_id, status, magnet, magnet_alternatives
+            FROM download_candidates
+            WHERE actress_id = ?
+            ''',
+            (actress_id,),
+        )
+        return [_candidate_row(row) for row in cursor.fetchall()]
+
+
 def find_sent_candidate_by_normalized_code(
     normalized_code: str,
     exclude_candidate_id: int | None = None,

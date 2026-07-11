@@ -698,6 +698,14 @@ export default {
     return api.post(`/v1/supplement/actresses/${actressId}/fields/enrich`, null, { params })
   },
 
+  createSupplementActressCandidates(actressId, { actressName = '', canonicalNumber = '', limit = null } = {}) {
+    const params = {}
+    if (actressName) params.actress_name = actressName
+    if (canonicalNumber) params.canonical_number = canonicalNumber
+    if (limit) params.limit = limit
+    return api.post(`/v1/supplement/actresses/${numericPathSegment(actressId, 'actressId')}/candidates`, null, { params })
+  },
+
   createSupplementDownloadCandidates(params = {}) {
     return api.post('/v1/supplement/movies/candidates', null, { params })
   },

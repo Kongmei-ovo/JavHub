@@ -26,7 +26,6 @@ class FailingSource:
 class SourceRegistryObservabilityTest(unittest.IsolatedAsyncioTestCase):
     async def test_register_all_sources_keeps_only_implemented_sources(self):
         import sources
-        from sources.m3u8_source import M3U8Source
         from sources.registry import SourceRegistry
         from sources.torznab_source import TorznabSource
 
@@ -48,12 +47,20 @@ class SourceRegistryObservabilityTest(unittest.IsolatedAsyncioTestCase):
              patch.object(sources, "config", SimpleNamespace(enabled_torznab_configs=configs)):
             sources.register_all_sources()
 
-            self.assertEqual(SourceRegistry.priority(), ["m3u8", "primary-indexer"])
-            self.assertIsInstance(SourceRegistry.get("m3u8"), M3U8Source)
+            self.assertEqual(SourceRegistry.priority(), ["primary-indexer"])
+            self.assertIsNone(SourceRegistry.get("m3u8"))
             self.assertIsInstance(SourceRegistry.get("primary-indexer"), TorznabSource)
             self.assertFalse(hasattr(sources, "JavBusSource"))
             self.assertFalse(hasattr(sources, "JavDBSource"))
             self.assertFalse(hasattr(sources, "JavLibSource"))
+
+    async def test_registry_rejects_streaming_source_without_magnet_search(self):
+        from sources.m3u8_source import M3U8Source
+        from sources.registry import SourceRegistry
+
+        with patch.object(SourceRegistry, "_sources", {}), patch.object(SourceRegistry, "_priority", []):
+            SourceRegistry.register(M3U8Source())
+            self.assertEqual(SourceRegistry.all(), [])
 
     async def test_search_all_records_success_and_failure_attempts(self):
         from sources.registry import SourceRegistry

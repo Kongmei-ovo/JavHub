@@ -20,6 +20,12 @@ class SourceRegistry:
     @classmethod
     def register(cls, source: MagnetSource) -> None:
         """注册下载源"""
+        # Streaming providers (for example M3U8Source) are not magnet indexers.
+        # Registering one without ``search`` turns a configuration problem into
+        # a misleading successful search with zero results because _search_one
+        # intentionally isolates provider exceptions.
+        if not callable(getattr(source, "search", None)):
+            return
         is_implemented = getattr(source, "is_implemented", None)
         if callable(is_implemented) and not is_implemented():
             return

@@ -244,22 +244,22 @@ export default {
       return film?.display_code || film?.canonical_number || ''
     }
 
-    // 找源：按番号生成下载候选（含磁力检索），留在下钻里刷新状态。
+    // 找源：从 canonical 片单生成/复用候选，留在下钻里刷新状态。
     async function catalogFind(film) {
-      await supplement.createDownloadCandidates({
-        filters: { matched: false, q: filmNumber(film) },
+      await supplement.createCatalogDownloadCandidates({
         actressId: props.actorContext?.id,
         actressName: props.actorName,
+        canonicalNumber: filmNumber(film),
       })
       await reloadCatalog()
     }
 
     // 下载：同样生成候选，但跳到下载中心审批/秒离线。
     async function catalogDownload(film) {
-      await supplement.createDownloadCandidates({
-        filters: { matched: false, q: filmNumber(film) },
+      await supplement.createCatalogDownloadCandidates({
         actressId: props.actorContext?.id,
         actressName: props.actorName,
+        canonicalNumber: filmNumber(film),
         router,
       })
     }
@@ -298,8 +298,11 @@ export default {
       catalogBatchEnriching.value = true
       try {
         const resp = await api.enrichSupplementActressFields(props.actorContext.id)
-        const scheduled = (resp && (resp.data?.scheduled ?? resp.scheduled)) || 0
-        ElMessage.success(`已加入补全队列（全部源）：${scheduled} 部`)
+        const data = resp?.data || resp || {}
+        const queued = Number(data.queued ?? data.scheduled ?? 0)
+        const existing = Number(data.existing || 0)
+        const skipped = Number(data.skipped || 0)
+        ElMessage.success(`补全任务已落库：新增 ${queued} 个，队列中已有 ${existing} 个${skipped ? `，跳过 ${skipped} 个` : ''}`)
         emit('jobs-requested')
       } catch (error) {
         ElMessage.error(`一键补全失败：${error?.message || '请求失败'}`)
@@ -308,22 +311,20 @@ export default {
       }
     }
 
-    // 一键查找：为该演员所有「待找源 / 未入库」作品批量生成下载候选（含磁力检索），
-    // 免去逐部点「找源」。复用 createDownloadCandidates(matched:false)，confirm 守门，
-    // 完成后刷新下钻状态。与字段阶段的「一键补全」对称。
+    // 一键查找：按 completeness 的同一份 canonical 片单生成候选，覆盖还没有
+    // supplement_movies 草稿的原生作品。磁力检索在候选中心作为下一步可追踪操作。
     async function catalogFindAll() {
       if (supplement.candidateImporting.value || !props.actorContext?.id) return
       const count = (supplement.catalogByTab.value.sources || []).filter(f => f.stage === 'find_source').length
       if (!count) { ElMessage.info('没有待找源的作品'); return }
       const confirmed = await requestConfirm({
         title: '一键查找下载源',
-        message: `将为 ${count} 部待找源作品批量生成下载候选（含磁力检索）。`,
-        details: '系统会按番号检索磁力并生成下载候选，可在「下载中心」审批或秒离线。',
-        confirmText: '开始查找',
+        message: `将为 ${count} 部待找源作品生成或复用下载候选。`,
+        details: '候选会与当前 canonical 片单逐部对应；随后可在「下载中心」检索磁力、审批或秒离线。',
+        confirmText: '生成候选',
       })
       if (!confirmed) return
-      await supplement.createDownloadCandidates({
-        filters: { matched: false },
+      await supplement.createCatalogDownloadCandidates({
         actressId: props.actorContext.id,
         actressName: props.actorName,
       })

@@ -9,11 +9,12 @@ resolver, and overlays ownership from the local ``movie_resources`` ledger.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from database.download_candidate import list_download_candidates
+from database.download_candidate import list_download_candidate_states_by_actress
 from services import cache as response_cache
 from services.canonical_resolver import (
     ResolvedFilm,
@@ -63,9 +64,9 @@ def _fetch_actress_catalog_rows(actress_id: int) -> list[dict]:
                     }
                 )
 
-        # Supplement half — only when the resolved layer exists. data_origin
-        # 'r18' rows already match a native content_id (counted above), so take
-        # only pure-supplement works to avoid double counting.
+        # Resolved half. Native rows already linked in derived_video_actress were
+        # counted above; also include resolved r18 rows whose actress association
+        # was discovered by a 鸡源 but is absent from the original dump.
         with conn.cursor() as cursor:
             cursor.execute("SELECT to_regclass('resolved_videos') AS reg")
             reg = cursor.fetchone()
@@ -73,12 +74,20 @@ def _fetch_actress_catalog_rows(actress_id: int) -> list[dict]:
                 cursor.execute(
                     """
                     SELECT rv.primary_content_id, rv.canonical_number, rv.dvd_id,
-                           rv.title_en, rv.title_ja, rv.release_date, rv.service_code
+                           rv.title_en, rv.title_ja, rv.release_date, rv.service_code,
+                           rv.data_origin
                     FROM resolved_videos rv
                     JOIN resolved_video_actresses rva ON rva.resolved_id = rv.resolved_id
-                    WHERE rva.local_actress_id = %s AND rv.data_origin = 'supplement'
+                    WHERE rva.local_actress_id = %s
+                      AND (
+                          rv.data_origin = 'supplement'
+                          OR NOT EXISTS (
+                              SELECT 1 FROM derived_video_actress dva
+                              WHERE dva.content_id = rv.primary_content_id AND dva.actress_id = %s
+                          )
+                      )
                     """,
-                    (actress_id,),
+                    (actress_id, actress_id),
                 )
                 for row in cursor.fetchall():
                     rows.append(
@@ -90,7 +99,9 @@ def _fetch_actress_catalog_rows(actress_id: int) -> list[dict]:
                             "title_ja": row.get("title_ja"),
                             "release_date": _as_text(row.get("release_date")),
                             "service_code": row.get("service_code"),
-                            "data_origin": "supplement",
+                            "data_origin": (
+                                "supplement" if row.get("data_origin") == "supplement" else "native"
+                            ),
                             "actress_ids": [actress_id],
                         }
                     )
@@ -163,21 +174,23 @@ def _norm_number(value) -> str:
 
 def _fetch_actress_candidates(actress_id: int) -> list[dict]:
     """All download candidates for an actress (any status), incl. magnet."""
-    return list_download_candidates(actress_id=actress_id, limit=2000)
+    return list_download_candidate_states_by_actress(actress_id)
 
 
 def _build_candidate_indexes(candidates: list[dict]) -> tuple[dict, dict]:
-    """content_id -> candidate, and normalized-番号 -> candidate."""
-    by_cid: dict[str, dict] = {}
-    by_number: dict[str, dict] = {}
+    """content_id / normalized-番号 -> every matching candidate."""
+    by_cid: dict[str, list[dict]] = {}
+    by_number: dict[str, list[dict]] = {}
     for cand in candidates or []:
         cid = str(cand.get("content_id") or "").strip()
         if cid:
-            by_cid.setdefault(cid, cand)
+            by_cid.setdefault(cid, []).append(cand)
         for key in (cand.get("dvd_id"), cand.get("content_id")):
             num = _norm_number(key)
             if num:
-                by_number.setdefault(num, cand)
+                bucket = by_number.setdefault(num, [])
+                if cand not in bucket:
+                    bucket.append(cand)
     return by_cid, by_number
 
 
@@ -185,10 +198,11 @@ def _match_film_candidates(film: ResolvedFilm, by_cid: dict, by_number: dict) ->
     matched: list[dict] = []
     seen: set[int] = set()
 
-    def _add(cand: dict | None) -> None:
-        if cand and id(cand) not in seen:
-            seen.add(id(cand))
-            matched.append(cand)
+    def _add(candidates: list[dict] | None) -> None:
+        for cand in candidates or []:
+            if id(cand) not in seen:
+                seen.add(id(cand))
+                matched.append(cand)
 
     for member in film.members:
         _add(by_cid.get(member.content_id))
@@ -226,6 +240,14 @@ META_FIELDS = (
     ("category", ("category_names", "genres")),
 )
 
+# Series and label are useful display metadata, but they are not defined for
+# every release (compilations and one-off products commonly have neither).  A
+# missing optional field must not hold the acquisition funnel forever after all
+# providers have correctly returned "no value".  Keep reporting these fields in
+# ``metadata_missing`` while gating the next stage only on the fields required
+# to identify and play a movie reliably.
+BLOCKING_META_FIELDS = frozenset({"cover", "runtime", "maker", "category"})
+
 
 def _has_meta_value(value) -> bool:
     if isinstance(value, (list, tuple)):
@@ -260,6 +282,12 @@ def _film_metadata(film: ResolvedFilm, field_rows: dict) -> tuple[str, list[str]
 
 def _field_row(row: dict, *, with_category: bool) -> dict:
     cats = row.get("category_names") if with_category else None
+    if isinstance(cats, str):
+        try:
+            decoded = json.loads(cats)
+            cats = decoded if isinstance(decoded, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            cats = []
     return {
         "cover_url": row.get("cover_url") or "",
         "runtime_mins": row.get("runtime_mins"),
@@ -268,6 +296,19 @@ def _field_row(row: dict, *, with_category: bool) -> dict:
         "series_name": row.get("series_name") or "",
         "category_names": list(cats) if cats else [],
     }
+
+
+def _merge_field_rows(existing: dict | None, incoming: dict | None) -> dict:
+    """Best-of merge used when resolved supplement fields augment catalog rows.
+
+    ``resolved_videos`` may contain only the one field a detail provider found;
+    replacing the whole native row would therefore lose good catalog metadata.
+    """
+    merged = dict(existing or {})
+    for key, value in (incoming or {}).items():
+        if _has_meta_value(value) and not _has_meta_value(merged.get(key)):
+            merged[key] = value
+    return merged
 
 
 def _fetch_actress_field_rows(actress_id: int) -> dict:
@@ -314,25 +355,59 @@ def _fetch_actress_field_rows(actress_id: int) -> dict:
                 if cid:
                     field_rows[cid] = _field_row(row, with_category=True)
 
-        # Supplement half — only when the resolved layer exists. Keyed by every
-        # plausible member id (primary_content_id may be NULL for 私拍/无码, so
-        # dvd_id / canonical_number / resolved_id back it up — matching the keys
-        # the resolver derives via _member_content_id).
+        # Resolved half.  This deliberately includes matched ``r18`` rows: detail
+        # jobs write their newly discovered fields to the resolved/supplement
+        # layer, so reading only ``data_origin='supplement'`` makes enrichment of
+        # native catalog films invisible to completeness forever.
+        #
+        # A detail-only job can also create a matched resolved row before an
+        # actress-link refresh.  The derived_video_actress EXISTS fallback keeps
+        # that row visible to the actress that requested the job.
         if _has_resolved_videos_table(conn):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT rv.primary_content_id, rv.resolved_id, rv.dvd_id, rv.canonical_number,
+                    SELECT DISTINCT ON (rv.resolved_id)
+                           rv.primary_content_id, rv.resolved_id, rv.dvd_id, rv.canonical_number,
                            COALESCE(rv.jacket_thumb_url, rv.jacket_full_url) AS cover_url,
-                           rv.runtime_mins, rv.maker_name, rv.label_name, rv.series_name
+                           rv.runtime_mins,
+                           COALESCE(rv.maker_name, (
+                               SELECT f.field_value FROM supplement_movie_field_values f
+                               WHERE f.supplement_movie_id = rv.supplement_movie_id
+                                 AND f.field_name = 'maker_name' AND f.field_value <> ''
+                               ORDER BY f.confidence DESC, f.fetched_at DESC LIMIT 1
+                           )) AS maker_name,
+                           COALESCE(rv.label_name, (
+                               SELECT f.field_value FROM supplement_movie_field_values f
+                               WHERE f.supplement_movie_id = rv.supplement_movie_id
+                                 AND f.field_name = 'label_name' AND f.field_value <> ''
+                               ORDER BY f.confidence DESC, f.fetched_at DESC LIMIT 1
+                           )) AS label_name,
+                           COALESCE(rv.series_name, (
+                               SELECT f.field_value FROM supplement_movie_field_values f
+                               WHERE f.supplement_movie_id = rv.supplement_movie_id
+                                 AND f.field_name = 'series_name' AND f.field_value <> ''
+                               ORDER BY f.confidence DESC, f.fetched_at DESC LIMIT 1
+                           )) AS series_name,
+                           (
+                               SELECT f.field_value FROM supplement_movie_field_values f
+                               WHERE f.supplement_movie_id = rv.supplement_movie_id
+                                 AND f.field_name = 'category_names' AND f.field_value <> ''
+                               ORDER BY f.confidence DESC, f.fetched_at DESC LIMIT 1
+                           ) AS category_names
                     FROM resolved_videos rv
-                    JOIN resolved_video_actresses rva ON rva.resolved_id = rv.resolved_id
-                    WHERE rva.local_actress_id = %s AND rv.data_origin = 'supplement'
+                    LEFT JOIN resolved_video_actresses rva ON rva.resolved_id = rv.resolved_id
+                    WHERE rva.local_actress_id = %s
+                       OR EXISTS (
+                           SELECT 1 FROM derived_video_actress dva
+                           WHERE dva.content_id = rv.primary_content_id AND dva.actress_id = %s
+                       )
+                    ORDER BY rv.resolved_id
                     """,
-                    (actress_id,),
+                    (actress_id, actress_id),
                 )
                 for row in cursor.fetchall():
-                    fields = _field_row(row, with_category=False)
+                    fields = _field_row(row, with_category=True)
                     for key in (
                         row.get("primary_content_id"),
                         row.get("resolved_id"),
@@ -341,7 +416,7 @@ def _fetch_actress_field_rows(actress_id: int) -> dict:
                     ):
                         k = str(key or "").strip()
                         if k:
-                            field_rows.setdefault(k, fields)
+                            field_rows[k] = _merge_field_rows(field_rows.get(k), fields)
     except Exception as exc:
         logger.warning("completeness fields: read failed for actress %s: %s", actress_id, exc)
     finally:
@@ -392,7 +467,9 @@ def _compute_actress_completeness(actress_id: int) -> dict:
         status = classify_film_status(is_owned, matched)
         summary[status] += 1
         cover, missing = _film_metadata(film, field_rows)
-        meta_complete = not missing                      # decoupled from ownership
+        blocking_missing = [key for key in missing if key in BLOCKING_META_FIELDS]
+        optional_missing = [key for key in missing if key not in BLOCKING_META_FIELDS]
+        meta_complete = not blocking_missing             # decoupled from ownership
         if is_owned:
             summary["owned_complete" if meta_complete else "owned_meta_gap"] += 1
         stage = _funnel_stage(status, meta_complete)
@@ -412,9 +489,16 @@ def _compute_actress_completeness(actress_id: int) -> dict:
                 "title": film.title,
                 "release_date": film.release_date,
                 "status": status,
+                "candidate_ids": sorted(
+                    int(candidate["id"])
+                    for candidate in matched
+                    if candidate.get("id") is not None
+                ),
                 "funnel_stage": stage,
                 "cover_url": cover,
                 "metadata_missing": missing,
+                "metadata_blocking_missing": blocking_missing,
+                "metadata_optional_missing": optional_missing,
                 "metadata_complete": meta_complete,
                 "member_count": len(film.members),
                 "origin": film.origin,

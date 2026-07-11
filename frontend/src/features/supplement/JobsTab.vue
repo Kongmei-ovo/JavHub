@@ -96,7 +96,7 @@ export default {
     contextItems: { type: Array, default: () => [] },
     refreshNonce: { type: Number, default: 0 },
   },
-  emits: ['actor', 'start-supplement', 'filters-change'],
+  emits: ['actor', 'start-supplement', 'filters-change', 'summary-change'],
   setup(props, { emit }) {
     const supplement = useSupplementApi()
     const jobPage = ref(1)
@@ -108,10 +108,9 @@ export default {
     const jobFilters = reactive({ status: '', actress_id: '', source: '', error_provider: '', error_reason: '' })
     // 选中演员时 hero 卡显示的四种任务状态总数(跨页)。
     const jobStatusCounts = reactive({ running: 0, queued: 0, succeeded: 0, failed: 0 })
-    const jobStreamRetryDelays = [1000, 3000, 9000]
-    let jobStream = null
-    let jobStreamRetryTimer = null
-    let jobStreamRetryAttempt = 0
+    let jobsPollTimer = null
+    let jobsPollInFlight = false
+    let jobsPollCycle = 0
     const jobStatusOptions = [
       { value: '', label: '全部状态' },
       { value: 'queued', label: '排队中' },
@@ -150,6 +149,11 @@ export default {
             .catch(() => 0),
         ))
         STATUS_KEYS.forEach((status, i) => { jobStatusCounts[status] = results[i] })
+        emit('summary-change', {
+          jobs: true,
+          total: supplement.jobsTotalCount.value || 0,
+          ...Object.fromEntries(STATUS_KEYS.map(status => [status, jobStatusCounts[status]])),
+        })
       } catch {
         /* hero 计数尽力而为 */
       }
@@ -181,7 +185,7 @@ export default {
 
     async function loadJobs(options = {}) {
       await supplement.loadJobs({ page: jobPage.value, pageSize: 20, filters: jobFilters, ...options })
-      await loadJobStatusCounts()
+      if (!options.skipCounts) await loadJobStatusCounts()
     }
 
     // retry/cancel route through the composable's refreshJobs (not this wrapper), so
@@ -195,58 +199,37 @@ export default {
       await loadJobStatusCounts()
     }
 
-    function normalizeJobStatus(job) {
-      if (job?.status === 'completed') return { ...job, status: 'succeeded', progress: 100 }
-      return { ...job, progress: Math.max(0, Math.min(100, Number(job?.progress || 0))) }
+    function hasActiveSupplementJobs() {
+      return supplement.jobs.value.some(job => ['queued', 'running'].includes(job.status))
+        || jobStatusCounts.queued > 0 || jobStatusCounts.running > 0
     }
 
-    function mergeStreamJob(rawJob) {
-      if (rawJob?.kind && rawJob.kind !== 'supplement') return
-      const job = normalizeJobStatus(rawJob)
-      const index = supplement.jobs.value.findIndex(item => item.id === job.id)
-      if (index >= 0) {
-        supplement.jobs.value = supplement.jobs.value.map(item => (item.id === job.id ? { ...item, ...job } : item))
-      } else {
-        supplement.jobs.value = [job, ...supplement.jobs.value].slice(0, 20)
-        supplement.jobsTotalCount.value = Math.max(supplement.jobsTotalCount.value || 0, supplement.jobs.value.length)
+    function scheduleJobsPoll(delay = null) {
+      if (jobsPollTimer) clearTimeout(jobsPollTimer)
+      const wait = delay ?? (hasActiveSupplementJobs() ? 2000 : 15000)
+      jobsPollTimer = setTimeout(pollJobs, wait)
+    }
+
+    async function pollJobs() {
+      if (jobsPollInFlight) {
+        scheduleJobsPoll(1000)
+        return
       }
-    }
-
-    function handleJobStreamMessage(event) {
+      jobsPollInFlight = true
+      jobsPollCycle += 1
       try {
-        mergeStreamJob(JSON.parse(event.data))
-      } catch {
-        // Ignore malformed stream frames.
+        // Counts require four extra requests; refresh them every fourth active
+        // poll while the actual queue page stays near-real-time.
+        await loadJobs({ skipCounts: jobsPollCycle % 4 !== 0 })
+      } finally {
+        jobsPollInFlight = false
+        scheduleJobsPoll()
       }
     }
 
-    function scheduleJobStreamReconnect() {
-      if (jobStreamRetryTimer) return
-      const delay = jobStreamRetryDelays[Math.min(jobStreamRetryAttempt, jobStreamRetryDelays.length - 1)]
-      jobStreamRetryAttempt += 1
-      jobStreamRetryTimer = setTimeout(() => {
-        jobStreamRetryTimer = null
-        openJobStream()
-      }, delay)
-    }
-
-    function openJobStream() {
-      if (typeof EventSource === 'undefined' || jobStream) return
-      jobStream = new EventSource('/api/v1/jobs/stream?kind=supplement')
-      jobStream.addEventListener('open', () => { jobStreamRetryAttempt = 0 })
-      jobStream.addEventListener('message', handleJobStreamMessage)
-      jobStream.addEventListener('error', () => {
-        jobStream?.close()
-        jobStream = null
-        scheduleJobStreamReconnect()
-      })
-    }
-
-    function closeJobStream() {
-      if (jobStreamRetryTimer) clearTimeout(jobStreamRetryTimer)
-      jobStreamRetryTimer = null
-      jobStream?.close()
-      jobStream = null
+    function stopJobsPoll() {
+      if (jobsPollTimer) clearTimeout(jobsPollTimer)
+      jobsPollTimer = null
     }
 
     async function applyJobFilters() {
@@ -297,9 +280,9 @@ export default {
       },
       { immediate: true }
     )
-    onMounted(openJobStream)
+    onMounted(() => scheduleJobsPoll(1000))
     onBeforeUnmount(() => {
-      closeJobStream()
+      stopJobsPoll()
       if (typeof document !== 'undefined') {
         document.removeEventListener('mousedown', onDocPointer)
         document.removeEventListener('keydown', onKeydown)
