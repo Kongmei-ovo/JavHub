@@ -365,7 +365,7 @@
             </datalist>
           </span>
         </label>
-        <label class="settings-row">
+        <label class="settings-row" v-if="config.proxy.mode !== 'vless'">
           <span class="setting-copy">
             <span class="setting-title">超时（秒）</span>
             <span class="setting-note">模型调用最长等待时间。</span>
@@ -451,36 +451,39 @@
             <input type="checkbox" id="proxyEnabled" v-model="config.proxy.enabled" role="switch" />
           </span>
         </label>
-        <label class="settings-row">
-          <span class="setting-copy">
-            <span class="setting-title">HTTP 代理</span>
-            <span class="setting-note">用于普通 HTTP 请求。</span>
+        <div class="settings-row" v-if="config.proxy.enabled">
+          <span class="setting-copy"><span class="setting-title">代理类型</span><span class="setting-note">VLESS 模式由 JavHub 自动管理内置 sing-box 核心。</span></span>
+          <span class="settings-control">
+            <select class="input" v-model="config.proxy.mode"><option value="http">HTTP / HTTPS</option><option value="vless">VLESS / REALITY</option></select>
           </span>
+        </div>
+        <label class="settings-row" v-if="config.proxy.mode !== 'vless'">
+          <span class="setting-copy"><span class="setting-title">HTTP 代理</span><span class="setting-note">用于普通 HTTP 请求。</span></span>
           <span class="settings-control">
             <input class="input" v-model="config.proxy.http_url" placeholder="http://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
           </span>
         </label>
-        <label class="settings-row">
-          <span class="setting-copy">
-            <span class="setting-title">HTTPS 代理</span>
-            <span class="setting-note">用于 HTTPS 外部请求。</span>
-          </span>
+        <label class="settings-row" v-if="config.proxy.mode !== 'vless'">
+          <span class="setting-copy"><span class="setting-title">HTTPS 代理</span><span class="setting-note">用于 HTTPS 外部请求。</span></span>
           <span class="settings-control">
             <input class="input" v-model="config.proxy.https_url" placeholder="https://127.0.0.1:7890" :disabled="!config.proxy.enabled" />
           </span>
         </label>
+        <ManagedVlessSettings :proxy="config.proxy" />
       </div>
     </section>
   </div>
 </template>
 <script>
 import api from '../../api'
+import ManagedVlessSettings from './ManagedVlessSettings.vue'
 import { requestConfirm } from '../../utils/confirmDialog'
 import { AI_PROVIDER_OPTIONS } from './advancedConfigOptions.js'
 import { aiConnectionComputed, javinfoImportJobComputed, javinfoImportJobDetail } from './advancedSettingsImportPresentation.js'
 import { formatBytes, isJavInfoImportActive, javinfoImportProgress, javinfoImportStatusLabel } from '../../utils/javinfoImportPresentation.js'
 export default {
   name: 'AdvancedSettingsPanel',
+  components: { ManagedVlessSettings },
   props: { config: { type: Object, required: true }, canSaveConfig: { type: Boolean, default: false } },
   data() {
     return {
@@ -911,7 +914,5 @@ export default {
     },
   },
 }
-</script>
-<style scoped src="./advancedSettingsPanel.css"></style>
-<style scoped src="./advancedSettingsAi.css"></style>
-<style scoped src="./advancedSettingsPanelResponsive.css"></style>
+</script><style scoped src="./advancedSettingsPanel.css"></style>
+<style scoped src="./advancedSettingsAi.css"></style><style scoped src="./advancedSettingsPanelResponsive.css"></style>

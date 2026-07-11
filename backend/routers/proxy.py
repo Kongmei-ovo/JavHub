@@ -49,6 +49,9 @@ def _get_httpx_proxies() -> Optional[dict]:
     if not config.proxy_enabled:
         return None
     proxies = {}
+    if config.proxy.get("mode") == "vless":
+        url = config.proxy_url
+        return {"http://": url, "https://": url}
     http_url = config.proxy_http_url
     https_url = config.proxy_https_url
     if http_url:

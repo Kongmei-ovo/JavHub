@@ -247,6 +247,12 @@ async def startup_event():
 
     # 推送代理配置到 JavInfoApi（如果 JavInfoApi 未就绪则静默失败）
     try:
+        from services.singbox import manager
+        await manager.reconcile(_cfg.proxy)
+    except Exception as e:
+        logging.warning("Failed to start managed sing-box: %s", e)
+
+    try:
         from routers.config import _push_proxy_to_javinfo
         await _push_proxy_to_javinfo()
     except Exception as e:
@@ -271,6 +277,12 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """关闭时运行"""
+    try:
+        from services.singbox import manager
+        manager.stop()
+    except Exception as e:
+        logging.debug("Failed to stop managed sing-box: %s", e)
+
     try:
         from scheduler.tasks import stop_scheduler
         stop_scheduler()

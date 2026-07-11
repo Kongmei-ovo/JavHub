@@ -703,6 +703,15 @@ class Config:
     def proxy_https_url(self) -> str:
         return self._config.get('proxy', {}).get('https_url', '')
 
+    @property
+    def proxy_url(self) -> str:
+        proxy = self.proxy
+        if not proxy.get('enabled'):
+            return ''
+        if proxy.get('mode') == 'vless':
+            return f"socks5://127.0.0.1:{int(proxy.get('singbox_port', 17890))}"
+        return proxy.get('http_url') or proxy.get('https_url') or ''
+
     # Notification settings
     @property
     def notification_enabled(self) -> bool:

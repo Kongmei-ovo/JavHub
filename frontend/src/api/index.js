@@ -356,6 +356,14 @@ export default {
     return api.put('/v1/config', config)
   },
 
+  getSingBoxStatus() {
+    return api.get('/v1/proxy/singbox/status', { silentError: true })
+  },
+
+  testSingBox(proxy) {
+    return api.post('/v1/proxy/singbox/test', proxy, { silentError: true })
+  },
+
   getOpen115Status() {
     return api.get('/v1/open115/status', { silentError: true })
   },

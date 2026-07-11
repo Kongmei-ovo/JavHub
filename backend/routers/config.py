@@ -45,7 +45,7 @@ async def _push_proxy_to_javinfo():
 
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
-_SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret'}
+_SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret', 'vless_uri'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'open115', 'notification', 'scheduler',
                   'database',
                   'ai',
@@ -134,6 +134,12 @@ async def update_config(new_config: dict):
         reset_info_client()
     # 代理配置变更后推送到 JavInfoApi
     if "proxy" in sanitized:
+        from services.singbox import manager
+        try:
+            await manager.reconcile(config.proxy)
+        except Exception as exc:
+            logger.warning("Failed to apply managed proxy: %s", exc)
+            raise HTTPException(400, str(exc)) from exc
         await _push_proxy_to_javinfo()
     if "automation" in sanitized:
         try:
@@ -143,6 +149,27 @@ async def update_config(new_config: dict):
         except Exception as e:
             logger.warning(f"Failed to refresh candidate automation scheduler: {e}")
     return {"success": True}
+
+
+@router.get("/proxy/singbox/status")
+async def singbox_status():
+    from services.singbox import manager
+    return manager.status(int(config.proxy.get("singbox_port", 17890)))
+
+
+@router.post("/proxy/singbox/test")
+async def test_singbox(body: dict):
+    from services.singbox import manager
+    draft = {**config.proxy, **(body or {}), "enabled": True, "mode": "vless"}
+    try:
+        status = await manager.reconcile(draft)
+        import httpx
+        async with httpx.AsyncClient(proxy=status["socks_url"], timeout=15) as client:
+            response = await client.get("https://www.cloudflare.com/cdn-cgi/trace")
+            response.raise_for_status()
+        return {**status, "success": True}
+    except Exception as exc:
+        raise HTTPException(502, f"VLESS 连接测试失败: {exc}") from exc
 
 
 @router.post("/ai/test")
