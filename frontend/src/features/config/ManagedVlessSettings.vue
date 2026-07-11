@@ -60,3 +60,4 @@ export default { name: 'ManagedVlessSettings', props: { proxy: { type: Object, r
   async test() { if (this.proxy.subscription_url) return this.refreshSubscription(); this.testing = true; this.status = '正在检查核心与代理出口…'; this.statusType = 'testing'; try { const r = await api.testSingBox(this.proxy); this.status = r.data?.running ? '代理可用，核心运行正常' : '出口检查完成，但核心未运行'; this.statusType = r.data?.running ? 'success' : 'error' } catch (e) { this.status = e.response?.data?.detail || e.message || '连接失败'; this.statusType = 'error' } finally { this.testing = false } },
 } }
 </script>
+<style scoped src="./managedVlessSettings.css"></style>
