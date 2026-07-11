@@ -170,6 +170,51 @@
   font-size: var(--type-caption);
   line-height: 1.45;
 }
+.proxy-settings-group .proxy-check-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.proxy-settings-group .proxy-nodes-row { align-items: start; }
+.proxy-settings-group .proxy-node-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.proxy-settings-group .proxy-node {
+  display: flex; align-items: center; justify-content: space-between; min-width: 0; min-height: var(--space-10); padding: 0 var(--space-3);
+  border: 1px solid var(--glass-control-border); border-radius: var(--radius-md); color: var(--text-secondary); background: var(--material-glass-control); cursor: pointer;
+}
+.proxy-settings-group .proxy-node span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxy-settings-group .proxy-node small { flex: 0 0 auto; color: var(--text-muted); font-size: var(--type-micro); }
+.proxy-settings-group .proxy-node.selected { border-color: var(--badge-success-border); color: var(--badge-success-text); background: var(--badge-success-bg); }
+.proxy-settings-group .proxy-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+  text-align: right;
+}
+.proxy-settings-group .proxy-status-dot {
+  flex: 0 0 auto;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+}
+.proxy-settings-group .proxy-status.success { color: var(--badge-success-text); }
+.proxy-settings-group .proxy-status.error { color: var(--badge-error-text); }
+.proxy-settings-group .proxy-status.testing { color: var(--accent); }
+.proxy-settings-group .proxy-check-control .btn { flex: 0 0 auto; }
+@media (max-width: 760px) {
+  .proxy-settings-group .proxy-check-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .proxy-settings-group .proxy-status { text-align: left; }
+  .proxy-settings-group .proxy-node-list { grid-template-columns: 1fr; }
+}
 .input-password-wrap { position: relative; display: flex; align-items: center; }
 .input-password-wrap .input { padding-right: 58px; }
 .input-eye-btn {

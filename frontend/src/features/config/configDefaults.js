@@ -116,7 +116,7 @@ export const DEFAULT_CONFIG = {
       timeout: 15,
     },
   },
-  proxy: { enabled: false, mode: 'http', http_url: '', https_url: '', vless_uri: '', singbox_port: 17890 },
+  proxy: { enabled: false, mode: 'http', http_url: '', https_url: '', vless_uri: '', subscription_url: '', singbox_port: 17890 },
 }
 
 export const TRANSLATION_TYPE_LABELS = { actress: '演员', category: '题材', series: '系列', maker: '厂商', label: '厂牌', title: '标题' }

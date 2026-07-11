@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 import shutil
@@ -9,6 +10,8 @@ import socket
 import subprocess
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
+
+import httpx
 
 
 class SingBoxError(ValueError):
@@ -25,6 +28,7 @@ def parse_vless_uri(uri: str) -> dict:
     if security == "reality" and (not query.get("pbk") or not query.get("sni")):
         raise SingBoxError("REALITY 节点缺少 pbk 或 sni 参数")
     return {
+        "name": unquote(parsed.fragment) or parsed.hostname,
         "server": parsed.hostname,
         "server_port": parsed.port,
         "uuid": unquote(parsed.username),
@@ -36,6 +40,56 @@ def parse_vless_uri(uri: str) -> dict:
         "short_id": query.get("sid", ""),
         "fingerprint": query.get("fp", "chrome"),
     }
+
+
+def parse_subscription(payload: str) -> list[str]:
+    """Parse plain or base64-encoded VLESS subscription without exposing secrets."""
+    text = (payload or "").strip()
+    if not text:
+        raise SingBoxError("订阅内容为空")
+    if not text.lower().startswith("vless://"):
+        try:
+            padded = text + "=" * (-len(text) % 4)
+            text = base64.b64decode(padded).decode("utf-8")
+        except Exception as exc:
+            raise SingBoxError("订阅不是有效的 Base64 或 VLESS 列表") from exc
+    uris = [line.strip() for line in text.splitlines() if line.strip().lower().startswith("vless://")]
+    if not uris:
+        raise SingBoxError("订阅中没有 VLESS 节点")
+    for uri in uris:
+        parse_vless_uri(uri)
+    return uris
+
+
+def _vless_outbound(uri: str, tag: str) -> dict:
+    node = parse_vless_uri(uri)
+    outbound = {"type": "vless", "tag": tag, "server": node["server"], "server_port": node["server_port"], "uuid": node["uuid"]}
+    if node["flow"]:
+        outbound["flow"] = node["flow"]
+    if node["security"] == "reality":
+        outbound["tls"] = {"enabled": True, "server_name": node["server_name"], "utls": {"enabled": True, "fingerprint": node["fingerprint"]}, "reality": {"enabled": True, "public_key": node["public_key"], "short_id": node["short_id"]}}
+    return outbound
+
+
+def build_pool_config(uris: list[str], listen_port: int = 17890, api_port: int = 17891) -> tuple[dict, list[dict]]:
+    nodes, outbounds = [], []
+    used = set()
+    for index, uri in enumerate(uris):
+        parsed = parse_vless_uri(uri)
+        name = parsed["name"]
+        tag = name
+        if tag in used:
+            tag = f"{name} {index + 1}"
+        used.add(tag)
+        nodes.append({"tag": tag, "name": name})
+        outbounds.append(_vless_outbound(uri, tag))
+    tags = [node["tag"] for node in nodes]
+    outbounds += [
+        {"type": "urltest", "tag": "自动优选", "outbounds": tags, "url": "https://www.cloudflare.com/cdn-cgi/trace", "interval": "10m", "tolerance": 50},
+        {"type": "selector", "tag": "proxy", "outbounds": ["自动优选", *tags], "default": "自动优选"},
+        {"type": "direct", "tag": "direct"},
+    ]
+    return ({"log": {"level": "warn", "timestamp": True}, "inbounds": [{"type": "socks", "tag": "socks-in", "listen": "127.0.0.1", "listen_port": listen_port}], "outbounds": outbounds, "route": {"final": "proxy"}, "experimental": {"clash_api": {"external_controller": f"127.0.0.1:{api_port}"}}}, nodes)
 
 
 def build_config(uri: str, listen_host: str = "127.0.0.1", listen_port: int = 17890) -> dict:
@@ -64,6 +118,8 @@ class SingBoxManager:
     def __init__(self):
         self.process: subprocess.Popen | None = None
         self.runtime_dir = Path(os.getenv("JAVHUB_RUNTIME_DIR", Path(__file__).resolve().parents[2] / "data" / "runtime"))
+        self.nodes: list[dict] = []
+        self.api_port = 17891
 
     def binary(self) -> str | None:
         configured = os.getenv("SING_BOX_BIN", "").strip()
@@ -97,6 +153,56 @@ class SingBoxManager:
         self.process = subprocess.Popen([binary, "run", "-c", str(config_path)], stdout=log, stderr=subprocess.STDOUT)
         return self.status(port)
 
+    def start_pool(self, uris: list[str], port: int = 17890):
+        binary = self.binary()
+        if not binary:
+            raise SingBoxError("未找到 sing-box 核心")
+        cfg, self.nodes = build_pool_config(uris, port, self.api_port)
+        self.runtime_dir.mkdir(parents=True, exist_ok=True)
+        config_path = self.runtime_dir / "sing-box.json"
+        config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.chmod(config_path, 0o600)
+        checked = subprocess.run([binary, "check", "-c", str(config_path)], capture_output=True, text=True, timeout=10)
+        if checked.returncode:
+            raise SingBoxError((checked.stderr or checked.stdout).strip())
+        self.stop()
+        log = open(self.runtime_dir / "sing-box.log", "ab", buffering=0)
+        self.process = subprocess.Popen([binary, "run", "-c", str(config_path)], stdout=log, stderr=subprocess.STDOUT)
+        return self.status(port)
+
+    async def fetch_subscription(self, url: str) -> list[str]:
+        if urlparse(url).scheme != "https":
+            raise SingBoxError("订阅地址必须使用 HTTPS")
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+        return parse_subscription(response.text)
+
+    async def refresh(self, proxy: dict):
+        uris = await self.fetch_subscription(str(proxy.get("subscription_url") or ""))
+        status = await asyncio.to_thread(self.start_pool, uris, int(proxy.get("singbox_port", 17890)))
+        return {**status, "nodes": await self.pool_status()}
+
+    async def pool_status(self):
+        if not self.nodes:
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                data = (await client.get(f"http://127.0.0.1:{self.api_port}/proxies")).json().get("proxies", {})
+            selected = data.get("proxy", {}).get("now", "")
+            return [{**node, "selected": node["tag"] == selected, "delay": (data.get(node["tag"], {}).get("history") or [{}])[-1].get("delay", 0)} for node in self.nodes]
+        except Exception:
+            return [{**node, "selected": False, "delay": 0} for node in self.nodes]
+
+    async def select(self, tag: str):
+        allowed = {"自动优选", *(node["tag"] for node in self.nodes)}
+        if tag not in allowed:
+            raise SingBoxError("节点不存在")
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.put(f"http://127.0.0.1:{self.api_port}/proxies/proxy", json={"name": tag})
+            response.raise_for_status()
+        return {"selected": tag, "nodes": await self.pool_status()}
+
     def status(self, port: int = 17890) -> dict:
         running = bool(self.process and self.process.poll() is None)
         if not running:
@@ -111,6 +217,8 @@ class SingBoxManager:
         if not proxy.get("enabled") or proxy.get("mode") != "vless":
             self.stop()
             return self.status(int(proxy.get("singbox_port", 17890)))
+        if proxy.get("subscription_url"):
+            return await self.refresh(proxy)
         uri = str(proxy.get("vless_uri") or "").strip()
         if not uri:
             raise SingBoxError("VLESS 分享链接为空")
