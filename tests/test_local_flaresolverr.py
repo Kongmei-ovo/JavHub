@@ -103,6 +103,9 @@ def test_ensure_starts_colima_then_creates_local_container(tmp_path):
     )
     write_executable(bin_dir / "curl", "#!/bin/sh\nexit 0\n")
     write_executable(bin_dir / "lsof", "#!/bin/sh\nexit 0\n")
+    # This case verifies the macOS-only Colima fallback. CI runs on Linux, so
+    # supply the platform command the shell helper consults.
+    write_executable(bin_dir / "uname", "#!/bin/sh\necho Darwin\n")
 
     result = run_helper(
         tmp_path,
