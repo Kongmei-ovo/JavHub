@@ -30,7 +30,7 @@ async def _push_proxy_to_javinfo():
         client = get_info_client()
         proxy_url = ""
         if config.proxy_enabled:
-            proxy_url = config.proxy_http_url or config.proxy_https_url
+            proxy_url = config.proxy_url
         # 补全源里 javlibrary/javbus 等挂在 Cloudflare 上,把同一个 FlareSolverr
         # 地址下发给 JavInfoApi,让它的抓取也能过盾(流媒体模块早已在用这个容器)。
         cf_solver_url = config.stream_cf_solver_url
@@ -45,7 +45,7 @@ async def _push_proxy_to_javinfo():
 
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
-_SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret', 'vless_uri'}
+_SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret', 'vless_uri', 'subscription_url'}
 _WRITABLE_KEYS = {'emby', 'telegram', 'open115', 'notification', 'scheduler',
                   'database',
                   'ai',
@@ -170,6 +170,30 @@ async def test_singbox(body: dict):
         return {**status, "success": True}
     except Exception as exc:
         raise HTTPException(502, f"VLESS 连接测试失败: {exc}") from exc
+
+
+@router.post("/proxy/singbox/subscription/refresh")
+async def refresh_singbox_subscription(body: dict):
+    from services.singbox import manager
+    try:
+        return await manager.refresh({**config.proxy, **(body or {})})
+    except Exception as exc:
+        raise HTTPException(502, f"订阅刷新失败: {exc}") from exc
+
+
+@router.get("/proxy/singbox/nodes")
+async def singbox_nodes():
+    from services.singbox import manager
+    return {"nodes": await manager.pool_status()}
+
+
+@router.put("/proxy/singbox/nodes/select")
+async def select_singbox_node(body: dict):
+    from services.singbox import manager
+    try:
+        return await manager.select(str((body or {}).get("tag") or ""))
+    except Exception as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.post("/ai/test")

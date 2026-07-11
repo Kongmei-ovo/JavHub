@@ -363,6 +363,9 @@ export default {
   testSingBox(proxy) {
     return api.post('/v1/proxy/singbox/test', proxy, { silentError: true })
   },
+  refreshSingBoxSubscription(proxy) { return api.post('/v1/proxy/singbox/subscription/refresh', proxy, { silentError: true }) },
+  getSingBoxNodes() { return api.get('/v1/proxy/singbox/nodes', { silentError: true }) },
+  selectSingBoxNode(tag) { return api.put('/v1/proxy/singbox/nodes/select', { tag }, { silentError: true }) },
 
   getOpen115Status() {
     return api.get('/v1/open115/status', { silentError: true })

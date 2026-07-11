@@ -1,6 +1,26 @@
 import unittest
 
-from services.singbox import SingBoxError, build_config, parse_vless_uri
+from services.singbox import SingBoxError, build_config, build_pool_config, parse_subscription, parse_vless_uri
+
+
+def test_parse_base64_vless_subscription():
+    import base64
+    uri = "vless://user@example.com:443?security=reality&sni=example.com&pbk=key#Tokyo"
+    payload = base64.b64encode((uri + "\n").encode()).decode()
+    assert parse_subscription(payload) == [uri]
+
+
+def test_pool_config_uses_urltest_and_selector():
+    uris = [
+        "vless://user@example.com:443?security=reality&sni=example.com&pbk=key#Tokyo",
+        "vless://user@example.org:443?security=reality&sni=example.org&pbk=key#LA",
+    ]
+    config, nodes = build_pool_config(uris)
+    by_tag = {item["tag"]: item for item in config["outbounds"]}
+    assert [node["name"] for node in nodes] == ["Tokyo", "LA"]
+    assert by_tag["自动优选"]["type"] == "urltest"
+    assert by_tag["proxy"]["type"] == "selector"
+    assert config["experimental"]["clash_api"]["external_controller"] == "127.0.0.1:17891"
 
 
 URI = ("vless://62a47dc6-026d-46e7-9aca-8689f8bb4100@example.com:443"
