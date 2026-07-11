@@ -131,6 +131,9 @@ services:
       JAVHUB_CACHE_BACKEND: ${JAVHUB_CACHE_BACKEND:-redis}
       JAVHUB_REDIS_URL: ${JAVHUB_REDIS_URL:-redis://redis:6379/0}
       JAVHUB_REDIS_PREFIX: ${JAVHUB_REDIS_PREFIX:-javhub-cache}
+      # sing-box runs here, while JavInfoApi is a sibling container.
+      JAVHUB_SINGBOX_LISTEN_HOST: 0.0.0.0
+      JAVHUB_PROXY_ADVERTISE_HOST: javhub
     volumes:
       - ./data:/app/data
       - ./config:/config

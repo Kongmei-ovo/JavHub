@@ -23,6 +23,12 @@ def test_pool_config_uses_urltest_and_selector():
     assert config["experimental"]["clash_api"]["external_controller"] == "127.0.0.1:17891"
 
 
+def test_pool_config_can_listen_on_container_network():
+    uri = "vless://user@example.com:443?security=reality&sni=example.com&pbk=key#Tokyo"
+    config, _ = build_pool_config([uri], listen_host="0.0.0.0")
+    assert config["inbounds"][0]["listen"] == "0.0.0.0"
+
+
 URI = ("vless://62a47dc6-026d-46e7-9aca-8689f8bb4100@example.com:443"
        "?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=public-key"
        "&security=reality&sid=57&sni=www.cloudflare.com&type=tcp#node")

@@ -10,6 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 class SourceConfigTests(unittest.TestCase):
+    def test_vless_proxy_can_advertise_a_container_reachable_host(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        cfg._config = {"proxy": {"enabled": True, "mode": "vless", "singbox_port": 17890}}
+        with patch.dict(os.environ, {"JAVHUB_PROXY_ADVERTISE_HOST": "javhub"}):
+            self.assertEqual(cfg.proxy_url, "socks5://javhub:17890")
+
     def test_numeric_clamp_helpers_normalize_invalid_and_out_of_range_values(self):
         from config import Config
 
