@@ -71,7 +71,7 @@ def _vless_outbound(uri: str, tag: str) -> dict:
     return outbound
 
 
-def build_pool_config(uris: list[str], listen_port: int = 17890, api_port: int = 17891) -> tuple[dict, list[dict]]:
+def build_pool_config(uris: list[str], listen_port: int = 17890, api_port: int = 17891, listen_host: str = "127.0.0.1") -> tuple[dict, list[dict]]:
     nodes, outbounds = [], []
     used = set()
     for index, uri in enumerate(uris):
@@ -89,7 +89,7 @@ def build_pool_config(uris: list[str], listen_port: int = 17890, api_port: int =
         {"type": "selector", "tag": "proxy", "outbounds": ["自动优选", *tags], "default": "自动优选"},
         {"type": "direct", "tag": "direct"},
     ]
-    return ({"log": {"level": "warn", "timestamp": True}, "inbounds": [{"type": "socks", "tag": "socks-in", "listen": "127.0.0.1", "listen_port": listen_port}], "outbounds": outbounds, "route": {"final": "proxy"}, "experimental": {"clash_api": {"external_controller": f"127.0.0.1:{api_port}"}}}, nodes)
+    return ({"log": {"level": "warn", "timestamp": True}, "inbounds": [{"type": "socks", "tag": "socks-in", "listen": listen_host, "listen_port": listen_port}], "outbounds": outbounds, "route": {"final": "proxy"}, "experimental": {"clash_api": {"external_controller": f"127.0.0.1:{api_port}"}}}, nodes)
 
 
 def build_config(uri: str, listen_host: str = "127.0.0.1", listen_port: int = 17890) -> dict:
@@ -139,7 +139,8 @@ class SingBoxManager:
         binary = self.binary()
         if not binary:
             raise SingBoxError("未找到 sing-box 核心；请安装 sing-box 或设置 SING_BOX_BIN")
-        cfg = build_config(uri, listen_port=port)
+        listen_host = os.getenv("JAVHUB_SINGBOX_LISTEN_HOST", "127.0.0.1").strip() or "127.0.0.1"
+        cfg = build_config(uri, listen_host=listen_host, listen_port=port)
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
         config_path = self.runtime_dir / "sing-box.json"
         config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -157,7 +158,8 @@ class SingBoxManager:
         binary = self.binary()
         if not binary:
             raise SingBoxError("未找到 sing-box 核心")
-        cfg, self.nodes = build_pool_config(uris, port, self.api_port)
+        listen_host = os.getenv("JAVHUB_SINGBOX_LISTEN_HOST", "127.0.0.1").strip() or "127.0.0.1"
+        cfg, self.nodes = build_pool_config(uris, port, self.api_port, listen_host=listen_host)
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
         config_path = self.runtime_dir / "sing-box.json"
         config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")

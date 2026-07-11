@@ -709,7 +709,8 @@ class Config:
         if not proxy.get('enabled'):
             return ''
         if proxy.get('mode') == 'vless':
-            return f"socks5://127.0.0.1:{int(proxy.get('singbox_port', 17890))}"
+            host = os.environ.get('JAVHUB_PROXY_ADVERTISE_HOST', '127.0.0.1').strip() or '127.0.0.1'
+            return f"socks5://{host}:{int(proxy.get('singbox_port', 17890))}"
         return proxy.get('http_url') or proxy.get('https_url') or ''
 
     # Notification settings
