@@ -15,8 +15,6 @@ permissions:
 
 jobs:
   analyze:
-    # SARIF upload for private repositories requires GitHub Advanced Security.
-    if: github.event.repository.private == false
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
