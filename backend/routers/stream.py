@@ -84,7 +84,17 @@ def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
 
 
 def _is_proxy_fake_ip(ip: ipaddress._BaseAddress) -> bool:
-    return any(ip in network for network in PROXY_FAKE_IP_NETWORKS)
+    candidates = [ip]
+    if isinstance(ip, ipaddress.IPv6Address):
+        # Proxy DNS implementations can expose an IPv4 Fake-IP either as the
+        # standard mapped form (::ffff:198.18.0.80) or via the IPv4-translated
+        # prefix (::ffff:0:198.18.0.80). Normalize both before checking the
+        # configured IPv4 Fake-IP ranges.
+        if ip.ipv4_mapped is not None:
+            candidates.append(ip.ipv4_mapped)
+        elif ip in ipaddress.ip_network("::ffff:0:0:0/96"):
+            candidates.append(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
+    return any(candidate in network for candidate in candidates for network in PROXY_FAKE_IP_NETWORKS)
 
 
 def _resolve_host_ips(hostname: str) -> set[ipaddress._BaseAddress]:

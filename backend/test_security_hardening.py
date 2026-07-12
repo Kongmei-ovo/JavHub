@@ -66,6 +66,16 @@ class StreamSecurityTests(unittest.TestCase):
                 "https://fuaf-uying.mushroomtrack.com/hls/playlist.m3u8",
             )
 
+    def test_allows_proxy_fake_ip_in_ipv4_translated_ipv6_form(self):
+        with patch("routers.stream.socket.getaddrinfo", return_value=[
+            (0, 0, 0, "", ("198.18.0.80", 443)),
+            (0, 0, 0, "", ("::ffff:0:c612:50", 443)),
+        ]):
+            self.assertEqual(
+                stream._validate_proxy_url("https://video-8.ggjav.com/video/index.m3u8"),
+                "https://video-8.ggjav.com/video/index.m3u8",
+            )
+
     def test_uses_source_referer_for_protected_hls_hosts(self):
         self.assertEqual(
             stream._referer_for_stream_url("https://surrit.com/video/index.m3u8"),
