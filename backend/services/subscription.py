@@ -33,13 +33,16 @@ SUBSCRIPTION_CONCURRENCY = 8
 
 
 def _subscription_auto_acquire_enabled(sub: dict) -> bool:
-    """Both the per-subscription switch and global policy must allow spending.
+    """Only the explicit full-auto policy may bypass the candidate queue.
 
     Previously every fresh release called ``start_acquisition(auto=True)`` even
     when the subscription explicitly disabled auto-download and the global
-    policy was manual.
+    policy was manual. Treating ``rules`` as full-auto was also unsafe: it
+    bypassed candidate source rules, magnet requirements, and per-run/24h
+    quotas. Under ``rules`` the release stays a subscription candidate and the
+    normal scheduled candidate processor applies those controls.
     """
-    return bool(sub.get("auto_download")) and config.automation_download_policy in {"rules", "auto"}
+    return bool(sub.get("auto_download")) and config.automation_download_policy == "auto"
 
 
 def _parse_timestamp(value) -> datetime | None:

@@ -172,9 +172,21 @@ def _norm_number(value) -> str:
     return "".join(ch for ch in text if ch.isalnum())
 
 
-def _fetch_actress_candidates(actress_id: int) -> list[dict]:
-    """All download candidates for an actress (any status), incl. magnet."""
-    return list_download_candidate_states_by_actress(actress_id)
+def _fetch_actress_candidates(actress_id: int, films: list[ResolvedFilm]) -> list[dict]:
+    """All candidate states that can affect this actress's catalog.
+
+    Candidate ownership is movie-level, so include matching acquisition/global
+    rows even when their legacy single ``actress_id`` points at another cast
+    member (or is NULL).
+    """
+    content_keys: set[str] = set()
+    for film in films:
+        content_keys.add(film.canonical_number)
+        for member in film.members:
+            content_keys.add(member.content_id)
+            if member.dvd_id:
+                content_keys.add(member.dvd_id)
+    return list_download_candidate_states_by_actress(actress_id, content_keys)
 
 
 def _build_candidate_indexes(candidates: list[dict]) -> tuple[dict, dict]:
@@ -449,7 +461,7 @@ def _compute_actress_completeness(actress_id: int) -> dict:
 
     films = resolve_rows_to_films(rows)
     owned = overlay_owned(films)
-    by_cid, by_number = _build_candidate_indexes(_fetch_actress_candidates(actress_id))
+    by_cid, by_number = _build_candidate_indexes(_fetch_actress_candidates(actress_id, films))
     field_rows = _fetch_actress_field_rows(actress_id)
 
     summary = {tier: 0 for tier in GAP_TIERS}

@@ -106,6 +106,26 @@ class SubscriptionAcquisitionFlowTests(TempPostgresMixin, unittest.IsolatedAsync
         self.assertEqual([candidate["content_id"] for candidate in result["candidates"]], ["FUTURE-1"])
         self.assertEqual(result["candidate_count"], 1)
 
+    async def test_rules_policy_queues_candidate_instead_of_bypassing_rule_engine(self):
+        from database import establish_baseline
+        from services import subscription
+
+        establish_baseline(1, ["OLD-1"])
+        start = AsyncMock()
+        videos = [{"content_id": "FUTURE-1", "dvd_id": "FUTURE-1", "release_date": "2999-01-01"}]
+        sub = {**_sub(), "auto_download": True}
+        with patch.object(subscription, "start_acquisition", new=start), patch(
+            "services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()
+        ), patch.dict(
+            subscription.config._config,
+            {"automation": {"download_policy": "rules"}},
+        ):
+            result = await subscription._run_subscription_check(sub, _pipeline(videos))
+
+        start.assert_not_awaited()
+        self.assertEqual([candidate["content_id"] for candidate in result["candidates"]], ["FUTURE-1"])
+        self.assertEqual(result["candidate_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

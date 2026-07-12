@@ -33,7 +33,12 @@ class AcquisitionCoordinatorTests(TempPostgresMixin, unittest.IsolatedAsyncioTes
         self.assertIn("configure_acquisition_coordinator_job()", source)
 
     async def test_failed_task_classifies_into_session_error_code(self):
-        from database import create_download_task, update_task_status
+        from database import (
+            create_download_task,
+            get_download_candidate,
+            update_task_status,
+            upsert_download_candidate,
+        )
         from database.acquisition_session import (
             create_acquisition_session,
             get_acquisition_session,
@@ -46,8 +51,14 @@ class AcquisitionCoordinatorTests(TempPostgresMixin, unittest.IsolatedAsyncioTes
             downloader_type="open115", movie_id="FAIL-1",
         )
         update_task_status(task_id, "downloading")
+        candidate = upsert_download_candidate(content_id="FAIL-1", source="acquisition")
         session = create_acquisition_session(movie_id="FAIL-1", trigger="user")
-        update_acquisition_session(session["id"], status="downloading", download_task_id=task_id)
+        update_acquisition_session(
+            session["id"],
+            status="downloading",
+            download_task_id=task_id,
+            candidate_id=candidate["id"],
+        )
 
         async def fake_poll(tid):
             update_task_status(tid, "failed", "source request timed out")
@@ -59,9 +70,15 @@ class AcquisitionCoordinatorTests(TempPostgresMixin, unittest.IsolatedAsyncioTes
         synced = get_acquisition_session(session["id"])
         self.assertEqual(synced["status"], "failed")
         self.assertEqual(synced["error_code"], "source_timeout")
+        self.assertEqual(get_download_candidate(candidate["id"])["status"], "failed")
 
     async def test_completed_task_marks_session_ready(self):
-        from database import create_download_task, update_task_status
+        from database import (
+            create_download_task,
+            get_download_candidate,
+            update_task_status,
+            upsert_download_candidate,
+        )
         from database.acquisition_session import (
             create_acquisition_session,
             get_acquisition_session,
@@ -74,8 +91,14 @@ class AcquisitionCoordinatorTests(TempPostgresMixin, unittest.IsolatedAsyncioTes
             downloader_type="open115", movie_id="DONE-1",
         )
         update_task_status(task_id, "finalizing")
+        candidate = upsert_download_candidate(content_id="DONE-1", source="acquisition")
         session = create_acquisition_session(movie_id="DONE-1", trigger="user")
-        update_acquisition_session(session["id"], status="finalizing", download_task_id=task_id)
+        update_acquisition_session(
+            session["id"],
+            status="finalizing",
+            download_task_id=task_id,
+            candidate_id=candidate["id"],
+        )
 
         async def fake_poll(tid):
             update_task_status(tid, "completed")
@@ -86,6 +109,7 @@ class AcquisitionCoordinatorTests(TempPostgresMixin, unittest.IsolatedAsyncioTes
 
         synced = get_acquisition_session(session["id"])
         self.assertEqual(synced["status"], "ready")
+        self.assertEqual(get_download_candidate(candidate["id"])["status"], "completed")
 
 
 if __name__ == "__main__":

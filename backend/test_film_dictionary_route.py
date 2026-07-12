@@ -124,7 +124,7 @@ def test_completeness_summary_classifies_gaps(client, monkeypatch):
         {"content_id": "gap00003", "dvd_id": "GAP-003", "status": "candidate", "magnet": ""},
     ]
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: candidates)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"owned00001"})
 
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
@@ -157,7 +157,7 @@ def test_completeness_adds_metadata_gap_and_cover(client, monkeypatch):
                      "label_name": "", "series_name": "", "category_names": []},
     }
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"full00001", "gap00002"})
 
@@ -195,7 +195,7 @@ def test_completeness_emits_funnel_stage_and_summary(client, monkeypatch):
                      "series_name": "", "category_names": []},
     }
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"ok00001"})
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
@@ -220,7 +220,7 @@ def test_completeness_metadata_complete_decoupled_from_owned(client, monkeypatch
     fields = {"free00009": {"cover_url": "https://x/c.jpg", "runtime_mins": 100, "maker_name": "M",
                             "label_name": "L", "series_name": "S", "category_names": ["a"]}}
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
@@ -242,7 +242,7 @@ def test_optional_label_and_series_gaps_do_not_block_acquisition(client, monkeyp
         "category_names": ["総集編"],
     }}
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
@@ -304,7 +304,7 @@ def test_completeness_funnel_maps_acquisition_substatus(client, monkeypatch):
         {"content_id": "ft00002", "dvd_id": "FT-002", "status": "sent", "magnet": ""},
     ]
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: candidates)
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())

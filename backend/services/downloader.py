@@ -258,9 +258,18 @@ class DownloaderService:
         session = get_session_by_download_task(task_id)
         if not session:
             return
+        candidate_id = session.get("candidate_id")
         status = task.get("status")
         if status == "completed":
             update_acquisition_session(session["id"], status="ready")
+            if candidate_id:
+                from database.download_candidate import set_download_candidate_status
+
+                set_download_candidate_status(
+                    candidate_id,
+                    "completed",
+                    download_task_id=task_id,
+                )
         elif status == "failed":
             from services.candidate_processor import classify_candidate_error
 
@@ -271,6 +280,15 @@ class DownloaderService:
                 error_code=info.get("error_category"),
                 error_msg=task.get("error_msg"),
             )
+            if candidate_id:
+                from database.download_candidate import set_download_candidate_status
+
+                set_download_candidate_status(
+                    candidate_id,
+                    "failed",
+                    download_task_id=task_id,
+                    error_msg=task.get("error_msg"),
+                )
         elif status in {"finalizing", "downloading"} and session.get("status") != status:
             update_acquisition_session(session["id"], status=status)
 

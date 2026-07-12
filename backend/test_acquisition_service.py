@@ -34,6 +34,7 @@ class AcquisitionServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCas
         self.assertIsNone(get_active_session_for_movie("HAVE-1"))  # no session created
 
     async def test_repeated_clicks_reuse_session_no_double_offline(self):
+        from database import get_download_candidate
         from services import acquisition
 
         submit = AsyncMock(return_value=777)
@@ -46,6 +47,9 @@ class AcquisitionServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCas
         self.assertEqual(r1["session"]["status"], "downloading")
         self.assertEqual(r1["session"]["download_task_id"], 777)
         self.assertEqual(submit.await_count, 1)  # not re-submitted on the second click
+        candidate = get_download_candidate(r1["session"]["candidate_id"])
+        self.assertEqual(candidate["status"], "sent")
+        self.assertEqual(candidate["download_task_id"], 777)
 
     async def test_weak_match_does_not_auto_submit(self):
         from services import acquisition
