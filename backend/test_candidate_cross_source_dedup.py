@@ -10,6 +10,37 @@ from test_support.postgres import TempPostgresMixin
 
 
 class CrossSourceDedupTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_completeness_lookup_includes_global_and_other_actress_candidates(self):
+        from database import upsert_download_candidate
+        from database.download_candidate import list_download_candidate_states_by_actress
+
+        other_actress = upsert_download_candidate(
+            content_id="SIVR-438",
+            dvd_id="SIVR-438",
+            actress_id=202,
+            source="subscription",
+        )
+        acquisition = upsert_download_candidate(
+            content_id="JUR-418",
+            actress_id=None,
+            source="acquisition",
+        )
+        upsert_download_candidate(
+            content_id="UNRELATED-1",
+            actress_id=303,
+            source="subscription",
+        )
+
+        rows = list_download_candidate_states_by_actress(
+            101,
+            {"sivr_438", "jur-418"},
+        )
+
+        self.assertEqual(
+            {row["id"] for row in rows},
+            {other_actress["id"], acquisition["id"]},
+        )
+
     async def test_second_source_skips_when_sibling_already_sent(self):
         from database import set_download_candidate_status, upsert_download_candidate
         from services.candidate_processor import process_candidate

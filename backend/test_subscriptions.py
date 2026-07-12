@@ -66,6 +66,7 @@ class SubscriptionServiceTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCas
 
         with patch.object(subscription, "start_acquisition", new=AsyncMock()) as start, \
              patch.object(subscription, "update_last_check") as update_last_check, \
+             patch.object(subscription, "_subscription_auto_acquire_enabled", return_value=True), \
              patch("services.supplement_autopilot.ensure_actress_supplement", new=AsyncMock()):
             result = await subscription._run_subscription_check(sub, pipeline)
 

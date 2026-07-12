@@ -75,6 +75,7 @@ export default {
     activeFilters: { status: '', source: '', error_provider: '', error_reason: '', q: '', quality: '' },
     supplementStatus: null, supplementPolling: null, refreshNonce: 0,
     movieSummary: { total: 0, movies: [], fieldGapCount: 0, pendingCandidateCount: 0, detailTargetCount: 0 },
+    jobSummary: { total: 0, running: 0, queued: 0, succeeded: 0, failed: 0 },
     sourceSummary: { count: 0, degraded: false },
     actorSummary: { total: 0 },
     hasInitialized: false, wasDeactivated: false, lastAppliedRouteKey: '',
@@ -87,7 +88,10 @@ export default {
       return original && original !== this.actorContextName ? original : ''
     },
     actorContextAvatar() { return this.actorAvatar(this.actorContext) },
-    isSupplementRunning() { return ['running', 'queued'].includes(this.supplementStatus?.last_job?.status) },
+    isSupplementRunning() {
+      return this.jobSummary.running > 0 || this.jobSummary.queued > 0
+        || ['running', 'queued'].includes(this.supplementStatus?.last_job?.status)
+    },
     activeTabComponent() {
       return { actors: 'ActorsTab', movies: 'MoviesTab', jobs: 'JobsTab', sourceHealth: 'SourcesHealthTab' }[this.activeTab] || 'ActorsTab'
     },
@@ -99,7 +103,11 @@ export default {
       return [
         { key: 'actors', label: '待补全演员', count: this.actorSummary.total, status: this.actorContext ? '已锁定演员' : '订阅池', nextStep: '选演员补全' },
         { key: 'movies', label: '待补全作品', count: this.movieSummary.total, status: f.quality || f.q ? '已筛选' : '字段池', nextStep: '先补字段' },
-        { key: 'jobs', label: '任务队列', count: s?.last_job?.id ? 1 : 0, status: this.statusLabel(s?.last_job?.status), nextStep: '查看任务' },
+        {
+          key: 'jobs', label: '任务队列', count: this.jobSummary.total,
+          status: this.jobSummary.running ? `${this.jobSummary.running} 运行中` : this.jobSummary.queued ? `${this.jobSummary.queued} 排队中` : this.statusLabel(s?.last_job?.status),
+          nextStep: '查看任务',
+        },
         { key: 'sourceHealth', label: '来源健康', count: this.sourceSummary.count, status: this.sourceSummary.degraded ? '来源异常' : '来源池', nextStep: '查看降级来源' },
       ]
     },
@@ -258,6 +266,7 @@ export default {
     },
     handleSummaryChange(summary) {
       if ('actorsTotal' in summary) { this.actorSummary = { total: summary.actorsTotal }; return }
+      if (summary.jobs) { this.jobSummary = { ...this.jobSummary, ...summary }; return }
       if (summary.movies) this.movieSummary = { ...this.movieSummary, ...summary }
       else this.sourceSummary = { ...this.sourceSummary, ...summary }
     },

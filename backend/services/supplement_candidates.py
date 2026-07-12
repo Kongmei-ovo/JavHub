@@ -11,6 +11,81 @@ from database import (
 from modules.code_matcher import video_code
 
 
+def generate_download_candidates_from_catalog(
+    films: list[dict],
+    *,
+    actress_id: int,
+    actress_name: str = "",
+    canonical_number: str = "",
+    limit: int | None = None,
+) -> dict:
+    """Bridge the canonical actress dictionary into the candidate queue.
+
+    The catalog's acquisition stage contains native *and* supplement-only
+    films.  Using ``supplement_movies`` as the source here silently drops every
+    canonical-only native work, so this bridge consumes the same completeness
+    snapshot that produced the UI count.
+    """
+    wanted = "".join(ch for ch in str(canonical_number or "").upper() if ch.isalnum())
+    selected: list[dict] = []
+    for film in films or []:
+        if film.get("funnel_stage") != "find_source":
+            continue
+        normalized = "".join(
+            ch for ch in str(film.get("canonical_number") or "").upper() if ch.isalnum()
+        )
+        if wanted and normalized != wanted:
+            continue
+        selected.append(film)
+        if limit and len(selected) >= limit:
+            break
+
+    stats = {
+        "checked": len(selected),
+        "created": 0,
+        "existing": 0,
+        "skipped": 0,
+        "candidate_ids": [],
+    }
+    for film in selected:
+        existing_ids = [int(value) for value in film.get("candidate_ids") or [] if value]
+        if existing_ids:
+            stats["existing"] += 1
+            stats["candidate_ids"].extend(existing_ids)
+            continue
+
+        canonical = str(film.get("canonical_number") or "").strip()
+        if not canonical or is_video_exempt(canonical):
+            stats["skipped"] += 1
+            continue
+        candidate = upsert_candidate_from_video(
+            video={
+                "content_id": canonical,
+                "dvd_id": film.get("display_code") or canonical,
+                "title": film.get("title") or canonical,
+                "release_date": film.get("release_date"),
+                "jacket_thumb_url": film.get("cover_url"),
+            },
+            actress_id=actress_id,
+            actress_name=actress_name,
+            source="supplement",
+            reason="catalog_acquisition_gap",
+            return_insert_status=True,
+        )
+        inserted = bool(candidate.pop("was_inserted", False))
+        stats["created" if inserted else "existing"] += 1
+        if candidate.get("id"):
+            stats["candidate_ids"].append(int(candidate["id"]))
+        if inserted:
+            add_download_candidate_event(
+                candidate["id"],
+                "catalog_imported",
+                f"canonical_number={canonical}",
+                "system",
+            )
+    return stats
+
+
 def supplement_movie_to_video(movie: dict) -> dict:
     content_id = (
         movie.get("matched_content_id")

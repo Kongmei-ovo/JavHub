@@ -29,6 +29,7 @@ from database.acquisition_session import (
 from database.download import get_download_task
 from database.download_candidate import (
     get_download_candidate,
+    set_download_candidate_status,
     update_download_candidate_magnet_alternatives,
     upsert_download_candidate,
 )
@@ -104,6 +105,13 @@ async def _submit_session(session_id: int, code: str, title: str, magnet: str) -
     task_id = await downloader_service.create_download_task(
         code, title, magnet, downloader_id=_resolve_open115_downloader_id()
     )
+    session = get_acquisition_session(session_id)
+    if session and session.get("candidate_id"):
+        set_download_candidate_status(
+            session["candidate_id"],
+            "sent",
+            download_task_id=task_id,
+        )
     updated = update_acquisition_session(
         session_id, status="downloading", download_task_id=task_id
     )

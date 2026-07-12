@@ -199,41 +199,12 @@ test('JobsTab no longer hosts the gfriends avatar override job (lives in /system
   assert.doesNotMatch(source, /loadGfriendsAvatarJob/)
 })
 
-test('JobsTab listens to supplement SSE jobs and updates the visible queue', async (t) => {
-  const { nextTick } = await mountJobsTab(t)
-  await waitFor(() => MockEventSource.instances.length === 1, 'JobsTab should open one supplement EventSource', { nextTick })
-
-  const stream = MockEventSource.instances[0]
-  assert.equal(stream.url, '/api/v1/jobs/stream?kind=supplement')
-
-  stream.pushJob({
-    id: 21,
-    kind: 'supplement',
-    label: 'supplement pipeline',
-    status: 'running',
-    progress: 37,
-    source_actor_name: 'Alice',
-  })
-  await waitFor(() => document.body.textContent.includes('37%'), 'JobsTab should render running supplement job progress', { nextTick })
-
-  stream.pushJob({
-    id: 21,
-    kind: 'supplement',
-    label: 'supplement pipeline',
-    status: 'succeeded',
-    progress: 100,
-    source_actor_name: 'Alice',
-  })
-  await waitFor(() => document.body.textContent.includes('100%'), 'JobsTab should render completed supplement job progress', { nextTick })
-})
-
-test('JobsTab reconnects the supplement SSE stream after a disconnect', async (t) => {
-  const { nextTick } = await mountJobsTab(t)
-  await waitFor(() => MockEventSource.instances.length === 1, 'JobsTab should open a supplement EventSource', { nextTick })
-
-  MockEventSource.instances[0].emit('error', new Event('error'))
-  assert.equal(MockEventSource.instances[0].closeCalled, true)
-
-  await waitFor(() => MockEventSource.instances.length === 2, 'JobsTab should reconnect after the 1s backoff', { timeout: 1300, nextTick })
-  assert.equal(MockEventSource.instances[1].url, '/api/v1/jobs/stream?kind=supplement')
+test('JobsTab polls the real supplement queue without overlapping requests', () => {
+  assert.doesNotMatch(source, /jobs\/stream\?kind=supplement/)
+  assert.match(source, /scheduleJobsPoll/)
+  assert.match(source, /pollJobs/)
+  assert.match(source, /jobsPollInFlight/)
+  assert.match(source, /hasActiveSupplementJobs\(\) \? 2000 : 15000/)
+  assert.match(source, /skipCounts: jobsPollCycle % 4 !== 0/)
+  assert.match(source, /stopJobsPoll/)
 })

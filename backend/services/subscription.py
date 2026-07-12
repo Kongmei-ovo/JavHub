@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
+from config import config
+
 from database import (
     candidate_content_id,
     candidate_title,
@@ -28,6 +30,19 @@ logger = logging.getLogger(__name__)
 
 VALID_SUBSCRIPTION_SCOPES = {"actress", "maker", "series", "label"}
 SUBSCRIPTION_CONCURRENCY = 8
+
+
+def _subscription_auto_acquire_enabled(sub: dict) -> bool:
+    """Only the explicit full-auto policy may bypass the candidate queue.
+
+    Previously every fresh release called ``start_acquisition(auto=True)`` even
+    when the subscription explicitly disabled auto-download and the global
+    policy was manual. Treating ``rules`` as full-auto was also unsafe: it
+    bypassed candidate source rules, magnet requirements, and per-run/24h
+    quotas. Under ``rules`` the release stays a subscription candidate and the
+    normal scheduled candidate processor applies those controls.
+    """
+    return bool(sub.get("auto_download")) and config.automation_download_policy == "auto"
 
 
 def _parse_timestamp(value) -> datetime | None:
@@ -212,6 +227,7 @@ async def _run_subscription_check(
         return result
 
     new_codes = filter_new_against_baseline(sub_id, all_codes)
+    auto_acquire = _subscription_auto_acquire_enabled(sub)
 
     candidates: list[dict] = []
     new_movies: list[dict] = []
@@ -223,7 +239,7 @@ async def _run_subscription_check(
             and baseline_at is not None
             and release_date > baseline_at
         )
-        if is_fresh:
+        if is_fresh and auto_acquire:
             # Truly new release → auto-acquire, but never double-spend an offline
             # slot: skip if a resource is already ready or a session is active.
             if code_has_ready_resource(code):
@@ -239,7 +255,9 @@ async def _run_subscription_check(
                 )
                 stats["created"] += 1
         else:
-            # Dateless or older-than-baseline → human candidate only, no auto offline.
+            # Manual policy/disabled auto-download, dateless, or older than the
+            # baseline: keep the release visible as a human candidate and never
+            # spend an offline slot implicitly.
             candidates.append(
                 upsert_candidate_from_video(
                     video=video,

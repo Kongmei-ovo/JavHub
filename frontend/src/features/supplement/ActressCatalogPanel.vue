@@ -15,15 +15,15 @@
       <template #meters>
         <div class="hero-meter">
           <div class="hm-top">
-            <span class="hm-label">收藏 <small>已入库</small></span>
+            <span class="hm-label">媒体库 <small>115 已有</small></span>
             <span class="hm-val"><b>{{ ownedCount }}</b> / {{ totalFilms }}</span>
           </div>
           <div class="cmp-bar collect"><i :style="{ width: collectPct }"></i></div>
         </div>
         <div class="hero-meter">
           <div class="hm-top">
-            <span class="hm-label">待办 <small>字段 / 下载源</small></span>
-            <span class="hm-val"><b>{{ fieldsCount }}</b> 缺字段 · <b>{{ sourcesCount }}</b> 待入库</span>
+            <span class="hm-label">待办 <small>资料 / 获取</small></span>
+            <span class="hm-val"><b>{{ fieldsCount }}</b> 待补资料 · <b>{{ sourcesCount }}</b> 待获取</span>
           </div>
           <div class="cmp-bar meta"><i :style="{ width: donePct }"></i></div>
         </div>
@@ -72,11 +72,11 @@
 
         <transition name="fp">
           <div v-if="filterOpen" class="filter-panel" role="dialog" aria-label="作品筛选">
-            <!-- 影片目录：来源 / 入库 / 时间 -->
+            <!-- 影片目录：资料来源 / 媒体库 / 时间 -->
             <template v-if="stage === 'collection'">
               <div class="fp-row">
-                <span class="fp-label">来源</span>
-                <div class="stage-seg fp-seg" role="group" aria-label="来源筛选">
+                <span class="fp-label">资料来源</span>
+                <div class="stage-seg fp-seg" role="group" aria-label="资料来源筛选">
                   <button
                     v-for="opt in originOptions" :key="opt.key" type="button"
                     :class="{ active: originFilter === opt.key }" @click="originFilter = opt.key"
@@ -84,8 +84,8 @@
                 </div>
               </div>
               <div class="fp-row">
-                <span class="fp-label">入库</span>
-                <div class="stage-seg fp-seg" role="group" aria-label="入库筛选">
+                <span class="fp-label">媒体库</span>
+                <div class="stage-seg fp-seg" role="group" aria-label="媒体库筛选">
                   <button
                     v-for="opt in ownedOptions" :key="opt.key" type="button"
                     :class="{ active: ownedFilter === opt.key }" @click="ownedFilter = opt.key"
@@ -147,13 +147,13 @@ import GlassSelect from '../../components/GlassSelect.vue'
 
 const ORIGIN_OPTIONS = [
   { key: 'all', label: '全部' },
-  { key: 'native', label: '正片' },
-  { key: 'supplement', label: '私拍' },
+  { key: 'native', label: 'DMM收录' },
+  { key: 'supplement', label: '补充源独有' },
 ]
 const OWNED_OPTIONS = [
   { key: 'all', label: '全部' },
-  { key: 'owned', label: '已入库' },
-  { key: 'not', label: '未入库' },
+  { key: 'owned', label: '115已有' },
+  { key: 'not', label: '115未有' },
 ]
 
 function normNumber(value) {

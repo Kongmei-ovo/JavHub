@@ -4,14 +4,13 @@ from typing import Any
 from fastapi import APIRouter, Query
 from modules.info_client import _transform_jacket_url, get_info_client
 from routers._query import qv
-from services.supplement_candidates import generate_download_candidates_from_supplement
+from services.supplement_candidates import (
+    generate_download_candidates_from_catalog,
+    generate_download_candidates_from_supplement,
+)
 from translations import get_translator_service
 
 logger = logging.getLogger(__name__)
-
-# Keep strong refs to detached background tasks so the event loop can't GC them
-# mid-flight (an asyncio footgun that would silently drop pending enqueues).
-_BACKGROUND_TASKS: set[Any] = set()
 
 router = APIRouter(prefix="/api/v1/supplement", tags=["supplement"])
 
@@ -281,6 +280,37 @@ async def create_download_candidates_from_supplement(
     return {"status": "ok", **result}
 
 
+@router.post("/actresses/{actress_id}/candidates")
+async def create_download_candidates_from_actress_catalog(
+    actress_id: int,
+    actress_name: str = Query(""),
+    canonical_number: str = Query(""),
+    limit: int | None = Query(None, ge=1, le=5000),
+) -> dict[str, Any]:
+    """Create candidates from the canonical funnel shown in the actress UI.
+
+    Unlike ``/movies/candidates``, this includes native catalog films that do
+    not yet have a ``supplement_movies`` row, so the displayed source-stage
+    count and the batch action operate on the same set.
+    """
+    import asyncio
+
+    from routers.film_dictionary import get_actress_completeness
+
+    # A batch action must use the current funnel, not a response cached before
+    # the previous job/candidate transition.
+    data = await get_actress_completeness(actress_id, cache_control="0")
+    result = await asyncio.to_thread(
+        generate_download_candidates_from_catalog,
+        data.get("films") or [],
+        actress_id=actress_id,
+        actress_name=qv(actress_name) or "",
+        canonical_number=qv(canonical_number) or "",
+        limit=qv(limit),
+    )
+    return {"status": "ok", **result}
+
+
 @router.post("/movies/{movie_id}/match")
 async def match_movie(movie_id: int, body: dict[str, Any]) -> dict[str, Any]:
     client = get_info_client()
@@ -460,19 +490,16 @@ async def enrich_actress_fields(
     """一键补字段：为该演员所有「缺字段」(funnel_stage=meta_gap) 的 canonical 番号
     各排一个蛋源 detail job（默认全部源），免去补全页字段阶段逐部点「补字段」。
 
-    番号来自 completeness（与字段阶段所见同源），按番号入队——与单部「补字段」
-    完全同一路径，故正片/私拍、有无蛋源草稿都覆盖。任务在后台逐个入队（JavInfoApi
-    侧对 active job 去重，重复触发安全），立即返回排期数量，避免阻塞请求。
+    番号来自 completeness（与字段阶段所见同源），一次提交给 JavInfoApi 的持久队列。
+    只有所有 queued/existing 结果确认落库后才返回，避免 Web 进程重启或快速刷新时
+    丢掉尚未发送的后半批任务。
     """
-    import asyncio
-
     from routers.film_dictionary import get_actress_completeness
 
     src = qv(source) or "all"
     lim = qv(limit)
 
-    loop = asyncio.get_running_loop()
-    data = await loop.run_in_executor(None, get_actress_completeness, actress_id)
+    data = await get_actress_completeness(actress_id, cache_control="0")
     numbers = [
         film["canonical_number"]
         for film in (data.get("films") or [])
@@ -481,21 +508,19 @@ async def enrich_actress_fields(
     if lim:
         numbers = numbers[:lim]
 
-    if numbers:
-        client = get_info_client()
+    if not numbers:
+        return {"requested": 0, "scheduled": 0, "queued": 0, "existing": 0, "skipped": 0, "job_ids": []}
 
-        async def run() -> None:
-            for number in numbers:
-                try:
-                    await client.proxy_post(
-                        "/api/v1/supplement/movies/detail/jobs",
-                        params={"source": src, "source_movie_id": number, "actress_id": actress_id},
-                    )
-                except Exception as exc:  # noqa: BLE001 — 单部入队失败不应中断整批
-                    logger.warning("field enrich enqueue failed for %s: %s", number, exc)
-
-        task = loop.create_task(run())
-        _BACKGROUND_TASKS.add(task)
-        task.add_done_callback(_BACKGROUND_TASKS.discard)
-
-    return {"scheduled": len(numbers)}
+    result = await get_info_client().proxy_post(
+        "/api/v1/supplement/movies/detail/jobs/batch",
+        json_body={"source_movie_ids": numbers, "actress_id": actress_id},
+        params={"source": src},
+    )
+    queued = int(result.get("queued") or 0)
+    return {
+        "requested": len(numbers),
+        # Backwards-compatible response key; unlike the old implementation it
+        # now counts jobs confirmed as newly queued rather than merely observed.
+        "scheduled": queued,
+        **result,
+    }

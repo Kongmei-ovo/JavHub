@@ -92,6 +92,24 @@ def test_classify_film_status_tiers():
     assert fd.classify_film_status(False, []) == "needs_magnet"
 
 
+def test_candidate_indexes_keep_cross_source_siblings():
+    candidates = [
+        {"id": 1, "content_id": "jur00418", "dvd_id": "JUR-418", "status": "candidate", "magnet": ""},
+        {"id": 2, "content_id": "JUR-418", "dvd_id": "JUR-418", "status": "sent", "magnet": "magnet:?xt=2"},
+    ]
+    by_cid, by_number = fd._build_candidate_indexes(candidates)
+    film = resolver.ResolvedFilm(
+        canonical_number="JUR-418",
+        display_code="JUR-418",
+        members=[resolver.ResolvedFilmMember(content_id="jur00418", dvd_id="JUR-418", service_code="digital")],
+    )
+
+    matched = fd._match_film_candidates(film, by_cid, by_number)
+
+    assert {candidate["id"] for candidate in matched} == {1, 2}
+    assert fd.classify_film_status(False, matched) == "in_progress"
+
+
 def test_completeness_summary_classifies_gaps(client, monkeypatch):
     rows = [
         {"content_id": "owned00001", "dvd_id": "OWN-001", "service_code": "digital",
@@ -106,7 +124,7 @@ def test_completeness_summary_classifies_gaps(client, monkeypatch):
         {"content_id": "gap00003", "dvd_id": "GAP-003", "status": "candidate", "magnet": ""},
     ]
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: candidates)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"owned00001"})
 
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
@@ -139,7 +157,7 @@ def test_completeness_adds_metadata_gap_and_cover(client, monkeypatch):
                      "label_name": "", "series_name": "", "category_names": []},
     }
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"full00001", "gap00002"})
 
@@ -177,7 +195,7 @@ def test_completeness_emits_funnel_stage_and_summary(client, monkeypatch):
                      "series_name": "", "category_names": []},
     }
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"ok00001"})
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
@@ -202,7 +220,7 @@ def test_completeness_metadata_complete_decoupled_from_owned(client, monkeypatch
     fields = {"free00009": {"cover_url": "https://x/c.jpg", "runtime_mins": 100, "maker_name": "M",
                             "label_name": "L", "series_name": "S", "category_names": ["a"]}}
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: [])
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
@@ -210,6 +228,62 @@ def test_completeness_metadata_complete_decoupled_from_owned(client, monkeypatch
     film = body["films"][0]
     assert film["metadata_complete"] is True
     assert film["funnel_stage"] == "find_source"
+
+
+def test_optional_label_and_series_gaps_do_not_block_acquisition(client, monkeypatch):
+    rows = [{"content_id": "comp00001", "dvd_id": "COMP-001", "service_code": "digital",
+             "release_date": "2024-01-01", "data_origin": "native", "actress_ids": [5]}]
+    fields = {"comp00001": {
+        "cover_url": "https://x/c.jpg",
+        "runtime_mins": 240,
+        "maker_name": "M",
+        "label_name": "",
+        "series_name": "",
+        "category_names": ["総集編"],
+    }}
+    monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
+    monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
+    monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
+    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
+
+    body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
+    film = body["films"][0]
+    assert film["metadata_missing"] == ["label", "series"]
+    assert film["metadata_blocking_missing"] == []
+    assert film["metadata_optional_missing"] == ["label", "series"]
+    assert film["metadata_complete"] is True
+    assert film["funnel_stage"] == "find_source"
+    assert body["summary"]["stage_fields"] == 0
+    assert body["summary"]["stage_sources"] == 1
+
+
+def test_resolved_fields_fill_only_native_gaps():
+    native = {
+        "cover_url": "https://catalog/cover.jpg",
+        "runtime_mins": None,
+        "maker_name": "Catalog maker",
+        "label_name": "",
+        "series_name": "",
+        "category_names": ["Drama"],
+    }
+    resolved = {
+        "cover_url": "https://provider/cover.jpg",
+        "runtime_mins": 123,
+        "maker_name": "Provider maker",
+        "label_name": "Provider label",
+        "series_name": "Provider series",
+        "category_names": ["Provider category"],
+    }
+
+    merged = fd._merge_field_rows(native, resolved)
+
+    assert merged["cover_url"] == "https://catalog/cover.jpg"
+    assert merged["maker_name"] == "Catalog maker"
+    assert merged["category_names"] == ["Drama"]
+    assert merged["runtime_mins"] == 123
+    assert merged["label_name"] == "Provider label"
+    assert merged["series_name"] == "Provider series"
 
 
 def test_completeness_funnel_maps_acquisition_substatus(client, monkeypatch):
@@ -230,7 +304,7 @@ def test_completeness_funnel_maps_acquisition_substatus(client, monkeypatch):
         {"content_id": "ft00002", "dvd_id": "FT-002", "status": "sent", "magnet": ""},
     ]
     monkeypatch.setattr(fd, "_fetch_actress_catalog_rows", lambda aid: rows)
-    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid: candidates)
+    monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: candidates)
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
     monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())

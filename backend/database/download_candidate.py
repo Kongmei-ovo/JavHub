@@ -361,6 +361,54 @@ def list_download_candidates(
     return _enrich_candidate_rows(rows)
 
 
+def list_download_candidate_states_by_actress(
+    actress_id: int,
+    content_keys: list[str] | tuple[str, ...] | set[str] | None = None,
+) -> list[dict]:
+    """Lightweight candidate state snapshot for an actress's catalog.
+
+    Completeness needs only identity/status/magnet fields. Reusing the paged UI
+    reader truncated actresses above 2,000 rows and performed unrelated latest
+    event/download-task lookups for every candidate. ``content_keys`` also
+    brings in matching global/acquisition rows and candidates currently linked
+    to another actress. This matters for multi-actress works: the legacy table
+    stores one ``actress_id`` per candidate, while ownership and acquisition are
+    movie-level facts shared by every actress in the cast.
+    """
+    normalized_keys = sorted(
+        {
+            "".join(ch for ch in str(value or "").upper() if ch.isalnum())
+            for value in (content_keys or [])
+            if str(value or "").strip()
+        }
+        - {""}
+    )
+    with get_db() as conn:
+        cursor = conn.cursor()
+        _ensure_magnet_score_column(cursor)
+        where = ["actress_id = ?"]
+        params: list[Any] = [actress_id]
+        if normalized_keys:
+            placeholders = ",".join("?" for _ in normalized_keys)
+            where.extend(
+                [
+                    f"UPPER(REGEXP_REPLACE(COALESCE(content_id, ''), '[^A-Za-z0-9]', '', 'g')) IN ({placeholders})",
+                    f"UPPER(REGEXP_REPLACE(COALESCE(dvd_id, ''), '[^A-Za-z0-9]', '', 'g')) IN ({placeholders})",
+                ]
+            )
+            params.extend(normalized_keys)
+            params.extend(normalized_keys)
+        cursor.execute(
+            f'''
+            SELECT id, content_id, dvd_id, status, magnet, magnet_alternatives
+            FROM download_candidates
+            WHERE ({" OR ".join(where)})
+            ''',
+            params,
+        )
+        return [_candidate_row(row) for row in cursor.fetchall()]
+
+
 def find_sent_candidate_by_normalized_code(
     normalized_code: str,
     exclude_candidate_id: int | None = None,
