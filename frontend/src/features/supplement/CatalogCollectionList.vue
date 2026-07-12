@@ -34,16 +34,22 @@
           <span class="ml-col ml-code">番号</span>
           <span class="ml-col ml-title">片名</span>
           <span class="ml-col ml-date">出演时间</span>
-          <span class="ml-col ml-origin">来源</span>
+          <span class="ml-col ml-origin">资料来源</span>
+          <span class="ml-col ml-metadata">资料状态</span>
           <span class="ml-col ml-owned">115</span>
         </div>
         <div v-for="film in group.films" :key="film.canonical_number" class="movie-list-row">
           <span class="ml-col ml-code">{{ film.display_code || film.canonical_number }}</span>
           <span class="ml-col ml-title">{{ film.title || '—' }}</span>
           <span class="ml-col ml-date">{{ film.release_date || '—' }}</span>
-          <span class="ml-col ml-origin">{{ isSupplement(film) ? '私拍' : '正片' }}</span>
+          <span class="ml-col ml-origin">{{ isSupplement(film) ? '补充源独有' : 'DMM收录' }}</span>
+          <span class="ml-col ml-metadata">
+            <span class="metadata-badge" :class="isMetadataComplete(film) ? 'is-complete' : 'is-missing'">
+              {{ isMetadataComplete(film) ? '已补齐' : '待补齐' }}
+            </span>
+          </span>
           <span class="ml-col ml-owned">
-            <span class="owned-badge" :class="isOwned(film) ? 'is-owned' : 'not-owned'">{{ isOwned(film) ? '已入库' : '未入库' }}</span>
+            <span class="owned-badge" :class="isOwned(film) ? 'is-owned' : 'not-owned'">{{ isOwned(film) ? '已有' : '未有' }}</span>
           </span>
         </div>
       </div>
@@ -68,6 +74,7 @@ export default {
   emits: ['recompute', 'clear-filters'],
   methods: {
     isOwned(film) { return film.funnel_stage === 'complete' || film.status === 'owned' || film.stage === 'complete' },
+    isMetadataComplete(film) { return film.metadata_complete === true },
     isSupplement(film) { return film.origin === 'supplement' },
   },
 }
@@ -79,15 +86,18 @@ export default {
 
 /* ---- year list ----------------------------------------------------------- */
 /* 同心圆角:容器 16(radius-lg) − 内边距 8 = 8,与行 .movie-list-row 的 8px 平行 */
-.movie-list { display: grid; gap: 2px; background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius-lg); padding: 6px 8px; }
-.movie-list-head, .movie-list-row { display: grid; grid-template-columns: 130px 1fr 110px 64px 96px; gap: 12px; align-items: center; padding: 8px 10px; }
+.movie-list { display: grid; gap: 2px; overflow-x: auto; background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius-lg); padding: 6px 8px; }
+.movie-list-head, .movie-list-row { display: grid; grid-template-columns: 118px minmax(240px, 1fr) 100px 92px 76px 72px; gap: 12px; min-width: 720px; align-items: center; padding: 8px 10px; }
 .movie-list-head { font-size: var(--type-caption-1); color: var(--text-muted); border-bottom: 1px solid var(--hairline); }
 .movie-list-row { border-radius: 8px; }
 .movie-list-row:hover { background: var(--card-hover); }
 .ml-col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--type-callout); }
 .ml-title { color: var(--text-secondary); }
 .ml-origin { color: var(--text-muted); }
+.metadata-badge,
 .owned-badge { font-size: var(--type-caption-1); padding: 2px 8px; border-radius: 999px; }
+.metadata-badge.is-complete { background: rgba(var(--info-rgb), 0.13); color: var(--info); }
+.metadata-badge.is-missing { background: rgba(var(--warn-rgb), 0.15); color: var(--warn); }
 .owned-badge.is-owned { background: rgba(var(--ok-rgb), 0.16); color: var(--ok); }
 .owned-badge.not-owned { background: var(--card-2); color: var(--text-muted); }
 .year-header { display: flex; align-items: baseline; gap: 10px; margin: 14px 2px 6px; }

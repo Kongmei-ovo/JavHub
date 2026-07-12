@@ -77,6 +77,29 @@ def test_supplement_origin_and_actress_union():
     assert films[0].members[0].content_id in {"FC2-PPV-998877", "FC2PPV998877"}
 
 
+def test_native_origin_wins_when_avbase_rediscovers_same_film():
+    rows = [
+        {
+            "content_id": "juq00035",
+            "dvd_id": "JUQ-035",
+            "service_code": "digital",
+            "data_origin": "native",
+        },
+        {
+            "content_id": "JUQ-35",
+            "dvd_id": "JUQ-35",
+            "service_code": "supplement",
+            "data_origin": "supplement",
+        },
+    ]
+
+    films = resolve_rows_to_films(rows)
+
+    assert len(films) == 1
+    assert films[0].origin == "native"
+    assert {member.service_code for member in films[0].members} == {"digital", "supplement"}
+
+
 def test_overlay_owned_marks_canonical_when_any_member_ready(monkeypatch):
     rows = [
         {"content_id": "umso00533", "dvd_id": "UMSO-533", "service_code": "digital"},

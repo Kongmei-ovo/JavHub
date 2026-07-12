@@ -110,6 +110,11 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
     seen_members: dict[str, set[str]] = {}
 
     for original, item in zip(movie_rows, enriched):
+        row_origin = (
+            "supplement"
+            if str(original.get("data_origin") or "").strip() == "supplement"
+            else "native"
+        )
         # ``enrich_video_variants`` uses title evidence to collapse store-only
         # TK/BTK and physical-media editions. Re-resolving their dvd_id here
         # without the title used to undo that decision. For ordinary digital
@@ -140,7 +145,7 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
             film = ResolvedFilm(
                 canonical_number=canonical_code,
                 display_code=canonical_code,
-                origin="native",
+                origin=row_origin,
             )
             films[bucket] = film
             seen_members[bucket] = set()
@@ -176,12 +181,16 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
         if release and (film.release_date is None or release < film.release_date):
             film.release_date = release
 
-        # Actress union + supplement origin.
+        # Actress union + source origin. Native/DMM membership wins: AVBase can
+        # enrich or rediscover a work that already exists in the bundled DMM
+        # catalog, but that must not turn the whole canonical film into a
+        # supplement-only item. Only films whose every row is supplement remain
+        # ``supplement``.
         for aid in original.get("actress_ids") or []:
             if aid not in film.actress_ids:
                 film.actress_ids.append(aid)
-        if str(original.get("data_origin") or "").strip() == "supplement":
-            film.origin = "supplement"
+        if row_origin == "native":
+            film.origin = "native"
 
     # Second pass — fold a digit-prefixed straggler (57MCSR-627) onto an existing
     # clean sibling film (MCSR-627) when that base film really exists. The base is
@@ -209,8 +218,8 @@ def resolve_rows_to_films(rows: list[dict[str, Any]]) -> list[ResolvedFilm]:
             target.title = film.title
         if film.release_date and (target.release_date is None or film.release_date < target.release_date):
             target.release_date = film.release_date
-        if film.origin == "supplement":
-            target.origin = "supplement"
+        if film.origin == "native":
+            target.origin = "native"
         del films[bkey]
 
     # Newest release first, NULL dates last; canonical_number as stable tiebreak.
