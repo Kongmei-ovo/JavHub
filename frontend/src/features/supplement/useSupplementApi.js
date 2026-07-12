@@ -188,7 +188,13 @@ export function useSupplementApi({ api = defaultApi } = {}) {
     if (!silent) catalogLoading.value = true
     catalogError.value = ''
     try {
-      const data = unwrapResponse(await api.getActressCompleteness(actressId), {})
+      // Detail jobs update supplement field rows without changing any of the
+      // catalog/candidate/ownership generations in the backend cache key. When
+      // returning from the task queue, always recompute this scoped workspace
+      // so newly filled films leave the field count immediately.
+      const data = unwrapResponse(await api.getActressCompleteness(actressId, {
+        params: { cache: '0' },
+      }), {})
       catalogSummary.value = data.summary || {}
       catalogFilms.value = (data.films || []).map(film => ({ ...film, stage: catalogStage(film) }))
     } catch (error) {

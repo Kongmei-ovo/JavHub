@@ -198,7 +198,6 @@ def test_completeness_emits_funnel_stage_and_summary(client, monkeypatch):
     monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: {"ok00001"})
-    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
 
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
     stage = {f["canonical_number"].upper().replace("-", ""): f["funnel_stage"] for f in body["films"]}
@@ -223,7 +222,6 @@ def test_completeness_metadata_complete_decoupled_from_owned(client, monkeypatch
     monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
-    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
     film = body["films"][0]
     assert film["metadata_complete"] is True
@@ -245,7 +243,6 @@ def test_optional_label_and_series_gaps_do_not_block_acquisition(client, monkeyp
     monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
-    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
 
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
     film = body["films"][0]
@@ -307,7 +304,6 @@ def test_completeness_funnel_maps_acquisition_substatus(client, monkeypatch):
     monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: candidates)
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
-    monkeypatch.setattr(resolver, "codes_in_inventory", lambda codes: set())
     body = client.get("/api/v1/film-dictionary/actresses/6/completeness").json()
     stage = {f["canonical_number"].upper().replace("-", ""): f["funnel_stage"] for f in body["films"]}
     assert stage["DL1"] == "downloadable"   # candidate w/ magnet => available => downloadable

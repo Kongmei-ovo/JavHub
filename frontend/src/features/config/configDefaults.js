@@ -9,24 +9,15 @@ export const DEFAULT_CONFIG = {
     password: '',
   },
   downloaders: { default_id: 'open115', clients: [] },
-  emby: { api_url: '', api_key: '' },
   telegram: { bot_token: '', allowed_user_ids: [] },
   scheduler: { subscription_check_hour: 2 },
   automation: {
     download_policy: 'manual',
-    candidate_sources: ['subscription', 'inventory', 'supplement'],
+    candidate_sources: ['subscription', 'supplement'],
     rules_require_magnet: true,
     auto_process_interval_minutes: 30,
     max_auto_downloads_per_run: 20,
     max_auto_downloads_per_24h: 100,
-  },
-  actor_mapping: {
-    auto_match_after_collect: true,
-    auto_confirm_policy: 'conservative',
-    candidate_per_actor: 3,
-    candidate_min_confidence: 0.55,
-    auto_confirm_confidence: 0.98,
-    auto_confirm_gap: 0.08,
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   sources: {
@@ -45,6 +36,7 @@ export const DEFAULT_CONFIG = {
     api_url: 'http://javinfoapi:18080',
     page_size: 30,
     timeout: 30,
+    supplement_worker_count: 6,
     import_db: {
       host: 'postgres',
       port: 5432,

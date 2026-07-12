@@ -21,7 +21,8 @@ const SHARED_TOKENS = {
   '--radius-pro': 'var(--radius-xl)',
   '--radius-card': '22px',
   '--radius-sheet': '28px',
-  '--radius-control': '999px',
+  '--radius-control': '12px',
+  '--radius-pill': '999px',
   '--touch-target': '40px',
 
   '--motion-fast': '140ms var(--ease-pro)',

@@ -76,7 +76,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
             content_id="SIVR-438",
             dvd_id="SIVR-438",
             title="Title",
-            source="inventory",
+            source="supplement",
         )
         magnet = {
             "magnet": "magnet:?xt=urn:btih:456",
@@ -189,7 +189,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
             content_id="SIVR-438",
             dvd_id="SIVR-438",
             title="Title",
-            source="inventory",
+            source="supplement",
         )
         item = {
             "magnet": "magnet:?xt=urn:btih:456",
@@ -334,7 +334,7 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
             content_id="SIVR-438",
             dvd_id="SIVR-438",
             title="Title",
-            source="inventory",
+            source="supplement",
         )
         source_result = {
             "magnet": "",

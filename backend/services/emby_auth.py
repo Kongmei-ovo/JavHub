@@ -45,6 +45,18 @@ def clear_compat_sessions() -> None:
         _sessions.clear()
 
 
+def forget_session(request: Any) -> None:
+    """Remove compatibility session hints associated with this client.
+
+    These hints are retained only for cleanup/backward compatibility. They are
+    deliberately not accepted as authentication credentials: clients must send
+    the signed token on every protected HTTP/WebSocket request.
+    """
+    with _session_lock:
+        for key in _session_keys(request):
+            _sessions.pop(key, None)
+
+
 def _b64encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
 
@@ -187,7 +199,7 @@ def _session_token(request: Any) -> str:
 
 
 def require_auth(request: Request, username: str, password: str) -> str:
-    token = extract_token(request) or _session_token(request)
+    token = extract_token(request)
     if not token or verify_token(token, username, password) is None:
         raise EmbyHTTPException(401, "Unauthorized", code=40101)
     remember_session(request, token)

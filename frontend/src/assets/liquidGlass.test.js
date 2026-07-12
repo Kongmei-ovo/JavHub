@@ -114,7 +114,8 @@ test('global motion and radius tokens use the shared glass contract', () => {
     '--radius-xl': '20px',
     '--radius-card': '22px',
     '--radius-sheet': '28px',
-    '--radius-control': '999px',
+    '--radius-control': '12px',
+    '--radius-pill': '999px',
   }
 
   for (const [token, value] of Object.entries(expectedSharedTokens)) {

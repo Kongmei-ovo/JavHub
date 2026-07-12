@@ -100,10 +100,6 @@ downloaders:
       default_path: ""
       tags: "javhub"
 
-emby:
-  api_url: ""
-  api_key: ""
-
 sources:
   # Optional user-owned magnet search source via Torznab-compatible apps.
   # Use a local aggregator such as Prowlarr or Jackett; do not put tracker/indexer

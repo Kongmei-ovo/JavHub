@@ -197,8 +197,8 @@ test('useSupplementApi loadCatalog maps completeness films to stages and exposes
   const { useSupplementApi } = await import(moduleUrl.href)
   const supplement = useSupplementApi({
     api: createApi({
-      getActressCompleteness: async (id) => {
-        calls.push(id)
+      getActressCompleteness: async (id, options) => {
+        calls.push([id, options])
         return {
           data: {
             summary: { owned: 1, in_progress: 0, available: 1, needs_magnet: 1, owned_complete: 0, owned_meta_gap: 1 },
@@ -215,7 +215,7 @@ test('useSupplementApi loadCatalog maps completeness films to stages and exposes
 
   await supplement.loadCatalog(5)
 
-  assert.deepEqual(calls, [5])
+  assert.deepEqual(calls, [[5, { params: { cache: '0' } }]])
   assert.equal(supplement.catalogFilms.value.length, 3)
   assert.equal(supplement.catalogFilms.value[0].stage, 'downloadable')
   assert.equal(supplement.catalogFilms.value[1].stage, 'meta_gap')

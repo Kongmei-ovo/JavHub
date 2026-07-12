@@ -91,9 +91,22 @@ for key in ("http_url", "https_url"):
 PY
 }
 
+javinfo_worker_count() {
+  ROOT_DIR="${ROOT_DIR}" "${PYTHON_BIN}" <<'PY'
+from pathlib import Path
+import os, yaml
+path = Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(os.environ["ROOT_DIR"]) / "config.yaml")
+try:
+    value = int(((yaml.safe_load(path.read_text()) or {}).get("javinfo") or {}).get("supplement_worker_count", 6))
+except Exception:
+    value = 6
+print(max(1, min(16, value)), end="")
+PY
+}
+
 write_plists() {
   mkdir -p "${LAUNCH_AGENTS_DIR}"
-  local javinfo_source_proxy_url_value javinfo_source_proxy_env
+  local javinfo_source_proxy_url_value javinfo_source_proxy_env javinfo_worker_count_value
   JAVINFO_PLIST_CHANGED=0
   BACKEND_PLIST_CHANGED=0
   FRONTEND_PLIST_CHANGED=0
@@ -115,6 +128,7 @@ write_plists() {
     cp "${FRONTEND_PLIST}" "${frontend_before}"
   fi
   javinfo_source_proxy_url_value="$(javinfo_source_proxy_url)"
+  javinfo_worker_count_value="$(javinfo_worker_count)"
   javinfo_source_proxy_env=""
   if [[ -n "${javinfo_source_proxy_url_value}" ]]; then
     local escaped_proxy_url
@@ -142,6 +156,8 @@ write_plists() {
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>SERVER_PORT</key>
     <string>8080</string>
+    <key>SUPPLEMENT_WORKER_COUNT</key>
+    <string>${javinfo_worker_count_value}</string>
 ${javinfo_source_proxy_env}
   </dict>
   <key>RunAtLoad</key>
