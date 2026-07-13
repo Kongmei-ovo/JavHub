@@ -37,12 +37,6 @@ class SourceConfigTests(unittest.TestCase):
                 "max_auto_downloads_per_run": -1,
                 "max_auto_downloads_per_24h": "bad",
             },
-            "actor_mapping": {
-                "candidate_per_actor": 99,
-                "candidate_min_confidence": "-1",
-                "auto_confirm_confidence": "bad",
-                "auto_confirm_gap": "1.5",
-            },
             "translation": {
                 "batch_concurrency": 0,
                 "batch_size": "bad",
@@ -55,10 +49,6 @@ class SourceConfigTests(unittest.TestCase):
         self.assertEqual(cfg.automation_auto_process_interval_minutes, 0)
         self.assertEqual(cfg.automation_max_auto_downloads_per_run, 0)
         self.assertEqual(cfg.automation_max_auto_downloads_per_24h, 100)
-        self.assertEqual(cfg.actor_mapping_candidate_per_actor, 10)
-        self.assertEqual(cfg.actor_mapping_candidate_min_confidence, 0.0)
-        self.assertEqual(cfg.actor_mapping_auto_confirm_confidence, 0.98)
-        self.assertEqual(cfg.actor_mapping_auto_confirm_gap, 1.0)
         self.assertEqual(cfg.translation_batch_concurrency, 32)
         self.assertEqual(cfg.translation_batch_size, 200)
         self.assertEqual(cfg.translation_batch_char_limit, 500)

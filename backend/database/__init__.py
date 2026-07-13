@@ -68,7 +68,6 @@ from database.movie_resource import (
     set_movie_resource_status,
     upsert_movie_resource,
 )
-from database.inventory_video import codes_in_inventory  # noqa: F401
 from database.acquisition_session import (
     create_acquisition_session,
     finish_acquisition_session,
@@ -125,10 +124,6 @@ from database.subscription import (
 from database.log import (
     add_log,
     get_logs,
-)
-from database.duplicates import (
-    add_ignored_duplicate,
-    is_duplicate_ignored,
 )
 from database.exempt import (
     add_exempt_video,
@@ -232,7 +227,6 @@ __all__ = [
     "delete_download_task",
     "code_has_ready_resource",
     "codes_with_ready_resource",
-    "codes_in_inventory",
     "list_ready_video_movie_ids",
     "create_acquisition_session",
     "finish_acquisition_session",
@@ -289,8 +283,6 @@ __all__ = [
     "update_subscription",
     "add_log",
     "get_logs",
-    "add_ignored_duplicate",
-    "is_duplicate_ignored",
     "add_exempt_video",
     "get_exempt_videos",
     "delete_exempt_video",

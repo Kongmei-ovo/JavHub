@@ -328,8 +328,8 @@ export default {
     return api.get(`/v1/subscriptions/status/${actressId}`)
   },
 
-  getActressCompleteness(actressId) {
-    return api.get(`/v1/film-dictionary/actresses/${actressId}/completeness`)
+  getActressCompleteness(actressId, options = {}) {
+    return api.get(`/v1/film-dictionary/actresses/${actressId}/completeness`, options)
   },
 
   // ========== 日志 ==========

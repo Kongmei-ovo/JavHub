@@ -50,8 +50,12 @@ class EmbyMediaContractTests(unittest.TestCase):
     def setUpClass(cls):
         from config import config
 
-        cls.frontend_origin = config.frontend_origin
-        cls.client = TestClient(load_main_app_without_db())
+        # CORS middleware captures the origin while main is imported. Keep that
+        # import under the same deterministic config used by the test methods so
+        # this class does not depend on which test imported main first.
+        with patch("config.config._config", EMBY_CONFIG):
+            cls.frontend_origin = config.frontend_origin
+            cls.client = TestClient(load_main_app_without_db())
 
     def setUp(self):
         self.config_patch = patch("config.config._config", EMBY_CONFIG)
@@ -204,6 +208,14 @@ class EmbyMediaContractTests(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 200)
         search.assert_not_awaited()
+
+    def test_head_rejects_unknown_115_media_source(self):
+        with patch("routers.emby_compat.get_movie_resource", return_value=None):
+            response = self.client.head(
+                "/Videos/stable:item-1/stream.mkv?MediaSourceId=open115:999",
+                headers=self.auth,
+            )
+        self.assertEqual(response.status_code, 404)
 
     def test_cors_accepts_emby_headers_and_head(self):
         response = self.client.options(

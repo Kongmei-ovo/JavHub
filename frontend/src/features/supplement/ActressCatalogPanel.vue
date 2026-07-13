@@ -76,21 +76,15 @@
             <template v-if="stage === 'collection'">
               <div class="fp-row">
                 <span class="fp-label">资料来源</span>
-                <div class="stage-seg fp-seg" role="group" aria-label="资料来源筛选">
-                  <button
-                    v-for="opt in originOptions" :key="opt.key" type="button"
-                    :class="{ active: originFilter === opt.key }" @click="originFilter = opt.key"
-                  >{{ opt.label }}</button>
-                </div>
+                <GlassSelect v-model="originFilter" :options="originSelectOptions" size="compact" placement="right" aria-label="资料来源筛选" />
               </div>
               <div class="fp-row">
                 <span class="fp-label">媒体库</span>
-                <div class="stage-seg fp-seg" role="group" aria-label="媒体库筛选">
-                  <button
-                    v-for="opt in ownedOptions" :key="opt.key" type="button"
-                    :class="{ active: ownedFilter === opt.key }" @click="ownedFilter = opt.key"
-                  >{{ opt.label }}</button>
-                </div>
+                <GlassSelect v-model="ownedFilter" :options="ownedSelectOptions" size="compact" placement="right" aria-label="媒体库筛选" />
+              </div>
+              <div class="fp-row">
+                <span class="fp-label">资料状态</span>
+                <GlassSelect v-model="metadataFilter" :options="metadataSelectOptions" size="compact" placement="right" aria-label="资料状态筛选" />
               </div>
               <div class="fp-row">
                 <span class="fp-label">时间</span>
@@ -155,6 +149,11 @@ const OWNED_OPTIONS = [
   { key: 'owned', label: '115已有' },
   { key: 'not', label: '115未有' },
 ]
+const METADATA_OPTIONS = [
+  { key: 'all', label: '全部' },
+  { key: 'complete', label: '已补齐' },
+  { key: 'missing', label: '待补全' },
+]
 
 function normNumber(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -179,7 +178,7 @@ export default {
   data() {
     return {
       search: '',
-      originFilter: 'all', ownedFilter: 'all', yearFilter: 'all',
+      originFilter: 'all', ownedFilter: 'all', metadataFilter: 'all', yearFilter: 'all',
       sourceStageFilter: 'all',
       filterOpen: false,
     }
@@ -214,8 +213,9 @@ export default {
     searchPlaceholder() {
       return this.stage === 'collection' ? '搜索番号 / 片名' : '在本阶段内搜索番号 / 片名'
     },
-    originOptions() { return ORIGIN_OPTIONS },
-    ownedOptions() { return OWNED_OPTIONS },
+    originSelectOptions() { return ORIGIN_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
+    ownedSelectOptions() { return OWNED_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
+    metadataSelectOptions() { return METADATA_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
     hasFilters() { return this.stage === 'collection' || this.stage === 'sources' },
     allFilms() { return this.yearGroups.flatMap(group => group.films) },
     yearSelectOptions() {
@@ -237,7 +237,7 @@ export default {
     filteredYearGroups() {
       return this.yearGroups
         .filter(group => this.yearFilter === 'all' || String(group.year) === this.yearFilter)
-        .map(group => ({ year: group.year, films: group.films.filter(f => this.matchOrigin(f) && this.matchOwned(f) && this.matchSearch(f)) }))
+        .map(group => ({ year: group.year, films: group.films.filter(f => this.matchOrigin(f) && this.matchOwned(f) && this.matchMetadata(f) && this.matchSearch(f)) }))
         .filter(group => group.films.length)
     },
     filteredStageFilms() {
@@ -251,7 +251,7 @@ export default {
     // 「筛选」徽标只数下拉里的维度（搜索是独立输入，不计入）。
     activeCount() {
       if (this.stage === 'collection') {
-        return [this.originFilter !== 'all', this.ownedFilter !== 'all', this.yearFilter !== 'all'].filter(Boolean).length
+        return [this.originFilter !== 'all', this.ownedFilter !== 'all', this.metadataFilter !== 'all', this.yearFilter !== 'all'].filter(Boolean).length
       }
       if (this.stage === 'sources') return this.sourceStageFilter !== 'all' ? 1 : 0
       return 0
@@ -304,6 +304,10 @@ export default {
       if (this.ownedFilter === 'all') return true
       return this.ownedFilter === 'owned' ? this.isOwned(film) : !this.isOwned(film)
     },
+    matchMetadata(film) {
+      if (this.metadataFilter === 'all') return true
+      return this.metadataFilter === 'complete' ? film.metadata_complete === true : film.metadata_complete !== true
+    },
     matchSearch(film) {
       const q = this.search.trim().toLowerCase()
       if (!q) return true
@@ -315,6 +319,7 @@ export default {
     clearFilters() {
       this.originFilter = 'all'
       this.ownedFilter = 'all'
+      this.metadataFilter = 'all'
       this.yearFilter = 'all'
       this.sourceStageFilter = 'all'
     },

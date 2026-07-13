@@ -631,10 +631,11 @@ test('advanced import progress exposes accessible loading semantics', () => {
 
 test('advanced numeric inputs use compact lazy-chunk stepper controls', () => {
   const controlMatches = [...advancedPanelSource.matchAll(/class="advanced-number-control"/g)]
-  assert.equal(controlMatches.length, 2)
+  assert.equal(controlMatches.length, 3)
   const wrapperMatches = [...advancedPanelSource.matchAll(/class="settings-control settings-control--compact advanced-control--number"[\s\S]*?<input/g)]
-  assert.equal(wrapperMatches.length, 2)
+  assert.equal(wrapperMatches.length, 3)
 
+  assert.match(advancedPanelSource, /class="advanced-number-control"[\s\S]*v-model\.number="config\.javinfo\.supplement_worker_count" type="number" min="1" max="16" step="1" inputmode="numeric"[\s\S]*<span class="advanced-number-unit">任务<\/span>[\s\S]*<span class="advanced-number-range">1-16<\/span>/)
   assert.match(advancedPanelSource, /class="advanced-number-control"[\s\S]*v-model\.number="config\.javinfo\.import_db\.port" type="number" min="1" max="65535" step="1" inputmode="numeric"[\s\S]*<span class="advanced-number-unit">端口<\/span>[\s\S]*<span class="advanced-number-range">1-65535<\/span>/)
   assert.match(advancedPanelSource, /class="advanced-number-control"[\s\S]*v-model\.number="currentAiConfig\.timeout" type="number" min="1" step="1" inputmode="numeric"[\s\S]*<span class="advanced-number-unit">秒<\/span>[\s\S]*<span class="advanced-number-range">>=1<\/span>/)
   assert.doesNotMatch(advancedPanelSource, /<input class="input" v-model\.number="config\.javinfo\.import_db\.port" type="number" min="1" max="65535" \/>/)
@@ -1077,4 +1078,3 @@ test('telegram test mobile layout overrides base row styles in cascade order', (
   assert.ok(mobileRowIndex > baseRowIndex, 'mobile row override should appear after base row styles')
   assert.ok(mobileButtonIndex > baseRowIndex, 'mobile button override should appear after base row styles')
 })
-

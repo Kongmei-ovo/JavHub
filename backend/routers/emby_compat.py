@@ -50,6 +50,7 @@ from services.emby_playback import emby_playback_broker
 from services.emby_auth import (
     EmbyHTTPException,
     extract_token,
+    forget_session,
     issue_token,
     remember_session,
     require_auth,
@@ -454,8 +455,9 @@ async def public_session_capabilities():
 
 @router.post("/Sessions/Logout")
 @router.post("/sessions/logout", include_in_schema=False)
-async def session_logout():
-    _ensure_enabled()
+async def session_logout(request: Request):
+    _require_auth(request)
+    forget_session(request)
     return Response(status_code=204)
 
 
@@ -487,6 +489,11 @@ async def emby_websocket_probe():
 @router.websocket("/embywebsocket")
 @router.websocket("/EmbyWebSocket")
 async def emby_websocket(websocket: WebSocket):
+    try:
+        _require_auth(websocket)
+    except HTTPException:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
     await websocket.accept()
     try:
         while True:
@@ -1084,16 +1091,6 @@ async def video_stream(
 ):
     """Emby stream entry; 115 resolution happens only for this final request."""
     _require_auth(request)
-    if getattr(request, "method", "GET").upper() == "HEAD":
-        return Response(
-            status_code=200,
-            media_type=emby_playback_broker.probe_media_type(ext),
-            headers={
-                "Accept-Ranges": "bytes",
-                "Cache-Control": "no-store",
-            },
-        )
-
     media_source_id = (
         None if isinstance(MediaSourceId, QueryParam) else MediaSourceId
     ) or _query_value(request, "MediaSourceId")
@@ -1108,6 +1105,15 @@ async def video_stream(
     )
     if selection is None:
         raise HTTPException(status_code=404, detail="Media source not found")
+    if getattr(request, "method", "GET").upper() == "HEAD":
+        return Response(
+            status_code=200,
+            media_type=emby_playback_broker.probe_media_type(ext),
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "no-store",
+            },
+        )
     if selection.kind == "online":
         return RedirectResponse(url=await _resolve_online_stream(item_id), status_code=302)
 

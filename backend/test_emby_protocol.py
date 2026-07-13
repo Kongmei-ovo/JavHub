@@ -98,6 +98,22 @@ class EmbyProtocolTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["Code"], 40101)
 
+    def test_protected_routes_never_inherit_auth_from_same_device(self):
+        self.login()
+        response = self.client.get(
+            "/Users/Me",
+            headers={
+                "X-Emby-Client": "Emby for iOS",
+                "X-Emby-Device-Id": "device-1",
+            },
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_logout_requires_token(self):
+        self.login()
+        response = self.client.post("/Sessions/Logout")
+        self.assertEqual(response.status_code, 401)
+
     def test_official_client_probe_routes_never_404(self):
         token = self.login()
         auth = {"X-Emby-Token": token}

@@ -23,7 +23,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from database.inventory_video import codes_in_inventory
 from database.movie_resource import codes_with_ready_resource
 from services.video_variant_index import _bucket_key, apply_indexed_variant_groups
 from services.video_variants import (
@@ -235,10 +234,9 @@ def resolved_films_to_canonical_set(films: list[ResolvedFilm]) -> set[str]:
 def overlay_owned(films: list[ResolvedFilm]) -> dict[str, bool]:
     """canonical_number -> owned.
 
-    Owned when the canonical key OR any member product is present in EITHER the
-    115/Emby inventory (`inventory_videos`, the real library signal) or the
-    legacy `movie_resources` ledger. The canonical key covers canonical-keyed
-    downloads (P4-2); member content_ids cover any product-keyed legacy rows.
+    Owned when the canonical key or a legacy member key has a ready video in
+    ``movie_resources``. That table is written by 115 download finalization and
+    is the durable virtual-film -> remote-file relationship.
     """
     lookup: list[str] = []
     for film in films:
@@ -248,10 +246,6 @@ def overlay_owned(films: list[ResolvedFilm]) -> dict[str, bool]:
         ready = set(codes_with_ready_resource(lookup))
     except Exception:
         ready = set()
-    try:
-        ready |= set(codes_in_inventory(lookup))
-    except Exception:
-        pass
     return {
         film.canonical_number: (
             film.canonical_number in ready

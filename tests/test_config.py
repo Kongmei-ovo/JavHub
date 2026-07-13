@@ -35,8 +35,6 @@ def test_javinfo_api_url_env_overrides_yaml(monkeypatch):
 def test_load_uses_javhub_config_path(monkeypatch, tmp_path):
     config_path = tmp_path / 'custom-config.yaml'
     config_path.write_text(
-        'emby:\n'
-        '  api_url: http://emby.example:8096\n'
         'javinfo:\n'
         '  api_url: http://javinfo.example:18080\n',
         encoding='utf-8',
@@ -46,7 +44,6 @@ def test_load_uses_javhub_config_path(monkeypatch, tmp_path):
     c = fresh_config()
     c._load()
 
-    assert c.emby_api_url == 'http://emby.example:8096'
     assert c.javinfo_api_url == 'http://javinfo.example:18080'
     assert c.config_path == config_path
     assert c.config_loaded is True

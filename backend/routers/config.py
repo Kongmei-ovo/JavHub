@@ -1,5 +1,6 @@
 import logging
 import re
+import asyncio
 import yaml
 from fastapi import APIRouter, HTTPException, Response
 from urllib.parse import urlparse, urlunparse
@@ -46,10 +47,10 @@ async def _push_proxy_to_javinfo():
 router = APIRouter(prefix="/api/v1", tags=["config"])
 
 _SENSITIVE_KEYS = {'api_key', 'bot_token', 'password', 'secret', 'token', 'db_pass', 'jwt_secret', 'vless_uri', 'subscription_url'}
-_WRITABLE_KEYS = {'emby', 'telegram', 'open115', 'notification', 'scheduler',
+_WRITABLE_KEYS = {'telegram', 'open115', 'notification', 'scheduler',
                   'database',
                   'ai',
-                  'automation', 'actor_mapping', 'translation',
+                  'automation', 'translation',
                   'proxy', 'rate_limit', 'sources', 'javinfo', 'server'}
 _TELEGRAM_BOT_TOKEN_RE = re.compile(r"^\d{5,20}:[A-Za-z0-9_-]{20,128}$")
 
@@ -127,11 +128,30 @@ async def update_config(new_config: dict):
     # 只允许更新白名单内的顶层 key
     sanitized = {k: v for k, v in new_config.items() if k in _WRITABLE_KEYS}
     sanitized = _strip_blank_sensitive_values(sanitized)
+    old_worker_count = int((config.get_all().get("javinfo") or {}).get("supplement_worker_count", 6))
+    if isinstance(sanitized.get("javinfo"), dict) and "supplement_worker_count" in sanitized["javinfo"]:
+        try:
+            sanitized["javinfo"]["supplement_worker_count"] = max(1, min(16, int(sanitized["javinfo"]["supplement_worker_count"])))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "补全并发任务必须是 1-16 的整数")
     config.update(sanitized)
     # JavInfoApi URL 变更后立即生效
     if "javinfo" in sanitized:
         from modules.info_client import reset_info_client
         reset_info_client()
+        new_worker_count = int((config.get_all().get("javinfo") or {}).get("supplement_worker_count", 6))
+        if new_worker_count != old_worker_count:
+            root = config.config_path.parent
+            process = await asyncio.create_subprocess_exec(
+                str(root / "scripts" / "services.sh"), "ensure",
+                cwd=str(root),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode != 0:
+                logger.error("Failed to apply supplement worker count: %s %s", stdout.decode(), stderr.decode())
+                raise HTTPException(500, "并发设置已保存，但 JavInfoApi 重启失败")
     # 代理配置变更后推送到 JavInfoApi
     if "proxy" in sanitized:
         from services.singbox import manager

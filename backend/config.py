@@ -175,18 +175,6 @@ class Config:
         return self._config.get('crawler', {}).get('request_interval', 3)
 
     @property
-    def emby_api_url(self) -> str:
-        return _env('EMBY_API_URL', self._config.get('emby', {}).get('api_url', ''))
-
-    @property
-    def emby_api_key(self) -> str:
-        return _env('EMBY_API_KEY', self._config.get('emby', {}).get('api_key', ''))
-
-    @property
-    def emby(self) -> dict:
-        return self._config.get('emby', {})
-
-    @property
     def telegram_bot_token(self) -> str:
         return _env('TELEGRAM_BOT_TOKEN', self._config.get('telegram', {}).get('bot_token', ''))
 
@@ -239,29 +227,12 @@ class Config:
             return None
         return hour if 0 <= hour <= 23 else None
 
-    @property
-    def inventory(self) -> dict:
-        defaults = {
-            'snapshot_retention': 5,
-            'sent_audit_interval_minutes': 60,
-        }
-        cfg = self._config.get('inventory', {}) or {}
-        return {**defaults, **cfg}
-
-    @property
-    def inventory_snapshot_retention(self) -> int:
-        return self._clamp_int(self.inventory.get('snapshot_retention', 5), 5, 1, 100)
-
-    @property
-    def inventory_sent_audit_interval_minutes(self) -> int:
-        return self._clamp_int(self.inventory.get('sent_audit_interval_minutes', 60), 60, 0, 1440)
-
     # Automation policy settings
     @property
     def automation(self) -> dict:
         defaults = {
             'download_policy': 'manual',
-            'candidate_sources': ['subscription', 'inventory', 'supplement'],
+            'candidate_sources': ['subscription', 'supplement'],
             'rules_require_magnet': True,
             'auto_process_interval_minutes': 30,
             'acquisition_coordinator_interval_minutes': 1,
@@ -280,7 +251,7 @@ class Config:
     def automation_candidate_sources(self) -> list:
         sources = self.automation.get('candidate_sources')
         if not isinstance(sources, list):
-            return ['subscription', 'inventory', 'supplement']
+            return ['subscription', 'supplement']
         return [str(source) for source in sources if str(source).strip()]
 
     @property
@@ -302,45 +273,6 @@ class Config:
     @property
     def automation_max_auto_downloads_per_24h(self) -> int:
         return self._clamp_int(self.automation.get('max_auto_downloads_per_24h', 100), 100, 0)
-
-    # Actor mapping automation settings
-    @property
-    def actor_mapping(self) -> dict:
-        defaults = {
-            'auto_match_after_collect': True,
-            'auto_confirm_policy': 'conservative',
-            'candidate_per_actor': 3,
-            'candidate_min_confidence': 0.55,
-            'auto_confirm_confidence': 0.98,
-            'auto_confirm_gap': 0.08,
-        }
-        cfg = self._config.get('actor_mapping', {}) or {}
-        return {**defaults, **cfg}
-
-    @property
-    def actor_mapping_auto_match_after_collect(self) -> bool:
-        return bool(self.actor_mapping.get('auto_match_after_collect', True))
-
-    @property
-    def actor_mapping_auto_confirm_policy(self) -> str:
-        policy = str(self.actor_mapping.get('auto_confirm_policy') or 'conservative').lower()
-        return policy if policy in {'conservative'} else 'conservative'
-
-    @property
-    def actor_mapping_candidate_per_actor(self) -> int:
-        return self._clamp_int(self.actor_mapping.get('candidate_per_actor', 3), 3, 1, 10)
-
-    @property
-    def actor_mapping_candidate_min_confidence(self) -> float:
-        return self._clamp_float(self.actor_mapping.get('candidate_min_confidence', 0.55), 0.55, 0.0, 1.0)
-
-    @property
-    def actor_mapping_auto_confirm_confidence(self) -> float:
-        return self._clamp_float(self.actor_mapping.get('auto_confirm_confidence', 0.98), 0.98, 0.0, 1.0)
-
-    @property
-    def actor_mapping_auto_confirm_gap(self) -> float:
-        return self._clamp_float(self.actor_mapping.get('auto_confirm_gap', 0.08), 0.08, 0.0, 1.0)
 
     # Shared AI settings
     @property
@@ -757,7 +689,6 @@ class Config:
         }
         cfg['ai'] = self.ai
         cfg['automation'] = self.automation
-        cfg['actor_mapping'] = self.actor_mapping
         cfg['translation'] = self.translation
         cfg['sources'] = self.sources
         javinfo_cfg = cfg.get('javinfo', {}) if isinstance(cfg.get('javinfo'), dict) else {}

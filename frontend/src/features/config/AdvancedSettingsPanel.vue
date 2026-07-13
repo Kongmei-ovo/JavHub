@@ -1,5 +1,25 @@
 <template>
   <div class="config-section advanced-settings-stack">
+    <section class="advanced-settings-group supplement-performance-group">
+      <div class="advanced-settings-header">
+        <h2>资料补全性能</h2>
+      </div>
+      <div class="settings-list">
+        <label class="settings-row">
+          <span class="setting-copy">
+            <span class="setting-title">补全并发任务</span>
+            <span class="setting-note">同时处理不同影片；同一来源仍保持单并发和冷却保护。保存后自动重启 JavInfoApi。</span>
+          </span>
+          <span class="settings-control settings-control--compact advanced-control--number">
+            <span class="advanced-number-control">
+              <input class="input" v-model.number="config.javinfo.supplement_worker_count" type="number" min="1" max="16" step="1" inputmode="numeric" />
+              <span class="advanced-number-unit">任务</span>
+              <span class="advanced-number-range">1-16</span>
+            </span>
+          </span>
+        </label>
+      </div>
+    </section>
     <section class="advanced-settings-group export-settings-group" :aria-busy="exportingConfig" aria-live="polite">
         <div class="advanced-settings-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

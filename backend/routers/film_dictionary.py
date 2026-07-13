@@ -252,13 +252,14 @@ META_FIELDS = (
     ("category", ("category_names", "genres")),
 )
 
-# Series and label are useful display metadata, but they are not defined for
-# every release (compilations and one-off products commonly have neither).  A
+# Series, label, and maker/author attribution are useful display metadata, but
+# they are not defined for every release (compilations, amateur releases, and
+# one-off products commonly have none). A
 # missing optional field must not hold the acquisition funnel forever after all
 # providers have correctly returned "no value".  Keep reporting these fields in
 # ``metadata_missing`` while gating the next stage only on the fields required
 # to identify and play a movie reliably.
-BLOCKING_META_FIELDS = frozenset({"cover", "runtime", "maker", "category"})
+BLOCKING_META_FIELDS = frozenset({"cover", "runtime", "category"})
 
 
 def _has_meta_value(value) -> bool:
