@@ -16,11 +16,9 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
     monkeypatch.setattr(base, "_init_translation_and_favorites", record_call("_init_translation_and_favorites", calls))
     monkeypatch.setattr(base, "get_db_orig", get_db_orig)
     monkeypatch.setattr(base, "_init_core_state_tables", record_call("_init_core_state_tables", calls))
-    monkeypatch.setattr(base, "_init_inventory_tables", record_call("_init_inventory_tables", calls))
-    monkeypatch.setattr(base, "_init_actor_mapping_tables", record_call("_init_actor_mapping_tables", calls))
+    monkeypatch.setattr(base, "_init_film_count_tables", record_call("_init_film_count_tables", calls))
     monkeypatch.setattr(base, "_init_download_candidate_tables", record_call("_init_download_candidate_tables", calls))
     monkeypatch.setattr(base, "_init_video_variant_tables", record_call("_init_video_variant_tables", calls))
-    monkeypatch.setattr(base, "_init_emby_snapshot_tables", record_call("_init_emby_snapshot_tables", calls))
     monkeypatch.setattr(base, "_init_playback_tables", record_call("_init_playback_tables", calls))
     monkeypatch.setattr(base, "_init_movie_resource_tables", record_call("_init_movie_resource_tables", calls))
     monkeypatch.setattr(base, "_init_acquisition_tables", record_call("_init_acquisition_tables", calls))
@@ -35,11 +33,9 @@ def test_init_db_executes_domain_helpers_in_order(monkeypatch):
         ("get_db_orig", ()),
         ("cursor", ()),
         ("_init_core_state_tables", (cursor,)),
-        ("_init_inventory_tables", (cursor,)),
-        ("_init_actor_mapping_tables", (cursor,)),
+        ("_init_film_count_tables", (cursor,)),
         ("_init_download_candidate_tables", (cursor,)),
         ("_init_video_variant_tables", (cursor,)),
-        ("_init_emby_snapshot_tables", (cursor,)),
         ("_init_playback_tables", (cursor,)),
         ("_init_movie_resource_tables", (cursor,)),
         ("_init_acquisition_tables", (cursor,)),
@@ -60,14 +56,14 @@ def test_init_db_closes_connection_when_schema_helper_fails(monkeypatch):
         calls.append(("get_db_orig", ()))
         return conn
 
-    def fail_inventory_tables(_cursor):
-        calls.append(("_init_inventory_tables", (_cursor,)))
+    def fail_film_count_tables(_cursor):
+        calls.append(("_init_film_count_tables", (_cursor,)))
         raise RuntimeError("schema boom")
 
     monkeypatch.setattr(base, "_init_translation_and_favorites", record_call("_init_translation_and_favorites", calls))
     monkeypatch.setattr(base, "get_db_orig", get_db_orig)
     monkeypatch.setattr(base, "_init_core_state_tables", record_call("_init_core_state_tables", calls))
-    monkeypatch.setattr(base, "_init_inventory_tables", fail_inventory_tables)
+    monkeypatch.setattr(base, "_init_film_count_tables", fail_film_count_tables)
     monkeypatch.setattr(base, "_migrate_subscriptions", record_call("_migrate_subscriptions", calls))
     monkeypatch.setattr(base, "_create_indexes", record_call("_create_indexes", calls))
 
@@ -83,7 +79,7 @@ def test_init_db_closes_connection_when_schema_helper_fails(monkeypatch):
         ("get_db_orig", ()),
         ("cursor", ()),
         ("_init_core_state_tables", (cursor,)),
-        ("_init_inventory_tables", (cursor,)),
+        ("_init_film_count_tables", (cursor,)),
         ("close", ()),
     ]
 
@@ -92,11 +88,9 @@ def test_database_initializer_helpers_exist():
     for name in [
         "_init_translation_and_favorites",
         "_init_core_state_tables",
-        "_init_inventory_tables",
-        "_init_actor_mapping_tables",
+        "_init_film_count_tables",
         "_init_download_candidate_tables",
         "_init_video_variant_tables",
-        "_init_emby_snapshot_tables",
         "_init_playback_tables",
         "_init_movie_resource_tables",
         "_init_acquisition_tables",
@@ -105,7 +99,7 @@ def test_database_initializer_helpers_exist():
         assert callable(getattr(base, name))
 
 
-def test_create_indexes_registers_inventory_missing_count_sort_index(monkeypatch):
+def test_create_indexes_omit_retired_inventory_and_emby_indexes(monkeypatch):
     calls: list[tuple[str, tuple]] = []
     conn = make_recording_connection(calls=calls)
     created: list[str] = []
@@ -116,5 +110,10 @@ def test_create_indexes_registers_inventory_missing_count_sort_index(monkeypatch
     base._create_indexes()
 
     joined = "\n".join(created)
-    assert "idx_inventory_actors_missing_count_name" in joined
-    assert "inventory_actors(missing_count DESC, actress_name)" in joined
+    for retired_name in (
+        "idx_inventory_actors_missing_count_name",
+        "idx_inventory_videos_actress_release",
+        "idx_emby_actors_updated_at",
+        "idx_actor_mappings_updated_created",
+    ):
+        assert retired_name not in joined

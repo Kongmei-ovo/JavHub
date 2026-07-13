@@ -97,22 +97,6 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
             joined,
         )
 
-    def test_create_indexes_covers_missing_summary_ordering(self):
-        from database import base
-
-        calls = []
-        executed: list[str] = []
-        conn = make_recording_connection(calls=calls, executed=executed)
-
-        with patch("database.base.get_db_orig", return_value=conn):
-            base._create_indexes()
-
-        joined = "\n".join(executed)
-        self.assertIn(
-            "CREATE INDEX IF NOT EXISTS idx_actress_missing_summary_missing_count ON actress_missing_summary(missing_count DESC)",
-            joined,
-        )
-
     def test_create_indexes_covers_recent_list_ordering(self):
         from database import base
 
@@ -126,11 +110,7 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
         joined = "\n".join(executed)
         for sql in [
             "CREATE INDEX IF NOT EXISTS idx_subscriptions_created_at ON subscriptions(created_at DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_created_at ON inventory_jobs(created_at DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_inventory_videos_actress_release ON inventory_videos(actress_id, release_date DESC)",
             "CREATE INDEX IF NOT EXISTS idx_exempt_videos_created_at ON exempt_videos(created_at DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_emby_actors_updated_at ON emby_actors(updated_at DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_actor_mappings_updated_created ON actor_mappings(updated_at DESC, created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_video_variant_group_jobs_created ON video_variant_group_jobs(created_at DESC, id DESC)",
             "CREATE INDEX IF NOT EXISTS idx_translation_jobs_created ON translation_jobs(created_at DESC, id DESC)",
             "CREATE INDEX IF NOT EXISTS idx_download_candidate_events_created ON download_candidate_events(created_at DESC, id DESC)",
@@ -140,7 +120,7 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
             with self.subTest(sql=sql):
                 self.assertIn(sql, joined)
 
-    def test_create_indexes_covers_candidate_and_mapping_filtered_lists(self):
+    def test_create_indexes_covers_candidate_filtered_lists(self):
         from database import base
 
         calls = []
@@ -154,12 +134,11 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
         for sql in [
             "CREATE INDEX IF NOT EXISTS idx_download_candidates_status_source_release_created ON download_candidates(status, source, release_date DESC, created_at ASC, id ASC)",
             "CREATE INDEX IF NOT EXISTS idx_download_candidate_events_candidate_id_id ON download_candidate_events(candidate_id, id DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_actor_mappings_status_updated_created ON actor_mappings(status, updated_at DESC, created_at DESC)",
         ]:
             with self.subTest(sql=sql):
                 self.assertIn(sql, joined)
 
-    def test_create_indexes_covers_duplicate_snapshot_scan(self):
+    def test_create_indexes_excludes_retired_emby_inventory_schema(self):
         from database import base
 
         calls = []
@@ -173,9 +152,11 @@ class PostgresDatabaseLayerTest(unittest.TestCase):
         for sql in [
             "CREATE INDEX IF NOT EXISTS idx_ignored_duplicates_emby_item_id ON ignored_duplicates(emby_item_id)",
             "CREATE INDEX IF NOT EXISTS idx_emby_snapshots_snapshot_title_item ON emby_snapshots(snapshot_key, title, emby_item_id)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_jobs_created_at ON inventory_jobs(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_actor_mappings_updated_created ON actor_mappings(updated_at DESC, created_at DESC)",
         ]:
             with self.subTest(sql=sql):
-                self.assertIn(sql, joined)
+                self.assertNotIn(sql, joined)
 
 
 if __name__ == "__main__":
