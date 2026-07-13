@@ -243,7 +243,6 @@ def test_optional_label_and_series_gaps_do_not_block_acquisition(client, monkeyp
     monkeypatch.setattr(fd, "_fetch_actress_candidates", lambda aid, films: [])
     monkeypatch.setattr(fd, "_fetch_actress_field_rows", lambda aid: fields)
     monkeypatch.setattr(resolver, "codes_with_ready_resource", lambda codes: set())
-
     body = client.get("/api/v1/film-dictionary/actresses/5/completeness").json()
     film = body["films"][0]
     assert film["metadata_missing"] == ["label", "series"]
