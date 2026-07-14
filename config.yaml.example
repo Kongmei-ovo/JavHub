@@ -113,6 +113,16 @@ sources:
     categories: ""
     limit: 20
     timeout: 15
+  # AVDB 公开磁力库。启用来源后可按番号检索；sync_enabled 控制定期检查，
+  # 首次同步也可在「系统作业」中手动运行 avdb_sync。
+  avdb:
+    enabled: false
+    sync_enabled: false
+    interval_hours: 12
+    result_limit: 50
+    timeout: 60
+    batch_size: 1000
+    keep_generations: 2
   # Optional future multi-instance form:
   # torznab_instances:
   #   - enabled: false

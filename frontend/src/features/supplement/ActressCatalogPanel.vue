@@ -56,7 +56,7 @@
         <button v-if="search" type="button" class="cat-search-clear" aria-label="清除搜索" @click="search = ''">×</button>
       </label>
 
-      <div v-if="hasFilters" ref="filterRoot" class="cat-filter">
+      <div v-if="stage === 'collection'" ref="filterRoot" class="cat-filter">
         <button
           type="button" class="filter-trigger"
           :class="{ on: filterOpen, active: activeCount > 0 }"
@@ -72,41 +72,25 @@
 
         <transition name="fp">
           <div v-if="filterOpen" class="filter-panel" role="dialog" aria-label="作品筛选">
-            <!-- 影片目录：资料来源 / 媒体库 / 时间 -->
-            <template v-if="stage === 'collection'">
-              <div class="fp-row">
-                <span class="fp-label">资料来源</span>
-                <GlassSelect v-model="originFilter" :options="originSelectOptions" size="compact" placement="right" aria-label="资料来源筛选" />
-              </div>
-              <div class="fp-row">
-                <span class="fp-label">媒体库</span>
-                <GlassSelect v-model="ownedFilter" :options="ownedSelectOptions" size="compact" placement="right" aria-label="媒体库筛选" />
-              </div>
-              <div class="fp-row">
-                <span class="fp-label">资料状态</span>
-                <GlassSelect v-model="metadataFilter" :options="metadataSelectOptions" size="compact" placement="right" aria-label="资料状态筛选" />
-              </div>
-              <div class="fp-row">
-                <span class="fp-label">时间</span>
-                <GlassSelect
-                  v-model="yearFilter" :options="yearSelectOptions" size="compact"
-                  placement="right" placeholder="全部年份" aria-label="出演时间筛选"
-                />
-              </div>
-            </template>
-
-            <!-- 下载源：按生命周期阶段过滤 -->
-            <template v-else-if="stage === 'sources'">
-              <div class="fp-row fp-row-stack">
-                <span class="fp-label">状态</span>
-                <div class="stage-seg fp-seg fp-seg-wrap" role="group" aria-label="下载源状态筛选">
-                  <button
-                    v-for="opt in sourceStageOptions" :key="opt.key" type="button"
-                    :class="{ active: sourceStageFilter === opt.key }" @click="sourceStageFilter = opt.key"
-                  >{{ opt.label }}<span class="fp-seg-n">{{ opt.count }}</span></button>
-                </div>
-              </div>
-            </template>
+            <div class="fp-row">
+              <span class="fp-label">资料来源</span>
+              <GlassSelect v-model="originFilter" :options="originSelectOptions" size="compact" placement="right" aria-label="资料来源筛选" />
+            </div>
+            <div class="fp-row">
+              <span class="fp-label">媒体库</span>
+              <GlassSelect v-model="ownedFilter" :options="ownedSelectOptions" size="compact" placement="right" aria-label="媒体库筛选" />
+            </div>
+            <div class="fp-row">
+              <span class="fp-label">资料状态</span>
+              <GlassSelect v-model="metadataFilter" :options="metadataSelectOptions" size="compact" placement="right" aria-label="资料状态筛选" />
+            </div>
+            <div class="fp-row">
+              <span class="fp-label">时间</span>
+              <GlassSelect
+                v-model="yearFilter" :options="yearSelectOptions" size="compact"
+                placement="right" placeholder="全部年份" aria-label="出演时间筛选"
+              />
+            </div>
 
             <div class="fp-foot">
               <span class="fp-count">{{ countLabel }}</span>
@@ -115,6 +99,16 @@
           </div>
         </transition>
       </div>
+
+      <GlassSelect
+        v-else-if="stage === 'sources'"
+        v-model="sourceStageFilter"
+        class="source-stage-select"
+        :options="sourceStageOptions"
+        size="compact"
+        placement="right"
+        aria-label="下载源状态筛选"
+      />
 
       <span v-if="resultHint" class="cat-result">{{ resultHint }}</span>
     </div>
@@ -216,7 +210,6 @@ export default {
     originSelectOptions() { return ORIGIN_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
     ownedSelectOptions() { return OWNED_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
     metadataSelectOptions() { return METADATA_OPTIONS.map(item => ({ value: item.key, label: item.label })) },
-    hasFilters() { return this.stage === 'collection' || this.stage === 'sources' },
     allFilms() { return this.yearGroups.flatMap(group => group.films) },
     yearSelectOptions() {
       const years = this.yearGroups.map(group => String(group.year))
@@ -227,10 +220,10 @@ export default {
     sourceStageOptions() {
       const by = s => this.sourceStageFilms.filter(f => f.stage === s).length
       return [
-        { key: 'all', label: '全部', count: this.sourceStageFilms.length },
-        { key: 'find_source', label: '待找源', count: by('find_source') },
-        { key: 'downloadable', label: '可下载', count: by('downloadable') },
-        { key: 'fetching', label: '获取中', count: by('fetching') },
+        { value: 'all', label: '全部状态', hint: `${this.sourceStageFilms.length} 部` },
+        { value: 'find_source', label: '待找源', hint: `${by('find_source')} 部`, color: 'var(--warn)' },
+        { value: 'downloadable', label: '可下载', hint: `${by('downloadable')} 部`, color: 'var(--ok)' },
+        { value: 'fetching', label: '获取中', hint: `${by('fetching')} 部`, color: 'var(--info)' },
       ]
     },
     // ---- 过滤：搜索对三阶段都生效，筛选按阶段分别生效 ----

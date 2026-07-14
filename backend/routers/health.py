@@ -219,19 +219,35 @@ def _source_attempt_summary(limit: int = 20) -> dict[str, Any]:
 
 def _scheduler_summary() -> dict[str, Any]:
     try:
-        from routers.operations import _candidate_schedule_state
+        from scheduler.tasks import candidate_auto_process_schedule_state
 
-        return _candidate_schedule_state()
+        state = candidate_auto_process_schedule_state()
     except Exception as exc:
-        policy = str(getattr(config, "automation_download_policy", "manual") or "manual").lower()
-        return {
+        message = _error_message(exc)
+        state = {
             "enabled": False,
-            "policy": policy,
-            "effective_enabled": False,
-            "disabled_reason": _error_message(exc),
             "running": False,
             "next_run_time": None,
+            "error": message,
         }
+
+    policy = str(getattr(config, "automation_download_policy", "manual") or "manual").lower()
+    enabled = bool(state.get("enabled"))
+    disabled_reason = str(state.get("error") or "")
+    if policy == "manual":
+        effective_enabled = False
+        disabled_reason = disabled_reason or "manual_policy"
+    elif not enabled:
+        effective_enabled = False
+        disabled_reason = disabled_reason or "schedule_disabled"
+    else:
+        effective_enabled = True
+    return {
+        **state,
+        "policy": policy,
+        "effective_enabled": effective_enabled,
+        "disabled_reason": disabled_reason,
+    }
 
 
 @router.get("/health")

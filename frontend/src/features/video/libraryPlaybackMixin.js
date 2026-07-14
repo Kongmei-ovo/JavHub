@@ -145,14 +145,16 @@ export default {
         this.lastProgressReport = now
         this.reportProgress(video)
       }
+      const pauseHandler = () => this.reportProgress(video)
       video.addEventListener('timeupdate', handler)
-      video.addEventListener('pause', () => this.reportProgress(video))
-      this.progressReportHandler = { video, handler }
+      video.addEventListener('pause', pauseHandler)
+      this.progressReportHandler = { video, handler, pauseHandler }
     },
     teardownProgressReporting() {
       if (this.progressReportHandler) {
-        const { video, handler } = this.progressReportHandler
+        const { video, handler, pauseHandler } = this.progressReportHandler
         try { video.removeEventListener('timeupdate', handler) } catch (e) {}
+        try { video.removeEventListener('pause', pauseHandler) } catch (e) {}
         this.progressReportHandler = null
       }
     },

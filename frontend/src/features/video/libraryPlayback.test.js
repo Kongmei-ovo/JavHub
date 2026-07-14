@@ -36,6 +36,17 @@ test('progress reporting is throttled and shared between library and online play
   assert.match(closeBlock, /this\.reportProgress\(video\)/)
 })
 
+test('progress reporting removes both listeners when the playback source changes', () => {
+  const setupBlock = mixinSource.slice(
+    mixinSource.indexOf('    setupProgressReporting(video) {'),
+    mixinSource.indexOf('    reportProgress(video) {'),
+  )
+  assert.match(setupBlock, /const pauseHandler = \(\) => this\.reportProgress\(video\)/)
+  assert.match(setupBlock, /video\.addEventListener\('pause', pauseHandler\)/)
+  assert.match(setupBlock, /this\.progressReportHandler = \{ video, handler, pauseHandler \}/)
+  assert.match(setupBlock, /video\.removeEventListener\('pause', pauseHandler\)/)
+})
+
 test('115 play error path retries the stable entry exactly once', () => {
   assert.match(mixinSource, /libraryRetryUsed/)
   const errBlock = mixinSource.slice(mixinSource.indexOf('async onLibraryPlayError'))

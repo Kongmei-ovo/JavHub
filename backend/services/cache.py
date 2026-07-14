@@ -4,8 +4,12 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import inspect
+import threading
 import time
 from typing import Any, Awaitable, Callable, Optional
+
+from modules.loop_client_pool import LoopClientPool
 
 # Default TTLs in seconds
 DEFAULT_VIDEO_TTL = 86400       # 24h
@@ -29,7 +33,30 @@ class _ResponseLockEntry:
     users: int = 0
 
 
-_response_locks: dict[str, _ResponseLockEntry] = {}
+_response_locks: dict[tuple[asyncio.AbstractEventLoop, str], _ResponseLockEntry] = {}
+
+
+class _RedisAsyncClientAdapter:
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        self.is_closed = False
+
+    async def get(self, key: str) -> Any:
+        return await self._client.get(key)
+
+    async def set(self, key: str, value: str, *, ex: int) -> Any:
+        return await self._client.set(key, value, ex=ex)
+
+    async def delete(self, key: str) -> Any:
+        return await self._client.delete(key)
+
+    async def aclose(self) -> None:
+        closer = getattr(self._client, "aclose", None) or getattr(self._client, "close", None)
+        if callable(closer):
+            result = closer()
+            if inspect.isawaitable(result):
+                await result
+        self.is_closed = True
 
 
 class RedisCacheBackend:
@@ -48,7 +75,8 @@ class RedisCacheBackend:
             ) from exc
         self._url = url
         self._client = redis.Redis.from_url(url, decode_responses=True)
-        self._async_client: Any | None | bool = None
+        self._async_pool: LoopClientPool[_RedisAsyncClientAdapter] | None | bool = None
+        self._async_pool_lock = threading.Lock()
         self._prefix = os.getenv("JAVHUB_REDIS_PREFIX", "javhub-cache").strip() or "javhub-cache"
 
     def get_json(self, key: str) -> Any | None:
@@ -66,25 +94,33 @@ class RedisCacheBackend:
         self._client.set(redis_key, body, ex=max(1, int(ttl)))
 
     async def aget_json(self, key: str) -> Any | None:
-        client = self._get_async_client()
-        if client is None:
+        pool = self._get_async_pool()
+        if pool is None:
             return await asyncio.to_thread(self.get_json, key)
-        value = await client.get(self._redis_key(key))
+        async with pool.lease() as client:
+            value = await client.get(self._redis_key(key))
         if value is None:
             return None
         return json.loads(value)
 
     async def aset_json(self, key: str, data: Any, ttl: int) -> None:
-        client = self._get_async_client()
-        if client is None:
+        pool = self._get_async_pool()
+        if pool is None:
             await asyncio.to_thread(self.set_json, key, data, ttl)
             return
         redis_key = self._redis_key(key)
-        if ttl <= 0:
-            await client.delete(redis_key)
-            return
-        body = json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
-        await client.set(redis_key, body, ex=max(1, int(ttl)))
+        async with pool.lease() as client:
+            if ttl <= 0:
+                await client.delete(redis_key)
+                return
+            body = json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
+            await client.set(redis_key, body, ex=max(1, int(ttl)))
+
+    async def aclose(self) -> None:
+        with self._async_pool_lock:
+            pool = self._async_pool
+        if isinstance(pool, LoopClientPool):
+            await pool.close_all()
 
     def get_entry_stats(self) -> dict[str, Any]:
         by_kind = {"video": 0, "search": 0, "enum": 0, "response": 0, "other": 0}
@@ -127,17 +163,23 @@ class RedisCacheBackend:
             return None
         return key[len(prefix):]
 
-    def _get_async_client(self) -> Any | None:
-        if self._async_client is False:
-            return None
-        if self._async_client is None:
+    def _get_async_pool(self) -> LoopClientPool[_RedisAsyncClientAdapter] | None:
+        with self._async_pool_lock:
+            if self._async_pool is False:
+                return None
+            if self._async_pool is not None:
+                return self._async_pool
             try:
                 from redis import asyncio as redis_asyncio
             except (ImportError, AttributeError):
-                self._async_client = False
+                self._async_pool = False
                 return None
-            self._async_client = redis_asyncio.Redis.from_url(self._url, decode_responses=True)
-        return self._async_client
+            self._async_pool = LoopClientPool(
+                lambda: _RedisAsyncClientAdapter(
+                    redis_asyncio.Redis.from_url(self._url, decode_responses=True)
+                )
+            )
+            return self._async_pool
 
     def _scan(self, pattern: str) -> list[Any]:
         return list(self._client.scan_iter(match=self._redis_key(pattern), count=1000))
@@ -177,6 +219,13 @@ def reset_backend() -> None:
     _response_locks.clear()
     _generation_cache.clear()
     _response_local_cache.clear()
+
+
+async def close_backend() -> None:
+    backend = _backend
+    closer = getattr(backend, "aclose", None)
+    if callable(closer):
+        await closer()
 
 
 def get_backend() -> Any:
@@ -322,11 +371,12 @@ async def get_or_set_response(
 ) -> Any:
     cache_params = params or {}
     key = _response_key(namespace, cache_params)
+    lock_key = (asyncio.get_running_loop(), key)
     if bypass:
-        lock_entry = _response_locks.get(key)
+        lock_entry = _response_locks.get(lock_key)
         if lock_entry is None:
             lock_entry = _ResponseLockEntry(lock=asyncio.Lock())
-            _response_locks[key] = lock_entry
+            _response_locks[lock_key] = lock_entry
 
         task = lock_entry.bypass_task
         if task is None:
@@ -341,16 +391,16 @@ async def get_or_set_response(
         finally:
             lock_entry.users -= 1
             if lock_entry.users == 0 and not lock_entry.lock.locked():
-                _response_locks.pop(key, None)
+                _response_locks.pop(lock_key, None)
 
     cached = await get_response_async(namespace, cache_params)
     if cached is not None:
         return cached
 
-    lock_entry = _response_locks.get(key)
+    lock_entry = _response_locks.get(lock_key)
     if lock_entry is None:
         lock_entry = _ResponseLockEntry(lock=asyncio.Lock())
-        _response_locks[key] = lock_entry
+        _response_locks[lock_key] = lock_entry
     elif lock_entry.lock.locked():
         _record_singleflight_wait()
 
@@ -366,7 +416,7 @@ async def get_or_set_response(
     finally:
         lock_entry.users -= 1
         if lock_entry.users == 0 and not lock_entry.lock.locked():
-            _response_locks.pop(key, None)
+            _response_locks.pop(lock_key, None)
 
 
 def _response_key(namespace: str, params: dict) -> str:

@@ -35,12 +35,12 @@
     <div class="download-tabs" aria-label="下载工作区">
       <button class="tab-btn" type="button" :class="{ active: activeTab === 'tasks' }" @click="openTaskTab">下载任务</button>
       <button class="tab-btn" type="button" :class="{ active: activeTab === 'downloaders' }" @click="openDownloaderTab">
-        下载源
+        下载器
         <span v-if="enabledDownloaderCount" class="tab-badge subtle">{{ enabledDownloaderCount }}</span>
       </button>
       <button class="tab-btn" type="button" :class="{ active: activeTab === 'indexer' }" @click="openIndexerTab">
-        索引源
-        <span v-if="torznabLoaded && torznab.enabled" class="tab-badge subtle">已启用</span>
+        下载源
+        <span v-if="sourceSnapshot.builtins.length" class="tab-badge subtle">{{ enabledSourceCount }}</span>
       </button>
     </div>
 
@@ -77,10 +77,20 @@
 
     <IndexerSourcePanel
       v-else-if="activeTab === 'indexer'"
-      :model-value="torznab"
-      :saving="savingTorznab"
-      :status-message="torznabStatus"
-      @save="saveTorznab"
+      :snapshot="sourceSnapshot"
+      :loading="sourceLoading"
+      :busy-source-id="sourceBusyId"
+      :editor="sourceEditor"
+      :editor-error="sourceEditorError"
+      :avdb-status="avdbStatus"
+      @refresh="loadSources"
+      @create="openNewSource"
+      @edit="editSource"
+      @toggle="toggleSource"
+      @remove="removeSource"
+      @save-editor="saveSourceEditor"
+      @close-editor="closeSourceEditor"
+      @view-avdb-job="viewAvdbJob"
     />
 
     <TaskList
@@ -111,6 +121,8 @@ import DownloadStatsBar from '../features/downloads/DownloadStatsBar.vue'
 import TaskList from '../features/downloads/TaskList.vue'
 import AddDownloadSheet from '../features/downloads/AddDownloadSheet.vue'
 import * as downloadPresentation from '../features/downloads/downloadPresentation'
+import { shouldPollAvdb } from '../features/downloads/avdbPresentation'
+import { createSourceDraft } from '../features/downloads/sourcePresentation'
 import { requestConfirm } from '../utils/confirmDialog'
 import RefreshButton from '../components/RefreshButton.vue'
 import {
@@ -124,12 +136,56 @@ import {
 
 const DownloaderManagementPanel = defineAsyncComponent(() => import('../features/downloaders/DownloaderManagementPanel.vue'))
 const IndexerSourcePanel = defineAsyncComponent(() => import('../features/downloads/IndexerSourcePanel.vue'))
-const DEFAULT_TORZNAB = { enabled: false, name: 'torznab', base_url: '', api_key: '', indexer: 'all', categories: '', limit: 20, timeout: 15 }
+const AVDB_SYNC_STATUSES = new Set(['never', 'running', 'success', 'failed'])
 const cleanObject = (target) => {
   Object.keys(target).forEach((key) => {
     if (target[key] === undefined || target[key] === '' || target[key] === null) delete target[key]
   })
   return target
+}
+
+function normalizeSourceSnapshot(value = {}) {
+  const snapshot = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  return {
+    builtins: Array.isArray(snapshot.builtins) ? snapshot.builtins.map(item => ({ ...item })) : [],
+    sources: Array.isArray(snapshot.sources) ? snapshot.sources.map(item => ({ ...item })) : [],
+    types: Array.isArray(snapshot.types) ? [...snapshot.types] : [],
+  }
+}
+
+function sourceRequestError(error, fallback) {
+  return error?.response?.data?.detail || error?.response?.data?.message || error?.message || fallback
+}
+
+function hasKnownAvdbStatus(value = {}) {
+  return AVDB_SYNC_STATUSES.has(value?.status)
+}
+
+export function sourcePayload(draft = {}, create = false) {
+  const text = (value, fallback = '') => typeof value === 'string' ? value : fallback
+  if (String(draft?.type || '').trim().toLowerCase() === 'avdb') {
+    return create
+      ? { type: 'avdb' }
+      : { type: 'avdb', enabled: Boolean(draft.enabled) }
+  }
+  return {
+    type: 'torznab',
+    kind: text(draft.kind, 'prowlarr') || 'prowlarr',
+    name: text(draft.name),
+    enabled: Boolean(draft.enabled),
+    base_url: text(draft.base_url),
+    api_key: text(draft.api_key),
+    indexer: text(draft.indexer, 'all') || 'all',
+    categories: text(draft.categories),
+    limit: Number(draft.limit ?? 20),
+    timeout: Number(draft.timeout ?? 15),
+  }
+}
+
+export function countEnabledSources(snapshot = {}) {
+  const builtins = Array.isArray(snapshot?.builtins) ? snapshot.builtins : []
+  const sources = Array.isArray(snapshot?.sources) ? snapshot.sources : []
+  return [...builtins, ...sources].filter(item => Boolean(item?.enabled)).length
 }
 
 export default {
@@ -152,10 +208,17 @@ export default {
       downloaderTestMessages: {},
       downloaderEditor: { open: false, mode: 'new', originalId: '', draft: null, previousType: '' },
       downloaderIdSeed: 1,
-      torznab: { ...DEFAULT_TORZNAB },
-      torznabLoaded: false,
-      savingTorznab: false,
-      torznabStatus: '',
+      sourceSnapshot: { builtins: [], sources: [], types: [] },
+      sourceLoading: false,
+      sourceBusyId: '',
+      sourceEditor: { open: false, mode: 'new', draft: null },
+      sourceEditorError: '',
+      sourceSnapshotRequestId: 0,
+      avdbStatus: {},
+      avdbStatusLoading: false,
+      avdbStatusKnown: false,
+      avdbStatusRequestPending: false,
+      avdbPollTimer: null,
     }
   },
   computed: {
@@ -170,6 +233,9 @@ export default {
     },
     enabledDownloaderCount() {
       return this.downloaderClients.filter(client => client.enabled).length
+    },
+    enabledSourceCount() {
+      return countEnabledSources(this.sourceSnapshot)
     },
     defaultDownloaderLabel() {
       const client = this.downloaderClients.find(item => item.id === this.downloaders.default_id)
@@ -197,11 +263,13 @@ export default {
     if (this.$route.query.tab === 'candidates') return
     this.loadTasks()
     if (this.activeTab === 'downloaders') this.loadDownloaders()
-    if (this.activeTab === 'indexer') this.loadTorznab()
+    if (this.activeTab === 'indexer') this.loadSources()
     this.timer = setInterval(this.loadTasks, 30000)
+    this.avdbPollTimer = setInterval(this.pollAvdbStatus, 5000)
   },
   beforeUnmount() {
     if (this.timer) clearInterval(this.timer)
+    if (this.avdbPollTimer) clearInterval(this.avdbPollTimer)
   },
   watch: {
     '$route.query'(query) {
@@ -211,7 +279,7 @@ export default {
       }
       if (!this.applyDownloadRoute(query)) return
       if (this.activeTab === 'downloaders') this.loadDownloaders()
-      if (this.activeTab === 'indexer' && !this.torznabLoaded) this.loadTorznab()
+      if (this.activeTab === 'indexer') this.loadSources()
     },
   },
   methods: {
@@ -267,37 +335,166 @@ export default {
     openIndexerTab() {
       this.pushDownloadRoute({ tab: 'indexer' })
     },
-    async loadTorznab() {
+    async loadSources() {
+      const requestId = ++this.sourceSnapshotRequestId
+      this.sourceLoading = true
+      this.avdbStatusLoading = true
       try {
-        const resp = await api.getConfig()
-        const data = resp.data || {}
-        const torznab = (data.sources && data.sources.torznab) || {}
-        this.torznab = { ...DEFAULT_TORZNAB, ...torznab }
-        this.torznabLoaded = true
-      } catch (error) {
-        console.error('Failed to load indexer config:', error)
-        this.torznabStatus = '索引源配置加载失败，请刷新重试。'
+        const [snapshotResult, statusResult] = await Promise.allSettled([
+          api.getSourceConfig(),
+          this.fetchAvdbStatus(),
+        ])
+        if (snapshotResult.status === 'fulfilled' && requestId === this.sourceSnapshotRequestId) {
+          this.sourceSnapshot = normalizeSourceSnapshot(snapshotResult.value.data)
+        } else if (snapshotResult.status === 'rejected') {
+          console.error('Failed to load download sources:', snapshotResult.reason)
+          this.$message?.error?.('下载源加载失败，请刷新重试')
+        }
+        if (statusResult.status === 'fulfilled' && statusResult.value) {
+          this.avdbStatus = { ...(statusResult.value.data || {}) }
+          this.avdbStatusKnown = true
+        } else if (statusResult.status === 'rejected') {
+          console.error('Failed to load AVDB status:', statusResult.reason)
+          this.avdbStatusKnown = false
+          this.avdbStatus = { ...this.avdbStatus, status: 'unknown' }
+        }
+      } finally {
+        this.sourceLoading = false
+        this.avdbStatusLoading = false
       }
     },
-    async saveTorznab(draft) {
-      this.savingTorznab = true
-      this.torznabStatus = ''
+    async fetchAvdbStatus() {
+      if (this.avdbStatusRequestPending) return null
+      this.avdbStatusRequestPending = true
       try {
-        const payload = { ...draft }
-        // 空 API Key 表示不修改已保存的密钥，由后端保留现值
-        if (!payload.api_key) delete payload.api_key
-        await api.updateConfig({ sources: { torznab: payload } })
-        this.torznab = { ...DEFAULT_TORZNAB, ...draft, api_key: '' }
-        this.torznabLoaded = true
-        this.torznabStatus = '索引源配置已保存。'
-        this.$message?.success?.('索引源配置已保存')
-      } catch (error) {
-        console.error('Failed to save indexer config:', error)
-        this.torznabStatus = '保存失败，请稍后重试。'
-        this.$message?.error?.('保存失败')
+        return await api.getAvdbStatus()
       } finally {
-        this.savingTorznab = false
+        this.avdbStatusRequestPending = false
       }
+    },
+    async pollAvdbStatus() {
+      const avdbRow = this.sourceSnapshot.sources.find(item => item.id === 'avdb')
+      if (
+        this.activeTab !== 'indexer'
+        || !avdbRow
+        || this.avdbStatusLoading
+        || this.avdbStatusRequestPending
+        || this.sourceBusyId
+        || (!shouldPollAvdb(this.avdbStatus) && !shouldPollAvdb(avdbRow))
+      ) return
+      try {
+        const resp = await this.fetchAvdbStatus()
+        if (!resp) return
+        this.avdbStatus = { ...(resp.data || {}) }
+        this.avdbStatusKnown = true
+        const snapshotResp = await api.getSourceConfig()
+        this.sourceSnapshot = normalizeSourceSnapshot(snapshotResp.data)
+      } catch (error) {
+        console.error('Failed to poll AVDB status:', error)
+        this.avdbStatusKnown = false
+        this.avdbStatus = { ...this.avdbStatus, status: 'unknown' }
+      }
+    },
+    openNewSource() {
+      this.sourceEditorError = ''
+      this.sourceEditor = { open: true, mode: 'new', draft: createSourceDraft('torznab') }
+    },
+    editSource(item) {
+      if (item?.type !== 'torznab' || !item?.id) return
+      this.sourceEditorError = ''
+      this.sourceEditor = { open: true, mode: 'edit', draft: createSourceDraft('torznab', item) }
+    },
+    closeSourceEditor() {
+      if (this.sourceBusyId) return
+      this.sourceEditor = { open: false, mode: 'new', draft: null }
+      this.sourceEditorError = ''
+    },
+    async saveSourceEditor(value) {
+      if (this.sourceBusyId || !this.sourceEditor.open) return
+      const draft = { ...(value || this.sourceEditor.draft || {}) }
+      const creating = this.sourceEditor.mode === 'new'
+      const busyId = creating ? 'new' : draft.id
+      if (!busyId) return
+      const isNewAvdb = creating && draft.type === 'avdb'
+      this.sourceBusyId = busyId
+      this.sourceEditorError = ''
+      try {
+        const resp = creating
+          ? await api.createSource(sourcePayload(draft, true))
+          : await api.updateSource(draft.id, sourcePayload(draft))
+        const nextSnapshot = normalizeSourceSnapshot(resp.data)
+        ++this.sourceSnapshotRequestId
+        this.sourceSnapshot = nextSnapshot
+        const createdAvdb = nextSnapshot.sources.find(item => item.id === 'avdb')
+        if (createdAvdb) {
+          this.avdbStatus = { ...this.avdbStatus, ...createdAvdb }
+          this.avdbStatusKnown = hasKnownAvdbStatus(this.avdbStatus)
+        }
+        this.sourceBusyId = ''
+        this.closeSourceEditor()
+        this.$message?.success?.(creating ? '下载源已添加' : '来源配置已更新')
+        if (isNewAvdb && !createdAvdb?.available) this.viewAvdbJob()
+      } catch (error) {
+        console.error('Failed to save download source:', error)
+        this.sourceEditorError = sourceRequestError(error, '下载源保存失败，请稍后重试。')
+      } finally {
+        if (this.sourceBusyId === busyId) this.sourceBusyId = ''
+      }
+    },
+    async toggleSource(item) {
+      if (!item?.id || this.sourceBusyId) return
+      if (item.type === 'avdb' && (!this.avdbStatusKnown || (!item.enabled && !this.avdbStatus.available))) return
+      const busyId = item.id
+      this.sourceBusyId = busyId
+      try {
+        const resp = await api.updateSource(item.id, sourcePayload({ ...item, enabled: !item.enabled }))
+        const nextSnapshot = normalizeSourceSnapshot(resp.data)
+        ++this.sourceSnapshotRequestId
+        this.sourceSnapshot = nextSnapshot
+        if (item.type === 'avdb') this.avdbStatus = { ...this.avdbStatus, enabled: !item.enabled }
+      } catch (error) {
+        console.error('Failed to toggle download source:', error)
+        this.$message?.error?.(sourceRequestError(error, '下载源状态更新失败'))
+      } finally {
+        if (this.sourceBusyId === busyId) this.sourceBusyId = ''
+      }
+    },
+    async removeSource(item) {
+      if (!item?.id || this.sourceBusyId) return
+      if (item.type === 'avdb' && !this.avdbStatusKnown) return
+      const confirmed = await requestConfirm({
+        title: item.type === 'avdb' ? '移除 AVDB 来源' : '删除下载源',
+        message: item.type === 'avdb' ? '确认移除 AVDB 来源？' : `确认删除“${item.name || item.id}”？`,
+        details: item.type === 'avdb' ? '会停止定时检查，但保留本地索引数据。' : '该配置将从下载源列表中删除。',
+        confirmText: '删除',
+        tone: 'danger',
+      })
+      if (!confirmed) return
+      const busyId = item.id
+      this.sourceBusyId = busyId
+      try {
+        const resp = await api.deleteSource(item.id)
+        const nextSnapshot = normalizeSourceSnapshot(resp.data)
+        ++this.sourceSnapshotRequestId
+        this.sourceSnapshot = nextSnapshot
+        if (item.type === 'avdb') {
+          this.avdbStatus = { ...this.avdbStatus, enabled: false, sync_enabled: false }
+        }
+      } catch (error) {
+        console.error('Failed to remove download source:', error)
+        this.$message?.error?.(sourceRequestError(error, '下载源删除失败'))
+      } finally {
+        if (this.sourceBusyId === busyId) this.sourceBusyId = ''
+      }
+    },
+    viewAvdbJob() {
+      this.$router.push({
+        path: '/system-jobs',
+        query: {
+          job: 'avdb_sync',
+          return_to: '/downloads?tab=indexer&source=avdb',
+        },
+      }).catch(() => {})
     },
     setTaskStatus(status) {
       this.pushDownloadRoute({ tab: 'tasks', task_status: status })
@@ -475,7 +672,7 @@ export default {
           clients: (resp.data.clients || []).map(client => ({ ...client })),
           types: resp.data.types || this.downloaderTypes,
         }
-        this.$message?.success?.('下载源已保存')
+        this.$message?.success?.('下载器已保存')
       } catch (error) {
         console.error('Save downloaders failed:', error)
       } finally {

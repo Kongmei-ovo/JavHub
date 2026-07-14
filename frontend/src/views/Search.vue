@@ -446,6 +446,7 @@ export default {
   watch: {
     '$route.query'(q) {
       if (this.embedded) return
+      if (this.$route.path !== '/search') return
       this.syncRouteQuery(q)
       if (this.searchSettingsReady) this.runSearchFromRoute()
     }

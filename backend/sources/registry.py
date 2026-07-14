@@ -9,6 +9,7 @@ from sources.base import MagnetSource
 
 # Import MagnetInfo for type hints
 from models.video import MagnetInfo
+from services.secret_redactor import redact_sensitive_text
 
 
 class SourceRegistry:
@@ -67,19 +68,18 @@ class SourceRegistry:
         result_count: int,
         ok: bool,
         error: str = "",
-    ) -> None:
+    ) -> dict:
         duration_ms = round((time.monotonic() - started_at) * 1000, 3)
-        cls._attempts.append(
-            {
-                "source": source,
-                "keyword": keyword,
-                "duration_ms": duration_ms,
-                "result_count": result_count,
-                "error": error,
-                "ok": ok,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+        attempt = {
+            "source": source,
+            "keyword": keyword,
+            "duration_ms": duration_ms,
+            "result_count": result_count,
+            "error": error,
+            "ok": ok,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        cls._attempts.append(attempt)
         if len(cls._attempts) > cls._max_attempts:
             del cls._attempts[: len(cls._attempts) - cls._max_attempts]
         try:
@@ -95,13 +95,14 @@ class SourceRegistry:
             )
         except Exception:
             pass
+        return attempt.copy()
 
     @classmethod
-    async def _search_one(cls, name: str, keyword: str) -> list[dict]:
+    async def _search_one(cls, name: str, keyword: str) -> tuple[list[dict], dict | None]:
         """Search a single source, recording the attempt and isolating errors."""
         source = cls._sources.get(name)
         if not source:
-            return []
+            return [], None
         started_at = time.monotonic()
         try:
             source_results = await source.search(keyword)
@@ -110,35 +111,51 @@ class SourceRegistry:
                 row = dict(item)
                 row.setdefault("source", name)
                 rows.append(row)
-            cls._record_attempt(
+            attempt = cls._record_attempt(
                 source=name,
                 keyword=keyword,
                 started_at=started_at,
                 result_count=len(rows),
                 ok=True,
             )
-            return rows
+            return rows, attempt
         except Exception as exc:
-            cls._record_attempt(
+            attempt = cls._record_attempt(
                 source=name,
                 keyword=keyword,
                 started_at=started_at,
                 result_count=0,
                 ok=False,
-                error=f"{type(exc).__name__}: {exc}",
+                error=_sanitized_error(exc, source),
             )
-            return []
+            return [], attempt
+
+    @classmethod
+    async def search_selected(
+        cls,
+        keyword: str,
+        names: list[str] | None = None,
+    ) -> tuple[list[dict], list[dict]]:
+        """Search the requested runtime sources and return call-local attempts."""
+        requested = cls.priority() if names is None else list(names)
+        selected = list(dict.fromkeys(name for name in requested if cls._sources.get(name)))
+        if not selected:
+            return [], []
+        batches = await asyncio.gather(
+            *(cls._search_one(name, keyword) for name in selected)
+        )
+        results = [row for rows, _attempt in batches for row in rows]
+        attempts = [attempt for _rows, attempt in batches if attempt is not None]
+        return results, attempts
 
     @classmethod
     async def search_all(cls, keyword: str) -> list[MagnetInfo]:
         """并发查询所有源，按优先级顺序聚合结果。"""
-        names = [name for name in cls._priority if cls._sources.get(name)]
-        if not names:
-            return []
-        # All sources are independent network calls; fan them out concurrently
-        # instead of paying the sum of every source's latency in series.
-        batches = await asyncio.gather(*(cls._search_one(name, keyword) for name in names))
-        results: list[dict] = []
-        for rows in batches:
-            results.extend(rows)
+        results, _attempts = await cls.search_selected(keyword)
         return results
+
+
+def _sanitized_error(exc: Exception, source: MagnetSource) -> str:
+    text = f"{type(exc).__name__}: {exc}"
+    secret = str(getattr(source, "api_key", "") or "")
+    return redact_sensitive_text(text, secrets=(secret,))

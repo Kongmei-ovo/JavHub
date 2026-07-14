@@ -392,7 +392,7 @@ export function useDownloadCandidates(options = {}) {
       title: '批准下载候选',
       message: `确认批准 ${candidate.dvd_id || candidate.content_id} 并下发下载？`,
       details: candidate.magnet
-        ? '会创建真实下载任务并发送到当前默认下载源。'
+        ? '会创建真实下载任务并发送到当前默认下载器。'
         : '该候选没有磁力链接，批准可能失败或需要先补磁力。',
       confirmText: '批准',
     })
@@ -434,7 +434,7 @@ export function useDownloadCandidates(options = {}) {
     const confirmed = await requestConfirm({
       title: '按策略处理候选',
       message: `确认按当前策略处理 ${candidate.dvd_id || candidate.content_id}？`,
-      details: '可能会补充磁力并下发到下载源；不满足策略时会保持候选状态。',
+      details: '可能会补充磁力并下发到下载器；不满足策略时会保持候选状态。',
       confirmText: '处理',
     })
     if (!confirmed) return

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import threading
 import unittest
+from concurrent.futures import Future
 from unittest.mock import patch
 
 from test_support.postgres import TempPostgresMixin
@@ -173,6 +176,49 @@ class VideoVariantIndexServiceTest(TempPostgresMixin, unittest.TestCase):
 
         self.assertEqual(result["status"], "completed")
         scan.assert_called_once_with()
+
+
+class VariantIndexDispatchTest(unittest.IsolatedAsyncioTestCase):
+    async def test_start_retains_task_and_returns_queued_snapshot(self):
+        from services import video_variant_index as service
+
+        entered = threading.Event()
+        release = threading.Event()
+
+        def blocking(job_id: int, *, force: bool = False):
+            entered.set()
+            release.wait(timeout=2)
+            return {"id": job_id, "status": "completed", "force": force}
+
+        with patch.object(service, "add_variant_group_job", return_value=41), \
+             patch.object(service, "get_variant_group_job", return_value={"id": 41, "status": "queued"}), \
+             patch.object(service, "run_variant_index_job", side_effect=blocking):
+            queued = service.start_variant_index_job(force=True)
+            self.assertEqual(queued, {"id": 41, "status": "queued"})
+            self.assertTrue(await asyncio.to_thread(entered.wait, 1))
+            self.assertEqual(len(service._variant_index_tasks), 1)
+            release.set()
+            await asyncio.gather(*tuple(service._variant_index_tasks))
+            await asyncio.sleep(0)
+
+        self.assertEqual(service._variant_index_tasks, set())
+
+
+class VariantIndexNoLoopDispatchTest(unittest.TestCase):
+    def test_start_retains_worker_future_until_completion(self):
+        from services import video_variant_index as service
+
+        future = Future()
+        with patch.object(service, "add_variant_group_job", return_value=42), \
+             patch.object(service, "get_variant_group_job", return_value={"id": 42, "status": "queued"}), \
+             patch("scheduler.worker_loop.submit", return_value=future) as submit:
+            queued = service.start_variant_index_job()
+            self.assertEqual(queued["status"], "queued")
+            self.assertIn(future, service._variant_index_futures)
+            future.set_result({"id": 42, "status": "completed"})
+            submit.call_args.args[0].close()
+
+        self.assertNotIn(future, service._variant_index_futures)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from database import init_db
+import database
 from config import config as _cfg
 from middlewares.performance import RequestTimingMiddleware
 from middlewares.trace import TraceIdMiddleware
@@ -19,8 +19,7 @@ logging.basicConfig(
 install_sensitive_log_filter()
 
 # 把标准 logging(含未捕获异常 / 各模块行为)汇入运行日志表,供 /logs 页面统一查看。
-from services.db_log_bridge import install_db_log_bridge
-install_db_log_bridge()
+from services import db_log_bridge
 
 # 导入新模块化路由
 from routers.videos import router as videos_router
@@ -44,6 +43,7 @@ from routers.authors import router as authors_router
 from routers.labels import router as labels_router
 from routers.javinfo_imports import router as javinfo_imports_router
 from routers.video_variant_index import router as video_variant_index_router
+from routers.source_management import router as source_management_router
 from routers.source_health import router as source_health_router
 from routers.jobs import router as jobs_router
 from routers.scheduler import router as scheduler_router
@@ -55,6 +55,7 @@ from routers.open115_files import router as open115_files_router
 from routers.movie_resources import router as movie_resources_router
 from routers.film_dictionary import router as film_dictionary_router
 from routers.acquisitions import router as acquisitions_router
+from routers.avdb import router as avdb_router
 from services.emby_auth import EmbyHTTPException
 from modules.info_client import (
     JavInfoError,
@@ -196,7 +197,7 @@ if _cfg.rate_limit_enabled:
         return response
 
 # Init DB
-init_db()
+database.init_db()
 
 # Register routers
 app.include_router(videos_router)
@@ -220,6 +221,7 @@ app.include_router(authors_router)
 app.include_router(labels_router)
 app.include_router(javinfo_imports_router)
 app.include_router(video_variant_index_router)
+app.include_router(source_management_router)
 app.include_router(source_health_router)
 app.include_router(jobs_router)
 app.include_router(scheduler_router)
@@ -229,16 +231,18 @@ app.include_router(open115_files_router)
 app.include_router(movie_resources_router)
 app.include_router(film_dictionary_router)
 app.include_router(acquisitions_router)
+app.include_router(avdb_router)
 # Emby 兼容层挂根路径与 /emby 双前缀（不同客户端拼法不同）
-app.include_router(emby_compat_router)
-app.include_router(emby_discovery_router, prefix="/emby")
-app.include_router(emby_compat_router, prefix="/emby")
+app.include_router(emby_compat_router, include_in_schema=False)
+app.include_router(emby_discovery_router, prefix="/emby", include_in_schema=False)
+app.include_router(emby_compat_router, prefix="/emby", include_in_schema=False)
 
 
 @app.on_event("startup")
 async def startup_event():
-    install_sensitive_log_filter()
     """启动时运行"""
+    install_sensitive_log_filter()
+    db_log_bridge.install_db_log_bridge()
     try:
         from scheduler.tasks import start_scheduler
         start_scheduler()
@@ -265,13 +269,13 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Failed to register sources: {e}")
 
-    # 后端启动后立刻 fire-and-forget 预热 FlareSolverr session,
-    # 让用户首次开播跳过"chrome 冷启 + CF challenge"的 30s 头付。
+    # Start FlareSolverr lifecycle management and prewarm CF cookies in the
+    # background so the first playback does not pay Chrome/challenge latency.
     try:
-        from services.cf_solver import start_warmup_background
-        start_warmup_background()
+        from services.cf_solver import start_session_manager
+        await start_session_manager()
     except Exception as e:
-        logging.warning(f"Failed to start CF solver warmup: {e}")
+        logging.warning(f"Failed to start CF solver session manager: {e}")
 
 
 @app.on_event("shutdown")
@@ -303,7 +307,19 @@ async def shutdown_event():
         logging.debug("Failed to close 115 Open client: %s", e)
 
     try:
+        from services.cache import close_backend
+        await close_backend()
+    except Exception as e:
+        logging.debug("Failed to close cache client: %s", e)
+
+    try:
         from routers.playback import playback_hls_client
         await playback_hls_client.aclose()
     except Exception as e:
         logging.debug("Failed to close 115 HLS proxy client: %s", e)
+
+    try:
+        from services.cf_solver import close_session_manager
+        await close_session_manager()
+    except Exception as e:
+        logging.debug("Failed to close CF solver session manager: %s", e)

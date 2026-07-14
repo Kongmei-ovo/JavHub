@@ -153,6 +153,23 @@
 
 .cat-result { font-size: var(--type-caption); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+.source-stage-select {
+  --glass-select-height: 36px;
+  min-width: 168px;
+  flex-shrink: 0;
+}
+
+.source-stage-select :deep(.glass-select__copy) {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.source-stage-select :deep(.glass-select__hint) {
+  margin-top: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- 筛选 disclosure trigger -------------------------------------------- */
 .cat-filter { position: relative; flex-shrink: 0; }
 .filter-trigger {
@@ -207,14 +224,11 @@
 }
 .fp-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 34px; padding: 2px 4px; }
 .fp-row :deep(.glass-select) { width: 100%; min-width: 0; }
-.fp-row :deep(.glass-select__trigger) { width: 100%; min-height: 28px; padding-block: 3px; font-size: var(--type-caption); box-shadow: none; }
-.fp-row-stack { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.fp-row :deep(.glass-select__button) { width: 100%; min-height: 28px; padding-block: 3px; font-size: var(--type-caption); box-shadow: none; }
 .fp-label { font-size: var(--type-caption); color: var(--text-muted); font-weight: 500; white-space: nowrap; }
 .fp-seg { margin-bottom: 0; border: 1px solid var(--hairline); padding: 2px; gap: 2px; border-radius: 999px; }
 .fp-seg button { min-height: 24px; padding: 2px 8px; border-radius: 999px; font-size: var(--type-micro); line-height: 1.15; }
 .fp-seg button.active { background: rgba(var(--accent-rgb), 0.18); color: var(--text-primary); }
-.fp-seg-wrap { flex-wrap: wrap; }
-.fp-seg-n { font-size: var(--type-micro); color: var(--text-muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .fp-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--hairline); }
 .fp-count { font-size: var(--type-caption); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .fp-clear { border: 0; background: none; padding: 0; font: inherit; font-size: var(--type-caption); font-weight: 600; color: var(--accent); cursor: pointer; }
@@ -497,9 +511,9 @@
   .trail-stage { flex: 1; }
 }
 
-/* ---- segmented stage switch --------------------------------------------- */
-.stage-seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--radius-control); background: var(--card-2); }
+/* ---- segmented stage switch (only the primary stage navigation) --------- */
+.stage-row .stage-seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--radius-control); background: var(--card-2); }
 .stage-row .stage-seg { margin-bottom: 0; }
-.stage-seg button { border: none; background: none; color: var(--text-secondary); padding: 6px 14px; border-radius: var(--radius-control); cursor: pointer; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
-.stage-seg button.active { background: var(--card); color: var(--text-primary); }
-.stage-seg .seg-n { font-size: var(--type-micro); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.stage-row .stage-seg button { border: none; background: none; color: var(--text-secondary); padding: 6px 14px; border-radius: var(--radius-control); cursor: pointer; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.stage-row .stage-seg button.active { background: var(--card); color: var(--text-primary); }
+.stage-row .stage-seg .seg-n { font-size: var(--type-micro); color: var(--text-muted); font-variant-numeric: tabular-nums; }

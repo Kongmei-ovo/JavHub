@@ -603,6 +603,47 @@ test('downloader management APIs send expected requests', async (t) => {
   assert.deepEqual(JSON.parse(calls[2].data), { id: 'tr', type: 'transmission', address: 'http://tr' })
 })
 
+test('download source management APIs send expected requests', async (t) => {
+  const calls = []
+  installAxiosAdapter(t, async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { sources: [] } }
+  })
+
+  const { default: api } = await import(`./index.js?download-sources-${Date.now()}`)
+  await api.getSourceConfig()
+  await api.createSource({ type: 'avdb' })
+  await api.updateSource('source-1', { enabled: false })
+  await api.deleteSource('source-1')
+  await api.searchSources({ keyword: 'MIAA-784', source_id: 'auto' })
+
+  assert.deepEqual(calls.map(call => [call.method, call.url]), [
+    ['get', '/v1/sources/config'],
+    ['post', '/v1/sources'],
+    ['put', '/v1/sources/source-1'],
+    ['delete', '/v1/sources/source-1'],
+    ['post', '/v1/sources/search'],
+  ])
+  assert.deepEqual(JSON.parse(calls[1].data), { type: 'avdb' })
+  assert.deepEqual(JSON.parse(calls[2].data), { enabled: false })
+  assert.deepEqual(JSON.parse(calls[4].data), { keyword: 'MIAA-784', source_id: 'auto' })
+})
+
+test('download source update and delete APIs encode source ids as one path segment', async (t) => {
+  const calls = []
+  installAxiosAdapter(t, async (config) => {
+    calls.push(config)
+    return { config, status: 200, statusText: 'OK', headers: {}, data: { sources: [] } }
+  })
+
+  const { default: api } = await import(`./index.js?download-source-id-${Date.now()}`)
+  await api.updateSource('source /\u4e00', { type: 'torznab' })
+  await api.deleteSource('source /\u4e00')
+
+  assert.equal(calls[0].url, '/v1/sources/source%20%2F%E4%B8%80')
+  assert.equal(calls[1].url, '/v1/sources/source%20%2F%E4%B8%80')
+})
+
 test('operations / system-jobs APIs send requests to correct paths', async (t) => {
   const calls = []
   installAxiosAdapter(t, async (config) => {
@@ -613,6 +654,8 @@ test('operations / system-jobs APIs send requests to correct paths', async (t) =
   const { default: api } = await import(`./index.js?system-jobs-${Date.now()}`)
   await api.getSchedulerJobs()
   await api.runSchedulerJob('variant_index_rebuild')
+  await api.getAvdbStatus()
+  await api.runAvdbSync()
   await api.startVideoVariantIndexJob()
   await api.listVideoVariantIndexJobs(5)
   await api.getVideoVariantIndexStats()
@@ -621,11 +664,15 @@ test('operations / system-jobs APIs send requests to correct paths', async (t) =
   assert.equal(calls[0].method, 'get')
   assert.equal(calls[1].url, '/v1/scheduler/jobs/variant_index_rebuild/run')
   assert.equal(calls[1].method, 'post')
-  assert.equal(calls[2].url, '/v1/video-variants/index/jobs')
-  assert.equal(calls[2].method, 'post')
-  assert.equal(calls[3].url, '/v1/video-variants/index/jobs')
-  assert.deepEqual(calls[3].params, { limit: 5 })
-  assert.equal(calls[4].url, '/v1/video-variants/index/stats')
+  assert.equal(calls[2].url, '/v1/avdb/status')
+  assert.equal(calls[2].method, 'get')
+  assert.equal(calls[3].url, '/v1/scheduler/jobs/avdb_sync/run')
+  assert.equal(calls[3].method, 'post')
+  assert.equal(calls[4].url, '/v1/video-variants/index/jobs')
+  assert.equal(calls[4].method, 'post')
+  assert.equal(calls[5].url, '/v1/video-variants/index/jobs')
+  assert.deepEqual(calls[5].params, { limit: 5 })
+  assert.equal(calls[6].url, '/v1/video-variants/index/stats')
 })
 
 test('translation job APIs send expected requests', async (t) => {

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import tempfile
+import threading
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+
+import httpx
 
 from test_support.postgres import TempPostgresMixin
 
@@ -112,6 +118,116 @@ class Open115FinalizerTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase)
 
 
 class Open115DownloaderServiceTests(TempPostgresMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_submit_and_worker_poll_progress_across_persistent_event_loops(self):
+        from database import create_download_task, get_download_task, update_task_status
+        from scheduler.worker_loop import run as run_on_worker
+        from services.downloader import downloader_service
+        from services.open115 import Open115Client
+        from services.open115_downloader import Open115DownloaderClient
+
+        request_loop = asyncio.new_event_loop()
+        request_thread = threading.Thread(target=request_loop.run_forever, daemon=True)
+        request_thread.start()
+        clients = []
+
+        class LoopBoundHTTPClient:
+            def __init__(self):
+                self.owner = asyncio.get_running_loop()
+                self.closed_on = None
+                self.is_closed = False
+
+            async def request(self, method, url, **_kwargs):
+                if asyncio.get_running_loop() is not self.owner:
+                    raise RuntimeError("is bound to a different event loop")
+                if url.endswith("/open/offline/add_task_urls"):
+                    payload = {"state": True, "data": [{
+                        "state": True, "info_hash": "cross-loop-hash",
+                    }]}
+                elif url.endswith("/open/offline/get_task_list"):
+                    payload = {"state": True, "data": {
+                        "tasks": [{
+                            "info_hash": "cross-loop-hash",
+                            "status": 2,
+                            "file_id": "result-folder",
+                            "wp_path_id": "target-folder",
+                        }],
+                        "page_count": 1,
+                    }}
+                else:
+                    raise AssertionError(f"unexpected request: {method} {url}")
+                return httpx.Response(200, request=httpx.Request(method, url), json=payload)
+
+            async def aclose(self):
+                self.closed_on = asyncio.get_running_loop()
+                self.is_closed = True
+
+        def factory():
+            result = LoopBoundHTTPClient()
+            clients.append(result)
+            return result
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                cfg = SimpleNamespace(
+                    _config={"open115": {
+                        "access_token": "access", "refresh_token": "refresh",
+                    }},
+                    config_path=Path(tmp) / "config.yaml",
+                )
+                client = Open115Client(
+                    config_obj=cfg, http_client_factory=factory, min_request_interval=0,
+                )
+                submitted = asyncio.run_coroutine_threadsafe(
+                    client.add_offline_task(["magnet:?xt=urn:btih:cross-loop-hash"], "target-folder"),
+                    request_loop,
+                ).result(timeout=2)
+                self.assertEqual(submitted, ["cross-loop-hash"])
+
+                task_id = create_download_task(
+                    "stable:item-cross-loop",
+                    "Movie",
+                    "magnet:?xt=urn:btih:cross-loop-hash",
+                    downloader_id="open115",
+                    downloader_name="115 Open",
+                    downloader_type="open115",
+                    movie_id="stable:item-cross-loop",
+                )
+                update_task_status(
+                    task_id,
+                    "downloading",
+                    info_hash="cross-loop-hash",
+                    target_folder_id="target-folder",
+                    open115_task_id="cross-loop-hash",
+                )
+                cross_loop_downloader = Open115DownloaderClient(client=client)
+                with patch("services.downloader.open115_downloader", cross_loop_downloader), \
+                     patch.object(
+                         cross_loop_downloader,
+                         "finalize",
+                         new=AsyncMock(return_value={"video_count": 1}),
+                     ) as finalize:
+                    result = await asyncio.to_thread(
+                        run_on_worker, downloader_service.poll_task_status(task_id)
+                    )
+
+                task = get_download_task(task_id)
+                self.assertEqual(result["status"], "completed")
+                self.assertEqual(task["status"], "completed")
+                self.assertEqual(task["result_file_id"], "result-folder")
+                self.assertEqual(len(clients), 2)
+                self.assertEqual(len({item.owner for item in clients}), 2)
+                finalize.assert_awaited_once_with(
+                    task_id=task_id,
+                    movie_id="stable:item-cross-loop",
+                    result_file_id="result-folder",
+                )
+                await client.close()
+                self.assertTrue(all(item.closed_on is item.owner for item in clients))
+        finally:
+            request_loop.call_soon_threadsafe(request_loop.stop)
+            request_thread.join(timeout=2)
+            request_loop.close()
+
     async def test_create_task_persists_movie_binding_and_remote_folder(self):
         from database import get_download_task
         from services.downloader import downloader_service

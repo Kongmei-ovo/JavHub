@@ -58,55 +58,8 @@ run_local_flaresolverr() {
   "${LOCAL_FLARESOLVERR_HELPER}" "$@"
 }
 
-xml_escape() {
-  "${PYTHON_BIN}" -c 'import html, sys; print(html.escape(sys.stdin.read().rstrip("\n"), quote=True), end="")'
-}
-
-javinfo_source_proxy_url() {
-  ROOT_DIR="${ROOT_DIR}" "${PYTHON_BIN}" <<'PY'
-from pathlib import Path
-import os
-import sys
-
-try:
-    import yaml
-except Exception:
-    sys.exit(0)
-
-config_path = Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(os.environ["ROOT_DIR"]) / "config.yaml")
-try:
-    data = yaml.safe_load(config_path.read_text()) or {}
-except Exception:
-    sys.exit(0)
-
-proxy = data.get("proxy") or {}
-if not proxy.get("enabled"):
-    sys.exit(0)
-
-for key in ("http_url", "https_url"):
-    value = str(proxy.get(key) or "").strip()
-    if value:
-        print(value, end="")
-        break
-PY
-}
-
-javinfo_worker_count() {
-  ROOT_DIR="${ROOT_DIR}" "${PYTHON_BIN}" <<'PY'
-from pathlib import Path
-import os, yaml
-path = Path(os.environ.get("JAVHUB_CONFIG_PATH") or Path(os.environ["ROOT_DIR"]) / "config.yaml")
-try:
-    value = int(((yaml.safe_load(path.read_text()) or {}).get("javinfo") or {}).get("supplement_worker_count", 6))
-except Exception:
-    value = 6
-print(max(1, min(16, value)), end="")
-PY
-}
-
 write_plists() {
   mkdir -p "${LAUNCH_AGENTS_DIR}"
-  local javinfo_source_proxy_url_value javinfo_source_proxy_env javinfo_worker_count_value
   JAVINFO_PLIST_CHANGED=0
   BACKEND_PLIST_CHANGED=0
   FRONTEND_PLIST_CHANGED=0
@@ -127,140 +80,14 @@ write_plists() {
     frontend_had_plist=1
     cp "${FRONTEND_PLIST}" "${frontend_before}"
   fi
-  javinfo_source_proxy_url_value="$(javinfo_source_proxy_url)"
-  javinfo_worker_count_value="$(javinfo_worker_count)"
-  javinfo_source_proxy_env=""
-  if [[ -n "${javinfo_source_proxy_url_value}" ]]; then
-    local escaped_proxy_url
-    escaped_proxy_url="$(printf '%s' "${javinfo_source_proxy_url_value}" | xml_escape)"
-    javinfo_source_proxy_env="    <key>JAVINFO_SOURCE_PROXY_URL</key>
-    <string>${escaped_proxy_url}</string>"
-  fi
-
-  cat > "${JAVINFO_PLIST}" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>${JAVINFO_LABEL}</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${JAVINFO_DIR}/JavInfoApi</string>
-  </array>
-  <key>WorkingDirectory</key>
-  <string>${JAVINFO_DIR}</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    <key>SERVER_PORT</key>
-    <string>8080</string>
-    <key>SUPPLEMENT_WORKER_COUNT</key>
-    <string>${javinfo_worker_count_value}</string>
-${javinfo_source_proxy_env}
-  </dict>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>${JAVINFO_DIR}/javinfoapi.launchd.log</string>
-  <key>StandardErrorPath</key>
-  <string>${JAVINFO_DIR}/javinfoapi.launchd.err.log</string>
-</dict>
-</plist>
-EOF
-
-  cat > "${BACKEND_PLIST}" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>${BACKEND_LABEL}</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${ROOT_DIR}/.venv/bin/uvicorn</string>
-    <string>main:app</string>
-    <string>--host</string>
-    <string>0.0.0.0</string>
-    <string>--port</string>
-    <string>18090</string>
-  </array>
-  <key>WorkingDirectory</key>
-  <string>${ROOT_DIR}/backend</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>PATH</key>
-    <string>${ROOT_DIR}/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    <key>PYTHONUNBUFFERED</key>
-    <string>1</string>
-    <key>JAVHUB_DB_HOST</key>
-    <string>${JAVHUB_DB_HOST:-localhost}</string>
-    <key>JAVHUB_DB_PORT</key>
-    <string>${JAVHUB_DB_PORT:-5432}</string>
-    <key>JAVHUB_DB_USER</key>
-    <string>${JAVHUB_DB_USER:-kongmei}</string>
-    <key>JAVHUB_DB_PASSWORD</key>
-    <string>${JAVHUB_DB_PASSWORD:-}</string>
-    <key>JAVHUB_DB_NAME</key>
-    <string>${JAVHUB_DB_NAME:-javhub}</string>
-    <key>JAVHUB_CACHE_BACKEND</key>
-    <string>${JAVHUB_CACHE_BACKEND:-redis}</string>
-    <key>JAVHUB_REDIS_URL</key>
-    <string>${JAVHUB_REDIS_URL:-redis://127.0.0.1:6379/0}</string>
-    <key>JAVHUB_REDIS_PREFIX</key>
-    <string>${JAVHUB_REDIS_PREFIX:-javhub-cache}</string>
-  </dict>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>${ROOT_DIR}/backend/javhub-backend.launchd.log</string>
-  <key>StandardErrorPath</key>
-  <string>${ROOT_DIR}/backend/javhub-backend.launchd.err.log</string>
-</dict>
-</plist>
-EOF
-
-  cat > "${FRONTEND_PLIST}" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>${FRONTEND_LABEL}</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${FRONTEND_NPM_BIN}</string>
-    <string>run</string>
-    <string>preview</string>
-    <string>--</string>
-    <string>--host</string>
-    <string>0.0.0.0</string>
-    <string>--port</string>
-    <string>5174</string>
-  </array>
-  <key>WorkingDirectory</key>
-  <string>${ROOT_DIR}/frontend</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-  </dict>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>${ROOT_DIR}/javhub-frontend.launchd.log</string>
-  <key>StandardErrorPath</key>
-  <string>${ROOT_DIR}/javhub-frontend.launchd.err.log</string>
-</dict>
-</plist>
-EOF
+  "${PYTHON_BIN}" "${ROOT_DIR}/scripts/render_service_plists.py" \
+    --javinfo-plist "${JAVINFO_PLIST}" \
+    --backend-plist "${BACKEND_PLIST}" \
+    --frontend-plist "${FRONTEND_PLIST}" \
+    --root-dir "${ROOT_DIR}" \
+    --javinfo-dir "${JAVINFO_DIR}" \
+    --frontend-npm-bin "${FRONTEND_NPM_BIN}" \
+    --config-path "${JAVHUB_CONFIG_PATH:-${ROOT_DIR}/config.yaml}"
 
   if command -v plutil >/dev/null 2>&1; then
     plutil -lint "${JAVINFO_PLIST}" "${BACKEND_PLIST}" "${FRONTEND_PLIST}" >/dev/null

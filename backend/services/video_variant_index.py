@@ -8,6 +8,8 @@ import logging
 import os
 import re
 from collections import defaultdict
+from concurrent.futures import Future
+from functools import partial
 from typing import Any, Iterable
 
 from config import config
@@ -29,6 +31,9 @@ from services.video_variants import (
 logger = logging.getLogger(__name__)
 
 MAX_INDEXED_GROUP_ITEMS = 20
+_variant_index_tasks: set[asyncio.Task[dict[str, Any]]] = set()
+_variant_index_futures: set[Future[dict[str, Any]]] = set()
+_TERMINAL_JOB_STATUSES = frozenset({"completed", "failed"})
 
 
 def scan_derived_video_rows(limit: int | None = None) -> Iterable[dict[str, Any]]:
@@ -289,20 +294,87 @@ def _last_completed_fingerprint() -> str | None:
     return None
 
 
+def _persist_variant_index_failure(job_id: int, exc: BaseException) -> None:
+    message = str(exc) or exc.__class__.__name__
+    try:
+        job = get_variant_group_job(job_id)
+    except Exception:
+        logger.exception("Unable to read variant index job %s after background failure", job_id)
+        return
+    if not job:
+        logger.error("Variant index job %s disappeared after background failure: %s", job_id, message)
+        return
+    if job.get("status") in _TERMINAL_JOB_STATUSES:
+        return
+    try:
+        failed = update_variant_group_job(job_id, status="failed", error=message)
+    except Exception:
+        logger.exception("Unable to persist failure for variant index job %s", job_id)
+        return
+    if failed is None:
+        logger.error("Failure update returned no row for variant index job %s", job_id)
+
+
+def _consume_variant_index_execution(job_id: int, execution: Any) -> None:
+    try:
+        execution.result()
+    except BaseException as exc:
+        logger.error(
+            "Variant index background execution %s escaped",
+            job_id,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+        _persist_variant_index_failure(job_id, exc)
+
+
+def _on_variant_index_task_done(job_id: int, task: asyncio.Task[dict[str, Any]]) -> None:
+    _variant_index_tasks.discard(task)
+    _consume_variant_index_execution(job_id, task)
+
+
+def _on_variant_index_future_done(job_id: int, future: Future[dict[str, Any]]) -> None:
+    _variant_index_futures.discard(future)
+    _consume_variant_index_execution(job_id, future)
+
+
 def start_variant_index_job(*, force: bool = False) -> dict[str, Any]:
     job_id = add_variant_group_job("queued")
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        run_variant_index_job(job_id, force=force)
-    else:
-        loop.create_task(asyncio.to_thread(run_variant_index_job, job_id, force=force))
-    return get_variant_group_job(job_id) or {"id": job_id, "status": "queued"}
+        queued = copy.deepcopy(
+            get_variant_group_job(job_id) or {"id": job_id, "status": "queued"}
+        )
+    except BaseException as exc:
+        _persist_variant_index_failure(job_id, exc)
+        raise
+
+    work = asyncio.to_thread(run_variant_index_job, job_id, force=force)
+    accepted = False
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            from scheduler import worker_loop
+
+            future = worker_loop.submit(work)
+            accepted = True
+            _variant_index_futures.add(future)
+            future.add_done_callback(partial(_on_variant_index_future_done, job_id))
+        else:
+            task = loop.create_task(work)
+            accepted = True
+            _variant_index_tasks.add(task)
+            task.add_done_callback(partial(_on_variant_index_task_done, job_id))
+    except BaseException as exc:
+        if not accepted:
+            work.close()
+        _persist_variant_index_failure(job_id, exc)
+        raise
+    return queued
 
 
 def run_variant_index_job(job_id: int, *, limit: int | None = None, force: bool = False) -> dict[str, Any]:
-    update_variant_group_job(job_id, status="running", processed=0, total=0)
     try:
+        update_variant_group_job(job_id, status="running", processed=0, total=0)
         # Skip the expensive scan/group/replace when the imported dataset is
         # unchanged since the last rebuild (e.g. a redeploy without re-import).
         # Only guard full rebuilds — limited/test runs always execute.
@@ -347,7 +419,14 @@ def run_variant_index_job(job_id: int, *, limit: int | None = None, force: bool 
         return {"status": "completed", **(completed or {}), "result": result}
     except Exception as exc:
         logger.exception("Variant index job %s failed", job_id)
-        failed = update_variant_group_job(job_id, status="failed", error=str(exc))
+        try:
+            failed = update_variant_group_job(job_id, status="failed", error=str(exc))
+        except Exception:
+            logger.exception("Unable to persist failure for variant index job %s", job_id)
+            raise exc
+        if failed is None:
+            logger.error("Failure update returned no row for variant index job %s", job_id)
+            raise exc
         return {"status": "failed", **(failed or {}), "error": str(exc)}
 
 

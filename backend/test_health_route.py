@@ -26,6 +26,78 @@ class HealthRouteTest(unittest.TestCase):
         get_db_orig.assert_not_called()
         cache_module.get_stats.assert_not_called()
 
+    def test_scheduler_summary_treats_manual_policy_as_expected_disabled_state(self):
+        from routers import health
+
+        state = {
+            "enabled": True,
+            "running": False,
+            "next_run_time": "2026-07-14T12:00:00+00:00",
+        }
+        with patch(
+            "routers.health.config",
+            SimpleNamespace(automation_download_policy="manual"),
+        ), patch(
+            "scheduler.tasks.candidate_auto_process_schedule_state",
+            return_value=state,
+        ):
+            result = health._scheduler_summary()
+
+        self.assertEqual(result, {
+            **state,
+            "policy": "manual",
+            "effective_enabled": False,
+            "disabled_reason": "manual_policy",
+        })
+
+    def test_scheduler_summary_enables_registered_automatic_schedule(self):
+        from routers import health
+
+        state = {"enabled": True, "running": True, "next_run_time": None}
+        with patch(
+            "routers.health.config",
+            SimpleNamespace(automation_download_policy="rules"),
+        ), patch(
+            "scheduler.tasks.candidate_auto_process_schedule_state",
+            return_value=state,
+        ):
+            result = health._scheduler_summary()
+
+        self.assertTrue(result["effective_enabled"])
+        self.assertEqual(result["disabled_reason"], "")
+
+    def test_scheduler_summary_names_disabled_automatic_schedule(self):
+        from routers import health
+
+        state = {"enabled": False, "running": False, "next_run_time": None}
+        with patch(
+            "routers.health.config",
+            SimpleNamespace(automation_download_policy="rules"),
+        ), patch(
+            "scheduler.tasks.candidate_auto_process_schedule_state",
+            return_value=state,
+        ):
+            result = health._scheduler_summary()
+
+        self.assertFalse(result["effective_enabled"])
+        self.assertEqual(result["disabled_reason"], "schedule_disabled")
+
+    def test_scheduler_summary_exposes_inspection_error_for_readiness(self):
+        from routers import health
+
+        with patch(
+            "routers.health.config",
+            SimpleNamespace(automation_download_policy="rules"),
+        ), patch(
+            "scheduler.tasks.candidate_auto_process_schedule_state",
+            side_effect=RuntimeError("scheduler unavailable"),
+        ):
+            result = health._scheduler_summary()
+
+        self.assertEqual(result["error"], "scheduler unavailable")
+        self.assertEqual(result["disabled_reason"], "scheduler unavailable")
+        self.assertFalse(result["effective_enabled"])
+
     def test_readiness_returns_dependency_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
             cache_stats = {

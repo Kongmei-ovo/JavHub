@@ -470,6 +470,9 @@ def _init_core_state_tables(cursor) -> None:
             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    from database.avdb import init_avdb_tables
+    init_avdb_tables(cursor)
+
 
 def _init_film_count_tables(cursor) -> None:
     cursor.execute('''
@@ -871,6 +874,10 @@ def _create_indexes():
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_movie_resources_one_default ON movie_resources(movie_id, provider) WHERE is_default = 1 AND resource_type = 'video'",
         "CREATE INDEX IF NOT EXISTS idx_acq_sessions_movie_status ON acquisition_sessions(movie_id, status)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_acq_session_active_movie ON acquisition_sessions(movie_id) WHERE status IN ('searching', 'options_ready', 'submitted', 'downloading', 'finalizing')",
+        "CREATE INDEX IF NOT EXISTS idx_avdb_records_generation_code_present ON avdb_records(generation_id, normalized_code) WHERE normalized_code IS NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_avdb_records_generation_source_tid ON avdb_records(generation_id, source, source_tid)",
+        "CREATE INDEX IF NOT EXISTS idx_avdb_records_generation_info_hash ON avdb_records(generation_id, info_hash)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_avdb_generations_release_fingerprint ON avdb_generations(release_id, asset_fingerprint)",
     ]
     for sql_text in indexes:
         _create_index_if_possible(cursor, sql_text)

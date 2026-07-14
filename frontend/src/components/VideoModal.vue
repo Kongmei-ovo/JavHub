@@ -249,6 +249,14 @@
           <VideoMagnetSection
             :magnets="magnets"
             :video-loaded="videoLoaded"
+            :source-options="magnetSourceOptions"
+            :model-value="selectedMagnetSource"
+            :searching="magnetSearchLoading"
+            :search-error="magnetSearchError"
+            :search-summary="magnetSearchSummary"
+            @update:model-value="selectedMagnetSource = $event"
+            @search="searchMagnets"
+            @manage-sources="$emit('navigate', { type: 'download-sources' })"
             @copy="copyMagnet"
             @download="$emit('download', $event)"
           />
@@ -326,13 +334,14 @@ import { dmmCoverCandidates, galleryFullUrl, galleryThumbUrl } from '../utils/im
 import { applyImageFallback } from '../utils/imageFallback.js'
 import favoriteState from '../utils/favoriteState'
 import subscriptionState from '../utils/subscriptionState'
-import api, { formatApiError } from '../api'
+import { formatApiError } from '../api'
 import { ElMessage } from '../utils/message.js'
 import VideoGallerySection from '../features/video/VideoGallerySection.vue'
 import VideoMagnetSection from '../features/video/VideoMagnetSection.vue'
 import VideoResourcePanel from '../features/video/VideoResourcePanel.vue'
 import OpenWithMenu from '../features/video/OpenWithMenu.vue'
 import { createStreamSession, triggerM3u8Download, formatStreamFailure } from '../features/video/streamSourcesHelper.js'
+import magnetSourceSearchMixin from '../features/video/magnetSourceSearchMixin.js'
 import libraryPlaybackMixin from '../features/video/libraryPlaybackMixin.js'
 const VideoPlayerOverlay = defineAsyncComponent(() => import('../features/video/VideoPlayerOverlay.vue'))
 const HlsPlayerOverlay = defineAsyncComponent(() => import('../features/video/HlsPlayerOverlay.vue'))
@@ -344,7 +353,7 @@ function videoFavoriteId(video = {}) {
 
 export default {
   name: 'VideoModal',
-  mixins: [libraryPlaybackMixin],
+  extends: magnetSourceSearchMixin, mixins: [libraryPlaybackMixin],
   components: { VideoGallerySection, VideoMagnetSection, VideoResourcePanel, VideoPlayerOverlay, HlsPlayerOverlay, OpenWithMenu },
   emits: ['close', 'download', 'navigate'],
   props: {
@@ -365,13 +374,11 @@ export default {
       streamSources: [],
       streamScanDone: false,
       currentSourceName: '',
-      // P1-2: subBusy is a Set re-assigned on each mutation so Vue re-renders.
       subBusy: new Set(),
-      coverIndex: 0, // 封面在 dmmCoverCandidates(hd) 上逐级降级的游标：高清 CDN → 老库 800px → 原图
+      coverIndex: 0,
     }
   },
   mounted() {
-    // P1-2: 幂等拉一次订阅 registry,失败不致命(按钮显示为未订阅,后续仍可点)。
     subscriptionState.init().catch(() => {})
   },
   computed: {
@@ -380,13 +387,11 @@ export default {
       return favoriteState.isFavorited('video', id)
     },
     videoLoaded() {
-      // 基本信息（dvd_id / release_date）已到就认为数据可用，不等待 categories/actresses
       return !!(this.video.dvd_id || this.video.release_date || this.video.content_id)
     },
     metadataLoaded() {
       if (this.video?._loading?.javinfo === false) return true
       if (this.video?._loading?.supplement === false) return true
-      // 通过是否存在外部元数据判定扩展请求是否完成
       return !!(this.video.summary || this.video.score || this.video.directors?.length)
     },
     directorsDisplay() {
@@ -402,7 +407,7 @@ export default {
     summaryDisplay() {
       return this.video?.summary_translated || this.video?.summary || ''
     },
-    magnets() { return this.video?.magnets || [] },
+    magnets() { return magnetSourceSearchMixin.computed.magnets.call(this) },
     coverCandidates() {
       return this.video ? dmmCoverCandidates(this.video, { hd: true }) : []
     },
@@ -438,7 +443,9 @@ export default {
     },
     'video.content_id'() {
       this.coverIndex = 0
-      if (this.visible) this.checkLibraryStatus()
+      if (this.visible) {
+        this.checkLibraryStatus()
+      }
     },
   },
   methods: {
@@ -486,7 +493,6 @@ export default {
     actressNameDisplay(actress) {
       if (!actress) return ''
       const lang = displayLang.value
-      // 演员翻译：原文换行译文
       const orig = lang === 'en' ? (actress.name_romaji || actress.name_kanji || '') : (actress.name_kanji || actress.name_romaji || '')
       const trans = lang === 'en' ? (actress.name_romaji_translated || '') : (actress.name_kanji_translated || '')
       if (trans && trans !== orig) {
@@ -510,16 +516,13 @@ export default {
     },
     itemDisplayName(item, jaField = 'name_ja', enField = 'name_en') {
       if (!item) return ''
-      // 工作室/厂牌/系列：只显示译文（空间有限）
       const trans = item.name_translated || item[`${jaField}_translated`] || item[`${enField}_translated`] || ''
       if (trans) {
         return this.escapeHtml(trans)
       }
-      // fallback 到原文
       const orig = (item[jaField] || item[enField] || item.name || '')
       return this.escapeHtml(orig)
     },
-
     displayName,
     handleImgError(e) {
       if (this.coverIndex + 1 < this.coverCandidates.length) { this.coverIndex += 1; return }
@@ -647,7 +650,6 @@ export default {
       }
     },
     closeStreamPlayer() {
-      // 关闭前上报最终进度
       const video = this.streamVideoEl()
       if (video) {
         this.reportProgress(video)
@@ -664,7 +666,6 @@ export default {
       this.streamLoading = false
       this.playbackMode = ''
       this.libraryRetryUsed = false
-      // 进度可能变化，刷新入库状态里的 progress
       if (this.visible) this.checkLibraryStatus()
     },
     downloadStream() {
@@ -694,5 +695,4 @@ export default {
   }
 }
 </script>
-
 <style scoped src="../features/videoModal/videoModal.css"></style>

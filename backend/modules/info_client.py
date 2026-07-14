@@ -3,7 +3,9 @@ import asyncio
 import json
 import logging
 import httpx
+from collections.abc import Callable
 from typing import Any
+from modules.loop_client_pool import LoopClientPool
 from services import cache
 
 logger = logging.getLogger(__name__)
@@ -208,46 +210,41 @@ def _source_movie_id_for_enrichment(content_id: str, item: dict) -> str:
 class InfoClient:
     """JavInfoApi HTTP 客户端"""
 
-    def __init__(self, api_url: str = "http://localhost:18080", timeout: int = 30):
+    def __init__(
+        self,
+        api_url: str = "http://localhost:18080",
+        timeout: int = 30,
+        *,
+        client_factory: Callable[[], httpx.AsyncClient] | None = None,
+    ):
         self.api_url = api_url.rstrip("/")
         self.timeout = timeout
-        self._client: httpx.AsyncClient | None = None
-        self._client_loop: asyncio.AbstractEventLoop | None = None
+        self._client_pool = LoopClientPool(client_factory or self._new_client)
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        # An httpx.AsyncClient is bound to the event loop that created it. This
-        # singleton is reused from both the FastAPI request loop and the shared
-        # background job loop, so rebuild whenever the running loop changed (or
-        # the cached client was closed) to avoid cross-loop hangs.
-        loop = asyncio.get_running_loop()
-        if self._client is None or self._client.is_closed or self._client_loop is not loop:
-            self._client = httpx.AsyncClient(
-                timeout=self.timeout,
-                trust_env=False  # 禁用系统代理，避免代理导致连接问题
-            )
-            self._client_loop = loop
-        return self._client
+    def _new_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            timeout=self.timeout,
+            trust_env=False,  # 禁用系统代理，避免代理导致连接问题
+        )
 
     async def close(self):
-        if self._client:
-            await self._client.aclose()
-            self._client = None
+        await self._client_pool.close_all()
 
     async def _get(self, path: str, params: dict | None = None) -> dict[str, Any]:
-        client = await self._get_client()
-        try:
-            response = await client.get(f"{self.api_url}{path}", params=params)
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.get(f"{self.api_url}{path}", params=params)
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
     async def _get_list(self, path: str, params: dict | None = None) -> list[dict]:
         """获取列表数据（单页），自动处理分页格式返回纯 list"""
-        client = await self._get_client()
-        try:
-            response = await client.get(f"{self.api_url}{path}", params=params)
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.get(f"{self.api_url}{path}", params=params)
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         data = _decode_javinfo_json(path, response)
         # 兼容分页格式 {data: [...], ...} 和纯数组格式 [...]
         if isinstance(data, dict):
@@ -268,11 +265,11 @@ class InfoClient:
             request_params.update({"page": page, "page_size": page_size})
             if cache_bypass:
                 request_params["cache"] = "0"
-            client = await self._get_client()
-            try:
-                response = await client.get(f"{self.api_url}{path}", params=request_params)
-            except httpx.RequestError as exc:
-                raise _map_request_error(path, exc) from exc
+            async with self._client_pool.lease() as client:
+                try:
+                    response = await client.get(f"{self.api_url}{path}", params=request_params)
+                except httpx.RequestError as exc:
+                    raise _map_request_error(path, exc) from exc
             data = _decode_javinfo_json(path, response)
             items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             total_pages = data.get("total_pages", 1) if isinstance(data, dict) else 1
@@ -327,29 +324,29 @@ class InfoClient:
 
     async def proxy_get(self, path: str, params: dict | None = None) -> dict:
         """代理 GET 请求，注入补全 token，不做图片转换和缓存"""
-        client = await self._get_client()
-        try:
-            response = await client.get(
-                f"{self.api_url}{path}",
-                params=params,
-                headers=self._auth_headers(),
-            )
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.get(
+                    f"{self.api_url}{path}",
+                    params=params,
+                    headers=self._auth_headers(),
+                )
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
     async def proxy_post(self, path: str, json_body: dict | None = None, params: dict | None = None) -> dict:
         """代理 POST 请求，注入补全 token，不做图片转换和缓存"""
-        client = await self._get_client()
-        try:
-            response = await client.post(
-                f"{self.api_url}{path}",
-                json=json_body,
-                params=params,
-                headers=self._auth_headers(),
-            )
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.post(
+                    f"{self.api_url}{path}",
+                    json=json_body,
+                    params=params,
+                    headers=self._auth_headers(),
+                )
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
     async def proxy_post_long(
@@ -359,30 +356,30 @@ class InfoClient:
         params: dict | None = None,
         timeout: float = 1800,
     ) -> dict:
-        client = await self._get_client()
-        try:
-            response = await client.post(
-                f"{self.api_url}{path}",
-                json=json_body,
-                params=params,
-                headers=self._auth_headers(),
-                timeout=timeout,
-            )
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.post(
+                    f"{self.api_url}{path}",
+                    json=json_body,
+                    params=params,
+                    headers=self._auth_headers(),
+                    timeout=timeout,
+                )
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
     async def proxy_patch(self, path: str, json_body: dict | None = None) -> dict:
         """代理 PATCH 请求"""
-        client = await self._get_client()
-        try:
-            response = await client.patch(
-                f"{self.api_url}{path}",
-                json=json_body,
-                headers=self._auth_headers(),
-            )
-        except httpx.RequestError as exc:
-            raise _map_request_error(path, exc) from exc
+        async with self._client_pool.lease() as client:
+            try:
+                response = await client.patch(
+                    f"{self.api_url}{path}",
+                    json=json_body,
+                    headers=self._auth_headers(),
+                )
+            except httpx.RequestError as exc:
+                raise _map_request_error(path, exc) from exc
         return _decode_javinfo_json(path, response)
 
     async def push_proxy_config(self, proxy_url: str, cf_solver_url: str | None = None) -> dict:
@@ -935,17 +932,17 @@ class InfoClient:
             return []
         # 分批，每批最多100
         results = []
-        for i in range(0, len(ids), 100):
-            batch = ids[i:i + 100]
-            client = await self._get_client()
-            path = "/api/v1/videos/batch"
-            try:
-                resp = await client.post(f"{self.api_url}{path}", json={"ids": batch})
-            except httpx.RequestError as exc:
-                raise _map_request_error(path, exc) from exc
-            items = _decode_javinfo_json(path, resp)
-            if isinstance(items, list):
-                results.extend([_transform_video_item(item) for item in items])
+        async with self._client_pool.lease() as client:
+            for i in range(0, len(ids), 100):
+                batch = ids[i:i + 100]
+                path = "/api/v1/videos/batch"
+                try:
+                    resp = await client.post(f"{self.api_url}{path}", json={"ids": batch})
+                except httpx.RequestError as exc:
+                    raise _map_request_error(path, exc) from exc
+                items = _decode_javinfo_json(path, resp)
+                if isinstance(items, list):
+                    results.extend([_transform_video_item(item) for item in items])
         return results
 
     async def batch_lookup_by_dvd_id(self, dvd_ids: list[str]) -> dict[str, dict]:
@@ -953,18 +950,18 @@ class InfoClient:
         if not dvd_ids:
             return {}
         results = {}
-        for i in range(0, len(dvd_ids), 100):
-            batch = dvd_ids[i:i + 100]
-            client = await self._get_client()
-            path = "/api/v1/videos/lookup"
-            try:
-                resp = await client.post(f"{self.api_url}{path}", json={"dvd_ids": batch})
-            except httpx.RequestError as exc:
-                raise _map_request_error(path, exc) from exc
-            data = _decode_javinfo_json(path, resp)
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    results[k] = _transform_video_item(v)
+        async with self._client_pool.lease() as client:
+            for i in range(0, len(dvd_ids), 100):
+                batch = dvd_ids[i:i + 100]
+                path = "/api/v1/videos/lookup"
+                try:
+                    resp = await client.post(f"{self.api_url}{path}", json={"dvd_ids": batch})
+                except httpx.RequestError as exc:
+                    raise _map_request_error(path, exc) from exc
+                data = _decode_javinfo_json(path, resp)
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        results[k] = _transform_video_item(v)
         return results
 
     async def batch_get_actress_videos(
@@ -974,23 +971,23 @@ class InfoClient:
         if not actress_ids:
             return {}
         results = {}
-        for i in range(0, len(actress_ids), 20):
-            batch = actress_ids[i:i + 20]
-            client = await self._get_client()
-            path = "/api/v1/actresses/batch_videos"
-            try:
-                resp = await client.post(
-                    f"{self.api_url}{path}",
-                    json={"ids": batch, "page": page, "page_size": page_size},
-                )
-            except httpx.RequestError as exc:
-                raise _map_request_error(path, exc) from exc
-            data = _decode_javinfo_json(path, resp)
-            if isinstance(data, dict):
-                for aid, info in data.items():
-                    if isinstance(info, dict) and "videos" in info:
-                        info["videos"] = [_transform_video_item(v) for v in info["videos"]]
-                    results[aid] = info
+        async with self._client_pool.lease() as client:
+            for i in range(0, len(actress_ids), 20):
+                batch = actress_ids[i:i + 20]
+                path = "/api/v1/actresses/batch_videos"
+                try:
+                    resp = await client.post(
+                        f"{self.api_url}{path}",
+                        json={"ids": batch, "page": page, "page_size": page_size},
+                    )
+                except httpx.RequestError as exc:
+                    raise _map_request_error(path, exc) from exc
+                data = _decode_javinfo_json(path, resp)
+                if isinstance(data, dict):
+                    for aid, info in data.items():
+                        if isinstance(info, dict) and "videos" in info:
+                            info["videos"] = [_transform_video_item(v) for v in info["videos"]]
+                        results[aid] = info
         return results
 
     # === 辅助数据 (v1.2.0) ===

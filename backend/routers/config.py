@@ -168,6 +168,18 @@ async def update_config(new_config: dict):
                 configure_candidate_auto_process_job()
         except Exception as e:
             logger.warning(f"Failed to refresh candidate automation scheduler: {e}")
+    if "sources" in sanitized:
+        try:
+            from sources import register_all_sources
+            register_all_sources()
+        except Exception as e:
+            logger.warning(f"Failed to refresh download sources: {e}")
+        try:
+            from scheduler.tasks import configure_avdb_sync_job, scheduler
+            if scheduler.running:
+                configure_avdb_sync_job()
+        except Exception as e:
+            logger.warning(f"Failed to refresh AVDB scheduler: {e}")
     return {"success": True}
 
 

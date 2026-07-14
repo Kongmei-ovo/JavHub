@@ -73,15 +73,16 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_info_client_all_pages_cache_bypass_forwards_upstream_cache_zero(self):
         from modules.info_client import InfoClient
 
-        client = InfoClient()
         response = Mock()
         response.status_code = 200
         response.json.return_value = {"data": [{"id": 1}], "total_pages": 1}
         http = AsyncMock()
+        http.is_closed = False
+        http.aclose = AsyncMock()
         http.get.return_value = response
+        client = InfoClient(client_factory=lambda: http)
 
-        with patch.object(client, "_get_client", AsyncMock(return_value=http)):
-            result = await client._get_all_pages("/api/v1/categories", cache_bypass=True)
+        result = await client._get_all_pages("/api/v1/categories", cache_bypass=True)
 
         self.assertEqual(result, [{"id": 1}])
         http.get.assert_awaited_once()
@@ -90,7 +91,6 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
     async def test_info_client_all_pages_fetches_remaining_pages_concurrently(self):
         from modules.info_client import InfoClient
 
-        client = InfoClient()
         started_tail_pages: set[int] = set()
         all_tail_pages_started = asyncio.Event()
 
@@ -113,10 +113,12 @@ class CategoryRouteCacheTests(FakeRedisMixin, unittest.IsolatedAsyncioTestCase):
             return response_for(page)
 
         http = Mock()
+        http.is_closed = False
         http.get = fake_get
+        http.aclose = AsyncMock()
+        client = InfoClient(client_factory=lambda: http)
 
-        with patch.object(client, "_get_client", AsyncMock(return_value=http)):
-            result = await client._get_all_pages("/api/v1/categories")
+        result = await client._get_all_pages("/api/v1/categories")
 
         self.assertEqual([item["id"] for item in result], [1, 2, 3, 4])
 

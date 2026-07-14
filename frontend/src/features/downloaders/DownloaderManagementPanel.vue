@@ -2,17 +2,17 @@
   <div class="downloaders-panel apple-reveal">
     <div class="downloader-toolbar apple-surface">
       <div class="downloader-toolbar-copy">
-        <strong>下载源</strong>
+        <strong>下载器</strong>
         <span>默认 {{ defaultDownloaderLabel }} · {{ enabledDownloaderCount }} 个已启用</span>
       </div>
       <div class="downloader-toolbar-actions">
-        <button class="icon-action" type="button" title="刷新下载源" aria-label="刷新下载源" @click="$emit('refresh')">
+        <button class="icon-action" type="button" title="刷新下载器" aria-label="刷新下载器" @click="$emit('refresh')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
           </svg>
         </button>
-        <button class="icon-action primary" type="button" title="新增下载源" aria-label="新增下载源" @click="$emit('create')">
+        <button class="icon-action primary" type="button" title="新增下载器" aria-label="新增下载器" @click="$emit('create')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <line x1="12" y1="5" x2="12" y2="19"/>
             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -62,7 +62,7 @@
           </span>
         </div>
 
-        <label v-if="client.type !== 'open115'" class="switch-mini switch-apple" title="启用下载源" @click.stop>
+        <label v-if="client.type !== 'open115'" class="switch-mini switch-apple" title="启用下载器" @click.stop>
           <input type="checkbox" v-model="client.enabled" />
           <span></span>
         </label>
@@ -98,13 +98,13 @@
       </article>
 
       <div v-if="downloaderClients.length === 0" class="downloaders-empty">
-        <strong>还没有下载源</strong>
+        <strong>还没有下载器</strong>
         <span>添加一个下载器后就可以作为默认下载目标。</span>
       </div>
     </div>
 
     <div class="downloaders-footer apple-surface">
-      <span>{{ downloaderClients.length }} 个下载源 · {{ enabledDownloaderCount }} 个启用</span>
+      <span>{{ downloaderClients.length }} 个下载器 · {{ enabledDownloaderCount }} 个启用</span>
       <button class="btn btn-primary" type="button" :disabled="savingDownloaders" @click="$emit('save')">
         {{ savingDownloaders ? '保存中...' : '保存更改' }}
       </button>
@@ -114,7 +114,7 @@
       <div class="inline-dialog downloader-sheet">
         <div class="inline-dialog-header">
           <div>
-            <h2>{{ downloaderEditor.mode === 'new' ? '新增下载源' : '编辑下载源' }}</h2>
+            <h2>{{ downloaderEditor.mode === 'new' ? '新增下载器' : '编辑下载器' }}</h2>
             <p>{{ downloaderEditor.draft?.name || downloaderTypeLabel(downloaderEditor.draft?.type) }}</p>
           </div>
           <button class="dialog-close-btn" type="button" aria-label="关闭" @click="$emit('close-editor')">×</button>

@@ -152,6 +152,14 @@ test('video magnet badges use semantic layered glass tokens', () => {
   assert.match(subtitleBadge, /border-color:\s*var\(--badge-warning-border\)/)
 })
 
+test('video magnet section offers automatic or explicit source lookup', () => {
+  assert.match(magnetSource, /sourceOptions: \{ type: Array/)
+  assert.match(magnetSource, /modelValue: \{ type: String, default: 'auto' \}/)
+  assert.match(magnetSource, /@click="\$emit\('search'\)"/)
+  assert.match(magnetSource, /@click="\$emit\('manage-sources'\)"/)
+  assert.match(magnetSource, /mag\.source \|\| '影片内置'/)
+})
+
 test('video detail sections layer glass with specular and noise surfaces', () => {
   const singleLayerGlass = /^background:\s*var\(--(?:material-glass-control|material-glass-control-hover|glass-active-material)\);$/gm
 

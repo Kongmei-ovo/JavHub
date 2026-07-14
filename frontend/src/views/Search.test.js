@@ -54,6 +54,12 @@ test('search page can request backend search diagnostics from route query', () =
   assert.match(source, /if \(this\.\$route\.query\.debug_search === '1'\) params\.include_search_diagnostics = 1/)
 })
 
+test('cached search page ignores route query changes after leaving search', () => {
+  const watcher = vueSource.slice(vueSource.indexOf("'$route.query'(q)"), vueSource.indexOf('\n  methods:', vueSource.indexOf("'$route.query'(q)")))
+  assert.match(watcher, /if \(this\.embedded\) return[\s\S]*if \(this\.\$route\.path !== '\/search'\) return/)
+  assert.match(watcher, /this\.runSearchFromRoute\(\)/)
+})
+
 test('search page can expand backend-provided variant groups inline', () => {
   assert.match(source, /expandedVariantGroups/)
   assert.match(source, /variantGroupItems\(item\)/)

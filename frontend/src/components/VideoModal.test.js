@@ -375,6 +375,13 @@ test('modal declares emitted events for async component listeners', () => {
   assert.match(source, /emits:\s*\[\s*'close',\s*'download',\s*'navigate'\s*\]/)
 })
 
+test('modal delegates guarded magnet source searches to the source-search mixin', () => {
+  assert.match(vueSource, /extends: magnetSourceSearchMixin/)
+  assert.match(vueSource, /:source-options="magnetSourceOptions"/)
+  assert.match(vueSource, /@search="searchMagnets"/)
+  assert.match(vueSource, /type: 'download-sources'/)
+})
+
 test('modal favorites are keyed by concrete service version', () => {
   assert.match(source, /function videoFavoriteId\(video = \{\}\)/)
   assert.match(source, /return id && serviceCode \? `\$\{id\}::\$\{serviceCode\}` : id/)

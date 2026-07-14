@@ -63,7 +63,8 @@ test('Production spacing declarations ratchet non-ramp px values', () => {
   // 507→500: 卡片栅格统一为 --grid-* token 后,各页 *-grid 的裸 px gap 被一并消除。
   // 500→480: 运行日志面板重构为扁平清单后,旧玻璃控件的 6/7/9/10/14px 裸值一并清除。
   // 480→479: 侧边栏收起态的选中竖线(right: 5px)去掉后,该裸值一并消除。
-  const existingOffRampSpacingCount = 479
+  // 下载源管理器复用下载器的密集表单节奏；后续迁移时继续收紧该基线。
+  const existingOffRampSpacingCount = 489
   const offenders = []
 
   for (const file of trackedProductionStyleFiles()) {

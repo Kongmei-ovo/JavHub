@@ -1,3 +1,4 @@
+import plistlib
 import subprocess
 import sys
 from pathlib import Path
@@ -105,9 +106,11 @@ def test_services_render_plists_injects_javinfo_source_proxy(tmp_path):
     assert result.returncode == 0, result.stderr
     javinfo_plist = home_dir / "Library" / "LaunchAgents" / "com.kongmei.javinfoapi.plist"
     assert javinfo_plist.exists()
-    contents = javinfo_plist.read_text()
-    assert "<key>JAVINFO_SOURCE_PROXY_URL</key>" in contents
-    assert "<string>http://127.0.0.1:1082</string>" in contents
+    payload = plistlib.loads(javinfo_plist.read_bytes())
+    assert (
+        payload["EnvironmentVariables"]["JAVINFO_SOURCE_PROXY_URL"]
+        == "http://127.0.0.1:1082"
+    )
 
 
 def test_services_render_plists_serves_frontend_preview_on_public_port(tmp_path):
@@ -132,13 +135,18 @@ def test_services_render_plists_serves_frontend_preview_on_public_port(tmp_path)
 
     assert result.returncode == 0, result.stderr
     frontend_plist = home_dir / "Library" / "LaunchAgents" / "com.kongmei.javhub.frontend.plist"
-    contents = frontend_plist.read_text()
-    assert "<string>preview</string>" in contents
-    assert "<string>--host</string>" in contents
-    assert "<string>0.0.0.0</string>" in contents
-    assert "<string>--port</string>" in contents
-    assert "<string>5174</string>" in contents
-    assert "<string>dev</string>" not in contents
+    payload = plistlib.loads(frontend_plist.read_bytes())
+    assert payload["ProgramArguments"] == [
+        payload["ProgramArguments"][0],
+        "run",
+        "preview",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5174",
+    ]
+    assert "dev" not in payload["ProgramArguments"]
 
 
 def test_services_render_plists_uses_configured_frontend_npm_binary(tmp_path):
@@ -168,8 +176,8 @@ def test_services_render_plists_uses_configured_frontend_npm_binary(tmp_path):
 
     assert result.returncode == 0, result.stderr
     frontend_plist = home_dir / "Library" / "LaunchAgents" / "com.kongmei.javhub.frontend.plist"
-    contents = frontend_plist.read_text()
-    assert f"<string>{npm_bin}</string>" in contents
+    payload = plistlib.loads(frontend_plist.read_bytes())
+    assert payload["ProgramArguments"][0] == str(npm_bin)
 
 
 def test_services_restart_frontend_builds_before_kickstart(tmp_path):
@@ -3171,11 +3179,149 @@ def test_services_render_plists_escapes_proxy_url_xml_special_characters(tmp_pat
 
     assert result.returncode == 0, result.stderr
     javinfo_plist = home_dir / "Library" / "LaunchAgents" / "com.kongmei.javinfoapi.plist"
-    contents = javinfo_plist.read_text()
+    payload = plistlib.loads(javinfo_plist.read_bytes())
     assert (
-        "<string>http://proxy.local:8080/?a=1&amp;b=&lt;tag&gt;&quot;quote&quot;</string>"
-        in contents
+        payload["EnvironmentVariables"]["JAVINFO_SOURCE_PROXY_URL"]
+        == 'http://proxy.local:8080/?a=1&b=<tag>"quote"'
     )
+
+
+def test_services_render_plists_round_trips_complete_structured_payloads(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    npm_bin = bin_dir / "npm & <custom>"
+    write_executable(npm_bin, "#!/bin/sh\nexit 0\n")
+    javinfo_dir = tmp_path / "JavInfo & <Api>"
+    javinfo_dir.mkdir()
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    config_path = tmp_path / "custom config.yaml"
+    config_path.write_text(
+        "proxy:\n"
+        "  enabled: true\n"
+        "  mode: vless\n"
+        "  singbox_port: 18888\n"
+        "javinfo:\n"
+        "  supplement_worker_count: 99\n",
+        encoding="utf-8",
+    )
+    env = {
+        "HOME": str(home_dir),
+        "JAVINFO_DIR": str(javinfo_dir),
+        "JAVHUB_CONFIG_PATH": str(config_path),
+        "JAVHUB_PROXY_ADVERTISE_HOST": "  proxy-host  ",
+        "JAVHUB_DB_PASSWORD": 'p&<word>"quote"',
+        "JAVHUB_REDIS_URL": "redis://host/0?a=1&b=<two>",
+        "JAVHUB_REDIS_PREFIX": "prefix<&>",
+        "NPM_BIN": str(npm_bin),
+        "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+    }
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "render-plists"],
+        cwd=Path(__file__).resolve().parents[1],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    launch_agents = home_dir / "Library" / "LaunchAgents"
+    javinfo = plistlib.loads(
+        (launch_agents / "com.kongmei.javinfoapi.plist").read_bytes()
+    )
+    backend = plistlib.loads(
+        (launch_agents / "com.kongmei.javhub.backend.plist").read_bytes()
+    )
+    frontend = plistlib.loads(
+        (launch_agents / "com.kongmei.javhub.frontend.plist").read_bytes()
+    )
+
+    assert javinfo["Label"] == "com.kongmei.javinfoapi"
+    assert javinfo["EnvironmentVariables"]["SUPPLEMENT_WORKER_COUNT"] == "16"
+    assert (
+        javinfo["EnvironmentVariables"]["JAVINFO_SOURCE_PROXY_URL"]
+        == "socks5://proxy-host:18888"
+    )
+    assert javinfo["RunAtLoad"] is True and javinfo["KeepAlive"] is True
+    assert backend["Label"] == "com.kongmei.javhub.backend"
+    assert backend["ProgramArguments"][-2:] == ["--port", "18090"]
+    assert backend["EnvironmentVariables"]["JAVHUB_CONFIG_PATH"] == str(
+        config_path.resolve(strict=False)
+    )
+    assert (
+        backend["EnvironmentVariables"]["JAVHUB_PROXY_ADVERTISE_HOST"]
+        == "proxy-host"
+    )
+    assert (
+        backend["EnvironmentVariables"]["JAVHUB_DB_PASSWORD"]
+        == 'p&<word>"quote"'
+    )
+    assert (
+        backend["EnvironmentVariables"]["JAVHUB_REDIS_URL"]
+        == "redis://host/0?a=1&b=<two>"
+    )
+    assert backend["EnvironmentVariables"]["JAVHUB_REDIS_PREFIX"] == "prefix<&>"
+    assert backend["RunAtLoad"] is True and backend["KeepAlive"] is True
+    assert frontend["Label"] == "com.kongmei.javhub.frontend"
+    assert frontend["ProgramArguments"] == [
+        str(npm_bin),
+        "run",
+        "preview",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5174",
+    ]
+    assert frontend["RunAtLoad"] is True and frontend["KeepAlive"] is True
+
+
+def test_services_ensure_renderer_failure_prevents_launchctl_lifecycle(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    launchctl_log = tmp_path / "launchctl.log"
+    write_executable(
+        bin_dir / "launchctl",
+        "#!/bin/sh\n"
+        'echo "$@" >> "$LAUNCHCTL_LOG"\n'
+        "exit 0\n",
+    )
+    write_executable(bin_dir / "lsof", "#!/bin/sh\nexit 0\n")
+    write_executable(bin_dir / "curl", "#!/bin/sh\nexit 0\n")
+    write_executable(bin_dir / "npm", "#!/bin/sh\nexit 0\n")
+    javinfo_dir = tmp_path / "JavInfoApi"
+    javinfo_dir.mkdir()
+    write_executable(javinfo_dir / "JavInfoApi", "#!/bin/sh\nexit 0\n")
+    home_dir = tmp_path / "home"
+    launch_agents = home_dir / "Library" / "LaunchAgents"
+    launch_agents.mkdir(parents=True)
+    (launch_agents / "com.kongmei.javhub.backend.plist").mkdir()
+
+    result = subprocess.run(
+        ["bash", "scripts/services.sh", "ensure"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={
+            "HOME": str(home_dir),
+            "JAVINFO_DIR": str(javinfo_dir),
+            "JAVHUB_SKIP_FRONTEND_BUILD": "1",
+            "LAUNCHCTL_LOG": str(launchctl_log),
+            "PATH": f"{bin_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert (
+        launch_agents / "com.kongmei.javinfoapi.plist"
+    ).is_file(), result.stdout + result.stderr
+    calls = launchctl_log.read_text() if launchctl_log.exists() else ""
+    assert "bootstrap" not in calls
+    assert "bootout" not in calls
+    assert "kickstart" not in calls
 
 
 def test_services_render_plists_does_not_call_launchctl(tmp_path):

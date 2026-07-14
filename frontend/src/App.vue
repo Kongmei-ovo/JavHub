@@ -323,7 +323,9 @@ export default {
     const handleNavigate = async ({ type, item }) => {
       // 在跳转前，暂时隐藏（中断）弹窗
       interruptModal()
-      if (type === 'category') {
+      if (type === 'download-sources') {
+        router.push({ path: '/downloads', query: { tab: 'indexer' } })
+      } else if (type === 'category') {
         const name = item.name_ja || item.name_en || item.name || ''
         const value = item.id || name
         router.push({

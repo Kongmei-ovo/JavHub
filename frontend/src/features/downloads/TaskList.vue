@@ -13,7 +13,7 @@
       <div class="task-info">
         <h3 class="task-title" :title="task.title">{{ task.title }}</h3>
         <div class="task-meta">
-          <span class="task-downloader">{{ task.downloader_name || downloaderTypeLabel(task.downloader_type) || '默认下载源' }}</span>
+          <span class="task-downloader">{{ task.downloader_name || downloaderTypeLabel(task.downloader_type) || '默认下载器' }}</span>
           <span class="task-time">{{ formatTime(task.created_at) }}</span>
         </div>
         <div v-if="task.error_msg" class="task-error">{{ task.error_msg }}</div>

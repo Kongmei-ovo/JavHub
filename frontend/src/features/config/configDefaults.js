@@ -21,6 +21,10 @@ export const DEFAULT_CONFIG = {
   },
   notification: { enabled: false, telegram: true, auto_download_notify: true, download_complete_notify: true, new_movie_notify: true },
   sources: {
+    avdb: {
+      enabled: false,
+      sync_enabled: false,
+    },
     torznab: {
       enabled: false,
       name: 'torznab',
