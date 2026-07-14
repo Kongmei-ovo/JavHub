@@ -17,5 +17,7 @@ test('task list owns compact task rows, retry/delete events, and empty state act
   assert.match(source, /\$emit\('remove', task\.id\)/)
   assert.match(source, /<AppleEmptyState[\s\S]*@action="\$emit\('empty-action'\)"[\s\S]*@secondary-action="\$emit\('parse'\)"/)
   assert.match(source, /<style scoped src="\.\/downloads\.css"><\/style>/)
+  assert.match(source, /默认下载器/)
+  assert.doesNotMatch(source, /默认下载源/)
   assert.doesNotMatch(source, /progress-bar-fill-demo|处理下载候选/)
 })

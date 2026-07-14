@@ -4,6 +4,12 @@ import { readFileSync } from 'node:fs'
 
 const source = readFileSync(new URL('./DiscoveryDetail.vue', import.meta.url), 'utf8')
 
+test('cached discovery detail ignores param changes after leaving its route', () => {
+  const watcher = source.slice(source.indexOf("'$route.params'()"), source.indexOf('\n  methods:', source.indexOf("'$route.params'()")))
+  assert.match(watcher, /if \(this\.\$route\.name !== 'DiscoveryDetail'\) return/)
+  assert.match(watcher, /this\.doSearch\(\)/)
+})
+
 function cssBlock(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const match = source.match(new RegExp(`(?:^|\\n)\\s*${escaped}(?=[\\s,{:#.])`))

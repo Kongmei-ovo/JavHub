@@ -18,6 +18,18 @@ class SourceConfigTests(unittest.TestCase):
         with patch.dict(os.environ, {"JAVHUB_PROXY_ADVERTISE_HOST": "javhub"}):
             self.assertEqual(cfg.proxy_url, "socks5://javhub:17890")
 
+    def test_vless_proxy_invalid_ports_fall_back_to_default(self):
+        from config import Config
+
+        cfg = Config.__new__(Config)
+        with patch.dict(os.environ, {"JAVHUB_PROXY_ADVERTISE_HOST": ""}):
+            for port in ("bad", 0, 65536, True, False):
+                with self.subTest(port=port):
+                    cfg._config = {
+                        "proxy": {"enabled": True, "mode": "vless", "singbox_port": port}
+                    }
+                    self.assertEqual(cfg.proxy_url, "socks5://127.0.0.1:17890")
+
     def test_numeric_clamp_helpers_normalize_invalid_and_out_of_range_values(self):
         from config import Config
 
@@ -165,6 +177,7 @@ class SourceConfigTests(unittest.TestCase):
             "sources": {
                 "torznab": {
                     "enabled": True,
+                    "kind": "prowlarr",
                     "name": "",
                     "base_url": "http://prowlarr:9696",
                     "limit": 0,
@@ -173,6 +186,7 @@ class SourceConfigTests(unittest.TestCase):
                 "torznab_instances": [
                     {
                         "enabled": False,
+                        "kind": "jackett",
                         "name": "backup",
                         "base_url": "http://jackett:9117",
                         "limit": 250,
@@ -189,10 +203,12 @@ class SourceConfigTests(unittest.TestCase):
         self.assertEqual(all_configs[0]["limit"], 1)
         self.assertEqual(all_configs[0]["timeout"], 60)
         self.assertEqual(all_configs[0]["indexer"], "all")
+        self.assertEqual(all_configs[0]["kind"], "prowlarr")
         self.assertEqual(all_configs[1]["name"], "backup")
         self.assertEqual(all_configs[1]["limit"], 100)
         self.assertEqual(all_configs[1]["timeout"], 15)
         self.assertEqual(all_configs[1]["indexer"], "all")
+        self.assertEqual(all_configs[1]["kind"], "jackett")
         self.assertEqual([item["name"] for item in cfg.enabled_torznab_configs], ["torznab-1"])
 
     def test_sources_defaults_when_sources_config_is_not_a_mapping(self):

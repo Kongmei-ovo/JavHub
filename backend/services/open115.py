@@ -15,14 +15,16 @@ import secrets
 import tempfile
 import threading
 import time
+from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterable
+from typing import Any, AsyncIterator, Callable, Iterable
 
 import httpx
 import yaml
 
 from config import config
+from modules.loop_client_pool import LoopClientPool
 
 logger = logging.getLogger(__name__)
 
@@ -128,22 +130,32 @@ class Open115Client:
         *,
         config_obj: Any = config,
         http_client: Any | None = None,
+        http_client_factory: Callable[[], httpx.AsyncClient] | None = None,
         min_request_interval: float = MIN_REQUEST_INTERVAL,
     ):
+        if http_client is not None and http_client_factory is not None:
+            raise ValueError("http_client and http_client_factory are mutually exclusive")
         self._config = config_obj
-        self._http = http_client or httpx.AsyncClient(
+        self._http = http_client
+        self._http_pool = None if http_client is not None else LoopClientPool(
+            http_client_factory or self._new_http_client
+        )
+        self._min_request_interval = max(0.0, float(min_request_interval))
+        self._throttle_lock = threading.Lock()
+        self._refresh_state_lock = threading.Lock()
+        self._refresh_inflight: Future[bool] | None = None
+        self._persist_lock = threading.Lock()
+        self._next_request_at = 0.0
+        self._pending_auth: dict[str, PendingAuth] = {}
+        self._folder_cache: dict[str, str] = {"/": "0"}
+
+    @staticmethod
+    def _new_http_client() -> httpx.AsyncClient:
+        return httpx.AsyncClient(
             timeout=httpx.Timeout(OPEN115_TIMEOUT),
             limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             follow_redirects=False,
         )
-        self._owns_http = http_client is None
-        self._min_request_interval = max(0.0, float(min_request_interval))
-        self._throttle_lock = asyncio.Lock()
-        self._refresh_lock = asyncio.Lock()
-        self._persist_lock = threading.Lock()
-        self._last_request_at = 0.0
-        self._pending_auth: dict[str, PendingAuth] = {}
-        self._folder_cache: dict[str, str] = {"/": "0"}
 
     @property
     def settings(self) -> dict[str, Any]:
@@ -183,16 +195,24 @@ class Open115Client:
         }
 
     async def close(self) -> None:
-        if self._owns_http:
-            await self._http.aclose()
+        if self._http_pool is not None:
+            await self._http_pool.close_all()
+
+    async def _wait_for_request_slot(self) -> None:
+        with self._throttle_lock:
+            now = time.monotonic()
+            slot = max(now, self._next_request_at)
+            self._next_request_at = slot + self._min_request_interval
+        delay = slot - now
+        if delay > 0:
+            await asyncio.sleep(delay)
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
-        async with self._throttle_lock:
-            remaining = self._min_request_interval - (time.monotonic() - self._last_request_at)
-            if remaining > 0:
-                await asyncio.sleep(remaining)
-            self._last_request_at = time.monotonic()
+        await self._wait_for_request_slot()
         try:
+            if self._http_pool is not None:
+                async with self._http_pool.lease() as http_client:
+                    return await http_client.request(method, url, **kwargs)
             return await self._http.request(method, url, **kwargs)
         except httpx.RequestError as exc:
             raise Open115Error(None, "115 Open API 连接失败") from exc
@@ -340,27 +360,71 @@ class Open115Client:
         return {"status": "confirmed", "bound": True}
 
     async def refresh_access_token(self, *, expected_access_token: str | None = None) -> bool:
-        async with self._refresh_lock:
+        with self._refresh_state_lock:
             if (
                 expected_access_token is not None
                 and self.access_token
                 and self.access_token != expected_access_token
             ):
                 return True
-            refresh_token = self.refresh_token
-            if not refresh_token:
-                return False
-            try:
-                tokens = await self._passport_request(
-                    "POST",
-                    f"{PASSPORT_BASE}/open/refreshToken",
-                    data={"refresh_token": refresh_token},
-                )
-                self._persist_tokens(tokens)
-            except Open115Error:
-                logger.warning("115 Open token refresh failed")
-                return False
-            return bool(self.access_token)
+            shared = self._refresh_inflight
+            leader = shared is None
+            if shared is None:
+                shared = Future()
+                self._refresh_inflight = shared
+
+        if not leader:
+            waiter = asyncio.wrap_future(shared)
+            waiter.add_done_callback(self._consume_refresh_waiter)
+            return await asyncio.shield(waiter)
+
+        try:
+            result = await self._refresh_access_token_once(expected_access_token)
+        except asyncio.CancelledError:
+            shared.cancel()
+            raise
+        except BaseException as exc:
+            shared.set_exception(exc)
+            raise
+        else:
+            shared.set_result(result)
+            return result
+        finally:
+            with self._refresh_state_lock:
+                if self._refresh_inflight is shared:
+                    self._refresh_inflight = None
+
+    async def _refresh_access_token_once(
+        self,
+        expected_access_token: str | None,
+    ) -> bool:
+        if (
+            expected_access_token is not None
+            and self.access_token
+            and self.access_token != expected_access_token
+        ):
+            return True
+        refresh_token = self.refresh_token
+        if not refresh_token:
+            return False
+        try:
+            tokens = await self._passport_request(
+                "POST",
+                f"{PASSPORT_BASE}/open/refreshToken",
+                data={"refresh_token": refresh_token},
+            )
+            self._persist_tokens(tokens)
+        except Open115Error:
+            logger.warning("115 Open token refresh failed")
+            return False
+        return bool(self.access_token)
+
+    @staticmethod
+    def _consume_refresh_waiter(waiter: asyncio.Future[bool]) -> None:
+        try:
+            waiter.result()
+        except BaseException:
+            pass
 
     async def import_refresh_token(self, refresh_token: str) -> dict[str, bool]:
         normalized = str(refresh_token or "").strip()

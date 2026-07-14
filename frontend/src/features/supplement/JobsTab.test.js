@@ -6,6 +6,7 @@ import { Window } from 'happy-dom'
 import { compileScript, compileTemplate, parse, rewriteDefault } from '@vue/compiler-sfc'
 
 const source = readFileSync(new URL('./JobsTab.vue', import.meta.url), 'utf8')
+const panelStyle = readFileSync(new URL('./supplementPanel.css', import.meta.url), 'utf8')
 const baseVueUrl = await import.meta.resolve('vue')
 
 class MockEventSource {
@@ -186,6 +187,11 @@ test('JobsTab keeps filter state local and exposes route-friendly updates', () =
   assert.match(source, /setJobStatus/)
   assert.match(source, /jobKeyword/)
   assert.match(source, /全局队列状态筛选|任务状态筛选/)
+})
+
+test('JobsTab filter toolbar stays above the following job list stacking context', () => {
+  assert.match(panelStyle, /\.sup-toolbar\s*\{[\s\S]*position:\s*relative;[\s\S]*z-index:\s*var\(--z-raised\);/)
+  assert.match(panelStyle, /\.filter-panel\s*\{[^}]*z-index:\s*var\(--z-dropdown\)/)
 })
 
 test('JobsTab no longer hosts the gfriends avatar override job (lives in /system-jobs)', () => {

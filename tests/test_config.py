@@ -1,7 +1,7 @@
 import sys
 import os
 import importlib
-from unittest.mock import mock_open
+from unittest.mock import Mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.config import Config
@@ -117,7 +117,8 @@ def test_blank_ai_secret_update_preserves_existing_provider_secrets(monkeypatch)
     })
 
     c._merge_config = Config._merge_config.__get__(c, Config)
-    monkeypatch.setattr('builtins.open', mock_open())
+    write_config = Mock()
+    monkeypatch.setattr(c, '_write_config', write_config)
     c.update({'ai': {
         'provider': 'gemini',
         'gemini': {'api_key': '', 'model': 'gemini-new'},
@@ -128,6 +129,7 @@ def test_blank_ai_secret_update_preserves_existing_provider_secrets(monkeypatch)
     assert c.ai['gemini']['model'] == 'gemini-new'
     assert c.ai['openai_compatible']['api_key'] == 'saved-openai-token'
     assert c.ai['openai_compatible']['model'] == 'new-openai'
+    write_config.assert_called_once_with(c._config)
 
 def test_translation_defaults_include_single_provider_and_baidu_config():
     c = fresh_config()
@@ -165,8 +167,10 @@ def test_blank_translation_secret_update_preserves_existing_secret(monkeypatch):
     })
 
     c._merge_config = Config._merge_config.__get__(c, Config)
-    monkeypatch.setattr('builtins.open', mock_open())
+    write_config = Mock()
+    monkeypatch.setattr(c, '_write_config', write_config)
     c.update({'translation': {'baidu': {'app_id': 'new-app-id', 'secret': ''}}})
 
     assert c.translation['baidu']['app_id'] == 'new-app-id'
     assert c.translation['baidu']['secret'] == 'saved-secret'
+    write_config.assert_called_once_with(c._config)

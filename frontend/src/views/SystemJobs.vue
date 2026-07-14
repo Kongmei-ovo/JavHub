@@ -7,6 +7,35 @@
     </header>
 
     <div class="ops-section-list">
+      <!-- AVDB 公开库同步 -->
+      <section ref="avdbSection" class="ops-panel" aria-label="AVDB 公开库同步">
+        <div class="ops-panel-head">
+          <div><h2>AVDB 公开库同步</h2><p>定期下载公开 CSV，全量更新 PostgreSQL 磁力索引。</p></div>
+          <div class="ops-panel-actions">
+            <button v-if="returnTarget" class="btn btn-ghost btn-sm" type="button" @click="returnToSources">返回下载源</button>
+            <RefreshButton @click="refreshAvdb" />
+          </div>
+        </div>
+        <div class="ops-job-list">
+          <div class="ops-job" :class="{ 'is-highlighted': isHi('avdb_sync') }">
+            <div class="ops-job-main">
+              <div class="ops-job-title">
+                <h3>AVDB 全量同步</h3>
+                <span class="ops-pill" :class="avdbLifecycle.tone">{{ avdbLifecycle.label }}</span>
+              </div>
+              <p class="ops-job-desc">{{ avdbStatusText }}</p>
+              <p class="ops-job-meta">{{ avdbMetaText }}</p>
+              <p v-if="avdbErrorText" class="ops-job-meta ops-job-error">{{ avdbErrorText }}</p>
+            </div>
+            <div class="ops-job-actions">
+              <button class="btn btn-primary btn-sm" type="button" :disabled="avdbRunDisabled" @click="runAvdb">
+                {{ avdbRunLabel }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 演员头像下载 -->
       <section ref="avatarSection" class="ops-panel" aria-label="演员头像下载">
         <div class="ops-panel-head">
@@ -100,9 +129,9 @@
             <RefreshButton @click="loadScheduler" />
           </div>
         </div>
-        <div v-if="schedulerJobs.length" class="ops-job-list">
+        <div v-if="generalSchedulerJobs.length" class="ops-job-list">
           <div
-            v-for="job in schedulerJobs"
+            v-for="job in generalSchedulerJobs"
             :key="job.id"
             class="ops-job"
             :class="{ 'is-highlighted': isHi(job.id) }"
@@ -144,8 +173,16 @@ import api from '../api'
 import { requestConfirm } from '../utils/confirmDialog'
 import { ElMessage } from '../utils/message'
 import { CACHE_PURGE_SCOPES } from '../features/operations/operationsOptions'
+import {
+  avdbSourceCountText,
+  avdbState,
+  formatAvdbCount,
+  normalizeAvdbStatus,
+} from '../features/downloads/avdbPresentation'
 import JobHistoryDialog from '../features/operations/JobHistoryDialog.vue'
 import RefreshButton from '../components/RefreshButton.vue'
+
+const AVDB_POLL_RETRY_LIMIT = 5
 
 export default {
   name: 'SystemJobs',
@@ -164,6 +201,14 @@ export default {
       purging: false,
       schedulerJobs: [],
       runningJob: '',
+      avdbStatus: {},
+      avdbStatusLoading: true,
+      avdbStatusKnown: false,
+      avdbRunning: false,
+      avdbPollPending: false,
+      avdbPollFailures: 0,
+      avdbMessage: '',
+      schedulerLoading: false,
       highlightedJob: '',
       historyOpen: false,
       historyTitle: '',
@@ -171,6 +216,81 @@ export default {
     }
   },
   computed: {
+    normalizedAvdb() {
+      return normalizeAvdbStatus(this.avdbStatus)
+    },
+    avdbLifecycle() {
+      return avdbState(this.avdbStatus, {
+        loading: this.avdbStatusLoading,
+        known: this.avdbStatusKnown,
+      })
+    },
+    avdbBusy() {
+      return this.avdbRunning || this.avdbLifecycle.code === 'syncing'
+    },
+    avdbShouldPoll() {
+      return this.avdbBusy || (
+        this.normalizedAvdb.status === 'running'
+        && this.avdbPollFailures < AVDB_POLL_RETRY_LIMIT
+      )
+    },
+    avdbRunDisabled() {
+      return this.avdbBusy || this.avdbStatusLoading || !this.avdbStatusKnown
+    },
+    avdbJob() {
+      return this.schedulerJobs.find(job => job.id === 'avdb_sync') || null
+    },
+    generalSchedulerJobs() {
+      return this.schedulerJobs.filter(job => job.id !== 'avdb_sync')
+    },
+    returnTarget() {
+      const target = String(this.$route.query.return_to || '')
+      return target.startsWith('/') && !target.startsWith('//') ? target : ''
+    },
+    avdbStatusText() {
+      const descriptions = {
+        loading: '正在读取 AVDB 同步状态。',
+        unavailable: '无法确认 AVDB 当前设置，刷新成功前不会修改或运行同步作业。',
+        unconfigured: '尚未创建同步作业。创建后会定期检查上游版本。',
+        unsynced: '同步作业已创建，运行首次同步后即可启用 AVDB 来源。',
+        syncing: '正在下载、校验并全量更新本地索引。',
+        available: '本地磁力索引可用，可按番号参与候选补全与下载。',
+        failed: this.normalizedAvdb.available
+          ? '上次同步失败，当前仍使用上一版可用索引。'
+          : '同步失败，当前没有可用的 AVDB 索引。',
+      }
+      return descriptions[this.avdbLifecycle.code] || descriptions.unconfigured
+    },
+    avdbMetaText() {
+      const parts = []
+      const version = this.normalizedAvdb.release || this.normalizedAvdb.generation
+      if (version) parts.push(`版本 ${version}`)
+      if (this.normalizedAvdb.available || this.normalizedAvdb.recordCount) {
+        parts.push(`记录 ${formatAvdbCount(this.normalizedAvdb.recordCount)}`)
+      }
+      const sources = avdbSourceCountText(this.normalizedAvdb.sourceCounts)
+      if (sources) parts.push(sources)
+      const last = this.formatTime(
+        this.normalizedAvdb.lastCompletedAt
+        || this.normalizedAvdb.lastStartedAt
+        || this.normalizedAvdb.lastCheckedAt,
+      )
+      parts.push(`上次 ${last || '尚未运行'}`)
+      parts.push(`下次 ${this.formatTime(this.avdbJob?.next_run_time) || '未计划'}`)
+      return parts.join(' · ')
+    },
+    avdbErrorText() {
+      return this.avdbMessage || this.normalizedAvdb.lastError
+    },
+    avdbRunLabel() {
+      if (this.avdbRunning) return '启动中...'
+      if (this.avdbLifecycle.code === 'loading') return '读取状态...'
+      if (this.avdbLifecycle.code === 'unavailable') return '状态不可用'
+      if (this.avdbLifecycle.code === 'syncing') return '同步中...'
+      if (this.avdbLifecycle.code === 'unconfigured') return '创建并同步'
+      if (this.avdbLifecycle.code === 'failed') return '重新同步'
+      return '立即同步'
+    },
     avatarLatest() {
       return this.avatarJobs[0] || null
     },
@@ -208,7 +328,7 @@ export default {
     },
   },
   mounted() {
-    this.loadScheduler()
+    this.refreshAvdb()
     this.loadVariant()
     this.loadCache()
     this.loadAvatar()
@@ -216,6 +336,7 @@ export default {
     this._poll = setInterval(() => {
       if (this.avatarBusy) this.loadAvatar()
       if (this.variantBusy) this.loadVariant()
+      if (this.avdbShouldPoll) this.refreshAvdb({ silent: true })
     }, 6000)
   },
   beforeUnmount() {
@@ -235,6 +356,7 @@ export default {
       const job = aliases[raw] || raw
       this.highlightedJob = job
       const refMap = {
+        avdb_sync: 'avdbSection',
         avatar: 'avatarSection',
         variant_index_rebuild: 'variantSection',
         cache: 'cacheSection',
@@ -248,6 +370,68 @@ export default {
     },
     isHi(key) {
       return this.highlightedJob === key
+    },
+    async refreshAvdb({ silent = false } = {}) {
+      if (this.avdbPollPending) return
+      if (!silent) this.avdbPollFailures = 0
+      this.avdbPollPending = true
+      try {
+        await Promise.all([this.loadAvdbStatus({ silent }), this.loadScheduler()])
+      } finally {
+        this.avdbPollPending = false
+      }
+    },
+    async loadAvdbStatus({ silent = false } = {}) {
+      if (!silent) this.avdbStatusLoading = true
+      try {
+        const resp = await api.getAvdbStatus()
+        this.avdbStatus = resp.data || {}
+        this.avdbStatusKnown = true
+        this.avdbPollFailures = 0
+        this.avdbMessage = ''
+      } catch (e) {
+        this.avdbStatusKnown = false
+        if (this.normalizedAvdb.status === 'running') {
+          this.avdbPollFailures = Math.min(
+            AVDB_POLL_RETRY_LIMIT,
+            this.avdbPollFailures + 1,
+          )
+        }
+        this.avdbMessage = this.errText(e)
+      } finally {
+        this.avdbStatusLoading = false
+      }
+    },
+    async runAvdb() {
+      if (this.avdbRunDisabled) return
+      this.avdbRunning = true
+      this.avdbMessage = ''
+      try {
+        if (!this.normalizedAvdb.syncEnabled) {
+          await api.updateConfig({
+            sources: {
+              avdb: {
+                enabled: this.normalizedAvdb.enabled,
+                sync_enabled: true,
+              },
+            },
+          })
+        }
+        const resp = await api.runAvdbSync()
+        this.avdbStatus = { ...this.avdbStatus, sync_enabled: true, status: 'running' }
+        this.avdbStatusKnown = true
+        if (resp.data?.accepted === false) ElMessage.info('AVDB 同步正在运行中')
+        else ElMessage.success('已开始 AVDB 全量同步')
+        setTimeout(() => this.refreshAvdb(), 700)
+      } catch (e) {
+        this.avdbMessage = this.errText(e)
+        ElMessage.error(this.avdbMessage)
+      } finally {
+        this.avdbRunning = false
+      }
+    },
+    returnToSources() {
+      if (this.returnTarget) this.$router.push(this.returnTarget).catch(() => {})
     },
     async runAvatar() {
       if (this.avatarRunning) return
@@ -379,11 +563,15 @@ export default {
       }
     },
     async loadScheduler() {
+      if (this.schedulerLoading) return
+      this.schedulerLoading = true
       try {
         const resp = await api.getSchedulerJobs()
         this.schedulerJobs = Array.isArray(resp.data) ? resp.data : []
       } catch (e) {
         this.schedulerJobs = []
+      } finally {
+        this.schedulerLoading = false
       }
     },
     async runJob(job) {

@@ -25,9 +25,10 @@ class SyncRouteDispatchTest(unittest.TestCase):
                 self.assertFalse(inspect.iscoroutinefunction(handler))
 
     def test_cached_hot_read_routes_are_async_to_avoid_threadpool_queueing(self):
-        from routers import downloads, favorites, logs
+        from routers import downloads, favorites, logs, video_variant_index
 
         handlers = [
+            video_variant_index.create_variant_index_job,
             downloads.list_downloads,
             downloads.list_candidates,
             downloads.candidate_summary,

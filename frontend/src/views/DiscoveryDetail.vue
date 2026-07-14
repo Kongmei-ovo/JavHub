@@ -295,6 +295,7 @@ export default {
   },
   watch: {
     '$route.params'() {
+      if (this.$route.name !== 'DiscoveryDetail') return
       if (this.redirectActorRoute()) return
       this.resetFilters()
       this.doSearch()

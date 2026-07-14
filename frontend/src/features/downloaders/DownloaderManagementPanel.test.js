@@ -37,6 +37,21 @@ test('downloader panel is isolated behind a component contract', () => {
   assert.match(source, /class="downloaders-panel apple-reveal"/)
 })
 
+test('downloader panel consistently calls managed clients downloaders', () => {
+  for (const phrase of [
+    '<strong>下载器</strong>',
+    'title="刷新下载器" aria-label="刷新下载器"',
+    'title="新增下载器" aria-label="新增下载器"',
+    'title="启用下载器"',
+    '<strong>还没有下载器</strong>',
+  ]) {
+    assert.ok(source.includes(phrase), `missing downloader copy: ${phrase}`)
+  }
+  assert.match(source, /downloaderClients\.length }} 个下载器/)
+  assert.match(source, /mode === 'new' \? '新增下载器' : '编辑下载器'/)
+  assert.doesNotMatch(source, /下载源/)
+})
+
 test('native 115 target is managed only by the dedicated settings panel', () => {
   assert.match(source, /client\.type !== 'open115'/)
   assert.match(source, /type\.value !== 'open115'/)

@@ -17,6 +17,14 @@ from services.cf_solver import fetch_with_cf_solver
 # 命中过的源 cache 10 分钟,复看秒回;不 cache no_result,免得上游后收录我们还死认空
 _STREAM_CACHE_TTL = 600
 
+# FlareSolverr 的同一浏览器 session 必须串行使用。给次要 CF 源一个很短的
+# 启动错峰，确保最常命中的 jable 先拿到浏览器；仍会并发探测所有来源，
+# 不改变来源、命中和画质逻辑。
+_STREAM_SOURCE_START_DELAY_SECONDS = {
+    "missav": 0.25,
+    "kanav": 0.5,
+}
+
 logger = logging.getLogger(__name__)
 
 HEADERS = {
@@ -124,6 +132,9 @@ class M3U8Source:
                     "page_url": cached.get("page_url"),
                     "cached": True,
                 }
+            start_delay = _STREAM_SOURCE_START_DELAY_SECONDS.get(name, 0)
+            if start_delay:
+                await asyncio.sleep(start_delay)
             t0 = time.time()
             try:
                 result = await fn(avid)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import gzip
 import hashlib
 import os
@@ -144,21 +145,16 @@ class JavInfoImportConfigTest(unittest.TestCase):
                 }
             }
         }
-        with patch("config.Path") as path_mock, patch("config.yaml.dump") as dump_mock:
-            fake_path = MagicMock()
-            fake_path.__truediv__.return_value = fake_path
-            fake_path.parent.parent = fake_path
-            path_mock.return_value = fake_path
-            with patch("builtins.open", MagicMock()):
-                cfg.update(
-                    _strip_blank_sensitive_values(
-                        {"javinfo": {"import_db": {"database": "r18_new", "password": ""}}}
-                    )
+        with patch.object(cfg, "_write_config") as write_config:
+            cfg.update(
+                _strip_blank_sensitive_values(
+                    {"javinfo": {"import_db": {"database": "r18_new", "password": ""}}}
                 )
+            )
 
         self.assertEqual(cfg._config["javinfo"]["import_db"]["password"], "saved-secret")
         self.assertEqual(cfg._config["javinfo"]["import_db"]["database"], "r18_new")
-        dump_mock.assert_called_once()
+        write_config.assert_called_once_with(cfg._config)
 
 
 class JavInfoDumpFormatTest(unittest.TestCase):
@@ -1215,6 +1211,62 @@ class JavInfoImportRouterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "uploaded")
         self.assertEqual(manager.finalized_job_id, 7)
+
+    def test_restore_after_upload_contains_and_logs_manager_exception(self):
+        from routers.javinfo_imports import _restore_after_upload
+
+        class Manager:
+            async def restore_job(self, job_id):
+                raise RuntimeError(f"restore {job_id} failed")
+
+        with self.assertLogs("routers.javinfo_imports", level="ERROR") as captured:
+            asyncio.run(_restore_after_upload(Manager(), 7))
+
+        self.assertIn("restore 7 failed", "\n".join(captured.output))
+
+    def test_restore_after_upload_uses_manager_cache_invalidation_once(self):
+        from routers.javinfo_imports import _restore_after_upload
+
+        class Manager:
+            async def restore_job(self, job_id):
+                return {"id": job_id, "status": "completed"}
+
+        with patch("services.cache.purge_all") as purge_all, patch(
+            "services.video_variant_index.start_variant_index_job"
+        ) as start_variant_index_job:
+            asyncio.run(_restore_after_upload(Manager(), 7))
+
+        purge_all.assert_not_called()
+        start_variant_index_job.assert_called_once_with()
+
+    def test_restore_after_upload_skips_variant_index_for_incomplete_job(self):
+        from routers.javinfo_imports import _restore_after_upload
+
+        class Manager:
+            async def restore_job(self, job_id):
+                return {"id": job_id, "status": "failed"}
+
+        with patch(
+            "services.video_variant_index.start_variant_index_job"
+        ) as start_variant_index_job:
+            asyncio.run(_restore_after_upload(Manager(), 7))
+
+        start_variant_index_job.assert_not_called()
+
+    def test_restore_after_upload_logs_optional_variant_index_failure(self):
+        from routers.javinfo_imports import _restore_after_upload
+
+        class Manager:
+            async def restore_job(self, job_id):
+                return {"id": job_id, "status": "completed"}
+
+        with patch("services.cache.purge_all"), patch(
+            "services.video_variant_index.start_variant_index_job",
+            side_effect=RuntimeError("variant queue unavailable"),
+        ), self.assertLogs("routers.javinfo_imports", level="ERROR") as captured:
+            asyncio.run(_restore_after_upload(Manager(), 7))
+
+        self.assertIn("variant queue unavailable", "\n".join(captured.output))
 
     def test_run_migrations_endpoint_calls_info_client(self):
         class Client:

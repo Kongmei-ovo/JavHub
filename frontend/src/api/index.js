@@ -227,6 +227,26 @@ export default {
     return api.post('/v1/downloads/downloaders/test', data)
   },
 
+  getSourceConfig() {
+    return api.get('/v1/sources/config')
+  },
+
+  createSource(data) {
+    return api.post('/v1/sources', data)
+  },
+
+  updateSource(id, data) {
+    return api.put(`/v1/sources/${encodeURIComponent(id)}`, data)
+  },
+
+  deleteSource(id) {
+    return api.delete(`/v1/sources/${encodeURIComponent(id)}`)
+  },
+
+  searchSources(data) {
+    return api.post('/v1/sources/search', data)
+  },
+
   listDownloadCandidates(params = {}) {
     return api.get('/v1/downloads/candidates', { params })
   },
@@ -800,6 +820,14 @@ export default {
 
   runSchedulerJob(jobId) {
     return api.post(`/v1/scheduler/jobs/${jobId}/run`)
+  },
+
+  getAvdbStatus() {
+    return api.get('/v1/avdb/status', { silentError: true })
+  },
+
+  runAvdbSync() {
+    return api.post('/v1/scheduler/jobs/avdb_sync/run')
   },
 
   ensureSubscribedSupplement() {

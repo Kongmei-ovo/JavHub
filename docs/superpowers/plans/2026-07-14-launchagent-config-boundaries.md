@@ -56,6 +56,10 @@ class EffectiveProxyURLTest(unittest.TestCase):
             effective_proxy_url({"enabled": True, "http_url": "", "https_url": "https://fallback"}),
             "https://fallback",
         )
+        self.assertEqual(
+            effective_proxy_url({"enabled": True, "http_url": "   ", "https_url": "https://fallback"}),
+            "https://fallback",
+        )
 
     def test_vless_uses_one_bounded_port_contract(self):
         cases = {
@@ -121,7 +125,9 @@ def effective_proxy_url(
     if settings.get("mode") == "vless":
         host = str(advertise_host or "").strip() or "127.0.0.1"
         return f"socks5://{host}:{_vless_port(settings.get('singbox_port'))}"
-    return str(settings.get("http_url") or settings.get("https_url") or "").strip()
+    http_url = str(settings.get("http_url") or "").strip()
+    https_url = str(settings.get("https_url") or "").strip()
+    return http_url or https_url
 ```
 
 - [ ] **Step 4: Make `Config.proxy_url` delegate to the helper and extend its regression test**
@@ -398,7 +404,7 @@ Expected: FAIL because `render_service_plists` is not defined.
 
 ```python
 import argparse
-import sys
+import importlib.util
 
 import yaml
 
@@ -416,7 +422,7 @@ def normalize_config_path(value: str | Path) -> Path:
 def load_service_config(path: Path) -> dict[str, Any]:
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except Exception:
+    except (OSError, UnicodeError, yaml.YAMLError):
         return {}
     return value if isinstance(value, dict) else {}
 
@@ -429,15 +435,20 @@ def bounded_worker_count(config_data: Mapping[str, Any]) -> int:
     return max(1, min(16, value))
 
 
-def resolve_proxy_url(root_dir: Path, proxy: Any, env: Mapping[str, str]) -> str:
-    backend_dir = str(root_dir / "backend")
-    if backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
-    from modules.proxy_config import effective_proxy_url
+def resolve_proxy_url(root_dir: Path, proxy: Any, advertise_host: str) -> str:
+    helper_path = (root_dir / "backend/modules/proxy_config.py").resolve(strict=False)
+    spec = importlib.util.spec_from_file_location("_javhub_service_proxy_config", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load proxy helper from {helper_path}")
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    effective_proxy_url = getattr(helper, "effective_proxy_url", None)
+    if not callable(effective_proxy_url):
+        raise ImportError(f"proxy helper {helper_path} does not define effective_proxy_url")
 
     return effective_proxy_url(
         proxy if isinstance(proxy, Mapping) else {},
-        advertise_host=normalized_advertise_host(env),
+        advertise_host=advertise_host,
     )
 
 
@@ -469,7 +480,8 @@ def render_service_plists(
     javinfo_dir = Path(javinfo_dir).resolve(strict=False)
     effective_config_path = normalize_config_path(config_path)
     config_data = load_service_config(effective_config_path)
-    proxy_url = resolve_proxy_url(root_dir, config_data.get("proxy"), env)
+    advertise_host = normalized_advertise_host(env)
+    proxy_url = resolve_proxy_url(root_dir, config_data.get("proxy"), advertise_host)
 
     javinfo_environment = {
         "PATH": SYSTEM_PATH,

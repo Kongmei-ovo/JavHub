@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import re
 import threading
 from dataclasses import dataclass
 from typing import Any
@@ -24,11 +23,11 @@ from database.download_candidate import (
     find_sent_candidate_by_normalized_code,
     promote_download_candidate_magnet_alternative,
 )
-from modules.code_matcher import code_matches_any, normalize_code
+from modules.code_matcher import normalize_code
+from services.magnet_search import magnet_score as _magnet_score
+from services.magnet_search import search_magnets_for_item
 from services.downloader import downloader_service
-from services.video_variants import search_codes_for_item
 from sources import register_all_sources
-from sources.registry import SourceRegistry
 
 
 POLICIES = {"manual", "rules", "auto"}
@@ -141,109 +140,6 @@ def _download_limit_state(policy_cfg: AutomationPolicy) -> dict:
         "sent_24h": sent_24h,
         "remaining": remaining,
         "remaining_24h": remaining_24h,
-    }
-
-
-def _size_to_mb(value: str | None) -> float:
-    text = str(value or "").strip().upper().replace(",", "")
-    if not text:
-        return 0
-    match = re.search(r"(\d+(?:\.\d+)?)\s*(TB|GB|MB|KB)?", text)
-    if not match:
-        return 0
-    number = float(match.group(1))
-    unit = match.group(2) or "MB"
-    if unit == "TB":
-        return number * 1024 * 1024
-    if unit == "GB":
-        return number * 1024
-    if unit == "KB":
-        return number / 1024
-    return number
-
-
-def _resolution_rank(item: dict) -> int:
-    """Resolution preference for first-party acquisition: 1080p is the sweet
-    spot, then 720p, then unknown, then 2160p/4K last (oversized for JAV)."""
-    haystack = " ".join(
-        str(item.get(key) or "").lower() for key in ("title", "resolution", "quality")
-    )
-    if "2160" in haystack or "4k" in haystack:
-        return 1
-    if "1080" in haystack:
-        return 4
-    if "720" in haystack:
-        return 3
-    return 2
-
-
-# Reasonable per-title bitrate band (Mbps) when the runtime is known.
-_MIN_REASONABLE_MBPS = 1.5
-_MAX_REASONABLE_MBPS = 12.0
-# Fallback hard size window (MB) when no runtime is available.
-_MIN_REASONABLE_MB = 800.0
-_MAX_REASONABLE_MB = 12.0 * 1024.0
-
-
-def _size_fit(size_mb: float, duration_seconds: float) -> float:
-    """1.0 when the size sits in the reasonable band, decaying toward 0 outside
-    it. Replaces the old "bigger file = higher score" reward."""
-    size_mb = float(size_mb or 0)
-    if size_mb <= 0:
-        return 0.5  # unknown size: neutral, neither rewarded nor punished
-    if duration_seconds and duration_seconds > 0:
-        mbps = (size_mb * 8.0) / float(duration_seconds)
-        if _MIN_REASONABLE_MBPS <= mbps <= _MAX_REASONABLE_MBPS:
-            return 1.0
-        if mbps < _MIN_REASONABLE_MBPS:
-            return max(0.0, mbps / _MIN_REASONABLE_MBPS)
-        return max(0.0, _MAX_REASONABLE_MBPS / mbps)
-    if _MIN_REASONABLE_MB <= size_mb <= _MAX_REASONABLE_MB:
-        return 1.0
-    if size_mb < _MIN_REASONABLE_MB:
-        return max(0.0, size_mb / _MIN_REASONABLE_MB)
-    return max(0.0, _MAX_REASONABLE_MB / size_mb)
-
-
-def _source_health_score(item: dict, source_health: dict | None) -> float:
-    """Source success rate in [0, 1]; neutral 0.5 when unknown."""
-    if not source_health:
-        return 0.5
-    source = str(item.get("source") or item.get("name") or "").strip()
-    rate = source_health.get(source)
-    if rate is None:
-        return 0.5
-    try:
-        return max(0.0, min(1.0, float(rate)))
-    except (TypeError, ValueError):
-        return 0.5
-
-
-def _magnet_score(
-    item: dict, *, duration_seconds: float = 0, source_health: dict | None = None
-) -> dict:
-    title = str(item.get("title") or "").lower()
-    quality = str(item.get("quality") or "").lower()
-    subtitle = bool(item.get("subtitle")) or any(
-        token in title for token in ("字幕", "subtitle", "sub")
-    )
-    hd = bool(item.get("hd")) or "1080" in title or "2160" in title or "4k" in title or "hd" in quality
-    resolution_rank = _resolution_rank(item)
-    size_mb = _size_to_mb(item.get("size"))
-    health = _source_health_score(item, source_health)
-    fit = _size_fit(size_mb, duration_seconds)
-    subtitle_score = 1 if subtitle else 0
-    # Ranked priority: subtitle > resolution > source health > size fit.
-    # Size is a *fit* term now — never "bigger is better".
-    total = subtitle_score * 1000 + resolution_rank * 100 + health * 10 + fit * 1
-    return {
-        "subtitle": subtitle_score,
-        "hd": 1 if hd else 0,
-        "resolution": resolution_rank,
-        "size_mb": size_mb,
-        "health": health,
-        "size_fit": fit,
-        "total": total,
     }
 
 
@@ -384,48 +280,16 @@ def _failure_event_detail(message: Any, status: int | str | None = None) -> str:
 
 
 async def find_best_magnet(candidate: dict) -> dict | None:
-    """Search registered sources and select the best available download URI.
-
-    Keywords come from ``search_codes_for_item`` — the searchable zero-padded
-    display code first (``JUMS-039``), raw variant identifiers (``4JUMS039``,
-    ``h_706gtrp00004b``) last. Hits whose title actually contains one of the
-    candidate's codes are preferred; unverified hits are only used when no
-    verified hit exists (prevents ABC-123 picking up ABC-1234 releases).
-    """
+    """Search registered sources through the shared candidate-compatible service."""
     register_all_sources()
-    keywords = search_codes_for_item(candidate)
-
-    scored: list[dict] = []
-    for keyword in keywords:
-        results = await SourceRegistry.search_all(keyword)
-        for item in results:
-            if not _download_uri(item):
-                continue
-            verified = code_matches_any(keyword, [item.get("title"), item.get("name")])
-            scored.append({"item": dict(item), "score": _magnet_score(item), "verified": verified})
-        # The primary display form found verified hits — later raw/cid forms
-        # would only add noise, so stop querying the sources.
-        if any(entry["verified"] for entry in scored):
-            break
-    if not scored:
+    result = await search_magnets_for_item(candidate)
+    if not isinstance(result.get("best"), dict):
         return None
-    if any(entry["verified"] for entry in scored):
-        scored = [entry for entry in scored if entry["verified"]]
-
-    scored.sort(key=lambda result: result["score"]["total"], reverse=True)
-    candidates = scored[:5]
-    best = dict(candidates[0]["item"])
-    best["reason_breakdown"] = candidates[0]["score"]
-    alternatives = [
-        {
-            "magnet": _download_uri(result["item"]),
-            "source": result["item"].get("source") or result["item"].get("name"),
-            "title": result["item"].get("title") or "",
-            "score": result["score"],
-        }
-        for result in candidates
-    ]
-    return {"best": best, "candidates": candidates, "alternatives": _sanitize_magnet_alternatives(alternatives)}
+    return {
+        "best": result["best"],
+        "candidates": result.get("candidates") or [],
+        "alternatives": result.get("alternatives") or [],
+    }
 
 
 def _coerce_magnet_result(result: dict | None) -> tuple[dict | None, dict | None]:

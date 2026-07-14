@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 from typing import Any
 from unittest.mock import patch
 
@@ -82,6 +83,11 @@ def create_authed_router_test_client(router: Any, **kwargs: Any) -> ASGIClient:
 
 
 def load_main_app_without_db() -> FastAPI:
-    """Import the assembled app without running production database setup."""
+    """Assemble a fresh app without production DB setup or lifespan startup."""
     with patch("database.init_db"):
-        return importlib.import_module("main").app
+        module = sys.modules.get("main")
+        if module is None:
+            module = importlib.import_module("main")
+        else:
+            module = importlib.reload(module)
+        return module.app

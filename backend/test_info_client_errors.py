@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, patch
-
 import httpx
 
 from modules.info_client import InfoClient
@@ -12,6 +10,10 @@ class _FakeHttpClient:
     def __init__(self, *, response: httpx.Response | None = None, error: Exception | None = None):
         self.response = response
         self.error = error
+        self.is_closed = False
+
+    async def aclose(self) -> None:
+        self.is_closed = True
 
     async def get(self, *_args, **_kwargs) -> httpx.Response:
         if self.error:
@@ -35,9 +37,16 @@ def _response(status_code: int, path: str, *, json_body=None, text: str | None =
 
 class InfoClientErrorMappingTest(unittest.IsolatedAsyncioTestCase):
     async def _capture(self, client: InfoClient, method_name: str, *args, fake_http: _FakeHttpClient, **kwargs) -> Exception:
-        with patch.object(client, "_get_client", AsyncMock(return_value=fake_http)):
+        configured = InfoClient(
+            api_url=client.api_url,
+            timeout=client.timeout,
+            client_factory=lambda: fake_http,
+        )
+        try:
             with self.assertRaises(Exception) as ctx:
-                await getattr(client, method_name)(*args, **kwargs)
+                await getattr(configured, method_name)(*args, **kwargs)
+        finally:
+            await configured.close()
         return ctx.exception
 
     def _assert_javinfo_error(

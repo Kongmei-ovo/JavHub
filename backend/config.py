@@ -1,11 +1,14 @@
+import copy
 import yaml
 import os
 import sys
+import tempfile
 import threading
 import logging
 from pathlib import Path
 from typing import Optional
 
+from modules.proxy_config import effective_proxy_url
 from services.javinfo_import_settings import normalize_javinfo_import_db_settings
 
 logger = logging.getLogger(__name__)
@@ -14,6 +17,7 @@ DEFAULT_JAVINFO_API_URL = "http://localhost:18080"
 LEGACY_JAVINFO_API_URLS: set[str] = set()
 _warned_legacy_javinfo_urls: set[str] = set()
 DEFAULT_TORZNAB_SOURCE = {
+    'kind': 'prowlarr',
     'enabled': False,
     'name': 'torznab',
     'base_url': '',
@@ -22,6 +26,26 @@ DEFAULT_TORZNAB_SOURCE = {
     'categories': '',
     'limit': 20,
     'timeout': 15,
+}
+
+DEFAULT_AVDB_SOURCE = {
+    'enabled': False,
+    'sync_enabled': False,
+    'name': 'avdb',
+    'repository': 'li-peifeng/AVdb-Only',
+    'interval_hours': 12,
+    'result_limit': 50,
+    'timeout': 60,
+    'batch_size': 1000,
+    'min_source_records': 1000,
+    'min_searchable_records': 1000,
+    'min_source_ratio': 0.5,
+    'max_skipped_ratio': 0.05,
+    # Keep the active generation and one rollback generation.
+    'keep_generations': 2,
+    'max_asset_bytes': 256 * 1024 * 1024,
+    'max_total_download_bytes': 512 * 1024 * 1024,
+    'max_uncompressed_bytes': 1024 * 1024 * 1024,
 }
 
 def _env(key: str, default: str = '') -> str:
@@ -73,6 +97,7 @@ class Config:
     _instance: Optional['Config'] = None
     _config: dict = {}
     _lock = threading.Lock()
+    _write_lock = threading.RLock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -538,6 +563,7 @@ class Config:
     def sources(self) -> dict:
         defaults = {
             'torznab': DEFAULT_TORZNAB_SOURCE.copy(),
+            'avdb': DEFAULT_AVDB_SOURCE.copy(),
         }
         cfg = self._config.get('sources', {}) or {}
         if not isinstance(cfg, dict):
@@ -546,6 +572,10 @@ class Config:
         merged['torznab'] = {
             **defaults['torznab'],
             **(cfg.get('torznab', {}) if isinstance(cfg.get('torznab'), dict) else {}),
+        }
+        merged['avdb'] = {
+            **defaults['avdb'],
+            **(cfg.get('avdb', {}) if isinstance(cfg.get('avdb'), dict) else {}),
         }
         return merged
 
@@ -575,16 +605,19 @@ class Config:
         cfg = item if isinstance(item, dict) else {}
         merged = {**DEFAULT_TORZNAB_SOURCE, **cfg}
         name = str(merged.get('name') or '').strip() or f'torznab-{index}'
+        kind = str(merged.get('kind') or 'prowlarr').strip().casefold()
+        if kind not in {'prowlarr', 'jackett', 'torznab'}:
+            kind = 'prowlarr'
         indexer = str(merged.get('indexer') or '').strip() or 'all'
-        api_key = merged.get('api_key')
+        api_key = str(merged.get('api_key') or '').strip()
         if not api_key:
-            api_key = os.getenv('JAVHUB_TORZNAB_API_KEY') or ''
+            api_key = str(os.getenv('JAVHUB_TORZNAB_API_KEY') or '').strip()
         return {
-            **merged,
+            'kind': kind,
             'enabled': bool(merged.get('enabled', False)),
             'name': name,
             'base_url': str(merged.get('base_url') or '').strip(),
-            'api_key': str(api_key or ''),
+            'api_key': api_key,
             'indexer': indexer,
             'categories': str(merged.get('categories') or '').strip(),
             'limit': self._clamp_int(merged.get('limit'), 20, 1, 100),
@@ -615,6 +648,52 @@ class Config:
         return self.enabled_torznab_configs
 
     @property
+    def avdb_source_config(self) -> dict:
+        raw = self.sources.get('avdb')
+        cfg = raw if isinstance(raw, dict) else {}
+        merged = {**DEFAULT_AVDB_SOURCE, **cfg}
+        # The sync implementation is deliberately pinned to the audited public
+        # repository; accepting an arbitrary API URL/repository here would turn
+        # a source setting into a server-side request primitive.
+        repository = DEFAULT_AVDB_SOURCE['repository']
+        return {
+            'enabled': _coerce_bool(merged.get('enabled'), default=False),
+            'sync_enabled': _coerce_bool(merged.get('sync_enabled'), default=False),
+            'name': 'avdb',
+            'repository': repository,
+            'interval_hours': self._clamp_int(merged.get('interval_hours'), 12, 1, 168),
+            'result_limit': self._clamp_int(merged.get('result_limit'), 50, 1, 200),
+            'timeout': self._clamp_int(merged.get('timeout'), 60, 5, 600),
+            'batch_size': self._clamp_int(merged.get('batch_size'), 1000, 100, 5000),
+            'min_source_records': self._clamp_int(merged.get('min_source_records'), 1000, 1, 100000),
+            'min_searchable_records': self._clamp_int(
+                merged.get('min_searchable_records'), 1000, 1, 100000,
+            ),
+            'min_source_ratio': self._clamp_float(merged.get('min_source_ratio'), 0.5, 0.1, 1.0),
+            'max_skipped_ratio': self._clamp_float(
+                merged.get('max_skipped_ratio'), 0.05, 0.0, 0.5,
+            ),
+            'keep_generations': self._clamp_int(merged.get('keep_generations'), 2, 1, 10),
+            'max_asset_bytes': self._clamp_int(
+                merged.get('max_asset_bytes'), 256 * 1024 * 1024, 1024 * 1024, 2 * 1024 * 1024 * 1024,
+            ),
+            'max_total_download_bytes': self._clamp_int(
+                merged.get('max_total_download_bytes'), 512 * 1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024 * 1024,
+            ),
+            'max_uncompressed_bytes': self._clamp_int(
+                merged.get('max_uncompressed_bytes'), 1024 * 1024 * 1024, 2 * 1024 * 1024, 8 * 1024 * 1024 * 1024,
+            ),
+        }
+
+    @property
+    def avdb_enabled(self) -> bool:
+        return bool(self.avdb_source_config.get('enabled'))
+
+    @property
+    def avdb_sync_enabled(self) -> bool:
+        return bool(self.avdb_source_config.get('sync_enabled'))
+
+    @property
     def downloaders(self) -> dict:
         return self._config.get('downloaders', {})
 
@@ -637,13 +716,10 @@ class Config:
 
     @property
     def proxy_url(self) -> str:
-        proxy = self.proxy
-        if not proxy.get('enabled'):
-            return ''
-        if proxy.get('mode') == 'vless':
-            host = os.environ.get('JAVHUB_PROXY_ADVERTISE_HOST', '127.0.0.1').strip() or '127.0.0.1'
-            return f"socks5://{host}:{int(proxy.get('singbox_port', 17890))}"
-        return proxy.get('http_url') or proxy.get('https_url') or ''
+        return effective_proxy_url(
+            self.proxy,
+            advertise_host=os.environ.get('JAVHUB_PROXY_ADVERTISE_HOST'),
+        )
 
     # Notification settings
     @property
@@ -710,44 +786,84 @@ class Config:
                 merged[key] = value
         return merged
 
-    def update(self, new_config: dict):
-        incoming = self._merge_config({}, new_config)
-        if isinstance(incoming.get('ai'), dict):
-            current_ai = self._config.get('ai', {}) or {}
-            legacy_translation = self._config.get('translation', {}) or {}
-            legacy_openai = (
-                legacy_translation.get('openai_compatible', {})
-                if isinstance(legacy_translation, dict)
-                else {}
-            )
-            for provider_key in ('openai_compatible', 'gemini', 'ollama'):
-                incoming_provider = incoming['ai'].get(provider_key)
-                if not isinstance(incoming_provider, dict) or incoming_provider.get('api_key'):
-                    continue
-                current_provider = current_ai.get(provider_key, {}) if isinstance(current_ai, dict) else {}
-                existing_api_key = current_provider.get('api_key') if isinstance(current_provider, dict) else ''
-                if not existing_api_key and provider_key == 'openai_compatible':
-                    existing_api_key = legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
-                if existing_api_key:
-                    incoming_provider['api_key'] = existing_api_key
-        if isinstance(incoming.get('translation'), dict):
-            incoming_translation = incoming['translation']
-            current_translation = self._config.get('translation', {}) or {}
-            if isinstance(incoming_translation.get('baidu'), dict):
-                incoming_baidu = incoming_translation['baidu']
-                if not incoming_baidu.get('secret'):
-                    current_baidu = current_translation.get('baidu', {}) if isinstance(current_translation, dict) else {}
-                    existing_secret = current_baidu.get('secret') if isinstance(current_baidu, dict) else ''
-                    if existing_secret:
-                        incoming_baidu['secret'] = existing_secret
-        self._config = self._merge_config(self._config, incoming)
-        if isinstance(incoming.get('javinfo'), dict):
-            _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')
-        if 'ai' in incoming and isinstance(self._config.get('translation'), dict):
-            self._config['translation'].pop('openai_compatible', None)
+    def _write_config(self, candidate: dict | None = None) -> None:
         config_path = self.config_path
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(self._config, f, allow_unicode=True, default_flow_style=False)
+        config_data = self._config if candidate is None else candidate
+        temp_path: Path | None = None
+        with self._write_lock:
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode='w',
+                    encoding='utf-8',
+                    dir=config_path.parent,
+                    prefix=f'.{config_path.name}.',
+                    suffix='.tmp',
+                    delete=False,
+                ) as temp_file:
+                    temp_path = Path(temp_file.name)
+                    yaml.safe_dump(
+                        config_data,
+                        temp_file,
+                        allow_unicode=True,
+                        default_flow_style=False,
+                        sort_keys=False,
+                    )
+                    temp_file.flush()
+                    os.fsync(temp_file.fileno())
+                os.replace(temp_path, config_path)
+                temp_path = None
+            finally:
+                if temp_path is not None:
+                    temp_path.unlink(missing_ok=True)
+
+    def replace_sources(self, sources: dict) -> None:
+        if not isinstance(sources, dict):
+            raise TypeError('sources must be a dict')
+        with self._write_lock:
+            candidate = copy.deepcopy(self._config)
+            candidate['sources'] = copy.deepcopy(sources)
+            self._write_config(candidate)
+            self._config = candidate
+
+    def update(self, new_config: dict):
+        with self._write_lock:
+            current = copy.deepcopy(self._config)
+            incoming = self._merge_config({}, copy.deepcopy(new_config))
+            if isinstance(incoming.get('ai'), dict):
+                current_ai = current.get('ai', {}) or {}
+                legacy_translation = current.get('translation', {}) or {}
+                legacy_openai = (
+                    legacy_translation.get('openai_compatible', {})
+                    if isinstance(legacy_translation, dict)
+                    else {}
+                )
+                for provider_key in ('openai_compatible', 'gemini', 'ollama'):
+                    incoming_provider = incoming['ai'].get(provider_key)
+                    if not isinstance(incoming_provider, dict) or incoming_provider.get('api_key'):
+                        continue
+                    current_provider = current_ai.get(provider_key, {}) if isinstance(current_ai, dict) else {}
+                    existing_api_key = current_provider.get('api_key') if isinstance(current_provider, dict) else ''
+                    if not existing_api_key and provider_key == 'openai_compatible':
+                        existing_api_key = legacy_openai.get('api_key') if isinstance(legacy_openai, dict) else ''
+                    if existing_api_key:
+                        incoming_provider['api_key'] = existing_api_key
+            if isinstance(incoming.get('translation'), dict):
+                incoming_translation = incoming['translation']
+                current_translation = current.get('translation', {}) or {}
+                if isinstance(incoming_translation.get('baidu'), dict):
+                    incoming_baidu = incoming_translation['baidu']
+                    if not incoming_baidu.get('secret'):
+                        current_baidu = current_translation.get('baidu', {}) if isinstance(current_translation, dict) else {}
+                        existing_secret = current_baidu.get('secret') if isinstance(current_baidu, dict) else ''
+                        if existing_secret:
+                            incoming_baidu['secret'] = existing_secret
+            candidate = self._merge_config(current, incoming)
+            if isinstance(incoming.get('javinfo'), dict):
+                _warn_if_legacy_javinfo_url(incoming['javinfo'].get('api_url', ''), 'config update')
+            if 'ai' in incoming and isinstance(candidate.get('translation'), dict):
+                candidate['translation'].pop('openai_compatible', None)
+            self._write_config(candidate)
+            self._config = candidate
 
 sys.modules.setdefault("config", sys.modules[__name__])
 sys.modules.setdefault("backend.config", sys.modules[__name__])

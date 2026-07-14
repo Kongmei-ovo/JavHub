@@ -8,6 +8,11 @@ from xml.etree import ElementTree
 import httpx
 
 from models.video import MagnetInfo
+from services.secret_redactor import redact_sensitive_text, sanitize_source_item_uris
+
+
+class TorznabSearchError(RuntimeError):
+    """A sanitized Torznab failure safe for registry/API observability."""
 
 
 class TorznabSource:
@@ -15,6 +20,7 @@ class TorznabSource:
 
     def __init__(
         self,
+        kind: str = "prowlarr",
         name: str = "torznab",
         base_url: str = "",
         api_key: str = "",
@@ -24,6 +30,12 @@ class TorznabSource:
         timeout: int = 15,
         enabled: bool = False,
     ):
+        normalized_kind = str(kind or "prowlarr").strip().casefold()
+        self.kind = (
+            normalized_kind
+            if normalized_kind in {"prowlarr", "jackett", "torznab"}
+            else "prowlarr"
+        )
         self.name = name
         self.base_url = base_url.strip().rstrip("/")
         self.api_key = api_key.strip()
@@ -48,18 +60,27 @@ class TorznabSource:
         }
         if self.categories:
             params["cat"] = self.categories
+        headers: dict[str, str] = {}
+        if self.kind == "prowlarr":
+            headers["X-Api-Key"] = self.api_key
+        else:
+            params["apikey"] = self.api_key
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.get(
                     self._api_url(),
                     params=params,
-                    headers={"X-Api-Key": self.api_key},
+                    headers=headers,
                 )
                 response.raise_for_status()
             return self._parse_results(response.text)
-        except (httpx.HTTPError, ElementTree.ParseError, ValueError, TypeError):
-            return []
+        except TorznabSearchError:
+            raise
+        except Exception as exc:
+            raise TorznabSearchError(
+                _safe_failure_message(exc, self.api_key)
+            ) from None
 
     async def get_detail(self, content_id: str) -> dict | None:
         return None
@@ -76,16 +97,29 @@ class TorznabSource:
         if path.endswith("/api") or path.endswith("/newznab"):
             return self.base_url
 
-        if self.indexer.isdigit():
+        if self.kind == "prowlarr" and self.indexer.isdigit():
             return f"{self.base_url}/api/v1/indexer/{self.indexer}/newznab"
         return f"{self.base_url}/api/v2.0/indexers/{self.indexer}/results/torznab/api"
 
     def _parse_results(self, text: str) -> list[MagnetInfo]:
         root = ElementTree.fromstring(text)
-        if _local_name(root.tag) == "error":
-            return []
-        if any(_local_name(child.tag) == "error" for child in root.iter()):
-            return []
+        error = next(
+            (node for node in root.iter() if _local_name(node.tag) == "error"),
+            None,
+        )
+        if error is not None:
+            code = _attr(error, "code")
+            description = _first_present(
+                _attr(error, "description"),
+                str(error.text or "").strip(),
+            )
+            detail = ": ".join(part for part in (code, description) if part)
+            message = "Torznab response error"
+            if detail:
+                message = f"{message}: {detail}"
+            raise TorznabSearchError(
+                redact_sensitive_text(message, secrets=(self.api_key,))
+            )
 
         results = []
         for item in (node for node in root.iter() if _local_name(node.tag) == "item"):
@@ -149,7 +183,17 @@ class TorznabSource:
             result["peers"] = peers
         if info_hash:
             result["info_hash"] = info_hash
-        return result
+        sanitized = sanitize_source_item_uris(result, secrets=(self.api_key,))
+        if sanitized is not None:
+            return sanitized
+
+        fallback_magnet = _safe_info_hash_magnet(info_hash)
+        if not fallback_magnet:
+            return None
+        result["magnet"] = fallback_magnet
+        result.pop("download_url", None)
+        result.pop("torrent_url", None)
+        return sanitize_source_item_uris(result, secrets=(self.api_key,))
 
 
 def _local_name(value: str) -> str:
@@ -248,3 +292,25 @@ def _quality_flags(title: str) -> tuple[str | None, str | None, bool]:
 def _has_subtitle(title: str) -> bool:
     lowered = title.lower()
     return any(token in lowered for token in ("字幕", "subtitle", "subtitles", " sub", ".sub", "_sub", "chs", "cht", "zh"))
+
+
+def _safe_info_hash_magnet(value: str | None) -> str:
+    info_hash = str(value or "").strip()
+    if re.fullmatch(r"[0-9a-fA-F]{40}", info_hash) or re.fullmatch(
+        r"[A-Z2-7a-z2-7]{32}", info_hash
+    ):
+        return f"magnet:?xt=urn:btih:{info_hash}"
+    return ""
+
+
+def _safe_failure_message(exc: Exception, api_key: str) -> str:
+    if isinstance(exc, ElementTree.ParseError):
+        prefix = "Torznab XML parse failed"
+    elif isinstance(exc, httpx.TimeoutException):
+        prefix = "Torznab HTTP timeout"
+    elif isinstance(exc, httpx.HTTPError):
+        prefix = f"Torznab HTTP request failed ({type(exc).__name__})"
+    else:
+        prefix = f"Torznab search failed ({type(exc).__name__})"
+    detail = redact_sensitive_text(exc, secrets=(api_key,))
+    return f"{prefix}: {detail}" if detail else prefix

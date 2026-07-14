@@ -225,6 +225,28 @@ def acquisition_coordinator_job():
         raise
 
 
+def avdb_sync_job():
+    """Check and atomically import the latest AVDB public release."""
+    from services.avdb_sync import sync_avdb_release
+
+    try:
+        result = sync_avdb_release()
+        if result.get("busy"):
+            add_log("WARNING", "AVDB 同步已在其他后端进程中执行，本次触发跳过")
+        elif result.get("changed"):
+            add_log(
+                "INFO",
+                f"AVDB 同步完成: {result.get('current_release') or result.get('release')}, "
+                f"{result.get('record_count', 0)} 条记录",
+            )
+        else:
+            add_log("INFO", "AVDB 已是最新版本")
+        return result
+    except Exception as exc:
+        add_log("ERROR", f"AVDB 同步失败: {exc}")
+        raise
+
+
 def configure_acquisition_coordinator_job():
     """Install or refresh the 115 finalize coordinator interval job."""
     try:
@@ -245,6 +267,33 @@ def configure_acquisition_coordinator_job():
     )
 
 
+def configure_avdb_sync_job():
+    """Install or remove the AVDB release-check interval job from current config."""
+    try:
+        scheduler.remove_job('avdb_sync')
+    except Exception as exc:
+        if "No job by the id" not in str(exc):
+            logger.debug("Unable to remove AVDB sync job before refresh: %s", exc)
+    if not config.avdb_sync_enabled:
+        return
+    interval_hours = int(config.avdb_source_config.get('interval_hours') or 12)
+    scheduler.add_job(
+        scheduler_job_wrapper('avdb_sync', avdb_sync_job),
+        IntervalTrigger(hours=interval_hours),
+        id='avdb_sync',
+        name='AVDB 公开库同步',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+
+def recover_avdb_sync_state() -> bool:
+    from database.avdb import recover_interrupted_avdb_sync
+
+    return recover_interrupted_avdb_sync()
+
+
 # 可手动"立即运行"的调度作业白名单：id → 作业函数。
 # 系统作业控制台 (POST /scheduler/jobs/{id}/run) 只允许触发这些。
 _MANUAL_JOB_FUNCS: dict[str, Callable[[], Any]] = {
@@ -252,12 +301,33 @@ _MANUAL_JOB_FUNCS: dict[str, Callable[[], Any]] = {
     'variant_index_rebuild': variant_index_rebuild_job,
     'candidate_auto_process': candidate_auto_process_job,
     'acquisition_coordinator': acquisition_coordinator_job,
+    'avdb_sync': avdb_sync_job,
 }
 
 MANUAL_JOB_IDS: tuple[str, ...] = tuple(_MANUAL_JOB_FUNCS)
 
 _manual_run_threads: dict[str, threading.Thread] = {}
 _manual_run_lock = threading.Lock()
+MANUAL_JOB_SHUTDOWN_TIMEOUT = 10.0
+
+
+def drain_manual_scheduler_jobs(
+    timeout: float = MANUAL_JOB_SHUTDOWN_TIMEOUT,
+) -> tuple[str, ...]:
+    """Wait for manual jobs using one deadline shared by all job threads."""
+    deadline = time.monotonic() + max(0.0, float(timeout))
+    with _manual_run_lock:
+        threads = tuple(
+            thread for thread in _manual_run_threads.values() if thread.is_alive()
+        )
+    for thread in threads:
+        thread.join(timeout=max(0.0, deadline - time.monotonic()))
+    alive = tuple(thread.name for thread in threads if thread.is_alive())
+    for name in alive:
+        logger.warning(
+            "Manual scheduler job thread still running during shutdown: %s", name
+        )
+    return alive
 
 
 def trigger_scheduler_job(job_id: str) -> dict[str, Any]:
@@ -286,19 +356,27 @@ def trigger_scheduler_job(job_id: str) -> dict[str, Any]:
 
 def start_scheduler():
     """启动定时任务"""
+    try:
+        if recover_avdb_sync_state():
+            add_log("WARNING", "检测到中断的 AVDB 同步，已标记失败，可立即重试")
+    except Exception as exc:
+        logger.warning("Failed to recover interrupted AVDB sync state: %s", exc)
     check_hour = config.scheduler_check_hour
-    if check_hour is None:
-        logger.info("Scheduler disabled")
-        return
-
-    # 每天定时检查
-    scheduler.add_job(
-        scheduler_job_wrapper('subscription_check', subscription_check_job),
-        CronTrigger(hour=check_hour, minute=0),
-        id='subscription_check',
-        name='订阅检查',
-        replace_existing=True
-    )
+    # Subscription cron can be disabled independently; interval jobs such as
+    # AVDB sync and acquisition coordination must continue to run.
+    if check_hour is not None:
+        scheduler.add_job(
+            scheduler_job_wrapper('subscription_check', subscription_check_job),
+            CronTrigger(hour=check_hour, minute=0),
+            id='subscription_check',
+            name='订阅检查',
+            replace_existing=True
+        )
+    else:
+        try:
+            scheduler.remove_job('subscription_check')
+        except Exception:
+            pass
 
     # 每日变体索引重建（默认 4:00）。
     variant_index_hour = config.scheduler_variant_index_rebuild_hour
@@ -313,11 +391,19 @@ def start_scheduler():
 
     configure_candidate_auto_process_job()
     configure_acquisition_coordinator_job()
+    configure_avdb_sync_job()
 
     scheduler.start()
-    logger.info(f"Scheduler started, subscription check at {check_hour}:00")
+    logger.info(
+        "Scheduler started, subscription check %s",
+        f"at {check_hour}:00" if check_hour is not None else "disabled",
+    )
 
 
 def stop_scheduler():
     """停止定时任务"""
-    scheduler.shutdown()
+    try:
+        if scheduler.running:
+            scheduler.shutdown(wait=True)
+    finally:
+        drain_manual_scheduler_jobs()

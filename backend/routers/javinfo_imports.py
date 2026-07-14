@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from config import config
 from modules.info_client import get_info_client
-from services import cache
 from services.javinfo_import import (
     JavInfoImportConflict,
     JavInfoImportError,
     get_import_manager,
     stream_dump_format_for_filename,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/javinfo/imports", tags=["javinfo-imports"])
 
@@ -111,15 +113,22 @@ async def complete_import_dump_upload(job_id: int) -> dict[str, Any]:
 
 
 async def _restore_after_upload(manager, job_id: int) -> None:
-    job = await manager.restore_job(job_id)
-    if job.get("status") == "completed":
-        cache.purge_all()
-        try:
-            from services.video_variant_index import start_variant_index_job
+    try:
+        job = await manager.restore_job(job_id)
+    except Exception:
+        logger.exception("JavInfo import restore job %s failed", job_id)
+        return
+    if job.get("status") != "completed":
+        return
+    try:
+        from services.video_variant_index import start_variant_index_job
 
-            start_variant_index_job()
-        except Exception:
-            pass
+        start_variant_index_job()
+    except Exception:
+        logger.exception(
+            "failed to start variant index rebuild after JavInfo import job %s",
+            job_id,
+        )
 
 
 @router.post("/migrations")

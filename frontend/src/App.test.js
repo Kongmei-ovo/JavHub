@@ -36,6 +36,11 @@ test('App lazy loads the global video modal only when opened', () => {
   assert.doesNotMatch(source, /import VideoModal from '\.\/components\/VideoModal\.vue'/)
 })
 
+test('download-source navigation closes the modal and opens the source manager', () => {
+  assert.match(source, /if \(type === 'download-sources'\)/)
+  assert.match(source, /router\.push\(\{ path: '\/downloads', query: \{ tab: 'indexer' \} \}\)/)
+})
+
 test('primary navigation is grouped around daily workflows first', () => {
   const navStart = navigationSource.indexOf('export const navGroups')
   const navEnd = navigationSource.indexOf('export const bottomNavItems', navStart)

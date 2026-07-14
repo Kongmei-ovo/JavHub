@@ -4,7 +4,10 @@ import asyncio
 import base64
 import hashlib
 import tempfile
+import threading
+import time
 import unittest
+from concurrent.futures import CancelledError as ConcurrentCancelledError
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -30,6 +33,21 @@ class SequenceHTTPClient:
         return None
 
 
+class LoopThread:
+    def __init__(self, name: str) -> None:
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self.loop.run_forever, name=name, daemon=True)
+        self.thread.start()
+
+    def run(self, coro):
+        return asyncio.run_coroutine_threadsafe(coro, self.loop).result(timeout=2)
+
+    def stop(self) -> None:
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.thread.join(timeout=2)
+        self.loop.close()
+
+
 def response(payload: dict, *, status_code: int = 200, url: str = "https://115.test/api") -> httpx.Response:
     return httpx.Response(
         status_code,
@@ -44,6 +62,95 @@ class Open115ClientTests(unittest.IsolatedAsyncioTestCase):
         data = {"server": {"port": 18090}, "open115": section or {}}
         config_path.write_text(yaml.safe_dump(data), encoding="utf-8")
         return SimpleNamespace(_config=data, config_path=config_path)
+
+    async def test_owned_http_clients_are_reused_per_loop_and_closed_on_owner(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("open115-a"), LoopThread("open115-b")]
+        clients = []
+
+        class RecordingHTTPClient:
+            def __init__(self):
+                self.created_loop = asyncio.get_running_loop()
+                self.request_loops = []
+                self.closed_loop = None
+                self.is_closed = False
+
+            async def request(self, _method, _url, **_kwargs):
+                self.request_loops.append(asyncio.get_running_loop())
+                return response({"state": True, "data": {}})
+
+            async def aclose(self):
+                self.closed_loop = asyncio.get_running_loop()
+                self.is_closed = True
+
+        def factory():
+            client = RecordingHTTPClient()
+            clients.append(client)
+            return client
+
+        try:
+            client = Open115Client(http_client_factory=factory, min_request_interval=0)
+            loops[0].run(client._request("GET", "https://115.test/a"))
+            loops[1].run(client._request("GET", "https://115.test/b"))
+            loops[0].run(client._request("GET", "https://115.test/c"))
+
+            self.assertEqual(len(clients), 2)
+            self.assertEqual([len(item.request_loops) for item in clients], [2, 1])
+
+            await client.close()
+            self.assertTrue(all(item.closed_loop is item.created_loop for item in clients))
+        finally:
+            for loop in loops:
+                loop.stop()
+
+    async def test_injected_http_client_remains_caller_owned(self):
+        from services.open115 import Open115Client
+
+        http = SequenceHTTPClient([])
+        http.closed = False
+
+        async def record_close():
+            http.closed = True
+
+        http.aclose = record_close
+        client = Open115Client(http_client=http, min_request_interval=0)
+        await client.close()
+
+        self.assertFalse(http.closed)
+
+    async def test_request_slots_are_reserved_globally_across_event_loops(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("throttle-a"), LoopThread("throttle-b")]
+        barrier = threading.Barrier(2)
+        starts = []
+        starts_lock = threading.Lock()
+
+        class RecordingHTTPClient:
+            async def request(self, _method, _url, **_kwargs):
+                with starts_lock:
+                    starts.append(time.monotonic())
+                return response({"state": True, "data": {}})
+
+        async def request_after_barrier(client, suffix):
+            await asyncio.to_thread(barrier.wait)
+            return await client._request("GET", f"https://115.test/{suffix}")
+
+        try:
+            client = Open115Client(http_client=RecordingHTTPClient(), min_request_interval=0.05)
+            futures = [
+                asyncio.run_coroutine_threadsafe(request_after_barrier(client, index), loop.loop)
+                for index, loop in enumerate(loops)
+            ]
+            for future in futures:
+                future.result(timeout=2)
+
+            self.assertEqual(len(starts), 2)
+            self.assertGreaterEqual(abs(starts[1] - starts[0]), 0.04)
+        finally:
+            for loop in loops:
+                loop.stop()
 
     async def test_device_auth_uses_standard_base64_sha256_pkce(self):
         from services.open115 import Open115Client
@@ -134,6 +241,223 @@ class Open115ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(results, [True, True])
         refresh_calls = [call for call in http.calls if call["url"].endswith("/open/refreshToken")]
         self.assertEqual(len(refresh_calls), 1)
+
+    async def test_refresh_singleflight_is_shared_across_event_loops(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("refresh-a"), LoopThread("refresh-b")]
+        entered = threading.Event()
+        release = threading.Event()
+
+        class BlockingHTTPClient:
+            def __init__(self):
+                self.calls = 0
+
+            async def request(self, _method, _url, **_kwargs):
+                self.calls += 1
+                entered.set()
+                await asyncio.to_thread(release.wait)
+                return response({
+                    "code": 0,
+                    "data": {
+                        "access_token": "new-access",
+                        "refresh_token": "new-refresh",
+                        "expires_in": 7200,
+                    },
+                })
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                cfg = self._config(Path(tmp), {
+                    "access_token": "old-access",
+                    "refresh_token": "old-refresh",
+                })
+                http = BlockingHTTPClient()
+                client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+
+                first = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"),
+                    loops[0].loop,
+                )
+                self.assertTrue(entered.wait(timeout=1))
+                second = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"),
+                    loops[1].loop,
+                )
+                release.set()
+
+                self.assertTrue(first.result(timeout=2))
+                self.assertTrue(second.result(timeout=2))
+                self.assertEqual(http.calls, 1)
+        finally:
+            release.set()
+            for loop in loops:
+                loop.stop()
+
+    async def test_refresh_singleflight_supports_many_cross_loop_followers_without_executor_use(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("refresh-many-a"), LoopThread("refresh-many-b")]
+        entered = threading.Event()
+        release = threading.Event()
+
+        class BlockingHTTPClient:
+            def __init__(self):
+                self.calls = 0
+
+            async def request(self, _method, _url, **_kwargs):
+                self.calls += 1
+                entered.set()
+                while not release.is_set():
+                    await asyncio.sleep(0.005)
+                return response({"code": 0, "data": {
+                    "access_token": "new-access",
+                    "refresh_token": "new-refresh",
+                    "expires_in": 7200,
+                }})
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                cfg = self._config(Path(tmp), {
+                    "access_token": "old-access", "refresh_token": "old-refresh",
+                })
+                http = BlockingHTTPClient()
+                client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+                callers = [
+                    asyncio.run_coroutine_threadsafe(
+                        client.refresh_access_token(expected_access_token="old-access"),
+                        loops[index % 2].loop,
+                    )
+                    for index in range(64)
+                ]
+                self.assertTrue(entered.wait(timeout=1))
+                probe = asyncio.run_coroutine_threadsafe(
+                    asyncio.to_thread(lambda: 42), loops[1].loop
+                )
+                self.assertEqual(probe.result(timeout=1), 42)
+                release.set()
+                self.assertTrue(all(future.result(timeout=2) for future in callers))
+                self.assertEqual(http.calls, 1)
+        finally:
+            release.set()
+            for loop in loops:
+                loop.stop()
+
+    async def test_cancelling_refresh_follower_does_not_cancel_batch_or_next_refresh(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("refresh-cancel-a"), LoopThread("refresh-cancel-b")]
+        entered = threading.Event()
+        release = threading.Event()
+
+        class BlockingHTTPClient:
+            def __init__(self):
+                self.calls = 0
+
+            async def request(self, _method, _url, **_kwargs):
+                self.calls += 1
+                entered.set()
+                while not release.is_set():
+                    await asyncio.sleep(0.005)
+                return response({"code": 0, "data": {
+                    "access_token": f"access-{self.calls}",
+                    "refresh_token": f"refresh-{self.calls}",
+                    "expires_in": 7200,
+                }})
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                cfg = self._config(Path(tmp), {
+                    "access_token": "old-access", "refresh_token": "old-refresh",
+                })
+                http = BlockingHTTPClient()
+                client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+                leader = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"), loops[0].loop
+                )
+                self.assertTrue(entered.wait(timeout=1))
+                cancelled = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"), loops[1].loop
+                )
+                survivor = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"), loops[1].loop
+                )
+                cancelled.cancel()
+                release.set()
+                self.assertTrue(leader.result(timeout=2))
+                self.assertTrue(survivor.result(timeout=2))
+                with self.assertRaises(ConcurrentCancelledError):
+                    cancelled.result(timeout=2)
+
+                release.clear()
+                entered.clear()
+                next_refresh = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="access-1"), loops[0].loop
+                )
+                self.assertTrue(entered.wait(timeout=1))
+                release.set()
+                self.assertTrue(next_refresh.result(timeout=2))
+                self.assertEqual(http.calls, 2)
+        finally:
+            release.set()
+            for loop in loops:
+                loop.stop()
+
+    async def test_cancelling_refresh_leader_cancels_followers_and_allows_retry(self):
+        from services.open115 import Open115Client
+
+        loops = [LoopThread("refresh-leader-a"), LoopThread("refresh-leader-b")]
+        entered = threading.Event()
+        release = threading.Event()
+
+        class BlockingHTTPClient:
+            def __init__(self):
+                self.calls = 0
+
+            async def request(self, _method, _url, **_kwargs):
+                self.calls += 1
+                entered.set()
+                while not release.is_set():
+                    await asyncio.sleep(0.005)
+                return response({"code": 0, "data": {
+                    "access_token": "retry-access", "refresh_token": "retry-refresh",
+                }})
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                cfg = self._config(Path(tmp), {
+                    "access_token": "old-access", "refresh_token": "old-refresh",
+                })
+                http = BlockingHTTPClient()
+                client = Open115Client(config_obj=cfg, http_client=http, min_request_interval=0)
+                leader = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"), loops[0].loop
+                )
+                self.assertTrue(entered.wait(timeout=1))
+                followers = [
+                    asyncio.run_coroutine_threadsafe(
+                        client.refresh_access_token(expected_access_token="old-access"), loops[1].loop
+                    )
+                    for _ in range(4)
+                ]
+                leader.cancel()
+                with self.assertRaises(ConcurrentCancelledError):
+                    leader.result(timeout=2)
+                for follower in followers:
+                    with self.assertRaises(ConcurrentCancelledError):
+                        follower.result(timeout=2)
+
+                entered.clear()
+                release.set()
+                retry = asyncio.run_coroutine_threadsafe(
+                    client.refresh_access_token(expected_access_token="old-access"), loops[1].loop
+                )
+                self.assertTrue(retry.result(timeout=2))
+                self.assertEqual(http.calls, 2)
+        finally:
+            release.set()
+            for loop in loops:
+                loop.stop()
 
     async def test_auth_request_retries_once_after_expired_token(self):
         from services.open115 import Open115Client

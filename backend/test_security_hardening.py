@@ -195,14 +195,14 @@ class InfoClientPatchAuthTest(unittest.IsolatedAsyncioTestCase):
     async def test_proxy_patch_injects_bearer_token(self):
         from modules.info_client import InfoClient
 
-        client = InfoClient()
-        with patch.dict("os.environ", {"SUPPLEMENT_ADMIN_TOKEN": "my-secret"}, clear=False), \
-             patch.object(client, "_get_client", new_callable=AsyncMock) as get_client:
-            mock_client = AsyncMock()
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_client.aclose = AsyncMock()
+        client = InfoClient(client_factory=lambda: mock_client)
+        with patch.dict("os.environ", {"SUPPLEMENT_ADMIN_TOKEN": "my-secret"}, clear=False):
             mock_response = MagicMock()
             mock_response.json.return_value = {"ok": True}
             mock_client.patch.return_value = mock_response
-            get_client.return_value = mock_client
 
             await client.proxy_patch("/api/v1/config", {"proxy_url": "http://proxy"})
 

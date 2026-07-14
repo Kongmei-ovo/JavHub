@@ -18,23 +18,21 @@ const DEFAULT_ENDPOINTS = [
   "/api/v1/makers?page=1&page_size=20",
   "/api/v1/labels?page=1&page_size=20",
   "/api/v1/series?page=1&page_size=20",
-  "/api/v1/operations/overview",
+  "/health/readiness",
 ];
 
-const INVENTORY_ENDPOINTS = [
-  "/api/inventory/snapshots/latest",
-  "/api/inventory/jobs",
-  "/api/inventory/actors?page=1&page_size=20",
-  "/api/inventory/actor-mappings/summary",
-  "/api/inventory/missing",
-  "/api/inventory/exempt",
-  "/api/inventory/aliases",
+const OPERATIONS_ENDPOINTS = [
+  "/health/readiness",
+  "/api/v1/downloads/candidates/summary",
+  "/api/v1/scheduler/jobs",
+  "/api/v1/cache/stats",
+  "/api/v1/logs/summary?since_minutes=1440",
 ];
 
-const ENDPOINT_GROUPS = {
+const ENDPOINT_GROUPS = Object.freeze({
   default: DEFAULT_ENDPOINTS,
-  inventory: INVENTORY_ENDPOINTS,
-};
+  operations: OPERATIONS_ENDPOINTS,
+});
 
 const SCENARIOS = new Set(["default", "cold", "warm", "hot"]);
 
@@ -67,7 +65,7 @@ Options:
                                Cache scenario. default keeps existing behavior;
                                cold purges first; warm runs a preflight warmup pass;
                                hot keeps the existing cache.
-  --endpoint-group <default|inventory>
+  --endpoint-group <default|operations>
                                Use a built-in read-only endpoint group.
                                Default: default.
   --endpoint <path-or-url>     Add one endpoint. May be repeated. When provided,
@@ -509,4 +507,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 
-export { parseArgs };
+export { ENDPOINT_GROUPS, parseArgs };

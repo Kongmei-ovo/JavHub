@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from test_support.postgres import TempPostgresMixin
@@ -119,6 +120,65 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         # subtitle*1000 + resolution*100 + health(0.5)*10 + size_fit(in-band)*1
         self.assertAlmostEqual(score["total"], 1000 + 400 + 5 + 1)
 
+    async def test_candidate_score_is_the_shared_magnet_score(self):
+        from services import candidate_processor, magnet_search
+
+        self.assertIs(candidate_processor._magnet_score, magnet_search.magnet_score)
+
+    async def test_find_best_magnet_delegates_without_exposing_attempts_or_errors(self):
+        from services.candidate_processor import find_best_magnet
+
+        candidate = {"content_id": "SIVR-438"}
+        best = {
+            "magnet": "magnet:?xt=urn:btih:BEST",
+            "title": "SIVR-438 1080p",
+            "reason_breakdown": {"total": 406.0},
+        }
+        candidates = [
+            {
+                "item": {"magnet": best["magnet"], "title": best["title"]},
+                "score": best["reason_breakdown"],
+                "verified": True,
+            }
+        ]
+        alternatives = [
+            {
+                "magnet": best["magnet"],
+                "source": "indexer",
+                "title": best["title"],
+                "score": best["reason_breakdown"],
+            }
+        ]
+        shared_result = {
+            "items": [best],
+            "attempts": [{"source": "indexer", "ok": True}],
+            "errors": [{"source": "broken", "ok": False}],
+            "best": best,
+            "candidates": candidates,
+            "alternatives": alternatives,
+        }
+        shared_search = AsyncMock(return_value=shared_result)
+
+        with patch("services.candidate_processor.register_all_sources") as register, patch(
+            "services.candidate_processor.search_magnets_for_item",
+            new=shared_search,
+            create=True,
+        ):
+            result = await find_best_magnet(candidate)
+
+        register.assert_called_once_with()
+        shared_search.assert_awaited_once_with(candidate)
+        self.assertEqual(
+            result,
+            {
+                "best": best,
+                "candidates": candidates,
+                "alternatives": alternatives,
+            },
+        )
+        self.assertNotIn("attempts", result)
+        self.assertNotIn("errors", result)
+
     async def test_find_best_magnet_returns_ranked_score_breakdown(self):
         from services.candidate_processor import find_best_magnet
 
@@ -141,8 +201,8 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         with patch("services.candidate_processor.register_all_sources"):
             with patch(
-                "services.candidate_processor.SourceRegistry.search_all",
-                new=AsyncMock(return_value=[large_result, subtitle_result]),
+                "services.magnet_search.SourceRegistry.search_selected",
+                new=AsyncMock(return_value=([large_result, subtitle_result], [])),
             ):
                 result = await find_best_magnet({"content_id": "SIVR-438"})
 
@@ -168,8 +228,8 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
 
         with patch("services.candidate_processor.register_all_sources"):
             with patch(
-                "services.candidate_processor.SourceRegistry.search_all",
-                new=AsyncMock(return_value=source_results),
+                "services.magnet_search.SourceRegistry.search_selected",
+                new=AsyncMock(return_value=(source_results, [])),
             ):
                 result = await find_best_magnet({"content_id": "SIVR-438"})
 
@@ -236,6 +296,111 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         detail = json.loads(list_download_candidate_events(candidate["id"])[0]["detail"])
         self.assertEqual(detail["source"], "javdb")
         self.assertEqual(detail["score"], score)
+
+    async def test_enrich_never_persists_secrets_from_successful_source_items(self):
+        from database import (
+            get_download_candidate,
+            list_download_candidate_events,
+            upsert_download_candidate,
+        )
+        from services.candidate_processor import enrich_candidate_magnet
+
+        candidate = upsert_download_candidate(
+            content_id="LEAK-901",
+            dvd_id="LEAK-901",
+            title="Secret URI regression",
+            source="supplement",
+        )
+        source_item = {
+            "title": "LEAK-901 1080p",
+            "magnet": "magnet:?xt=urn:btih:SAFE901&apikey=magnet-secret",
+            "download_url": (
+                "https://user:userinfo-secret@indexer.test/download"
+                "?passkey=url-secret"
+            ),
+            "torrent_url": (
+                "https://user:userinfo-secret@indexer.test/download"
+                "?passkey=url-secret"
+            ),
+            "source": "indexer",
+        }
+
+        with patch("services.candidate_processor.register_all_sources"), patch(
+            "services.magnet_search.SourceRegistry.search_selected",
+            new=AsyncMock(return_value=([source_item], [])),
+        ):
+            result = await enrich_candidate_magnet(candidate["id"], operator="manual")
+
+        updated = get_download_candidate(candidate["id"])
+        event_detail = list_download_candidate_events(candidate["id"])[0]["detail"]
+        serialized = json.dumps(
+            {
+                "result": result,
+                "score": updated["magnet_score"],
+                "alternatives": updated["magnet_alternatives"],
+                "event": event_detail,
+            },
+            ensure_ascii=False,
+        )
+        for secret in ("magnet-secret", "userinfo-secret", "url-secret"):
+            self.assertNotIn(secret, serialized)
+        self.assertEqual(result["action"], "magnet_enriched")
+        self.assertIn("urn:btih:SAFE901", updated["magnet"])
+
+    async def test_enrich_canonicalizes_bytes_datetime_and_extensions_before_persistence(self):
+        from database import (
+            get_download_candidate,
+            list_download_candidate_events,
+            upsert_download_candidate,
+        )
+        from services.candidate_processor import enrich_candidate_magnet
+
+        candidate = upsert_download_candidate(
+            content_id="JSON-902",
+            dvd_id="JSON-902",
+            title="JSON boundary regression",
+            source="supplement",
+        )
+        source_item = {
+            "title": "JSON-902 1080p",
+            "magnet": "magnet:?xt=urn:btih:JSON902",
+            "source": "indexer",
+            "seeders": 8,
+            "binary": b"torrent bytes",
+            "provider_timestamp": datetime(2026, 7, 14, tzinfo=timezone.utc),
+            "unexpected_extension": "must-drop",
+            "metadata": {"unsafe": object()},
+        }
+
+        with patch("services.candidate_processor.register_all_sources"), patch(
+            "services.magnet_search.SourceRegistry.search_selected",
+            new=AsyncMock(return_value=([source_item], [])),
+        ):
+            result = await enrich_candidate_magnet(candidate["id"], operator="manual")
+
+        updated = get_download_candidate(candidate["id"])
+        self.assertEqual(result["action"], "magnet_enriched")
+        self.assertEqual(updated["magnet"], source_item["magnet"])
+        serialized = json.dumps(
+            {
+                "result": result,
+                "score": updated["magnet_score"],
+                "alternatives": updated["magnet_alternatives"],
+                "event": json.loads(
+                    list_download_candidate_events(candidate["id"])[0]["detail"]
+                ),
+            },
+            ensure_ascii=False,
+        )
+        for field in (
+            "binary",
+            "provider_timestamp",
+            "unexpected_extension",
+            "metadata",
+            "torrent bytes",
+            "must-drop",
+        ):
+            self.assertNotIn(field, serialized)
 
     async def test_process_candidate_retries_once_with_next_alternative_after_downloader_failure(self):
         from database import get_download_candidate, list_download_candidate_events, upsert_download_candidate
@@ -319,7 +484,10 @@ class CandidateProcessorTest(TempPostgresMixin, unittest.IsolatedAsyncioTestCase
         }
 
         with patch("services.candidate_processor.register_all_sources"):
-            with patch("services.candidate_processor.SourceRegistry.search_all", new=AsyncMock(return_value=[http_result])):
+            with patch(
+                "services.magnet_search.SourceRegistry.search_selected",
+                new=AsyncMock(return_value=([http_result], [])),
+            ):
                 result = await find_best_magnet({"content_id": "SIVR-438"})
 
         self.assertEqual(result["best"]["download_url"], "https://indexer.test/download/SIVR-438.torrent")

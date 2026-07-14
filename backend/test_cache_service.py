@@ -2,6 +2,7 @@ import time
 import unittest
 import asyncio
 import os
+import threading
 from unittest.mock import patch
 
 from routers import config as config_router
@@ -289,6 +290,51 @@ class ResponseCacheSingleflightTest(FakeRedisMixin, unittest.IsolatedAsyncioTest
         self.assertEqual(calls, 50)
         self.assertEqual(cache.get_stats()["singleflight_locks"], 0)
 
+    async def test_bypass_singleflight_never_reuses_a_task_from_another_event_loop(self):
+        loops = [asyncio.new_event_loop(), asyncio.new_event_loop()]
+        threads = [
+            threading.Thread(target=loop.run_forever, daemon=True)
+            for loop in loops
+        ]
+        for thread in threads:
+            thread.start()
+        entered = threading.Event()
+        release = threading.Event()
+        calls = 0
+        calls_lock = threading.Lock()
+
+        async def producer():
+            nonlocal calls
+            with calls_lock:
+                calls += 1
+                if calls == 2:
+                    entered.set()
+            await asyncio.to_thread(release.wait)
+            return {"loop": id(asyncio.get_running_loop())}
+
+        try:
+            futures = [
+                asyncio.run_coroutine_threadsafe(
+                    cache.get_or_set_response("cross-loop", {}, producer, bypass=True),
+                    loop,
+                )
+                for loop in loops
+            ]
+            self.assertTrue(entered.wait(timeout=1))
+            release.set()
+            results = [future.result(timeout=2) for future in futures]
+
+            self.assertEqual(calls, 2)
+            self.assertEqual({result["loop"] for result in results}, {id(loop) for loop in loops})
+        finally:
+            release.set()
+            for loop in loops:
+                loop.call_soon_threadsafe(loop.stop)
+            for thread in threads:
+                thread.join(timeout=2)
+            for loop in loops:
+                loop.close()
+
 
 class AsyncResponseCacheBackendTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -432,6 +478,76 @@ class AsyncResponseCacheBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first, {"data": [{"id": 1}]})
         self.assertEqual(second, first)
         self.assertEqual(backend.async_get_calls, 1)
+
+    async def test_redis_async_clients_are_owned_and_closed_by_their_event_loops(self):
+        from test_support.cache import FakeRedisClient
+
+        loops = [asyncio.new_event_loop(), asyncio.new_event_loop()]
+        threads = [threading.Thread(target=loop.run_forever, daemon=True) for loop in loops]
+        for thread in threads:
+            thread.start()
+        values = {}
+        clients = []
+
+        class LoopBoundRedis:
+            def __init__(self):
+                self.loop = asyncio.get_running_loop()
+                self.closed_loop = None
+
+            def _check_loop(self):
+                if asyncio.get_running_loop() is not self.loop:
+                    raise RuntimeError("redis client crossed event loops")
+
+            async def get(self, key):
+                self._check_loop()
+                return values.get(key)
+
+            async def set(self, key, value, ex=None):
+                self._check_loop()
+                values[key] = value
+
+            async def delete(self, key):
+                self._check_loop()
+                values.pop(key, None)
+
+            async def aclose(self):
+                self._check_loop()
+                self.closed_loop = asyncio.get_running_loop()
+
+        def async_factory(*_args, **_kwargs):
+            client = LoopBoundRedis()
+            clients.append(client)
+            return client
+
+        try:
+            with patch.dict(os.environ, {
+                "JAVHUB_REDIS_URL": "redis://cache.example/0",
+                "JAVHUB_REDIS_PREFIX": "loop-cache",
+            }, clear=False), patch("redis.Redis.from_url", return_value=FakeRedisClient()), \
+                 patch("redis.asyncio.Redis.from_url", side_effect=async_factory):
+                backend = cache.RedisCacheBackend()
+                asyncio.run_coroutine_threadsafe(
+                    backend.aset_json("answer", {"value": 42}, 60), loops[0]
+                ).result(timeout=2)
+                first = asyncio.run_coroutine_threadsafe(
+                    backend.aget_json("answer"), loops[1]
+                ).result(timeout=2)
+                second = asyncio.run_coroutine_threadsafe(
+                    backend.aget_json("answer"), loops[0]
+                ).result(timeout=2)
+
+                self.assertEqual(first, {"value": 42})
+                self.assertEqual(second, first)
+                self.assertEqual(len(clients), 2)
+                await backend.aclose()
+                self.assertTrue(all(client.closed_loop is client.loop for client in clients))
+        finally:
+            for loop in loops:
+                loop.call_soon_threadsafe(loop.stop)
+            for thread in threads:
+                thread.join(timeout=2)
+            for loop in loops:
+                loop.close()
 
 
 if __name__ == "__main__":

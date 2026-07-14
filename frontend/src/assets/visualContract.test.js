@@ -109,8 +109,8 @@ test('glass and material backgrounds stay visibly layered', () => {
     }
   }
 
-  // 历史 token 债基线:ratchet 锁当前数量、挡新增;未分层玻璃面待专门精修轮补 specular/noise。
-  assert.equal(offenders.length, 1, offenders.join('\n'))
+  // 未分层玻璃债已清零；锁为零，避免后续回退到单层材质。
+  assert.equal(offenders.length, 0, offenders.join('\n'))
 })
 
 test('production source files stay reviewable below the large-file line', () => {

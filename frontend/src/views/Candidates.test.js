@@ -122,6 +122,12 @@ test('useDownloadCandidates composable preserves all candidate API endpoints', (
   }
 })
 
+test('candidate confirmations describe the dispatch target as a downloader', () => {
+  assert.match(composable, /发送到当前默认下载器/)
+  assert.match(composable, /下发到下载器/)
+  assert.doesNotMatch(composable, /默认下载源|下发到下载源/)
+})
+
 test('useDownloadCandidates composable exposes the full panel emit surface', () => {
   // Every panel handler must remain exported by the composable.
   for (const exported of [

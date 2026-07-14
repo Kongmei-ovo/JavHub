@@ -58,14 +58,14 @@ The renderer also adds the stripped `JAVHUB_PROXY_ADVERTISE_HOST`, or `127.0.0.1
 
 ### Effective JavInfo proxy
 
-Extract a dependency-free `effective_proxy_url()` helper into `backend/modules/proxy_config.py`. Both `backend/config.py::Config.proxy_url` and the renderer call this helper, so valid and invalid proxy values have one definition instead of two similar implementations. The renderer adds `<repo-root>/backend` to its import path solely to load this pure helper.
+Extract a dependency-free `effective_proxy_url()` helper into `backend/modules/proxy_config.py`. Both `backend/config.py::Config.proxy_url` and the renderer call this helper, so valid and invalid proxy values have one definition instead of two similar implementations. The renderer loads the helper from the absolute `<repo-root>/backend/modules/proxy_config.py` path with an isolated `importlib` module spec; it neither mutates `sys.path` nor trusts a cached top-level module with the same name.
 
 When `proxy.enabled` is false, the shared helper returns an empty string and the JavInfo plist omits `JAVINFO_SOURCE_PROXY_URL`.
 
 When enabled:
 
 - `mode: vless` produces `socks5://<advertise-host>:<singbox-port>`, using stripped `JAVHUB_PROXY_ADVERTISE_HOST` or `127.0.0.1`. A numeric `singbox_port` in `1..65535` is used; empty, non-numeric, zero, negative, and out-of-range values use `17890` in both backend and renderer.
-- Other modes use the first non-empty `http_url`, then `https_url`.
+- Other modes strip both candidates, then use the first non-blank `http_url`, followed by `https_url`.
 - An enabled non-VLESS proxy with neither URL omits the variable rather than writing an empty value.
 
 This deliberately makes `Config.proxy_url` and the restart-time JavInfo environment identical for every supported or malformed input.

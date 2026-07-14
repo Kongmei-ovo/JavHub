@@ -405,6 +405,8 @@ button.ops-stat-item { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
+.ops-job-error { color: var(--badge-error-text); }
+
 .ops-job-actions {
   display: flex;
   align-items: center;

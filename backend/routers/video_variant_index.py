@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/v1/video-variants/index", tags=["video-variant-i
 
 
 @router.post("/jobs")
-def create_variant_index_job(force: bool = Query(True)) -> dict[str, Any]:
+async def create_variant_index_job(force: bool = Query(True)) -> dict[str, Any]:
     # Explicit "rebuild now" button → force by default (skip the unchanged-guard).
     return start_variant_index_job(force=force)
 
