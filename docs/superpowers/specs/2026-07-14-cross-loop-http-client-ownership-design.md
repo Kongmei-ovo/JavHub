@@ -32,9 +32,11 @@ Add `backend/modules/loop_client_pool.py` with a focused generic `LoopClientPool
 
 Entering a lease reads the running loop, returns that loop's open client, or creates one under a short `threading.Lock`. It never returns a client created for another loop. The same lock increments a process-wide active-lease count and clears an idle `threading.Event`; lease exit decrements the count and sets the event in `finally` when the count reaches zero. Client creation and accounting happen without an `await` while the lock is held. A regular mapping is used rather than weak references because shutdown must retain every client until it is explicitly closed.
 
-The pool has a terminal `OPEN -> CLOSING -> CLOSED` lifecycle. `close_all()` atomically changes `OPEN` to `CLOSING`, so new leases are rejected instead of creating clients behind the shutdown snapshot. It waits for the idle event through one bounded `asyncio.to_thread()` call; that worker never owns a lock and exits at the deadline even if its awaiting task is canceled. The pool then attempts every client close even if one fails. It closes the current loop's client directly; for another running owner loop it uses `asyncio.run_coroutine_threadsafe()`. Both local and remote closes have a bounded timeout.
+The pool has a terminal `OPEN -> CLOSING -> CLOSED` lifecycle. `close_all()` atomically changes `OPEN` to `CLOSING`, so new leases are rejected instead of creating clients behind the shutdown snapshot. It waits for the idle event through one bounded `asyncio.to_thread()` call; that worker never owns a lock and exits at the deadline even if its awaiting task is canceled. The pool then schedules every client close on the client's recorded owner loop and reports the underlying task's actual completion through a loop-neutral concurrent future. Both same-loop and remote-loop closes have a bounded observation timeout.
 
-Mappings are removed only after their client closes or is already closed. A timeout, cancellation, stopped owner loop, or `aclose()` failure leaves that entry retained for a later `close_all()` retry, while the pool remains closed to new leases. Concurrent close callers share one thread-safe in-flight close future; canceling a waiter does not cancel the leader. Once the mapping is empty the state becomes `CLOSED`; repeated close calls are harmless. This pool never silently reopens after shutdown.
+Mappings are removed only after their client closes or is already closed. A timeout, cancellation, stopped owner loop, or `aclose()` failure leaves that entry retained for a later `close_all()` retry, while the pool remains closed to new leases. Concurrent close callers share one thread-safe in-flight close future backed by a strongly referenced internal leader task; canceling any waiter does not cancel the leader.
+
+Each owner-loop task created for `aclose()` is strongly retained together with a separate concurrent completion future. The close leader observes that completion only until the configured deadline, requests cancellation of the owner task on timeout, and returns without pretending cancellation has completed. The retained attempt's done callback consumes the actual task outcome and removes the client only on success. A subsequent `close_all()` observes an existing attempt instead of starting a second `aclose()` for the same client. Once the mapping is empty the state becomes `CLOSED`; repeated close calls are harmless. This pool never silently reopens after shutdown.
 
 ### InfoClient integration
 
@@ -75,6 +77,7 @@ Add deterministic unit coverage for `LoopClientPool` using two persistent event 
 - close waits for an active lease and rejects a new lease once closing begins;
 - `close_all()` executes each close coroutine on its recorded owner loop;
 - a stopped owner loop, hanging/raising `aclose()`, and cancellation retain failed entries without blocking other closes;
+- a cancellation-resistant timed-out close remains single-instance and is consumed when it eventually finishes;
 - a later close retries retained entries, while successful repeated close is harmless.
 
 Add InfoClient tests with an instrumented AsyncClient factory proving two clients are retained and both close.

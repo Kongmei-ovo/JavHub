@@ -9,11 +9,13 @@ The macOS service helper currently renders three LaunchAgent property lists with
 1. `JAVHUB_CONFIG_PATH` is used while rendering JavInfo settings but is not placed in the backend LaunchAgent environment. A custom configuration therefore produces split-brain processes.
 2. Database and Redis values are interpolated as raw XML. Characters such as `&` or `<` make the generated backend plist invalid after files have already been overwritten.
 3. The JavInfo proxy renderer only checks `http_url` and `https_url`. In managed VLESS mode the effective backend proxy is a local SOCKS5 endpoint, so restarting JavInfo drops or misroutes its source proxy until the backend pushes configuration later.
+4. A custom `JAVHUB_PROXY_ADVERTISE_HOST` influences renderer output but is not inherited by the backend LaunchAgent. JavInfo and the restarted backend can therefore calculate different VLESS URLs even after sharing the same YAML file.
 
 ## Goals
 
 - Generate syntactically valid plists for every supported environment value.
 - Pass the exact effective configuration path to the backend process.
+- Pass the normalized proxy advertise host used during rendering to the backend process.
 - Make the JavInfo LaunchAgent proxy match `Config.proxy_url` semantics, including VLESS.
 - Keep plist output deterministic so `ensure` does not restart healthy services without a semantic change.
 - Preserve all existing labels, ports, paths, health behavior, and service commands.
@@ -34,7 +36,7 @@ Add `scripts/render_service_plists.py`, a small command-line helper using the st
 The shell-to-renderer contract is explicit:
 
 - CLI arguments provide the three output paths, repository root, JavInfo directory, resolved `FRONTEND_NPM_BIN`, and effective configuration path. The renderer derives the existing labels, ports, backend uvicorn path, working directories, and log paths from those values.
-- The inherited environment provides the existing `JAVHUB_DB_*`, `JAVHUB_CACHE_BACKEND`, `JAVHUB_REDIS_*`, and `JAVHUB_PROXY_ADVERTISE_HOST` values. The renderer applies the same defaults currently embedded in `services.sh`.
+- The inherited environment provides the existing `JAVHUB_DB_*`, `JAVHUB_CACHE_BACKEND`, `JAVHUB_REDIS_*`, and `JAVHUB_PROXY_ADVERTISE_HOST` values. The renderer applies the same defaults currently embedded in `services.sh`, normalizes an empty advertise host to `127.0.0.1`, and places that normalized host in the backend environment.
 - `NPM_BIN` is resolved only by `services.sh`; the resulting `FRONTEND_NPM_BIN` is passed as an argument rather than rediscovered from an unexported shell variable.
 
 `plistlib` will serialize all dynamic strings, so paths, passwords, URLs, and prefixes round-trip without manual XML escaping. XML output uses sorted keys and stable formatting for byte-for-byte change detection.
@@ -51,6 +53,8 @@ otherwise <repo-root>/config.yaml
 ```
 
 The renderer expands `~` and resolves a relative value against its invocation working directory, with `strict=False`, before doing any reads. That normalized absolute path is added to the backend `EnvironmentVariables` dictionary as `JAVHUB_CONFIG_PATH`. The same absolute path is used to read JavInfo worker and proxy settings, so a caller running `services.sh` outside the repository cannot give the two processes different relative-path bases.
+
+The renderer also adds the stripped `JAVHUB_PROXY_ADVERTISE_HOST`, or `127.0.0.1` when empty, to the backend environment. The value passed to `effective_proxy_url()` during rendering is therefore exactly the value `Config.proxy_url` sees after launchd restarts the backend.
 
 ### Effective JavInfo proxy
 
@@ -83,6 +87,7 @@ Create cross-platform renderer tests separate from the macOS-only lifecycle test
 
 - custom `JAVHUB_CONFIG_PATH` round-trips into the backend plist;
 - a relative custom path invoked outside the repository is normalized once and used for both the backend environment and renderer reads;
+- a custom or empty proxy advertise host is normalized once, injected into the backend plist, and used in the JavInfo VLESS URL;
 - DB password, Redis URL, Redis prefix, and paths containing XML metacharacters round-trip exactly;
 - VLESS produces the configured SOCKS5 URL and ignores stale HTTP fields;
 - empty, non-numeric, zero, negative, and out-of-range VLESS ports produce the same URL through the shared helper and the renderer;
@@ -106,6 +111,7 @@ Keep `tests/test_services.py` integration coverage proving `services.sh render-p
 ## Success Criteria
 
 - Custom configuration paths cannot split backend and JavInfo configuration.
+- Custom proxy advertise hosts cannot split backend and JavInfo VLESS URLs after restart.
 - All dynamic plist values survive arbitrary XML metacharacters.
 - Managed VLESS restarts JavInfo with the correct local SOCKS5 proxy immediately.
 - Failed rendering cannot leave malformed installed plist files.
